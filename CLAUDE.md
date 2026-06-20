@@ -21,9 +21,12 @@
     - ✅ NÃO estão no git — o git **nunca** toca nos dados.
     - ⚠️ NÃO sincronizam entre PC e Mac, e **somem se limpar o navegador / recriar o Codespace**.
       Hoje **cada máquina tem seus próprios dados locais**.
-  - **ESTADO ALVO (planejado) → Supabase** (sync na nuvem, dentro do app). Quando a
+  - **ESTADO ALVO (em montagem) → Supabase** (sync na nuvem, dentro do app). Quando a
     persistência migrar para o Supabase, aí sim vale de verdade "código no git / dados
     na nuvem, que não podem ser perdidos".
+    - Projeto Supabase: **TaskFlow** · ref `gigkrjetrtbtdmdnqoof` · região `sa-east-1` · org "Konrad Diego".
+    - A URL e a chave pública (anon) ficarão no `index.html` (cliente). Migração de sync **ainda não implementada**.
+    - NÃO confundir com os outros projetos da conta: "Habit Tracker" (HUB) e "Tarefas" (antigo, pausado) — não mexer.
 
 ## Fluxo de trabalho (2 máquinas, 1 repositório)
 - **Mac de casa (Codespace)** = máquina **canônica** de desenvolvimento.
@@ -52,6 +55,11 @@
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-06-20 — PC da Empresa — Supabase (projeto criado)
+- Criado o projeto Supabase **TaskFlow** (ref `gigkrjetrtbtdmdnqoof`, `sa-east-1`, org "Konrad Diego"). Custo: free.
+- **Pendente:** definir arquitetura (espelho chave-valor é o recomendado) + login/RLS, e então
+  implementar a camada de sync no `index.html` — **subindo primeiro o `localStorage` atual** (sem perder dados).
+
 ### 2026-06-20 — PC da Empresa — configuração inicial
 - Projeto começado **do zero** (nada no GitHub nem no Supabase ainda).
 - Feito: `git init` (branch `main`), renomeado `taskflow.html` → `index.html`,
