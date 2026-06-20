@@ -4765,7 +4765,6 @@ function _novoProjectPro({nome, tipo='outro', cor='#185FA5', dono=null, prazoIni
     // 'aviso'      — tarefa aparece normal mas com chip de aviso "depende de: X"
     // 'informativo'— só ícone sutil mostrando o link
     fases: [],               // [{id, nome, ordem, grupos:[]}]
-    marcos: [],              // [{id, nome, dataAlvo, status}]
     pessoas: [],             // [personId, ...] todos os membros (inclui dono e coordenador)
     coordenador: null,       // personId — quem garante que o projeto anda
     coordenador2: null,      // personId — 2º coordenador (opcional)
@@ -4774,7 +4773,6 @@ function _novoProjectPro({nome, tipo='outro', cor='#185FA5', dono=null, prazoIni
     // preFecharPor: personId — quem pré-fechou
     preFecharEm: null,
     preFecharPor: null,
-    arquivos: [],
     favorito: false,
     criadoEm: new Date().toISOString(),
     concluidoEm: null,
@@ -21924,7 +21922,6 @@ function salvarProjetoComoTemplate(projId){
         }).filter(Boolean)
       }))
     })),
-    marcos:(p.marcos||[]).map(m=>({nome:m.nome})),
     criadoEm:new Date().toISOString()
   };
   // Abre o editor já preenchido pra o usuário ajustar o nome/conteúdo e salvar
@@ -21969,9 +21966,6 @@ function criarProjetoDeTemplate(tplId){
     });
     novo.fases.push(fase);
   });
-  (tpl.marcos||[]).forEach(m=>{
-    novo.marcos.push({id:'marco_'+Date.now()+'_'+Math.floor(Math.random()*1000), nome:m.nome, dataAlvo:null, status:'pendente'});
-  });
 
   saveProjectPro_db(novo);
   document.getElementById('pp-tpl-manager')?.remove();
@@ -21997,7 +21991,7 @@ function abrirGerenciadorTemplatesProj(){
           </div>
           <div style="flex:1;min-width:0">
             <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(tpl.nome)}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px">${tot.fases} fase${tot.fases!==1?'s':''} · ${tot.tarefas} tarefa${tot.tarefas!==1?'s':''}${tpl.marcos&&tpl.marcos.length?` · ${tpl.marcos.length} marco${tpl.marcos.length!==1?'s':''}`:''}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${tot.fases} fase${tot.fases!==1?'s':''} · ${tot.tarefas} tarefa${tot.tarefas!==1?'s':''}</div>
           </div>
           <button onclick="criarProjetoDeTemplate('${tpl.id}')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-plus" style="font-size:13px"></i> Usar</button>
           <button onclick="abrirEditorProjTemplate('${tpl.id}')" title="Editar" style="background:var(--card);border:1px solid var(--border);color:var(--text2);border-radius:7px;width:32px;height:32px;cursor:pointer;flex-shrink:0"><i class="ti ti-pencil"></i></button>
@@ -22055,7 +22049,7 @@ function abrirEditorProjTemplate(id, prefill){
   }
   if(!_tplWork){
     _tplWork={nome:'', tipo:'outro', cor:'#185FA5', descricao:'',
-      fases:[{nome:'1. Planejamento', ordem:1, grupos:[{setor:'Geral', tarefas:[]}]}], marcos:[]};
+      fases:[{nome:'1. Planejamento', ordem:1, grupos:[{setor:'Geral', tarefas:[]}]}]};
   }
   document.getElementById('pp-tpl-manager')?.remove();
   document.getElementById('pp-tpl-editor')?.remove();
@@ -22108,7 +22102,6 @@ function _tplSet(kind,fi,gi,ti,field,val){
   if(kind==='fase') _tplWork.fases[fi][field]=val;
   else if(kind==='grupo') _tplWork.fases[fi].grupos[gi][field]=val;
   else if(kind==='tarefa') _tplWork.fases[fi].grupos[gi].tarefas[ti][field]=val;
-  else if(kind==='marco') _tplWork.marcos[ti][field]=val;
 }
 function _tplAddFase(){ _tplWork.fases.push({nome:`${_tplWork.fases.length+1}. Nova fase`, ordem:_tplWork.fases.length+1, grupos:[{setor:'Geral',tarefas:[]}]}); _renderTplEdBody(); }
 function _tplDelFase(fi){ _tplWork.fases.splice(fi,1); _renderTplEdBody(); }
@@ -22116,8 +22109,6 @@ function _tplAddGrupo(fi){ _tplWork.fases[fi].grupos.push({setor:'Novo setor',ta
 function _tplDelGrupo(fi,gi){ _tplWork.fases[fi].grupos.splice(gi,1); _renderTplEdBody(); }
 function _tplAddTarefa(fi,gi){ _tplWork.fases[fi].grupos[gi].tarefas.push({title:'',prio:'media',executor:'',subtasks:[]}); _renderTplEdBody(); }
 function _tplDelTarefa(fi,gi,ti){ _tplWork.fases[fi].grupos[gi].tarefas.splice(ti,1); _renderTplEdBody(); }
-function _tplAddMarco(){ _tplWork.marcos.push({nome:''}); _renderTplEdBody(); }
-function _tplDelMarco(mi){ _tplWork.marcos.splice(mi,1); _renderTplEdBody(); }
 
 function _renderTplEdBody(){
   const host=document.getElementById('tpl-ed-body');
@@ -22155,20 +22146,10 @@ function _renderTplEdBody(){
     </div>`;
   }).join('');
 
-  const marcosHTML=(_tplWork.marcos||[]).map((m,mi)=>`
-    <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">
-      <i class="ti ti-flag" style="color:var(--orange);font-size:13px"></i>
-      <input type="text" value="${escapeAttr(m.nome||'')}" oninput="_tplSet('marco',null,null,${mi},'nome',this.value)" placeholder="Marco / entrega" style="${inp};flex:1" />
-      <button onclick="_tplDelMarco(${mi})" title="Remover marco" style="background:none;border:none;color:var(--text3);cursor:pointer" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-x"></i></button>
-    </div>`).join('');
-
   host.innerHTML=`
     <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 8px;display:flex;align-items:center;gap:6px"><i class="ti ti-layout-list" style="color:var(--blue-mid)"></i> Fases, setores e tarefas</div>
     ${fasesHTML}
-    <button onclick="_tplAddFase()" style="width:100%;background:var(--bg2);color:var(--blue-mid);border:1px dashed var(--blue-mid);border-radius:8px;padding:9px;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;margin-bottom:16px"><i class="ti ti-plus"></i> Adicionar fase</button>
-    <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 8px;display:flex;align-items:center;gap:6px"><i class="ti ti-flag" style="color:var(--orange)"></i> Marcos (opcional)</div>
-    ${marcosHTML}
-    <button onclick="_tplAddMarco()" style="background:none;border:none;color:var(--blue-mid);font-size:12px;font-weight:600;cursor:pointer;padding:3px 0;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-plus" style="font-size:12px"></i> marco</button>`;
+    <button onclick="_tplAddFase()" style="width:100%;background:var(--bg2);color:var(--blue-mid);border:1px dashed var(--blue-mid);border-radius:8px;padding:9px;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i class="ti ti-plus"></i> Adicionar fase</button>`;
 }
 
 function salvarProjTemplate(){
@@ -22177,7 +22158,6 @@ function salvarProjTemplate(){
   if(!_tplWork.nome){ toast('⚠️ Dê um nome ao template'); document.getElementById('tpl-nome')?.focus(); return; }
   // Limpa tarefas sem título
   (_tplWork.fases||[]).forEach(f=>(f.grupos||[]).forEach(g=>{ g.tarefas=(g.tarefas||[]).filter(t=>(t.title||'').trim()); }));
-  (_tplWork.marcos||[])&&(_tplWork.marcos=_tplWork.marcos.filter(m=>(m.nome||'').trim()));
   if(_tplWorkEditId){
     const i=_projTemplates.findIndex(t=>t.id===_tplWorkEditId);
     if(i>=0){ _tplWork.id=_tplWorkEditId; _projTemplates[i]=_tplWork; }
@@ -22312,7 +22292,6 @@ function renderProjectProView(id){
     {id:'fases',     label:'Fases',       icon:'ti-layout-rows'},
     {id:'tarefas',   label:'Tarefas',     icon:'ti-checklist'},
     {id:'analise',   label:'Análise',     icon:'ti-chart-arcs'},
-    {id:'arquivos',  label:'Arquivos',    icon:'ti-paperclip'},
     {id:'anotacoes', label:'Comentários', icon:'ti-message-circle'},
   ];
   const tabsHTML = `
@@ -22330,7 +22309,6 @@ function renderProjectProView(id){
   else if(activeProjectProTab === 'tarefas') bodyHTML = renderProjectProTarefas(p);
   else if(activeProjectProTab === 'pessoas') bodyHTML = renderProjectProPessoas(p);
   else if(activeProjectProTab === 'analise') bodyHTML = renderProjectProAnalise(p);
-  else if(activeProjectProTab === 'arquivos') bodyHTML = renderProjectProArquivos(p);
   else if(activeProjectProTab === 'anotacoes') bodyHTML = renderProjectProAnotacoes(p);
 
   // Shell (cabeçalho + subnavbar) tem largura FIXA p/ a subnavbar não "pular" entre abas.
@@ -23932,10 +23910,6 @@ function renderProjectProAnalise(p){
   </div>`;
   const detalhe = _av==='dias' ? tabelaDias : _av==='areas' ? porAreaHTML : (timeline + blocos);
   return cardsTopo + subnav + detalhe + nota;
-}
-
-function renderProjectProArquivos(p){
-  return `<div class="empty" style="padding:40px 20px"><i class="ti ti-paperclip" style="font-size:40px;color:var(--text3);opacity:.5"></i><p>Anexos do projeto</p><p style="font-size:12px;color:var(--text3)">Em breve — virá no próximo bloco</p></div>`;
 }
 
 // GUILHERME V3 (mai/2026): COMENTÁRIOS DE PROJETO — substitui Anotações.
