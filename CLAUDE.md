@@ -13,9 +13,11 @@
 
 ## Onde vivem as coisas (LEIA ANTES DE MEXER)
 - **Código / layout** → `index.html`, versionado no **git** e publicado via **GitHub Pages**.
-  - Repositório GitHub: https://github.com/dKonrad88/TaskFlow  (privado · conta dKonrad88)
-  - GitHub Pages: ainda NÃO publicado. Como o repo é **privado**, o Pages grátis não publica
-    (precisa GitHub Pro, ou tornar o repo público). O fluxo de código/sync NÃO depende do Pages.
+  - Repositório GitHub: https://github.com/dKonrad88/TaskFlow  (**PÚBLICO** · conta dKonrad88)
+  - GitHub Pages: **publicado** → https://dkonrad88.github.io/TaskFlow/ (serve o `index.html`; ~1min p/ buildar após cada push).
+  - Repo foi tornado público para habilitar o Pages grátis. A chave *publishable* do Supabase no código
+    é segura (RLS protege os dados). ⚠️ Depois de criar sua conta no app, **trancar novos cadastros**
+    no Supabase: Authentication → Sign In/Providers → Email → desligar "Allow new users to sign up".
 - **Dados do usuário** (tarefas, pessoas, projetos, reuniões, etc.):
   - **ESTADO ATUAL → `localStorage` do navegador** (chaves `LS_*`, gravadas via `safeSetItem`).
     - ✅ NÃO estão no git — o git **nunca** toca nos dados.
@@ -67,6 +69,11 @@
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-06-20 — PC da Empresa — repo público + Pages
+- Repositório tornado **público** e **GitHub Pages ativado**: https://dkonrad88.github.io/TaskFlow/
+- App agora abre por essa URL em qualquer máquina (mas dados ainda são por-navegador até o sync Supabase).
+- Lembrete: trancar novos cadastros no Supabase após criar a conta (ver seção de dados).
+
 ### 2026-06-20 — PC da Empresa — Supabase backend pronto
 - Tabela `app_state` (chave-valor) criada com **RLS por usuário** + trigger `updated_at`; 0 alertas de segurança.
 - Definida arquitetura: espelho KV + login e-mail/senha; sync = auto-push + pull manual (com backup). Detalhes na seção "Onde vivem as coisas".
