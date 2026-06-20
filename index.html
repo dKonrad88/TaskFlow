@@ -21603,15 +21603,27 @@ function _ppGruposHTML(){
   return out;
 }
 
+// Chip de prazo (+ risco de estouro) unificado entre card e linha.
+function _ppChipPrazo(p){
+  if(p.status==='concluido' || !p.prazoFim) return '';
+  const d=Math.ceil((new Date(p.prazoFim+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);
+  let txt, cor='var(--text3)';
+  if(d<0){ txt=Math.abs(d)+'d atrasado'; cor='var(--danger)'; }
+  else if(d===0){ txt='hoje'; cor='var(--danger)'; }
+  else if(d<=7){ txt=d+'d restantes'; cor='var(--amber)'; }
+  else { txt=d+'d restantes'; }
+  let risco='';
+  const rc=(typeof _ppResumoCronograma==='function')?_ppResumoCronograma(p):null;
+  if(rc && rc.estoura) risco=` <span title="Conclusão prevista (${formatDate(rc.fimPrev)}) passa ${rc.diff}d do prazo" style="background:var(--danger-bg);color:var(--danger);font-size:10px;font-weight:800;padding:1px 6px;border-radius:99px;white-space:nowrap"><i class="ti ti-alert-triangle" style="font-size:10px"></i> +${rc.diff}d</span>`;
+  return `<span style="color:${cor};font-weight:600;white-space:nowrap"><i class="ti ti-calendar" style="font-size:11px"></i> ${txt}</span>${risco}`;
+}
+
 // Linha compacta de projeto (modo Lista)
 function projectProRowHTML(p){
   const prog=_calcularProgressoProjeto(p);
   const status=PP_STATUS[p.status]||PP_STATUS.planejamento;
   const tipo=PP_TIPOS[p.tipo]||PP_TIPOS.outro;
   const _pr={alta:{l:'Alta',c:'var(--danger)',i:'ti-arrow-up'},baixa:{l:'Baixa',c:'var(--success)',i:'ti-arrow-down'}}[p.prioridade];
-  let prazoTxt='', prazoCor='var(--text3)';
-  if(p.status==='concluido'){ prazoTxt='concluído'; prazoCor='var(--success)'; }
-  else if(p.prazoFim){ const d=Math.ceil((new Date(p.prazoFim+'T00:00:00')-new Date(today+'T00:00:00'))/86400000); if(d<0){prazoTxt=Math.abs(d)+'d atrasado';prazoCor='var(--danger)';} else if(d===0){prazoTxt='hoje';prazoCor='var(--danger)';} else if(d<=7){prazoTxt=d+'d restantes';prazoCor='var(--amber)';} else {prazoTxt=d+'d restantes';} }
   return `<div data-project-pro-id="${p.id}" onclick="abrirProjectProView('${p.id}')" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-left:3px solid ${p.cor};border-radius:10px;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow='0 3px 12px rgba(0,0,0,.07)'" onmouseout="this.style.boxShadow=''">
     <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px">
       <button onclick="event.stopPropagation();_ppToggleFav('${p.id}')" title="${p.favorito?'Desafixar':'Fixar no topo'}" style="background:none;border:none;cursor:pointer;color:${p.favorito?'var(--amber)':'var(--text3)'};font-size:14px;padding:0;flex-shrink:0;line-height:1"><i class="ti ti-star${p.favorito?'-filled':''}"></i></button>
@@ -21626,7 +21638,7 @@ function projectProRowHTML(p){
       <span style="font-size:11px;font-weight:700;color:var(--text2);min-width:30px;text-align:right">${prog.pct}%</span>
     </div>
     <span style="font-size:11px;color:var(--text3);white-space:nowrap;width:58px;text-align:right;flex-shrink:0"><i class="ti ti-checklist" style="font-size:11px"></i> ${prog.feitas}/${prog.total}</span>
-    <span style="font-size:11px;font-weight:600;color:${prazoCor};white-space:nowrap;width:96px;text-align:right;flex-shrink:0">${prazoTxt}</span>
+    <span style="font-size:11px;white-space:nowrap;text-align:right;flex-shrink:0;min-width:80px">${_ppChipPrazo(p)}</span>
     <button onclick="event.stopPropagation();confirmExcluirProjectPro('${p.id}')" title="Excluir projeto" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;flex-shrink:0;border-radius:6px" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-trash" style="font-size:14px"></i></button>
   </div>`;
 }
@@ -21704,29 +21716,9 @@ function projectProCardHTML(p){
   const nFases = (p.fases||[]).length;
   const nPessoas = (p.pessoas||[]).length;
 
-  // Barra de progresso por prazo (se tem prazo definido)
-  let prazoHTML = '';
-  if(p.prazoFim){
-    const fim = new Date(p.prazoFim+'T00:00:00');
-    const ini = p.prazoInicio ? new Date(p.prazoInicio+'T00:00:00') : new Date(p.criadoEm);
-    const hoje = new Date(today+'T00:00:00');
-    const total = (fim - ini) / (1000*60*60*24);
-    const decorrido = (hoje - ini) / (1000*60*60*24);
-    const diasRestantes = Math.ceil((fim - hoje) / (1000*60*60*24));
-    let prazoTexto = '';
-    let prazoColor = 'var(--text3)';
-    if(diasRestantes < 0){ prazoTexto = `${Math.abs(diasRestantes)}d atrasado`; prazoColor = 'var(--danger)'; }
-    else if(diasRestantes === 0){ prazoTexto = 'Hoje!'; prazoColor = 'var(--danger)'; }
-    else if(diasRestantes <= 7){ prazoTexto = `${diasRestantes}d restantes`; prazoColor = 'var(--amber)'; }
-    else { prazoTexto = `${diasRestantes}d restantes`; }
-    // Risco PREVISTO: a conclusão calculada pelo cronograma passa do prazo?
-    let riscoChip='';
-    if(diasRestantes >= 0 && p.status!=='concluido'){
-      const rc=_ppResumoCronograma(p);
-      if(rc && rc.estoura) riscoChip = ` <span style="background:var(--danger-bg);color:var(--danger);font-size:10px;font-weight:800;padding:1px 7px;border-radius:99px;white-space:nowrap" title="Pelo cronograma atual, a conclusão prevista (${formatDate(rc.fimPrev)}) passa ${rc.diff}d do prazo"><i class="ti ti-alert-triangle" style="font-size:10px"></i> estouro previsto +${rc.diff}d</span>`;
-    }
-    prazoHTML = `<div style="font-size:11px;color:${prazoColor};margin-top:4px"><i class="ti ti-calendar" style="font-size:11px"></i> ${prazoTexto}${riscoChip}</div>`;
-  }
+  // Prazo + risco de estouro (chip unificado entre card e linha)
+  const _chipPrazo = _ppChipPrazo(p);
+  const prazoHTML = _chipPrazo ? `<div style="margin-top:4px;font-size:11px">${_chipPrazo}</div>` : '';
 
   const atrasadasBadge = prog.atrasadas > 0
     ? `<span style="background:var(--danger-bg);color:var(--danger);font-size:11px;padding:2px 8px;border-radius:99px;font-weight:700;margin-left:4px">${prog.atrasadas} atrasada${prog.atrasadas>1?'s':''}</span>`
