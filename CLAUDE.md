@@ -73,6 +73,20 @@
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-06-20 — Mac de casa — Projetos: auditoria UX + Fase 0 (bug) + Fase 1 (toolbar)
+- Rodada auditoria multi-agente da área de Projetos (projectsPro). Achados: busca global quebrada,
+  sistema legado morto (renderProjetos ~24249-24578), campos órfãos, e muita proposta duplicada.
+- **Fase 0 (feito):** corrigida a busca global (Ctrl+K) — usava `projects[]` legado + `openProjView()`
+  inexistente (ReferenceError); agora filtra `projectsPro` e abre via `abrirProjectProView`. Campo órfão
+  `anotacoes` removido de `_novoProjectPro`.
+- **Fase 1 (feito):** toolbar nova em `renderProjetosPro` — busca local (acento-insensível, `_ppFiltrar`),
+  Ordenar por (prioridade/prazo/progresso/recentes, `_ppSort`), chips Atrasados/Ativos/Meus (`_ppChips`),
+  grupos colapsáveis (`_ppCollapsed`, persistido), estado-vazio com "Limpar filtros". Render parcial em
+  `#pp-grupos` (`_ppGruposHTML`) p/ não perder foco na busca.
+- **NÃO mexido (precisa OK do Diego):** remover sistema legado, refatorar `grupo.tarefaIds`, deletar
+  Marcos/Arquivos. Próximas seguras: Fase 2 (breadcrumb, chip de prazo, tipografia, favoritar) e Fase 3
+  (quick-add inline, Foco "só não classificadas").
+
 ### 2026-06-20 — Mac de casa — Manutenção › Compras (fornecedores + orçamentos)
 - Novas telas dentro do hub **Manutenção** (sidebar seção COMPRAS): **Fornecedores** (CRUD) e **Orçamentos**.
 - Orçamento = título/item + N cotações (fornecedor do cadastro ou avulso, preço, prazo, pagamento, frete,
