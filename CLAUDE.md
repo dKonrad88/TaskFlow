@@ -73,6 +73,16 @@
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-06-20 — PC da Empresa — dados REAIS enviados pra nuvem (recuperação)
+- ATENÇÃO p/ entender o modelo: dados ficam no localStorage POR ORIGEM (endereço da página).
+- O 1º upload subiu só dados-semente (veio de uma página nova/vazia). Os dados REAIS estavam presos
+  ao arquivo antigo `taskflow.html`. Recriei `taskflow.html` no PC; o Diego reabriu por ele, viu os
+  projetos e clicou "Enviar" → a nuvem agora tem TUDO.
+- Confirmado no banco: **85 chaves** · `taskflow_projects_pro` 7,6KB · `taskflow_tasks` ~120KB · `taskflow_meetings` 3,8KB.
+- ⚠️ REGRA (importante): ao começar em QUALQUER máquina/página, clicar **"Baixar da nuvem" ANTES de editar**.
+  Isso evita que uma página com estado antigo/vazio sobrescreva a nuvem pelo push automático.
+- `taskflow.html` é só cópia LOCAL de recuperação no PC (agora ignorada no git). App canônico = `index.html`.
+
 ### 2026-06-20 — PC da Empresa — sync Supabase implementado
 - Implementado no `index.html`: cliente supabase-js (CDN), botão ☁️ no cabeçalho, login e-mail/senha,
   push automático ao salvar + "Enviar/Baixar" manuais. localStorage segue sendo a fonte primária.
