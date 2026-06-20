@@ -73,6 +73,16 @@
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-06-20 — Mac de casa — ambiente configurado + dados baixados da nuvem
+- Mac configurado do zero: repo clonado em `~/Documents/GitHub/TaskFlow` (ao lado de Foco/horas/hubpessoal).
+  Git já estava configurado (Diego Konrad / konraddiego@gmail.com). `gh` NÃO instalado e Homebrew ausente;
+  push via HTTPS + PAT, com `credential.helper=osxkeychain` (config global setada nesta sessão).
+- Diego abriu o app publicado (Pages) → ☁️ → Entrar → **"Baixar da nuvem"** → projetos/tarefas apareceram.
+  localStorage do Mac agora populado a partir da nuvem. ✅ Seguiu a regra de ouro: BAIXAR antes de editar; NÃO clicou "Enviar".
+- **Nenhuma mudança de código** nesta sessão — só esta entrada de handoff no `CLAUDE.md`.
+- Pendências: (1) Diego gerar o PAT (https://github.com/settings/tokens, escopo `repo`) p/ o push desta sessão;
+  (2) ainda trancar novos cadastros no Supabase (Authentication → Email → desligar "Allow new users to sign up").
+
 ### 2026-06-20 — PC da Empresa — dados REAIS enviados pra nuvem (recuperação)
 - ATENÇÃO p/ entender o modelo: dados ficam no localStorage POR ORIGEM (endereço da página).
 - O 1º upload subiu só dados-semente (veio de uma página nova/vazia). Os dados REAIS estavam presos
