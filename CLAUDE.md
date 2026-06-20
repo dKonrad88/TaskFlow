@@ -25,7 +25,19 @@
     persistência migrar para o Supabase, aí sim vale de verdade "código no git / dados
     na nuvem, que não podem ser perdidos".
     - Projeto Supabase: **TaskFlow** · ref `gigkrjetrtbtdmdnqoof` · região `sa-east-1` · org "Konrad Diego".
-    - A URL e a chave pública (anon) ficarão no `index.html` (cliente). Migração de sync **ainda não implementada**.
+    - URL: `https://gigkrjetrtbtdmdnqoof.supabase.co`
+    - Chave pública (publishable, segura no cliente c/ RLS): `sb_publishable_-i-ZD2z9kbfTCLWu7K7eiQ_10bXjE4c`
+    - **Schema (backend já criado):** tabela `public.app_state(user_id uuid, key text, value jsonb, updated_at)`,
+      PK `(user_id,key)`, FK → `auth.users`, **RLS ligado** (cada usuário só lê/grava o próprio). 0 alertas de segurança.
+    - **Arquitetura decidida:** espelho **chave-valor** do localStorage + **login e-mail/senha** (senha, não link mágico,
+      porque o app roda como arquivo local e link mágico depende de redirect).
+    - **Design de sync seguro:** localStorage continua a fonte primária (app funciona offline/igual).
+      `auto-push` (debounce) manda cada chave salva pra nuvem; `pull` é **manual** ("Baixar da nuvem", com
+      backup local antes + confirmação) — evita sobrescrever sem querer. Disciplina = a do git: enviar ao
+      sair, baixar ao começar na outra máquina.
+    - **Status:** backend PRONTO. Código no `index.html` (login + sync) **ainda NÃO implementado**.
+    - **Ação manual 1x no painel Supabase:** Authentication → Sign In/Providers → Email → desligar
+      "Confirm email" (pra o 1º cadastro/login funcionar na hora, sem e-mail de confirmação).
     - NÃO confundir com os outros projetos da conta: "Habit Tracker" (HUB) e "Tarefas" (antigo, pausado) — não mexer.
 
 ## Fluxo de trabalho (2 máquinas, 1 repositório)
@@ -55,6 +67,12 @@
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-06-20 — PC da Empresa — Supabase backend pronto
+- Tabela `app_state` (chave-valor) criada com **RLS por usuário** + trigger `updated_at`; 0 alertas de segurança.
+- Definida arquitetura: espelho KV + login e-mail/senha; sync = auto-push + pull manual (com backup). Detalhes na seção "Onde vivem as coisas".
+- **Falta:** implementar no `index.html` (cliente supabase-js + login + push/pull) e o Diego TESTAR no PC.
+- **Antes de testar o login:** desligar "Confirm email" no painel do Supabase (Authentication → Email).
+
 ### 2026-06-20 — PC da Empresa — Supabase (projeto criado)
 - Criado o projeto Supabase **TaskFlow** (ref `gigkrjetrtbtdmdnqoof`, `sa-east-1`, org "Konrad Diego"). Custo: free.
 - **Pendente:** definir arquitetura (espelho chave-valor é o recomendado) + login/RLS, e então
