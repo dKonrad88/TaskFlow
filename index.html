@@ -22595,7 +22595,7 @@ function renderFaseExpandida(p, f){
       <div style="padding:12px 16px;background:var(--bg2);display:flex;justify-content:space-between;align-items:center">
         <div style="font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px"><i class="ti ti-building" style="color:${p.cor}"></i>${escapeHTML(g.setor)}</div>
         <div style="display:flex;gap:6px">
-          <button onclick="novaTarefaRapida('${p.id}','${f.id}','${g.id}')" style="background:${p.cor};color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer"><i class="ti ti-plus"></i> Tarefa</button>
+          <button onclick="_abrirQuickAdd('qa-pro-${g.id}');var b=document.getElementById('qabtn-qa-pro-${g.id}');if(b)b.style.display='none'" style="background:${p.cor};color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer" title="Adicionar tarefa rápida (sem modal)"><i class="ti ti-plus"></i> Tarefa</button>
           <button onclick="excluirGrupo('${p.id}','${f.id}','${g.id}')" style="background:none;border:1px solid var(--border);color:var(--text3);border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer" title="Excluir setor"><i class="ti ti-trash"></i></button>
         </div>
       </div>

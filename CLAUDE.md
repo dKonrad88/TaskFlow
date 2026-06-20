@@ -83,9 +83,13 @@
   Ordenar por (prioridade/prazo/progresso/recentes, `_ppSort`), chips Atrasados/Ativos/Meus (`_ppChips`),
   grupos colapsáveis (`_ppCollapsed`, persistido), estado-vazio com "Limpar filtros". Render parcial em
   `#pp-grupos` (`_ppGruposHTML`) p/ não perder foco na busca.
-- **NÃO mexido (precisa OK do Diego):** remover sistema legado, refatorar `grupo.tarefaIds`, deletar
-  Marcos/Arquivos. Próximas seguras: Fase 2 (breadcrumb, chip de prazo, tipografia, favoritar) e Fase 3
-  (quick-add inline, Foco "só não classificadas").
+- **Fase 2 (feito):** favoritar projeto (grupo "Favoritos" no topo, `_ppToggleFav`/`p.favorito`), progresso
+  mais destacado nos cards, breadcrumb no detalhe, e chip de prazo unificado (`_ppChipPrazo`, card+linha).
+- **Fase 3 (feito parcial):** "+Tarefa" do setor agora foca o quick-add inline existente (`qa-pro-<gId>`)
+  em vez de abrir o modal. O item "Foco só não classificadas" foi DESCARTADO: o Modo Foco foi removido
+  (mai/2026), o agente do workflow leu código velho — feature não existe mais.
+- **NÃO mexido (precisa OK do Diego):** remover sistema legado (~330 linhas, renderProjetos), refatorar
+  `grupo.tarefaIds` (fonte de verdade dupla, ~12 pontos), deletar Marcos/Arquivos (perguntar antes).
 
 ### 2026-06-20 — Mac de casa — Manutenção › Compras (fornecedores + orçamentos)
 - Novas telas dentro do hub **Manutenção** (sidebar seção COMPRAS): **Fornecedores** (CRUD) e **Orçamentos**.
