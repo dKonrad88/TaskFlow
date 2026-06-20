@@ -6503,6 +6503,7 @@ function renderQualidade(){
 //   TesteSensorial {
 //     id, titulo, data:'YYYY-MM-DD', produtoBase, tipoTeste, status,
 //     revelado:bool,                       // resultados mostram identidade real?
+//     ideiaTeste, oQueMudou, atencao,      // contexto exibido no Modo Apresentação
 //     amostras:  [{ id, codigo, identidadeReal /*oculto até revelar*/ }],
 //     perguntas: [{ id, texto, escala, obrigatoria }],
 //     respostas: [{ id, avaliador, createdAt,
@@ -6536,6 +6537,9 @@ let sensorialTesteId  = null;
 let sensorialTab      = 'responder';// 'responder' | 'resultados'
 let sensorialAvaliadorId = '';      // quem responde agora (quiosque)
 let sensorialDraft    = {};         // { [amostraId]:{ [perguntaId]: valor } }
+let sensRespModo      = 'comparacao'; // 'comparacao' (matriz) | 'foco' (1 amostra por vez)
+let sensFocoIdx       = 0;           // amostra atual no modo foco
+let _sensSimTimer     = null;        // simulação de respostas ao vivo (protótipo)
 
 function _sensId(){ return 's'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function _sensPerguntasPadrao(){
@@ -6552,10 +6556,10 @@ function _sensPerguntasPadrao(){
 function _sensSeed(){
   const p = _sensPerguntasPadrao();
   const amostras = [
-    {id:'a456', codigo:'456', identidadeReal:'Gordura A (fórmula atual)'},
-    {id:'a123', codigo:'123', identidadeReal:'Gordura B'},
-    {id:'a654', codigo:'654', identidadeReal:'Gordura C'},
-    {id:'a862', codigo:'862', identidadeReal:'Gordura D'},
+    {id:'a456', codigo:'456', identidadeReal:'Gordura Karina 320 (fórmula atual)'},
+    {id:'a123', codigo:'123', identidadeReal:'Gordura Bunge Premium'},
+    {id:'a654', codigo:'654', identidadeReal:'Gordura Cargill Select'},
+    {id:'a862', codigo:'862', identidadeReal:'Gordura Triângulo Cobre+'},
   ];
   // 3 avaliadores de exemplo para os resultados não nascerem vazios
   const mk = (av, picks, coments) => ({
@@ -6582,6 +6586,9 @@ function _sensSeed(){
     id:'sens_demo_1', titulo:'Cobertura fracionada – teste de gordura',
     data: today, produtoBase:'Cobertura fracionada', tipoTeste:'gordura',
     status:'aberto', revelado:false,
+    ideiaTeste:'Comparar 4 gorduras diferentes na MESMA receita de cobertura fracionada, para decidir se trocamos a gordura atual por uma alternativa de melhor custo sem perder qualidade.',
+    oQueMudou:'Só muda a gordura — receita base idêntica em todas. A 456 é a fórmula atual (controle); 123, 654 e 862 são gorduras alternativas.',
+    atencao:'Foque na maciez / derretimento na boca, no sabor (sem gosto de gordura) e no brilho/aparência. Limpe o paladar com água entre uma amostra e outra.',
     amostras, perguntas:p, respostas, createdAt: today,
   }];
 }
@@ -6650,7 +6657,11 @@ function renderTesteSensorial(){
           <div style="font-size:12px; color:var(--text3); margin-top:3px;">${escapeHTML(t.produtoBase||'')} · ${(t.amostras||[]).length} amostras · ${(t.respostas||[]).length} avaliações · ${formatDate(t.data)}</div>
           ${(()=>{ const m=t.meetingId?(meetings||[]).find(x=>x.id===t.meetingId):null; return m?`<div style="margin-top:7px"><button onclick="_sensAbrirReuniao('${m.id}')" style="display:inline-flex; align-items:center; gap:6px; background:var(--bg2); border:1px solid var(--border); border-radius:99px; padding:4px 11px; font-size:12px; font-weight:600; color:var(--text2); cursor:pointer; font-family:inherit;" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-speakerphone" style="color:var(--orange)"></i> Reunião: ${escapeHTML(m.title||'Reunião')} · ${formatDate(m.date)}${m.date===t.data?' · mesmo dia':''}</button></div>`:''; })()}
         </div>
-        <button onclick="editarTesteSensorial('${t.id}')" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit;"><i class="ti ti-settings"></i> Configurar</button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          ${(()=>{ const sib=t.meetingId?(sensorialTestes||[]).filter(x=>x.meetingId===t.meetingId):[]; return sib.length>1?`<button onclick="sensApresentarSessao('${t.meetingId}')" style="background:var(--card); border:1px solid var(--blue-mid); color:var(--blue-mid); border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-layout-grid"></i> Sessão do dia (${sib.length})</button>`:''; })()}
+          <button onclick="sensApresentar('${t.id}')" style="background:var(--blue-mid); color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-presentation"></i> Apresentar</button>
+          <button onclick="editarTesteSensorial('${t.id}')" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit;"><i class="ti ti-settings"></i> Configurar</button>
+        </div>
       </div>
       <div style="display:flex; gap:8px; margin:14px 0 20px;">
         ${tabBtn('responder','Responder')}
@@ -6680,16 +6691,20 @@ function _sensResponderHTML(t){
         ${(()=>{ const rs=t.respostas||[]; if(!rs.length) return ''; const nomes=[...new Set(rs.map(r=>_sensPersonName(r.avaliador)))]; return `<div style="font-size:11px; color:var(--text3); margin-top:14px; line-height:1.5; text-align:left;"><i class="ti ti-circle-check" style="color:var(--success)"></i> Já avaliaram (${nomes.length}): ${nomes.map(escapeHTML).join(', ')}</div>`; })()}
       </div>`;
   }
-  // 2) matriz de resposta
-  const cods = t.amostras;
-  const nCol = cods.length;
-  const colHead = cods.map(a=>`<div style="text-align:center; font-size:13px; font-weight:800; color:var(--blue-mid); padding:6px 2px;">${escapeHTML(a.codigo)}</div>`).join('');
+  // 2) responder — comparação (matriz) ou foco (amostra por amostra)
+  const modoToggle = `<div style="display:inline-flex; background:var(--bg3); border:1px solid var(--border); border-radius:9px; padding:3px;">${[['comparacao','ti-columns-3','Comparação'],['foco','ti-focus-2','Foco']].map(m=>`<button onclick="setSensRespModo('${m[0]}')" style="background:${sensRespModo===m[0]?'var(--blue-mid)':'transparent'}; color:${sensRespModo===m[0]?'#fff':'var(--text2)'}; border:none; border-radius:7px; padding:6px 13px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px;"><i class="ti ${m[1]}"></i> ${m[2]}</button>`).join('')}</div>`;
+  const header = `<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+      <div style="font-size:13px; color:var(--text2);">Avaliando como <strong style="color:var(--text);">${escapeHTML(_sensPersonName(sensorialAvaliadorId))}</strong></div>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">${modoToggle}<button onclick="sensTrocarAvaliador()" style="background:none; border:1px solid var(--border); color:var(--text3); border-radius:7px; padding:6px 12px; font-size:12px; cursor:pointer; font-family:inherit;">Trocar</button></div>
+    </div>`;
+  return header + (sensRespModo==='foco' ? _sensFocoHTML(t) : _sensMatrizHTML(t));
+}
+// Comparação: matriz (atributos × códigos) numa tela só
+function _sensMatrizHTML(t){
+  const nCol = t.amostras.length;
+  const colHead = t.amostras.map(a=>`<div style="text-align:center; font-size:13px; font-weight:800; color:var(--blue-mid); padding:6px 2px;">${escapeHTML(a.codigo)}</div>`).join('');
   const blocos = t.perguntas.map(p=>_sensPerguntaBlocoHTML(t,p,nCol)).join('');
   return `
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
-      <div style="font-size:13px; color:var(--text2);">Avaliando como <strong style="color:var(--text);">${escapeHTML(_sensPersonName(sensorialAvaliadorId))}</strong></div>
-      <button onclick="sensTrocarAvaliador()" style="background:none; border:1px solid var(--border); color:var(--text3); border-radius:7px; padding:6px 12px; font-size:12px; cursor:pointer; font-family:inherit;">Trocar</button>
-    </div>
     <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
       <div style="min-width:${Math.max(320, 180+nCol*64)}px;">
         <div style="position:sticky; top:0; z-index:2; display:grid; grid-template-columns:minmax(150px,1.4fr) repeat(${nCol}, minmax(56px,1fr)); align-items:end; background:var(--bg); border-bottom:2px solid var(--border); padding-bottom:4px;">
@@ -6701,6 +6716,43 @@ function _sensResponderHTML(t){
     </div>
     <div style="margin-top:22px; display:flex; gap:10px; justify-content:flex-end;">
       <button onclick="sensEnviarRespostas()" style="background:var(--success); color:#fff; border:none; border-radius:9px; padding:12px 26px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-send"></i> Enviar avaliação</button>
+    </div>`;
+}
+// Foco: 1 amostra (código) por vez — pensado p/ celular
+function _sensFocoHTML(t){
+  const n=t.amostras.length;
+  sensFocoIdx=Math.max(0, Math.min(n-1, sensFocoIdx));
+  const idx=sensFocoIdx, a=t.amostras[idx];
+  const blocos=t.perguntas.map(p=>{
+    const esc=SENS_ESCALAS[p.escala];
+    const titulo=`<div style="font-size:14px; font-weight:700; color:var(--text); margin:0 0 9px;">${escapeHTML(p.texto)}${p.obrigatoria?' <span style="color:var(--danger)">*</span>':''} <span style="font-size:10.5px; font-weight:600; color:var(--text3);">· ${esc.nome}</span></div>`;
+    if(esc.tipo==='texto'){
+      const v=(sensorialDraft[a.id]&&sensorialDraft[a.id][p.id])||'';
+      return `<div style="margin-bottom:22px;">${titulo}<textarea data-a="${a.id}" data-p="${p.id}" oninput="sensSetTexto(this)" rows="3" placeholder="Comentário…" style="width:100%; box-sizing:border-box; resize:vertical; background:var(--bg3); border:1px solid var(--border); border-radius:9px; padding:10px 12px; font-size:14px; color:var(--text); font-family:inherit;">${escapeHTML(v)}</textarea></div>`;
+    }
+    const opts=esc.opcoes.map(op=>{
+      const sel=(sensorialDraft[a.id]&&sensorialDraft[a.id][p.id])===op;
+      return `<div onclick="this.querySelector('.sens-dot').click()" style="display:flex; align-items:center; gap:12px; padding:11px 14px; border:1px solid ${sel?'var(--blue-mid)':'var(--border)'}; border-radius:10px; margin-bottom:8px; cursor:pointer; background:var(--bg3);">
+          <span class="sens-dot" data-a="${a.id}" data-p="${p.id}" data-op="${escapeAttr(op)}" onclick="event.stopPropagation(); sensPick(this)" style="width:20px; height:20px; border-radius:50%; border:2px solid ${sel?'var(--blue-mid)':'var(--border)'}; background:${sel?'var(--blue-mid)':'transparent'}; box-shadow:${sel?'inset 0 0 0 3px var(--card)':'none'}; cursor:pointer; flex-shrink:0; transition:all .12s;"></span>
+          <span style="font-size:14px; color:var(--text);">${escapeHTML(op)}</span>
+        </div>`;
+    }).join('');
+    return `<div style="margin-bottom:22px;">${titulo}${opts}</div>`;
+  }).join('');
+  const ultimo=idx===n-1;
+  const nav=`<div style="margin-top:18px; display:flex; gap:10px; justify-content:space-between; align-items:center;">
+      <button onclick="sensFocoNav(-1)" ${idx===0?'disabled':''} style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:9px; padding:11px 18px; font-size:13.5px; font-weight:600; cursor:${idx===0?'default':'pointer'}; opacity:${idx===0?'.45':'1'}; font-family:inherit;"><i class="ti ti-chevron-left"></i> Anterior</button>
+      ${ultimo
+        ? `<button onclick="sensEnviarRespostas()" style="background:var(--success); color:#fff; border:none; border-radius:9px; padding:12px 24px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-send"></i> Enviar avaliação</button>`
+        : `<button onclick="sensFocoNav(1)" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:12px 22px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;">Próxima amostra <i class="ti ti-chevron-right"></i></button>`}
+    </div>`;
+  return `<div style="max-width:560px; margin:0 auto;">
+      <div style="text-align:center; margin-bottom:18px;">
+        <div style="font-size:11.5px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px;">Amostra ${idx+1} de ${n}</div>
+        <div style="display:inline-block; margin-top:8px; background:var(--blue-mid); color:#fff; border-radius:14px; padding:10px 26px; font-size:30px; font-weight:800;">${escapeHTML(a.codigo)}</div>
+      </div>
+      ${blocos}
+      ${nav}
     </div>`;
 }
 function _sensPerguntaBlocoHTML(t, p, nCol){
@@ -6723,8 +6775,10 @@ function _sensPerguntaBlocoHTML(t, p, nCol){
   }).join('');
   return `${titulo}<div>${linhas}</div>`;
 }
-function sensIniciarResposta(){ const sel=document.getElementById('sens-aval-sel'); const v=sel?sel.value:''; if(!v){ toast('Selecione seu nome'); return; } sensorialAvaliadorId=v; sensorialDraft={}; renderTesteSensorial(); }
-function sensTrocarAvaliador(){ sensorialAvaliadorId=''; sensorialDraft={}; renderTesteSensorial(); }
+function sensIniciarResposta(){ const sel=document.getElementById('sens-aval-sel'); const v=sel?sel.value:''; if(!v){ toast('Selecione seu nome'); return; } sensorialAvaliadorId=v; sensorialDraft={}; sensFocoIdx=0; renderTesteSensorial(); }
+function sensTrocarAvaliador(){ sensorialAvaliadorId=''; sensorialDraft={}; sensFocoIdx=0; renderTesteSensorial(); }
+function setSensRespModo(m){ sensRespModo=m; renderTesteSensorial(); }
+function sensFocoNav(dir){ const t=_sensTeste(sensorialTesteId); if(!t) return; sensFocoIdx=Math.max(0, Math.min(t.amostras.length-1, sensFocoIdx+dir)); renderTesteSensorial(); }
 function sensPick(el){
   const a=el.getAttribute('data-a'), p=el.getAttribute('data-p'), op=el.getAttribute('data-op');
   if(!sensorialDraft[a]) sensorialDraft[a]={};
@@ -6746,6 +6800,7 @@ function sensEnviarRespostas(){
       const v = sensorialDraft[a.id] && sensorialDraft[a.id][p.id];
       if(v===undefined || v===null || String(v).trim()===''){
         toast(`Falta responder "${p.texto}" na amostra ${a.codigo}`);
+        if(sensRespModo==='foco'){ sensFocoIdx=t.amostras.indexOf(a); renderTesteSensorial(); }
         return;
       }
     }
@@ -6760,7 +6815,7 @@ function sensEnviarRespostas(){
   t.respostas.push({ id:_sensId(), avaliador:sensorialAvaliadorId, createdAt:today, valores });
   saveSensorial_db();
   toast(`Avaliação de ${_sensPersonName(sensorialAvaliadorId)} registrada`);
-  sensorialAvaliadorId=''; sensorialDraft={};
+  sensorialAvaliadorId=''; sensorialDraft={}; sensFocoIdx=0;
   renderTesteSensorial();
 }
 
@@ -6856,8 +6911,11 @@ function _sensResultadosHTML(t){
 
   return `
     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
-      <div style="font-size:12.5px; color:var(--text2);"><i class="ti ti-users"></i> ${nResp} ${nResp===1?'avaliação':'avaliações'}</div>
-      <button onclick="sensToggleRevelar('${t.id}')" style="background:${rev?'var(--amber)':'var(--blue-mid)'}; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-${rev?'eye-off':'eye'}"></i> ${rev?'Ocultar identidade':'Revelar identidade'}</button>
+      <div style="font-size:12.5px; color:var(--text2);"><i class="ti ti-users"></i> ${nResp} ${nResp===1?'avaliação':'avaliações'}${_sensSimTimer?' <span style="color:var(--success); font-weight:700;">· ao vivo ●</span>':''}</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button onclick="sensSimular('${t.id}')" style="background:${_sensSimTimer?'var(--danger)':'var(--card)'}; color:${_sensSimTimer?'#fff':'var(--text2)'}; border:1px solid ${_sensSimTimer?'var(--danger)':'var(--border)'}; border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-${_sensSimTimer?'player-stop':'player-play'}"></i> ${_sensSimTimer?'Parar simulação':'Simular ao vivo'}</button>
+        <button onclick="sensToggleRevelar('${t.id}')" style="background:${rev?'var(--amber)':'var(--blue-mid)'}; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-${rev?'eye-off':'eye'}"></i> ${rev?'Ocultar identidade':'Revelar identidade'}</button>
+      </div>
     </div>
     ${partsBlock}
     ${sec('Ranking — aceitação geral')}
@@ -6871,12 +6929,39 @@ function _sensResultadosHTML(t){
 }
 function sensToggleRevelar(id){ const t=_sensTeste(id); if(!t) return; t.revelado=!t.revelado; saveSensorial_db(); renderTesteSensorial(); }
 
+// ─── Simulação de respostas ao vivo (protótipo do "tempo real") ───
+// No sispro do Guilherme cada resposta chega do celular do avaliador; aqui
+// injetamos respostas mockadas em intervalo p/ demonstrar o resultado ao vivo.
+function _sensRerenderAoVivo(){ if(_sensPres){ _sensPresRender(); } else if(sensorialTab==='resultados'){ renderTesteSensorial(); } }
+function sensSimular(id){
+  if(_sensSimTimer){ sensSimularStop(); return; }
+  const t=_sensTeste(id); if(!t) return;
+  const pool=(people||[]).filter(p=>p.macroSetor!=='Pessoal' && p.name!=='Minhas Tarefas');
+  const textos=['Boa','Gostei bastante','Equilibrada','Ok','Achei seca','Derrete bem',''];
+  let n=0; const max=8;
+  _sensSimTimer=setInterval(function(){
+    const usados=new Set((t.respostas||[]).map(r=>r.avaliador));
+    const liv=pool.find(p=>!usados.has(p.id));
+    const av=liv?liv.id:('sim_'+_sensId());
+    const valores={};
+    t.amostras.forEach(function(a){ valores[a.id]={}; t.perguntas.forEach(function(p){ const esc=SENS_ESCALAS[p.escala]; valores[a.id][p.id]= esc.tipo==='texto' ? textos[Math.floor(Math.random()*textos.length)] : esc.opcoes[Math.floor(Math.random()*esc.opcoes.length)]; }); });
+    t.respostas=t.respostas||[]; t.respostas.push({id:_sensId(), avaliador:av, createdAt:today, valores:valores});
+    saveSensorial_db(); n++;
+    _sensRerenderAoVivo();
+    if(n>=max) sensSimularStop();
+  }, 1200);
+  toast('Simulando respostas ao vivo…');
+  _sensRerenderAoVivo();
+}
+function sensSimularStop(){ if(_sensSimTimer){ clearInterval(_sensSimTimer); _sensSimTimer=null; toast('Simulação encerrada'); _sensRerenderAoVivo(); } }
+
 // ─── Editor de teste (criar / configurar) ───
 let sensEditorBuf = null;
 function novoTesteSensorial(){
   // Sugere automaticamente uma reunião "Sensorial" agendada para hoje (vínculo do mesmo dia).
   const _autoMtg = (meetings||[]).find(m=>m.date===today && /sensor/i.test(((m.title||'')+' '+(m.tipo||'')+' '+(m.pautaPrincipal||''))));
   sensEditorBuf = { id:_sensId(), titulo:'', data:today, produtoBase:'', tipoTeste:'gordura', status:'aberto', revelado:false, meetingId:(_autoMtg?_autoMtg.id:''),
+    ideiaTeste:'', oQueMudou:'', atencao:'',
     amostras:[{id:_sensId(),codigo:'',identidadeReal:''},{id:_sensId(),codigo:'',identidadeReal:''}],
     perguntas:_sensPerguntasPadrao(), respostas:[], createdAt:today, _novo:true };
   sensorialSubview='editor'; renderSensorial();
@@ -6920,7 +7005,7 @@ function renderSensorialEditor(){
   const amostraRows = b.amostras.map((a,i)=>`
     <div style="display:grid; grid-template-columns:90px 1fr 34px; gap:8px; margin-bottom:7px;">
       <input value="${escapeAttr(a.codigo)}" oninput="sensEdSetAmostra(${i},'codigo',this.value)" placeholder="Código" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; font-weight:700; color:var(--blue-mid); font-family:inherit; text-align:center;">
-      <input value="${escapeAttr(a.identidadeReal)}" oninput="sensEdSetAmostra(${i},'identidadeReal',this.value)" placeholder="Identidade real (oculta no teste cego)" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">
+      <input value="${escapeAttr(a.identidadeReal)}" oninput="sensEdSetAmostra(${i},'identidadeReal',this.value)" placeholder="Identidade real — ex.: Gordura marca X (oculta no teste cego)" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">
       <button onclick="sensEdDelAmostra(${i})" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:8px; cursor:pointer;"><i class="ti ti-trash"></i></button>
     </div>`).join('');
   const escOpts=(sel)=>Object.keys(SENS_ESCALAS).map(k=>`<option value="${k}" ${sel===k?'selected':''}>${SENS_ESCALAS[k].nome}</option>`).join('');
@@ -6953,6 +7038,16 @@ function renderSensorialEditor(){
           <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Data</label><input type="date" value="${escapeAttr(b.data)}" oninput="sensEdSet('data',this.value)" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 11px; font-size:13px; color:var(--text); font-family:inherit;"></div>
         </div>
 
+        <div style="background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:14px 15px;">
+          <div style="font-size:11px; font-weight:800; color:var(--blue-mid); text-transform:uppercase; letter-spacing:.5px; margin-bottom:3px;"><i class="ti ti-presentation"></i> Contexto da apresentação</div>
+          <div style="font-size:11.5px; color:var(--text3); margin-bottom:12px;">Aparece na tela no Modo Apresentação, antes da degustação. Tudo opcional.</div>
+          <div style="display:flex; flex-direction:column; gap:11px;">
+            <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Ideia do teste</label><textarea oninput="sensEdSet('ideiaTeste',this.value)" rows="2" placeholder="Qual a pergunta que este teste responde?" style="width:100%; box-sizing:border-box; resize:vertical; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;">${escapeHTML(b.ideiaTeste||'')}</textarea></div>
+            <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">O que mudou</label><textarea oninput="sensEdSet('oQueMudou',this.value)" rows="2" placeholder="O que difere entre as amostras (e o que ficou igual)" style="width:100%; box-sizing:border-box; resize:vertical; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;">${escapeHTML(b.oQueMudou||'')}</textarea></div>
+            <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">O que observar na degustação</label><textarea oninput="sensEdSet('atencao',this.value)" rows="2" placeholder="Atributos para prestar atenção: maciez, sabor, aparência…" style="width:100%; box-sizing:border-box; resize:vertical; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;">${escapeHTML(b.atencao||'')}</textarea></div>
+          </div>
+        </div>
+
         <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Reunião vinculada <span style="font-weight:600; text-transform:none; color:var(--text3)">· opcional — vincula a análise à reunião do mesmo dia</span></label>${reuniaoSelect}</div>
 
         <div>
@@ -6978,6 +7073,135 @@ function renderSensorialEditor(){
         </div>
       </div>
     </div>`;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MODO APRESENTAÇÃO — tela cheia, tipo slides, p/ conduzir a degustação
+// (notebook ligado na TV). Simula a "sessão do dia": vários produtos por
+// reunião, a condutora escolhe a ordem, e cada produto tem
+// capa → o que observar → revelação → resultado ao vivo.
+// Navegação: ◀ ▶ na tela, setas/espaço no teclado, Esc sai, M = menu.
+// ════════════════════════════════════════════════════════════════════
+let _sensPres = null; // { testes:[t], pi, si, mode:'menu'|'slides', feitos:Set }
+
+function sensApresentar(testeId){ const t=_sensTeste(testeId); if(!t){ toast('Teste não encontrado'); return; } _sensPresStart([t], false); }
+function sensApresentarSessao(meetingId){
+  _sensLoad();
+  const testes=(sensorialTestes||[]).filter(x=>x.meetingId===meetingId);
+  if(!testes.length){ toast('Nenhum teste vinculado a esta reunião'); return; }
+  _sensPresStart(testes, testes.length>1);
+}
+function _sensPresStart(testes, comMenu){
+  _sensPres={ testes, pi:0, si:0, mode: comMenu?'menu':'slides', feitos:new Set() };
+  if(!document.getElementById('sens-pres')){ const ov=document.createElement('div'); ov.id='sens-pres'; document.body.appendChild(ov); }
+  document.addEventListener('keydown', _sensPresKey);
+  _sensPresRender();
+}
+function _sensPresClose(){ document.removeEventListener('keydown', _sensPresKey); const ov=document.getElementById('sens-pres'); if(ov) ov.remove(); _sensPres=null; }
+function _sensPresMenu(){ if(_sensPres){ _sensPres.mode='menu'; _sensPresRender(); } }
+function _sensPresKey(e){
+  if(!_sensPres) return;
+  if(e.key==='Escape'){ e.preventDefault(); _sensPresClose(); return; }
+  if(_sensPres.mode!=='slides') return;
+  if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){ e.preventDefault(); _sensPresNav(1); }
+  else if(e.key==='ArrowLeft'||e.key==='PageUp'){ e.preventDefault(); _sensPresNav(-1); }
+  else if((e.key==='m'||e.key==='M') && _sensPres.testes.length>1){ e.preventDefault(); _sensPresMenu(); }
+}
+function _sensPresSlides(t){ const s=['capa','observar','revelacao']; if((t.respostas||[]).length) s.push('resultado'); return s; }
+function _sensPresAbrirProduto(i){ _sensPres.pi=i; _sensPres.si=0; _sensPres.mode='slides'; _sensPresRender(); }
+function _sensPresNav(dir){
+  const P=_sensPres; if(!P) return; const t=P.testes[P.pi]; const slides=_sensPresSlides(t);
+  let si=P.si+dir;
+  if(si>=slides.length){
+    if(P.testes.length>1){ P.feitos.add(P.pi); P.mode='menu'; _sensPresRender(); return; }
+    P.si=slides.length-1;
+  } else if(si<0){
+    if(P.pi>0){ P.pi--; P.si=_sensPresSlides(P.testes[P.pi]).length-1; } else P.si=0;
+  } else { P.si=si; }
+  _sensPresRender();
+}
+function _sensPresMenuHTML(){
+  const P=_sensPres;
+  const cards=P.testes.map((t,i)=>{ const feito=P.feitos.has(i); return `<button onclick="_sensPresAbrirProduto(${i})" style="text-align:left; background:var(--card); border:1px solid ${feito?'var(--success)':'var(--border)'}; border-radius:14px; padding:18px 22px; cursor:pointer; font-family:inherit; display:flex; align-items:center; gap:18px; transition:border-color .15s;" onmouseover="this.style.borderColor='var(--blue-mid)'" onmouseout="this.style.borderColor='${feito?'var(--success)':'var(--border)'}'">
+      <div style="width:46px; height:46px; border-radius:12px; background:color-mix(in srgb,var(--blue-mid) 14%,transparent); color:var(--blue-mid); display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; flex-shrink:0;">${i+1}</div>
+      <div style="flex:1; min-width:0;">
+        <div style="font-size:18px; font-weight:800; color:var(--text);">${escapeHTML(t.titulo||'Produto')}</div>
+        <div style="font-size:13px; color:var(--text3); margin-top:3px;">${(t.amostras||[]).length} amostras · ${escapeHTML(t.produtoBase||t.tipoTeste||'')}</div>
+      </div>
+      ${feito?'<span style="font-size:12px; font-weight:700; color:var(--success);"><i class="ti ti-circle-check"></i> Apresentado</span>':'<i class="ti ti-player-play-filled" style="font-size:22px; color:var(--blue-mid);"></i>'}
+    </button>`; }).join('');
+  return `<div style="max-width:760px; margin:auto; width:100%; padding:60px 24px;">
+      <div style="font-size:12px; font-weight:800; color:var(--blue-mid); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Sessão de análise sensorial</div>
+      <h1 style="font-size:clamp(26px,4vw,40px); font-weight:800; color:var(--text); margin-bottom:6px;">Escolha o produto para iniciar</h1>
+      <div style="font-size:14px; color:var(--text3); margin-bottom:28px;">${P.testes.length} produtos nesta sessão · você decide a ordem</div>
+      <div style="display:flex; flex-direction:column; gap:12px;">${cards}</div>
+    </div>`;
+}
+function _sensPresSlideHTML(t, key){
+  if(key==='capa'){
+    const codes=(t.amostras||[]).map(a=>`<div style="background:var(--card); border:2px solid var(--blue-mid); border-radius:16px; padding:16px 26px; font-size:clamp(28px,5vw,46px); font-weight:800; color:var(--blue-mid);">${escapeHTML(a.codigo)}</div>`).join('');
+    return `<div style="max-width:920px; margin:auto; width:100%; padding:40px 28px; text-align:center;">
+        <div style="font-size:13px; font-weight:800; color:var(--blue-mid); text-transform:uppercase; letter-spacing:1px; margin-bottom:14px;">${escapeHTML(t.produtoBase||t.tipoTeste||'Análise sensorial')}</div>
+        <h1 style="font-size:clamp(28px,5vw,48px); font-weight:800; color:var(--text); line-height:1.1; margin-bottom:18px;">${escapeHTML(t.titulo||'')}</h1>
+        ${t.ideiaTeste?`<div style="font-size:clamp(15px,2.2vw,20px); color:var(--text2); max-width:720px; margin:0 auto 30px; line-height:1.5;">${escapeHTML(t.ideiaTeste)}</div>`:''}
+        <div style="font-size:12px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:14px;">${(t.amostras||[]).length} amostras para provar</div>
+        <div style="display:flex; flex-wrap:wrap; gap:16px; justify-content:center;">${codes}</div>
+      </div>`;
+  }
+  if(key==='observar'){
+    const attrs=(t.perguntas||[]).filter(p=>SENS_ESCALAS[p.escala] && SENS_ESCALAS[p.escala].tipo!=='texto').map(p=>`<div style="display:flex; align-items:center; gap:10px; font-size:clamp(15px,2vw,19px); color:var(--text);"><i class="ti ti-point-filled" style="color:var(--blue-mid)"></i> ${escapeHTML(p.texto)}</div>`).join('');
+    const blocos=[
+      t.oQueMudou?`<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--amber); border-radius:12px; padding:20px 24px;"><div style="font-size:12px; font-weight:800; color:var(--amber); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;"><i class="ti ti-arrows-exchange"></i> O que mudou</div><div style="font-size:clamp(15px,2vw,19px); color:var(--text); line-height:1.5;">${escapeHTML(t.oQueMudou)}</div></div>`:'',
+      t.atencao?`<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--blue-mid); border-radius:12px; padding:20px 24px;"><div style="font-size:12px; font-weight:800; color:var(--blue-mid); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;"><i class="ti ti-eye"></i> O que observar</div><div style="font-size:clamp(15px,2vw,19px); color:var(--text); line-height:1.5;">${escapeHTML(t.atencao)}</div></div>`:'',
+      attrs?`<div><div style="font-size:12px; font-weight:800; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:12px;">Você vai avaliar</div><div style="display:flex; flex-direction:column; gap:10px;">${attrs}</div></div>`:'',
+    ].filter(Boolean).join('');
+    return `<div style="max-width:860px; margin:auto; width:100%; padding:40px 28px;">${blocos||'<div style="text-align:center; color:var(--text3); font-size:16px;">Prove cada amostra com atenção e registre sua avaliação.</div>'}</div>`;
+  }
+  if(key==='revelacao'){
+    const cards=(t.amostras||[]).map(a=>`<div style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px 20px; display:flex; align-items:center; gap:16px;">
+        <div style="background:var(--blue-mid); color:#fff; border-radius:12px; min-width:64px; padding:12px 10px; text-align:center; font-size:clamp(20px,3vw,30px); font-weight:800;">${escapeHTML(a.codigo)}</div>
+        <i class="ti ti-arrow-right" style="color:var(--text3); font-size:20px;"></i>
+        <div style="font-size:clamp(16px,2.4vw,22px); font-weight:700; color:var(--text);">${escapeHTML(a.identidadeReal||'—')}</div>
+      </div>`).join('');
+    return `<div style="max-width:760px; margin:auto; width:100%; padding:40px 28px;">
+        <div style="text-align:center; margin-bottom:26px;"><div style="font-size:13px; font-weight:800; color:var(--orange); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;"><i class="ti ti-eye"></i> Revelação</div><h1 style="font-size:clamp(24px,4vw,38px); font-weight:800; color:var(--text);">Qual código era qual</h1></div>
+        <div style="display:flex; flex-direction:column; gap:12px;">${cards}</div>
+      </div>`;
+  }
+  // resultado ao vivo
+  const rank=(t.amostras||[]).map(a=>{ const m=_sensMediaNum(t,a.id,'hedonica'); return {a, score:m?m.media:0}; }).sort((x,y)=>y.score-x.score);
+  const nResp=(t.respostas||[]).length;
+  const cards=rank.map((r,i)=>`<div style="flex:1; min-width:160px; background:var(--card); border:2px solid ${i===0?'var(--success)':'var(--border)'}; border-radius:14px; padding:18px 16px; position:relative; text-align:center;">
+      <div style="position:absolute; top:10px; right:12px; font-size:12px; font-weight:800; color:${i===0?'var(--success)':'var(--text3)'};">${i+1}º</div>
+      <div style="font-size:clamp(20px,3vw,30px); font-weight:800; color:var(--blue-mid);">${escapeHTML(r.a.codigo)}</div>
+      ${t.revelado?`<div style="font-size:11.5px; color:var(--text3); margin-top:2px;">${escapeHTML(r.a.identidadeReal||'')}</div>`:''}
+      <div style="font-size:clamp(26px,4vw,40px); font-weight:800; color:${i===0?'var(--success)':'var(--text)'}; margin-top:8px;">${r.score?r.score.toFixed(2):'—'}<span style="font-size:14px; color:var(--text3); font-weight:600;">/5</span></div>
+      <div style="font-size:10.5px; color:var(--text3);">aceitação geral</div>
+    </div>`).join('');
+  return `<div style="max-width:920px; margin:auto; width:100%; padding:40px 28px; text-align:center;">
+      <div style="font-size:13px; font-weight:800; color:var(--success); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;"><i class="ti ti-chart-bar"></i> Resultado ao vivo</div>
+      <h1 style="font-size:clamp(24px,4vw,38px); font-weight:800; color:var(--text); margin-bottom:6px;">Preferência da equipe</h1>
+      <div style="font-size:13px; color:var(--text3); margin-bottom:26px;"><i class="ti ti-users"></i> ${nResp} ${nResp===1?'avaliação':'avaliações'} · atualiza conforme as respostas chegam</div>
+      <div style="display:flex; gap:14px; flex-wrap:wrap; justify-content:center;">${cards}</div>
+      <div style="margin-top:26px;"><button onclick="sensSimular('${t.id}')" style="background:${_sensSimTimer?'var(--danger)':'var(--card)'}; color:${_sensSimTimer?'#fff':'var(--blue-mid)'}; border:1px solid ${_sensSimTimer?'var(--danger)':'var(--blue-mid)'}; border-radius:10px; padding:11px 22px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-${_sensSimTimer?'player-stop':'player-play'}"></i> ${_sensSimTimer?'Parar simulação':'Simular respostas ao vivo'}</button></div>
+    </div>`;
+}
+function _sensPresRender(){
+  const P=_sensPres; if(!P) return; const ov=document.getElementById('sens-pres'); if(!ov) return;
+  const btnClose=`<button onclick="_sensPresClose()" title="Sair (Esc)" style="position:absolute; top:18px; right:20px; z-index:5; background:var(--bg2); border:1px solid var(--border); color:var(--text2); border-radius:50%; width:42px; height:42px; cursor:pointer; font-size:18px; font-family:inherit;"><i class="ti ti-x"></i></button>`;
+  const wrap=(inner, footer='')=>`<div style="position:fixed; inset:0; z-index:99999; background:var(--bg); color:var(--text); display:flex; flex-direction:column; font-family:inherit;"><div style="flex:1; overflow:auto; display:flex; flex-direction:column; justify-content:center; position:relative;">${inner}</div>${footer}</div>`;
+  if(P.mode==='menu'){ ov.innerHTML=wrap(btnClose+_sensPresMenuHTML()); return; }
+  const t=P.testes[P.pi]; const slides=_sensPresSlides(t); const key=slides[P.si];
+  const labels={capa:'Capa', observar:'O que observar', revelacao:'Revelação', resultado:'Resultado ao vivo'};
+  const dots=slides.map((s,i)=>`<span style="width:9px; height:9px; border-radius:50%; background:${i===P.si?'var(--blue-mid)':'var(--border)'}; display:inline-block;"></span>`).join('');
+  const navBtn=(dir,label)=>`<button onclick="_sensPresNav(${dir})" style="background:var(--card); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:11px 20px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:8px;">${dir<0?`<i class="ti ti-chevron-left"></i> ${label}`:`${label} <i class="ti ti-chevron-right"></i>`}</button>`;
+  const topLeft = P.testes.length>1 ? `<button onclick="_sensPresMenu()" title="Voltar aos produtos (M)" style="position:absolute; top:18px; left:20px; z-index:5; background:var(--bg2); border:1px solid var(--border); color:var(--text2); border-radius:10px; padding:9px 14px; cursor:pointer; font-size:13px; font-weight:600; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-layout-grid"></i> Produtos</button>` : '';
+  const footer=`<div style="flex-shrink:0; border-top:1px solid var(--border); background:var(--bg2); padding:14px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px;">
+      ${navBtn(-1,'Anterior')}
+      <div style="display:flex; flex-direction:column; align-items:center; gap:7px;"><div style="display:flex; gap:8px; align-items:center;">${dots}</div><div style="font-size:11.5px; color:var(--text3);">${P.testes.length>1?`Produto ${P.pi+1}/${P.testes.length} · `:''}${labels[key]||''}</div></div>
+      ${navBtn(1,'Próximo')}
+    </div>`;
+  ov.innerHTML=wrap(btnClose+topLeft+_sensPresSlideHTML(t,key), footer);
 }
 
 // ─── Lista de produtos ───

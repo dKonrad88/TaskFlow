@@ -73,6 +73,29 @@
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-06-20 — Mac de casa — protótipo de UX da nova Análise Sensorial
+- ⚠️ CONTEXTO: este `index.html` é **só protótipo de layout/UX**. O Guilherme está montando o backend
+  real no servidor/banco da Empresa; **a base de dados daqui é descartável** (serve pra passar a ideia de
+  UX pra ele). No sispro dele cada avaliador entra com o **próprio login** e responde do celular.
+- Implementado na seção sensorial do `index.html` (Qualidade › Análise sensorial):
+  - **Criação enriquecida:** campos `ideiaTeste`, `oQueMudou`, `atencao` no editor (seção "Contexto da apresentação").
+  - **Modo Apresentação** (tela cheia, tipo slides, p/ notebook na TV): por produto, slides
+    capa → o que observar → revelação (código→marca) → resultado ao vivo. Navegação setas/botões, Esc sai.
+    Funções: `sensApresentar`, `sensApresentarSessao`, `_sensPres*` (overlay `#sens-pres`).
+  - **Sessão do dia:** quando a reunião tem vários testes, um menu lista os produtos e a condutora
+    escolhe a ordem; ao terminar um, volta ao menu marcando "apresentado".
+  - **Responder em 2 modos:** **Comparação** (matriz atual) e **Foco** (código por código, mobile).
+    Funções: `_sensMatrizHTML`, `_sensFocoHTML`, `setSensRespModo`, `sensFocoNav`.
+  - **Resultado em tempo real (SIMULADO):** `sensSimular`/`sensSimularStop` injetam respostas mockadas
+    e atualizam o ranking ao vivo (na aba Resultados e no slide de resultado). É só encenação do UX —
+    o tempo real de verdade virá do backend do Guilherme.
+- **Verificação (sem navegador — Mac não tem Node e o preview sandbox bloqueou o servidor):** parse dos 4
+  blocos `<script>` no JavaScriptCore (`jsc`) = 0 erros de sintaxe + 12 testes funcionais das funções novas
+  (foco, matriz, simulação) passando. **NÃO testei visualmente num navegador real** — recomendo o Diego
+  abrir e clicar pra confirmar o visual.
+- **Pendente:** integrar com o backend do Guilherme (login individual + respostas reais + tempo real de
+  verdade); decidir se o backend mantém ou substitui o Supabase atual.
+
 ### 2026-06-20 — Mac de casa — ambiente configurado + dados baixados da nuvem
 - Mac configurado do zero: repo clonado em `~/Documents/GitHub/TaskFlow` (ao lado de Foco/horas/hubpessoal).
   Git já estava configurado (Diego Konrad / konraddiego@gmail.com).
