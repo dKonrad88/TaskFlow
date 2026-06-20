@@ -37,7 +37,11 @@
       `auto-push` (debounce) manda cada chave salva pra nuvem; `pull` é **manual** ("Baixar da nuvem", com
       backup local antes + confirmação) — evita sobrescrever sem querer. Disciplina = a do git: enviar ao
       sair, baixar ao começar na outra máquina.
-    - **Status:** backend PRONTO. Código no `index.html` (login + sync) **ainda NÃO implementado**.
+    - **Status:** backend PRONTO **e** sync IMPLEMENTADO no `index.html`. Botão **☁️ (Nuvem)** no cabeçalho:
+      login e-mail/senha, "Enviar deste aparelho → nuvem", "Baixar da nuvem → este aparelho". Push é automático
+      ao salvar (debounce 1,2s) quando logado; ao logar com a nuvem vazia, sobe tudo automaticamente.
+      Pull faz backup local em `taskflow__backup_pre_pull` antes de sobrescrever, e recarrega.
+      Chaves sincronizadas = todas com prefixo `taskflow`. Cliente via CDN `@supabase/supabase-js@2`.
     - **Ação manual 1x no painel Supabase:** Authentication → Sign In/Providers → Email → desligar
       "Confirm email" (pra o 1º cadastro/login funcionar na hora, sem e-mail de confirmação).
     - NÃO confundir com os outros projetos da conta: "Habit Tracker" (HUB) e "Tarefas" (antigo, pausado) — não mexer.
@@ -69,6 +73,14 @@
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-06-20 — PC da Empresa — sync Supabase implementado
+- Implementado no `index.html`: cliente supabase-js (CDN), botão ☁️ no cabeçalho, login e-mail/senha,
+  push automático ao salvar + "Enviar/Baixar" manuais. localStorage segue sendo a fonte primária.
+- **Para os dados irem pra nuvem (precisa do Diego, no PC):** (1) desligar "Confirm email" no painel Supabase;
+  (2) abrir o `index.html` LOCAL onde estão os dados → ☁️ → Criar conta/Entrar → sobe automático.
+- **No Mac:** abrir o app (Pages ou Codespace) → ☁️ → Entrar (mesma conta) → "Baixar da nuvem".
+- Ainda **não testado por mim** (não rodo navegador aqui). Balanceamento de sintaxe conferido. Backup local + git permitem reverter.
+
 ### 2026-06-20 — PC da Empresa — repo público + Pages
 - Repositório tornado **público** e **GitHub Pages ativado**: https://dkonrad88.github.io/TaskFlow/
 - App agora abre por essa URL em qualquer máquina (mas dados ainda são por-navegador até o sync Supabase).

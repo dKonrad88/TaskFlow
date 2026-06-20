@@ -3,6 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gerenciador de Tarefas — Diego Konrad</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // Acesso seguro ao armazenamento local. Evita travar o app em contextos onde o navegador bloqueia localStorage.
 (function(){
@@ -2214,6 +2215,7 @@
       <div style="width:1px;height:22px;background:rgba(255,255,255,.2);margin:0 4px"></div>
 
       <!-- GRUPO 3: Utilitários / Configurações -->
+      <button class="hdr-btn" id="hdr-cloud-btn" onclick="abrirNuvem()" title="Nuvem — sincronizar (Supabase)" style="padding:6px 10px"><i class="ti ti-cloud"></i></button>
       <button class="hdr-btn" onclick="abrirConfiguracoes()" title="Configurações" style="padding:6px 10px"><i class="ti ti-settings"></i></button>
       <!-- GUILHERME V3 (mai/2026): ícone de Ajuda movido pra Configurações → aba Ajuda. -->
       <!-- GUILHERME V3: toggle de tema no header (sol/lua). Atalho secundário — também disponível em Configurações. -->
@@ -4344,6 +4346,7 @@ let _quotaAvisado=false;
 function safeSetItem(key, value){
   try{
     window['localStorage'].setItem(key, value);
+    try{ if(typeof _cloudOnLocalWrite==='function') _cloudOnLocalWrite(key); }catch(_){}
     return true;
   }catch(e){
     if(e.name==='QuotaExceededError' || e.code===22 || e.code===1014){
@@ -4365,6 +4368,171 @@ function safeSetItem(key, value){
     return false;
   }
 }
+
+// ════════════════════════════════════════════════════════════════════
+// SINCRONIZAÇÃO COM SUPABASE (espelho chave-valor do localStorage)
+// localStorage continua a FONTE PRIMÁRIA. Push automático (debounce) ao
+// salvar; "Baixar" é manual (com backup). Tudo em try/catch — nunca quebra o app.
+// ════════════════════════════════════════════════════════════════════
+const SUPA_URL = 'https://gigkrjetrtbtdmdnqoof.supabase.co';
+const SUPA_KEY = 'sb_publishable_-i-ZD2z9kbfTCLWu7K7eiQ_10bXjE4c';
+let _sbc = null;             // cliente supabase
+let _sbUser = null;          // usuário logado (ou null)
+const _cloudPushTimers = {}; // debounce por chave
+
+function _sbReady(){
+  if(_sbc) return _sbc;
+  try{
+    if(!window.supabase || !window.supabase.createClient) return null;
+    _sbc = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+    return _sbc;
+  }catch(e){ console.warn('[nuvem] cliente falhou', e); return null; }
+}
+function _isCloudKey(k){ return typeof k==='string' && k.indexOf('taskflow')===0; }
+function _cloudKeys(){
+  const out=[];
+  try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(_isCloudKey(k)) out.push(k); } }catch(e){}
+  return out;
+}
+// chamado pelo safeSetItem após gravar localStorage (espelha a chave, com debounce)
+function _cloudOnLocalWrite(key){
+  if(!_sbUser || !_isCloudKey(key)) return;
+  clearTimeout(_cloudPushTimers[key]);
+  _cloudPushTimers[key] = setTimeout(()=>{ _cloudPushKey(key); }, 1200);
+}
+async function _cloudPushKey(key){
+  try{
+    const c=_sbReady(); if(!c || !_sbUser) return;
+    const val = localStorage.getItem(key);
+    if(val===null){ await c.from('app_state').delete().eq('user_id',_sbUser.id).eq('key',key); return; }
+    await c.from('app_state').upsert({ user_id:_sbUser.id, key, value: val }, { onConflict:'user_id,key' });
+  }catch(e){ console.warn('[nuvem] push', key, e); }
+}
+async function _cloudPushAll(){
+  const c=_sbReady(); if(!c || !_sbUser) return {ok:false, err:'sem conexão/sessão'};
+  const keys=_cloudKeys();
+  const rows=keys.map(k=>({ user_id:_sbUser.id, key:k, value: localStorage.getItem(k) }));
+  try{
+    for(let i=0;i<rows.length;i+=80){
+      const { error } = await c.from('app_state').upsert(rows.slice(i,i+80), { onConflict:'user_id,key' });
+      if(error) throw error;
+    }
+    return {ok:true, n:rows.length};
+  }catch(e){ console.warn('[nuvem] pushAll', e); return {ok:false, err:(e&&e.message)||String(e)}; }
+}
+async function _cloudCount(){
+  try{ const c=_sbReady(); if(!c||!_sbUser) return null; const { count } = await c.from('app_state').select('key',{count:'exact',head:true}).eq('user_id',_sbUser.id); return count; }catch(e){ return null; }
+}
+async function _cloudPullAll(){
+  const c=_sbReady(); if(!c || !_sbUser) return {ok:false, err:'sem conexão/sessão'};
+  try{
+    const { data, error } = await c.from('app_state').select('key,value').eq('user_id',_sbUser.id);
+    if(error) throw error;
+    if(!data || !data.length) return {ok:true, n:0, empty:true};
+    // backup do estado local atual antes de sobrescrever
+    try{ const bk={}; _cloudKeys().forEach(k=>{ bk[k]=localStorage.getItem(k); }); localStorage.setItem('taskflow__backup_pre_pull', JSON.stringify({ts:new Date().toISOString(), data:bk})); }catch(e){}
+    // aplica nuvem -> local (raw, sem re-push)
+    data.forEach(row=>{ try{ const v=row.value; localStorage.setItem(row.key, (typeof v==='string')?v:JSON.stringify(v)); }catch(e){} });
+    return {ok:true, n:data.length};
+  }catch(e){ console.warn('[nuvem] pullAll', e); return {ok:false, err:(e&&e.message)||String(e)}; }
+}
+async function _cloudRefreshUser(){
+  try{ const c=_sbReady(); if(!c) return null; const { data } = await c.auth.getUser(); _sbUser = (data && data.user) ? data.user : null; _cloudUpdateBtn(); return _sbUser; }catch(e){ _sbUser=null; return null; }
+}
+function _cloudUpdateBtn(){ try{ const b=document.getElementById('hdr-cloud-btn'); if(b){ const i=b.querySelector('i'); if(i) i.className='ti '+(_sbUser?'ti-cloud-check':'ti-cloud'); b.title=_sbUser?('Nuvem — conectado ('+(_sbUser.email||'')+')'):'Nuvem — sincronizar (Supabase)'; } }catch(e){} }
+function _cloudErr(e){ const m=(e&&e.message)?e.message:String(e); if(/Invalid login/i.test(m)) return 'E-mail ou senha incorretos.'; if(/already registered/i.test(m)) return 'Esse e-mail já tem conta — clique em Entrar.'; if(/Email not confirmed/i.test(m)) return 'E-mail não confirmado (veja seu e-mail) ou desligue a confirmação no painel do Supabase.'; if(/at least 6/i.test(m)) return 'A senha precisa de pelo menos 6 caracteres.'; return m; }
+
+// ─── UI (modal) ───
+function abrirNuvem(){
+  if(document.getElementById('nuvem-ov')) return;
+  const ov=document.createElement('div');
+  ov.id='nuvem-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9600;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .15s';
+  ov.onclick=e=>{ if(e.target===ov) fecharNuvem(); };
+  ov.innerHTML='<div id="nuvem-box" style="background:var(--card);border-radius:14px;width:100%;max-width:440px;box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:hidden"></div>';
+  document.body.appendChild(ov);
+  _nuvemRender(true);
+}
+function fecharNuvem(){ const o=document.getElementById('nuvem-ov'); if(o) o.remove(); }
+function _nuvemWrap(inner){ return `<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)"><div style="font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px"><i class="ti ti-cloud" style="color:var(--blue-mid)"></i> Nuvem (Supabase)</div><button onclick="fecharNuvem()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px"><i class="ti ti-x"></i></button></div>${inner}`; }
+async function _nuvemRender(refreshUser){
+  const box=document.getElementById('nuvem-box'); if(!box) return;
+  if(!window.supabase){ box.innerHTML=_nuvemWrap('<div style="padding:20px;color:var(--text2);font-size:13px;line-height:1.5">Não consegui carregar o Supabase (sem internet?). Tente de novo mais tarde.</div>'); return; }
+  if(refreshUser) await _cloudRefreshUser();
+  if(!_sbUser){ box.innerHTML=_nuvemLoginHTML(); return; }
+  box.innerHTML=_nuvemWrap('<div style="padding:18px;font-size:13px;color:var(--text3)">carregando…</div>');
+  const local=_cloudKeys().length; const nuvem=await _cloudCount();
+  if(!document.getElementById('nuvem-box')) return;
+  box.innerHTML=_nuvemContaHTML(local, nuvem);
+}
+function _nuvemLoginHTML(){
+  return _nuvemWrap(`<div style="padding:18px">
+    <div style="font-size:12.5px;color:var(--text2);margin-bottom:12px;line-height:1.5">Entre com e-mail e senha para sincronizar seus dados entre PC e Mac. Só você acessa seus dados (protegidos por RLS).</div>
+    <input id="nuvem-email" type="email" placeholder="seu e-mail" autocomplete="username" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:11px 12px;font-size:14px;color:var(--text);font-family:inherit;margin-bottom:9px">
+    <input id="nuvem-pwd" type="password" placeholder="senha (mín. 6 caracteres)" autocomplete="current-password" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:11px 12px;font-size:14px;color:var(--text);font-family:inherit;margin-bottom:6px" onkeydown="if(event.key==='Enter')nuvemLogin()">
+    <div id="nuvem-msg" style="font-size:12px;color:var(--danger);min-height:16px;margin-bottom:8px"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="nuvemLogin()" style="flex:1;background:var(--blue-mid);color:#fff;border:none;border-radius:9px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Entrar</button>
+      <button onclick="nuvemSignup()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text2);border-radius:9px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Criar conta</button>
+    </div>
+  </div>`);
+}
+function _nuvemContaHTML(local, nuvem){
+  return _nuvemWrap(`<div style="padding:18px">
+    <div style="font-size:13px;color:var(--text);margin-bottom:4px"><i class="ti ti-user-check" style="color:var(--success)"></i> Conectado como <b>${escapeHTML(_sbUser.email||'—')}</b></div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">${local} bloco(s) neste aparelho · ${nuvem==null?'?':nuvem} na nuvem · envio automático ao salvar ✓</div>
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <button onclick="nuvemEnviar()" style="background:var(--blue-mid);color:#fff;border:none;border-radius:9px;padding:11px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ti-cloud-up"></i> Enviar deste aparelho → nuvem</button>
+      <button onclick="nuvemBaixar()" style="background:none;border:1px solid var(--border);color:var(--text);border-radius:9px;padding:11px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit"><i class="ti ti-cloud-down"></i> Baixar da nuvem → este aparelho</button>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-top:12px;line-height:1.5"><b>Enviar</b> no aparelho onde estão seus dados; <b>Baixar</b> no outro (faz backup local antes e recarrega).</div>
+    <div style="text-align:right;margin-top:10px"><button onclick="nuvemLogout()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;text-decoration:underline">Sair</button></div>
+  </div>`);
+}
+function _nuvemMsg(t,cor){ const m=document.getElementById('nuvem-msg'); if(m){ m.textContent=t; m.style.color=cor||'var(--danger)'; } }
+async function nuvemLogin(){
+  const c=_sbReady(); if(!c) return _nuvemMsg('Supabase indisponível');
+  const email=((document.getElementById('nuvem-email')||{}).value||'').trim(); const pwd=(document.getElementById('nuvem-pwd')||{}).value||'';
+  if(!email||!pwd) return _nuvemMsg('Preencha e-mail e senha');
+  _nuvemMsg('Entrando…','var(--text3)');
+  try{ const { error }=await c.auth.signInWithPassword({email, password:pwd}); if(error) throw error; await _nuvemRender(true); if(typeof toast==='function') toast('☁️ Conectado à nuvem'); _cloudAutoSeedIfEmpty(); }
+  catch(e){ _nuvemMsg(_cloudErr(e)); }
+}
+async function nuvemSignup(){
+  const c=_sbReady(); if(!c) return _nuvemMsg('Supabase indisponível');
+  const email=((document.getElementById('nuvem-email')||{}).value||'').trim(); const pwd=(document.getElementById('nuvem-pwd')||{}).value||'';
+  if(!email||pwd.length<6) return _nuvemMsg('E-mail válido e senha de 6+ caracteres');
+  _nuvemMsg('Criando conta…','var(--text3)');
+  try{
+    const { error }=await c.auth.signUp({email, password:pwd}); if(error) throw error;
+    const { error:e2 }=await c.auth.signInWithPassword({email, password:pwd});
+    if(e2){ _nuvemMsg('Conta criada! Confirme pelo link no seu e-mail e depois clique em Entrar.','var(--text2)'); return; }
+    await _nuvemRender(true); if(typeof toast==='function') toast('☁️ Conta criada e conectada'); _cloudAutoSeedIfEmpty();
+  }catch(e){ _nuvemMsg(_cloudErr(e)); }
+}
+async function nuvemLogout(){ try{ const c=_sbReady(); if(c) await c.auth.signOut(); }catch(e){} _sbUser=null; _cloudUpdateBtn(); await _nuvemRender(false); if(typeof toast==='function') toast('Desconectado da nuvem'); }
+async function nuvemEnviar(){
+  if(!confirm('Enviar os dados DESTE aparelho para a nuvem? Isto substitui na nuvem pelos dados atuais deste aparelho.')) return;
+  if(typeof toast==='function') toast('Enviando…');
+  const r=await _cloudPushAll();
+  if(r.ok){ if(typeof toast==='function') toast('☁️ Enviado: '+r.n+' bloco(s)'); _nuvemRender(false); }
+  else { alert('Falha ao enviar: '+(r.err||'erro')); }
+}
+async function nuvemBaixar(){
+  if(!confirm('Baixar os dados da NUVEM para este aparelho? Os dados atuais deste aparelho serão substituídos (guardo um backup local). O app vai recarregar.')) return;
+  if(typeof toast==='function') toast('Baixando…');
+  const r=await _cloudPullAll();
+  if(r.ok){ if(r.empty){ alert('A nuvem está vazia — nada para baixar.'); return; } setTimeout(()=>location.reload(), 400); }
+  else { alert('Falha ao baixar: '+(r.err||'erro')); }
+}
+async function _cloudAutoSeedIfEmpty(){
+  try{ const n=await _cloudCount(); if(n===0){ const r=await _cloudPushAll(); if(r.ok){ if(typeof toast==='function') toast('☁️ Seus dados foram enviados para a nuvem ('+r.n+' blocos)'); _nuvemRender(false); } } }catch(e){}
+}
+// Reconecta a sessão salva ao abrir o app (para o push automático voltar a valer)
+(function _cloudInit(){
+  const tryInit=()=>{ if(window.supabase){ try{ _cloudRefreshUser(); }catch(e){} } else { setTimeout(tryInit, 800); } };
+  setTimeout(tryInit, 1500);
+})();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GUILHERME — GUIA DE MIGRAÇÃO PARA BACKEND (persistência por usuário)
