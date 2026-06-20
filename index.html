@@ -4775,7 +4775,6 @@ function _novoProjectPro({nome, tipo='outro', cor='#185FA5', dono=null, prazoIni
     preFecharEm: null,
     preFecharPor: null,
     arquivos: [],
-    anotacoes: '',
     criadoEm: new Date().toISOString(),
     concluidoEm: null,
   };
@@ -20073,16 +20072,16 @@ function runSearch(q){
     });
   });
 
-  // Projetos
-  projects.filter(p=>
-    (p.name||'').toLowerCase().includes(q)||
-    (p.desc||'').toLowerCase().includes(q)
+  // Projetos (Pro V3 — sistema ativo)
+  projectsPro.filter(p=>
+    (p.nome||'').toLowerCase().includes(q)||
+    (p.descricao||'').toLowerCase().includes(q)
   ).slice(0,4).forEach(p=>{
     results.push({
-      type:'projeto',label:'Projeto',color:p.color||'var(--blue-mid)',icon:'ti-folders',
-      title:p.name,
-      sub:`${p.status||''}${p.deadline?' · '+formatDate(p.deadline):''}`,
-      action:()=>{closeSearchPanel();setTab('projetos',document.getElementById('menu-projetos'));setTimeout(()=>openProjView(p.id),60);}
+      type:'projeto',label:'Projeto',color:p.cor||'var(--blue-mid)',icon:'ti-folders',
+      title:p.nome,
+      sub:`${p.status||''}${p.prazoFim?' · '+formatDate(p.prazoFim):''}`,
+      action:()=>{closeSearchPanel();abrirProjectProView(p.id);}
     });
   });
 
