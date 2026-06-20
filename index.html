@@ -6838,6 +6838,51 @@ function _sensDist(t, amostraId, perguntaId){
   for(const r of (t.respostas||[])){ const v=r.valores[amostraId]&&r.valores[amostraId][perguntaId]; if(v!=null && String(v).trim()!==''){ out[v]=(out[v]||0)+1; n++; } }
   return {out, n};
 }
+// Lista de notas hedônicas (1–5) de uma amostra, p/ medir divergência
+function _sensHedScores(t, amostraId){
+  const map=SENS_NUM.hedonica, arr=[];
+  for(const r of (t.respostas||[])){ const va=r.valores[amostraId]; if(!va) continue; for(const p of t.perguntas){ if(p.escala!=='hedonica') continue; const v=va[p.id]; if(v!=null && map[v]!=null) arr.push(map[v]); } }
+  return arr;
+}
+// Padrões & insights — conclusões automáticas a partir das respostas (nada inventado).
+function _sensInsights(t){
+  const ins=[]; const nResp=(t.respostas||[]).length; if(nResp<1) return ins;
+  const rev=!!t.revelado;
+  const nome=(a)=> (rev&&a.identidadeReal) ? `${a.codigo} (${a.identidadeReal})` : a.codigo;
+  // preferida geral
+  const rank=t.amostras.map(a=>({a, m:(_sensMediaNum(t,a.id,'hedonica')||{}).media||0})).sort((x,y)=>y.m-x.m);
+  if(rank[0] && rank[0].m>0){
+    const top=rank[0], seg=rank[1]; let txt=`<strong>${escapeHTML(nome(top.a))}</strong> foi a preferida no geral (${top.m.toFixed(2)}/5)`;
+    if(seg && seg.m>0){ const d=top.m-seg.m; txt += d>=0.05 ? `, à frente de ${escapeHTML(seg.a.codigo)} por ${d.toFixed(2)}` : `, em empate técnico com ${escapeHTML(seg.a.codigo)}`; }
+    ins.push({icon:'trophy', cor:'var(--success)', txt});
+  }
+  // controle (fórmula atual) × alternativas
+  const ctrl=t.amostras.find(a=>/atual|controle/i.test(a.identidadeReal||''));
+  if(ctrl){
+    const mc=(_sensMediaNum(t,ctrl.id,'hedonica')||{}).media||0;
+    const alt=t.amostras.filter(a=>a!==ctrl).map(a=>({a, m:(_sensMediaNum(t,a.id,'hedonica')||{}).media||0})).sort((x,y)=>y.m-x.m)[0];
+    if(alt){ if(alt.m>mc+0.05) ins.push({icon:'arrow-up-right', cor:'var(--blue-mid)', txt:`Uma alternativa <strong>superou a fórmula atual</strong>: ${escapeHTML(alt.a.codigo)} (${alt.m.toFixed(2)}) vs ${escapeHTML(ctrl.codigo)} (${mc.toFixed(2)}). Vale considerar a troca.`});
+      else ins.push({icon:'shield-check', cor:'var(--text2)', txt:`A <strong>fórmula atual</strong> (${escapeHTML(ctrl.codigo)}, ${mc.toFixed(2)}) segue na frente — nenhuma alternativa superou com clareza.`}); }
+  }
+  // líder por atributo
+  const heds=t.perguntas.filter(p=>p.escala==='hedonica');
+  const lideres=heds.map(p=>{ const r=t.amostras.map(a=>({a, m:(_sensMediaNum(t,a.id,'hedonica',p.id)||{}).media||0})).sort((x,y)=>y.m-x.m)[0]; return (r&&r.m>0)?`<strong>${escapeHTML(p.texto)}</strong>: ${escapeHTML(r.a.codigo)}`:''; }).filter(Boolean);
+  if(lideres.length) ins.push({icon:'target', cor:'var(--blue-mid)', txt:`Líder por atributo — ${lideres.join(' · ')}.`});
+  // intenção de compra (top-2-box)
+  const pc=t.perguntas.find(p=>p.escala==='intencao_compra');
+  if(pc){ const r=t.amostras.map(a=>{ const {out,n}=_sensDist(t,a.id,pc.id); const top2=(out['Certamente compraria']||0)+(out['Provavelmente compraria']||0); return {a, pct:n?Math.round(top2/n*100):0}; }).sort((x,y)=>y.pct-x.pct)[0];
+    if(r && r.pct>0) ins.push({icon:'shopping-cart', cor:'var(--success)', txt:`Maior intenção de compra: <strong>${escapeHTML(r.a.codigo)}</strong> (${r.pct}% comprariam).`}); }
+  // dulçor (JAR)
+  const jar=t.perguntas.find(p=>p.escala==='jar_dulcor');
+  if(jar){ const ideal=SENS_ESCALAS.jar_dulcor.ideal;
+    const r=t.amostras.map(a=>{ const {out,n}=_sensDist(t,a.id,jar.id); return {a, pct:n?Math.round((out[ideal]||0)/n*100):0, doce:n?Math.round(((out['Extremamente doce']||0)+(out['Doce']||0))/n*100):0}; });
+    const best=r.slice().sort((x,y)=>y.pct-x.pct)[0]; const dd=r.filter(x=>x.doce>=50).sort((a,b)=>b.doce-a.doce)[0];
+    if(best && best.pct>0) ins.push({icon:'candy', cor:'var(--blue-mid)', txt:`Dulçor no ponto: <strong>${escapeHTML(best.a.codigo)}</strong> (${best.pct}% "na medida certa")${dd?`. Atenção: ${escapeHTML(dd.a.codigo)} foi vista como doce demais por ${dd.doce}%`:''}.`}); }
+  // divergência
+  const sp=t.amostras.map(a=>{ const arr=_sensHedScores(t,a.id); if(arr.length<2) return {a, sd:0}; const mu=arr.reduce((s,v)=>s+v,0)/arr.length; return {a, sd:Math.sqrt(arr.reduce((s,v)=>s+(v-mu)*(v-mu),0)/arr.length)}; }).sort((x,y)=>y.sd-x.sd);
+  if(sp[0] && sp[0].sd>=1.0) ins.push({icon:'arrows-split', cor:'var(--amber)', txt:`Opiniões mais <strong>divididas</strong> na ${escapeHTML(sp[0].a.codigo)} — vale ler os comentários dela.`});
+  return ins;
+}
 function _sensResultadosHTML(t){
   const nResp=(t.respostas||[]).length;
   if(nResp===0) return `<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-clipboard-off" style="font-size:36px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhuma avaliação ainda — use a aba <strong>Responder</strong>.</div>`;
@@ -6909,6 +6954,10 @@ function _sensResultadosHTML(t){
     </div>`; }).join('');
   const partsBlock = _parts.length ? `${sec('Participantes ('+_parts.length+')')}<div style="display:flex; flex-wrap:wrap; gap:8px;">${partsChips}</div>` : '';
 
+  // Padrões & insights (conclusões automáticas)
+  const _ins=_sensInsights(t);
+  const insightsBlock = _ins.length ? `${sec('Padrões & insights')}<div style="display:flex; flex-direction:column; gap:8px;">${_ins.map(x=>`<div style="display:flex; gap:11px; align-items:flex-start; background:var(--card); border:1px solid var(--border); border-left:3px solid ${x.cor}; border-radius:10px; padding:11px 14px;"><i class="ti ti-${x.icon}" style="color:${x.cor}; font-size:17px; margin-top:1px; flex-shrink:0;"></i><div style="font-size:13px; color:var(--text2); line-height:1.45;">${x.txt}</div></div>`).join('')}</div>` : '';
+
   return `
     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
       <div style="font-size:12.5px; color:var(--text2);"><i class="ti ti-users"></i> ${nResp} ${nResp===1?'avaliação':'avaliações'}${_sensSimTimer?' <span style="color:var(--success); font-weight:700;">· ao vivo ●</span>':''}</div>
@@ -6918,6 +6967,7 @@ function _sensResultadosHTML(t){
       </div>
     </div>
     ${partsBlock}
+    ${insightsBlock}
     ${sec('Ranking — aceitação geral')}
     <div style="display:flex; gap:10px; flex-wrap:wrap;">${rankCards}</div>
     ${sec('Médias por atributo')}
@@ -7107,7 +7157,7 @@ function _sensPresKey(e){
   else if(e.key==='ArrowLeft'||e.key==='PageUp'){ e.preventDefault(); _sensPresNav(-1); }
   else if((e.key==='m'||e.key==='M') && _sensPres.testes.length>1){ e.preventDefault(); _sensPresMenu(); }
 }
-function _sensPresSlides(t){ const s=['capa','observar','revelacao']; if((t.respostas||[]).length) s.push('resultado'); return s; }
+function _sensPresSlides(t){ return ['capa','observar','codigos','revelacao','resultado']; }
 function _sensPresAbrirProduto(i){ _sensPres.pi=i; _sensPres.si=0; _sensPres.mode='slides'; _sensPresRender(); }
 function _sensPresNav(dir){
   const P=_sensPres; if(!P) return; const t=P.testes[P.pi]; const slides=_sensPresSlides(t);
@@ -7139,13 +7189,11 @@ function _sensPresMenuHTML(){
 }
 function _sensPresSlideHTML(t, key){
   if(key==='capa'){
-    const codes=(t.amostras||[]).map(a=>`<div style="background:var(--card); border:2px solid var(--blue-mid); border-radius:16px; padding:16px 26px; font-size:clamp(28px,5vw,46px); font-weight:800; color:var(--blue-mid);">${escapeHTML(a.codigo)}</div>`).join('');
     return `<div style="max-width:920px; margin:auto; width:100%; padding:40px 28px; text-align:center;">
         <div style="font-size:13px; font-weight:800; color:var(--blue-mid); text-transform:uppercase; letter-spacing:1px; margin-bottom:14px;">${escapeHTML(t.produtoBase||t.tipoTeste||'Análise sensorial')}</div>
-        <h1 style="font-size:clamp(28px,5vw,48px); font-weight:800; color:var(--text); line-height:1.1; margin-bottom:18px;">${escapeHTML(t.titulo||'')}</h1>
-        ${t.ideiaTeste?`<div style="font-size:clamp(15px,2.2vw,20px); color:var(--text2); max-width:720px; margin:0 auto 30px; line-height:1.5;">${escapeHTML(t.ideiaTeste)}</div>`:''}
-        <div style="font-size:12px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:14px;">${(t.amostras||[]).length} amostras para provar</div>
-        <div style="display:flex; flex-wrap:wrap; gap:16px; justify-content:center;">${codes}</div>
+        <h1 style="font-size:clamp(30px,5.5vw,52px); font-weight:800; color:var(--text); line-height:1.1; margin-bottom:18px;">${escapeHTML(t.titulo||'')}</h1>
+        ${t.ideiaTeste?`<div style="font-size:clamp(15px,2.2vw,20px); color:var(--text2); max-width:720px; margin:0 auto 26px; line-height:1.5;">${escapeHTML(t.ideiaTeste)}</div>`:''}
+        <div style="font-size:13px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px;">${(t.amostras||[]).length} amostras · a seguir, os códigos</div>
       </div>`;
   }
   if(key==='observar'){
@@ -7156,6 +7204,17 @@ function _sensPresSlideHTML(t, key){
       attrs?`<div><div style="font-size:12px; font-weight:800; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:12px;">Você vai avaliar</div><div style="display:flex; flex-direction:column; gap:10px;">${attrs}</div></div>`:'',
     ].filter(Boolean).join('');
     return `<div style="max-width:860px; margin:auto; width:100%; padding:40px 28px;">${blocos||'<div style="text-align:center; color:var(--text3); font-size:16px;">Prove cada amostra com atenção e registre sua avaliação.</div>'}</div>`;
+  }
+  if(key==='codigos'){
+    const rows=(t.amostras||[]).map(a=>`<div style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px 20px; display:flex; align-items:center; gap:16px;">
+        <div style="background:var(--blue-mid); color:#fff; border-radius:12px; min-width:64px; padding:12px 10px; text-align:center; font-size:clamp(20px,3vw,30px); font-weight:800;">${escapeHTML(a.codigo)}</div>
+        <i class="ti ti-arrow-right" style="color:var(--border); font-size:20px;"></i>
+        <div style="font-size:clamp(15px,2.2vw,20px); font-weight:600; color:var(--text3); display:flex; align-items:center; gap:8px;"><i class="ti ti-lock"></i> identidade oculta</div>
+      </div>`).join('');
+    return `<div style="max-width:760px; margin:auto; width:100%; padding:40px 28px;">
+        <div style="text-align:center; margin-bottom:26px;"><div style="font-size:13px; font-weight:800; color:var(--blue-mid); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;"><i class="ti ti-flask"></i> Em prova</div><h1 style="font-size:clamp(24px,4vw,38px); font-weight:800; color:var(--text);">As amostras de hoje</h1></div>
+        <div style="display:flex; flex-direction:column; gap:12px;">${rows}</div>
+      </div>`;
   }
   if(key==='revelacao'){
     const cards=(t.amostras||[]).map(a=>`<div style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px 20px; display:flex; align-items:center; gap:16px;">
@@ -7168,22 +7227,23 @@ function _sensPresSlideHTML(t, key){
         <div style="display:flex; flex-direction:column; gap:12px;">${cards}</div>
       </div>`;
   }
-  // resultado ao vivo
-  const rank=(t.amostras||[]).map(a=>{ const m=_sensMediaNum(t,a.id,'hedonica'); return {a, score:m?m.media:0}; }).sort((x,y)=>y.score-x.score);
+  // resultado (tela 5) — mesmo layout da revelação + nota de cada amostra ao lado
   const nResp=(t.respostas||[]).length;
-  const cards=rank.map((r,i)=>`<div style="flex:1; min-width:160px; background:var(--card); border:2px solid ${i===0?'var(--success)':'var(--border)'}; border-radius:14px; padding:18px 16px; position:relative; text-align:center;">
-      <div style="position:absolute; top:10px; right:12px; font-size:12px; font-weight:800; color:${i===0?'var(--success)':'var(--text3)'};">${i+1}º</div>
-      <div style="font-size:clamp(20px,3vw,30px); font-weight:800; color:var(--blue-mid);">${escapeHTML(r.a.codigo)}</div>
-      ${t.revelado?`<div style="font-size:11.5px; color:var(--text3); margin-top:2px;">${escapeHTML(r.a.identidadeReal||'')}</div>`:''}
-      <div style="font-size:clamp(26px,4vw,40px); font-weight:800; color:${i===0?'var(--success)':'var(--text)'}; margin-top:8px;">${r.score?r.score.toFixed(2):'—'}<span style="font-size:14px; color:var(--text3); font-weight:600;">/5</span></div>
-      <div style="font-size:10.5px; color:var(--text3);">aceitação geral</div>
-    </div>`).join('');
-  return `<div style="max-width:920px; margin:auto; width:100%; padding:40px 28px; text-align:center;">
-      <div style="font-size:13px; font-weight:800; color:var(--success); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;"><i class="ti ti-chart-bar"></i> Resultado ao vivo</div>
-      <h1 style="font-size:clamp(24px,4vw,38px); font-weight:800; color:var(--text); margin-bottom:6px;">Preferência da equipe</h1>
-      <div style="font-size:13px; color:var(--text3); margin-bottom:26px;"><i class="ti ti-users"></i> ${nResp} ${nResp===1?'avaliação':'avaliações'} · atualiza conforme as respostas chegam</div>
-      <div style="display:flex; gap:14px; flex-wrap:wrap; justify-content:center;">${cards}</div>
-      <div style="margin-top:26px;"><button onclick="sensSimular('${t.id}')" style="background:${_sensSimTimer?'var(--danger)':'var(--card)'}; color:${_sensSimTimer?'#fff':'var(--blue-mid)'}; border:1px solid ${_sensSimTimer?'var(--danger)':'var(--blue-mid)'}; border-radius:10px; padding:11px 22px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-${_sensSimTimer?'player-stop':'player-play'}"></i> ${_sensSimTimer?'Parar simulação':'Simular respostas ao vivo'}</button></div>
+  const notas=(t.amostras||[]).map(a=>({a, m:(_sensMediaNum(t,a.id,'hedonica')||{}).media||0}));
+  const best=notas.reduce((mx,x)=>x.m>mx?x.m:mx, 0);
+  const ins=_sensInsights(t).slice(0,3);
+  const insHTML = ins.length ? `<div style="max-width:760px; margin:24px auto 0; display:flex; flex-direction:column; gap:8px; text-align:left;">${ins.map(x=>`<div style="display:flex; gap:10px; align-items:flex-start; background:var(--card); border:1px solid var(--border); border-left:3px solid ${x.cor}; border-radius:10px; padding:10px 14px;"><i class="ti ti-${x.icon}" style="color:${x.cor}; font-size:16px; margin-top:1px; flex-shrink:0;"></i><div style="font-size:clamp(13px,1.6vw,15px); color:var(--text2); line-height:1.4;">${x.txt}</div></div>`).join('')}</div>` : '';
+  const rows=notas.map(({a,m})=>{ const top=m>0&&m===best; return `<div style="background:var(--card); border:1px solid ${top?'var(--success)':'var(--border)'}; border-radius:14px; padding:14px 20px; display:flex; align-items:center; gap:16px;">
+        <div style="background:var(--blue-mid); color:#fff; border-radius:12px; min-width:64px; padding:12px 10px; text-align:center; font-size:clamp(20px,3vw,30px); font-weight:800;">${escapeHTML(a.codigo)}</div>
+        <i class="ti ti-arrow-right" style="color:var(--text3); font-size:20px;"></i>
+        <div style="flex:1; font-size:clamp(15px,2.2vw,21px); font-weight:700; color:var(--text); display:flex; align-items:center; gap:9px; flex-wrap:wrap;">${escapeHTML(a.identidadeReal||'—')}${top?'<span style="font-size:11px; font-weight:800; color:var(--success); border:1px solid var(--success); border-radius:99px; padding:2px 9px;">★ preferida</span>':''}</div>
+        <div style="text-align:right; flex-shrink:0;"><div style="font-size:clamp(22px,3.2vw,34px); font-weight:800; color:${top?'var(--success)':'var(--text)'};">${m?m.toFixed(2):'—'}<span style="font-size:13px; color:var(--text3); font-weight:600;">/5</span></div><div style="font-size:10px; color:var(--text3);">aceitação</div></div>
+      </div>`; }).join('');
+  return `<div style="max-width:820px; margin:auto; width:100%; padding:40px 28px;">
+      <div style="text-align:center; margin-bottom:24px;"><div style="font-size:13px; font-weight:800; color:var(--success); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;"><i class="ti ti-chart-bar"></i> Resultado ao vivo</div><h1 style="font-size:clamp(24px,4vw,38px); font-weight:800; color:var(--text); margin-bottom:6px;">Notas da equipe</h1><div style="font-size:13px; color:var(--text3);"><i class="ti ti-users"></i> ${nResp} ${nResp===1?'avaliação':'avaliações'} · atualiza ao vivo</div></div>
+      <div style="display:flex; flex-direction:column; gap:12px;">${rows}</div>
+      ${insHTML}
+      <div style="margin-top:24px; text-align:center;"><button onclick="sensSimular('${t.id}')" style="background:${_sensSimTimer?'var(--danger)':'var(--card)'}; color:${_sensSimTimer?'#fff':'var(--blue-mid)'}; border:1px solid ${_sensSimTimer?'var(--danger)':'var(--blue-mid)'}; border-radius:10px; padding:11px 22px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-${_sensSimTimer?'player-stop':'player-play'}"></i> ${_sensSimTimer?'Parar simulação':'Simular respostas ao vivo'}</button></div>
     </div>`;
 }
 function _sensPresRender(){
@@ -7192,7 +7252,7 @@ function _sensPresRender(){
   const wrap=(inner, footer='')=>`<div style="position:fixed; inset:0; z-index:99999; background:var(--bg); color:var(--text); display:flex; flex-direction:column; font-family:inherit;"><div style="flex:1; overflow:auto; display:flex; flex-direction:column; justify-content:center; position:relative;">${inner}</div>${footer}</div>`;
   if(P.mode==='menu'){ ov.innerHTML=wrap(btnClose+_sensPresMenuHTML()); return; }
   const t=P.testes[P.pi]; const slides=_sensPresSlides(t); const key=slides[P.si];
-  const labels={capa:'Capa', observar:'O que observar', revelacao:'Revelação', resultado:'Resultado ao vivo'};
+  const labels={capa:'Capa', observar:'O que avaliar', codigos:'Amostras', revelacao:'Revelação', resultado:'Resultado'};
   const dots=slides.map((s,i)=>`<span style="width:9px; height:9px; border-radius:50%; background:${i===P.si?'var(--blue-mid)':'var(--border)'}; display:inline-block;"></span>`).join('');
   const navBtn=(dir,label)=>`<button onclick="_sensPresNav(${dir})" style="background:var(--card); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:11px 20px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:8px;">${dir<0?`<i class="ti ti-chevron-left"></i> ${label}`:`${label} <i class="ti ti-chevron-right"></i>`}</button>`;
   const topLeft = P.testes.length>1 ? `<button onclick="_sensPresMenu()" title="Voltar aos produtos (M)" style="position:absolute; top:18px; left:20px; z-index:5; background:var(--bg2); border:1px solid var(--border); color:var(--text2); border-radius:10px; padding:9px 14px; cursor:pointer; font-size:13px; font-weight:600; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-layout-grid"></i> Produtos</button>` : '';

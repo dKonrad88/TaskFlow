@@ -73,6 +73,14 @@
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-06-20 — Mac de casa — sensorial: insights + apresentação em 5 telas
+- Aba Resultados ganhou seção **"Padrões & insights"** (função `_sensInsights`): preferida geral + margem,
+  controle (fórmula atual) × alternativas, líder por atributo, intenção de compra, dulçor/JAR, divergência.
+  Tudo calculado das respostas (nada inventado).
+- **Modo Apresentação reestruturado p/ 5 telas fixas** (pedido do Diego): capa (só o nome) → o que avaliar →
+  amostras (cego, "identidade oculta") → revelação (código→marca) → resultado (mesmo layout da revelação +
+  nota de cada amostra ao lado, "★ preferida" no melhor, insights compactos e botão de simular ao vivo).
+
 ### 2026-06-20 — Mac de casa — hardening de segurança (feito)
 - Token PAT de teste (que tinha sido exposto no chat) **revogado** no GitHub. Auth do git no Mac segue
   via `gh` (token `gho_` no Keychain) — push/pull OK, sem depender daquele PAT.
