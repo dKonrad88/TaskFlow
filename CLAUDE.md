@@ -13,8 +13,9 @@
 
 ## Onde vivem as coisas (LEIA ANTES DE MEXER)
 - **Código / layout** → `index.html`, versionado no **git** e publicado via **GitHub Pages**.
-  - Repositório GitHub: _(a preencher quando criar)_
-  - GitHub Pages: _(a preencher quando publicar)_
+  - Repositório GitHub: https://github.com/dKonrad88/TaskFlow  (privado · conta dKonrad88)
+  - GitHub Pages: ainda NÃO publicado. Como o repo é **privado**, o Pages grátis não publica
+    (precisa GitHub Pro, ou tornar o repo público). O fluxo de código/sync NÃO depende do Pages.
 - **Dados do usuário** (tarefas, pessoas, projetos, reuniões, etc.):
   - **ESTADO ATUAL → `localStorage` do navegador** (chaves `LS_*`, gravadas via `safeSetItem`).
     - ✅ NÃO estão no git — o git **nunca** toca nos dados.
@@ -57,6 +58,7 @@
   criados `.gitignore` e este `CLAUDE.md`, primeiro commit local.
 - Backup de segurança: `backups/taskflow.backup-2026-06-20.html`.
 - Persistência hoje é `localStorage` (Supabase ainda não integrado).
-- **Pendências:** (1) criar repositório no GitHub + push; (2) publicar no GitHub Pages;
-  (3) configurar o Mac/Codespace do zero (clonar o repo); (4) decidir/implementar
-  migração dos dados para o Supabase quando for a hora.
+- Repositório criado e enviado: **https://github.com/dKonrad88/TaskFlow** (privado).
+- **Pendências:** (1) configurar o Mac/Codespace do zero (abrir/clonar o repo);
+  (2) Pages é opcional (privado exige Pro, ou tornar público); (3) migração dos dados
+  para o Supabase quando for a hora.
