@@ -75,8 +75,13 @@
 ## Log de handoff (mais recente no topo)
 ### 2026-06-20 — Mac de casa — ambiente configurado + dados baixados da nuvem
 - Mac configurado do zero: repo clonado em `~/Documents/GitHub/TaskFlow` (ao lado de Foco/horas/hubpessoal).
-  Git já estava configurado (Diego Konrad / konraddiego@gmail.com). `gh` NÃO instalado e Homebrew ausente;
-  push via HTTPS + PAT, com `credential.helper=osxkeychain` (config global setada nesta sessão).
+  Git já estava configurado (Diego Konrad / konraddiego@gmail.com).
+- **Autenticação do git no Mac = GitHub CLI (`gh`).** Sem Homebrew, instalei o `gh` 2.95 (binário oficial)
+  em `~/.local/bin` e adicionei essa pasta ao PATH no `~/.zshrc`. Login via `gh auth login` (fluxo OAuth no
+  navegador, sem PAT manual); `gh auth setup-git` configurou a credencial. **Push/pull já funcionam direto**
+  nas próximas sessões deste Mac — não precisa de token.
+  - (Detalhe: tentei antes via PAT fine-grained; deu 403 por falta de permissão `Contents:write`. Abandonado
+    em favor do `gh`. O token de teste foi revogado.)
 - Diego abriu o app publicado (Pages) → ☁️ → Entrar → **"Baixar da nuvem"** → projetos/tarefas apareceram.
   localStorage do Mac agora populado a partir da nuvem. ✅ Seguiu a regra de ouro: BAIXAR antes de editar; NÃO clicou "Enviar".
 - **Nenhuma mudança de código** nesta sessão — só esta entrada de handoff no `CLAUDE.md`.
