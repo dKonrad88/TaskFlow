@@ -22280,7 +22280,11 @@ function renderProjectProView(id){
     ${encerramentoBanner}
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap">
       <div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:6px">
-        <button onclick="voltarParaProjetosPro()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;padding:0;display:inline-flex;align-items:center;gap:6px;font-family:inherit;align-self:flex-start"><i class="ti ti-arrow-left"></i> Voltar aos projetos</button>
+        <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;align-self:flex-start;flex-wrap:wrap">
+          <span onclick="voltarParaProjetosPro()" style="color:var(--blue-mid);cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:5px" title="Voltar aos projetos"><i class="ti ti-arrow-left"></i> Projetos</span>
+          <i class="ti ti-chevron-right" style="font-size:12px;color:var(--text3)"></i>
+          <span style="color:var(--text3);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px">${escapeHTML(p.nome)}</span>
+        </div>
         <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:2px">
           <i class="ti ${tipo.icon}" style="font-size:20px;color:${p.cor}"></i>
           <span style="font-size:21px;font-weight:800;color:var(--text)">${escapeHTML(p.nome)}</span>
