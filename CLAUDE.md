@@ -73,6 +73,13 @@
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-06-20 — Mac de casa — Manutenção › Compras (fornecedores + orçamentos)
+- Novas telas dentro do hub **Manutenção** (sidebar seção COMPRAS): **Fornecedores** (CRUD) e **Orçamentos**.
+- Orçamento = título/item + N cotações (fornecedor do cadastro ou avulso, preço, prazo, pagamento, frete,
+  garantia, obs) + **tabela de comparação** com destaque do menor preço/prazo, insight "mais barato/mais
+  rápido" e botão "Escolher" (marca "Decidido"). Chaves `LS_FORNECEDORES`/`LS_ORCAMENTOS` (descartáveis).
+- Protótipo de UX (backend real = Guilherme). Verificado: 0 erros sintaxe + 12/12 testes funcionais (jsc).
+
 ### 2026-06-20 — Mac de casa — sensorial: insights + apresentação em 5 telas
 - Aba Resultados ganhou seção **"Padrões & insights"** (função `_sensInsights`): preferida geral + margem,
   controle (fórmula atual) × alternativas, líder por atributo, intenção de compra, dulçor/JAR, divergência.

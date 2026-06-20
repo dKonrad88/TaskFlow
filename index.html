@@ -6437,6 +6437,7 @@ function switchToManutencao(){
 }
 function setManutencaoView(v){
   manutencaoView = v;
+  manutFornecedorAberto=null; manutOrcamentoAberto=null; mntFornBuf=null; mntOrcBuf=null;
   renderSidebar();
   renderManutencao();
 }
@@ -6446,6 +6447,8 @@ function renderManutencao(){
   const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
+  if(manutencaoView==='fornecedores'){ renderFornecedores(); return; }
+  if(manutencaoView==='orcamentos'){ renderOrcamentos(); return; }
   const titulos={ordens:'Ordens de Manutenção', equipamentos:'Equipamentos', preventivas:'Preventivas'};
   const titulo=titulos[manutencaoView]||'Manutenção';
   main.innerHTML = `
@@ -6455,6 +6458,235 @@ function renderManutencao(){
       <div style="color:var(--text3); font-size:13px;">Módulo em construção.</div>
     </div>
   `;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MANUTENÇÃO › COMPRAS — Fornecedores + Orçamentos (cotações + comparação)
+// Protótipo de UX. Dados em localStorage descartável (backend real = Guilherme).
+//   Fornecedor { id, nome, categoria, contato, telefone, email, cnpj, cidade, obs, ativo }
+//   Orcamento  { id, titulo, descricao, data, status:'aberto'|'decidido', escolhidoId,
+//                cotacoes:[{ id, fornecedorId, fornecedorNome, preco, prazoDias,
+//                            pagamento, frete, garantia, obs }] }
+// ════════════════════════════════════════════════════════════════════
+const LS_FORNECEDORES = 'taskflow_fornecedores';
+const LS_ORCAMENTOS   = 'taskflow_orcamentos';
+let fornecedores = null;            // lazy load
+let orcamentos   = null;            // lazy load
+let manutFornecedorAberto = null;   // id em edição
+let manutOrcamentoAberto  = null;   // id em edição
+let mntFornBuf = null;              // buffer do editor de fornecedor
+let mntOrcBuf  = null;              // buffer do editor de orçamento
+
+function _mntId(p){ return p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function _num(v){ if(v==null||v==='') return null; if(typeof v==='number') return v; let s=String(v).replace(/[^\d,.-]/g,''); s=s.replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.'); const n=parseFloat(s); return isNaN(n)?null:n; }
+function _brl(n){ return (n==null||isNaN(n))?'—':Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function _fornNome(id){ const f=(fornecedores||[]).find(x=>x.id===id); return f?f.nome:''; }
+function _cotNome(c){ return c.fornecedorId? _fornNome(c.fornecedorId) : (c.fornecedorNome||'Avulso'); }
+
+function _mntSeedForn(){ return [
+  {id:'fn_demo1', nome:'Inox Sul Equipamentos', categoria:'Inox / Tanques', contato:'Marcos', telefone:'(51) 99876-1234', email:'vendas@inoxsul.com.br', cnpj:'', cidade:'Caxias do Sul - RS', obs:'', ativo:true},
+  {id:'fn_demo2', nome:'MecanoTech Industrial', categoria:'Usinagem', contato:'Patrícia', telefone:'(51) 3211-7788', email:'comercial@mecanotech.com', cnpj:'', cidade:'Porto Alegre - RS', obs:'', ativo:true},
+  {id:'fn_demo3', nome:'Caldeiraria Triângulo', categoria:'Caldeiraria / Inox', contato:'João', telefone:'(54) 99123-0099', email:'orcamento@triangulo.ind.br', cnpj:'', cidade:'Bento Gonçalves - RS', obs:'', ativo:true},
+]; }
+function _mntSeedOrc(){ return [{
+  id:'or_demo1', titulo:'Tanque de mistura 1000L (inox 304)', descricao:'Tanque encamisado com agitador, p/ a linha de cobertura.', data:today, status:'aberto', escolhidoId:null,
+  cotacoes:[
+    {id:'ct_d1', fornecedorId:'fn_demo1', fornecedorNome:'', preco:'38500', prazoDias:'45', pagamento:'30/60/90', frete:'Incluso', garantia:'12 meses', obs:'Inclui instalação'},
+    {id:'ct_d2', fornecedorId:'fn_demo2', fornecedorNome:'', preco:'34900', prazoDias:'60', pagamento:'À vista', frete:'Por nossa conta', garantia:'12 meses', obs:''},
+    {id:'ct_d3', fornecedorId:'fn_demo3', fornecedorNome:'', preco:'41200', prazoDias:'35', pagamento:'50% + 50%', frete:'Incluso', garantia:'24 meses', obs:'Melhor prazo e garantia'},
+  ],
+}]; }
+function _mntLoad(){
+  if(fornecedores===null){ fornecedores=safeJSON(LS_FORNECEDORES,null); if(!Array.isArray(fornecedores)){ fornecedores=_mntSeedForn(); saveFornecedores(); } }
+  if(orcamentos===null){ orcamentos=safeJSON(LS_ORCAMENTOS,null); if(!Array.isArray(orcamentos)){ orcamentos=_mntSeedOrc(); saveOrcamentos(); } }
+}
+function saveFornecedores(){ safeSetItem(LS_FORNECEDORES, JSON.stringify(fornecedores||[])); }
+function saveOrcamentos(){ safeSetItem(LS_ORCAMENTOS, JSON.stringify(orcamentos||[])); }
+
+// ─── FORNECEDORES ───
+function renderFornecedores(){
+  _mntLoad();
+  if(manutFornecedorAberto){ renderFornecedorEditor(); return; }
+  const main=document.getElementById('task-container'); if(!main) return;
+  const arr=(fornecedores||[]).slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
+  const card=f=>`<div onclick="editarFornecedor('${f.id}')" style="background:var(--card); border:1px solid var(--border); border-radius:11px; padding:13px 16px; cursor:pointer; transition:border-color .15s;" onmouseover="this.style.borderColor='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <div style="font-size:14px; font-weight:700; color:var(--text);">${escapeHTML(f.nome||'Sem nome')}</div>
+        ${f.ativo===false?'<span style="font-size:10.5px; font-weight:700; color:var(--text3); border:1px solid var(--border); border-radius:20px; padding:2px 8px;">Inativo</span>':''}
+      </div>
+      <div style="font-size:11.5px; color:var(--text3); margin-top:5px; display:flex; gap:14px; flex-wrap:wrap;">
+        ${f.categoria?`<span><i class="ti ti-tag"></i> ${escapeHTML(f.categoria)}</span>`:''}
+        ${f.contato?`<span><i class="ti ti-user"></i> ${escapeHTML(f.contato)}</span>`:''}
+        ${f.telefone?`<span><i class="ti ti-phone"></i> ${escapeHTML(f.telefone)}</span>`:''}
+        ${f.cidade?`<span><i class="ti ti-map-pin"></i> ${escapeHTML(f.cidade)}</span>`:''}
+      </div>
+    </div>`;
+  main.innerHTML=`
+    <div style="padding:20px 4px 40px; max-width:1100px;">
+      ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Fornecedores'}])}
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:4px;">
+        <h1 style="font-size:23px; font-weight:700; color:var(--text);">Fornecedores</h1>
+        <button onclick="novoFornecedor()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Novo fornecedor</button>
+      </div>
+      <div style="font-size:12.5px; color:var(--text3); margin-bottom:18px;">Cadastro de fornecedores — usados nas cotações dos orçamentos.</div>
+      ${arr.length? `<div style="display:flex; flex-direction:column; gap:9px;">${arr.map(card).join('')}</div>`
+        : '<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-building-store" style="font-size:38px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum fornecedor ainda</div>'}
+    </div>`;
+}
+function novoFornecedor(){ mntFornBuf={id:_mntId('fn'), nome:'', categoria:'', contato:'', telefone:'', email:'', cnpj:'', cidade:'', obs:'', ativo:true, _novo:true}; manutFornecedorAberto=mntFornBuf.id; renderManutencao(); }
+function editarFornecedor(id){ _mntLoad(); const f=(fornecedores||[]).find(x=>x.id===id); if(!f) return; mntFornBuf=JSON.parse(JSON.stringify(f)); mntFornBuf._novo=false; manutFornecedorAberto=id; renderManutencao(); }
+function _mfSet(campo,val){ if(mntFornBuf) mntFornBuf[campo]=val; }
+function fornVoltar(){ manutFornecedorAberto=null; mntFornBuf=null; renderManutencao(); }
+function salvarFornecedor(){ const b=mntFornBuf; if(!b) return; if(!String(b.nome).trim()){ toast('Dê um nome ao fornecedor'); return; } _mntLoad(); delete b._novo; const i=fornecedores.findIndex(x=>x.id===b.id); if(i>=0) fornecedores[i]=b; else fornecedores.push(b); saveFornecedores(); toast('Fornecedor salvo'); manutFornecedorAberto=null; mntFornBuf=null; renderManutencao(); }
+function excluirFornecedor(id){ if(!confirm('Excluir este fornecedor?')) return; fornecedores=(fornecedores||[]).filter(x=>x.id!==id); saveFornecedores(); manutFornecedorAberto=null; mntFornBuf=null; toast('Fornecedor excluído'); renderManutencao(); }
+function renderFornecedorEditor(){
+  const b=mntFornBuf; if(!b){ fornVoltar(); return; }
+  const main=document.getElementById('task-container'); if(!main) return;
+  const campo=(lbl,key,ph)=>`<div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">${lbl}</label><input value="${escapeAttr(b[key]||'')}" oninput="_mfSet('${key}',this.value)" placeholder="${escapeAttr(ph||'')}" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;"></div>`;
+  main.innerHTML=`
+    <div style="padding:20px 4px 60px; max-width:760px;">
+      ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Fornecedores', onclick:"fornVoltar()"},{label:b._novo?'Novo':'Editar'}])}
+      <h1 style="font-size:22px; font-weight:700; color:var(--text); margin-bottom:18px;">${b._novo?'Novo fornecedor':'Editar fornecedor'}</h1>
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        ${campo('Nome *','nome','Razão social ou nome fantasia')}
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          ${campo('Categoria','categoria','Inox, usinagem, elétrica…')}
+          ${campo('Cidade / UF','cidade','Caxias do Sul - RS')}
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          ${campo('Contato','contato','Nome do vendedor')}
+          ${campo('Telefone','telefone','(51) 99999-0000')}
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          ${campo('E-mail','email','comercial@fornecedor.com')}
+          ${campo('CNPJ','cnpj','00.000.000/0001-00')}
+        </div>
+        <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Observações</label><textarea oninput="_mfSet('obs',this.value)" rows="2" placeholder="Condições, histórico, etc." style="width:100%; box-sizing:border-box; resize:vertical; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;">${escapeHTML(b.obs||'')}</textarea></div>
+        <label style="display:flex; align-items:center; gap:9px; font-size:13px; color:var(--text2); cursor:pointer;"><input type="checkbox" ${b.ativo!==false?'checked':''} onclick="_mfSet('ativo',this.checked)" style="width:16px; height:16px; cursor:pointer;"> Fornecedor ativo</label>
+        <div style="display:flex; gap:10px; justify-content:space-between; margin-top:8px;">
+          ${b._novo?'<span></span>':`<button onclick="excluirFornecedor('${b.id}')" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:9px; padding:11px 18px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit;"><i class="ti ti-trash"></i> Excluir</button>`}
+          <div style="display:flex; gap:10px;">
+            <button onclick="fornVoltar()" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:9px; padding:11px 20px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit;">Cancelar</button>
+            <button onclick="salvarFornecedor()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:11px 26px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit;">Salvar</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ─── ORÇAMENTOS (cotações + comparação) ───
+function renderOrcamentos(){
+  _mntLoad();
+  if(manutOrcamentoAberto){ renderOrcamentoEditor(); return; }
+  const main=document.getElementById('task-container'); if(!main) return;
+  const arr=(orcamentos||[]).slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+  const card=o=>{ const cots=o.cotacoes||[]; const precos=cots.map(c=>_num(c.preco)).filter(p=>p!=null); const minP=precos.length?Math.min.apply(null,precos):null;
+    return `<div onclick="editarOrcamento('${o.id}')" style="background:var(--card); border:1px solid var(--border); border-radius:11px; padding:13px 16px; cursor:pointer; transition:border-color .15s;" onmouseover="this.style.borderColor='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <div style="font-size:14px; font-weight:700; color:var(--text);">${escapeHTML(o.titulo||'Sem título')}</div>
+        ${o.status==='decidido'?'<span style="font-size:10.5px; font-weight:700; color:var(--success); background:color-mix(in srgb, var(--success) 14%, transparent); border-radius:20px; padding:2px 9px;">Decidido</span>':'<span style="font-size:10.5px; font-weight:700; color:var(--blue-mid); background:color-mix(in srgb, var(--blue-mid) 14%, transparent); border-radius:20px; padding:2px 9px;">Aberto</span>'}
+      </div>
+      <div style="font-size:11.5px; color:var(--text3); margin-top:5px; display:flex; gap:14px; flex-wrap:wrap;">
+        <span><i class="ti ti-calendar"></i> ${escapeHTML(o.data||'—')}</span>
+        <span><i class="ti ti-users"></i> ${cots.length} ${cots.length===1?'cotação':'cotações'}</span>
+        ${minP!=null?`<span><i class="ti ti-currency-real"></i> a partir de ${escapeHTML(_brl(minP))}</span>`:''}
+      </div>
+    </div>`; };
+  main.innerHTML=`
+    <div style="padding:20px 4px 40px; max-width:1100px;">
+      ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Orçamentos'}])}
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:4px;">
+        <h1 style="font-size:23px; font-weight:700; color:var(--text);">Orçamentos</h1>
+        <button onclick="novoOrcamento()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Novo orçamento</button>
+      </div>
+      <div style="font-size:12.5px; color:var(--text3); margin-bottom:18px;">Junte as cotações de vários fornecedores e compare numa tabela só.</div>
+      ${arr.length? `<div style="display:flex; flex-direction:column; gap:9px;">${arr.map(card).join('')}</div>`
+        : '<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-receipt-2" style="font-size:38px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum orçamento ainda</div>'}
+    </div>`;
+}
+function novoOrcamento(){ mntOrcBuf={id:_mntId('or'), titulo:'', descricao:'', data:today, status:'aberto', escolhidoId:null, cotacoes:[], _novo:true}; manutOrcamentoAberto=mntOrcBuf.id; renderManutencao(); }
+function editarOrcamento(id){ _mntLoad(); const o=(orcamentos||[]).find(x=>x.id===id); if(!o) return; mntOrcBuf=JSON.parse(JSON.stringify(o)); if(!Array.isArray(mntOrcBuf.cotacoes)) mntOrcBuf.cotacoes=[]; mntOrcBuf._novo=false; manutOrcamentoAberto=id; renderManutencao(); }
+function _moSet(campo,val){ if(mntOrcBuf) mntOrcBuf[campo]=val; }
+function _moAddCotacao(){ if(!mntOrcBuf) return; mntOrcBuf.cotacoes.push({id:_mntId('ct'), fornecedorId:'', fornecedorNome:'', preco:'', prazoDias:'', pagamento:'', frete:'', garantia:'', obs:''}); renderManutencao(); }
+function _moDelCotacao(cid){ if(!mntOrcBuf) return; mntOrcBuf.cotacoes=mntOrcBuf.cotacoes.filter(c=>c.id!==cid); if(mntOrcBuf.escolhidoId===cid){ mntOrcBuf.escolhidoId=null; mntOrcBuf.status='aberto'; } renderManutencao(); }
+function _moSetCotacao(cid,campo,val){ if(!mntOrcBuf) return; const c=mntOrcBuf.cotacoes.find(x=>x.id===cid); if(c) c[campo]=val; if(campo==='preco'||campo==='prazoDias') _moRefreshComparacao(); }
+function _moEscolher(cid){ if(!mntOrcBuf) return; mntOrcBuf.escolhidoId = (mntOrcBuf.escolhidoId===cid? null : cid); mntOrcBuf.status = mntOrcBuf.escolhidoId? 'decidido':'aberto'; renderManutencao(); }
+function orcVoltar(){ manutOrcamentoAberto=null; mntOrcBuf=null; renderManutencao(); }
+function salvarOrcamento(){ const b=mntOrcBuf; if(!b) return; if(!String(b.titulo).trim()){ toast('Dê um título ao orçamento'); return; } _mntLoad(); delete b._novo; const i=orcamentos.findIndex(x=>x.id===b.id); if(i>=0) orcamentos[i]=b; else orcamentos.push(b); saveOrcamentos(); toast('Orçamento salvo'); manutOrcamentoAberto=null; mntOrcBuf=null; renderManutencao(); }
+function excluirOrcamento(id){ if(!confirm('Excluir este orçamento?')) return; orcamentos=(orcamentos||[]).filter(x=>x.id!==id); saveOrcamentos(); manutOrcamentoAberto=null; mntOrcBuf=null; toast('Orçamento excluído'); renderManutencao(); }
+function _moRefreshComparacao(){ const el=document.getElementById('orc-comparacao'); if(el && mntOrcBuf) el.innerHTML=_orcComparacaoHTML(mntOrcBuf); }
+function _orcComparacaoHTML(b){
+  const cots=b.cotacoes||[];
+  if(cots.length<1) return '<div style="text-align:center; padding:26px 0; color:var(--text3); font-size:13px;">Adicione cotações acima para comparar.</div>';
+  const precos=cots.map(c=>_num(c.preco)); const validP=precos.filter(p=>p!=null); const minP=validP.length?Math.min.apply(null,validP):null;
+  const prazos=cots.map(c=>_num(c.prazoDias)); const validPz=prazos.filter(p=>p!=null); const minPz=validPz.length?Math.min.apply(null,validPz):null;
+  const linhas=[
+    ['Preço', c=>{ const v=_num(c.preco); const best=(v!=null&&v===minP); return `<span style="font-weight:800; color:${best?'var(--success)':'var(--text)'};">${escapeHTML(_brl(v))}${best?' <i class="ti ti-arrow-down" title="menor preço"></i>':''}</span>`; }],
+    ['Prazo (dias)', c=>{ const v=_num(c.prazoDias); const best=(v!=null&&v===minPz); return `<span style="font-weight:${best?'800':'600'}; color:${best?'var(--blue-mid)':'var(--text2)'};">${v!=null?v+' dias':'—'}${best?' <i class="ti ti-bolt" title="mais rápido"></i>':''}</span>`; }],
+    ['Pagamento', c=>escapeHTML(c.pagamento||'—')],
+    ['Frete', c=>escapeHTML(c.frete||'—')],
+    ['Garantia', c=>escapeHTML(c.garantia||'—')],
+    ['Observação', c=>escapeHTML(c.obs||'—')],
+  ];
+  const head=`<tr><th style="text-align:left; padding:10px; font-size:11px; color:var(--text3); text-transform:uppercase; position:sticky; left:0; background:var(--bg);">Critério</th>${cots.map(c=>{ const esc=b.escolhidoId===c.id; return `<th style="padding:10px; min-width:150px; vertical-align:bottom; text-align:left; border-bottom:2px solid ${esc?'var(--success)':'var(--border)'};">
+      <div style="font-size:13px; font-weight:800; color:${esc?'var(--success)':'var(--text)'};">${escapeHTML(_cotNome(c))}${esc?' <i class="ti ti-circle-check"></i>':''}</div>
+      <button onclick="_moEscolher('${c.id}')" style="margin-top:6px; background:${esc?'var(--success)':'none'}; color:${esc?'#fff':'var(--text2)'}; border:1px solid ${esc?'var(--success)':'var(--border)'}; border-radius:7px; padding:4px 10px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit;">${esc?'Escolhido':'Escolher'}</button>
+    </th>`; }).join('')}</tr>`;
+  const body=linhas.map(([lbl,fn])=>`<tr style="border-bottom:1px solid color-mix(in srgb, var(--border) 50%, transparent);"><td style="padding:9px 10px; font-size:12px; color:var(--text3); font-weight:600; position:sticky; left:0; background:var(--bg);">${lbl}</td>${cots.map(c=>`<td style="padding:9px 10px; font-size:12.5px; color:var(--text2); ${b.escolhidoId===c.id?'background:color-mix(in srgb, var(--success) 7%, transparent);':''}">${fn(c)}</td>`).join('')}</tr>`).join('');
+  // insight
+  const cheapest=cots.filter(c=>_num(c.preco)!=null).sort((x,y)=>_num(x.preco)-_num(y.preco))[0];
+  const fastest=cots.filter(c=>_num(c.prazoDias)!=null).sort((x,y)=>_num(x.prazoDias)-_num(y.prazoDias))[0];
+  let insight='';
+  if(cheapest||fastest){ const parts=[]; if(cheapest) parts.push(`Mais barato: <strong>${escapeHTML(_cotNome(cheapest))}</strong> (${escapeHTML(_brl(_num(cheapest.preco)))})`); if(fastest && (!cheapest || fastest.id!==cheapest.id)) parts.push(`entrega mais rápida: <strong>${escapeHTML(_cotNome(fastest))}</strong> (${_num(fastest.prazoDias)} dias)`); insight=`<div style="display:flex; gap:10px; align-items:flex-start; background:var(--card); border:1px solid var(--border); border-left:3px solid var(--blue-mid); border-radius:10px; padding:11px 14px; margin-top:14px;"><i class="ti ti-bulb" style="color:var(--blue-mid); font-size:17px; flex-shrink:0;"></i><div style="font-size:13px; color:var(--text2); line-height:1.45;">${parts.join(' · ')}.</div></div>`; }
+  return `<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse;"><thead>${head}</thead><tbody>${body}</tbody></table></div>${insight}`;
+}
+function renderOrcamentoEditor(){
+  const b=mntOrcBuf; if(!b){ orcVoltar(); return; }
+  const main=document.getElementById('task-container'); if(!main) return;
+  const fornOpts=c=>`<option value="">— escolher fornecedor —</option>${(fornecedores||[]).map(f=>`<option value="${f.id}" ${c.fornecedorId===f.id?'selected':''}>${escapeHTML(f.nome)}</option>`).join('')}`;
+  const cotRow=c=>`<div style="background:var(--bg2); border:1px solid var(--border); border-radius:11px; padding:13px 14px; margin-bottom:10px;">
+      <div style="display:flex; gap:8px; align-items:center; margin-bottom:9px;">
+        <select onchange="_moSetCotacao('${c.id}','fornecedorId',this.value)" style="flex:1; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit; cursor:pointer;">${fornOpts(c)}</select>
+        <input value="${escapeAttr(c.fornecedorNome||'')}" oninput="_moSetCotacao('${c.id}','fornecedorNome',this.value)" placeholder="ou nome avulso" style="flex:1; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">
+        <button onclick="_moDelCotacao('${c.id}')" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:8px; padding:8px 10px; cursor:pointer;"><i class="ti ti-trash"></i></button>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); gap:8px;">
+        <input value="${escapeAttr(c.preco||'')}" oninput="_moSetCotacao('${c.id}','preco',this.value)" placeholder="Preço (R$)" inputmode="decimal" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">
+        <input value="${escapeAttr(c.prazoDias||'')}" oninput="_moSetCotacao('${c.id}','prazoDias',this.value)" placeholder="Prazo (dias)" inputmode="numeric" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">
+        <input value="${escapeAttr(c.pagamento||'')}" oninput="_moSetCotacao('${c.id}','pagamento',this.value)" placeholder="Pagamento" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">
+        <input value="${escapeAttr(c.frete||'')}" oninput="_moSetCotacao('${c.id}','frete',this.value)" placeholder="Frete" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">
+        <input value="${escapeAttr(c.garantia||'')}" oninput="_moSetCotacao('${c.id}','garantia',this.value)" placeholder="Garantia" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">
+        <input value="${escapeAttr(c.obs||'')}" oninput="_moSetCotacao('${c.id}','obs',this.value)" placeholder="Observação" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">
+      </div>
+    </div>`;
+  main.innerHTML=`
+    <div style="padding:20px 4px 60px; max-width:1000px;">
+      ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Orçamentos', onclick:"orcVoltar()"},{label:b._novo?'Novo':'Editar'}])}
+      <h1 style="font-size:22px; font-weight:700; color:var(--text); margin-bottom:18px;">${b._novo?'Novo orçamento':'Orçamento'}</h1>
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Título / item *</label><input value="${escapeAttr(b.titulo||'')}" oninput="_moSet('titulo',this.value)" placeholder="Ex.: Tanque de mistura 1000L (inox 304)" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;"></div>
+        <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px;">
+          <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Descrição</label><input value="${escapeAttr(b.descricao||'')}" oninput="_moSet('descricao',this.value)" placeholder="Especificação, finalidade…" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;"></div>
+          <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Data</label><input type="date" value="${escapeAttr(b.data||'')}" oninput="_moSet('data',this.value)" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 11px; font-size:13px; color:var(--text); font-family:inherit;"></div>
+        </div>
+        <div>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin:6px 0 8px;">
+            <label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase;">Cotações</label>
+            <button onclick="_moAddCotacao()" style="background:none; border:1px solid var(--blue-mid); color:var(--blue-mid); border-radius:7px; padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-plus"></i> Cotação</button>
+          </div>
+          ${b.cotacoes.length? b.cotacoes.map(cotRow).join('') : '<div style="text-align:center; padding:24px 0; color:var(--text3); font-size:13px; border:1px dashed var(--border); border-radius:10px;">Nenhuma cotação ainda — clique em “+ Cotação”.</div>'}
+        </div>
+        <div style="font-size:11px; font-weight:800; color:var(--text3); text-transform:uppercase; letter-spacing:.6px; margin:8px 0 2px;">Comparação</div>
+        <div id="orc-comparacao">${_orcComparacaoHTML(b)}</div>
+        <div style="display:flex; gap:10px; justify-content:space-between; margin-top:10px;">
+          ${b._novo?'<span></span>':`<button onclick="excluirOrcamento('${b.id}')" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:9px; padding:11px 18px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit;"><i class="ti ti-trash"></i> Excluir</button>`}
+          <div style="display:flex; gap:10px;">
+            <button onclick="orcVoltar()" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:9px; padding:11px 20px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit;">Cancelar</button>
+            <button onclick="salvarOrcamento()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:11px 26px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit;">Salvar</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
 }
 
 // ─── ÁREA QUALIDADE ───
@@ -7533,6 +7765,9 @@ function renderSidebar(){
         ${item('ordens','ti-clipboard-list','Ordens de Manutenção', _sub==='ordens')}
         ${item('equipamentos','ti-settings-automation','Equipamentos', _sub==='equipamentos')}
         ${item('preventivas','ti-calendar-repeat','Preventivas', _sub==='preventivas')}
+        <div style="font-size:11px; font-weight:700; color:var(--text3); letter-spacing:.5px; padding:12px 12px 4px;">COMPRAS</div>
+        ${item('fornecedores','ti-building-store','Fornecedores', _sub==='fornecedores')}
+        ${item('orcamentos','ti-receipt-2','Orçamentos', _sub==='orcamentos')}
       </div>
     `;
     return;
