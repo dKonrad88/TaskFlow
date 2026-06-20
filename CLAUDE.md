@@ -81,7 +81,8 @@
   navegador, sem PAT manual); `gh auth setup-git` configurou a credencial. **Push/pull já funcionam direto**
   nas próximas sessões deste Mac — não precisa de token.
   - (Detalhe: tentei antes via PAT fine-grained; deu 403 por falta de permissão `Contents:write`. Abandonado
-    em favor do `gh`. O token de teste foi revogado.)
+    em favor do `gh`. ⚠️ Esse token de teste foi exposto no chat e DEVE ser revogado pelo Diego
+    em https://github.com/settings/tokens?type=beta — não é mais usado.)
 - Diego abriu o app publicado (Pages) → ☁️ → Entrar → **"Baixar da nuvem"** → projetos/tarefas apareceram.
   localStorage do Mac agora populado a partir da nuvem. ✅ Seguiu a regra de ouro: BAIXAR antes de editar; NÃO clicou "Enviar".
 - **Nenhuma mudança de código** nesta sessão — só esta entrada de handoff no `CLAUDE.md`.
