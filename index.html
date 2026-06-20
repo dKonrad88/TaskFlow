@@ -4775,6 +4775,7 @@ function _novoProjectPro({nome, tipo='outro', cor='#185FA5', dono=null, prazoIni
     preFecharEm: null,
     preFecharPor: null,
     arquivos: [],
+    favorito: false,
     criadoEm: new Date().toISOString(),
     concluidoEm: null,
   };
@@ -21524,6 +21525,7 @@ let _ppChips = {atrasados:false, ativos:false, meus:false};
 let _ppCollapsed = (function(){ try{ return JSON.parse(safeLSGet('taskflow_pp_collapsed')||'{}')||{}; }catch{ return {}; } })();
 function setPpSort(s){ _ppSort=s; safeSetItem('taskflow_pp_sort',s); render(); }
 function _ppToggleChip(k){ _ppChips[k]=!_ppChips[k]; render(); }
+function _ppToggleFav(id){ const p=projectsPro.find(x=>x.id===id); if(!p) return; p.favorito=!p.favorito; if(typeof saveProjectPro_db==='function') saveProjectPro_db(p); const el=document.getElementById('pp-grupos'); if(el) el.innerHTML=_ppGruposHTML(); }
 function _ppLimparFiltros(){ _ppQuery=''; _ppChips={atrasados:false, ativos:false, meus:false}; render(); }
 function _ppSetQuery(v){ _ppQuery=v; const el=document.getElementById('pp-grupos'); if(el) el.innerHTML=_ppGruposHTML(); }
 function _ppToggleGrupo(key){ const ck=_ppGroup+':'+key; _ppCollapsed[ck]=!_ppCollapsed[ck]; safeSetItem('taskflow_pp_collapsed',JSON.stringify(_ppCollapsed)); const el=document.getElementById('pp-grupos'); if(el) el.innerHTML=_ppGruposHTML(); }
@@ -21582,17 +21584,23 @@ function _ppGruposHTML(){
   if(!lista.length){
     return `<div style="text-align:center;padding:48px 0;color:var(--text3)"><i class="ti ti-search-off" style="font-size:34px;display:block;margin-bottom:10px;opacity:.4"></i>Nenhum projeto encontrado${_ppQuery?' para "'+escapeHTML(_ppQuery)+'"':''}.${algumFiltro?' <button onclick="_ppLimparFiltros()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;text-decoration:underline;padding:0">Limpar filtros</button>':''}</div>`;
   }
-  const grupos=_ppAgrupar(lista,_ppGroup);
-  grupos.forEach(g=>g.items.sort(_ppCmp));
-  return grupos.map(g=>{
+  const _bloco=(g,semHeader)=>{
     if(!g.items.length) return '';
     const col=!!_ppCollapsed[_ppGroup+':'+g.key];
     const body = col ? '' : (_ppView==='lista'
       ? `<div style="display:flex;flex-direction:column;gap:7px">${g.items.map(projectProRowHTML).join('')}</div>`
       : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">${g.items.map(projectProCardHTML).join('')}</div>`);
-    const header = _ppGroup==='nenhum' ? '' : `<div onclick="_ppToggleGrupo('${g.key}')" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;color:${g.color};font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;user-select:none"><i class="ti ti-chevron-${col?'right':'down'}" style="font-size:14px"></i><i class="ti ${g.icon}"></i> ${escapeHTML(g.label)} <span style="background:${g.color}22;color:${g.color};font-size:11px;padding:2px 8px;border-radius:99px">${g.items.length}</span></div>`;
+    const header = semHeader ? '' : `<div onclick="_ppToggleGrupo('${g.key}')" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;color:${g.color};font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;user-select:none"><i class="ti ti-chevron-${col?'right':'down'}" style="font-size:14px"></i><i class="ti ${g.icon}"></i> ${escapeHTML(g.label)} <span style="background:${g.color}22;color:${g.color};font-size:11px;padding:2px 8px;border-radius:99px">${g.items.length}</span></div>`;
     return `<div style="margin-bottom:${col?'14':'30'}px">${header}${body}</div>`;
-  }).join('');
+  };
+  let out='';
+  // Favoritos: grupo virtual no topo (independe do agrupamento; sai dos grupos normais p/ não duplicar)
+  const favs=lista.filter(p=>p.favorito).sort(_ppCmp);
+  if(favs.length) out += _bloco({key:'__fav__',label:'Favoritos',color:'var(--amber)',icon:'ti-star-filled',items:favs}, false);
+  const grupos=_ppAgrupar(lista.filter(p=>!p.favorito),_ppGroup);
+  grupos.forEach(g=>g.items.sort(_ppCmp));
+  out += grupos.map(g=>_bloco(g, _ppGroup==='nenhum')).join('');
+  return out;
 }
 
 // Linha compacta de projeto (modo Lista)
@@ -21606,6 +21614,7 @@ function projectProRowHTML(p){
   else if(p.prazoFim){ const d=Math.ceil((new Date(p.prazoFim+'T00:00:00')-new Date(today+'T00:00:00'))/86400000); if(d<0){prazoTxt=Math.abs(d)+'d atrasado';prazoCor='var(--danger)';} else if(d===0){prazoTxt='hoje';prazoCor='var(--danger)';} else if(d<=7){prazoTxt=d+'d restantes';prazoCor='var(--amber)';} else {prazoTxt=d+'d restantes';} }
   return `<div data-project-pro-id="${p.id}" onclick="abrirProjectProView('${p.id}')" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-left:3px solid ${p.cor};border-radius:10px;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow='0 3px 12px rgba(0,0,0,.07)'" onmouseout="this.style.boxShadow=''">
     <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px">
+      <button onclick="event.stopPropagation();_ppToggleFav('${p.id}')" title="${p.favorito?'Desafixar':'Fixar no topo'}" style="background:none;border:none;cursor:pointer;color:${p.favorito?'var(--amber)':'var(--text3)'};font-size:14px;padding:0;flex-shrink:0;line-height:1"><i class="ti ti-star${p.favorito?'-filled':''}"></i></button>
       <i class="ti ${tipo.icon}" style="color:${p.cor};font-size:15px;flex-shrink:0"></i>
       <span style="font-size:13.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(p.nome)}</span>
       ${_pr?`<i class="ti ${_pr.i}" title="Prioridade ${_pr.l}" style="color:${_pr.c};font-size:13px;flex-shrink:0"></i>`:''}
@@ -21732,7 +21741,10 @@ function projectProCardHTML(p){
     <div style="height:4px;background:${p.cor}"></div>
     <div style="padding:14px 16px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">
-        <div style="font-size:14px;font-weight:700;color:var(--text);line-height:1.3;flex:1">${escapeHTML(p.nome)}</div>
+        <div style="display:flex;align-items:flex-start;gap:6px;flex:1;min-width:0">
+          <button onclick="event.stopPropagation();_ppToggleFav('${p.id}')" title="${p.favorito?'Desafixar':'Fixar no topo'}" style="background:none;border:none;cursor:pointer;color:${p.favorito?'var(--amber)':'var(--text3)'};font-size:15px;padding:0;margin-top:1px;flex-shrink:0;line-height:1"><i class="ti ti-star${p.favorito?'-filled':''}"></i></button>
+          <div style="font-size:15px;font-weight:700;color:var(--text);line-height:1.3">${escapeHTML(p.nome)}</div>
+        </div>
         <span style="background:${status.color}22;color:${status.color};font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;text-transform:uppercase;white-space:nowrap;letter-spacing:.3px"><i class="ti ${status.icon}" style="font-size:10px"></i> ${status.label}</span>${prioPill}
       </div>
       ${p.descricao ? `<div style="font-size:12px;color:var(--text3);line-height:1.4;margin-bottom:10px;max-height:34px;overflow:hidden">${escapeHTML(p.descricao.slice(0,90))}${p.descricao.length>90?'…':''}</div>` : ''}
@@ -21740,7 +21752,7 @@ function projectProCardHTML(p){
         <div style="flex:1;height:6px;background:var(--bg2);border-radius:99px;overflow:hidden">
           <div style="height:100%;background:${p.cor};width:${prog.pct}%;transition:width .3s"></div>
         </div>
-        <span style="font-size:12px;font-weight:700;color:var(--text2);min-width:36px;text-align:right">${prog.pct}%</span>
+        <span style="font-size:15px;font-weight:800;color:var(--text);min-width:40px;text-align:right">${prog.pct}%</span>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:11px;color:var(--text3)">
         <span><i class="ti ti-checklist" style="font-size:11px"></i> ${prog.feitas}/${prog.total} tarefa${prog.total!==1?'s':''}</span>
