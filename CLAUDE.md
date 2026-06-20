@@ -73,6 +73,12 @@
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-06-20 — Mac de casa — hardening de segurança (feito)
+- Token PAT de teste (que tinha sido exposto no chat) **revogado** no GitHub. Auth do git no Mac segue
+  via `gh` (token `gho_` no Keychain) — push/pull OK, sem depender daquele PAT.
+- Supabase: **"Allow new users to sign up" desligado** (Authentication → Sign In/Providers → Email).
+  Cadastros novos trancados; contas existentes continuam logando. ✅ Resolve a pendência de segurança antiga.
+
 ### 2026-06-20 — Mac de casa — protótipo de UX da nova Análise Sensorial
 - ⚠️ CONTEXTO: este `index.html` é **só protótipo de layout/UX**. O Guilherme está montando o backend
   real no servidor/banco da Empresa; **a base de dados daqui é descartável** (serve pra passar a ideia de
