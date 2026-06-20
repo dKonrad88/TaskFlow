@@ -6482,16 +6482,18 @@ function _fornNome(id){ const f=(fornecedores||[]).find(x=>x.id===id); return f?
 function _cotNome(c){ return c.fornecedorId? _fornNome(c.fornecedorId) : (c.fornecedorNome||'Avulso'); }
 
 function _mntSeedForn(){ return [
-  {id:'fn_demo1', nome:'Inox Sul Equipamentos', categoria:'Inox / Tanques', contato:'Marcos', telefone:'(51) 99876-1234', email:'vendas@inoxsul.com.br', cnpj:'', cidade:'Caxias do Sul - RS', obs:'', ativo:true},
-  {id:'fn_demo2', nome:'MecanoTech Industrial', categoria:'Usinagem', contato:'Patrícia', telefone:'(51) 3211-7788', email:'comercial@mecanotech.com', cnpj:'', cidade:'Porto Alegre - RS', obs:'', ativo:true},
-  {id:'fn_demo3', nome:'Caldeiraria Triângulo', categoria:'Caldeiraria / Inox', contato:'João', telefone:'(54) 99123-0099', email:'orcamento@triangulo.ind.br', cnpj:'', cidade:'Bento Gonçalves - RS', obs:'', ativo:true},
+  {id:'fn_demo1', nome:'Inox Sul Equipamentos', categoriaMacro:'Inox / Tanques', categoria:'Tanques sob medida', produtos:['tanques','agitadores','tubulação inox'], contato:'Marcos', telefone:'(51) 99876-1234', email:'vendas@inoxsul.com.br', cnpj:'', cidade:'Caxias do Sul - RS', obs:'', ativo:true},
+  {id:'fn_demo2', nome:'MecanoTech Industrial', categoriaMacro:'Mecânica', categoria:'Usinagem', produtos:['usinagem','eixos','engrenagens'], contato:'Patrícia', telefone:'(51) 3211-7788', email:'comercial@mecanotech.com', cnpj:'', cidade:'Porto Alegre - RS', obs:'', ativo:true},
+  {id:'fn_demo3', nome:'Caldeiraria Triângulo', categoriaMacro:'Inox / Tanques', categoria:'Caldeiraria', produtos:['caldeiraria','tanques','serpentinas'], contato:'João', telefone:'(54) 99123-0099', email:'orcamento@triangulo.ind.br', cnpj:'', cidade:'Bento Gonçalves - RS', obs:'', ativo:true},
+  {id:'fn_demo4', nome:'EletroPeças RS', categoriaMacro:'Elétrica', categoria:'Componentes', produtos:['correia','resistência','datador','sensores'], contato:'Renata', telefone:'(51) 3344-1212', email:'vendas@eletropecas.com', cnpj:'', cidade:'Novo Hamburgo - RS', obs:'', ativo:true},
 ]; }
 function _mntSeedOrc(){ return [{
   id:'or_demo1', titulo:'Tanque de mistura 1000L (inox 304)', descricao:'Tanque encamisado com agitador, p/ a linha de cobertura.', data:today, status:'aberto', escolhidoId:null,
+  campos:[{id:'cp_alt',label:'Altura (mm)'},{id:'cp_dia',label:'Diâmetro (mm)'},{id:'cp_mat',label:'Material'}],
   cotacoes:[
-    {id:'ct_d1', fornecedorId:'fn_demo1', fornecedorNome:'', preco:'38500', prazoDias:'45', pagamento:'30/60/90', frete:'Incluso', garantia:'12 meses', obs:'Inclui instalação'},
-    {id:'ct_d2', fornecedorId:'fn_demo2', fornecedorNome:'', preco:'34900', prazoDias:'60', pagamento:'À vista', frete:'Por nossa conta', garantia:'12 meses', obs:''},
-    {id:'ct_d3', fornecedorId:'fn_demo3', fornecedorNome:'', preco:'41200', prazoDias:'35', pagamento:'50% + 50%', frete:'Incluso', garantia:'24 meses', obs:'Melhor prazo e garantia'},
+    {id:'ct_d1', fornecedorId:'fn_demo1', fornecedorNome:'', preco:'38500', prazoDias:'45', pagamento:'30/60/90', frete:'Incluso', garantia:'12 meses', obs:'Inclui instalação', extra:{cp_alt:'1800', cp_dia:'950', cp_mat:'Inox 304'}},
+    {id:'ct_d2', fornecedorId:'fn_demo2', fornecedorNome:'', preco:'34900', prazoDias:'60', pagamento:'À vista', frete:'Por nossa conta', garantia:'12 meses', obs:'', extra:{cp_alt:'1750', cp_dia:'980', cp_mat:'Inox 304'}},
+    {id:'ct_d3', fornecedorId:'fn_demo3', fornecedorNome:'', preco:'41200', prazoDias:'35', pagamento:'50% + 50%', frete:'Incluso', garantia:'24 meses', obs:'Melhor prazo e garantia', extra:{cp_alt:'1800', cp_dia:'1000', cp_mat:'Inox 316L'}},
   ],
 }]; }
 function _mntLoad(){
@@ -6501,24 +6503,63 @@ function _mntLoad(){
 function saveFornecedores(){ safeSetItem(LS_FORNECEDORES, JSON.stringify(fornecedores||[])); }
 function saveOrcamentos(){ safeSetItem(LS_ORCAMENTOS, JSON.stringify(orcamentos||[])); }
 
+// Busca/filtro da lista de fornecedores (por nome, produto, categoria macro)
+let _fnQuery=''; let _fnMacro='';
+function _fnNorm(s){ return (s==null?'':String(s)).toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,''); }
+function _fnMacros(){ const s=new Set(); (fornecedores||[]).forEach(f=>{ if(f.categoriaMacro) s.add(f.categoriaMacro); }); return Array.from(s).sort((a,b)=>a.localeCompare(b,'pt-BR')); }
+function _fnFiltrar(){
+  let arr=(fornecedores||[]).slice();
+  if(_fnMacro) arr=arr.filter(f=>(f.categoriaMacro||'')===_fnMacro);
+  const q=_fnNorm(_fnQuery).trim();
+  if(q) arr=arr.filter(f=> _fnNorm(f.nome).includes(q) || _fnNorm(f.categoria).includes(q) || _fnNorm(f.categoriaMacro).includes(q) || (f.produtos||[]).some(pr=>_fnNorm(pr).includes(q)) );
+  return arr.sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));
+}
+function _fnSetQuery(v){ _fnQuery=v; const el=document.getElementById('forn-lista'); if(el) el.innerHTML=_fnCardsHTML(); }
+function _fnSetMacro(m){ _fnMacro=(_fnMacro===m?'':m); renderFornecedores(); }
+function _fnLimpar(){ _fnQuery=''; _fnMacro=''; renderFornecedores(); }
+
+// Campos personalizados do orçamento (a "ficha" do item comprado) + valores por cotação
+function _moAddCampo(){ if(!mntOrcBuf) return; if(!Array.isArray(mntOrcBuf.campos)) mntOrcBuf.campos=[]; mntOrcBuf.campos.push({id:_mntId('cp'), label:''}); renderManutencao(); }
+function _moDelCampo(cpid){ if(!mntOrcBuf) return; mntOrcBuf.campos=(mntOrcBuf.campos||[]).filter(c=>c.id!==cpid); renderManutencao(); }
+function _moSetCampo(cpid,label){ if(!mntOrcBuf) return; const c=(mntOrcBuf.campos||[]).find(x=>x.id===cpid); if(c) c.label=label; _moRefreshComparacao(); }
+function _moSetExtra(cid,cpid,val){ if(!mntOrcBuf) return; const c=mntOrcBuf.cotacoes.find(x=>x.id===cid); if(c){ if(!c.extra) c.extra={}; c.extra[cpid]=val; } _moRefreshComparacao(); }
+
 // ─── FORNECEDORES ───
-function renderFornecedores(){
-  _mntLoad();
-  if(manutFornecedorAberto){ renderFornecedorEditor(); return; }
-  const main=document.getElementById('task-container'); if(!main) return;
-  const arr=(fornecedores||[]).slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
+function _fnCardsHTML(){
+  const arr=_fnFiltrar();
+  if(!arr.length) return `<div style="text-align:center; padding:46px 0; color:var(--text3);"><i class="ti ti-search-off" style="font-size:34px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum fornecedor encontrado${(_fnQuery||_fnMacro)?` <button onclick="_fnLimpar()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;text-decoration:underline;padding:0">Limpar filtros</button>`:''}.</div>`;
   const card=f=>`<div onclick="editarFornecedor('${f.id}')" style="background:var(--card); border:1px solid var(--border); border-radius:11px; padding:13px 16px; cursor:pointer; transition:border-color .15s;" onmouseover="this.style.borderColor='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)'">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-        <div style="font-size:14px; font-weight:700; color:var(--text);">${escapeHTML(f.nome||'Sem nome')}</div>
+        <div style="display:flex; align-items:center; gap:8px; min-width:0; flex-wrap:wrap;">
+          <div style="font-size:14px; font-weight:700; color:var(--text);">${escapeHTML(f.nome||'Sem nome')}</div>
+          ${f.categoriaMacro?`<span style="font-size:10.5px; font-weight:700; color:var(--blue-mid); background:color-mix(in srgb,var(--blue-mid) 12%,transparent); border-radius:20px; padding:2px 9px; white-space:nowrap;">${escapeHTML(f.categoriaMacro)}</span>`:''}
+        </div>
         ${f.ativo===false?'<span style="font-size:10.5px; font-weight:700; color:var(--text3); border:1px solid var(--border); border-radius:20px; padding:2px 8px;">Inativo</span>':''}
       </div>
-      <div style="font-size:11.5px; color:var(--text3); margin-top:5px; display:flex; gap:14px; flex-wrap:wrap;">
-        ${f.categoria?`<span><i class="ti ti-tag"></i> ${escapeHTML(f.categoria)}</span>`:''}
+      ${(f.produtos&&f.produtos.length)?`<div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:7px;">${f.produtos.map(pr=>`<span style="font-size:10.5px; color:var(--text2); background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:2px 7px;">${escapeHTML(pr)}</span>`).join('')}</div>`:''}
+      <div style="font-size:11.5px; color:var(--text3); margin-top:7px; display:flex; gap:14px; flex-wrap:wrap;">
         ${f.contato?`<span><i class="ti ti-user"></i> ${escapeHTML(f.contato)}</span>`:''}
         ${f.telefone?`<span><i class="ti ti-phone"></i> ${escapeHTML(f.telefone)}</span>`:''}
         ${f.cidade?`<span><i class="ti ti-map-pin"></i> ${escapeHTML(f.cidade)}</span>`:''}
       </div>
     </div>`;
+  return `<div style="display:flex; flex-direction:column; gap:9px;">${arr.map(card).join('')}</div>`;
+}
+function renderFornecedores(){
+  _mntLoad();
+  if(manutFornecedorAberto){ renderFornecedorEditor(); return; }
+  const main=document.getElementById('task-container'); if(!main) return;
+  const temForn=(fornecedores||[]).length>0;
+  const macros=_fnMacros();
+  const chip=(m,lbl,at)=>`<button data-m="${escapeAttr(m)}" onclick="_fnSetMacro(this.dataset.m)" style="border:1px solid ${at?'var(--blue-mid)':'var(--border)'}; border-radius:99px; padding:5px 12px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; background:${at?'color-mix(in srgb,var(--blue-mid) 14%,transparent)':'transparent'}; color:${at?'var(--blue-mid)':'var(--text3)'};">${escapeHTML(lbl)}</button>`;
+  const toolbar = temForn ? `
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+      <div style="position:relative; flex:1; min-width:200px; max-width:360px;">
+        <i class="ti ti-search" style="position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--text3); font-size:15px;"></i>
+        <input id="forn-busca" value="${escapeAttr(_fnQuery)}" oninput="_fnSetQuery(this.value)" placeholder="Buscar por nome ou produto…" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:9px; padding:9px 11px 9px 34px; font-size:13px; color:var(--text); font-family:inherit;">
+      </div>
+      ${macros.length?`<div style="display:inline-flex; gap:6px; flex-wrap:wrap;">${chip('','Todas',_fnMacro==='')}${macros.map(m=>chip(m,m,_fnMacro===m)).join('')}</div>`:''}
+    </div>` : '';
   main.innerHTML=`
     <div style="padding:20px 4px 40px; max-width:1100px;">
       ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Fornecedores'}])}
@@ -6526,14 +6567,16 @@ function renderFornecedores(){
         <h1 style="font-size:23px; font-weight:700; color:var(--text);">Fornecedores</h1>
         <button onclick="novoFornecedor()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Novo fornecedor</button>
       </div>
-      <div style="font-size:12.5px; color:var(--text3); margin-bottom:18px;">Cadastro de fornecedores — usados nas cotações dos orçamentos.</div>
-      ${arr.length? `<div style="display:flex; flex-direction:column; gap:9px;">${arr.map(card).join('')}</div>`
+      <div style="font-size:12.5px; color:var(--text3); margin-bottom:14px;">Cadastro com categoria macro, produtos e busca — usados nas cotações dos orçamentos.</div>
+      ${toolbar}
+      ${temForn? `<div id="forn-lista">${_fnCardsHTML()}</div>`
         : '<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-building-store" style="font-size:38px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum fornecedor ainda</div>'}
     </div>`;
 }
-function novoFornecedor(){ mntFornBuf={id:_mntId('fn'), nome:'', categoria:'', contato:'', telefone:'', email:'', cnpj:'', cidade:'', obs:'', ativo:true, _novo:true}; manutFornecedorAberto=mntFornBuf.id; renderManutencao(); }
+function novoFornecedor(){ mntFornBuf={id:_mntId('fn'), nome:'', categoriaMacro:'', categoria:'', produtos:[], contato:'', telefone:'', email:'', cnpj:'', cidade:'', obs:'', ativo:true, _novo:true}; manutFornecedorAberto=mntFornBuf.id; renderManutencao(); }
 function editarFornecedor(id){ _mntLoad(); const f=(fornecedores||[]).find(x=>x.id===id); if(!f) return; mntFornBuf=JSON.parse(JSON.stringify(f)); mntFornBuf._novo=false; manutFornecedorAberto=id; renderManutencao(); }
 function _mfSet(campo,val){ if(mntFornBuf) mntFornBuf[campo]=val; }
+function _mfSetLista(campo,val){ if(mntFornBuf) mntFornBuf[campo]=String(val).split(',').map(s=>s.trim()).filter(Boolean); }
 function fornVoltar(){ manutFornecedorAberto=null; mntFornBuf=null; renderManutencao(); }
 function salvarFornecedor(){ const b=mntFornBuf; if(!b) return; if(!String(b.nome).trim()){ toast('Dê um nome ao fornecedor'); return; } _mntLoad(); delete b._novo; const i=fornecedores.findIndex(x=>x.id===b.id); if(i>=0) fornecedores[i]=b; else fornecedores.push(b); saveFornecedores(); toast('Fornecedor salvo'); manutFornecedorAberto=null; mntFornBuf=null; renderManutencao(); }
 function excluirFornecedor(id){ if(!confirm('Excluir este fornecedor?')) return; fornecedores=(fornecedores||[]).filter(x=>x.id!==id); saveFornecedores(); manutFornecedorAberto=null; mntFornBuf=null; toast('Fornecedor excluído'); renderManutencao(); }
@@ -6548,9 +6591,11 @@ function renderFornecedorEditor(){
       <div style="display:flex; flex-direction:column; gap:14px;">
         ${campo('Nome *','nome','Razão social ou nome fantasia')}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-          ${campo('Categoria','categoria','Inox, usinagem, elétrica…')}
+          <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Categoria macro</label><input list="forn-macros-dl" value="${escapeAttr(b.categoriaMacro||'')}" oninput="_mfSet('categoriaMacro',this.value)" placeholder="Elétrica, Mecânica, Inox…" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;"><datalist id="forn-macros-dl">${[...new Set([..._fnMacros(),'Elétrica','Mecânica','Inox / Tanques','Insumos','Serviços','Hidráulica','Pneumática'])].map(m=>`<option value="${escapeAttr(m)}"></option>`).join('')}</datalist></div>
           ${campo('Cidade / UF','cidade','Caxias do Sul - RS')}
         </div>
+        <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Produtos que fornece <span style="font-weight:600; text-transform:none; color:var(--text3)">· separados por vírgula</span></label><input value="${escapeAttr((b.produtos||[]).join(', '))}" oninput="_mfSetLista('produtos',this.value)" placeholder="correia, resistência, datador" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;"></div>
+        ${campo('Segmento / categoria','categoria','Opcional — ex.: tanques sob medida')}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
           ${campo('Contato','contato','Nome do vendedor')}
           ${campo('Telefone','telefone','(51) 99999-0000')}
@@ -6602,10 +6647,10 @@ function renderOrcamentos(){
         : '<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-receipt-2" style="font-size:38px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum orçamento ainda</div>'}
     </div>`;
 }
-function novoOrcamento(){ mntOrcBuf={id:_mntId('or'), titulo:'', descricao:'', data:today, status:'aberto', escolhidoId:null, cotacoes:[], _novo:true}; manutOrcamentoAberto=mntOrcBuf.id; renderManutencao(); }
-function editarOrcamento(id){ _mntLoad(); const o=(orcamentos||[]).find(x=>x.id===id); if(!o) return; mntOrcBuf=JSON.parse(JSON.stringify(o)); if(!Array.isArray(mntOrcBuf.cotacoes)) mntOrcBuf.cotacoes=[]; mntOrcBuf._novo=false; manutOrcamentoAberto=id; renderManutencao(); }
+function novoOrcamento(){ mntOrcBuf={id:_mntId('or'), titulo:'', descricao:'', data:today, status:'aberto', escolhidoId:null, campos:[], cotacoes:[], _novo:true}; manutOrcamentoAberto=mntOrcBuf.id; renderManutencao(); }
+function editarOrcamento(id){ _mntLoad(); const o=(orcamentos||[]).find(x=>x.id===id); if(!o) return; mntOrcBuf=JSON.parse(JSON.stringify(o)); if(!Array.isArray(mntOrcBuf.cotacoes)) mntOrcBuf.cotacoes=[]; if(!Array.isArray(mntOrcBuf.campos)) mntOrcBuf.campos=[]; mntOrcBuf.cotacoes.forEach(c=>{ if(!c.extra) c.extra={}; }); mntOrcBuf._novo=false; manutOrcamentoAberto=id; renderManutencao(); }
 function _moSet(campo,val){ if(mntOrcBuf) mntOrcBuf[campo]=val; }
-function _moAddCotacao(){ if(!mntOrcBuf) return; mntOrcBuf.cotacoes.push({id:_mntId('ct'), fornecedorId:'', fornecedorNome:'', preco:'', prazoDias:'', pagamento:'', frete:'', garantia:'', obs:''}); renderManutencao(); }
+function _moAddCotacao(){ if(!mntOrcBuf) return; mntOrcBuf.cotacoes.push({id:_mntId('ct'), fornecedorId:'', fornecedorNome:'', preco:'', prazoDias:'', pagamento:'', frete:'', garantia:'', obs:'', extra:{}}); renderManutencao(); }
 function _moDelCotacao(cid){ if(!mntOrcBuf) return; mntOrcBuf.cotacoes=mntOrcBuf.cotacoes.filter(c=>c.id!==cid); if(mntOrcBuf.escolhidoId===cid){ mntOrcBuf.escolhidoId=null; mntOrcBuf.status='aberto'; } renderManutencao(); }
 function _moSetCotacao(cid,campo,val){ if(!mntOrcBuf) return; const c=mntOrcBuf.cotacoes.find(x=>x.id===cid); if(c) c[campo]=val; if(campo==='preco'||campo==='prazoDias') _moRefreshComparacao(); }
 function _moEscolher(cid){ if(!mntOrcBuf) return; mntOrcBuf.escolhidoId = (mntOrcBuf.escolhidoId===cid? null : cid); mntOrcBuf.status = mntOrcBuf.escolhidoId? 'decidido':'aberto'; renderManutencao(); }
@@ -6630,7 +6675,9 @@ function _orcComparacaoHTML(b){
       <div style="font-size:13px; font-weight:800; color:${esc?'var(--success)':'var(--text)'};">${escapeHTML(_cotNome(c))}${esc?' <i class="ti ti-circle-check"></i>':''}</div>
       <button onclick="_moEscolher('${c.id}')" style="margin-top:6px; background:${esc?'var(--success)':'none'}; color:${esc?'#fff':'var(--text2)'}; border:1px solid ${esc?'var(--success)':'var(--border)'}; border-radius:7px; padding:4px 10px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit;">${esc?'Escolhido':'Escolher'}</button>
     </th>`; }).join('')}</tr>`;
-  const body=linhas.map(([lbl,fn])=>`<tr style="border-bottom:1px solid color-mix(in srgb, var(--border) 50%, transparent);"><td style="padding:9px 10px; font-size:12px; color:var(--text3); font-weight:600; position:sticky; left:0; background:var(--bg);">${lbl}</td>${cots.map(c=>`<td style="padding:9px 10px; font-size:12.5px; color:var(--text2); ${b.escolhidoId===c.id?'background:color-mix(in srgb, var(--success) 7%, transparent);':''}">${fn(c)}</td>`).join('')}</tr>`).join('');
+  const camposExtra=(b.campos||[]).map(cp=>[cp.label||'Campo', c=>escapeHTML((c.extra&&c.extra[cp.id])||'—')]);
+  const linhasAll=linhas.concat(camposExtra);
+  const body=linhasAll.map(([lbl,fn])=>`<tr style="border-bottom:1px solid color-mix(in srgb, var(--border) 50%, transparent);"><td style="padding:9px 10px; font-size:12px; color:var(--text3); font-weight:600; position:sticky; left:0; background:var(--bg);">${escapeHTML(lbl)}</td>${cots.map(c=>`<td style="padding:9px 10px; font-size:12.5px; color:var(--text2); ${b.escolhidoId===c.id?'background:color-mix(in srgb, var(--success) 7%, transparent);':''}">${fn(c)}</td>`).join('')}</tr>`).join('');
   // insight
   const cheapest=cots.filter(c=>_num(c.preco)!=null).sort((x,y)=>_num(x.preco)-_num(y.preco))[0];
   const fastest=cots.filter(c=>_num(c.prazoDias)!=null).sort((x,y)=>_num(x.prazoDias)-_num(y.prazoDias))[0];
@@ -6656,6 +6703,7 @@ function renderOrcamentoEditor(){
         <input value="${escapeAttr(c.garantia||'')}" oninput="_moSetCotacao('${c.id}','garantia',this.value)" placeholder="Garantia" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">
         <input value="${escapeAttr(c.obs||'')}" oninput="_moSetCotacao('${c.id}','obs',this.value)" placeholder="Observação" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">
       </div>
+      ${(mntOrcBuf.campos&&mntOrcBuf.campos.length)?`<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); gap:8px; margin-top:8px;">${mntOrcBuf.campos.map(cp=>`<input value="${escapeAttr((c.extra&&c.extra[cp.id])||'')}" oninput="_moSetExtra('${c.id}','${cp.id}',this.value)" placeholder="${escapeAttr(cp.label||'Campo')}" style="box-sizing:border-box; background:var(--bg3); border:1px dashed var(--blue-mid); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">`).join('')}</div>`:''}
     </div>`;
   main.innerHTML=`
     <div style="padding:20px 4px 60px; max-width:1000px;">
@@ -6666,6 +6714,13 @@ function renderOrcamentoEditor(){
         <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px;">
           <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Descrição</label><input value="${escapeAttr(b.descricao||'')}" oninput="_moSet('descricao',this.value)" placeholder="Especificação, finalidade…" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;"></div>
           <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Data</label><input type="date" value="${escapeAttr(b.data||'')}" oninput="_moSet('data',this.value)" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 11px; font-size:13px; color:var(--text); font-family:inherit;"></div>
+        </div>
+        <div>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin:6px 0 8px;">
+            <label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase;">Campos personalizados <span style="font-weight:600; text-transform:none; color:var(--text3)">· o que comparar (ex.: Altura, Material)</span></label>
+            <button onclick="_moAddCampo()" style="background:none; border:1px solid var(--blue-mid); color:var(--blue-mid); border-radius:7px; padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-plus"></i> Campo</button>
+          </div>
+          ${(b.campos&&b.campos.length)?`<div style="display:flex; flex-wrap:wrap; gap:8px;">${b.campos.map(cp=>`<div style="display:flex; align-items:center; gap:4px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:4px 6px 4px 10px;"><input value="${escapeAttr(cp.label||'')}" oninput="_moSetCampo('${cp.id}',this.value)" placeholder="Nome do campo" style="border:none; background:none; font-size:12.5px; color:var(--text); font-family:inherit; width:120px; outline:none;"><button onclick="_moDelCampo('${cp.id}')" title="Remover campo" style="background:none; border:none; color:var(--text3); cursor:pointer; padding:2px;"><i class="ti ti-x" style="font-size:13px"></i></button></div>`).join('')}</div>`:'<div style="font-size:12px; color:var(--text3);">Nenhum campo extra — adicione os que quiser (ex.: Altura, Largura, Material).</div>'}
         </div>
         <div>
           <div style="display:flex; align-items:center; justify-content:space-between; margin:6px 0 8px;">
