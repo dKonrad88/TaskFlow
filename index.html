@@ -5529,7 +5529,7 @@ function _doDeletePerson(id){
   people=people.filter(x=>x.id!==id);
   selPeople=selPeople.filter(x=>x!==id);
   tasks.forEach(t=>{if(t.people)t.people=t.people.filter(x=>x!==id);saveTask_db(t);});
-  deletePerson_db(id);renderPeopleDropdown();renderSidebar();render();toast('🗑️ Pessoa movida para a lixeira');
+  deletePerson_db(id);renderPeopleDropdown();renderSidebar();render();_mostrarFABDesfazer('Pessoa excluída', 0);
 }
 const STORE_ROTINA_DONE='taskflow_rotina_done';
 let rotinaDone={};// {rotinaId: 'YYYY-MM-DD'} — último dia executado
@@ -8069,6 +8069,7 @@ function _cardProduto(f){
         <div style="font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(f.produto||'Produto sem nome')}</div>
         <div style="font-size:11.5px; color:var(--text3); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Cód. ${escapeHTML(f.codigo||'—')} · ${escapeHTML(f.marca||'')}${f.tipoProducao?' · '+escapeHTML(f.tipoProducao):''} ${f.ativo==='Não'?'· <span style="color:var(--danger)">Inativo</span>':''}</div>
       </div>
+      <button onclick="event.stopPropagation(); excluirFichaProduto('${f.id}')" title="Excluir (vai para a Lixeira)" style="background:none; border:none; color:var(--text3); cursor:pointer; padding:3px; border-radius:6px; flex-shrink:0;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-trash" style="font-size:15px"></i></button>
       <i class="ti ti-chevron-right" style="color:var(--text3); font-size:16px; flex-shrink:0;"></i>
     </div>`;
 }
@@ -8213,11 +8214,13 @@ function salvarFichaProduto(id){
   renderProducao();
 }
 function excluirFichaProduto(id){
-  if(!confirm('Excluir esta ficha de produto?')) return;
+  const it=fichasProduto.find(x=>x.id===id); if(!it) return;
+  moveToTrash('fichaProduto', it);
   fichasProduto = fichasProduto.filter(x=>x.id!==id);
   saveFichasProduto();
   fichaProdutoAberta = null;
   renderProducao();
+  _mostrarFABDesfazer('Produto excluído', 0);
 }
 
 // ─── Seed: ficha real do Pão de Mel (da imagem) ───
@@ -8745,6 +8748,8 @@ function restoreFromTrash(idx){
     _mntLoad(); orcamentos.push(item); saveOrcamentos();
   } else if(type==='preventiva'){
     _eqLoad(); const _e=(equipamentos||[]).find(x=>x.id===item.equipId); if(_e){ (_e.planos=_e.planos||[]).push(item.plano); saveEquipamentos(); }
+  } else if(type==='fichaProduto'){
+    fichasProduto.push(item); saveFichasProduto();
   }
   trash.splice(idx,1);
   saveTrash_db();
@@ -8806,8 +8811,8 @@ function limparOrfaos(itensExcluidos){
   if(mudouCutucadas) saveCutucadas();
 }
 
-const TRASH_TYPE_LABELS={task:'Tarefas',rotina:'Rotinas',note:'Notas',project:'Projetos',projectPro:'Projetos',meeting:'Reuniões',compromisso:'Compromissos',person:'Pessoas',equipamento:'Equipamentos',ordem:'Ordens de Manutenção',fornecedor:'Fornecedores',orcamento:'Orçamentos',preventiva:'Planos de preventiva'};
-const TRASH_TYPE_ICONS={task:'ti-check',rotina:'ti-repeat',note:'ti-notes',project:'ti-folders',projectPro:'ti-folders',meeting:'ti-speakerphone',compromisso:'ti-calendar-time',person:'ti-user',equipamento:'ti-settings-automation',ordem:'ti-clipboard-list',fornecedor:'ti-building-store',orcamento:'ti-receipt-2',preventiva:'ti-calendar-repeat'};
+const TRASH_TYPE_LABELS={task:'Tarefas',rotina:'Rotinas',note:'Notas',project:'Projetos',projectPro:'Projetos',meeting:'Reuniões',compromisso:'Compromissos',person:'Pessoas',equipamento:'Equipamentos',ordem:'Ordens de Manutenção',fornecedor:'Fornecedores',orcamento:'Orçamentos',preventiva:'Planos de preventiva',fichaProduto:'Produtos'};
+const TRASH_TYPE_ICONS={task:'ti-check',rotina:'ti-repeat',note:'ti-notes',project:'ti-folders',projectPro:'ti-folders',meeting:'ti-speakerphone',compromisso:'ti-calendar-time',person:'ti-user',equipamento:'ti-settings-automation',ordem:'ti-clipboard-list',fornecedor:'ti-building-store',orcamento:'ti-receipt-2',preventiva:'ti-calendar-repeat',fichaProduto:'ti-package'};
 let _trashFilter='todos';
 function setTrashFilter(t){ _trashFilter=t; renderLixeira(); }
 
@@ -8824,7 +8829,7 @@ function renderLixeira(){
     const {type,item}=entry;
     const label=TRASH_TYPE_LABELS[type]||type;
     const icon=TRASH_TYPE_ICONS[type]||'ti-trash';
-    const nome=item.title||item.nome||item.name||item.titulo||(item.body?item.body.slice(0,40):'')||'Sem nome';
+    const nome=item.title||item.nome||item.name||item.titulo||item.produto||(item.body?item.body.slice(0,40):'')||'Sem nome';
     const dias=diasRestantes(entry);
     const corDias=dias<=3?'var(--danger)':dias<=7?'var(--amber)':'var(--text3)';
     const dataExclusao=new Date(entry.deletedAt).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
