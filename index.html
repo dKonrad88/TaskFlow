@@ -8256,6 +8256,16 @@ function _fichaExemploPaoDeMel(){
 // FIM MÓDULO PRODUÇÃO
 // ════════════════════════════════════════════════════════════════════
 
+// Lixeira é compartilhada por todas as áreas — rodapé fixo da sidebar de cada hub.
+function irParaLixeira(){ if(typeof setTab==='function') setTab('lixeira', null); }
+function _sbLixeiraFooter(){
+  const at = (typeof currentTab!=='undefined' && currentTab==='lixeira');
+  return `<div style="padding:6px 8px 10px; margin-top:8px; border-top:1px solid var(--border);">
+    <button class="sbnav-item" onclick="irParaLixeira()" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border:none; border-radius:9px; font-size:13px; font-weight:600; color:${at?'var(--blue-mid)':'var(--text2)'}; background:${at?'color-mix(in srgb, var(--blue-mid) 12%, transparent)':'none'}; cursor:pointer; width:100%; font-family:inherit;" ${at?'':'onmouseover="this.style.background=\'var(--bg2)\'" onmouseout="this.style.background=\'none\'"'}>
+      <i class="ti ti-trash"></i> <span>Lixeira</span>
+    </button>
+  </div>`;
+}
 function renderSidebar(){
   const sb=document.getElementById('sidebar');
   if(!sb) return;
@@ -8273,16 +8283,17 @@ function renderSidebar(){
       </div>
       ${hubGroupDivider('ÁREAS')}
       <div style="padding:2px 8px 8px;">
-        <button class="sbnav-item" onclick="switchToProducao()" style="display:flex; align-items:center; gap:10px; padding:10px 12px; border:none; border-radius:9px; font-size:13px; font-weight:600; color:var(--text2); background:none; cursor:pointer; width:100%; font-family:inherit; margin-bottom:2px;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='none'">
-          <i class="ti ti-building-factory-2"></i> <span>Produção</span>
-        </button>
         <button class="sbnav-item" onclick="switchToManutencao()" style="display:flex; align-items:center; gap:10px; padding:10px 12px; border:none; border-radius:9px; font-size:13px; font-weight:600; color:var(--text2); background:none; cursor:pointer; width:100%; font-family:inherit; margin-bottom:2px;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='none'">
           <i class="ti ti-tool"></i> <span>Manutenção</span>
+        </button>
+        <button class="sbnav-item" onclick="switchToProducao()" style="display:flex; align-items:center; gap:10px; padding:10px 12px; border:none; border-radius:9px; font-size:13px; font-weight:600; color:var(--text2); background:none; cursor:pointer; width:100%; font-family:inherit; margin-bottom:2px;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='none'">
+          <i class="ti ti-building-factory-2"></i> <span>Produção</span>
         </button>
         <button class="sbnav-item" onclick="switchToQualidade()" style="display:flex; align-items:center; gap:10px; padding:10px 12px; border:none; border-radius:9px; font-size:13px; font-weight:600; color:var(--text2); background:none; cursor:pointer; width:100%; font-family:inherit;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='none'">
           <i class="ti ti-certificate"></i> <span>Qualidade</span>
         </button>
       </div>
+      ${_sbLixeiraFooter()}
     `;
     return;
   }
@@ -8306,6 +8317,7 @@ function renderSidebar(){
         ${item('ordens','ti-clipboard-list','Ordens de Produção', _sub==='ordens')}
         ${item('checklists','ti-checkup-list','Check list', _sub==='checklists')}
       </div>
+      ${_sbLixeiraFooter()}
     `;
     return;
   }
@@ -8331,6 +8343,7 @@ function renderSidebar(){
         ${item('fornecedores','ti-building-store','Fornecedores', _sub==='fornecedores')}
         ${item('orcamentos','ti-receipt-2','Orçamentos', _sub==='orcamentos')}
       </div>
+      ${_sbLixeiraFooter()}
     `;
     return;
   }
@@ -8353,6 +8366,7 @@ function renderSidebar(){
         ${item('naoconformidades','ti-alert-octagon','Não conformidades', _sub==='naoconformidades')}
         ${item('auditorias','ti-clipboard-check','Auditorias', _sub==='auditorias')}
       </div>
+      ${_sbLixeiraFooter()}
     `;
     return;
   }

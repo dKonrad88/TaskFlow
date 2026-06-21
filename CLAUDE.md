@@ -73,6 +73,14 @@
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-06-20 — Mac de casa — Lixeira global na sidebar + áreas em ordem alfabética
+- **Lixeira no rodapé de TODAS as áreas:** helper `_sbLixeiraFooter()` + `irParaLixeira()` (= `setTab('lixeira',null)`,
+  troca pro Gerenciador e abre a Lixeira). Adicionado ao rodapé das sidebars: Meu dia, Produção, Manutenção,
+  Qualidade. A lixeira em si continua única (LS_TRASH) — só o ACESSO virou global. Botão fica realçado quando ativo.
+- **Áreas em ordem alfabética** na home (sidebar do Meu dia): Manutenção → Produção → Qualidade. Próximas áreas
+  que surgirem devem entrar na ordem alfabética também.
+- **FAB Desfazer** após excluir itens da Manutenção (reusa `_mostrarFABDesfazer(label,0)`, igual às tarefas).
+
 ### 2026-06-20 — Mac de casa — Manutenção: excluir no card + lixeira integrada
 - Cada card das listas da Manutenção (Equipamentos, Ordens, Fornecedores, Orçamentos, Preventivas) ganhou
   um **botão de excluir** (lixeira) com `event.stopPropagation`. Exclusão é rápida (sem confirm).
