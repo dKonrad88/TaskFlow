@@ -6588,7 +6588,7 @@ function _mfSet(campo,val){ if(mntFornBuf) mntFornBuf[campo]=val; }
 function _mfSetLista(campo,val){ if(mntFornBuf) mntFornBuf[campo]=String(val).split(',').map(s=>s.trim()).filter(Boolean); }
 function fornVoltar(){ manutFornecedorAberto=null; mntFornBuf=null; renderManutencao(); }
 function salvarFornecedor(){ const b=mntFornBuf; if(!b) return; if(!String(b.nome).trim()){ toast('Dê um nome ao fornecedor'); return; } _mntLoad(); delete b._novo; const i=fornecedores.findIndex(x=>x.id===b.id); if(i>=0) fornecedores[i]=b; else fornecedores.push(b); saveFornecedores(); toast('Fornecedor salvo'); manutFornecedorAberto=null; mntFornBuf=null; renderManutencao(); }
-function excluirFornecedor(id){ _mntLoad(); const it=(fornecedores||[]).find(x=>x.id===id); if(!it) return; moveToTrash('fornecedor', it); fornecedores=fornecedores.filter(x=>x.id!==id); saveFornecedores(); manutFornecedorAberto=null; mntFornBuf=null; toast('Fornecedor movido para a Lixeira'); renderManutencao(); }
+function excluirFornecedor(id){ _mntLoad(); const it=(fornecedores||[]).find(x=>x.id===id); if(!it) return; moveToTrash('fornecedor', it); fornecedores=fornecedores.filter(x=>x.id!==id); saveFornecedores(); manutFornecedorAberto=null; mntFornBuf=null; renderManutencao(); _mostrarFABDesfazer('Fornecedor excluído', 0); }
 function renderFornecedorEditor(){
   const b=mntFornBuf; if(!b){ fornVoltar(); return; }
   const main=document.getElementById('task-container'); if(!main) return;
@@ -6665,7 +6665,7 @@ function _moSetCotacao(cid,campo,val){ if(!mntOrcBuf) return; const c=mntOrcBuf.
 function _moEscolher(cid){ if(!mntOrcBuf) return; mntOrcBuf.escolhidoId = (mntOrcBuf.escolhidoId===cid? null : cid); mntOrcBuf.status = mntOrcBuf.escolhidoId? 'decidido':'aberto'; renderManutencao(); }
 function orcVoltar(){ manutOrcamentoAberto=null; mntOrcBuf=null; renderManutencao(); }
 function salvarOrcamento(){ const b=mntOrcBuf; if(!b) return; if(!String(b.titulo).trim()){ toast('Dê um título ao orçamento'); return; } _mntLoad(); delete b._novo; const i=orcamentos.findIndex(x=>x.id===b.id); if(i>=0) orcamentos[i]=b; else orcamentos.push(b); saveOrcamentos(); toast('Orçamento salvo'); manutOrcamentoAberto=null; mntOrcBuf=null; renderManutencao(); }
-function excluirOrcamento(id){ _mntLoad(); const it=(orcamentos||[]).find(x=>x.id===id); if(!it) return; moveToTrash('orcamento', it); orcamentos=orcamentos.filter(x=>x.id!==id); saveOrcamentos(); manutOrcamentoAberto=null; mntOrcBuf=null; toast('Orçamento movido para a Lixeira'); renderManutencao(); }
+function excluirOrcamento(id){ _mntLoad(); const it=(orcamentos||[]).find(x=>x.id===id); if(!it) return; moveToTrash('orcamento', it); orcamentos=orcamentos.filter(x=>x.id!==id); saveOrcamentos(); manutOrcamentoAberto=null; mntOrcBuf=null; renderManutencao(); _mostrarFABDesfazer('Orçamento excluído', 0); }
 function _moRefreshComparacao(){ const el=document.getElementById('orc-comparacao'); if(el && mntOrcBuf) el.innerHTML=_orcComparacaoHTML(mntOrcBuf); }
 function _orcComparacaoHTML(b){
   const cots=b.cotacoes||[];
@@ -6780,7 +6780,7 @@ function editarOrdem(id){ _osLoad(); const o=(ordens||[]).find(x=>x.id===id); if
 function _osSet(campo,val){ if(!mntOrdBuf) return; mntOrdBuf[campo]=val; if(campo==='status' && val==='concluida' && !mntOrdBuf.dataConclusao){ mntOrdBuf.dataConclusao=today; renderManutencao(); } }
 function osVoltar(){ manutOrdemAberto=null; mntOrdBuf=null; renderManutencao(); }
 function salvarOrdem(){ const b=mntOrdBuf; if(!b) return; if(!String(b.titulo).trim()){ toast('Descreva a ordem (título)'); return; } _osLoad(); delete b._novo; const i=ordens.findIndex(x=>x.id===b.id); if(i>=0) ordens[i]=b; else ordens.push(b); saveOrdens(); toast('Ordem salva'); manutOrdemAberto=null; mntOrdBuf=null; renderManutencao(); }
-function excluirOrdem(id){ _osLoad(); const it=(ordens||[]).find(x=>x.id===id); if(!it) return; moveToTrash('ordem', it); ordens=ordens.filter(x=>x.id!==id); saveOrdens(); manutOrdemAberto=null; mntOrdBuf=null; toast('Ordem movida para a Lixeira'); renderManutencao(); }
+function excluirOrdem(id){ _osLoad(); const it=(ordens||[]).find(x=>x.id===id); if(!it) return; moveToTrash('ordem', it); ordens=ordens.filter(x=>x.id!==id); saveOrdens(); manutOrdemAberto=null; mntOrdBuf=null; renderManutencao(); _mostrarFABDesfazer('Ordem excluída', 0); }
 
 function _osFiltrar(){
   let arr=(ordens||[]).slice();
@@ -6944,7 +6944,7 @@ function editarEquipamento(id){ _eqLoad(); const e=(equipamentos||[]).find(x=>x.
 function _meSet(campo,val){ if(mntEqBuf) mntEqBuf[campo]=val; }
 function eqVoltar(){ manutEquipAberto=null; mntEqBuf=null; renderManutencao(); }
 function salvarEquipamento(){ const b=mntEqBuf; if(!b) return; if(!String(b.nome).trim()){ toast('Dê um nome ao equipamento'); return; } _eqLoad(); delete b._novo; const i=equipamentos.findIndex(x=>x.id===b.id); if(i>=0) equipamentos[i]=b; else equipamentos.push(b); saveEquipamentos(); toast('Equipamento salvo'); manutEquipAberto=null; mntEqBuf=null; renderManutencao(); }
-function excluirEquipamento(id){ _eqLoad(); const it=(equipamentos||[]).find(x=>x.id===id); if(!it) return; moveToTrash('equipamento', it); equipamentos=equipamentos.filter(x=>x.id!==id); saveEquipamentos(); manutEquipAberto=null; mntEqBuf=null; toast('Equipamento movido para a Lixeira'); renderManutencao(); }
+function excluirEquipamento(id){ _eqLoad(); const it=(equipamentos||[]).find(x=>x.id===id); if(!it) return; moveToTrash('equipamento', it); equipamentos=equipamentos.filter(x=>x.id!==id); saveEquipamentos(); manutEquipAberto=null; mntEqBuf=null; renderManutencao(); _mostrarFABDesfazer('Equipamento excluído', 0); }
 function _eqAddCons(){ if(!mntEqBuf) return; mntEqBuf.consumiveis.push({id:_mntId('cs'), nome:'', tipo:'', espec:''}); renderManutencao(); }
 function _eqDelCons(cid){ if(!mntEqBuf) return; mntEqBuf.consumiveis=mntEqBuf.consumiveis.filter(c=>c.id!==cid); renderManutencao(); }
 function _eqSetCons(cid,campo,val){ if(!mntEqBuf) return; const c=mntEqBuf.consumiveis.find(x=>x.id===cid); if(c) c[campo]=val; }
@@ -7138,7 +7138,7 @@ function _pvExcluirPlano(equipId, planoId){
   const p=(e.planos||[]).find(x=>x.id===planoId); if(!p) return;
   moveToTrash('preventiva', {plano:p, equipId:equipId, equipNome:e.nome, nome:(p.nome||'Plano')+' — '+(e.tag||e.nome||'')});
   e.planos=e.planos.filter(x=>x.id!==planoId); saveEquipamentos();
-  toast('Plano movido para a Lixeira'); renderManutencao();
+  renderManutencao(); _mostrarFABDesfazer('Plano de preventiva excluído', 0);
 }
 function renderPreventivas(){
   _eqLoad(); _osLoad();
