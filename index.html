@@ -7778,24 +7778,24 @@ function _sensResultadosHTML(t){
 
   // Por atributo: um bloco por PERGUNTA (todas, na ordem), cada uma com seu resultado.
   // Escala 1–5 → média; intenção → % que compraria; demais (dulçor/textura/personalizada) → distribuição %.
-  const _amHead = t.amostras.map(a=>`<th style="padding:6px 8px; color:var(--blue-mid); text-align:center; font-size:12px;">${escapeHTML(nomeAmostra(a))}</th>`).join('');
-  const _sensAtribBloco=(p)=>{
-    const esc=_sensEsc(p);
-    if(esc.tipo==='texto') return ''; // comentário (texto livre) não vira resultado tabelado
-    let corpo;
-    if(esc.tipo==='nota'){
-      const cels=t.amostras.map(a=>{ const m=_sensMediaPergunta(t,a.id,p); const val=m?m.media:null; const cor=val==null?'var(--text3)':val>=4?'var(--success)':val>=3?'var(--amber)':'var(--danger)'; return `<td style="text-align:center; font-weight:700; color:${cor}; padding:7px 8px;">${val!=null?val.toFixed(2):'—'}</td>`; }).join('');
-      corpo=`<tr><td style="padding:7px 8px; color:var(--text3); font-size:11.5px; white-space:nowrap;">Média (1–5)</td>${cels}</tr>`;
-    } else {
-      corpo=esc.opcoes.map(op=>{ return `<tr><td style="padding:6px 8px; color:var(--text2); font-size:12px;">${escapeHTML(op)}</td>${t.amostras.map(a=>{ const {out,n}=_sensDist(t,a.id,p.id); const c=out[op]||0; const pct=n?Math.round(c/n*100):0; return `<td style="text-align:center; padding:6px 8px; color:${c?'var(--text)':'var(--text3)'}; font-weight:${c?'600':'400'};">${c?pct+'%':'·'}</td>`; }).join('')}</tr>`; }).join('');
-    }
-    return `<div style="background:var(--card); border:1px solid var(--border); border-radius:11px; padding:13px 16px;">
-        <div style="font-size:13px; font-weight:700; color:var(--text); margin-bottom:9px;">${escapeHTML(p.texto)}</div>
-        <div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12.5px; min-width:${170+t.amostras.length*72}px;">
-          <thead><tr><th style="text-align:left; padding:6px 8px;"></th>${_amHead}</tr></thead>
-          <tbody>${corpo}</tbody>
-        </table></div>
-      </div>`;
+  // Tabela única e discreta: cada pergunta é uma linha (nota = média) ou um grupo (opções = distribuição %).
+  const _amHead = t.amostras.map(a=>`<th style="padding:7px 8px; color:var(--blue-mid); text-align:center; font-size:11.5px; font-weight:800;">${escapeHTML(nomeAmostra(a))}</th>`).join('');
+  const _sensAtribTabela=()=>{
+    const linhas=(t.perguntas||[]).map(p=>{
+      const esc=_sensEsc(p);
+      if(esc.tipo==='texto') return '';
+      if(esc.tipo==='nota'){
+        const cels=t.amostras.map(a=>{ const m=_sensMediaPergunta(t,a.id,p); const val=m?m.media:null; const cor=val==null?'var(--text3)':val>=4?'var(--success)':val>=3?'var(--amber)':'var(--danger)'; return `<td style="text-align:center; font-weight:700; color:${cor}; padding:7px 8px; font-size:12.5px;">${val!=null?val.toFixed(2):'—'}</td>`; }).join('');
+        return `<tr style="border-top:1px solid var(--border);"><td style="padding:7px 8px; color:var(--text); font-size:12.5px; font-weight:600;">${escapeHTML(p.texto)}</td>${cels}</tr>`;
+      }
+      const head=`<tr style="border-top:1px solid var(--border);"><td style="padding:8px 8px 2px; color:var(--text); font-size:12.5px; font-weight:600;">${escapeHTML(p.texto)} <span style="font-size:10px; color:var(--text3); font-weight:500;">· %</span></td>${t.amostras.map(()=>'<td></td>').join('')}</tr>`;
+      const ops=esc.opcoes.map(op=>{ const cels=t.amostras.map(a=>{ const {out,n}=_sensDist(t,a.id,p.id); const c=out[op]||0; const pct=n?Math.round(c/n*100):0; return `<td style="text-align:center; padding:3px 8px; font-size:12px; color:${c?'var(--text)':'var(--text3)'}; font-weight:${c?'600':'400'};">${c?pct+'%':'·'}</td>`; }).join(''); return `<tr><td style="padding:3px 8px 3px 20px; color:var(--text2); font-size:11.5px;">${escapeHTML(op)}</td>${cels}</tr>`; }).join('');
+      return head+ops;
+    }).filter(Boolean).join('');
+    return linhas ? `<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; min-width:${200+t.amostras.length*70}px;">
+        <thead><tr style="border-bottom:2px solid var(--border);"><th style="text-align:left; padding:7px 8px; font-size:10.5px; color:var(--text3); text-transform:uppercase; letter-spacing:.4px;">Atributo</th>${_amHead}</tr></thead>
+        <tbody>${linhas}</tbody>
+      </table></div>` : `<div style="text-align:center; color:var(--text3); padding:30px;">Nenhuma pergunta para mostrar.</div>`;
   };
 
   // Participantes — lista única de avaliadores (abre em modal pelo botão do topo).
@@ -7812,11 +7812,7 @@ function _sensResultadosHTML(t){
   if(!TABS.some(x=>x.k===sensResTab)) sensResTab='ranking';
   const subnav=`<div style="display:flex; gap:5px; flex-wrap:wrap; background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:4px; margin:16px 0;">${TABS.map(tb=>{ const on=sensResTab===tb.k; return `<button onclick="setSensResTab('${tb.k}')" style="flex:1 1 auto; background:${on?'var(--card)':'transparent'}; border:1px solid ${on?'var(--border)':'transparent'}; color:${on?'var(--text)':'var(--text3)'}; border-radius:9px; padding:8px 12px; font-size:12.5px; font-weight:${on?'700':'600'}; cursor:pointer; font-family:inherit; box-shadow:${on?'0 1px 2px rgba(0,0,0,.05)':'none'}; transition:all .12s; white-space:nowrap;"><i class="ti ti-${tb.ic}"></i> ${tb.lbl}</button>`; }).join('')}</div>`;
   let body='';
-  if(sensResTab==='atributos'){
-    const blocos=(t.perguntas||[]).map(_sensAtribBloco).filter(Boolean).join('');
-    body = blocos ? `<div style="display:flex; flex-direction:column; gap:12px;">${blocos}</div>`
-                  : `<div style="text-align:center; color:var(--text3); padding:30px;">Nenhuma pergunta para mostrar.</div>`;
-  }
+  if(sensResTab==='atributos'){ body=_sensAtribTabela(); }
   else if(sensResTab==='insights'){ body=`<div style="display:flex; flex-direction:column; gap:8px;">${_ins.map(x=>`<div style="display:flex; gap:11px; align-items:flex-start; background:var(--card); border:1px solid var(--border); border-left:3px solid ${x.cor}; border-radius:10px; padding:12px 15px;"><i class="ti ti-${x.icon}" style="color:${x.cor}; font-size:17px; margin-top:1px; flex-shrink:0;"></i><div style="font-size:13px; color:var(--text2); line-height:1.45;">${x.txt}</div></div>`).join('')}</div>`; }
   else { body=`<div style="display:flex; gap:10px; flex-wrap:wrap;">${rankCards}</div>`; }
 
@@ -8032,34 +8028,17 @@ function renderSensorialEditor(){
       const nm = SENS_ESCALAS_LEGADO[sel] ? SENS_ESCALAS_LEGADO[sel].nome+' (legado)' : '— sem resposta —';
       html = `<option value="${escapeAttr(sel)}" selected>${escapeHTML(nm)}</option>` + html;
     }
-    return html + `<option value="custom" ${sel==='custom'?'selected':''}>✏️ Personalizada (uma vez)</option>`;
+    return html;
   };
-  const perguntaRows = b.perguntas.map(p=>{
-    const isCustom = p.escala==='custom';
-    const optsEditor = isCustom ? `
-      <div style="margin:9px 0 2px; padding-left:34px;">
-        <div style="font-size:10.5px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">Opções de resposta ${_hint('As alternativas que o avaliador vai escolher — aparecem como botões. Mínimo 2.')}</div>
-        <div style="display:flex; flex-direction:column; gap:5px;">
-          ${(p.opcoes||[]).map((o,oi)=>`<div style="display:flex; gap:6px; align-items:center; max-width:440px;">
-              <span style="font-size:11px; color:var(--text3); width:16px; flex-shrink:0; text-align:right;">${oi+1}.</span>
-              <input value="${escapeAttr(o)}" oninput="sensEdSetOpcao('${p.id}',${oi},this.value)" placeholder="Texto da opção" style="flex:1; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:7px; padding:6px 9px; font-size:12.5px; color:var(--text); font-family:inherit;">
-              <button onclick="sensEdDelOpcao('${p.id}',${oi})" title="Remover opção" style="background:none; border:1px solid var(--border); color:var(--text3); border-radius:7px; width:28px; height:28px; cursor:pointer; flex-shrink:0;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-x"></i></button>
-            </div>`).join('')}
-        </div>
-        <button onclick="sensEdAddOpcao('${p.id}')" style="margin-top:7px; background:none; border:1px dashed var(--border); color:var(--text3); border-radius:7px; padding:5px 12px; font-size:11.5px; font-weight:600; cursor:pointer; font-family:inherit;" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'"><i class="ti ti-plus"></i> Opção</button>
-        ${(p.opcoes||[]).filter(o=>String(o).trim()!=='').length<2?`<div style="font-size:11px; color:var(--amber); margin-top:6px;"><i class="ti ti-alert-triangle"></i> Adicione ao menos 2 opções.</div>`:''}
-      </div>` : '';
-    return `
-    <div style="margin-bottom:9px; opacity:${p._off?'.45':'1'}; ${isCustom?'background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:9px 11px;':''}">
+  const perguntaRows = b.perguntas.map(p=>`
+    <div style="margin-bottom:9px; opacity:${p._off?'.45':'1'};">
       <div style="display:grid; grid-template-columns:26px 1fr 200px 34px; gap:8px; align-items:center;">
         <input type="checkbox" ${p._off?'':'checked'} onclick="sensEdTogglePergunta('${p.id}')" style="cursor:pointer; width:17px; height:17px;">
         <input value="${escapeAttr(p.texto)}" oninput="sensEdSetPergunta('${p.id}','texto',this.value)" placeholder="Texto da pergunta" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">
         <select onchange="sensEdSetPergunta('${p.id}','escala',this.value)" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:12.5px; color:var(--text); font-family:inherit; cursor:pointer;">${escOpts(p.escala)}</select>
         <button onclick="sensEdDelPergunta('${p.id}')" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:8px; cursor:pointer;"><i class="ti ti-trash"></i></button>
       </div>
-      ${optsEditor}
-    </div>`;
-  }).join('');
+    </div>`).join('');
   // Vínculo com reunião — lista todas, com as do MESMO DIA do teste em destaque.
   const _ms=[...(meetings||[])].sort((x,y)=>(y.date||'').localeCompare(x.date||''));
   const _same=_ms.filter(m=>m.date===b.data), _oth=_ms.filter(m=>m.date!==b.data);
