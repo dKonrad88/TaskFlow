@@ -110,7 +110,7 @@
   :root{
     --blue-dark:#0d3d6b;--blue-mid:#185FA5;--blue-teal:#1a7a8a;
     --bg:#f5f5f2;--bg2:#ededea;--bg3:#fff;
-    --text:#1a1a1a;--text2:#555;--text3:#888;
+    --text:#1a1a1a;--text2:#555;--text3:#6b6b6b;
     --border:#ddd;--card:#fff;
     --success:#3B6D11;--success-bg:#EAF3DE;
     --danger:#A32D2D;--danger-bg:#FCEBEB;
@@ -124,7 +124,7 @@
   }
   body.dark{
     --bg:#1e1e22;--bg2:#26262c;--bg3:#2e2e35;
-    --text:#e8e8ee;--text2:#9999aa;--text3:#5f5f70;
+    --text:#e8e8ee;--text2:#9999aa;--text3:#9a9aad;
     --border:#38383f;--card:#2e2e35;
     --success-bg:#162410;--success:#7dbf7d;
     --danger-bg:#3a1a1a;--danger:#e08080;
@@ -138,14 +138,14 @@
   /* ── Variante clara: AREIA (tons quentes de café) ── */
   body[data-theme="areia"]{
     --bg:#f6f1e7;--bg2:#efe7d8;--bg3:#fffdf8;
-    --text:#2a2118;--text2:#5f5345;--text3:#94866f;
+    --text:#2a2118;--text2:#5f5345;--text3:#7d7058;
     --border:#e0d5c0;--card:#fffdf8;
     --amber:#8a5a10;--amber-bg:#f3e6cb;
   }
   /* ── Variante escura: MEIA-NOITE (navy profundo Klain) ── */
   body.dark[data-theme="meianoite"]{
     --bg:#0e1726;--bg2:#15202f;--bg3:#1b2940;
-    --text:#e6edf7;--text2:#9fb0c8;--text3:#5e7188;
+    --text:#e6edf7;--text2:#9fb0c8;--text3:#8597ad;
     --border:#243650;--card:#16243a;
     --success:#7fcf8f;--success-bg:#0f2618;
     --danger:#ec8f8f;--danger-bg:#311a22;
@@ -315,7 +315,7 @@
   /* ── Busca global ── */
   .search-wrap{position:relative;flex-shrink:0}
   .search-input{padding:6px 12px 6px 32px;border:1px solid rgba(255,255,255,.25);border-radius:8px;background:rgba(255,255,255,.15);color:#fff;font-size:13px;font-family:inherit;width:180px;transition:all .2s;outline:none}
-  .search-input::placeholder{color:rgba(255,255,255,.75)}
+  .search-input::placeholder{color:rgba(255,255,255,.9)}
   .search-input:focus{width:240px;border-color:rgba(255,255,255,.65);background:rgba(255,255,255,.28)}
   /* Dica de atalho Ctrl+K dentro da busca (some quando há texto) */
   .search-kbd{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.85);font-size:10.5px;font-weight:700;letter-spacing:.3px;border:1px solid rgba(255,255,255,.4);border-radius:5px;padding:2px 6px;pointer-events:none;line-height:1;white-space:nowrap}
@@ -328,6 +328,9 @@
   .search-results{position:absolute;top:72px;left:50%;transform:translateX(-50%);width:min(680px,94vw);background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.22);max-height:70vh;display:flex;flex-direction:column;overflow:hidden}
   .search-results-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
   .search-results-input{flex:1;border:none;background:none;color:var(--text);font-size:15px;font-family:inherit;outline:none}
+  /* Acessibilidade: anel de foco visível só para navegação por TECLADO (não reaparece no clique de mouse). */
+  :focus-visible{outline:2px solid var(--blue-mid);outline-offset:2px}
+  .search-input:focus-visible{outline:2px solid rgba(255,255,255,.85);outline-offset:1px}
   .search-results-count{font-size:12px;color:var(--text3);flex-shrink:0}
   .search-results-body{overflow-y:auto;flex:1}
   .search-group-label{font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:10px 16px 4px;background:var(--bg2)}
@@ -2534,7 +2537,7 @@
         <button onclick="delFromModal()" title="Mover para lixeira" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;border-radius:6px;display:flex;align-items:center;transition:all .15s" onmouseover="this.style.color='var(--danger,#a32d2d)';this.style.background='var(--danger-bg,#fcebeb)'" onmouseout="this.style.color='var(--text3)';this.style.background='none'"><i class="ti ti-trash" style="font-size:17px"></i></button>
         <div style="width:1px;height:18px;background:var(--border);margin:0 2px"></div>
         <button onclick="saveEdit()" title="Salvar tarefa" style="background:var(--blue-mid);border:none;cursor:pointer;color:#fff;padding:5px 13px;border-radius:7px;display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;font-family:inherit;transition:all .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'"><i class="ti ti-check" style="font-size:15px"></i> Salvar</button>
-        <button class="modal-close" onclick="closeModalDirect()"><i class="ti ti-x"></i></button>
+        <button class="modal-close" aria-label="Fechar" onclick="closeModalDirect()"><i class="ti ti-x"></i></button>
       </div>
 
       <div class="modal-2col-body">
@@ -3120,7 +3123,7 @@
     <div class="modal" style="max-width:520px">
       <div class="modal-header">
         <div class="modal-title"><i class="ti ti-plus"></i> Nova Tarefa</div>
-        <button class="modal-close" onclick="closeTaskModalDirect()"><i class="ti ti-x"></i></button>
+        <button class="modal-close" aria-label="Fechar" onclick="closeTaskModalDirect()"><i class="ti ti-x"></i></button>
       </div>
       <!-- Botão Usar Template (dropdown) -->
       <div style="position:relative;margin-bottom:14px">
@@ -3251,7 +3254,7 @@
       <div class="note-modal-header">
         <div class="note-modal-bar" id="nmo-bar"></div>
         <input class="note-modal-title-inp" id="nmo-title" placeholder="Título da anotação">
-        <button class="modal-close" onclick="closeNoteModalDirect()"><i class="ti ti-x"></i></button>
+        <button class="modal-close" aria-label="Fechar" onclick="closeNoteModalDirect()"><i class="ti ti-x"></i></button>
       </div>
       <div style="display:flex;align-items:center;gap:4px;padding:8px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap" onmousedown="nmoSaveRange()">
         <button onclick="document.execCommand('insertOrderedList')" title="Lista numerada (Enter avança o número)" style="background:none;border:1px solid var(--border);border-radius:5px;color:var(--text2);padding:3px 7px;cursor:pointer"><i class="ti ti-list-numbers" style="font-size:14px"></i></button><button onclick="document.execCommand('insertUnorderedList')" title="Lista com marcadores" style="background:none;border:1px solid var(--border);border-radius:5px;color:var(--text2);padding:3px 7px;cursor:pointer"><i class="ti ti-list" style="font-size:14px"></i></button><div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div><button onclick="nmoFmt('bold')" title="Negrito" style="background:none;border:1px solid var(--border);border-radius:5px;color:var(--text2);padding:3px 8px;cursor:pointer;font-weight:700;font-size:13px">B</button>
@@ -4521,19 +4524,27 @@ async function nuvemSignup(){
   }catch(e){ _nuvemMsg(_cloudErr(e)); }
 }
 async function nuvemLogout(){ try{ const c=_sbReady(); if(c) await c.auth.signOut(); }catch(e){} _sbUser=null; _cloudUpdateBtn(); await _nuvemRender(false); if(typeof toast==='function') toast('Desconectado da nuvem'); }
-async function nuvemEnviar(){
-  if(!confirm('Enviar os dados DESTE aparelho para a nuvem? Isto substitui na nuvem pelos dados atuais deste aparelho.')) return;
-  if(typeof toast==='function') toast('Enviando…');
-  const r=await _cloudPushAll();
-  if(r.ok){ if(typeof toast==='function') toast('☁️ Enviado: '+r.n+' bloco(s)'); _nuvemRender(false); }
-  else { alert('Falha ao enviar: '+(r.err||'erro')); }
+function nuvemEnviar(){
+  confirmModal({ title:'Enviar para a nuvem', danger:true, confirmLabel:'Enviar', icon:'ti-cloud-up',
+    message:'Isto substitui os dados na nuvem pelos dados atuais DESTE aparelho. Deseja continuar?',
+    onConfirm: async ()=>{
+      if(typeof toast==='function') toast('Enviando…');
+      const r=await _cloudPushAll();
+      if(r.ok){ if(typeof toast==='function') toast('☁️ Enviado: '+r.n+' bloco(s)'); _nuvemRender(false); }
+      else { if(typeof toast==='function') toast('⚠️ Falha ao enviar: '+(r.err||'erro')); }
+    }
+  });
 }
-async function nuvemBaixar(){
-  if(!confirm('Baixar os dados da NUVEM para este aparelho? Os dados atuais deste aparelho serão substituídos (guardo um backup local). O app vai recarregar.')) return;
-  if(typeof toast==='function') toast('Baixando…');
-  const r=await _cloudPullAll();
-  if(r.ok){ if(r.empty){ alert('A nuvem está vazia — nada para baixar.'); return; } setTimeout(()=>location.reload(), 400); }
-  else { alert('Falha ao baixar: '+(r.err||'erro')); }
+function nuvemBaixar(){
+  confirmModal({ title:'Baixar da nuvem', danger:true, confirmLabel:'Baixar', icon:'ti-cloud-down',
+    message:'Os dados atuais DESTE aparelho serão substituídos pelos da nuvem (guardo um backup local). O app vai recarregar. Continuar?',
+    onConfirm: async ()=>{
+      if(typeof toast==='function') toast('Baixando…');
+      const r=await _cloudPullAll();
+      if(r.ok){ if(r.empty){ if(typeof toast==='function') toast('A nuvem está vazia — nada para baixar.'); return; } setTimeout(()=>location.reload(), 400); }
+      else { if(typeof toast==='function') toast('⚠️ Falha ao baixar: '+(r.err||'erro')); }
+    }
+  });
 }
 async function _cloudAutoSeedIfEmpty(){
   try{ const n=await _cloudCount(); if(n===0){ const r=await _cloudPushAll(); if(r.ok){ if(typeof toast==='function') toast('☁️ Seus dados foram enviados para a nuvem ('+r.n+' blocos)'); _nuvemRender(false); } } }catch(e){}
@@ -17424,7 +17435,7 @@ function renderNovoCompromisso(container, subNav){
 
         <!-- Título -->
         <div style="margin-bottom:14px">
-          <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-pencil"></i> Título</div>
+          <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-pencil"></i> Título <span style="color:var(--danger);font-weight:700">*</span></div>
           <input id="comp-titulo" class="modal-input" placeholder="Ex: Visita ao cliente, Almoço de negócios..." value="${c?escapeAttr(c.titulo):''}">
         </div>
 
@@ -17461,7 +17472,7 @@ function renderNovoCompromisso(container, subNav){
         <!-- Data / Hora -->
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
           <div>
-            <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-calendar"></i> Data</div>
+            <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-calendar"></i> Data <span style="color:var(--danger);font-weight:700">*</span></div>
             <input id="comp-data" class="modal-input" type="date" value="${c?(c.data||today):(window._preCompData||today)}">
           </div>
           <div>
@@ -20325,7 +20336,7 @@ function closeTaskModalDirect(){
 // Criar nova tarefa a partir do modal Nova Tarefa
 function saveTask(){
   const title=document.getElementById('inp-title').value.trim();
-  if(!title){document.getElementById('inp-title').focus();return;}
+  if(!title){ if(typeof toast==='function') toast('⚠️ Dê um título à tarefa'); document.getElementById('inp-title').focus(); return; }
   // GUILHERME V3 (Fase A Daily, mai/2026): data NÃO é mais obrigatória.
   // Decisão: forçar data criava atrito; a maioria das tarefas é "quando der".
   // Sem data = vai pra "Lembrete" silenciosamente (mais natural).
