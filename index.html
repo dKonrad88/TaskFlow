@@ -5781,21 +5781,6 @@ function getEntradaCount(){
   return tasks.filter(t => !t.done && !t.executor && !t.someday && !t.projectProId).length;
 }
 
-// ── V3: determinar status de uma pessoa (verde/laranja/vermelho/cinza)
-// GUILHERME: função chamada para cada pessoa em cada renderSidebar. Custo O(n*p) onde
-// n = tarefas e p = pessoas. Com 1000 tarefas + 30 pessoas = 30k operações por render.
-// Não é problema hoje mas vale otimizar quando integrar API: passar a calcular no servidor,
-// retornando uma estrutura { personId: {status, count, atrasadas, paraHoje} } pré-agregada.
-function getPersonStatus(personId){
-  const minhas = tasks.filter(t => !t.done && (t.executor===personId || (t.people||[]).includes(personId)) && !_ppEstaBloqueada(t));
-  if(minhas.length===0) return {cls:'s-gray', tip:'Sem tarefas pendentes', count:0};
-  const atrasadas = minhas.filter(t => t.date && t.date < today).length;
-  const paraHoje = minhas.filter(t => t.date === today).length;
-  if(atrasadas>0) return {cls:'s-red', tip:`${atrasadas} atrasada${atrasadas>1?'s':''} · ${minhas.length} pendentes`, count:minhas.length};
-  if(paraHoje>0) return {cls:'s-orange', tip:`${paraHoje} para hoje · ${minhas.length} pendentes`, count:minhas.length};
-  return {cls:'s-green', tip:`${minhas.length} pendente${minhas.length>1?'s':''} · nada vencido`, count:minhas.length};
-}
-
 // GUILHERME V3 (mai/2026 PERF): calcula o status de TODAS as pessoas num ÚNICO passo
 // sobre `tasks`. Antes, getPersonStatus fazia tasks.filter() por pessoa → O(pessoas × tarefas)
 // a cada render da sidebar. Agora é O(tarefas) + lookup O(1) por pessoa.
@@ -7433,7 +7418,6 @@ let sensorialTab      = 'responder';// 'responder' | 'resultados'
 let sensorialAvaliadorId = '';      // quem responde agora (quiosque)
 let sensorialDraft    = {};         // { [amostraId]:{ [perguntaId]: valor } }
 let sensRespModo      = 'comparacao'; // 'comparacao' (matriz) | 'foco' (1 amostra por vez)
-let sensFocoIdx       = 0;           // (legado) índice no modo foco
 let sensFocoAmostraId = null;        // amostra aberta no Modo Foco (null = tela de códigos)
 let sensResTab        = 'ranking';   // sub-aba dos Resultados: ranking | atributos | insights
 
@@ -8055,9 +8039,6 @@ function sensEdSetPergunta(id,campo,val){
   p[campo]=val;
 }
 function sensEdMovePergunta(id,dir){ const arr=sensEditorBuf.perguntas; const i=arr.findIndex(p=>p.id===id); if(i<0) return; const j=i+dir; if(j<0||j>=arr.length) return; const tmp=arr[i]; arr[i]=arr[j]; arr[j]=tmp; renderSensorialEditor(); }
-function sensEdAddOpcao(id){ const p=sensEditorBuf.perguntas.find(x=>x.id===id); if(!p) return; p.opcoes=p.opcoes||[]; p.opcoes.push(''); renderSensorialEditor(); }
-function sensEdDelOpcao(id,oi){ const p=sensEditorBuf.perguntas.find(x=>x.id===id); if(!p||!p.opcoes) return; p.opcoes.splice(oi,1); renderSensorialEditor(); }
-function sensEdSetOpcao(id,oi,val){ const p=sensEditorBuf.perguntas.find(x=>x.id===id); if(!p||!p.opcoes) return; p.opcoes[oi]=val; }
 function sensEdDelPergunta(id){ sensEditorBuf.perguntas=sensEditorBuf.perguntas.filter(x=>x.id!==id); renderSensorialEditor(); }
 function sensSalvarEditor(){
   const b=sensEditorBuf;
@@ -8923,7 +8904,6 @@ document.addEventListener('click',e=>{
 let agendaDays=parseInt(safeLSGet(LS_AGENDA_DAYS)||'7',10);
 let compromissos=[];
 let agendaTab=(function(){const v=safeLSGet(LS_AGENDA_TAB);return(v==='tarefas'||v==='novo'||!v)?'calendario':v;})();
-let agendaTarefasView=safeLSGet('taskflow_agenda_tarefas_view')||'lista'; // 'lista' | 'grade'
 let editingCompromissoId=null;
 let calView=safeLSGet(LS_CAL_VIEW)||'lista'; // 'lista' | 'grade'
 let calWeekOffset=parseInt(safeLSGet(LS_CAL_WEEK)||'0',10);
@@ -19860,13 +19840,10 @@ const PRIO_ORDEM = ['urgente','alta','media','baixa','trivial'];
 const PRIO_LABEL = {urgente:'Urgente', alta:'Alta', media:'Média', baixa:'Baixa', trivial:'Trivial'};
 const PRIO_EMOJI = {urgente:'🟣', alta:'🔴', media:'🟡', baixa:'🟢', trivial:'⚪'};
 const PRIO_COR   = {urgente:'var(--purple)', alta:'var(--danger)', media:'var(--amber)', baixa:'var(--success)', trivial:'var(--text3)'};
-const PRIO_HEX   = {urgente:'#7c3aed', alta:'#dc2626', media:'#f59e0b', baixa:'#0d6efd', trivial:'#6b7280'};
-const PRIO_SETA  = {urgente:'⇈', alta:'↑', media:'—', baixa:'↓', trivial:'⇊'};
 const PRIO_PESO  = {urgente:0, alta:1, media:2, baixa:3, trivial:4};
 function prioLabelDe(p){ return PRIO_LABEL[p]||'Média'; }
 function prioEmojiDe(p){ return PRIO_EMOJI[p]||'🟡'; }
 function prioCorDe(p){ return PRIO_COR[p]||'var(--amber)'; }
-function prioPesoDe(p){ return PRIO_PESO[p] ?? 2; }
 function prioOptionsHTML(sel){ return PRIO_ORDEM.map(v=>`<option value="${v}" ${sel===v?'selected':''}>${PRIO_EMOJI[v]} ${PRIO_LABEL[v]}</option>`).join(''); }
 
 const _PRIO_OPTS = [
@@ -20266,10 +20243,6 @@ function _syncEditingCheck(t){
 
 /* ── MODAL: NOVA TAREFA ── */
 // Abre o modal rápido (igual atalho "N") já vinculado a projeto/fase/setor
-function novaTarefaRapida(projectId, faseId, grupoId){
-  window._ppQuickCtx = {projectId, faseId:faseId||null, grupoId:grupoId||null};
-  toggleForm();
-}
 function toggleForm(){
   const modal=document.getElementById('task-modal');
   // GUILHERME V3 (mai/2026 — Bloco 2 followup): se o usuário está com um Projeto Pro
