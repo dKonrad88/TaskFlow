@@ -73,6 +73,17 @@
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-06-20 — Mac de casa — Manutenção/PCM: Equipamentos (ficha cadastral) — Bloco 1
+- Pesquisei boas práticas de PCM (SAP PM, Tractian TBM/UBM, Engeman, ABRAMAN) p/ fundamentar o módulo.
+- **Equipamentos** (LS_EQUIPAMENTOS): ficha técnica — TAG, **criticidade ABC**, status, dados de placa,
+  **consumíveis** (não peças — peças vêm do ERP do Guilherme) e **vários planos de preventiva por máquina**,
+  cada um com frequência própria (TBM por tempo / UBM por uso) + checklist + responsável + duração + parada.
+  Lista com busca + filtro de criticidade. Funções: `renderEquipamentos`, `renderEquipamentoEditor`,
+  `_eqFiltrar`, `_eqAddPlano`/`_eqAddCons`. Verificado: 0 erros + 12/12 testes (jsc).
+- **PLANO do módulo PCM (pedido do Diego "PCM completo"):** Bloco 1 Equipamentos ✅. A fazer: Bloco 2 Ordens
+  (OS corretiva/preventiva, sem cadastro de peças — só referência ERP), Bloco 3 Preventivas (planos em
+  calendário, "executar" gera OS), Bloco 4 Painel PCM (KPIs: MTBF, MTTR, disponibilidade, aderência, backlog).
+
 ### 2026-06-20 — Mac de casa — Compras: campos personalizados + filtro de fornecedores
 - **Orçamentos:** cada orçamento define **campos personalizados** (`campos:[{id,label}]`, ex.: Altura, Material)
   e cada cotação preenche (`cotacao.extra{campoId:valor}`). Viram **linhas extras na tabela de comparação**.

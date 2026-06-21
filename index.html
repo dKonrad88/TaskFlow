@@ -6435,7 +6435,7 @@ function switchToManutencao(){
 }
 function setManutencaoView(v){
   manutencaoView = v;
-  manutFornecedorAberto=null; manutOrcamentoAberto=null; mntFornBuf=null; mntOrcBuf=null;
+  manutFornecedorAberto=null; manutOrcamentoAberto=null; mntFornBuf=null; mntOrcBuf=null; manutEquipAberto=null; mntEqBuf=null;
   renderSidebar();
   renderManutencao();
 }
@@ -6445,6 +6445,7 @@ function renderManutencao(){
   const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
+  if(manutencaoView==='equipamentos'){ renderEquipamentos(); return; }
   if(manutencaoView==='fornecedores'){ renderFornecedores(); return; }
   if(manutencaoView==='orcamentos'){ renderOrcamentos(); return; }
   const titulos={ordens:'Ordens de Manutenção', equipamentos:'Equipamentos', preventivas:'Preventivas'};
@@ -6736,6 +6737,203 @@ function renderOrcamentoEditor(){
           <div style="display:flex; gap:10px;">
             <button onclick="orcVoltar()" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:9px; padding:11px 20px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit;">Cancelar</button>
             <button onclick="salvarOrcamento()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:11px 26px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit;">Salvar</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MANUTENÇÃO › EQUIPAMENTOS (cadastro técnico / ficha de ativos) — base do PCM
+// TAG, criticidade ABC, status, dados de placa, CONSUMÍVEIS e PLANOS de
+// preventiva (vários por máquina, frequências diferentes — TBM por tempo /
+// UBM por uso). Peças NÃO ficam aqui (vêm do ERP do Guilherme). Protótipo UX.
+// Refs: SAP PM, Tractian (TBM/UBM), Engeman, ABRAMAN.
+// ════════════════════════════════════════════════════════════════════
+const LS_EQUIPAMENTOS='taskflow_equipamentos';
+let equipamentos=null, manutEquipAberto=null, mntEqBuf=null;
+let _eqQuery='', _eqCrit='';
+const EQ_CRIT={A:{l:'A · Crítico',c:'var(--danger)'},B:{l:'B · Importante',c:'var(--amber)'},C:{l:'C · Secundário',c:'var(--text3)'}};
+const EQ_STATUS={operando:{l:'Operando',c:'var(--success)',i:'ti-player-play'},parado:{l:'Parado',c:'var(--danger)',i:'ti-player-stop'},manutencao:{l:'Em manutenção',c:'var(--amber)',i:'ti-tool'}};
+const EQ_PLANO_TIPO={TBM:'Por tempo (TBM)', UBM:'Por uso (UBM)', preditiva:'Preditiva'};
+const EQ_PERIODOS=[['dia','dia(s)'],['semana','semana(s)'],['mes','mês(es)'],['ano','ano(s)'],['hora','hora(s) de uso'],['ciclo','ciclo(s)']];
+
+function _eqSeed(){ return [
+  {id:'eq_d1', tag:'MIST-01', nome:'Misturadora planetária 80L', setor:'Produção — Massas', criticidade:'A', status:'operando',
+   fabricante:'Kemper', modelo:'SP80', numeroSerie:'SP80-2231', ano:'2021', potencia:'7,5 cv', tensao:'380V', capacidade:'80 L',
+   consumiveis:[{id:'cs1',nome:'Óleo do redutor',tipo:'Lubrificante',espec:'ISO VG 220'},{id:'cs2',nome:'Correia de transmissão',tipo:'Correia',espec:'A-45'}],
+   planos:[
+     {id:'pl1', nome:'Lubrificação dos mancais', tipo:'TBM', periodoValor:'1', periodoUnidade:'semana', responsavel:'Mecânica', duracao:'20 min', parada:false, atividades:'Lubrificar mancais\nVerificar nível do óleo do redutor'},
+     {id:'pl2', nome:'Inspeção + troca de correia', tipo:'TBM', periodoValor:'3', periodoUnidade:'mes', responsavel:'Mecânica', duracao:'1 h', parada:true, atividades:'Trocar correia\nVerificar tensão e alinhamento\nInspecionar polias'},
+     {id:'pl3', nome:'Revisão geral do redutor', tipo:'TBM', periodoValor:'1', periodoUnidade:'ano', responsavel:'Mecânica', duracao:'4 h', parada:true, atividades:'Desmontar e revisar o redutor\nTrocar rolamentos\nAlinhar conjunto'},
+   ], obs:''},
+  {id:'eq_d2', tag:'FORN-02', nome:'Forno túnel a gás', setor:'Produção — Assados', criticidade:'A', status:'operando',
+   fabricante:'Tecnopan', modelo:'TT-12', numeroSerie:'TT12-0090', ano:'2019', potencia:'—', tensao:'220V', capacidade:'12 m',
+   consumiveis:[{id:'cs3',nome:'Termopar',tipo:'Sensor',espec:'Tipo K'}],
+   planos:[
+     {id:'pl4', nome:'Inspeção dos queimadores', tipo:'TBM', periodoValor:'1', periodoUnidade:'mes', responsavel:'Mecânica', duracao:'45 min', parada:false, atividades:'Verificar chama\nLimpar bicos\nTestar sensores de chama'},
+     {id:'pl5', nome:'Calibração de temperatura', tipo:'TBM', periodoValor:'6', periodoUnidade:'mes', responsavel:'Qualidade', duracao:'1 h', parada:true, atividades:'Aferir termopares\nCalibrar setpoints'},
+   ], obs:''},
+  {id:'eq_d3', tag:'EMB-03', nome:'Datadora a jato de tinta', setor:'Embalagem', criticidade:'B', status:'manutencao',
+   fabricante:'Videojet', modelo:'1580', numeroSerie:'VJ1580-1122', ano:'2022', potencia:'—', tensao:'110V', capacidade:'—',
+   consumiveis:[{id:'cs4',nome:'Tinta',tipo:'Insumo',espec:'V411-D'},{id:'cs5',nome:'Solvente',tipo:'Insumo',espec:'V701-Q'}],
+   planos:[
+     {id:'pl6', nome:'Limpeza do cabeçote', tipo:'UBM', periodoValor:'200', periodoUnidade:'hora', responsavel:'Operação', duracao:'15 min', parada:false, atividades:'Limpar cabeçote\nVerificar viscosidade da tinta'},
+   ], obs:''},
+]; }
+function _eqLoad(){ if(equipamentos===null){ equipamentos=safeJSON(LS_EQUIPAMENTOS,null); if(!Array.isArray(equipamentos)){ equipamentos=_eqSeed(); saveEquipamentos(); } } }
+function saveEquipamentos(){ safeSetItem(LS_EQUIPAMENTOS, JSON.stringify(equipamentos||[])); }
+
+// CRUD + edição dinâmica
+function novoEquipamento(){ mntEqBuf={id:_mntId('eq'), tag:'', nome:'', setor:'', criticidade:'B', status:'operando', fabricante:'', modelo:'', numeroSerie:'', ano:'', potencia:'', tensao:'', capacidade:'', consumiveis:[], planos:[], obs:'', _novo:true}; manutEquipAberto=mntEqBuf.id; renderManutencao(); }
+function editarEquipamento(id){ _eqLoad(); const e=(equipamentos||[]).find(x=>x.id===id); if(!e) return; mntEqBuf=JSON.parse(JSON.stringify(e)); if(!Array.isArray(mntEqBuf.consumiveis)) mntEqBuf.consumiveis=[]; if(!Array.isArray(mntEqBuf.planos)) mntEqBuf.planos=[]; mntEqBuf._novo=false; manutEquipAberto=id; renderManutencao(); }
+function _meSet(campo,val){ if(mntEqBuf) mntEqBuf[campo]=val; }
+function eqVoltar(){ manutEquipAberto=null; mntEqBuf=null; renderManutencao(); }
+function salvarEquipamento(){ const b=mntEqBuf; if(!b) return; if(!String(b.nome).trim()){ toast('Dê um nome ao equipamento'); return; } _eqLoad(); delete b._novo; const i=equipamentos.findIndex(x=>x.id===b.id); if(i>=0) equipamentos[i]=b; else equipamentos.push(b); saveEquipamentos(); toast('Equipamento salvo'); manutEquipAberto=null; mntEqBuf=null; renderManutencao(); }
+function excluirEquipamento(id){ if(!confirm('Excluir este equipamento?')) return; equipamentos=(equipamentos||[]).filter(x=>x.id!==id); saveEquipamentos(); manutEquipAberto=null; mntEqBuf=null; toast('Equipamento excluído'); renderManutencao(); }
+function _eqAddCons(){ if(!mntEqBuf) return; mntEqBuf.consumiveis.push({id:_mntId('cs'), nome:'', tipo:'', espec:''}); renderManutencao(); }
+function _eqDelCons(cid){ if(!mntEqBuf) return; mntEqBuf.consumiveis=mntEqBuf.consumiveis.filter(c=>c.id!==cid); renderManutencao(); }
+function _eqSetCons(cid,campo,val){ if(!mntEqBuf) return; const c=mntEqBuf.consumiveis.find(x=>x.id===cid); if(c) c[campo]=val; }
+function _eqAddPlano(){ if(!mntEqBuf) return; mntEqBuf.planos.push({id:_mntId('pl'), nome:'', tipo:'TBM', periodoValor:'', periodoUnidade:'mes', responsavel:'', duracao:'', parada:false, atividades:''}); renderManutencao(); }
+function _eqDelPlano(pid){ if(!mntEqBuf) return; mntEqBuf.planos=mntEqBuf.planos.filter(p=>p.id!==pid); renderManutencao(); }
+function _eqSetPlano(pid,campo,val){ if(!mntEqBuf) return; const p=mntEqBuf.planos.find(x=>x.id===pid); if(p) p[campo]=(campo==='parada')?(val===true||val==='true'):val; }
+function _eqPlanoFreq(p){ const u=(EQ_PERIODOS.find(x=>x[0]===p.periodoUnidade)||[null,p.periodoUnidade])[1]; return p.periodoValor?`a cada ${p.periodoValor} ${u}`:'sem frequência'; }
+
+// Busca/filtro da lista
+function _eqFiltrar(){
+  let arr=(equipamentos||[]).slice();
+  if(_eqCrit) arr=arr.filter(e=>(e.criticidade||'')===_eqCrit);
+  const q=_fnNorm(_eqQuery).trim();
+  if(q) arr=arr.filter(e=> _fnNorm(e.nome).includes(q) || _fnNorm(e.tag).includes(q) || _fnNorm(e.setor).includes(q) || _fnNorm(e.fabricante).includes(q) );
+  const ordC={A:0,B:1,C:2};
+  return arr.sort((a,b)=>(ordC[a.criticidade]??1)-(ordC[b.criticidade]??1) || (a.nome||'').localeCompare(b.nome||'','pt-BR'));
+}
+function _eqSetQuery(v){ _eqQuery=v; const el=document.getElementById('eq-lista'); if(el) el.innerHTML=_eqCardsHTML(); }
+function _eqSetCrit(c){ _eqCrit=(_eqCrit===c?'':c); renderManutencao(); }
+function _eqLimpar(){ _eqQuery=''; _eqCrit=''; renderManutencao(); }
+function _eqCardsHTML(){
+  const arr=_eqFiltrar();
+  if(!arr.length) return `<div style="text-align:center; padding:46px 0; color:var(--text3);"><i class="ti ti-search-off" style="font-size:34px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum equipamento encontrado${(_eqQuery||_eqCrit)?` <button onclick="_eqLimpar()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;text-decoration:underline;padding:0">Limpar filtros</button>`:''}.</div>`;
+  const card=e=>{ const cr=EQ_CRIT[e.criticidade]||EQ_CRIT.B; const st=EQ_STATUS[e.status]||EQ_STATUS.operando;
+    return `<div onclick="editarEquipamento('${e.id}')" style="background:var(--card); border:1px solid var(--border); border-radius:11px; padding:13px 16px; cursor:pointer; transition:border-color .15s;" onmouseover="this.style.borderColor='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:9px; min-width:0; flex-wrap:wrap;">
+          ${e.tag?`<span style="font-size:11px; font-weight:800; color:var(--blue-mid); background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:2px 8px; letter-spacing:.3px;">${escapeHTML(e.tag)}</span>`:''}
+          <div style="font-size:14px; font-weight:700; color:var(--text);">${escapeHTML(e.nome||'Sem nome')}</div>
+        </div>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <span style="font-size:10.5px; font-weight:700; color:${cr.c}; border:1px solid ${cr.c}; border-radius:20px; padding:2px 9px; white-space:nowrap;">${escapeHTML(cr.l)}</span>
+          <span style="font-size:10.5px; font-weight:700; color:${st.c}; background:color-mix(in srgb,${st.c} 14%,transparent); border-radius:20px; padding:2px 9px; white-space:nowrap;"><i class="ti ${st.i}" style="font-size:10px"></i> ${escapeHTML(st.l)}</span>
+        </div>
+      </div>
+      <div style="font-size:11.5px; color:var(--text3); margin-top:7px; display:flex; gap:14px; flex-wrap:wrap;">
+        ${e.setor?`<span><i class="ti ti-map-pin"></i> ${escapeHTML(e.setor)}</span>`:''}
+        ${e.fabricante?`<span><i class="ti ti-building-factory-2"></i> ${escapeHTML(e.fabricante)}${e.modelo?' '+escapeHTML(e.modelo):''}</span>`:''}
+        <span><i class="ti ti-calendar-repeat"></i> ${(e.planos||[]).length} plano${(e.planos||[]).length!==1?'s':''} de preventiva</span>
+      </div>
+    </div>`; };
+  return `<div style="display:flex; flex-direction:column; gap:9px;">${arr.map(card).join('')}</div>`;
+}
+function renderEquipamentos(){
+  _eqLoad();
+  if(manutEquipAberto){ renderEquipamentoEditor(); return; }
+  const main=document.getElementById('task-container'); if(!main) return;
+  const tem=(equipamentos||[]).length>0;
+  const critChip=(c,lbl,at)=>`<button onclick="_eqSetCrit('${c}')" style="border:1px solid ${at?'var(--blue-mid)':'var(--border)'}; border-radius:99px; padding:5px 12px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; background:${at?'color-mix(in srgb,var(--blue-mid) 14%,transparent)':'transparent'}; color:${at?'var(--blue-mid)':'var(--text3)'};">${escapeHTML(lbl)}</button>`;
+  const toolbar = tem ? `
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+      <div style="position:relative; flex:1; min-width:200px; max-width:360px;">
+        <i class="ti ti-search" style="position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--text3); font-size:15px;"></i>
+        <input id="eq-busca" value="${escapeAttr(_eqQuery)}" oninput="_eqSetQuery(this.value)" placeholder="Buscar por nome, TAG ou setor…" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:9px; padding:9px 11px 9px 34px; font-size:13px; color:var(--text); font-family:inherit;">
+      </div>
+      <div style="display:inline-flex; gap:6px; flex-wrap:wrap;">${critChip('','Todas',_eqCrit==='')}${critChip('A','Crítico (A)',_eqCrit==='A')}${critChip('B','Importante (B)',_eqCrit==='B')}${critChip('C','Secundário (C)',_eqCrit==='C')}</div>
+    </div>` : '';
+  main.innerHTML=`
+    <div style="padding:20px 4px 40px; max-width:1100px;">
+      ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Equipamentos'}])}
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:4px;">
+        <h1 style="font-size:23px; font-weight:700; color:var(--text);">Equipamentos</h1>
+        <button onclick="novoEquipamento()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Novo equipamento</button>
+      </div>
+      <div style="font-size:12.5px; color:var(--text3); margin-bottom:14px;">Cadastro técnico (TAG, criticidade, consumíveis e planos de preventiva) — base do PCM.</div>
+      ${toolbar}
+      ${tem? `<div id="eq-lista">${_eqCardsHTML()}</div>`
+        : '<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-settings-automation" style="font-size:38px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum equipamento ainda</div>'}
+    </div>`;
+}
+function renderEquipamentoEditor(){
+  const b=mntEqBuf; if(!b){ eqVoltar(); return; }
+  const main=document.getElementById('task-container'); if(!main) return;
+  const _lbl=t=>`<label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">${t}</label>`;
+  const _ist='width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;';
+  const campo=(lbl,key,ph)=>`<div>${_lbl(lbl)}<input value="${escapeAttr(b[key]||'')}" oninput="_meSet('${key}',this.value)" placeholder="${escapeAttr(ph||'')}" style="${_ist}"></div>`;
+  const sec=t=>`<div style="font-size:11.5px; font-weight:800; color:var(--blue-mid); text-transform:uppercase; letter-spacing:.5px; margin:8px 0 2px; display:flex; align-items:center; gap:7px;">${t}</div>`;
+  const consRow=c=>`<div style="display:grid; grid-template-columns:1.3fr 1fr 1.3fr 34px; gap:8px; margin-bottom:7px;">
+      <input value="${escapeAttr(c.nome||'')}" oninput="_eqSetCons('${c.id}','nome',this.value)" placeholder="Consumível (ex.: óleo)" style="${_ist}">
+      <input value="${escapeAttr(c.tipo||'')}" oninput="_eqSetCons('${c.id}','tipo',this.value)" placeholder="Tipo" style="${_ist}">
+      <input value="${escapeAttr(c.espec||'')}" oninput="_eqSetCons('${c.id}','espec',this.value)" placeholder="Especificação (ex.: ISO VG 220)" style="${_ist}">
+      <button onclick="_eqDelCons('${c.id}')" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:8px; cursor:pointer;"><i class="ti ti-trash"></i></button>
+    </div>`;
+  const planoCard=p=>`<div style="background:var(--bg2); border:1px solid var(--border); border-radius:11px; padding:13px 14px; margin-bottom:10px;">
+      <div style="display:flex; gap:8px; align-items:center; margin-bottom:9px;">
+        <input value="${escapeAttr(p.nome||'')}" oninput="_eqSetPlano('${p.id}','nome',this.value)" placeholder="Nome do plano (ex.: Lubrificação)" style="${_ist} flex:1; font-weight:600;">
+        <button onclick="_eqDelPlano('${p.id}')" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:8px; padding:8px 10px; cursor:pointer;"><i class="ti ti-trash"></i></button>
+      </div>
+      <div style="display:grid; grid-template-columns:1.2fr .6fr 1fr 1fr; gap:8px; align-items:end;">
+        <div>${_lbl('Tipo')}<select onchange="_eqSetPlano('${p.id}','tipo',this.value)" style="${_ist} cursor:pointer;">${Object.keys(EQ_PLANO_TIPO).map(k=>`<option value="${k}" ${p.tipo===k?'selected':''}>${EQ_PLANO_TIPO[k]}</option>`).join('')}</select></div>
+        <div>${_lbl('A cada')}<input value="${escapeAttr(p.periodoValor||'')}" oninput="_eqSetPlano('${p.id}','periodoValor',this.value)" placeholder="3" inputmode="numeric" style="${_ist} text-align:center;"></div>
+        <div>${_lbl('Período')}<select onchange="_eqSetPlano('${p.id}','periodoUnidade',this.value)" style="${_ist} cursor:pointer;">${EQ_PERIODOS.map(([k,l])=>`<option value="${k}" ${p.periodoUnidade===k?'selected':''}>${l}</option>`).join('')}</select></div>
+        <div>${_lbl('Responsável')}<input value="${escapeAttr(p.responsavel||'')}" oninput="_eqSetPlano('${p.id}','responsavel',this.value)" placeholder="Mecânica" style="${_ist}"></div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; margin-top:8px;">
+        <div>${_lbl('Atividades / checklist (uma por linha)')}<textarea oninput="_eqSetPlano('${p.id}','atividades',this.value)" rows="2" placeholder="Lubrificar mancais&#10;Verificar nível do óleo" style="${_ist} resize:vertical;">${escapeHTML(p.atividades||'')}</textarea></div>
+        <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
+          <div style="width:120px;">${_lbl('Duração')}<input value="${escapeAttr(p.duracao||'')}" oninput="_eqSetPlano('${p.id}','duracao',this.value)" placeholder="1 h" style="${_ist}"></div>
+          <label style="display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--text2); cursor:pointer; white-space:nowrap;"><input type="checkbox" ${p.parada?'checked':''} onclick="_eqSetPlano('${p.id}','parada',this.checked)" style="width:15px; height:15px; cursor:pointer;"> Exige parada</label>
+        </div>
+      </div>
+    </div>`;
+  main.innerHTML=`
+    <div style="padding:20px 4px 60px; max-width:880px;">
+      ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Equipamentos', onclick:"eqVoltar()"},{label:b._novo?'Novo':(b.tag||'Editar')}])}
+      <h1 style="font-size:22px; font-weight:700; color:var(--text); margin-bottom:18px;">${b._novo?'Novo equipamento':'Ficha do equipamento'}</h1>
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        ${sec('<i class="ti ti-id"></i> Identificação')}
+        <div style="display:grid; grid-template-columns:160px 1fr; gap:12px;">
+          ${campo('TAG / código','tag','MIST-01')}
+          ${campo('Nome *','nome','Misturadora planetária 80L')}
+        </div>
+        <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px;">
+          ${campo('Setor / localização','setor','Produção — Massas')}
+          <div>${_lbl('Criticidade')}<select onchange="_meSet('criticidade',this.value)" style="${_ist} cursor:pointer;">${Object.keys(EQ_CRIT).map(k=>`<option value="${k}" ${b.criticidade===k?'selected':''}>${EQ_CRIT[k].l}</option>`).join('')}</select></div>
+          <div>${_lbl('Status')}<select onchange="_meSet('status',this.value)" style="${_ist} cursor:pointer;">${Object.keys(EQ_STATUS).map(k=>`<option value="${k}" ${b.status===k?'selected':''}>${EQ_STATUS[k].l}</option>`).join('')}</select></div>
+        </div>
+        ${sec('<i class="ti ti-tool"></i> Dados técnicos (placa)')}
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+          ${campo('Fabricante','fabricante','Kemper')}
+          ${campo('Modelo','modelo','SP80')}
+          ${campo('Nº de série','numeroSerie','SP80-2231')}
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:12px;">
+          ${campo('Ano','ano','2021')}
+          ${campo('Potência','potencia','7,5 cv')}
+          ${campo('Tensão','tensao','380V')}
+          ${campo('Capacidade','capacidade','80 L')}
+        </div>
+        ${sec('<i class="ti ti-droplet"></i> Consumíveis')}
+        <div style="font-size:11.5px; color:var(--text3); margin:-6px 0 2px;">O que a máquina consome (lubrificantes, correias, filtros…). Peças de reposição vêm do ERP.</div>
+        ${b.consumiveis.length? b.consumiveis.map(consRow).join('') : '<div style="font-size:12px; color:var(--text3);">Nenhum consumível ainda.</div>'}
+        <button onclick="_eqAddCons()" style="align-self:flex-start; background:none; border:1px solid var(--blue-mid); color:var(--blue-mid); border-radius:7px; padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-plus"></i> Consumível</button>
+        ${sec('<i class="ti ti-calendar-repeat"></i> Planos de preventiva')}
+        <div style="font-size:11.5px; color:var(--text3); margin:-6px 0 2px;">Vários por máquina — cada um com sua frequência (por tempo ou por uso).</div>
+        ${b.planos.length? b.planos.map(planoCard).join('') : '<div style="text-align:center; padding:18px 0; color:var(--text3); font-size:13px; border:1px dashed var(--border); border-radius:10px;">Nenhum plano ainda — ex.: lubrificação semanal, troca de correia trimestral, revisão anual.</div>'}
+        <button onclick="_eqAddPlano()" style="align-self:flex-start; background:none; border:1px solid var(--blue-mid); color:var(--blue-mid); border-radius:7px; padding:6px 14px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-plus"></i> Plano de preventiva</button>
+        <div>${_lbl('Observações')}<textarea oninput="_meSet('obs',this.value)" rows="2" placeholder="Notas gerais do equipamento" style="${_ist} resize:vertical;">${escapeHTML(b.obs||'')}</textarea></div>
+        <div style="display:flex; gap:10px; justify-content:space-between; margin-top:8px;">
+          ${b._novo?'<span></span>':`<button onclick="excluirEquipamento('${b.id}')" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:9px; padding:11px 18px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit;"><i class="ti ti-trash"></i> Excluir</button>`}
+          <div style="display:flex; gap:10px;">
+            <button onclick="eqVoltar()" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:9px; padding:11px 20px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit;">Cancelar</button>
+            <button onclick="salvarEquipamento()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:11px 26px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit;">Salvar</button>
           </div>
         </div>
       </div>
