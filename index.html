@@ -7022,7 +7022,7 @@ function renderEquipamentoEditor(){
   const sec=t=>`<div style="font-size:11.5px; font-weight:800; color:var(--blue-mid); text-transform:uppercase; letter-spacing:.5px; margin:8px 0 2px; display:flex; align-items:center; gap:7px;">${t}</div>`;
   const consRow=c=>`<div style="display:grid; grid-template-columns:1.3fr 1fr 1.3fr 34px; gap:8px; margin-bottom:7px;">
       <input value="${escapeAttr(c.nome||'')}" oninput="_eqSetCons('${c.id}','nome',this.value)" placeholder="Consumível (ex.: óleo)" style="${_ist}">
-      <input value="${escapeAttr(c.tipo||'')}" oninput="_eqSetCons('${c.id}','tipo',this.value)" placeholder="Tipo" style="${_ist}">
+      <input value="${escapeAttr(c.tipo||'')}" oninput="_eqSetCons('${c.id}','tipo',this.value)" placeholder="Tipo (lubrificante, filtro…)" style="${_ist}">
       <input value="${escapeAttr(c.espec||'')}" oninput="_eqSetCons('${c.id}','espec',this.value)" placeholder="Especificação (ex.: ISO VG 220)" style="${_ist}">
       <button onclick="_eqDelCons('${c.id}')" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:8px; cursor:pointer;"><i class="ti ti-trash"></i></button>
     </div>`;
@@ -7042,7 +7042,7 @@ function renderEquipamentoEditor(){
         <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
           <div style="width:150px;">${_lbl('Última execução')}<input type="date" value="${escapeAttr(p.ultimaExecucao||'')}" oninput="_eqSetPlano('${p.id}','ultimaExecucao',this.value)" style="${_ist}"></div>
           <div style="width:150px;">${_lbl('Duração')}<input value="${escapeAttr(p.duracao||'')}" oninput="_eqSetPlano('${p.id}','duracao',this.value)" placeholder="1 h" style="${_ist}"></div>
-          <label style="display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--text2); cursor:pointer; white-space:nowrap;"><input type="checkbox" ${p.parada?'checked':''} onclick="_eqSetPlano('${p.id}','parada',this.checked)" style="width:15px; height:15px; cursor:pointer;"> Exige parada</label>
+          <label style="display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--text2); cursor:pointer; white-space:nowrap;"><input type="checkbox" ${p.parada?'checked':''} onclick="_eqSetPlano('${p.id}','parada',this.checked)" style="width:15px; height:15px; cursor:pointer;"> Exige parar a máquina</label>
         </div>
       </div>
     </div>`;
@@ -7053,7 +7053,7 @@ function renderEquipamentoEditor(){
       <div style="display:flex; flex-direction:column; gap:14px;">
         ${sec('<i class="ti ti-id"></i> Identificação')}
         <div style="display:grid; grid-template-columns:160px 1fr; gap:12px;">
-          ${campo('Código (TAG)','tag','MIST-01')}
+          ${campo('Código (TAG) <span title="Código único de identificação do equipamento — a etiqueta (TAG) que fica colada na máquina, ex.: FORN-02." style="cursor:help; color:var(--text3); font-weight:400;">ⓘ</span>','tag','MIST-01')}
           ${campo('Nome *','nome','Misturadora planetária 80L')}
         </div>
         <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px;">
@@ -7063,6 +7063,7 @@ function renderEquipamentoEditor(){
         </div>
         <div style="font-size:11.5px; color:var(--text3); margin-top:-4px; line-height:1.55;"><strong>Criticidade</strong> = o quanto o equipamento é importante para a produção — <strong>A</strong> (se parar, para tudo), <strong>B</strong> (importante), <strong>C</strong> (baixo impacto). <strong>Situação</strong> = estado atual (operando / parado / em manutenção).</div>
         ${sec('<i class="ti ti-tool"></i> Dados técnicos (placa)')}
+        <div style="font-size:11.5px; color:var(--text3); margin-top:-4px;">Informações da <strong>placa de identificação</strong> — a etiqueta do fabricante fixada na máquina.</div>
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
           ${campo('Fabricante','fabricante','Kemper')}
           ${campo('Modelo','modelo','SP80')}
