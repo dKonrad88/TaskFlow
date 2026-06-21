@@ -7494,13 +7494,25 @@ function renderSensorialLista(){
         <h1 style="font-size:23px; font-weight:700; color:var(--text);">Análise sensorial</h1>
         <button onclick="novoTesteSensorial()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Novo teste</button>
       </div>
-      <div style="font-size:12.5px; color:var(--text3); margin-bottom:18px;">Testes cegos de comparação — prove as amostras e avalie todas numa tela só.</div>
-      ${testes.length? `<div style="display:flex; flex-direction:column; gap:9px;">${testes.map(card).join('')}</div>`
-        : '<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-test-pipe-off" style="font-size:38px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum teste ainda</div>'}
+      <div style="font-size:12.5px; color:var(--text3); margin-bottom:6px;">Testes cegos de comparação — prove as amostras e avalie todas numa tela só.</div>
+      ${(()=>{
+        if(!testes.length) return '<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-test-pipe-off" style="font-size:38px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum teste ainda</div>';
+        const pend=testes.filter(t=>t.status!=='encerrado'), enc=testes.filter(t=>t.status==='encerrado');
+        const _sec=(lbl,n)=>`<div style="display:flex; align-items:center; gap:8px; margin:20px 0 9px; font-size:11.5px; font-weight:800; color:var(--text3); text-transform:uppercase; letter-spacing:.5px;"><span>${lbl}</span><span style="background:var(--bg2); border:1px solid var(--border); border-radius:99px; padding:1px 8px; font-size:11px; color:var(--text2);">${n}</span></div>`;
+        const grupo=(arr)=>`<div style="display:flex; flex-direction:column; gap:9px;">${arr.map(card).join('')}</div>`;
+        return `${pend.length?_sec('Pendentes',pend.length)+grupo(pend):''}${enc.length?_sec('Encerradas',enc.length)+grupo(enc):''}`;
+      })()}
     </div>`;
 }
 
 // ─── Tela 2: teste (Responder / Resultados) ───
+function sensToggleEncerrado(id){
+  const t=_sensTeste(id); if(!t) return;
+  if(t.criadoPor && t.criadoPor!==CURRENT_USER_ID){ toast('Só a criadora pode encerrar este teste'); return; }
+  t.status = t.status==='encerrado' ? 'aberto' : 'encerrado';
+  saveSensorial_db(); renderTesteSensorial();
+  toast(t.status==='encerrado' ? 'Teste encerrado' : 'Teste reaberto');
+}
 function setSensTab(tab){ sensorialTab=tab; renderTesteSensorial(); }
 function renderTesteSensorial(){
   const t=_sensTeste(sensorialTesteId); if(!t){ sensVoltarLista(); return; }
@@ -7516,7 +7528,7 @@ function renderTesteSensorial(){
           ${(()=>{ const m=t.meetingId?(meetings||[]).find(x=>x.id===t.meetingId):null; return m?`<div style="margin-top:7px"><button onclick="_sensAbrirReuniao('${m.id}')" style="display:inline-flex; align-items:center; gap:6px; background:var(--bg2); border:1px solid var(--border); border-radius:99px; padding:4px 11px; font-size:12px; font-weight:600; color:var(--text2); cursor:pointer; font-family:inherit;" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-speakerphone" style="color:var(--orange)"></i> Reunião: ${escapeHTML(m.title||'Reunião')} · ${formatDate(m.date)}${m.date===t.data?' · mesmo dia':''}</button></div>`:''; })()}
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          ${t.criadoPor===CURRENT_USER_ID ? `${(()=>{ const sib=t.meetingId?(sensorialTestes||[]).filter(x=>x.meetingId===t.meetingId):[]; return sib.length>1?`<button onclick="sensApresentarSessao('${t.meetingId}')" style="background:var(--card); border:1px solid var(--blue-mid); color:var(--blue-mid); border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-layout-grid"></i> Sessão do dia (${sib.length})</button>`:''; })()}<button onclick="sensApresentar('${t.id}')" style="background:var(--blue-mid); color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; margin-right:8px;"><i class="ti ti-presentation"></i> Apresentar</button><button onclick="editarTesteSensorial('${t.id}')" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit;"><i class="ti ti-settings"></i> Configurar</button>` : ''}
+          ${t.criadoPor===CURRENT_USER_ID ? `${(()=>{ const sib=t.meetingId?(sensorialTestes||[]).filter(x=>x.meetingId===t.meetingId):[]; return sib.length>1?`<button onclick="sensApresentarSessao('${t.meetingId}')" style="background:var(--card); border:1px solid var(--blue-mid); color:var(--blue-mid); border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-layout-grid"></i> Sessão do dia (${sib.length})</button>`:''; })()}<button onclick="sensApresentar('${t.id}')" style="background:var(--blue-mid); color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; margin-right:8px;"><i class="ti ti-presentation"></i> Apresentar</button><button onclick="editarTesteSensorial('${t.id}')" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit;"><i class="ti ti-settings"></i> Configurar</button><button onclick="sensToggleEncerrado('${t.id}')" style="background:none; border:1px solid var(--border); color:${t.status==='encerrado'?'var(--success)':'var(--text2)'}; border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit;"><i class="ti ti-${t.status==='encerrado'?'lock-open':'flag-check'}"></i> ${t.status==='encerrado'?'Reabrir':'Encerrar'}</button>` : ''}
         </div>
       </div>
       <div style="display:flex; gap:8px; margin:14px 0 20px;">
