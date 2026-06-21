@@ -8750,6 +8750,8 @@ function restoreFromTrash(idx){
     _eqLoad(); const _e=(equipamentos||[]).find(x=>x.id===item.equipId); if(_e){ (_e.planos=_e.planos||[]).push(item.plano); saveEquipamentos(); }
   } else if(type==='fichaProduto'){
     fichasProduto.push(item); saveFichasProduto();
+  } else if(type==='reuniaoRapida'){
+    _reunioesRapidas.push(item); safeSetItem(LS_REUNIOES_RAPIDAS, JSON.stringify(_reunioesRapidas));
   }
   trash.splice(idx,1);
   saveTrash_db();
@@ -8811,8 +8813,8 @@ function limparOrfaos(itensExcluidos){
   if(mudouCutucadas) saveCutucadas();
 }
 
-const TRASH_TYPE_LABELS={task:'Tarefas',rotina:'Rotinas',note:'Notas',project:'Projetos',projectPro:'Projetos',meeting:'Reuniões',compromisso:'Compromissos',person:'Pessoas',equipamento:'Equipamentos',ordem:'Ordens de Manutenção',fornecedor:'Fornecedores',orcamento:'Orçamentos',preventiva:'Planos de preventiva',fichaProduto:'Produtos'};
-const TRASH_TYPE_ICONS={task:'ti-check',rotina:'ti-repeat',note:'ti-notes',project:'ti-folders',projectPro:'ti-folders',meeting:'ti-speakerphone',compromisso:'ti-calendar-time',person:'ti-user',equipamento:'ti-settings-automation',ordem:'ti-clipboard-list',fornecedor:'ti-building-store',orcamento:'ti-receipt-2',preventiva:'ti-calendar-repeat',fichaProduto:'ti-package'};
+const TRASH_TYPE_LABELS={task:'Tarefas',rotina:'Rotinas',note:'Notas',project:'Projetos',projectPro:'Projetos',meeting:'Reuniões',compromisso:'Compromissos',person:'Pessoas',equipamento:'Equipamentos',ordem:'Ordens de Manutenção',fornecedor:'Fornecedores',orcamento:'Orçamentos',preventiva:'Planos de preventiva',fichaProduto:'Produtos',reuniaoRapida:'Reuniões rápidas'};
+const TRASH_TYPE_ICONS={task:'ti-check',rotina:'ti-repeat',note:'ti-notes',project:'ti-folders',projectPro:'ti-folders',meeting:'ti-speakerphone',compromisso:'ti-calendar-time',person:'ti-user',equipamento:'ti-settings-automation',ordem:'ti-clipboard-list',fornecedor:'ti-building-store',orcamento:'ti-receipt-2',preventiva:'ti-calendar-repeat',fichaProduto:'ti-package',reuniaoRapida:'ti-calendar-bolt'};
 let _trashFilter='todos';
 function setTrashFilter(t){ _trashFilter=t; renderLixeira(); }
 
@@ -15135,7 +15137,7 @@ function deleteRotina(id){
   deleteRotina_db(id);
   renderSidebar();updateStats();renderRotinas();
   const nTarefas=tarefasAbertas.length;
-  toast(`🗑️ Rotina movida para a lixeira${nTarefas?` · ${nTarefas} tarefa${nTarefas!==1?'s':''} também`:''}`);
+  _mostrarFABDesfazer('Rotina excluída'+(nTarefas?` (+ ${nTarefas} tarefa${nTarefas!==1?'s':''})`:''), 0);
 }
 
 /* ── 13. ABA: TAREFAS (Lista / Cartões / Painel Kanban) ───────────
@@ -17786,7 +17788,7 @@ function deleteNoteModal(){
   document.getElementById('note-modal-overlay').classList.remove('open');editingNoteId=null;
   notes=notes.filter(n=>n.id!==id);deleteNote_db(id);renderNotes();
   if(gpActivePanel==='notas') renderGpNotes();
-  toast('🗑️ Anotação movida para a lixeira');
+  _mostrarFABDesfazer('Anotação excluída', 0);
 }
 
 function addNote(){
@@ -26958,11 +26960,12 @@ function duplicarReuniaoRapida(id){
 }
 
 function excluirReuniaoRapida(id){
-  if(!confirm('Excluir esta reunião rápida?')) return;
+  const it=(_reunioesRapidas||[]).find(x=>x.id===id);
+  if(it) moveToTrash('reuniaoRapida', {...it});
   deleteReuniaoRapida_db(id);
   fecharReuniaoRapidaModal();
   if(currentTab==='agenda') render();
-  toast('🗑️ Reunião rápida excluída');
+  _mostrarFABDesfazer('Reunião rápida excluída', 0);
 }
 // ─── FIM REUNIÃO RÁPIDA ───────────────────────────────────────────────
 
