@@ -7987,16 +7987,22 @@ function _sensRenderRespostasModal(){
   </div>`;
   const wrap=document.createElement('div'); wrap.innerHTML=html; document.body.appendChild(wrap.firstElementChild);
 }
-function sensEdAddPergunta(){ sensEditorBuf.perguntas.push({id:_sensId(), texto:'Nova pergunta', escala:'hedonica', obrigatoria:true, _custom:true}); renderSensorialEditor(); }
+function sensEdAddPergunta(){ const lib=_sensRespostasLoad(); const r=lib[0]||{id:'',nome:'Nova pergunta'}; sensEditorBuf.perguntas.push({id:_sensId(), texto:r.nome||'Nova pergunta', escala:r.id||'', obrigatoria:true}); renderSensorialEditor(); }
 function sensEdSetPergunta(id,campo,val){
   const p=sensEditorBuf.perguntas.find(x=>x.id===id); if(!p) return;
   if(campo==='obrigatoria'){ p.obrigatoria=(val==='true'||val===true); return; }
-  p[campo]=val;
   if(campo==='escala'){
-    if(val==='custom' && (!Array.isArray(p.opcoes) || p.opcoes.length<2)) p.opcoes=['',''];
-    renderSensorialEditor(); // mostra/esconde o editor de opções
+    const antigaNome=String(_sensEsc(p).nome||'').trim(); // nome da resposta atual (antes de trocar)
+    p.escala=val;
+    const nova=_sensRespById(val); const txt=String(p.texto||'').trim();
+    // "vem por conta": auto-preenche o nome a partir da resposta, a menos que tenha sido editado à mão
+    if(nova && (txt==='' || txt===antigaNome)) p.texto=nova.nome;
+    renderSensorialEditor();
+    return;
   }
+  p[campo]=val;
 }
+function sensEdMovePergunta(id,dir){ const arr=sensEditorBuf.perguntas; const i=arr.findIndex(p=>p.id===id); if(i<0) return; const j=i+dir; if(j<0||j>=arr.length) return; const tmp=arr[i]; arr[i]=arr[j]; arr[j]=tmp; renderSensorialEditor(); }
 function sensEdAddOpcao(id){ const p=sensEditorBuf.perguntas.find(x=>x.id===id); if(!p) return; p.opcoes=p.opcoes||[]; p.opcoes.push(''); renderSensorialEditor(); }
 function sensEdDelOpcao(id,oi){ const p=sensEditorBuf.perguntas.find(x=>x.id===id); if(!p||!p.opcoes) return; p.opcoes.splice(oi,1); renderSensorialEditor(); }
 function sensEdSetOpcao(id,oi,val){ const p=sensEditorBuf.perguntas.find(x=>x.id===id); if(!p||!p.opcoes) return; p.opcoes[oi]=val; }
@@ -8042,11 +8048,16 @@ function renderSensorialEditor(){
     }
     return html;
   };
-  const perguntaRows = b.perguntas.map(p=>`
+  const _nQ=b.perguntas.length;
+  const perguntaRows = b.perguntas.map((p,i)=>`
     <div style="margin-bottom:9px; opacity:${p._off?'.45':'1'};">
-      <div style="display:grid; grid-template-columns:26px 1fr 200px 34px; gap:8px; align-items:center;">
+      <div style="display:grid; grid-template-columns:20px 24px 1fr 190px 32px; gap:7px; align-items:center;">
+        <div style="display:flex; flex-direction:column; gap:1px;">
+          <button onclick="sensEdMovePergunta('${p.id}',-1)" ${i===0?'disabled':''} title="Mover para cima" style="background:none; border:none; color:var(--text3); cursor:${i===0?'default':'pointer'}; opacity:${i===0?'.3':'1'}; padding:0; line-height:1; font-family:inherit;"><i class="ti ti-chevron-up" style="font-size:14px;"></i></button>
+          <button onclick="sensEdMovePergunta('${p.id}',1)" ${i===_nQ-1?'disabled':''} title="Mover para baixo" style="background:none; border:none; color:var(--text3); cursor:${i===_nQ-1?'default':'pointer'}; opacity:${i===_nQ-1?'.3':'1'}; padding:0; line-height:1; font-family:inherit;"><i class="ti ti-chevron-down" style="font-size:14px;"></i></button>
+        </div>
         <input type="checkbox" ${p._off?'':'checked'} onclick="sensEdTogglePergunta('${p.id}')" style="cursor:pointer; width:17px; height:17px;">
-        <input value="${escapeAttr(p.texto)}" oninput="sensEdSetPergunta('${p.id}','texto',this.value)" placeholder="Texto da pergunta" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">
+        <input value="${escapeAttr(p.texto)}" oninput="sensEdSetPergunta('${p.id}','texto',this.value)" placeholder="Nome da pergunta" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">
         <select onchange="sensEdSetPergunta('${p.id}','escala',this.value)" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:12.5px; color:var(--text); font-family:inherit; cursor:pointer;">${escOpts(p.escala)}</select>
         <button onclick="sensEdDelPergunta('${p.id}')" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:8px; cursor:pointer;"><i class="ti ti-trash"></i></button>
       </div>
