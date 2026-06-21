@@ -96,10 +96,11 @@
 
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  /* Campos de formulário sem classe própria (inline): input e select com a MESMA altura (Diego, jun/2026) */
-  input:not([class]):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]),
-  select:not([class]){ height:40px; box-sizing:border-box; font-family:inherit; line-height:1.2; }
+  /* Campos sem classe própria (inline): input e select com a MESMA altura (Diego, jun/2026) */
+  input:not([class]):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]){ height:40px; box-sizing:border-box; font-family:inherit; }
   textarea:not([class]){ box-sizing:border-box; font-family:inherit; }
+  /* Safari não respeita height em <select> sem appearance:none — forçamos + seta customizada */
+  select:not([class]){ -webkit-appearance:none !important; appearance:none !important; height:40px !important; box-sizing:border-box; font-family:inherit; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important; background-repeat:no-repeat !important; background-position:right 11px center !important; background-size:13px !important; padding-right:30px !important; }
   html.dark-init body,html.dark-init body.dark{background:#1e1e22;color:#e8e8ee}
   :root{
     --blue-dark:#0d3d6b;--blue-mid:#185FA5;--blue-teal:#1a7a8a;
