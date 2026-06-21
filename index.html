@@ -7340,7 +7340,7 @@ let sensorialAvaliadorId = '';      // quem responde agora (quiosque)
 let sensorialDraft    = {};         // { [amostraId]:{ [perguntaId]: valor } }
 let sensRespModo      = 'comparacao'; // 'comparacao' (matriz) | 'foco' (1 amostra por vez)
 let sensFocoIdx       = 0;           // amostra atual no modo foco
-let sensResTab        = 'ranking';   // sub-aba dos Resultados: ranking | atributos | detalhes | insights
+let sensResTab        = 'ranking';   // sub-aba dos Resultados: ranking | atributos | insights
 
 function _sensId(){ return 's'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function _sensPerguntasPadrao(){
@@ -7775,13 +7775,16 @@ function _sensResultadosHTML(t){
     {k:'ranking',   lbl:'Ranking',      ic:'trophy'},
     {k:'atributos', lbl:'Por atributo', ic:'table'},
   ];
-  if(distBlocks)  TABS.push({k:'detalhes', lbl:'Dulçor & textura', ic:'chart-bar'});
   if(_ins.length) TABS.push({k:'insights', lbl:'Insights',         ic:'bulb'});
   if(!TABS.some(x=>x.k===sensResTab)) sensResTab='ranking';
   const subnav=`<div style="display:flex; gap:5px; flex-wrap:wrap; background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:4px; margin:16px 0;">${TABS.map(tb=>{ const on=sensResTab===tb.k; return `<button onclick="setSensResTab('${tb.k}')" style="flex:1 1 auto; background:${on?'var(--card)':'transparent'}; border:1px solid ${on?'var(--border)':'transparent'}; color:${on?'var(--text)':'var(--text3)'}; border-radius:9px; padding:8px 12px; font-size:12.5px; font-weight:${on?'700':'600'}; cursor:pointer; font-family:inherit; box-shadow:${on?'0 1px 2px rgba(0,0,0,.05)':'none'}; transition:all .12s; white-space:nowrap;"><i class="ti ti-${tb.ic}"></i> ${tb.lbl}</button>`; }).join('')}</div>`;
   let body='';
-  if(sensResTab==='atributos'){ body=tabela; }
-  else if(sensResTab==='detalhes'){ body=`<div style="display:flex; flex-direction:column; gap:12px;">${distBlocks}</div>`; }
+  if(sensResTab==='atributos'){
+    const _sub=(s)=>`<div style="font-size:11px; font-weight:800; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin:0 0 9px;">${s}</div>`;
+    const medias=(linhasHed||linhaCompra)?`${_sub('Médias por atributo (1 a 5)')}${tabela}`:'';
+    const dists=distBlocks?`<div style="margin-top:${medias?'22px':'0'};">${_sub('Distribuição das respostas')}<div style="display:flex; flex-direction:column; gap:12px;">${distBlocks}</div></div>`:'';
+    body = (medias+dists) || `<div style="text-align:center; color:var(--text3); padding:30px;">Sem respostas ainda.</div>`;
+  }
   else if(sensResTab==='insights'){ body=`<div style="display:flex; flex-direction:column; gap:8px;">${_ins.map(x=>`<div style="display:flex; gap:11px; align-items:flex-start; background:var(--card); border:1px solid var(--border); border-left:3px solid ${x.cor}; border-radius:10px; padding:12px 15px;"><i class="ti ti-${x.icon}" style="color:${x.cor}; font-size:17px; margin-top:1px; flex-shrink:0;"></i><div style="font-size:13px; color:var(--text2); line-height:1.45;">${x.txt}</div></div>`).join('')}</div>`; }
   else { body=`<div style="display:flex; gap:10px; flex-wrap:wrap;">${rankCards}</div>`; }
 
