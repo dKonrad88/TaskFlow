@@ -7335,7 +7335,7 @@ let sensorialAvaliadorId = '';      // quem responde agora (quiosque)
 let sensorialDraft    = {};         // { [amostraId]:{ [perguntaId]: valor } }
 let sensRespModo      = 'comparacao'; // 'comparacao' (matriz) | 'foco' (1 amostra por vez)
 let sensFocoIdx       = 0;           // amostra atual no modo foco
-let _sensSimTimer     = null;        // simulação de respostas ao vivo (protótipo)
+let sensResTab        = 'ranking';   // sub-aba dos Resultados: ranking | atributos | detalhes | insights
 
 function _sensId(){ return 's'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function _sensPerguntasPadrao(){
@@ -7385,7 +7385,7 @@ function _sensSeed(){
     ideiaTeste:'Comparar 4 gorduras diferentes na MESMA receita de cobertura fracionada, para decidir se trocamos a gordura atual por uma alternativa de melhor custo sem perder qualidade.',
     oQueMudou:'Só muda a gordura — receita base idêntica em todas. A 456 é a fórmula atual (controle); 123, 654 e 862 são gorduras alternativas.',
     atencao:'Foque na maciez / derretimento na boca, no sabor (sem gosto de gordura) e no brilho/aparência. Limpe o paladar com água entre uma amostra e outra.',
-    amostras, perguntas:p, respostas, createdAt: today,
+    amostras, perguntas:p, respostas, createdAt: today, criadoPor: CURRENT_USER_ID,
   }];
 }
 function _sensLoad(){
@@ -7454,8 +7454,7 @@ function renderTesteSensorial(){
           ${(()=>{ const m=t.meetingId?(meetings||[]).find(x=>x.id===t.meetingId):null; return m?`<div style="margin-top:7px"><button onclick="_sensAbrirReuniao('${m.id}')" style="display:inline-flex; align-items:center; gap:6px; background:var(--bg2); border:1px solid var(--border); border-radius:99px; padding:4px 11px; font-size:12px; font-weight:600; color:var(--text2); cursor:pointer; font-family:inherit;" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-speakerphone" style="color:var(--orange)"></i> Reunião: ${escapeHTML(m.title||'Reunião')} · ${formatDate(m.date)}${m.date===t.data?' · mesmo dia':''}</button></div>`:''; })()}
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          ${(()=>{ const sib=t.meetingId?(sensorialTestes||[]).filter(x=>x.meetingId===t.meetingId):[]; return sib.length>1?`<button onclick="sensApresentarSessao('${t.meetingId}')" style="background:var(--card); border:1px solid var(--blue-mid); color:var(--blue-mid); border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-layout-grid"></i> Sessão do dia (${sib.length})</button>`:''; })()}
-          <button onclick="sensApresentar('${t.id}')" style="background:var(--blue-mid); color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-presentation"></i> Apresentar</button>
+          ${t.criadoPor===CURRENT_USER_ID ? `${(()=>{ const sib=t.meetingId?(sensorialTestes||[]).filter(x=>x.meetingId===t.meetingId):[]; return sib.length>1?`<button onclick="sensApresentarSessao('${t.meetingId}')" style="background:var(--card); border:1px solid var(--blue-mid); color:var(--blue-mid); border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-layout-grid"></i> Sessão do dia (${sib.length})</button>`:''; })()}<button onclick="sensApresentar('${t.id}')" style="background:var(--blue-mid); color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; margin-right:8px;"><i class="ti ti-presentation"></i> Apresentar</button>` : ''}
           <button onclick="editarTesteSensorial('${t.id}')" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit;"><i class="ti ti-settings"></i> Configurar</button>
         </div>
       </div>
@@ -7516,38 +7515,43 @@ function _sensMatrizHTML(t){
 }
 // Foco: 1 amostra (código) por vez — pensado p/ celular
 function _sensFocoHTML(t){
-  const n=t.amostras.length;
-  sensFocoIdx=Math.max(0, Math.min(n-1, sensFocoIdx));
-  const idx=sensFocoIdx, a=t.amostras[idx];
-  const blocos=t.perguntas.map(p=>{
-    const esc=SENS_ESCALAS[p.escala];
-    const titulo=`<div style="font-size:14px; font-weight:700; color:var(--text); margin:0 0 9px;">${escapeHTML(p.texto)}${p.obrigatoria?' <span style="color:var(--danger)">*</span>':''} <span style="font-size:10.5px; font-weight:600; color:var(--text3);">· ${esc.nome}</span></div>`;
+  const nQ=t.perguntas.length;
+  if(!nQ) return `<div style="text-align:center; padding:40px 0; color:var(--text3);">Sem perguntas configuradas.</div>`;
+  sensFocoIdx=Math.max(0, Math.min(nQ-1, sensFocoIdx));
+  const idx=sensFocoIdx, p=t.perguntas[idx];
+  const esc=SENS_ESCALAS[p.escala];
+  const ultimo=idx===nQ-1;
+  // Uma pergunta por vez — o avaliador responde ESTA pergunta para cada amostra (código).
+  const cards=t.amostras.map(a=>{
+    const cur=(sensorialDraft[a.id]&&sensorialDraft[a.id][p.id]);
+    let campo;
     if(esc.tipo==='texto'){
-      const v=(sensorialDraft[a.id]&&sensorialDraft[a.id][p.id])||'';
-      return `<div style="margin-bottom:22px;">${titulo}<textarea data-a="${a.id}" data-p="${p.id}" oninput="sensSetTexto(this)" rows="3" placeholder="Comentário…" style="width:100%; box-sizing:border-box; resize:vertical; background:var(--bg3); border:1px solid var(--border); border-radius:9px; padding:10px 12px; font-size:14px; color:var(--text); font-family:inherit;">${escapeHTML(v)}</textarea></div>`;
+      campo=`<textarea data-a="${a.id}" data-p="${p.id}" oninput="sensSetTexto(this)" rows="2" placeholder="Comentário…" style="width:100%; box-sizing:border-box; resize:vertical; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13.5px; color:var(--text); font-family:inherit;">${escapeHTML(cur||'')}</textarea>`;
+    } else {
+      campo=`<div style="display:flex; flex-wrap:wrap; gap:7px;">${esc.opcoes.map(op=>{ const sel=cur===op; return `<span class="sens-pill" data-a="${a.id}" data-p="${p.id}" data-op="${escapeAttr(op)}" onclick="sensPickPill(this)" style="display:inline-block; padding:8px 14px; border-radius:9px; border:1.5px solid ${sel?'var(--blue-mid)':'var(--border)'}; background:${sel?'var(--blue-mid)':'var(--bg2)'}; color:${sel?'#fff':'var(--text2)'}; font-size:13px; font-weight:${sel?'700':'500'}; cursor:pointer; transition:all .12s; user-select:none;">${escapeHTML(op)}</span>`; }).join('')}</div>`;
     }
-    const opts=esc.opcoes.map(op=>{
-      const sel=(sensorialDraft[a.id]&&sensorialDraft[a.id][p.id])===op;
-      return `<div onclick="this.querySelector('.sens-dot').click()" style="display:flex; align-items:center; gap:12px; padding:11px 14px; border:1px solid ${sel?'var(--blue-mid)':'var(--border)'}; border-radius:10px; margin-bottom:8px; cursor:pointer; background:var(--bg3);">
-          <span class="sens-dot" data-a="${a.id}" data-p="${p.id}" data-op="${escapeAttr(op)}" onclick="event.stopPropagation(); sensPick(this)" style="width:20px; height:20px; border-radius:50%; border:2px solid ${sel?'var(--blue-mid)':'var(--border)'}; background:${sel?'var(--blue-mid)':'transparent'}; box-shadow:${sel?'inset 0 0 0 3px var(--card)':'none'}; cursor:pointer; flex-shrink:0; transition:all .12s;"></span>
-          <span style="font-size:14px; color:var(--text);">${escapeHTML(op)}</span>
-        </div>`;
-    }).join('');
-    return `<div style="margin-bottom:22px;">${titulo}${opts}</div>`;
+    return `<div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:13px 15px; margin-bottom:11px;">
+        <div style="display:inline-block; background:var(--blue-mid); color:#fff; border-radius:9px; padding:5px 14px; font-size:16px; font-weight:800; margin-bottom:10px;">${escapeHTML(a.codigo)}</div>
+        ${campo}
+      </div>`;
   }).join('');
-  const ultimo=idx===n-1;
   const nav=`<div style="margin-top:18px; display:flex; gap:10px; justify-content:space-between; align-items:center;">
       <button onclick="sensFocoNav(-1)" ${idx===0?'disabled':''} style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:9px; padding:11px 18px; font-size:13.5px; font-weight:600; cursor:${idx===0?'default':'pointer'}; opacity:${idx===0?'.45':'1'}; font-family:inherit;"><i class="ti ti-chevron-left"></i> Anterior</button>
       ${ultimo
         ? `<button onclick="sensEnviarRespostas()" style="background:var(--success); color:#fff; border:none; border-radius:9px; padding:12px 24px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-send"></i> Enviar avaliação</button>`
-        : `<button onclick="sensFocoNav(1)" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:12px 22px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;">Próxima amostra <i class="ti ti-chevron-right"></i></button>`}
+        : `<button onclick="sensFocoNav(1)" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:12px 22px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;">Próxima pergunta <i class="ti ti-chevron-right"></i></button>`}
     </div>`;
+  const dots=t.perguntas.map((_,i)=>`<span style="width:${i===idx?'22px':'7px'}; height:7px; border-radius:99px; background:${i===idx?'var(--blue-mid)':(i<idx?'color-mix(in srgb, var(--blue-mid) 45%, transparent)':'var(--border)')}; transition:all .2s; display:inline-block;"></span>`).join('');
   return `<div style="max-width:560px; margin:0 auto;">
-      <div style="text-align:center; margin-bottom:18px;">
-        <div style="font-size:11.5px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px;">Amostra ${idx+1} de ${n}</div>
-        <div style="display:inline-block; margin-top:8px; background:var(--blue-mid); color:#fff; border-radius:14px; padding:10px 26px; font-size:30px; font-weight:800;">${escapeHTML(a.codigo)}</div>
+      <div style="text-align:center; margin-bottom:8px;">
+        <div style="font-size:11.5px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px;">Pergunta ${idx+1} de ${nQ}</div>
       </div>
-      ${blocos}
+      <div style="display:flex; gap:5px; justify-content:center; align-items:center; margin-bottom:18px;">${dots}</div>
+      <div style="text-align:center; margin-bottom:16px;">
+        <div style="font-size:19px; font-weight:800; color:var(--text); line-height:1.3;">${escapeHTML(p.texto)}${p.obrigatoria?' <span style="color:var(--danger)">*</span>':''}</div>
+        <div style="font-size:12px; font-weight:600; color:var(--text3); margin-top:4px;">${esc.nome}</div>
+      </div>
+      ${cards}
       ${nav}
     </div>`;
 }
@@ -7574,7 +7578,19 @@ function _sensPerguntaBlocoHTML(t, p, nCol){
 function sensIniciarResposta(){ const sel=document.getElementById('sens-aval-sel'); const v=sel?sel.value:''; if(!v){ toast('Selecione seu nome'); return; } sensorialAvaliadorId=v; sensorialDraft={}; sensFocoIdx=0; renderTesteSensorial(); }
 function sensTrocarAvaliador(){ sensorialAvaliadorId=''; sensorialDraft={}; sensFocoIdx=0; renderTesteSensorial(); }
 function setSensRespModo(m){ sensRespModo=m; renderTesteSensorial(); }
-function sensFocoNav(dir){ const t=_sensTeste(sensorialTesteId); if(!t) return; sensFocoIdx=Math.max(0, Math.min(t.amostras.length-1, sensFocoIdx+dir)); renderTesteSensorial(); }
+function sensFocoNav(dir){ const t=_sensTeste(sensorialTesteId); if(!t) return; sensFocoIdx=Math.max(0, Math.min(t.perguntas.length-1, sensFocoIdx+dir)); renderTesteSensorial(); }
+function sensPickPill(el){
+  const a=el.getAttribute('data-a'), pq=el.getAttribute('data-p'), op=el.getAttribute('data-op');
+  if(!sensorialDraft[a]) sensorialDraft[a]={};
+  sensorialDraft[a][pq]=op;
+  document.querySelectorAll(`.sens-pill[data-a="${a}"][data-p="${pq}"]`).forEach(d=>{
+    const on=d.getAttribute('data-op')===op;
+    d.style.borderColor=on?'var(--blue-mid)':'var(--border)';
+    d.style.background =on?'var(--blue-mid)':'var(--bg2)';
+    d.style.color      =on?'#fff':'var(--text2)';
+    d.style.fontWeight =on?'700':'500';
+  });
+}
 function sensPick(el){
   const a=el.getAttribute('data-a'), p=el.getAttribute('data-p'), op=el.getAttribute('data-op');
   if(!sensorialDraft[a]) sensorialDraft[a]={};
@@ -7596,7 +7612,7 @@ function sensEnviarRespostas(){
       const v = sensorialDraft[a.id] && sensorialDraft[a.id][p.id];
       if(v===undefined || v===null || String(v).trim()===''){
         toast(`Falta responder "${p.texto}" na amostra ${a.codigo}`);
-        if(sensRespModo==='foco'){ sensFocoIdx=t.amostras.indexOf(a); renderTesteSensorial(); }
+        if(sensRespModo==='foco'){ sensFocoIdx=t.perguntas.indexOf(p); renderTesteSensorial(); }
         return;
       }
     }
@@ -7730,76 +7746,60 @@ function _sensResultadosHTML(t){
   const textura=t.perguntas.find(p=>p.escala==='textura_desc');
   const distBlocks = [jar,textura].filter(Boolean).map(_distBars).join('');
 
-  // comentários
-  const coment=t.perguntas.find(p=>p.escala==='comentario');
-  let comentBlock='';
-  if(coment){
-    const itens=t.amostras.map(a=>{ const cs=(t.respostas||[]).map(r=>({txt:(r.valores[a.id]&&r.valores[a.id][coment.id])||'', av:r.avaliador})).filter(x=>String(x.txt).trim()!==''); if(!cs.length) return ''; return `<div style="margin-bottom:12px;"><div style="font-size:12px; font-weight:800; color:var(--blue-mid); margin-bottom:5px;">${nomeAmostra(a)}</div>${cs.map(c=>`<div style="font-size:12.5px; color:var(--text2); padding:5px 0 5px 10px; border-left:2px solid var(--border); margin-bottom:4px;">"${escapeHTML(c.txt)}" <span style="font-size:10.5px; color:var(--text3);">— ${escapeHTML(_sensPersonName(c.av))}</span></div>`).join('')}</div>`; }).filter(Boolean).join('');
-    if(itens) comentBlock=`<div style="background:var(--card); border:1px solid var(--border); border-radius:11px; padding:14px 16px;"><div style="font-size:13px; font-weight:700; color:var(--text); margin-bottom:10px;">Comentários</div>${itens}</div>`;
-  }
-
-  const sec=(titulo)=>`<div style="font-size:11px; font-weight:800; color:var(--text3); text-transform:uppercase; letter-spacing:.6px; margin:24px 0 10px;">${titulo}</div>`;
-
-  // Participantes — automático a partir das respostas (um chip por avaliador distinto).
-  const _vistos=new Set(); const _parts=[];
-  (t.respostas||[]).forEach(r=>{ if(_vistos.has(r.avaliador)) return; _vistos.add(r.avaliador); _parts.push(r); });
-  const _ini=nm=>{const q=(nm||'?').trim().split(/\s+/);return (((q[0]||'')[0]||'')+((q[1]||'')[0]||'')).toUpperCase();};
-  const partsChips=_parts.map(r=>{ const nm=_sensPersonName(r.avaliador); const pe=people.find(x=>x.id===r.avaliador); const setor=pe&&pe.setor?pe.setor:''; return `<div style="display:flex; align-items:center; gap:8px; background:var(--bg2); border:1px solid var(--border); border-radius:99px; padding:4px 12px 4px 4px;">
-      <div style="width:26px; height:26px; border-radius:50%; background:var(--blue-mid); color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0;">${escapeHTML(_ini(nm))}</div>
-      <div style="line-height:1.15;"><div style="font-size:12.5px; font-weight:600; color:var(--text);">${escapeHTML(nm)}</div>${setor?`<div style="font-size:10px; color:var(--text3);">${escapeHTML(setor)}</div>`:''}</div>
-    </div>`; }).join('');
-  const partsBlock = _parts.length ? `${sec('Participantes ('+_parts.length+')')}<div style="display:flex; flex-wrap:wrap; gap:8px;">${partsChips}</div>` : '';
-
+  // Participantes — lista única de avaliadores (abre em modal pelo botão do topo).
+  const _parts=[]; { const _v=new Set(); (t.respostas||[]).forEach(r=>{ if(_v.has(r.avaliador)) return; _v.add(r.avaliador); _parts.push(r); }); }
   // Padrões & insights (conclusões automáticas)
   const _ins=_sensInsights(t);
-  const insightsBlock = _ins.length ? `${sec('Padrões & insights')}<div style="display:flex; flex-direction:column; gap:8px;">${_ins.map(x=>`<div style="display:flex; gap:11px; align-items:flex-start; background:var(--card); border:1px solid var(--border); border-left:3px solid ${x.cor}; border-radius:10px; padding:11px 14px;"><i class="ti ti-${x.icon}" style="color:${x.cor}; font-size:17px; margin-top:1px; flex-shrink:0;"></i><div style="font-size:13px; color:var(--text2); line-height:1.45;">${x.txt}</div></div>`).join('')}</div>` : '';
+
+  // Sub-abas — deixa os resultados mais leves: uma seção por vez.
+  const TABS=[
+    {k:'ranking',   lbl:'Ranking',      ic:'trophy'},
+    {k:'atributos', lbl:'Por atributo', ic:'table'},
+  ];
+  if(distBlocks)  TABS.push({k:'detalhes', lbl:'Dulçor & textura', ic:'chart-bar'});
+  if(_ins.length) TABS.push({k:'insights', lbl:'Insights',         ic:'bulb'});
+  if(!TABS.some(x=>x.k===sensResTab)) sensResTab='ranking';
+  const subnav=`<div style="display:flex; gap:5px; flex-wrap:wrap; background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:4px; margin:16px 0;">${TABS.map(tb=>{ const on=sensResTab===tb.k; return `<button onclick="setSensResTab('${tb.k}')" style="flex:1 1 auto; background:${on?'var(--card)':'transparent'}; border:1px solid ${on?'var(--border)':'transparent'}; color:${on?'var(--text)':'var(--text3)'}; border-radius:9px; padding:8px 12px; font-size:12.5px; font-weight:${on?'700':'600'}; cursor:pointer; font-family:inherit; box-shadow:${on?'0 1px 2px rgba(0,0,0,.05)':'none'}; transition:all .12s; white-space:nowrap;"><i class="ti ti-${tb.ic}"></i> ${tb.lbl}</button>`; }).join('')}</div>`;
+  let body='';
+  if(sensResTab==='atributos'){ body=tabela; }
+  else if(sensResTab==='detalhes'){ body=`<div style="display:flex; flex-direction:column; gap:12px;">${distBlocks}</div>`; }
+  else if(sensResTab==='insights'){ body=`<div style="display:flex; flex-direction:column; gap:8px;">${_ins.map(x=>`<div style="display:flex; gap:11px; align-items:flex-start; background:var(--card); border:1px solid var(--border); border-left:3px solid ${x.cor}; border-radius:10px; padding:12px 15px;"><i class="ti ti-${x.icon}" style="color:${x.cor}; font-size:17px; margin-top:1px; flex-shrink:0;"></i><div style="font-size:13px; color:var(--text2); line-height:1.45;">${x.txt}</div></div>`).join('')}</div>`; }
+  else { body=`<div style="display:flex; gap:10px; flex-wrap:wrap;">${rankCards}</div>`; }
 
   return `
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
-      <div style="font-size:12.5px; color:var(--text2);"><i class="ti ti-users"></i> ${nResp} ${nResp===1?'avaliação':'avaliações'}${_sensSimTimer?' <span style="color:var(--success); font-weight:700;">· ao vivo ●</span>':''}</div>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+      <div style="font-size:12.5px; color:var(--text2);"><i class="ti ti-users"></i> ${nResp} ${nResp===1?'avaliação':'avaliações'}</div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button onclick="sensSimular('${t.id}')" style="background:${_sensSimTimer?'var(--danger)':'var(--card)'}; color:${_sensSimTimer?'#fff':'var(--text2)'}; border:1px solid ${_sensSimTimer?'var(--danger)':'var(--border)'}; border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-${_sensSimTimer?'player-stop':'player-play'}"></i> ${_sensSimTimer?'Parar simulação':'Simular ao vivo'}</button>
-        <button onclick="sensToggleRevelar('${t.id}')" style="background:${rev?'var(--amber)':'var(--blue-mid)'}; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-${rev?'eye-off':'eye'}"></i> ${rev?'Ocultar identidade':'Revelar identidade'}</button>
+        <button onclick="_sensAbrirParticipantes('${t.id}')" style="background:var(--card); color:var(--text2); border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-users"></i> Participantes (${_parts.length})</button>
+        ${t.criadoPor===CURRENT_USER_ID ? `<button onclick="sensToggleRevelar('${t.id}')" style="background:${rev?'var(--amber)':'var(--blue-mid)'}; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-${rev?'eye-off':'eye'}"></i> ${rev?'Ocultar identidade':'Revelar identidade'}</button>` : ''}
       </div>
     </div>
-    ${partsBlock}
-    ${insightsBlock}
-    ${sec('Ranking — aceitação geral')}
-    <div style="display:flex; gap:10px; flex-wrap:wrap;">${rankCards}</div>
-    ${sec('Médias por atributo')}
-    ${tabela}
-    ${distBlocks?sec('Dulçor & textura'):''}
-    <div style="display:flex; flex-direction:column; gap:12px;">${distBlocks}</div>
-    ${comentBlock?sec('Comentários'):''}
-    ${comentBlock}`;
+    ${subnav}
+    ${body}`;
+}
+function setSensResTab(k){ sensResTab=k; renderTesteSensorial(); }
+function _sensAbrirParticipantes(testeId){
+  const t=_sensTeste(testeId); if(!t) return;
+  const vistos=new Set(), parts=[];
+  (t.respostas||[]).forEach(r=>{ if(vistos.has(r.avaliador)) return; vistos.add(r.avaliador); parts.push(r); });
+  const ini=nm=>{const q=(nm||'?').trim().split(/\s+/);return (((q[0]||'')[0]||'')+((q[1]||'')[0]||'')).toUpperCase();};
+  const chips=parts.map(r=>{ const nm=_sensPersonName(r.avaliador); const pe=(people||[]).find(x=>x.id===r.avaliador); const setor=pe&&pe.setor?pe.setor:''; return `<div style="display:flex; align-items:center; gap:10px; background:var(--bg2); border:1px solid var(--border); border-radius:11px; padding:8px 12px;">
+      <div style="width:30px; height:30px; border-radius:50%; background:var(--blue-mid); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0;">${escapeHTML(ini(nm))}</div>
+      <div style="line-height:1.2;"><div style="font-size:13px; font-weight:600; color:var(--text);">${escapeHTML(nm)}</div>${setor?`<div style="font-size:10.5px; color:var(--text3);">${escapeHTML(setor)}</div>`:''}</div>
+    </div>`; }).join('');
+  const html=`<div onclick="if(event.target===this)this.remove()" style="position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px 22px; width:100%; max-width:440px; max-height:80vh; overflow:auto; box-shadow:0 12px 40px rgba(0,0,0,.25);">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+        <div style="font-size:15px; font-weight:800; color:var(--text);"><i class="ti ti-users"></i> Participantes (${parts.length})</div>
+        <button onclick="this.closest('[style*=fixed]').remove()" style="background:none; border:none; color:var(--text3); font-size:20px; cursor:pointer; line-height:1; font-family:inherit;">&times;</button>
+      </div>
+      ${parts.length?`<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:8px;">${chips}</div>`:`<div style="text-align:center; color:var(--text3); padding:24px 0;">Nenhuma avaliação ainda.</div>`}
+    </div>
+  </div>`;
+  const wrap=document.createElement('div'); wrap.innerHTML=html; document.body.appendChild(wrap.firstElementChild);
 }
 function sensToggleRevelar(id){ const t=_sensTeste(id); if(!t) return; t.revelado=!t.revelado; saveSensorial_db(); renderTesteSensorial(); }
 
-// ─── Simulação de respostas ao vivo (protótipo do "tempo real") ───
-// No sispro do Guilherme cada resposta chega do celular do avaliador; aqui
-// injetamos respostas mockadas em intervalo p/ demonstrar o resultado ao vivo.
-function _sensRerenderAoVivo(){ if(_sensPres){ _sensPresRender(); } else if(sensorialTab==='resultados'){ renderTesteSensorial(); } }
-function sensSimular(id){
-  if(_sensSimTimer){ sensSimularStop(); return; }
-  const t=_sensTeste(id); if(!t) return;
-  const pool=(people||[]).filter(p=>p.macroSetor!=='Pessoal' && p.name!=='Minhas Tarefas');
-  const textos=['Boa','Gostei bastante','Equilibrada','Ok','Achei seca','Derrete bem',''];
-  let n=0; const max=8;
-  _sensSimTimer=setInterval(function(){
-    const usados=new Set((t.respostas||[]).map(r=>r.avaliador));
-    const liv=pool.find(p=>!usados.has(p.id));
-    const av=liv?liv.id:('sim_'+_sensId());
-    const valores={};
-    t.amostras.forEach(function(a){ valores[a.id]={}; t.perguntas.forEach(function(p){ const esc=SENS_ESCALAS[p.escala]; valores[a.id][p.id]= esc.tipo==='texto' ? textos[Math.floor(Math.random()*textos.length)] : esc.opcoes[Math.floor(Math.random()*esc.opcoes.length)]; }); });
-    t.respostas=t.respostas||[]; t.respostas.push({id:_sensId(), avaliador:av, createdAt:today, valores:valores});
-    saveSensorial_db(); n++;
-    _sensRerenderAoVivo();
-    if(n>=max) sensSimularStop();
-  }, 1200);
-  toast('Simulando respostas ao vivo…');
-  _sensRerenderAoVivo();
-}
-function sensSimularStop(){ if(_sensSimTimer){ clearInterval(_sensSimTimer); _sensSimTimer=null; toast('Simulação encerrada'); _sensRerenderAoVivo(); } }
 
 // ─── Editor de teste (criar / configurar) ───
 let sensEditorBuf = null;
@@ -7809,7 +7809,7 @@ function novoTesteSensorial(){
   sensEditorBuf = { id:_sensId(), titulo:'', data:today, produtoBase:'', tipoTeste:'gordura', status:'aberto', revelado:false, meetingId:(_autoMtg?_autoMtg.id:''),
     ideiaTeste:'', oQueMudou:'', atencao:'',
     amostras:[{id:_sensId(),codigo:'',identidadeReal:''},{id:_sensId(),codigo:'',identidadeReal:''}],
-    perguntas:_sensPerguntasPadrao(), respostas:[], createdAt:today, _novo:true };
+    perguntas:_sensPerguntasPadrao(), respostas:[], createdAt:today, criadoPor:CURRENT_USER_ID, _novo:true };
   sensorialSubview='editor'; renderSensorial();
 }
 // Abre a reunião vinculada saindo da área Qualidade (vai pro hub do Gerenciador → Reuniões).
@@ -8037,7 +8037,6 @@ function _sensPresSlideHTML(t, key){
       <div style="text-align:center; margin-bottom:24px;"><div style="font-size:13px; font-weight:800; color:var(--success); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;"><i class="ti ti-chart-bar"></i> Resultado ao vivo</div><h1 style="font-size:clamp(24px,4vw,38px); font-weight:800; color:var(--text); margin-bottom:6px;">Notas da equipe</h1><div style="font-size:13px; color:var(--text3);"><i class="ti ti-users"></i> ${nResp} ${nResp===1?'avaliação':'avaliações'} · atualiza ao vivo</div></div>
       <div style="display:flex; flex-direction:column; gap:12px;">${rows}</div>
       ${insHTML}
-      <div style="margin-top:24px; text-align:center;"><button onclick="sensSimular('${t.id}')" style="background:${_sensSimTimer?'var(--danger)':'var(--card)'}; color:${_sensSimTimer?'#fff':'var(--blue-mid)'}; border:1px solid ${_sensSimTimer?'var(--danger)':'var(--blue-mid)'}; border-radius:10px; padding:11px 22px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-${_sensSimTimer?'player-stop':'player-play'}"></i> ${_sensSimTimer?'Parar simulação':'Simular respostas ao vivo'}</button></div>
     </div>`;
 }
 function _sensPresRender(){
