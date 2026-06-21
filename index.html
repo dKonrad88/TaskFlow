@@ -2350,7 +2350,7 @@
   <div class="menu">
     <!-- Grupo esquerdo: Dash + Tarefas (cresce com badges) -->
     <div style="display:flex;align-items:center;gap:2px;flex-shrink:0">
-      <button class="menu-tab tab-dash" id="menu-dash" onclick="setTab('dash',this)"><i class="ti ti-layout-dashboard"></i> Dash</button>
+      <button class="menu-tab tab-dash" id="menu-dash" onclick="setTab('dash',this)"><i class="ti ti-layout-dashboard"></i> Painel</button>
     </div>
     <div style="width:1px;background:var(--border);margin:6px 6px;align-self:stretch;flex-shrink:0"></div>
     <div style="display:flex;align-items:center;gap:2px;overflow:hidden;flex:1;min-width:0">
@@ -3273,7 +3273,7 @@
         <span title="Cor do texto" style="display:inline-flex;align-items:center;gap:3px">
           <i class="ti ti-letter-t" style="font-size:12px;color:var(--text3);margin-right:2px" aria-hidden="true"></i>
           <span onclick="nmoFontColor('#2563EB')" title="Azul" style="width:15px;height:15px;border-radius:50%;background:#2563EB;cursor:pointer;display:inline-block;border:1.5px solid transparent" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform=''"></span>
-          <span onclick="nmoFontColor('#0F9487')" title="Teal" style="width:15px;height:15px;border-radius:50%;background:#0F9487;cursor:pointer;display:inline-block;border:1.5px solid transparent" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform=''"></span>
+          <span onclick="nmoFontColor('#0F9487')" title="Azul-petróleo" style="width:15px;height:15px;border-radius:50%;background:#0F9487;cursor:pointer;display:inline-block;border:1.5px solid transparent" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform=''"></span>
           <span onclick="nmoFontColor('#16A34A')" title="Verde" style="width:15px;height:15px;border-radius:50%;background:#16A34A;cursor:pointer;display:inline-block;border:1.5px solid transparent" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform=''"></span>
           <span onclick="nmoFontColor('#EA580C')" title="Laranja" style="width:15px;height:15px;border-radius:50%;background:#EA580C;cursor:pointer;display:inline-block;border:1.5px solid transparent" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform=''"></span>
           <span onclick="nmoFontColor('#DC2626')" title="Vermelho" style="width:15px;height:15px;border-radius:50%;background:#DC2626;cursor:pointer;display:inline-block;border:1.5px solid transparent" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform=''"></span>
@@ -3943,7 +3943,7 @@ const LS_MEUDIA_COR='taskflow_meudia_cor';         // rosa | teal | roxo | ambar
 const LS_MEUDIA_FORMATO='taskflow_meudia_formato'; // suave | 3d
 const MEUDIA_CORES=[
   {id:'rosa',  label:'Rosa',  cor:'var(--pink)'},
-  {id:'teal',  label:'Teal',  cor:'var(--blue-teal)'},
+  {id:'teal',  label:'Azul-petróleo',  cor:'var(--blue-teal)'},
   {id:'roxo',  label:'Roxo',  cor:'var(--purple)'},
   {id:'ambar', label:'Âmbar', cor:'var(--amber)'},
   {id:'brasil',label:'Brasil',cor:'#009739'},
@@ -8872,7 +8872,7 @@ function renderAjuda(){
             <br><br>
             <b>Estrutura da sidebar:</b>
             <ul style="margin:6px 0 0 16px;display:flex;flex-direction:column;gap:3px">
-              <li><b>Topo (fixos):</b> 📊 Dashboard · ☀️ Hoje · 📥 <b>Organizar</b> (novo!)</li>
+              <li><b>Topo (fixos):</b> 📊 Painel · ☀️ Hoje · 📥 <b>Organizar</b> (novo!)</li>
               <li><b>📆 Períodos</b> (azul) — Atrasadas, Amanhã, Semana, Próxima semana, Pendentes, Todas</li>
               <li><b>📁 Gestão</b> (roxo) — Projetos, Reuniões, Notas, Agenda, Rotinas</li>
               <li><b>👥 Pessoas</b> (verde-azulado) — organizadas por departamento, com bolinha de status colorida</li>
@@ -8937,7 +8937,7 @@ function renderAjuda(){
           </div>
 
           <div style="padding:14px;background:color-mix(in srgb, var(--blue-mid) 7%, transparent);border:1px solid color-mix(in srgb, var(--blue-mid) 19%, transparent);border-radius:10px">
-            <div style="font-size:13px;font-weight:700;color:var(--blue-mid);margin-bottom:6px;display:flex;align-items:center;gap:6px"><i class="ti ti-layout-dashboard"></i> Dashboard redesenhada</div>
+            <div style="font-size:13px;font-weight:700;color:var(--blue-mid);margin-bottom:6px;display:flex;align-items:center;gap:6px"><i class="ti ti-layout-dashboard"></i> Painel redesenhado</div>
             <div style="font-size:12.5px;color:var(--text2);line-height:1.55">
               Saudação personalizada, hero "Foco do dia", layout em 2 colunas com sidebar lateral contendo Energia, Notificações e blocos de métricas por setor. Tudo mais limpo e organizado.
             </div>
@@ -8991,7 +8991,7 @@ function renderAjuda(){
           <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px">
             <span style="padding:4px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px"><b>Lista</b> — vertical, detalhado</span>
             <span style="padding:4px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px"><b>Cartões</b> — grade visual</span>
-            <span style="padding:4px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px"><b>Painel</b> — Kanban (Para Fazer / Em Andamento / Aguardando / Concluído)</span>
+            <span style="padding:4px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px"><b>Painel</b> — quadro Kanban (Para Fazer / Em Andamento / Aguardando / Concluído)</span>
           </div>
         </div>`,
     },
@@ -9188,7 +9188,7 @@ function renderAjuda(){
         <ul style="margin:12px 0 0 16px;display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--text2)">
           <li>O <b>header do painel</b> usa a cor escolhida no projeto (gradiente personalizado)</li>
           <li>Reuniões aparecem aqui quando você marca o projeto no campo "Projetos" da reunião</li>
-          <li>Na Dash, projetos ativos aparecem na sidebar direita (badge "Projetos Ativos")</li>
+          <li>No Painel, projetos ativos aparecem na barra lateral direita (selo "Projetos Ativos")</li>
         </ul>`,
     },
     {
@@ -9360,7 +9360,7 @@ function renderAjuda(){
                 ['✅ Tarefa','🔨 Executor','Aparece na sidebar e nas abas de tarefas'],
                 ['✅ Tarefa','💬 Solicitante','Também aparece na sidebar — quem pediu acompanha'],
                 ['✅ Tarefa','📅 Reunião','Aparece no Painel da Reunião com data de criação'],
-                ['✅ Tarefa','📁 Projeto','Aparece no Kanban do projeto'],
+                ['✅ Tarefa','📁 Projeto','Aparece no quadro Kanban do projeto'],
                 ['📅 Reunião','👤 Participantes','Controle de presença e histórico'],
                 ['📁 Projeto','👤 Membros','Nova tarefa do projeto herda os membros'],
                 ['🗓️ Reunião','📅 Calendário','Aparece automático (se tiver hora)'],
@@ -9378,7 +9378,7 @@ function renderAjuda(){
       id:'dash',
       icon:'ti-layout-dashboard',
       cor:'var(--blue-mid)',
-      titulo:'Dashboard',
+      titulo:'Painel',
       resumo:'Visão geral do seu dia em uma tela limpa e organizada.',
       conteudo:`
         <p>A Dash é a primeira tela que você vê. No V3 ela foi totalmente redesenhada em <b>layout de 2 colunas</b>: conteúdo principal à esquerda, sidebar de stats e métricas à direita.</p>
@@ -9409,7 +9409,7 @@ function renderAjuda(){
         </div>
 
         <div style="margin-top:12px;padding:12px;background:var(--bg2);border-radius:10px;font-size:12px;color:var(--text2)">
-          <b>💡 Dashboard redesenhado (2026):</b> foco em acionabilidade. Removidos cards de vaidade. Adicionado "Foco do dia" auto-selecionado pela urgência.
+          <b>💡 Painel redesenhado (2026):</b> foco em acionabilidade. Removidos cards de vaidade. Adicionado "Foco do dia" auto-selecionado pela urgência.
         </div>`,
     },
     {
@@ -13279,7 +13279,7 @@ function setTab(tab,el){
   if(el && el.classList) el.classList.add('active');
   renderSidebar();
   // Mapa de títulos e subtítulos para cada aba
-  const titles={dash:'📊 Dashboard',rotinas:'🔁 Rotinas',hoje:'📅 Tarefas de Hoje','minhas-tarefas':'👤 Minhas Tarefas',equipe:'👥 Tarefas da Equipe',entrada:'📥 Organizar',someday:'💤 Lembrete',atrasadas:'🚨 Tarefas Atrasadas',amanha:'🌅 Tarefas de Amanhã',semana:'📆 Tarefas da Semana',pendentes:'⏰ Tarefas Pendentes','prox-semana':'📆 Próxima Semana',concluidas:'✅ Concluídas',todas:'📋 Todas as Tarefas',pessoas:'👤 Por Pessoa',anotacoes:'📝 Anotações',agenda:'🗓️ Agenda',projetos:'📁 Projetos',['projetos-pro']:'📁 Projetos',reunioes:'📅 Reuniões',analise:'📊 Análise',lixeira:'🗑️ Lixeira',ajuda:'❓ Ajuda'};
+  const titles={dash:'📊 Painel',rotinas:'🔁 Rotinas',hoje:'📅 Tarefas de Hoje','minhas-tarefas':'👤 Minhas Tarefas',equipe:'👥 Tarefas da Equipe',entrada:'📥 Organizar',someday:'💤 Lembrete',atrasadas:'🚨 Tarefas Atrasadas',amanha:'🌅 Tarefas de Amanhã',semana:'📆 Tarefas da Semana',pendentes:'⏰ Tarefas Pendentes','prox-semana':'📆 Próxima Semana',concluidas:'✅ Concluídas',todas:'📋 Todas as Tarefas',pessoas:'👤 Por Pessoa',anotacoes:'📝 Anotações',agenda:'🗓️ Agenda',projetos:'📁 Projetos',['projetos-pro']:'📁 Projetos',reunioes:'📅 Reuniões',analise:'📊 Análise',lixeira:'🗑️ Lixeira',ajuda:'❓ Ajuda'};
   const _fmtTab=x=>x.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit'}).replace('.','');
   const subs={dash:'Visão geral de todas as suas tarefas',rotinas:'Tarefas que se repetem automaticamente',hoje:'Foque no que importa agora','minhas-tarefas':'Tarefas onde você é o executor',equipe:'Atrasadas e de hoje — o que precisa da sua atenção agora',entrada:'Tarefas sem executor — classifique com calma',someday:'Tarefas sem urgência — sem data definida',atrasadas:'Tarefas com data vencida ainda não concluídas',amanha:'O que vem pela frente',semana:`Visão semanal — ${_fmtTab(_mon)} a ${_fmtTab(_sun)}`,pendentes:'Tarefas ainda não concluídas','prox-semana':`Visão da próxima semana — ${_fmtTab(_proxMon)} a ${_fmtTab(_proxSun)}`,concluidas:'Ótimo trabalho!',todas:'Visão completa',pessoas:'Selecione uma pessoa para filtrar',anotacoes:'Blocos rápidos para ideias, reuniões, lembretes e decisões',agenda:'Visualização por dias, estilo Notion',projetos:'Gerencie projetos e equipas',['projetos-pro']:'Projetos com fases, setores e tarefas vinculadas',reunioes:'Hub de reuniões — histórico, pauta e ATA',analise:'Pontualidade e gargalos — pessoal, equipe e reuniões',lixeira:'Itens excluídos — recuperáveis em 30 dias',ajuda:'Tudo o que você precisa saber para usar o sistema'};
   document.getElementById('tab-title').textContent=titles[tab];
@@ -17384,7 +17384,7 @@ function prioWeight(prio){return PRIO_PESO[prio] ?? 2;}
 const NOTE_COLORS=[
   {id:'none',bg:'transparent',label:'Padrão'},
   {id:'blue',bg:'var(--blue-mid)',label:'Azul'},
-  {id:'teal',bg:'var(--blue-teal)',label:'Teal'},
+  {id:'teal',bg:'var(--blue-teal)',label:'Azul-petróleo'},
   {id:'green',bg:'var(--success)',label:'Verde'},
   {id:'amber',bg:'var(--orange)',label:'Âmbar'},
   {id:'red',bg:'var(--danger)',label:'Vermelho'},
@@ -19842,7 +19842,7 @@ function _updateBreadcrumb(t){
     'hoje':'Tarefas de Hoje', 'entrada':'Organizar', 'atrasadas':'Atrasadas',
     'amanha':'Amanhã', 'semana':'Esta Semana', 'prox-semana':'Próx. Semana',
     'pendentes':'Pendentes', 'todas':'Todas', 'someday':'Algum Dia',
-    'minhas-tarefas':'Minhas Tarefas', 'dash':'Dashboard',
+    'minhas-tarefas':'Minhas Tarefas', 'dash':'Painel',
     'projetos':'Projetos', 'projetos-pro':'Projetos',
     'reunioes':'Reuniões', 'anotacoes':'Notas', 'agenda':'Agenda',
     'rotinas':'Rotinas', 'tempo':'Tempo', 'lixeira':'Lixeira'
