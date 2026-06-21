@@ -6608,7 +6608,7 @@ function renderFornecedorEditor(){
           <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Categoria macro</label><input list="forn-macros-dl" value="${escapeAttr(b.categoriaMacro||'')}" oninput="_mfSet('categoriaMacro',this.value)" placeholder="Elétrica, Mecânica, Inox…" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;"><datalist id="forn-macros-dl">${[...new Set([..._fnMacros(),'Elétrica','Mecânica','Inox / Tanques','Insumos','Serviços','Hidráulica','Pneumática'])].map(m=>`<option value="${escapeAttr(m)}"></option>`).join('')}</datalist></div>
           ${campo('Cidade / UF','cidade','Caxias do Sul - RS')}
         </div>
-        <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Produtos que fornece <span style="font-weight:600; text-transform:none; color:var(--text3)">· separados por vírgula</span></label><input value="${escapeAttr((b.produtos||[]).join(', '))}" oninput="_mfSetLista('produtos',this.value)" placeholder="correia, resistência, datador" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;"></div>
+        <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Produtos que fornece ${_hint('Liste os produtos separados por vírgula. Ex.: correia, resistência, datador.')}</label><input value="${escapeAttr((b.produtos||[]).join(', '))}" oninput="_mfSetLista('produtos',this.value)" placeholder="correia, resistência, datador" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;"></div>
         ${campo('Segmento / categoria','categoria','Opcional — ex.: tanques sob medida')}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
           ${campo('Contato','contato','Nome do vendedor')}
@@ -6731,7 +6731,7 @@ function renderOrcamentoEditor(){
         </div>
         <div>
           <div style="display:flex; align-items:center; justify-content:space-between; margin:6px 0 8px;">
-            <label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase;">Campos personalizados <span style="font-weight:600; text-transform:none; color:var(--text3)">· o que comparar (ex.: Altura, Material)</span></label>
+            <label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase;">Campos personalizados ${_hint('Campos que você quer comparar entre as cotações (ex.: Altura, Material).')}</label>
             <button onclick="_moAddCampo()" style="background:none; border:1px solid var(--blue-mid); color:var(--blue-mid); border-radius:7px; padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-plus"></i> Campo</button>
           </div>
           ${(b.campos&&b.campos.length)?`<div style="display:flex; flex-wrap:wrap; gap:8px;">${b.campos.map(cp=>`<div style="display:flex; align-items:center; gap:4px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:4px 6px 4px 10px;"><input value="${escapeAttr(cp.label||'')}" oninput="_moSetCampo('${cp.id}',this.value)" placeholder="Nome do campo" style="border:none; background:none; font-size:12.5px; color:var(--text); font-family:inherit; width:120px; outline:none;"><button onclick="_moDelCampo('${cp.id}')" title="Remover campo" style="background:none; border:none; color:var(--text3); cursor:pointer; padding:2px;"><i class="ti ti-x" style="font-size:13px"></i></button></div>`).join('')}</div>`:'<div style="font-size:12px; color:var(--text3);">Nenhum campo extra — adicione os que quiser (ex.: Altura, Largura, Material).</div>'}
@@ -6885,7 +6885,7 @@ function renderOrdemEditor(){
           ${campo('Custo mão de obra (R$)','custoMO','0','inputmode="decimal"')}
           <div style="background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:8px 11px;"><div style="font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase;">Custo total</div><div style="font-size:16px; font-weight:800; color:var(--text); margin-top:2px;">${escapeHTML(_brl(custo))}</div></div>
         </div>
-        <div>${_lbl('Peças / materiais <span style="font-weight:600;text-transform:none">· referência — o consumo real vem do sistema da empresa (ERP)</span>')}<input value="${escapeAttr(b.pecas||'')}" oninput="_osSet('pecas',this.value)" placeholder="Ex.: Filtro de tinta, correia A-45 (ref. ERP)" style="${_ist}"></div>
+        <div>${_lbl('Peças / materiais '+_hint('Apenas referência — o consumo real vem do sistema da empresa (ERP).'))}<input value="${escapeAttr(b.pecas||'')}" oninput="_osSet('pecas',this.value)" placeholder="Ex.: Filtro de tinta, correia A-45 (ref. ERP)" style="${_ist}"></div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
           <div>${_lbl('Causa')}<input value="${escapeAttr(b.causa||'')}" oninput="_osSet('causa',this.value)" placeholder="Causa raiz da falha" style="${_ist}"></div>
           <div>${_lbl('Ação executada')}<input value="${escapeAttr(b.acao||'')}" oninput="_osSet('acao',this.value)" placeholder="O que foi feito" style="${_ist}"></div>
@@ -7885,8 +7885,7 @@ function renderSensorialEditor(){
         </div>
 
         <div style="background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:14px 15px;">
-          <div style="font-size:11px; font-weight:800; color:var(--blue-mid); text-transform:uppercase; letter-spacing:.5px; margin-bottom:3px;"><i class="ti ti-presentation"></i> Contexto da apresentação</div>
-          <div style="font-size:11.5px; color:var(--text3); margin-bottom:12px;">Aparece na tela no Modo Apresentação, antes da degustação. Tudo opcional.</div>
+          <div style="font-size:11px; font-weight:800; color:var(--blue-mid); text-transform:uppercase; letter-spacing:.5px; margin-bottom:11px;"><i class="ti ti-presentation"></i> Contexto da apresentação ${_hint('Esses campos aparecem na tela no Modo Apresentação, antes da degustação. Tudo opcional.')}</div>
           <div style="display:flex; flex-direction:column; gap:11px;">
             <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Ideia do teste</label><textarea oninput="sensEdSet('ideiaTeste',this.value)" rows="2" placeholder="Qual a pergunta que este teste responde?" style="width:100%; box-sizing:border-box; resize:vertical; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;">${escapeHTML(b.ideiaTeste||'')}</textarea></div>
             <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">O que mudou</label><textarea oninput="sensEdSet('oQueMudou',this.value)" rows="2" placeholder="O que difere entre as amostras (e o que ficou igual)" style="width:100%; box-sizing:border-box; resize:vertical; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;">${escapeHTML(b.oQueMudou||'')}</textarea></div>
@@ -7894,7 +7893,7 @@ function renderSensorialEditor(){
           </div>
         </div>
 
-        <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Reunião vinculada <span style="font-weight:600; text-transform:none; color:var(--text3)">· opcional — vincula a análise à reunião do mesmo dia</span></label>${reuniaoSelect}</div>
+        <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Reunião vinculada ${_hint('Opcional — vincula este teste à reunião do mesmo dia.')}</label>${reuniaoSelect}</div>
 
         <div>
           <div style="display:flex; align-items:center; justify-content:space-between; margin:8px 0 8px;">
@@ -7906,10 +7905,9 @@ function renderSensorialEditor(){
 
         <div>
           <div style="display:flex; align-items:center; justify-content:space-between; margin:8px 0 8px;">
-            <label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase;">Perguntas</label>
+            <label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase;">Perguntas ${_hint('Desmarque uma pergunta para tirá-la do teste. A escala define o tipo de resposta e como ela entra no resultado.')}</label>
             <button onclick="sensEdAddPergunta()" style="background:none; border:1px solid var(--blue-mid); color:var(--blue-mid); border-radius:7px; padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-plus"></i> Pergunta</button>
           </div>
-          <div style="font-size:11px; color:var(--text3); margin-bottom:8px;">Desmarque para remover do teste. A escala define o tipo de resposta e como entra no resultado.</div>
           ${perguntaRows}
         </div>
 
