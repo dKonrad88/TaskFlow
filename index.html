@@ -6950,6 +6950,56 @@ function _meSet(campo,val){ if(mntEqBuf) mntEqBuf[campo]=val; }
 function eqVoltar(){ manutEquipAberto=null; mntEqBuf=null; renderManutencao(); }
 function salvarEquipamento(){ const b=mntEqBuf; if(!b) return; if(!String(b.nome).trim()){ toast('Dê um nome ao equipamento'); return; } _eqLoad(); delete b._novo; const i=equipamentos.findIndex(x=>x.id===b.id); if(i>=0) equipamentos[i]=b; else equipamentos.push(b); saveEquipamentos(); toast('Equipamento salvo'); manutEquipAberto=null; mntEqBuf=null; renderManutencao(); }
 function excluirEquipamento(id){ _eqLoad(); const it=(equipamentos||[]).find(x=>x.id===id); if(!it) return; moveToTrash('equipamento', it); equipamentos=equipamentos.filter(x=>x.id!==id); saveEquipamentos(); manutEquipAberto=null; mntEqBuf=null; renderManutencao(); _mostrarFABDesfazer('Equipamento excluído', 0); }
+// Duplicar: clona a ficha (consumíveis e planos juntos), limpa a TAG e abre p/ definir o novo número.
+function _eqDuplicar(id){ _eqLoad(); const e=(equipamentos||[]).find(x=>x.id===id); if(!e) return; const c=JSON.parse(JSON.stringify(e)); c.id=_mntId('eq'); c.tag=''; (c.consumiveis||[]).forEach(x=>x.id=_mntId('cs')); (c.planos||[]).forEach(x=>x.id=_mntId('pl')); c._novo=true; mntEqBuf=c; manutEquipAberto=c.id; renderManutencao(); toast('Cópia criada — defina a nova TAG'); }
+// Criar várias unidades a partir da ficha atual (mesma ficha, TAGs numeradas).
+function _eqVariasTags(){
+  const qtd=Math.max(0, Math.min(200, parseInt((document.getElementById('eq-qtd')||{}).value)||0));
+  const iniRaw=parseInt((document.getElementById('eq-inicio')||{}).value); const ini=isNaN(iniRaw)?1:iniRaw;
+  const prefixo=((document.getElementById('eq-prefixo')||{}).value||'');
+  const width=String(ini+qtd-1).length; const tags=[];
+  for(let k=0;k<qtd;k++) tags.push(prefixo+String(ini+k).padStart(width,'0'));
+  return tags;
+}
+function _eqVariasPreview(){ const el=document.getElementById('eq-varias-preview'); if(!el) return; const t=_eqVariasTags(); el.textContent = t.length ? (t.slice(0,4).join(', ')+(t.length>4?` … ${t[t.length-1]} (${t.length} no total)`:'')) : '—'; }
+function _eqAbrirCriarVarias(){
+  const b=mntEqBuf; if(!b) return;
+  if(!String(b.nome).trim()){ toast('Dê um nome ao equipamento primeiro'); return; }
+  document.getElementById('eq-varias-ov')?.remove();
+  const prefDefault=String(b.tag||'').replace(/\d+$/,'');
+  const _in='width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;';
+  const _lb='font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;';
+  const html=`<div id="eq-varias-ov" onclick="if(event.target===this)this.remove()" style="position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px 22px; width:100%; max-width:460px; box-shadow:0 12px 40px rgba(0,0,0,.25);">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+        <div style="font-size:15px; font-weight:800; color:var(--text);"><i class="ti ti-stack-2"></i> Criar várias unidades</div>
+        <button onclick="this.closest('#eq-varias-ov').remove()" style="background:none; border:none; color:var(--text3); font-size:20px; cursor:pointer; line-height:1; font-family:inherit;">&times;</button>
+      </div>
+      <div style="font-size:12px; color:var(--text3); margin-bottom:14px;">Cria N equipamentos com a mesma ficha técnica de "<b style="color:var(--text)">${escapeHTML(b.nome)}</b>", numerados na TAG. Cada um vira um equipamento próprio (OS e preventivas separadas).</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1.2fr; gap:10px; margin-bottom:12px;">
+        <div><label style="${_lb}">Quantidade</label><input id="eq-qtd" type="number" min="1" max="200" value="9" oninput="_eqVariasPreview()" style="${_in}"></div>
+        <div><label style="${_lb}">Começar em</label><input id="eq-inicio" type="number" value="1" oninput="_eqVariasPreview()" style="${_in}"></div>
+        <div><label style="${_lb}">Prefixo da TAG</label><input id="eq-prefixo" value="${escapeAttr(prefDefault)}" oninput="_eqVariasPreview()" placeholder="ex.: MCB-" style="${_in}"></div>
+      </div>
+      <div style="font-size:12px; color:var(--text2); background:var(--bg2); border:1px solid var(--border); border-radius:9px; padding:9px 12px;">TAGs: <span id="eq-varias-preview" style="font-weight:700; color:var(--blue-mid);"></span></div>
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:18px;">
+        <button onclick="this.closest('#eq-varias-ov').remove()" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;">Cancelar</button>
+        <button onclick="_eqCriarVarias()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:8px; padding:9px 20px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-stack-2"></i> Criar</button>
+      </div>
+    </div>
+  </div>`;
+  const wrap=document.createElement('div'); wrap.innerHTML=html; document.body.appendChild(wrap.firstElementChild); _eqVariasPreview();
+}
+function _eqCriarVarias(){
+  const b=mntEqBuf; if(!b) return; if(!String(b.nome).trim()){ toast('Dê um nome ao equipamento'); return; }
+  const tags=_eqVariasTags(); if(!tags.length){ toast('Quantidade inválida'); return; }
+  _eqLoad();
+  tags.forEach(tag=>{ const novo=JSON.parse(JSON.stringify(b)); novo.id=_mntId('eq'); novo.tag=tag; delete novo._novo; (novo.consumiveis||[]).forEach(c=>c.id=_mntId('cs')); (novo.planos||[]).forEach(pl=>pl.id=_mntId('pl')); equipamentos.push(novo); });
+  saveEquipamentos();
+  document.getElementById('eq-varias-ov')?.remove();
+  manutEquipAberto=null; mntEqBuf=null; renderManutencao();
+  toast(`${tags.length} unidades criadas`);
+}
 function _eqAddCons(){ if(!mntEqBuf) return; mntEqBuf.consumiveis.push({id:_mntId('cs'), nome:'', tipo:'', espec:''}); renderManutencao(); }
 function _eqDelCons(cid){ if(!mntEqBuf) return; mntEqBuf.consumiveis=mntEqBuf.consumiveis.filter(c=>c.id!==cid); renderManutencao(); }
 function _eqSetCons(cid,campo,val){ if(!mntEqBuf) return; const c=mntEqBuf.consumiveis.find(x=>x.id===cid); if(c) c[campo]=val; }
@@ -6983,6 +7033,7 @@ function _eqCardsHTML(){
         <div style="display:flex; gap:6px; align-items:center;">
           <span style="font-size:10.5px; font-weight:700; color:${cr.c}; border:1px solid ${cr.c}; border-radius:20px; padding:2px 9px; white-space:nowrap;">${escapeHTML(cr.l)}</span>
           <span style="font-size:10.5px; font-weight:700; color:${st.c}; background:color-mix(in srgb,${st.c} 14%,transparent); border-radius:20px; padding:2px 9px; white-space:nowrap;"><i class="ti ${st.i}" style="font-size:10px"></i> ${escapeHTML(st.l)}</span>
+          <button onclick="event.stopPropagation(); _eqDuplicar('${e.id}')" title="Duplicar este equipamento" style="background:none; border:none; color:var(--text3); cursor:pointer; padding:3px; border-radius:6px; flex-shrink:0;" onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-copy" style="font-size:15px"></i></button>
           <button onclick="event.stopPropagation(); excluirEquipamento('${e.id}')" title="Excluir (vai para a Lixeira)" style="background:none; border:none; color:var(--text3); cursor:pointer; padding:3px; border-radius:6px; flex-shrink:0;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-trash" style="font-size:15px"></i></button>
         </div>
       </div>
@@ -7094,6 +7145,7 @@ function renderEquipamentoEditor(){
           ${b._novo?'<span></span>':`<button onclick="excluirEquipamento('${b.id}')" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:9px; padding:11px 18px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit;"><i class="ti ti-trash"></i> Excluir</button>`}
           <div style="display:flex; gap:10px;">
             <button onclick="eqVoltar()" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:9px; padding:11px 20px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit;">Cancelar</button>
+            <button onclick="_eqAbrirCriarVarias()" title="Criar várias unidades com esta mesma ficha, numeradas na TAG" style="background:none; border:1px solid var(--blue-mid); color:var(--blue-mid); border-radius:9px; padding:11px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-stack-2"></i> Criar várias unidades…</button>
             <button onclick="salvarEquipamento()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:11px 26px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit;">Salvar</button>
           </div>
         </div>
