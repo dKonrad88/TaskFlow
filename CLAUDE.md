@@ -80,9 +80,13 @@
   cada um com frequência própria (TBM por tempo / UBM por uso) + checklist + responsável + duração + parada.
   Lista com busca + filtro de criticidade. Funções: `renderEquipamentos`, `renderEquipamentoEditor`,
   `_eqFiltrar`, `_eqAddPlano`/`_eqAddCons`. Verificado: 0 erros + 12/12 testes (jsc).
-- **PLANO do módulo PCM (pedido do Diego "PCM completo"):** Bloco 1 Equipamentos ✅. A fazer: Bloco 2 Ordens
-  (OS corretiva/preventiva, sem cadastro de peças — só referência ERP), Bloco 3 Preventivas (planos em
-  calendário, "executar" gera OS), Bloco 4 Painel PCM (KPIs: MTBF, MTTR, disponibilidade, aderência, backlog).
+- **PLANO do módulo PCM (pedido do Diego "PCM completo"):** Bloco 1 Equipamentos ✅, Bloco 2 Ordens (OS) ✅.
+  A fazer: Bloco 3 Preventivas (planos em calendário, "executar" gera OS), Bloco 4 Painel PCM (KPIs: MTBF,
+  MTTR, disponibilidade, aderência ao plano, backlog).
+- **Ordens (LS_ORDENS):** OS vinculada a equipamento, tipo (corretiva/preventiva/preditiva/melhoria),
+  status (aberta→planejada→execução→concluída→cancelada), prioridade, custo (material+MO, total calculado),
+  tempo de parada, peças=referência (ERP), causa/ação. Numeração `_osNextNum` (OS-0001…). Lista com busca +
+  filtro de status. Funções: `renderOrdens`/`renderOrdemEditor`/`_osFiltrar`. 0 erros + 10/10 testes (jsc).
 
 ### 2026-06-20 — Mac de casa — Compras: campos personalizados + filtro de fornecedores
 - **Orçamentos:** cada orçamento define **campos personalizados** (`campos:[{id,label}]`, ex.: Altura, Material)
