@@ -7313,22 +7313,64 @@ function renderQualidade(){
 const LS_SENSORIAL = 'taskflow_sensorial';
 
 // Biblioteca de escalas (tipos de pergunta) — reaproveitáveis entre testes
-const SENS_ESCALAS = {
-  hedonica:        { nome:'Aceitação (gostei/desgostei)', tipo:'escala',     opcoes:['Gostei muito','Gostei','Indiferente','Desgostei','Desgostei muito'] },
-  jar_dulcor:      { nome:'Dulçor (ponto ideal)',         tipo:'jar',        opcoes:['Extremamente doce','Doce','Na medida certa','Pouco doce','Nada doce'], ideal:'Na medida certa' },
-  textura_desc:    { nome:'Descrição da textura',         tipo:'descritiva', opcoes:['Derrete fácil na boca','Derretimento intermediário na boca','Não derrete na boca com facilidade'] },
-  intencao_compra: { nome:'Intenção de compra',           tipo:'intencao',   opcoes:['Certamente compraria','Provavelmente compraria','Talvez comprasse/talvez não','Provavelmente não compraria','Certamente não compraria'] },
-  comentario:      { nome:'Comentário (texto livre)',     tipo:'texto' },
+// ── Biblioteca de "Respostas" (conjuntos reutilizáveis) — editável pelo usuário, p/ ganhar velocidade.
+// tipo: 'nota' (opções da melhor→pior → média + Ranking) | 'opcoes' (distribuição %) | 'texto' (comentário).
+const LS_SENS_RESPOSTAS='taskflow_sens_respostas';
+let sensRespostas=null;
+function _sensRespostasSeed(){
+  return [
+    {id:'hedonica',        nome:'Aceitação (gostei/desgostei)', tipo:'nota',   opcoes:['Gostei muito','Gostei','Indiferente','Desgostei','Desgostei muito']},
+    {id:'intencao_compra', nome:'Intenção de compra',           tipo:'nota',   opcoes:['Certamente compraria','Provavelmente compraria','Talvez comprasse/talvez não','Provavelmente não compraria','Certamente não compraria']},
+    {id:'jar_dulcor',      nome:'Dulçor (ponto ideal)',         tipo:'opcoes', opcoes:['Extremamente doce','Doce','Na medida certa','Pouco doce','Nada doce']},
+    {id:'textura_desc',    nome:'Descrição da textura',         tipo:'opcoes', opcoes:['Derrete fácil na boca','Derretimento intermediário na boca','Não derrete na boca com facilidade']},
+    {id:'comentario',      nome:'Comentário (texto livre)',     tipo:'texto',  opcoes:[]},
+  ];
+}
+function _sensRespostasLoad(){ if(sensRespostas===null){ const v=safeJSON(LS_SENS_RESPOSTAS, null); sensRespostas=(Array.isArray(v)&&v.length)?v:_sensRespostasSeed(); } return sensRespostas; }
+function _sensRespostasSave(){ safeSetItem(LS_SENS_RESPOSTAS, JSON.stringify(sensRespostas||[])); }
+function _sensRespById(id){ return _sensRespostasLoad().find(r=>r.id===id)||null; }
+function _sensRespNovoId(){ return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
+// Compat: nomes/ tipos das escalas antigas, caso algum dado legado não esteja na biblioteca.
+const SENS_ESCALAS_LEGADO = {
+  hedonica:{nome:'Aceitação (gostei/desgostei)',tipo:'nota',opcoes:['Gostei muito','Gostei','Indiferente','Desgostei','Desgostei muito']},
+  jar_dulcor:{nome:'Dulçor (ponto ideal)',tipo:'opcoes',opcoes:['Extremamente doce','Doce','Na medida certa','Pouco doce','Nada doce']},
+  textura_desc:{nome:'Descrição da textura',tipo:'opcoes',opcoes:['Derrete fácil na boca','Derretimento intermediário na boca','Não derrete na boca com facilidade']},
+  intencao_compra:{nome:'Intenção de compra',tipo:'nota',opcoes:['Certamente compraria','Provavelmente compraria','Talvez comprasse/talvez não','Provavelmente não compraria','Certamente não compraria']},
+  comentario:{nome:'Comentário (texto livre)',tipo:'texto',opcoes:[]},
 };
-// Mapas numéricos (1–5) para médias. JAR e descritiva não viram média (distribuição).
-const SENS_NUM = {
-  hedonica:        {'Gostei muito':5,'Gostei':4,'Indiferente':3,'Desgostei':2,'Desgostei muito':1},
-  intencao_compra: {'Certamente compraria':5,'Provavelmente compraria':4,'Talvez comprasse/talvez não':3,'Provavelmente não compraria':2,'Certamente não compraria':1},
-};
-// Resolve a escala de uma pergunta: pré-definida (SENS_ESCALAS) ou personalizada (opções na própria pergunta).
+// Resolve a "resposta" de uma pergunta → {id,nome,tipo,opcoes}.
 function _sensEsc(p){
-  if(p && p.escala==='custom') return { nome:(p.escalaNome||'Personalizada'), tipo:'escala', opcoes:(p.opcoes||[]).filter(o=>String(o).trim()!=='') };
-  return SENS_ESCALAS[p && p.escala] || { nome:'—', tipo:'escala', opcoes:[] };
+  if(p && p.escala==='custom') return { id:'custom', nome:(p.escalaNome||'Personalizada'), tipo:'opcoes', opcoes:(p.opcoes||[]).filter(o=>String(o).trim()!=='') };
+  const r=_sensRespById(p && p.escala);
+  if(r) return { id:r.id, nome:r.nome, tipo:(r.tipo||'opcoes'), opcoes:(r.opcoes||[]).slice() };
+  const leg=SENS_ESCALAS_LEGADO[p && p.escala];
+  if(leg) return { id:p.escala, nome:leg.nome, tipo:leg.tipo, opcoes:(leg.opcoes||[]).slice() };
+  return { id:(p&&p.escala)||'', nome:'—', tipo:'opcoes', opcoes:[] };
+}
+// Pontuação de uma opção numa resposta tipo 'nota' (1ª opção = melhor), normalizada para 1–5.
+function _sensNotaScore(esc, opcao){
+  const L=(esc.opcoes||[]).length, i=esc.opcoes.indexOf(opcao);
+  if(i<0||L<1) return null;
+  return L===1 ? 5 : (5 - i*(4/(L-1)));
+}
+// Média (1–5) de UMA pergunta tipo 'nota' numa amostra.
+function _sensMediaPergunta(t, amostraId, p){
+  const esc=_sensEsc(p); if(esc.tipo!=='nota') return null;
+  let soma=0, n=0;
+  for(const r of (t.respostas||[])){ const va=r.valores[amostraId]; if(!va) continue; const v=va[p.id]; if(v==null) continue; const s=_sensNotaScore(esc, v); if(s!=null){ soma+=s; n++; } }
+  return n?{media:soma/n, n}:null;
+}
+// Aceitação geral (1–5) de uma amostra = média das médias de todas as perguntas tipo 'nota'.
+function _sensMediaGeral(t, amostraId){
+  let soma=0, n=0;
+  for(const p of (t.perguntas||[])){ const m=_sensMediaPergunta(t, amostraId, p); if(m){ soma+=m.media; n++; } }
+  return n?{media:soma/n, n}:null;
+}
+// Todas as notas (1–5) das perguntas tipo 'nota' de uma amostra — p/ medir divergência.
+function _sensNotaScoresAmostra(t, amostraId){
+  const arr=[];
+  for(const p of (t.perguntas||[])){ const esc=_sensEsc(p); if(esc.tipo!=='nota') continue; for(const r of (t.respostas||[])){ const va=r.valores[amostraId]; if(!va) continue; const v=va[p.id]; if(v==null) continue; const s=_sensNotaScore(esc, v); if(s!=null) arr.push(s); } }
+  return arr;
 }
 
 // Estado da view
@@ -7367,12 +7409,12 @@ function _sensSeed(){
     id:_sensId(), avaliador:av, createdAt: today,
     valores: amostras.reduce((acc,a,i)=>{
       acc[a.id] = {
-        [p[0].id]: SENS_ESCALAS.hedonica.opcoes[picks[i][0]],
-        [p[1].id]: SENS_ESCALAS.hedonica.opcoes[picks[i][1]],
-        [p[2].id]: SENS_ESCALAS.jar_dulcor.opcoes[picks[i][2]],
-        [p[3].id]: SENS_ESCALAS.hedonica.opcoes[picks[i][3]],
-        [p[4].id]: SENS_ESCALAS.textura_desc.opcoes[picks[i][4]],
-        [p[5].id]: SENS_ESCALAS.intencao_compra.opcoes[picks[i][5]],
+        [p[0].id]: SENS_ESCALAS_LEGADO.hedonica.opcoes[picks[i][0]],
+        [p[1].id]: SENS_ESCALAS_LEGADO.hedonica.opcoes[picks[i][1]],
+        [p[2].id]: SENS_ESCALAS_LEGADO.jar_dulcor.opcoes[picks[i][2]],
+        [p[3].id]: SENS_ESCALAS_LEGADO.hedonica.opcoes[picks[i][3]],
+        [p[4].id]: SENS_ESCALAS_LEGADO.textura_desc.opcoes[picks[i][4]],
+        [p[5].id]: SENS_ESCALAS_LEGADO.intencao_compra.opcoes[picks[i][5]],
         [p[6].id]: coments[i],
       };
       return acc;
@@ -7650,37 +7692,18 @@ function sensEnviarRespostas(){
 }
 
 // ─── Aba Resultados ───
-function _sensMediaNum(t, amostraId, escalaKey, perguntaFiltro){
-  const map=SENS_NUM[escalaKey]; if(!map) return null;
-  let soma=0, n=0;
-  for(const r of (t.respostas||[])){
-    const va=r.valores[amostraId]; if(!va) continue;
-    for(const p of t.perguntas){
-      if(p.escala!==escalaKey) continue;
-      if(perguntaFiltro && p.id!==perguntaFiltro) continue;
-      const v=va[p.id]; if(v!=null && map[v]!=null){ soma+=map[v]; n++; }
-    }
-  }
-  return n? {media:soma/n, n} : null;
-}
 function _sensDist(t, amostraId, perguntaId){
   const out={}; let n=0;
   for(const r of (t.respostas||[])){ const v=r.valores[amostraId]&&r.valores[amostraId][perguntaId]; if(v!=null && String(v).trim()!==''){ out[v]=(out[v]||0)+1; n++; } }
   return {out, n};
-}
-// Lista de notas hedônicas (1–5) de uma amostra, p/ medir divergência
-function _sensHedScores(t, amostraId){
-  const map=SENS_NUM.hedonica, arr=[];
-  for(const r of (t.respostas||[])){ const va=r.valores[amostraId]; if(!va) continue; for(const p of t.perguntas){ if(p.escala!=='hedonica') continue; const v=va[p.id]; if(v!=null && map[v]!=null) arr.push(map[v]); } }
-  return arr;
 }
 // Padrões & insights — conclusões automáticas a partir das respostas (nada inventado).
 function _sensInsights(t){
   const ins=[]; const nResp=(t.respostas||[]).length; if(nResp<1) return ins;
   const rev=!!t.revelado;
   const nome=(a)=> (rev&&a.identidadeReal) ? `${a.codigo} (${a.identidadeReal})` : a.codigo;
-  // preferida geral
-  const rank=t.amostras.map(a=>({a, m:(_sensMediaNum(t,a.id,'hedonica')||{}).media||0})).sort((x,y)=>y.m-x.m);
+  // preferida geral (média de todas as perguntas tipo 'nota')
+  const rank=t.amostras.map(a=>({a, m:(_sensMediaGeral(t,a.id)||{}).media||0})).sort((x,y)=>y.m-x.m);
   if(rank[0] && rank[0].m>0){
     const top=rank[0], seg=rank[1]; let txt=`<strong>${escapeHTML(nome(top.a))}</strong> foi a preferida no geral (${top.m.toFixed(2)}/5)`;
     if(seg && seg.m>0){ const d=top.m-seg.m; txt += d>=0.05 ? `, à frente de ${escapeHTML(seg.a.codigo)} por ${d.toFixed(2)}` : `, em empate técnico com ${escapeHTML(seg.a.codigo)}`; }
@@ -7689,27 +7712,17 @@ function _sensInsights(t){
   // controle (fórmula atual) × alternativas
   const ctrl=t.amostras.find(a=>/atual|controle/i.test(a.identidadeReal||''));
   if(ctrl){
-    const mc=(_sensMediaNum(t,ctrl.id,'hedonica')||{}).media||0;
-    const alt=t.amostras.filter(a=>a!==ctrl).map(a=>({a, m:(_sensMediaNum(t,a.id,'hedonica')||{}).media||0})).sort((x,y)=>y.m-x.m)[0];
+    const mc=(_sensMediaGeral(t,ctrl.id)||{}).media||0;
+    const alt=t.amostras.filter(a=>a!==ctrl).map(a=>({a, m:(_sensMediaGeral(t,a.id)||{}).media||0})).sort((x,y)=>y.m-x.m)[0];
     if(alt){ if(alt.m>mc+0.05) ins.push({icon:'arrow-up-right', cor:'var(--blue-mid)', txt:`Uma alternativa <strong>superou a fórmula atual</strong>: ${escapeHTML(alt.a.codigo)} (${alt.m.toFixed(2)}) vs ${escapeHTML(ctrl.codigo)} (${mc.toFixed(2)}). Vale considerar a troca.`});
       else ins.push({icon:'shield-check', cor:'var(--text2)', txt:`A <strong>fórmula atual</strong> (${escapeHTML(ctrl.codigo)}, ${mc.toFixed(2)}) segue na frente — nenhuma alternativa superou com clareza.`}); }
   }
-  // líder por atributo
-  const heds=t.perguntas.filter(p=>p.escala==='hedonica');
-  const lideres=heds.map(p=>{ const r=t.amostras.map(a=>({a, m:(_sensMediaNum(t,a.id,'hedonica',p.id)||{}).media||0})).sort((x,y)=>y.m-x.m)[0]; return (r&&r.m>0)?`<strong>${escapeHTML(p.texto)}</strong>: ${escapeHTML(r.a.codigo)}`:''; }).filter(Boolean);
+  // líder por atributo (cada pergunta tipo 'nota')
+  const notaPerguntas=t.perguntas.filter(p=>_sensEsc(p).tipo==='nota');
+  const lideres=notaPerguntas.map(p=>{ const r=t.amostras.map(a=>({a, m:(_sensMediaPergunta(t,a.id,p)||{}).media||0})).sort((x,y)=>y.m-x.m)[0]; return (r&&r.m>0)?`<strong>${escapeHTML(p.texto)}</strong>: ${escapeHTML(r.a.codigo)}`:''; }).filter(Boolean);
   if(lideres.length) ins.push({icon:'target', cor:'var(--blue-mid)', txt:`Líder por atributo — ${lideres.join(' · ')}.`});
-  // intenção de compra (top-2-box)
-  const pc=t.perguntas.find(p=>p.escala==='intencao_compra');
-  if(pc){ const r=t.amostras.map(a=>{ const {out,n}=_sensDist(t,a.id,pc.id); const top2=(out['Certamente compraria']||0)+(out['Provavelmente compraria']||0); return {a, pct:n?Math.round(top2/n*100):0}; }).sort((x,y)=>y.pct-x.pct)[0];
-    if(r && r.pct>0) ins.push({icon:'shopping-cart', cor:'var(--success)', txt:`Maior intenção de compra: <strong>${escapeHTML(r.a.codigo)}</strong> (${r.pct}% comprariam).`}); }
-  // dulçor (JAR)
-  const jar=t.perguntas.find(p=>p.escala==='jar_dulcor');
-  if(jar){ const ideal=SENS_ESCALAS.jar_dulcor.ideal;
-    const r=t.amostras.map(a=>{ const {out,n}=_sensDist(t,a.id,jar.id); return {a, pct:n?Math.round((out[ideal]||0)/n*100):0, doce:n?Math.round(((out['Extremamente doce']||0)+(out['Doce']||0))/n*100):0}; });
-    const best=r.slice().sort((x,y)=>y.pct-x.pct)[0]; const dd=r.filter(x=>x.doce>=50).sort((a,b)=>b.doce-a.doce)[0];
-    if(best && best.pct>0) ins.push({icon:'candy', cor:'var(--blue-mid)', txt:`Dulçor no ponto: <strong>${escapeHTML(best.a.codigo)}</strong> (${best.pct}% "na medida certa")${dd?`. Atenção: ${escapeHTML(dd.a.codigo)} foi vista como doce demais por ${dd.doce}%`:''}.`}); }
-  // divergência
-  const sp=t.amostras.map(a=>{ const arr=_sensHedScores(t,a.id); if(arr.length<2) return {a, sd:0}; const mu=arr.reduce((s,v)=>s+v,0)/arr.length; return {a, sd:Math.sqrt(arr.reduce((s,v)=>s+(v-mu)*(v-mu),0)/arr.length)}; }).sort((x,y)=>y.sd-x.sd);
+  // divergência (sobre as notas)
+  const sp=t.amostras.map(a=>{ const arr=_sensNotaScoresAmostra(t,a.id); if(arr.length<2) return {a, sd:0}; const mu=arr.reduce((s,v)=>s+v,0)/arr.length; return {a, sd:Math.sqrt(arr.reduce((s,v)=>s+(v-mu)*(v-mu),0)/arr.length)}; }).sort((x,y)=>y.sd-x.sd);
   if(sp[0] && sp[0].sd>=1.0) ins.push({icon:'arrows-split', cor:'var(--amber)', txt:`Opiniões mais <strong>divididas</strong> na ${escapeHTML(sp[0].a.codigo)} — vale ler os comentários dela.`});
   return ins;
 }
@@ -7720,7 +7733,7 @@ function _sensResultadosHTML(t){
   const nomeAmostra=(a)=> rev? `${escapeHTML(a.codigo)} · ${escapeHTML(a.identidadeReal||'—')}` : escapeHTML(a.codigo);
 
   // ranking por aceitação geral (média de todas as perguntas hedônicas)
-  const rank = t.amostras.map(a=>{ const m=_sensMediaNum(t,a.id,'hedonica'); return {a, score:m?m.media:0, n:m?m.n:0}; })
+  const rank = t.amostras.map(a=>{ const m=_sensMediaGeral(t,a.id); return {a, score:m?m.media:0, n:m?m.n:0}; })
     .sort((x,y)=>y.score-x.score);
   const medal=['#d4af37','#9fa6ad','#cd7f32'];
   const rankCards = rank.map((r,i)=>`
@@ -7738,14 +7751,11 @@ function _sensResultadosHTML(t){
     const esc=_sensEsc(p);
     if(esc.tipo==='texto') return ''; // comentário (texto livre) não vira resultado tabelado
     let corpo;
-    if(p.escala==='hedonica'){
-      const cels=t.amostras.map(a=>{ const m=_sensMediaNum(t,a.id,'hedonica',p.id); const val=m?m.media:null; const cor=val==null?'var(--text3)':val>=4?'var(--success)':val>=3?'var(--amber)':'var(--danger)'; return `<td style="text-align:center; font-weight:700; color:${cor}; padding:7px 8px;">${val!=null?val.toFixed(2):'—'}</td>`; }).join('');
+    if(esc.tipo==='nota'){
+      const cels=t.amostras.map(a=>{ const m=_sensMediaPergunta(t,a.id,p); const val=m?m.media:null; const cor=val==null?'var(--text3)':val>=4?'var(--success)':val>=3?'var(--amber)':'var(--danger)'; return `<td style="text-align:center; font-weight:700; color:${cor}; padding:7px 8px;">${val!=null?val.toFixed(2):'—'}</td>`; }).join('');
       corpo=`<tr><td style="padding:7px 8px; color:var(--text3); font-size:11.5px; white-space:nowrap;">Média (1–5)</td>${cels}</tr>`;
-    } else if(p.escala==='intencao_compra'){
-      const cels=t.amostras.map(a=>{ const {out,n}=_sensDist(t,a.id,p.id); const top2=(out['Certamente compraria']||0)+(out['Provavelmente compraria']||0); const pct=n?Math.round(top2/n*100):0; const cor=pct>=60?'var(--success)':pct>=40?'var(--amber)':'var(--danger)'; return `<td style="text-align:center; font-weight:700; color:${cor}; padding:7px 8px;">${n?pct+'%':'—'}</td>`; }).join('');
-      corpo=`<tr><td style="padding:7px 8px; color:var(--text3); font-size:11.5px; white-space:nowrap;">% que compraria</td>${cels}</tr>`;
     } else {
-      corpo=esc.opcoes.map(op=>{ const ideal=(esc.ideal===op); return `<tr><td style="padding:6px 8px; color:${ideal?'var(--success)':'var(--text2)'}; font-weight:${ideal?'700':'400'}; font-size:12px;">${escapeHTML(op)}${ideal?' ✓':''}</td>${t.amostras.map(a=>{ const {out,n}=_sensDist(t,a.id,p.id); const c=out[op]||0; const pct=n?Math.round(c/n*100):0; return `<td style="text-align:center; padding:6px 8px; color:${c?(ideal?'var(--success)':'var(--text)'):'var(--text3)'}; font-weight:${ideal&&c?'700':'400'};">${c?pct+'%':'·'}</td>`; }).join('')}</tr>`; }).join('');
+      corpo=esc.opcoes.map(op=>{ return `<tr><td style="padding:6px 8px; color:var(--text2); font-size:12px;">${escapeHTML(op)}</td>${t.amostras.map(a=>{ const {out,n}=_sensDist(t,a.id,p.id); const c=out[op]||0; const pct=n?Math.round(c/n*100):0; return `<td style="text-align:center; padding:6px 8px; color:${c?'var(--text)':'var(--text3)'}; font-weight:${c?'600':'400'};">${c?pct+'%':'·'}</td>`; }).join('')}</tr>`; }).join('');
     }
     return `<div style="background:var(--card); border:1px solid var(--border); border-radius:11px; padding:13px 16px;">
         <div style="font-size:13px; font-weight:700; color:var(--text); margin-bottom:9px;">${escapeHTML(p.texto)}</div>
@@ -7848,34 +7858,92 @@ function sensEdTogglePergunta(id){ const p=sensEditorBuf.perguntas.find(x=>x.id=
 function sensEdAddAvaliar(){ sensEditorBuf.oQueAvaliar=sensEditorBuf.oQueAvaliar||[]; sensEditorBuf.oQueAvaliar.push(''); renderSensorialEditor(); }
 function sensEdSetAvaliar(i,val){ if(!sensEditorBuf.oQueAvaliar) return; sensEditorBuf.oQueAvaliar[i]=val; }
 function sensEdDelAvaliar(i){ if(!sensEditorBuf.oQueAvaliar) return; sensEditorBuf.oQueAvaliar.splice(i,1); renderSensorialEditor(); }
-// Escalas prontas ocultas do menu (preferência do usuário; não apaga a lógica, só some da seleção).
-const LS_SENS_ESCALAS_OFF='taskflow_sens_escalas_off';
-let _sensEscalasOff=null;
-function _sensEscalasOffGet(){ if(_sensEscalasOff===null){ const v=safeJSON(LS_SENS_ESCALAS_OFF, []); _sensEscalasOff=Array.isArray(v)?v:[]; } return _sensEscalasOff; }
-function _sensEscalaVisivel(k){ return _sensEscalasOffGet().indexOf(k)<0; }
-function sensToggleEscalaMenu(k){
-  const off=_sensEscalasOffGet(); const i=off.indexOf(k);
-  if(i>=0) off.splice(i,1); else off.push(k);
-  safeSetItem(LS_SENS_ESCALAS_OFF, JSON.stringify(off));
-  if(sensorialSubview==='editor') renderSensorialEditor(); // atualiza os menus atrás
-  _sensAbrirGerenciarEscalas();                            // reabre o modal já atualizado
+// ── Biblioteca de Respostas: gerenciador (criar / editar / apagar). ──
+let _sensRespEdit=null; // resposta em edição (buffer) ou null = modo lista
+const SENS_TIPO_LABEL={nota:'Nota (média / ranking)', opcoes:'Opções (distribuição %)', texto:'Texto (comentário)'};
+function _sensRespUsoCount(id){ let n=0; (sensorialTestes||[]).forEach(t=>(t.perguntas||[]).forEach(p=>{ if(p.escala===id) n++; })); return n; }
+function _sensAbrirGerenciarRespostas(){ _sensRespEdit=null; _sensRenderRespostasModal(); }
+function _sensRespNova(){ _sensRespEdit={ id:_sensRespNovoId(), nome:'', tipo:'nota', opcoes:['',''], _novo:true }; _sensRenderRespostasModal(); }
+function _sensRespEditar(id){ const r=_sensRespById(id); if(!r) return; _sensRespEdit=JSON.parse(JSON.stringify(r)); if(!Array.isArray(_sensRespEdit.opcoes)) _sensRespEdit.opcoes=[]; _sensRenderRespostasModal(); }
+function _sensRespCancelar(){ _sensRespEdit=null; _sensRenderRespostasModal(); }
+function _sensRespSet(campo,val){ if(!_sensRespEdit) return; _sensRespEdit[campo]=val; if(campo==='tipo'){ if(val!=='texto' && (!_sensRespEdit.opcoes||_sensRespEdit.opcoes.length<2)) _sensRespEdit.opcoes=['','']; _sensRenderRespostasModal(); } }
+function _sensRespAddOpcao(){ if(!_sensRespEdit) return; _sensRespEdit.opcoes=_sensRespEdit.opcoes||[]; _sensRespEdit.opcoes.push(''); _sensRenderRespostasModal(); }
+function _sensRespSetOpcao(i,val){ if(!_sensRespEdit||!_sensRespEdit.opcoes) return; _sensRespEdit.opcoes[i]=val; }
+function _sensRespDelOpcao(i){ if(!_sensRespEdit||!_sensRespEdit.opcoes) return; _sensRespEdit.opcoes.splice(i,1); _sensRenderRespostasModal(); }
+function _sensRespSalvar(){
+  const b=_sensRespEdit; if(!b) return;
+  if(!String(b.nome).trim()){ toast('Dê um nome à resposta'); return; }
+  if(b.tipo==='texto'){ b.opcoes=[]; }
+  else { b.opcoes=(b.opcoes||[]).map(o=>String(o).trim()).filter(Boolean); if(b.opcoes.length<2){ toast('Inclua ao menos 2 opções'); return; } }
+  const lib=_sensRespostasLoad(); const i=lib.findIndex(r=>r.id===b.id);
+  const novo={ id:b.id, nome:b.nome.trim(), tipo:b.tipo, opcoes:b.opcoes };
+  if(i>=0) lib[i]=novo; else lib.push(novo);
+  _sensRespostasSave(); _sensRespEdit=null;
+  if(sensorialSubview==='editor') renderSensorialEditor();
+  _sensRenderRespostasModal(); toast('Resposta salva');
 }
-function _sensAbrirGerenciarEscalas(){
-  document.getElementById('sens-esc-ov')?.remove();
-  const notas={ hedonica:'Alimenta o Ranking (aceitação geral)', intencao_compra:'Alimenta o "% que compraria"' };
-  const rows=Object.keys(SENS_ESCALAS).map(k=>{ const esc=SENS_ESCALAS[k]; const on=_sensEscalaVisivel(k); return `<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; background:var(--bg2); border:1px solid var(--border); border-radius:10px; margin-bottom:7px;">
-      <div style="min-width:0;"><div style="font-size:13px; font-weight:600; color:var(--text);">${escapeHTML(esc.nome)}</div>${notas[k]?`<div style="font-size:10.5px; color:var(--amber); margin-top:2px;"><i class="ti ti-alert-triangle" style="font-size:10px;"></i> ${notas[k]}</div>`:''}</div>
-      <button onclick="sensToggleEscalaMenu('${k}')" title="${on?'Esconder do menu':'Mostrar no menu'}" style="flex-shrink:0; background:${on?'var(--success-bg)':'transparent'}; border:1px solid ${on?'var(--success)':'var(--border)'}; color:${on?'var(--success)':'var(--text3)'}; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-${on?'eye':'eye-off'}"></i> ${on?'Visível':'Oculta'}</button>
-    </div>`; }).join('');
-  const html=`<div id="sens-esc-ov" onclick="if(event.target===this)this.remove()" style="position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px;">
-    <div style="background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px 22px; width:100%; max-width:460px; max-height:80vh; overflow:auto; box-shadow:0 12px 40px rgba(0,0,0,.25);">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-        <div style="font-size:15px; font-weight:800; color:var(--text);"><i class="ti ti-adjustments"></i> Escalas no menu</div>
-        <button onclick="this.closest('#sens-esc-ov').remove()" style="background:none; border:none; color:var(--text3); font-size:20px; cursor:pointer; line-height:1; font-family:inherit;">&times;</button>
+function _sensRespExcluir(id){
+  const uso=_sensRespUsoCount(id);
+  if(uso>0 && !confirm(`Esta resposta é usada em ${uso} pergunta(s). Ao apagar, essas perguntas ficam sem resposta (você escolhe outra). Apagar mesmo assim?`)) return;
+  const lib=_sensRespostasLoad(); const i=lib.findIndex(r=>r.id===id); if(i<0) return;
+  lib.splice(i,1); _sensRespostasSave();
+  if(sensorialSubview==='editor') renderSensorialEditor();
+  _sensRenderRespostasModal(); toast('Resposta apagada');
+}
+function _sensRenderRespostasModal(){
+  document.getElementById('sens-resp-ov')?.remove();
+  let inner;
+  if(_sensRespEdit){
+    const b=_sensRespEdit;
+    const tipoBtn=(tp,lbl,desc)=>{ const on=b.tipo===tp; return `<button onclick="_sensRespSet('tipo','${tp}')" style="flex:1; text-align:left; background:${on?'var(--bg2)':'var(--bg3)'}; border:1.5px solid ${on?'var(--blue-mid)':'var(--border)'}; border-radius:9px; padding:9px 11px; cursor:pointer; font-family:inherit;"><div style="font-size:12.5px; font-weight:700; color:${on?'var(--blue-mid)':'var(--text)'};">${lbl}</div><div style="font-size:10px; color:var(--text3); margin-top:2px;">${desc}</div></button>`; };
+    const opsEditor = b.tipo==='texto' ? `<div style="font-size:12px; color:var(--text3); background:var(--bg2); border:1px solid var(--border); border-radius:9px; padding:11px 13px;">Resposta livre (campo de texto). Não tem opções.</div>` : `
+      <div style="font-size:10.5px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">Opções ${b.tipo==='nota'?'(da melhor pra pior)':''} ${_hint('As alternativas que o avaliador escolhe. Mínimo 2.')}</div>
+      <div style="display:flex; flex-direction:column; gap:5px;">
+        ${(b.opcoes||[]).map((o,i)=>`<div style="display:flex; gap:6px; align-items:center;">
+            <span style="font-size:11px; color:var(--text3); width:16px; flex-shrink:0; text-align:right;">${i+1}.</span>
+            <input value="${escapeAttr(o)}" oninput="_sensRespSetOpcao(${i},this.value)" placeholder="Texto da opção" style="flex:1; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:7px; padding:6px 9px; font-size:12.5px; color:var(--text); font-family:inherit;">
+            <button onclick="_sensRespDelOpcao(${i})" style="background:none; border:1px solid var(--border); color:var(--text3); border-radius:7px; width:28px; height:28px; cursor:pointer; flex-shrink:0;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-x"></i></button>
+          </div>`).join('')}
       </div>
-      <div style="font-size:12px; color:var(--text3); margin-bottom:14px;">Escolha quais escalas prontas aparecem ao definir o tipo de uma pergunta. Esconder não afeta testes que já a usam — dá pra reativar quando quiser. A opção "Personalizada" está sempre disponível.</div>
-      ${rows}
-    </div>
+      <button onclick="_sensRespAddOpcao()" style="margin-top:7px; background:none; border:1px dashed var(--border); color:var(--text3); border-radius:7px; padding:5px 12px; font-size:11.5px; font-weight:600; cursor:pointer; font-family:inherit;"><i class="ti ti-plus"></i> Opção</button>`;
+    inner=`
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <div style="font-size:15px; font-weight:800; color:var(--text);">${b._novo?'Nova resposta':'Editar resposta'}</div>
+        <button onclick="this.closest('#sens-resp-ov').remove()" style="background:none; border:none; color:var(--text3); font-size:20px; cursor:pointer; line-height:1; font-family:inherit;">&times;</button>
+      </div>
+      <label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Nome</label>
+      <input value="${escapeAttr(b.nome)}" oninput="_sensRespSet('nome',this.value)" placeholder="Ex.: Aceitação, Intensidade do sabor…" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit; margin-bottom:13px;">
+      <label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:6px;">Tipo</label>
+      <div style="display:flex; gap:7px; margin-bottom:14px;">
+        ${tipoBtn('nota','Nota','média + ranking')}
+        ${tipoBtn('opcoes','Opções','distribuição %')}
+        ${tipoBtn('texto','Texto','comentário')}
+      </div>
+      ${opsEditor}
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:18px;">
+        <button onclick="_sensRespCancelar()" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;">Voltar</button>
+        <button onclick="_sensRespSalvar()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:8px; padding:8px 20px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;">Salvar</button>
+      </div>`;
+  } else {
+    const lib=_sensRespostasLoad();
+    const rows=lib.map(r=>{ const uso=_sensRespUsoCount(r.id); const tp=SENS_TIPO_LABEL[r.tipo]||r.tipo; return `<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; background:var(--bg2); border:1px solid var(--border); border-radius:10px; margin-bottom:7px;">
+        <div style="min-width:0;"><div style="font-size:13px; font-weight:600; color:var(--text);">${escapeHTML(r.nome)}</div><div style="font-size:10.5px; color:var(--text3); margin-top:2px;">${tp}${r.tipo!=='texto'?` · ${(r.opcoes||[]).length} opções`:''}${uso?` · usada em ${uso}`:''}</div></div>
+        <div style="display:flex; gap:6px; flex-shrink:0;">
+          <button onclick="_sensRespEditar('${r.id}')" title="Editar" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:8px; width:32px; height:32px; cursor:pointer;"><i class="ti ti-pencil"></i></button>
+          <button onclick="_sensRespExcluir('${r.id}')" title="Apagar" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:8px; width:32px; height:32px; cursor:pointer;"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>`; }).join('');
+    inner=`
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+        <div style="font-size:15px; font-weight:800; color:var(--text);"><i class="ti ti-list-details"></i> Respostas</div>
+        <button onclick="this.closest('#sens-resp-ov').remove()" style="background:none; border:none; color:var(--text3); font-size:20px; cursor:pointer; line-height:1; font-family:inherit;">&times;</button>
+      </div>
+      <div style="font-size:12px; color:var(--text3); margin-bottom:14px;">Conjuntos de resposta reutilizáveis — crie uma vez, use em várias perguntas. Editar uma resposta recalcula os resultados de testes que já a usam.</div>
+      ${rows||'<div style="text-align:center; color:var(--text3); padding:14px;">Nenhuma resposta ainda.</div>'}
+      <button onclick="_sensRespNova()" style="margin-top:8px; width:100%; background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-plus"></i> Nova resposta</button>`;
+  }
+  const html=`<div id="sens-resp-ov" onclick="if(event.target===this)this.remove()" style="position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px 22px; width:100%; max-width:480px; max-height:85vh; overflow:auto; box-shadow:0 12px 40px rgba(0,0,0,.25);">${inner}</div>
   </div>`;
   const wrap=document.createElement('div'); wrap.innerHTML=html; document.body.appendChild(wrap.firstElementChild);
 }
@@ -7925,7 +7993,15 @@ function renderSensorialEditor(){
       <input value="${escapeAttr(a.identidadeReal)}" oninput="sensEdSetAmostra(${i},'identidadeReal',this.value)" placeholder="Identidade real — ex.: Gordura marca X (oculta no teste cego)" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">
       <button onclick="sensEdDelAmostra(${i})" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:8px; cursor:pointer;"><i class="ti ti-trash"></i></button>
     </div>`).join('');
-  const escOpts=(sel)=>Object.keys(SENS_ESCALAS).filter(k=>_sensEscalaVisivel(k)||sel===k).map(k=>`<option value="${k}" ${sel===k?'selected':''}>${SENS_ESCALAS[k].nome}</option>`).join('')+`<option value="custom" ${sel==='custom'?'selected':''}>✏️ Personalizada (eu defino as opções)</option>`;
+  const escOpts=(sel)=>{
+    const lib=_sensRespostasLoad();
+    let html=lib.map(r=>`<option value="${r.id}" ${sel===r.id?'selected':''}>${escapeHTML(r.nome)}</option>`).join('');
+    if(sel && sel!=='custom' && !lib.some(r=>r.id===sel)){
+      const nm = SENS_ESCALAS_LEGADO[sel] ? SENS_ESCALAS_LEGADO[sel].nome+' (legado)' : '— sem resposta —';
+      html = `<option value="${escapeAttr(sel)}" selected>${escapeHTML(nm)}</option>` + html;
+    }
+    return html + `<option value="custom" ${sel==='custom'?'selected':''}>✏️ Personalizada (uma vez)</option>`;
+  };
   const perguntaRows = b.perguntas.map(p=>{
     const isCustom = p.escala==='custom';
     const optsEditor = isCustom ? `
@@ -8004,9 +8080,9 @@ function renderSensorialEditor(){
 
         <div>
           <div style="display:flex; align-items:center; justify-content:space-between; margin:8px 0 8px;">
-            <label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase;">Perguntas ${_hint('Desmarque uma pergunta para tirá-la do teste. A escala define o tipo de resposta e como ela entra no resultado.')}</label>
+            <label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase;">Perguntas ${_hint('Desmarque uma pergunta para tirá-la do teste. A resposta define as alternativas e como a pergunta entra no resultado (Nota, Opções ou Texto).')}</label>
             <div style="display:flex; gap:7px;">
-              <button onclick="_sensAbrirGerenciarEscalas()" title="Mostrar/esconder escalas prontas do menu" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:7px; padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-adjustments"></i> Escalas</button>
+              <button onclick="_sensAbrirGerenciarRespostas()" title="Criar e editar conjuntos de resposta reutilizáveis" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:7px; padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-list-details"></i> Respostas</button>
               <button onclick="sensEdAddPergunta()" style="background:none; border:1px solid var(--blue-mid); color:var(--blue-mid); border-radius:7px; padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-plus"></i> Pergunta</button>
             </div>
           </div>
@@ -8129,7 +8205,7 @@ function _sensPresSlideHTML(t, key){
   }
   // resultado (tela 5) — mesmo layout da revelação + nota de cada amostra ao lado
   const nResp=(t.respostas||[]).length;
-  const notas=(t.amostras||[]).map(a=>({a, m:(_sensMediaNum(t,a.id,'hedonica')||{}).media||0}));
+  const notas=(t.amostras||[]).map(a=>({a, m:(_sensMediaGeral(t,a.id)||{}).media||0}));
   const best=notas.reduce((mx,x)=>x.m>mx?x.m:mx, 0);
   const ins=_sensInsights(t).slice(0,3);
   const insHTML = ins.length ? `<div style="max-width:760px; margin:24px auto 0; display:flex; flex-direction:column; gap:8px; text-align:left;">${ins.map(x=>`<div style="display:flex; gap:10px; align-items:flex-start; background:var(--card); border:1px solid var(--border); border-left:3px solid ${x.cor}; border-radius:10px; padding:10px 14px;"><i class="ti ti-${x.icon}" style="color:${x.cor}; font-size:16px; margin-top:1px; flex-shrink:0;"></i><div style="font-size:clamp(13px,1.6vw,15px); color:var(--text2); line-height:1.4;">${x.txt}</div></div>`).join('')}</div>` : '';
