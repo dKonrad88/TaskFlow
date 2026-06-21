@@ -6829,9 +6829,9 @@ function renderOrdens(){
       ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Ordens de Manutenção'}])}
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:4px;">
         <h1 style="font-size:23px; font-weight:700; color:var(--text);">Ordens de Manutenção</h1>
-        <button onclick="novoOrdem()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Nova OS</button>
+        <button onclick="novoOrdem()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Nova ordem</button>
       </div>
-      <div style="font-size:12.5px; color:var(--text3); margin-bottom:14px;">Ordens de serviço por equipamento — corretiva, preventiva e preditiva. Peças vêm do ERP.</div>
+      <div style="font-size:12.5px; color:var(--text3); margin-bottom:14px;">Ordens de serviço por equipamento — corretiva, preventiva e preditiva. Peças vêm do sistema da empresa (ERP).</div>
       ${toolbar}
       ${tem? `<div id="os-lista">${_osCardsHTML()}</div>`
         : '<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-clipboard-list" style="font-size:38px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhuma ordem ainda</div>'}
@@ -6861,7 +6861,7 @@ function renderOrdemEditor(){
         <div>${_lbl('Título / descrição do problema *')}<input value="${escapeAttr(b.titulo||'')}" oninput="_osSet('titulo',this.value)" placeholder="Ex.: Datadora borrando a impressão" style="${_ist}"></div>
         <div>${_lbl('Detalhes')}<textarea oninput="_osSet('descricao',this.value)" rows="2" placeholder="O que está acontecendo / o que precisa ser feito" style="${_ist} resize:vertical;">${escapeHTML(b.descricao||'')}</textarea></div>
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
-          ${selBox('Status','status',OS_STATUS)}
+          ${selBox('Situação','status',OS_STATUS)}
           ${campo('Solicitante','solicitante','Quem abriu')}
           ${campo('Responsável / equipe','responsavel','Mecânica')}
         </div>
@@ -6875,7 +6875,7 @@ function renderOrdemEditor(){
           ${campo('Custo mão de obra (R$)','custoMO','0','inputmode="decimal"')}
           <div style="background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:8px 11px;"><div style="font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase;">Custo total</div><div style="font-size:16px; font-weight:800; color:var(--text); margin-top:2px;">${escapeHTML(_brl(custo))}</div></div>
         </div>
-        <div>${_lbl('Peças / materiais <span style="font-weight:600;text-transform:none">· referência — o consumo real vem do ERP</span>')}<input value="${escapeAttr(b.pecas||'')}" oninput="_osSet('pecas',this.value)" placeholder="Ex.: Filtro de tinta, correia A-45 (ref. ERP)" style="${_ist}"></div>
+        <div>${_lbl('Peças / materiais <span style="font-weight:600;text-transform:none">· referência — o consumo real vem do sistema da empresa (ERP)</span>')}<input value="${escapeAttr(b.pecas||'')}" oninput="_osSet('pecas',this.value)" placeholder="Ex.: Filtro de tinta, correia A-45 (ref. ERP)" style="${_ist}"></div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
           <div>${_lbl('Causa')}<input value="${escapeAttr(b.causa||'')}" oninput="_osSet('causa',this.value)" placeholder="Causa raiz da falha" style="${_ist}"></div>
           <div>${_lbl('Ação executada')}<input value="${escapeAttr(b.acao||'')}" oninput="_osSet('acao',this.value)" placeholder="O que foi feito" style="${_ist}"></div>
@@ -7035,7 +7035,7 @@ function renderEquipamentoEditor(){
         <div>${_lbl('Responsável')}<input value="${escapeAttr(p.responsavel||'')}" oninput="_eqSetPlano('${p.id}','responsavel',this.value)" placeholder="Mecânica" style="${_ist}"></div>
       </div>
       <div style="display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; margin-top:8px;">
-        <div>${_lbl('Atividades / checklist (uma por linha)')}<textarea oninput="_eqSetPlano('${p.id}','atividades',this.value)" rows="2" placeholder="Lubrificar mancais&#10;Verificar nível do óleo" style="${_ist} resize:vertical;">${escapeHTML(p.atividades||'')}</textarea></div>
+        <div>${_lbl('Atividades / lista de verificação (uma por linha)')}<textarea oninput="_eqSetPlano('${p.id}','atividades',this.value)" rows="2" placeholder="Lubrificar mancais&#10;Verificar nível do óleo" style="${_ist} resize:vertical;">${escapeHTML(p.atividades||'')}</textarea></div>
         <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
           <div style="width:150px;">${_lbl('Última execução')}<input type="date" value="${escapeAttr(p.ultimaExecucao||'')}" oninput="_eqSetPlano('${p.id}','ultimaExecucao',this.value)" style="${_ist}"></div>
           <div style="width:150px;">${_lbl('Duração')}<input value="${escapeAttr(p.duracao||'')}" oninput="_eqSetPlano('${p.id}','duracao',this.value)" placeholder="1 h" style="${_ist}"></div>
@@ -7050,13 +7050,13 @@ function renderEquipamentoEditor(){
       <div style="display:flex; flex-direction:column; gap:14px;">
         ${sec('<i class="ti ti-id"></i> Identificação')}
         <div style="display:grid; grid-template-columns:160px 1fr; gap:12px;">
-          ${campo('TAG / código','tag','MIST-01')}
+          ${campo('Código (TAG)','tag','MIST-01')}
           ${campo('Nome *','nome','Misturadora planetária 80L')}
         </div>
         <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px;">
           ${campo('Setor / localização','setor','Produção — Massas')}
           <div>${_lbl('Criticidade')}<select onchange="_meSet('criticidade',this.value)" style="${_ist} cursor:pointer;">${Object.keys(EQ_CRIT).map(k=>`<option value="${k}" ${b.criticidade===k?'selected':''}>${EQ_CRIT[k].l}</option>`).join('')}</select></div>
-          <div>${_lbl('Status')}<select onchange="_meSet('status',this.value)" style="${_ist} cursor:pointer;">${Object.keys(EQ_STATUS).map(k=>`<option value="${k}" ${b.status===k?'selected':''}>${EQ_STATUS[k].l}</option>`).join('')}</select></div>
+          <div>${_lbl('Situação')}<select onchange="_meSet('status',this.value)" style="${_ist} cursor:pointer;">${Object.keys(EQ_STATUS).map(k=>`<option value="${k}" ${b.status===k?'selected':''}>${EQ_STATUS[k].l}</option>`).join('')}</select></div>
         </div>
         ${sec('<i class="ti ti-tool"></i> Dados técnicos (placa)')}
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
@@ -7071,7 +7071,7 @@ function renderEquipamentoEditor(){
           ${campo('Capacidade','capacidade','80 L')}
         </div>
         ${sec('<i class="ti ti-droplet"></i> Consumíveis')}
-        <div style="font-size:11.5px; color:var(--text3); margin:-6px 0 2px;">O que a máquina consome (lubrificantes, correias, filtros…). Peças de reposição vêm do ERP.</div>
+        <div style="font-size:11.5px; color:var(--text3); margin:-6px 0 2px;">O que a máquina consome (lubrificantes, correias, filtros…). Peças de reposição vêm do sistema da empresa (ERP).</div>
         ${b.consumiveis.length? b.consumiveis.map(consRow).join('') : '<div style="font-size:12px; color:var(--text3);">Nenhum consumível ainda.</div>'}
         <button onclick="_eqAddCons()" style="align-self:flex-start; background:none; border:1px solid var(--blue-mid); color:var(--blue-mid); border-radius:7px; padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-plus"></i> Consumível</button>
         ${sec('<i class="ti ti-calendar-repeat"></i> Planos de preventiva')}
@@ -7146,7 +7146,7 @@ function renderPreventivas(){
           ${it.proxima?`<span style="color:${u?u.c:'var(--text3)'}; font-weight:600;"><i class="ti ti-calendar-due"></i> ${escapeHTML(formatDate(it.proxima))}${u?` · ${u.d<0?Math.abs(u.d)+'d atrasado':(u.d===0?'vence hoje':'em '+u.d+'d')}`:''}</span>`:'<span style="color:var(--text3);"><i class="ti ti-gauge"></i> por uso (horas/ciclos)</span>'}
         </div>
       </div>
-      <button onclick="_pvGerarOS('${e.id}','${p.id}')" style="background:var(--blue-mid); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap;"><i class="ti ti-clipboard-plus"></i> Gerar OS</button>
+      <button onclick="_pvGerarOS('${e.id}','${p.id}')" style="background:var(--blue-mid); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap;"><i class="ti ti-clipboard-plus"></i> Gerar ordem (OS)</button>
     </div>`; };
   const metas={atrasada:{l:'Atrasadas',c:'var(--danger)',i:'ti-alarm'},semana:{l:'Esta semana',c:'var(--amber)',i:'ti-clock-exclamation'},mes:{l:'Este mês',c:'var(--blue-mid)',i:'ti-calendar-due'},depois:{l:'Mais pra frente',c:'var(--text2)',i:'ti-calendar'}};
   const grupo=(k)=>{ const arr=buckets[k]; if(!arr.length) return ''; const m=metas[k]; return `<div style="margin-bottom:22px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; color:${m.c}; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;"><i class="ti ${m.i}"></i> ${m.l} <span style="background:${m.c}22; color:${m.c}; font-size:11px; padding:2px 8px; border-radius:99px;">${arr.length}</span></div><div style="display:flex; flex-direction:column; gap:8px;">${arr.map(itemCard).join('')}</div></div>`; };
@@ -7156,7 +7156,7 @@ function renderPreventivas(){
     <div style="padding:20px 4px 40px; max-width:1100px;">
       ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Preventivas'}])}
       <h1 style="font-size:23px; font-weight:700; color:var(--text); margin-bottom:4px;">Preventivas</h1>
-      <div style="font-size:12.5px; color:var(--text3); margin-bottom:18px;">Planos dos equipamentos por vencimento — ${nTotal} plano${nTotal!==1?'s':''}${nAtras?` · <span style="color:var(--danger); font-weight:700;">${nAtras} atrasado${nAtras!==1?'s':''}</span>`:''}. <strong>Gerar OS</strong> abre a ordem preventiva preenchida.</div>
+      <div style="font-size:12.5px; color:var(--text3); margin-bottom:18px;">Planos dos equipamentos por vencimento — ${nTotal} plano${nTotal!==1?'s':''}${nAtras?` · <span style="color:var(--danger); font-weight:700;">${nAtras} atrasado${nAtras!==1?'s':''}</span>`:''}. <strong>Gerar ordem (OS)</strong> abre a ordem preventiva preenchida.</div>
       ${nTotal? corpo : '<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-calendar-off" style="font-size:38px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum plano de preventiva — cadastre nos equipamentos.</div>'}
     </div>`;
 }
@@ -7203,23 +7203,23 @@ function renderPCM(){
       <div style="font-size:12.5px; color:var(--text3); margin-bottom:18px;">Indicadores de Planejamento e Controle da Manutenção, calculados das OS, equipamentos e planos.</div>
 
       <div style="display:flex; gap:12px; flex-wrap:wrap;">
-        ${kpi('Backlog', backlog, 'OS abertas/em execução', backlog>0?'var(--amber)':'var(--success)', 'ti-inbox', false)}
+        ${kpi('Pendências (backlog)', backlog, 'ordens abertas / em execução', backlog>0?'var(--amber)':'var(--success)', 'ti-inbox', false)}
         ${kpi('Preventiva', pctPrev+'%', `corretiva ${pctCorr}% (meta ≤20%)`, pctCorr<=20?'var(--success)':'var(--danger)', 'ti-calendar-check', false)}
-        ${kpi('MTTR', mttr!=null?mttr.toFixed(1)+'h':'—', 'tempo médio de reparo', 'var(--blue-mid)', 'ti-clock-hour-4', false)}
-        ${kpi('Aderência', aderencia+'%', `${planAtras} plano(s) atrasado(s)`, aderencia>=90?'var(--success)':aderencia>=70?'var(--amber)':'var(--danger)', 'ti-target-arrow', false)}
-        ${kpi('Custo manut.', _brl(custoTotal), 'soma das OS (material+MO)', 'var(--text)', 'ti-currency-real', false)}
+        ${kpi('Tempo médio de reparo (MTTR)', mttr!=null?mttr.toFixed(1)+'h':'—', 'horas para reparar, em média', 'var(--blue-mid)', 'ti-clock-hour-4', false)}
+        ${kpi('Aderência ao plano', aderencia+'%', `${planAtras} plano(s) atrasado(s)`, aderencia>=90?'var(--success)':aderencia>=70?'var(--amber)':'var(--danger)', 'ti-target-arrow', false)}
+        ${kpi('Custo de manutenção', _brl(custoTotal), 'soma das ordens (material + mão de obra)', 'var(--text)', 'ti-currency-real', false)}
       </div>
 
       <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:12px;">
-        ${kpi('MTBF', '—', 'tempo médio entre falhas', 'var(--text3)', 'ti-activity', true)}
+        ${kpi('Tempo médio entre falhas (MTBF)', '—', 'intervalo médio sem quebrar', 'var(--text3)', 'ti-activity', true)}
         ${kpi('Disponibilidade', '—', 'precisa de horas de operação', 'var(--text3)', 'ti-gauge', true)}
       </div>
-      <div style="font-size:11.5px; color:var(--text3); margin-top:8px; display:flex; align-items:center; gap:6px;"><i class="ti ti-info-circle"></i> MTBF e disponibilidade dependem do histórico de horas de operação/falha — virão do ERP (Guilherme).</div>
+      <div style="font-size:11.5px; color:var(--text3); margin-top:8px; display:flex; align-items:center; gap:6px;"><i class="ti ti-info-circle"></i> O tempo médio entre falhas (MTBF) e a disponibilidade dependem do histórico de horas de operação e falha — virão do sistema da empresa (ERP, do Guilherme).</div>
 
       ${sec('Ordens por tipo')}
       ${card(`${bar('Corretiva', nCorr, totTipo, 'var(--danger)')}${bar('Preventiva/preditiva', nPrev, totTipo, 'var(--success)')}<div style="font-size:11.5px; color:var(--text3); margin-top:4px;"><i class="ti ti-bulb"></i> Quanto mais planejada (preventiva), melhor — corretiva não-planejada ideal ≤ 20%.</div>`)}
 
-      ${sec('Ordens por status')}
+      ${sec('Ordens por situação')}
       ${card(Object.keys(OS_STATUS).map(k=>bar(OS_STATUS[k].l, os.filter(o=>o.status===k).length, os.length, OS_STATUS[k].c)).join(''))}
 
       ${sec('Equipamentos')}
