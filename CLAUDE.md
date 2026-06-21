@@ -80,9 +80,11 @@
   cada um com frequência própria (TBM por tempo / UBM por uso) + checklist + responsável + duração + parada.
   Lista com busca + filtro de criticidade. Funções: `renderEquipamentos`, `renderEquipamentoEditor`,
   `_eqFiltrar`, `_eqAddPlano`/`_eqAddCons`. Verificado: 0 erros + 12/12 testes (jsc).
-- **PLANO do módulo PCM (pedido do Diego "PCM completo"):** Bloco 1 Equipamentos ✅, Bloco 2 Ordens (OS) ✅.
-  A fazer: Bloco 3 Preventivas (planos em calendário, "executar" gera OS), Bloco 4 Painel PCM (KPIs: MTBF,
-  MTTR, disponibilidade, aderência ao plano, backlog).
+- **PLANO do módulo PCM:** Bloco 1 Equipamentos ✅, Bloco 2 Ordens (OS) ✅, Bloco 3 Preventivas ✅.
+  Falta só: Bloco 4 Painel PCM (KPIs: MTBF, MTTR, disponibilidade, aderência ao plano, backlog, corretiva×preventiva).
+- **Preventivas:** agrega os planos dos equipamentos por vencimento. `_planoProxima` = ultimaExecucao + período
+  (TBM por tempo). Agrupa por urgência (Atrasadas/Esta semana/Este mês/Mais pra frente) + "Por uso" (UBM, sem
+  data). Botão `_pvGerarOS` cria OS preventiva preenchida e leva pra Ordens. Plano ganhou campo `ultimaExecucao`.
 - **Ordens (LS_ORDENS):** OS vinculada a equipamento, tipo (corretiva/preventiva/preditiva/melhoria),
   status (aberta→planejada→execução→concluída→cancelada), prioridade, custo (material+MO, total calculado),
   tempo de parada, peças=referência (ERP), causa/ação. Numeração `_osNextNum` (OS-0001…). Lista com busca +

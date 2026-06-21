@@ -6447,6 +6447,7 @@ function renderManutencao(){
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
   if(manutencaoView==='ordens'){ renderOrdens(); return; }
   if(manutencaoView==='equipamentos'){ renderEquipamentos(); return; }
+  if(manutencaoView==='preventivas'){ renderPreventivas(); return; }
   if(manutencaoView==='fornecedores'){ renderFornecedores(); return; }
   if(manutencaoView==='orcamentos'){ renderOrcamentos(); return; }
   const titulos={ordens:'Ordens de Manutenção', equipamentos:'Equipamentos', preventivas:'Preventivas'};
@@ -6910,16 +6911,16 @@ function _eqSeed(){ return [
    fabricante:'Kemper', modelo:'SP80', numeroSerie:'SP80-2231', ano:'2021', potencia:'7,5 cv', tensao:'380V', capacidade:'80 L',
    consumiveis:[{id:'cs1',nome:'Óleo do redutor',tipo:'Lubrificante',espec:'ISO VG 220'},{id:'cs2',nome:'Correia de transmissão',tipo:'Correia',espec:'A-45'}],
    planos:[
-     {id:'pl1', nome:'Lubrificação dos mancais', tipo:'TBM', periodoValor:'1', periodoUnidade:'semana', responsavel:'Mecânica', duracao:'20 min', parada:false, atividades:'Lubrificar mancais\nVerificar nível do óleo do redutor'},
-     {id:'pl2', nome:'Inspeção + troca de correia', tipo:'TBM', periodoValor:'3', periodoUnidade:'mes', responsavel:'Mecânica', duracao:'1 h', parada:true, atividades:'Trocar correia\nVerificar tensão e alinhamento\nInspecionar polias'},
-     {id:'pl3', nome:'Revisão geral do redutor', tipo:'TBM', periodoValor:'1', periodoUnidade:'ano', responsavel:'Mecânica', duracao:'4 h', parada:true, atividades:'Desmontar e revisar o redutor\nTrocar rolamentos\nAlinhar conjunto'},
+     {id:'pl1', nome:'Lubrificação dos mancais', tipo:'TBM', periodoValor:'1', periodoUnidade:'semana', responsavel:'Mecânica', duracao:'20 min', parada:false, ultimaExecucao:'2026-06-18', atividades:'Lubrificar mancais\nVerificar nível do óleo do redutor'},
+     {id:'pl2', nome:'Inspeção + troca de correia', tipo:'TBM', periodoValor:'3', periodoUnidade:'mes', responsavel:'Mecânica', duracao:'1 h', parada:true, ultimaExecucao:'2026-05-01', atividades:'Trocar correia\nVerificar tensão e alinhamento\nInspecionar polias'},
+     {id:'pl3', nome:'Revisão geral do redutor', tipo:'TBM', periodoValor:'1', periodoUnidade:'ano', responsavel:'Mecânica', duracao:'4 h', parada:true, ultimaExecucao:'2025-09-01', atividades:'Desmontar e revisar o redutor\nTrocar rolamentos\nAlinhar conjunto'},
    ], obs:''},
   {id:'eq_d2', tag:'FORN-02', nome:'Forno túnel a gás', setor:'Produção — Assados', criticidade:'A', status:'operando',
    fabricante:'Tecnopan', modelo:'TT-12', numeroSerie:'TT12-0090', ano:'2019', potencia:'—', tensao:'220V', capacidade:'12 m',
    consumiveis:[{id:'cs3',nome:'Termopar',tipo:'Sensor',espec:'Tipo K'}],
    planos:[
-     {id:'pl4', nome:'Inspeção dos queimadores', tipo:'TBM', periodoValor:'1', periodoUnidade:'mes', responsavel:'Mecânica', duracao:'45 min', parada:false, atividades:'Verificar chama\nLimpar bicos\nTestar sensores de chama'},
-     {id:'pl5', nome:'Calibração de temperatura', tipo:'TBM', periodoValor:'6', periodoUnidade:'mes', responsavel:'Qualidade', duracao:'1 h', parada:true, atividades:'Aferir termopares\nCalibrar setpoints'},
+     {id:'pl4', nome:'Inspeção dos queimadores', tipo:'TBM', periodoValor:'1', periodoUnidade:'mes', responsavel:'Mecânica', duracao:'45 min', parada:false, ultimaExecucao:'2026-05-20', atividades:'Verificar chama\nLimpar bicos\nTestar sensores de chama'},
+     {id:'pl5', nome:'Calibração de temperatura', tipo:'TBM', periodoValor:'6', periodoUnidade:'mes', responsavel:'Qualidade', duracao:'1 h', parada:true, ultimaExecucao:'2026-02-10', atividades:'Aferir termopares\nCalibrar setpoints'},
    ], obs:''},
   {id:'eq_d3', tag:'EMB-03', nome:'Datadora a jato de tinta', setor:'Embalagem', criticidade:'B', status:'manutencao',
    fabricante:'Videojet', modelo:'1580', numeroSerie:'VJ1580-1122', ano:'2022', potencia:'—', tensao:'110V', capacidade:'—',
@@ -6941,7 +6942,7 @@ function excluirEquipamento(id){ if(!confirm('Excluir este equipamento?')) retur
 function _eqAddCons(){ if(!mntEqBuf) return; mntEqBuf.consumiveis.push({id:_mntId('cs'), nome:'', tipo:'', espec:''}); renderManutencao(); }
 function _eqDelCons(cid){ if(!mntEqBuf) return; mntEqBuf.consumiveis=mntEqBuf.consumiveis.filter(c=>c.id!==cid); renderManutencao(); }
 function _eqSetCons(cid,campo,val){ if(!mntEqBuf) return; const c=mntEqBuf.consumiveis.find(x=>x.id===cid); if(c) c[campo]=val; }
-function _eqAddPlano(){ if(!mntEqBuf) return; mntEqBuf.planos.push({id:_mntId('pl'), nome:'', tipo:'TBM', periodoValor:'', periodoUnidade:'mes', responsavel:'', duracao:'', parada:false, atividades:''}); renderManutencao(); }
+function _eqAddPlano(){ if(!mntEqBuf) return; mntEqBuf.planos.push({id:_mntId('pl'), nome:'', tipo:'TBM', periodoValor:'', periodoUnidade:'mes', responsavel:'', duracao:'', parada:false, ultimaExecucao:'', atividades:''}); renderManutencao(); }
 function _eqDelPlano(pid){ if(!mntEqBuf) return; mntEqBuf.planos=mntEqBuf.planos.filter(p=>p.id!==pid); renderManutencao(); }
 function _eqSetPlano(pid,campo,val){ if(!mntEqBuf) return; const p=mntEqBuf.planos.find(x=>x.id===pid); if(p) p[campo]=(campo==='parada')?(val===true||val==='true'):val; }
 function _eqPlanoFreq(p){ const u=(EQ_PERIODOS.find(x=>x[0]===p.periodoUnidade)||[null,p.periodoUnidade])[1]; return p.periodoValor?`a cada ${p.periodoValor} ${u}`:'sem frequência'; }
@@ -7035,7 +7036,8 @@ function renderEquipamentoEditor(){
       <div style="display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; margin-top:8px;">
         <div>${_lbl('Atividades / checklist (uma por linha)')}<textarea oninput="_eqSetPlano('${p.id}','atividades',this.value)" rows="2" placeholder="Lubrificar mancais&#10;Verificar nível do óleo" style="${_ist} resize:vertical;">${escapeHTML(p.atividades||'')}</textarea></div>
         <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
-          <div style="width:120px;">${_lbl('Duração')}<input value="${escapeAttr(p.duracao||'')}" oninput="_eqSetPlano('${p.id}','duracao',this.value)" placeholder="1 h" style="${_ist}"></div>
+          <div style="width:150px;">${_lbl('Última execução')}<input type="date" value="${escapeAttr(p.ultimaExecucao||'')}" oninput="_eqSetPlano('${p.id}','ultimaExecucao',this.value)" style="${_ist}"></div>
+          <div style="width:150px;">${_lbl('Duração')}<input value="${escapeAttr(p.duracao||'')}" oninput="_eqSetPlano('${p.id}','duracao',this.value)" placeholder="1 h" style="${_ist}"></div>
           <label style="display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--text2); cursor:pointer; white-space:nowrap;"><input type="checkbox" ${p.parada?'checked':''} onclick="_eqSetPlano('${p.id}','parada',this.checked)" style="width:15px; height:15px; cursor:pointer;"> Exige parada</label>
         </div>
       </div>
@@ -7084,6 +7086,77 @@ function renderEquipamentoEditor(){
           </div>
         </div>
       </div>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MANUTENÇÃO › PREVENTIVAS — Bloco 3 do PCM
+// Agrega os PLANOS cadastrados nos equipamentos por vencimento (próxima data,
+// calculada de ultimaExecucao + periodicidade). Botão "Gerar OS" cria a ordem
+// preventiva já preenchida. Planos por uso (horas/ciclos) ficam à parte.
+// ════════════════════════════════════════════════════════════════════
+function _planoProxima(p){
+  if(!p.ultimaExecucao || !p.periodoValor) return null;
+  const v=parseInt(p.periodoValor,10); if(isNaN(v)||v<=0) return null;
+  const d=new Date(p.ultimaExecucao+'T00:00:00'); if(isNaN(d.getTime())) return null;
+  if(p.periodoUnidade==='dia') d.setDate(d.getDate()+v);
+  else if(p.periodoUnidade==='semana') d.setDate(d.getDate()+v*7);
+  else if(p.periodoUnidade==='mes') d.setMonth(d.getMonth()+v);
+  else if(p.periodoUnidade==='ano') d.setFullYear(d.getFullYear()+v);
+  else return null; // UBM (hora/ciclo) — sem data
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function _pvUrg(proxima){
+  if(!proxima) return null;
+  const dias=Math.ceil((new Date(proxima+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);
+  if(dias<0) return {k:'atrasada',c:'var(--danger)',d:dias};
+  if(dias<=7) return {k:'semana',c:'var(--amber)',d:dias};
+  if(dias<=31) return {k:'mes',c:'var(--blue-mid)',d:dias};
+  return {k:'depois',c:'var(--text2)',d:dias};
+}
+function _pvGerarOS(equipId, planoId){
+  _eqLoad(); _osLoad();
+  const e=(equipamentos||[]).find(x=>x.id===equipId); if(!e) return;
+  const p=(e.planos||[]).find(x=>x.id===planoId); if(!p) return;
+  const os={id:_mntId('os'), numero:_osNextNum(), equipamentoId:equipId, tipo:'preventiva', titulo:(p.nome||'Preventiva')+' — '+(e.tag||e.nome||''), descricao:p.atividades||'', prioridade:'media', status:'aberta', solicitante:'PCM', responsavel:p.responsavel||'', dataAbertura:today, dataConclusao:'', custoMaterial:'', custoMO:'', tempoParada:'', pecas:'', causa:'', acao:'', obs:'Gerada do plano de preventiva.'};
+  ordens.push(os); saveOrdens();
+  toast('OS '+os.numero+' gerada');
+  setManutencaoView('ordens');
+}
+function renderPreventivas(){
+  _eqLoad(); _osLoad();
+  const main=document.getElementById('task-container'); if(!main) return;
+  const itens=[]; (equipamentos||[]).forEach(e=>(e.planos||[]).forEach(p=>{ itens.push({e,p,proxima:_planoProxima(p)}); }));
+  const buckets={atrasada:[],semana:[],mes:[],depois:[]}; const poruso=[];
+  itens.forEach(it=>{ const u=_pvUrg(it.proxima); if(!u){ it._u=null; poruso.push(it); } else { it._u=u; buckets[u.k].push(it); } });
+  Object.keys(buckets).forEach(k=>buckets[k].sort((a,b)=>(a.proxima||'').localeCompare(b.proxima||'')));
+  const nTotal=itens.length, nAtras=buckets.atrasada.length;
+  const itemCard=it=>{ const e=it.e,p=it.p,u=it._u;
+    return `<div style="background:var(--card); border:1px solid var(--border); border-left:3px solid ${u?u.c:'var(--border)'}; border-radius:11px; padding:12px 15px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+      <div style="flex:1; min-width:0;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          ${e.tag?`<span style="font-size:10.5px; font-weight:800; color:var(--blue-mid); background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:1px 7px;">${escapeHTML(e.tag)}</span>`:''}
+          <span style="font-size:13.5px; font-weight:700; color:var(--text);">${escapeHTML(p.nome||'Plano')}</span>
+        </div>
+        <div style="font-size:11.5px; color:var(--text3); margin-top:5px; display:flex; gap:13px; flex-wrap:wrap; align-items:center;">
+          <span>${escapeHTML(e.nome||'')}</span>
+          <span><i class="ti ti-repeat"></i> ${escapeHTML(_eqPlanoFreq(p))}</span>
+          ${p.responsavel?`<span><i class="ti ti-user"></i> ${escapeHTML(p.responsavel)}</span>`:''}
+          ${it.proxima?`<span style="color:${u?u.c:'var(--text3)'}; font-weight:600;"><i class="ti ti-calendar-due"></i> ${escapeHTML(formatDate(it.proxima))}${u?` · ${u.d<0?Math.abs(u.d)+'d atrasado':(u.d===0?'vence hoje':'em '+u.d+'d')}`:''}</span>`:'<span style="color:var(--text3);"><i class="ti ti-gauge"></i> por uso (horas/ciclos)</span>'}
+        </div>
+      </div>
+      <button onclick="_pvGerarOS('${e.id}','${p.id}')" style="background:var(--blue-mid); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap;"><i class="ti ti-clipboard-plus"></i> Gerar OS</button>
+    </div>`; };
+  const metas={atrasada:{l:'Atrasadas',c:'var(--danger)',i:'ti-alarm'},semana:{l:'Esta semana',c:'var(--amber)',i:'ti-clock-exclamation'},mes:{l:'Este mês',c:'var(--blue-mid)',i:'ti-calendar-due'},depois:{l:'Mais pra frente',c:'var(--text2)',i:'ti-calendar'}};
+  const grupo=(k)=>{ const arr=buckets[k]; if(!arr.length) return ''; const m=metas[k]; return `<div style="margin-bottom:22px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; color:${m.c}; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;"><i class="ti ${m.i}"></i> ${m.l} <span style="background:${m.c}22; color:${m.c}; font-size:11px; padding:2px 8px; border-radius:99px;">${arr.length}</span></div><div style="display:flex; flex-direction:column; gap:8px;">${arr.map(itemCard).join('')}</div></div>`; };
+  let corpo=['atrasada','semana','mes','depois'].map(grupo).join('');
+  if(poruso.length) corpo+=`<div style="margin-bottom:22px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; color:var(--text2); font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;"><i class="ti ti-gauge"></i> Por uso (horas/ciclos) <span style="background:var(--bg2); color:var(--text3); font-size:11px; padding:2px 8px; border-radius:99px;">${poruso.length}</span></div><div style="display:flex; flex-direction:column; gap:8px;">${poruso.map(itemCard).join('')}</div></div>`;
+  main.innerHTML=`
+    <div style="padding:20px 4px 40px; max-width:1100px;">
+      ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Preventivas'}])}
+      <h1 style="font-size:23px; font-weight:700; color:var(--text); margin-bottom:4px;">Preventivas</h1>
+      <div style="font-size:12.5px; color:var(--text3); margin-bottom:18px;">Planos dos equipamentos por vencimento — ${nTotal} plano${nTotal!==1?'s':''}${nAtras?` · <span style="color:var(--danger); font-weight:700;">${nAtras} atrasado${nAtras!==1?'s':''}</span>`:''}. <strong>Gerar OS</strong> abre a ordem preventiva preenchida.</div>
+      ${nTotal? corpo : '<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-calendar-off" style="font-size:38px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum plano de preventiva — cadastre nos equipamentos.</div>'}
     </div>`;
 }
 
