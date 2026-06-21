@@ -25939,7 +25939,11 @@ function proximaDataReuniao(dataBase,freq){
   const dias=REUN_FREQ[freq]?.dias||0;
   if(!dias) return '';
   const d=new Date(dataBase+'T12:00');
-  d.setDate(d.getDate()+dias);
+  const hoje=new Date(today+'T12:00');
+  // Avança ao menos um intervalo e segue avançando enquanto cair no passado:
+  // a próxima ocorrência sempre é uma data futura (não repete datas já vencidas).
+  let guard=0;
+  do { d.setDate(d.getDate()+dias); guard++; } while(d < hoje && guard < 600);
   return d.toISOString().slice(0,10);
 }
 
