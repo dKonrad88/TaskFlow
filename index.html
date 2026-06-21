@@ -2486,7 +2486,7 @@
     <div class="search-results" id="search-results">
       <div class="search-results-header">
         <i class="ti ti-search" style="color:var(--text3);font-size:16px;flex-shrink:0"></i>
-        <input class="search-results-input" id="search-results-input" placeholder="Buscar tarefas, reuniões, notas, projetos..." oninput="runSearch(this.value)" onkeydown="searchKeyNav(event)" autocomplete="off">
+        <input class="search-results-input" id="search-results-input" placeholder="Buscar tarefas, reuniões, notas, projetos..." oninput="_runSearchDeb(this.value)" onkeydown="searchKeyNav(event)" autocomplete="off">
         <span class="search-results-count" id="search-count"></span>
         <button onclick="closeSearchPanel()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:2px"><i class="ti ti-x"></i></button>
       </div>
@@ -14141,12 +14141,12 @@ function _analisePrioridade(pid){
 
 // Carry-over real: quantas reuniões da MESMA série (continuacaoDe ou mesmo nome)
 // ocorreram enquanto a pendência seguia aberta. Derivado da estrutura — sem captura manual.
-function _carryOverInfo(t){
+function _carryOverInfo(t, seriesPre){
   if(!t.meetingId) return {reaparicoes:0};
   const origem=(meetings||[]).find(m=>m.id===t.meetingId);
   if(!origem||!origem.date) return {reaparicoes:0};
   let serie=null;
-  try{ const series=agruparReunioesPorSerie(meetings||[]); serie=series.find(s=>s.reunioes&&s.reunioes.some(m=>m.id===t.meetingId)); }catch(e){ serie=null; }
+  try{ const series=seriesPre||agruparReunioesPorSerie(meetings||[]); serie=series.find(s=>s.reunioes&&s.reunioes.some(m=>m.id===t.meetingId)); }catch(e){ serie=null; }
   if(!serie) return {reaparicoes:0, origem};
   const lim=(t.done&&t.doneAt)?t.doneAt:today;
   const reaparicoes=serie.reunioes.filter(m=> m.id!==t.meetingId && m.date && m.date>origem.date && m.date<=today && m.date<=lim).length;
@@ -14275,7 +14275,8 @@ function _renderAnaliseReunioes(){
   });
   const pct = total?Math.round(feitas/total*100):0;
   const wF=Math.round(feitas/total*100), wD=Math.round(emDia/total*100), wA=100-wF-wD;
-  pend.forEach(t=>{ t.__coInfo=_carryOverInfo(t); t.__co=t.__coInfo.reaparicoes||0; });
+  let _serieCache=null; try{ _serieCache=agruparReunioesPorSerie(meetings||[]); }catch(e){ _serieCache=null; } // agrupa 1x, reaproveita por tarefa
+  pend.forEach(t=>{ t.__coInfo=_carryOverInfo(t, _serieCache); t.__co=t.__coInfo.reaparicoes||0; });
   pend.sort((a,b)=>{ if((b.__co||0)!==(a.__co||0)) return (b.__co||0)-(a.__co||0); const ca=a.createdAt||today, cb=b.createdAt||today; return ca<cb?-1:ca>cb?1:0; });
   const pendHTML = pend.slice(0,6).map(t=>{
     const idade=t.createdAt?_aDe(t.createdAt,today):0;
@@ -19039,7 +19040,9 @@ function toggle(id){
     }
   }
   saveTask_db(t);
-  renderSidebar();updateStats();
+  // Só atualiza sidebar/contadores aqui se vai haver delay de animação (feedback imediato durante a animação).
+  // Sem animação, o _doRender abaixo roda já e cobre sidebar/stats — evita render duplicado.
+  if(_animouCompletar){ renderSidebar(); updateStats(); }
   // Quando a animação de completar tocou, segura o render pra ela aparecer.
   // Lista/tabela: flyout verde dura .65s. Cartões/painel: burst ~.7s.
   // Sem animação (ex: desmarcar) → render imediato.
@@ -20854,6 +20857,9 @@ function _hl(text, q){
   return escapeHTML(text).replace(new RegExp(safe,'gi'),m=>`<mark class="sh">${m}</mark>`);
 }
 
+// Helper genérico de debounce (reutilizável em buscas que rodam por keystroke).
+function debounce(fn, ms){ let h; return function(){ const args=arguments, ctx=this; clearTimeout(h); h=setTimeout(function(){ fn.apply(ctx, args); }, ms); }; }
+const _runSearchDeb = debounce(function(v){ runSearch(v); }, 140);
 function runSearch(q){
   const body=document.getElementById('search-results-body');
   const countEl=document.getElementById('search-count');
@@ -21090,7 +21096,8 @@ function loadNotifs(){
   const limite=Date.now()-7*24*60*60*1000;
   _notifs=_notifs.filter(n=>new Date(n.ts).getTime()>limite);
 }
-function saveNotifs(){safeSetItem(LS_NOTIFS,JSON.stringify(_notifs));}
+let _lastNotifsJSON=null;
+function saveNotifs(){ const s=JSON.stringify(_notifs); if(s===_lastNotifsJSON) return; _lastNotifsJSON=s; safeSetItem(LS_NOTIFS,s); }
 
 // GUILHERME V3 (mai/2026): cria notificação imediata de menção em comentário de projeto.
 // Chamado em enviarProComment quando tem @mencoes.
@@ -21134,9 +21141,8 @@ function gerarNotificacoes(){
     if(n.tipo==='cutucada' && n.cutucadaId){ const c=_cutucadas.find(x=>x.id===n.cutucadaId); return !c || !c.respondida; }
     return true; // tipos sem regra de expiração ficam
   };
-  const _antesPoda=_notifs.length;
+  const _prev=_notifs; // antes da poda — p/ reaproveitar ts/lida de notifs equivalentes (não regravar nem resetar 'lida')
   _notifs=_notifs.filter(_aindaVale);
-  if(_notifs.length!==_antesPoda) saveNotifs();
 
   // ── GERAÇÃO de notificações derivadas (recriadas a cada chamada; tipos purgados acima) ──
   const _esc=(typeof escapeHTML==='function')?escapeHTML:(s=>s);
@@ -21146,14 +21152,13 @@ function gerarNotificacoes(){
     if(_disp('aguardando',t.id)) return;
     const _p=people.find(x=>x.id===t.aguardandoDe); const _nome=_p?_p.name:'alguém';
     const _dias=t.aguardandoDesde?Math.round((new Date(today+'T00:00')-new Date(t.aguardandoDesde+'T00:00'))/86400000):0;
-    novas.push({tipo:'aguardando', ref:t.id, taskId:t.id, texto:`Você aguarda <b>${_esc(_nome)}</b>${_dias>0?` há <b>${_dias}d</b>`:''} — ${_esc(t.title)}`, cor:'var(--orange-dark)', icon:'ti-clock-pause', intencao:'aguardando', ts:agora, lida:false});
+    const _ant=_prev.find(n=>n.tipo==='aguardando' && n.ref===t.id); // reaproveita ts/lida da equivalente
+    novas.push({tipo:'aguardando', ref:t.id, taskId:t.id, texto:`Você aguarda <b>${_esc(_nome)}</b>${_dias>0?` há <b>${_dias}d</b>`:''} — ${_esc(t.title)}`, cor:'var(--orange-dark)', icon:'ti-clock-pause', intencao:'aguardando', ts:_ant?_ant.ts:agora, lida:_ant?!!_ant.lida:false});
   });
 
   // Adicionar novas, evitando duplicatas exatas
-  if(novas.length){
-    _notifs=[...novas,..._notifs].slice(0,50); // máx 50 notificações
-    saveNotifs();
-  }
+  if(novas.length) _notifs=[...novas,..._notifs].slice(0,50); // máx 50 notificações
+  saveNotifs(); // grava 1x; saveNotifs faz dedup contra o último JSON salvo (sem mudança real = sem gravação)
   atualizarBadgeNotif();
 }
 
