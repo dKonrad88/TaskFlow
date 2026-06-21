@@ -2330,7 +2330,7 @@
       <i class="ti ti-sparkles" style="font-size:18px"></i>
       <div class="ai-header-title">
         <span>Assistente IA</span>
-        <span style="font-size:10px;background:rgba(255,255,255,.2);padding:1px 6px;border-radius:99px;font-weight:600">Claude Opus</span>
+        <span style="font-size:10px;background:rgba(255,255,255,.2);padding:1px 6px;border-radius:99px;font-weight:600">Claude Haiku</span>
       </div>
       <button class="ai-header-close" onclick="fecharChatIA()" title="Fechar"><i class="ti ti-x"></i></button>
     </div>
@@ -9842,12 +9842,12 @@ function renderAjuda(){
       id:'ia',
       icon:'ti-sparkles',
       cor:'var(--purple)',
-      titulo:'Assistente IA (aguardando backend)',
+      titulo:'Assistente IA',
       resumo:'Chat com IA para consultas e ações em linguagem natural.',
       conteudo:`
-        <p>O botão <b>✨ IA</b> no header abre um chat com Claude Opus, capaz de consultar dados e executar ações no sistema usando linguagem natural.</p>
-        <div style="margin-top:14px;padding:12px 14px;background:#FEF3C7;border:1px solid #F59E0B;border-radius:10px;font-size:12px;color:#78350F">
-          <b style="color:#92400E">⚠️ Atualmente desativado</b> — o frontend está pronto, mas a IA precisa de um endpoint backend para funcionar (proteção da chave da API). O Guilherme vai criar isso na migração para servidor.
+        <p>O botão <b>✨ IA</b> no header abre um chat com Claude (Haiku), capaz de consultar dados e executar ações (criar tarefa, reunião, projeto, sensorial, compromisso; editar/concluir/excluir) usando linguagem natural.</p>
+        <div style="margin-top:14px;padding:12px 14px;background:var(--success-bg);border:1px solid var(--success);border-radius:10px;font-size:12px;color:var(--text2)">
+          <b style="color:var(--success)">✓ Como funciona com segurança</b> — a chamada à Claude passa por uma Edge Function do Supabase (<code>claude-chat</code>) que guarda a chave no servidor; o navegador nunca vê a chave. Requer estar <b>conectado à nuvem</b> (☁️) e a chave <code>ANTHROPIC_API_KEY</code> cadastrada nos Secrets do Supabase.
         </div>
         <div style="margin-top:14px"><b>Exemplos de perguntas (consultas):</b></div>
         <ul style="margin:6px 0 0 16px;color:var(--text2);font-size:13px;display:flex;flex-direction:column;gap:4px">
@@ -21590,7 +21590,10 @@ function _aiBuildContexto(){
   });
   const reunioesResumo=meetings.map(m=>({
     id:m.id,titulo:m.title,data:m.date,status:m.status,
-    horaInicio:m.horaInicio,temAta:!!(m.ata&&m.ata.trim().length>10)
+    horaInicio:m.horaInicio,temAta:!!(m.ata&&m.ata.trim().length>10),
+    pautaPrincipal:m.pautaPrincipal||null,
+    pauta:Array.isArray(m.pauta)?m.pauta:[],
+    participantes:(m.participantes||[]).map(pid=>{const p=people.find(x=>x.id===pid);return p?p.name:pid;})
   }));
   const compResumo=compromissos.map(c=>({
     id:c.id,titulo:c.titulo,data:c.data,
@@ -21675,6 +21678,77 @@ const AI_TOOLS=[
       properties:{id:{type:'number',description:'ID numérico da tarefa'}},
       required:['id']
     }
+  },
+  {
+    name:'criar_reuniao',
+    description:'Cria uma reunião de trabalho. Use para "marcar/agendar/criar reunião". Participantes e facilitador são IDs de pessoas do contexto. A pauta é uma lista de assuntos.',
+    input_schema:{
+      type:'object',
+      properties:{
+        titulo:{type:'string'},
+        data:{type:'string',description:'Data YYYY-MM-DD'},
+        horaInicio:{type:'string',description:'HH:MM (opcional)'},
+        horaFim:{type:'string',description:'HH:MM (opcional)'},
+        facilitadorId:{type:'string',description:'ID da pessoa que conduz (opcional)'},
+        participantesIds:{type:'array',items:{type:'string'},description:'IDs das pessoas participantes (opcional)'},
+        pauta:{type:'array',items:{type:'string'},description:'Assuntos da pauta (opcional)'}
+      },
+      required:['titulo','data']
+    }
+  },
+  {
+    name:'criar_projeto',
+    description:'Cria um projeto novo. Use quando pedir para criar/abrir um projeto.',
+    input_schema:{
+      type:'object',
+      properties:{
+        nome:{type:'string'},
+        status:{type:'string',enum:['planejamento','andamento','pausado','concluido'],description:'Padrão: andamento'},
+        prioridade:{type:'string',enum:['urgente','alta','media','baixa','trivial']},
+        deadline:{type:'string',description:'Prazo YYYY-MM-DD (opcional)'},
+        descricao:{type:'string',description:'Descrição (opcional)'}
+      },
+      required:['nome']
+    }
+  },
+  {
+    name:'criar_sensorial',
+    description:'Cria um teste de análise sensorial com amostras (códigos cegos) e perguntas padrão. Use para "montar/criar análise sensorial".',
+    input_schema:{
+      type:'object',
+      properties:{
+        titulo:{type:'string'},
+        produtoBase:{type:'string',description:'Produto avaliado (opcional)'},
+        tipoTeste:{type:'string',description:'Ex.: farinha, gordura (opcional)'},
+        amostras:{type:'array',description:'Amostras a testar',items:{type:'object',properties:{codigo:{type:'string',description:'Código cego (ex.: 123)'},identidade:{type:'string',description:'Identidade real, oculta no teste (opcional)'}}}}
+      },
+      required:['titulo']
+    }
+  },
+  {
+    name:'editar_tarefa',
+    description:'Edita uma tarefa existente pelo ID (título, prioridade, data, executor, projeto). Só envie os campos a alterar.',
+    input_schema:{
+      type:'object',
+      properties:{
+        id:{type:'number',description:'ID numérico da tarefa'},
+        titulo:{type:'string'},
+        prioridade:{type:'string',enum:['urgente','alta','media','baixa','trivial']},
+        data:{type:'string',description:'YYYY-MM-DD'},
+        executorId:{type:'string'},
+        projetoId:{type:'string'}
+      },
+      required:['id']
+    }
+  },
+  {
+    name:'excluir_tarefa',
+    description:'Exclui uma tarefa pelo ID (vai para a Lixeira, com Desfazer).',
+    input_schema:{
+      type:'object',
+      properties:{id:{type:'number',description:'ID numérico da tarefa'}},
+      required:['id']
+    }
   }
 ];
 
@@ -21741,19 +21815,103 @@ function _aiExecTool(toolName, input){
       toast('✅ Tarefa concluída pela IA');
       return {sucesso:true,mensagem:`Tarefa "${t.title}" concluída`};
     }
+    if(toolName==='criar_reuniao'){
+      const pauta=Array.isArray(input.pauta)?input.pauta.filter(x=>String(x).trim()):[];
+      const m={
+        id:'reun'+Date.now()+Math.floor(Math.random()*1000),
+        title:input.titulo, date:input.data||today,
+        horaInicio:input.horaInicio||'', horaFim:input.horaFim||'',
+        tipo:'Operacional', status:'agendada', localTipo:'interno', sala:'', localExterno:'',
+        facilitador:input.facilitadorId||'', frequencia:'unica',
+        pautaPrincipal:'', participantes:Array.isArray(input.participantesIds)?input.participantesIds:[],
+        projetos:[], createdAt:today,
+        pauta, pautaDone:pauta.map(()=>false),
+        ata:'', decisoes:'', decisoesItens:[], presencas:{}, anexos:[], inicioReal:null, fimReal:null, continuacaoDe:null
+      };
+      meetings.push(m); saveMeeting_db(m); render();
+      toast('✅ Reunião criada pela IA');
+      return {sucesso:true,id:m.id,mensagem:`Reunião "${input.titulo}" criada para ${m.date}${pauta.length?` com ${pauta.length} item(ns) de pauta`:''}`};
+    }
+    if(toolName==='criar_projeto'){
+      const p={
+        id:'proj'+Date.now(),
+        name:input.nome, status:input.status||'andamento',
+        prioridade:input.prioridade||'media', deadline:input.deadline||null,
+        color:(typeof PROJ_COLORS!=='undefined'?PROJ_COLORS[0]:'var(--blue-mid)'),
+        desc:input.descricao||'', members:[], taskIds:[],
+        createdAt:new Date().toISOString().slice(0,10)
+      };
+      projects.push(p); saveProject_db(p); render();
+      toast('✅ Projeto criado pela IA');
+      return {sucesso:true,id:p.id,mensagem:`Projeto "${input.nome}" criado`};
+    }
+    if(toolName==='criar_sensorial'){
+      _sensLoad();
+      const amostras=(Array.isArray(input.amostras)?input.amostras:[]).map(a=>{
+        const o=(typeof a==='string')?{codigo:a}:a;
+        return {id:_sensId(), codigo:String(o.codigo||'').trim(), identidadeReal:o.identidade||o.identidadeReal||''};
+      }).filter(a=>a.codigo);
+      const t={
+        id:_sensId(), titulo:input.titulo, data:today,
+        produtoBase:input.produtoBase||'', tipoTeste:input.tipoTeste||'',
+        status:'aberto', revelado:false, criadoPor:CURRENT_USER_ID,
+        amostras, perguntas:_sensPerguntasPadrao(), respostas:[], createdAt:today
+      };
+      sensorialTestes.push(t); saveSensorial_db();
+      toast('✅ Análise sensorial criada pela IA');
+      return {sucesso:true,id:t.id,mensagem:`Teste sensorial "${input.titulo}" criado com ${amostras.length} amostra(s)`};
+    }
+    if(toolName==='editar_tarefa'){
+      const t=tasks.find(x=>x.id===input.id||x.id===Number(input.id));
+      if(!t) return {sucesso:false,mensagem:'Tarefa não encontrada'};
+      const antes=t.title;
+      if(input.titulo!=null) t.title=input.titulo;
+      if(input.prioridade!=null) t.prio=input.prioridade;
+      if(input.data!=null) t.date=input.data;
+      if(input.executorId!==undefined){ t.executor=input.executorId||null; t.people=input.executorId?[input.executorId]:[]; }
+      if(input.projetoId!==undefined) t.projectId=input.projetoId||null;
+      saveTask_db(t); refreshUI();
+      toast('✏️ Tarefa editada pela IA');
+      return {sucesso:true,id:t.id,mensagem:`Tarefa "${antes}" atualizada`};
+    }
+    if(toolName==='excluir_tarefa'){
+      const t=tasks.find(x=>x.id===input.id||x.id===Number(input.id));
+      if(!t) return {sucesso:false,mensagem:'Tarefa não encontrada'};
+      const titulo=t.title;
+      moveToTrash('task', {...t});
+      tasks=tasks.filter(x=>x.id!==t.id);
+      deleteTask_db(t.id);
+      refreshUI();
+      _mostrarFABDesfazer?.('Tarefa excluída', 0);
+      toast('🗑️ Tarefa movida para a Lixeira');
+      return {sucesso:true,mensagem:`Tarefa "${titulo}" movida para a Lixeira`};
+    }
     return {sucesso:false,mensagem:'Ferramenta desconhecida'};
   }catch(e){
     return {sucesso:false,mensagem:'Erro ao executar: '+e.message};
   }
 }
 
+// Chama a Claude via Edge Function segura do Supabase (a chave fica no servidor, nunca no navegador).
+async function _aiCallClaude(systemPrompt, msgs){
+  const sb=_sbReady();
+  if(!sb) throw new Error('Cliente da nuvem indisponível.');
+  const { data, error } = await sb.functions.invoke('claude-chat', {
+    body:{ model:'claude-haiku-4-5', max_tokens:1500, system:systemPrompt, tools:AI_TOOLS, messages:msgs }
+  });
+  if(error){
+    let m=error.message||'Falha na função claude-chat';
+    try{ const ctx=await error.context?.json(); if(ctx){ if(typeof ctx.error==='string') m=ctx.error; else if(ctx.error&&ctx.error.message) m=ctx.error.message; } }catch(_e){}
+    throw new Error(m);
+  }
+  if(data && data.error) throw new Error(typeof data.error==='string'?data.error:(data.error.message||'Erro da API'));
+  return data;
+}
 async function enviarMsgIA(){
-  // BUGFIX: verificar se há chave API configurada (necessário para chamada Anthropic)
-  const _aiApiKey = safeLSGet("taskflow_ai_key") || "";
-  if(!_aiApiKey){
+  if(!_sbUser){
     const inp0=document.getElementById("ai-input");
     if(inp0) inp0.value="";
-    _aiAddMessage("system","⚠️ Configure sua chave da API Anthropic em Configurações → IA para usar o assistente.");
+    _aiAddMessage("system","⚠️ Conecte-se à nuvem (ícone ☁️ no topo) para usar o assistente — é o que mantém sua chave da Claude segura no servidor.");
     return;
   }
   if(_aiBusy) return;
@@ -21788,34 +21946,20 @@ ${JSON.stringify({
 INSTRUÇÕES:
 - Responda em português brasileiro, tom direto e amigável
 - Use os dados do contexto para responder com precisão (números, nomes, datas reais)
-- Para AÇÕES (criar/excluir/concluir), use as ferramentas disponíveis. NÃO peça confirmação se a intenção do usuário estiver clara — execute direto.
-- Para CONSULTAS, responda em texto claro e estruturado. Use bullets quando listar múltiplos itens.
+- AÇÕES disponíveis (use as ferramentas; NÃO peça confirmação se a intenção estiver clara — execute direto):
+  • criar/editar/concluir/excluir TAREFA; criar/excluir COMPROMISSO; criar REUNIÃO (com pauta e participantes); criar PROJETO; criar ANÁLISE SENSORIAL (com amostras).
+- RELATÓRIOS/CONSULTAS (ex.: "tarefas pendentes do projeto X", "pautas da próxima reunião", "o que tenho hoje"): responda em texto a partir do contexto, sem usar ferramenta. Para "próxima reunião", escolha a de menor data >= hoje com status agendada.
+- Para vincular pessoas/projetos, use os IDs do contexto (pessoas, projetos). Se o usuário citar por nome, encontre o ID correspondente.
 - Quando o usuário falar de "hoje", "amanhã", "essa semana" → calcule com base na DATA DE HOJE acima
 - Quando criar compromisso, use a categoria mais adequada dentre as disponíveis em tiposCompromisso. Se nenhuma encaixar, use "outro"
-- Seja conciso. Respostas longas só quando o usuário pedir detalhes.`;
+- Use bullets ao listar múltiplos itens. Seja conciso; respostas longas só quando pedirem detalhes.`;
 
     const msgsParaAPI=_aiHistorico
       .filter(m=>m.role!=='system')
       .map(m=>({role:m.role,content:m.content}));
 
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':_aiApiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({
-        model:'claude-opus-4-7',
-        max_tokens:1500,
-        system:systemPrompt,
-        tools:AI_TOOLS,
-        messages:msgsParaAPI
-      })
-    });
-
-    if(!resp.ok){
-      const err=await resp.text();
-      throw new Error('API erro '+resp.status+': '+err);
-    }
-
-    let data=await resp.json();
+    let data=await _aiCallClaude(systemPrompt, msgsParaAPI);
+    if(data && data.type==='error') throw new Error((data.error&&data.error.message)||'Erro da API');
 
     // Loop de ferramentas: se a IA chamou tools, executar e devolver resultado
     let maxLoops=5;
@@ -21833,22 +21977,8 @@ INSTRUÇÕES:
       msgsParaAPI.push({role:'assistant',content:data.content});
       msgsParaAPI.push({role:'user',content:toolResults});
 
-      const resp2=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':_aiApiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-        body:JSON.stringify({
-          model:'claude-opus-4-7',
-          max_tokens:1500,
-          system:systemPrompt,
-          tools:AI_TOOLS,
-          messages:msgsParaAPI
-        })
-      });
-      if(!resp2.ok){
-        const err=await resp2.text();
-        throw new Error('API erro '+resp2.status+': '+err);
-      }
-      data=await resp2.json();
+      data=await _aiCallClaude(systemPrompt, msgsParaAPI);
+      if(data && data.type==='error') throw new Error((data.error&&data.error.message)||'Erro da API');
     }
 
     // Extrair resposta de texto final
@@ -21867,9 +21997,12 @@ INSTRUÇÕES:
 
   }catch(err){
     _aiHideTyping();
-    const msgErro=err.message.includes('Load failed')||err.message.includes('Failed to fetch')||err.message.includes('CORS')
-      ? '⚠️ Backend ainda não está pronto. O chat funcionará quando o Guilherme criar o endpoint /api/chat-ia no servidor.'
-      : '⚠️ Erro: '+err.message;
+    const _em=err.message||'';
+    const msgErro=/não configurada|ANTHROPIC_API_KEY/i.test(_em)
+      ? '⚠️ A chave da Anthropic ainda não foi configurada no Supabase (Edge Functions → Secrets → ANTHROPIC_API_KEY).'
+      : /Load failed|Failed to fetch|CORS|indisponível/i.test(_em)
+      ? '⚠️ Não consegui falar com o servidor. Verifique sua conexão e se você está conectado à nuvem (☁️).'
+      : '⚠️ Erro: '+_em;
     _aiAddMessage('system',msgErro);
     console.error('Chat IA erro:',err);
   } finally {
