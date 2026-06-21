@@ -7406,6 +7406,17 @@ function renderSensorial(){
 }
 function sensVoltarLista(){ sensorialSubview='lista'; sensorialTesteId=null; renderSensorial(); }
 function abrirSensorial(id){ sensorialTesteId=id; sensorialSubview='teste'; sensorialTab='resultados'; sensorialAvaliadorId=''; sensorialDraft={}; renderSensorial(); }
+function excluirTesteSensorial(id){
+  _sensLoad();
+  const it=(sensorialTestes||[]).find(x=>x.id===id); if(!it) return;
+  if(it.criadoPor && it.criadoPor!==CURRENT_USER_ID){ toast('Só a criadora pode excluir este teste'); return; }
+  moveToTrash('sensorial', it);
+  sensorialTestes=sensorialTestes.filter(x=>x.id!==id);
+  saveSensorial_db();
+  if(sensorialTesteId===id){ sensorialSubview='lista'; sensorialTesteId=null; }
+  renderSensorial();
+  _mostrarFABDesfazer('Teste sensorial excluído', 0);
+}
 
 // ─── Tela 1: lista de testes ───
 function renderSensorialLista(){
@@ -7416,7 +7427,10 @@ function renderSensorialLista(){
     <div onclick="abrirSensorial('${t.id}')" style="background:var(--card); border:1px solid var(--border); border-radius:11px; padding:14px 16px; cursor:pointer; transition:border-color .15s;" onmouseover="this.style.borderColor='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)'">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
         <div style="font-size:14px; font-weight:700; color:var(--text);">${escapeHTML(t.titulo||'Teste sem nome')}</div>
-        ${_badge(t.status)}
+        <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+          ${_badge(t.status)}
+          ${(!t.criadoPor || t.criadoPor===CURRENT_USER_ID) ? `<button onclick="event.stopPropagation(); excluirTesteSensorial('${t.id}')" title="Excluir teste" style="background:none; border:none; color:var(--text3); cursor:pointer; padding:4px; border-radius:6px; line-height:1; font-family:inherit;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-trash" style="font-size:15px;"></i></button>` : ''}
+        </div>
       </div>
       <div style="font-size:11.5px; color:var(--text3); margin-top:5px; display:flex; gap:14px; flex-wrap:wrap;">
         <span><i class="ti ti-calendar"></i> ${escapeHTML(t.data||'—')}</span>
@@ -7454,8 +7468,7 @@ function renderTesteSensorial(){
           ${(()=>{ const m=t.meetingId?(meetings||[]).find(x=>x.id===t.meetingId):null; return m?`<div style="margin-top:7px"><button onclick="_sensAbrirReuniao('${m.id}')" style="display:inline-flex; align-items:center; gap:6px; background:var(--bg2); border:1px solid var(--border); border-radius:99px; padding:4px 11px; font-size:12px; font-weight:600; color:var(--text2); cursor:pointer; font-family:inherit;" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-speakerphone" style="color:var(--orange)"></i> Reunião: ${escapeHTML(m.title||'Reunião')} · ${formatDate(m.date)}${m.date===t.data?' · mesmo dia':''}</button></div>`:''; })()}
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          ${t.criadoPor===CURRENT_USER_ID ? `${(()=>{ const sib=t.meetingId?(sensorialTestes||[]).filter(x=>x.meetingId===t.meetingId):[]; return sib.length>1?`<button onclick="sensApresentarSessao('${t.meetingId}')" style="background:var(--card); border:1px solid var(--blue-mid); color:var(--blue-mid); border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-layout-grid"></i> Sessão do dia (${sib.length})</button>`:''; })()}<button onclick="sensApresentar('${t.id}')" style="background:var(--blue-mid); color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; margin-right:8px;"><i class="ti ti-presentation"></i> Apresentar</button>` : ''}
-          <button onclick="editarTesteSensorial('${t.id}')" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit;"><i class="ti ti-settings"></i> Configurar</button>
+          ${t.criadoPor===CURRENT_USER_ID ? `${(()=>{ const sib=t.meetingId?(sensorialTestes||[]).filter(x=>x.meetingId===t.meetingId):[]; return sib.length>1?`<button onclick="sensApresentarSessao('${t.meetingId}')" style="background:var(--card); border:1px solid var(--blue-mid); color:var(--blue-mid); border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-layout-grid"></i> Sessão do dia (${sib.length})</button>`:''; })()}<button onclick="sensApresentar('${t.id}')" style="background:var(--blue-mid); color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; margin-right:8px;"><i class="ti ti-presentation"></i> Apresentar</button><button onclick="editarTesteSensorial('${t.id}')" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit;"><i class="ti ti-settings"></i> Configurar</button>` : ''}
         </div>
       </div>
       <div style="display:flex; gap:8px; margin:14px 0 20px;">
@@ -8749,6 +8762,8 @@ function restoreFromTrash(idx){
     fichasProduto.push(item); saveFichasProduto();
   } else if(type==='reuniaoRapida'){
     _reunioesRapidas.push(item); safeSetItem(LS_REUNIOES_RAPIDAS, JSON.stringify(_reunioesRapidas));
+  } else if(type==='sensorial'){
+    _sensLoad(); sensorialTestes.push(item); saveSensorial_db();
   }
   trash.splice(idx,1);
   saveTrash_db();
@@ -8810,8 +8825,8 @@ function limparOrfaos(itensExcluidos){
   if(mudouCutucadas) saveCutucadas();
 }
 
-const TRASH_TYPE_LABELS={task:'Tarefas',rotina:'Rotinas',note:'Notas',project:'Projetos',projectPro:'Projetos',meeting:'Reuniões',compromisso:'Compromissos',person:'Pessoas',equipamento:'Equipamentos',ordem:'Ordens de Manutenção',fornecedor:'Fornecedores',orcamento:'Orçamentos',preventiva:'Planos de preventiva',fichaProduto:'Produtos',reuniaoRapida:'Reuniões rápidas'};
-const TRASH_TYPE_ICONS={task:'ti-check',rotina:'ti-repeat',note:'ti-notes',project:'ti-folders',projectPro:'ti-folders',meeting:'ti-speakerphone',compromisso:'ti-calendar-time',person:'ti-user',equipamento:'ti-settings-automation',ordem:'ti-clipboard-list',fornecedor:'ti-building-store',orcamento:'ti-receipt-2',preventiva:'ti-calendar-repeat',fichaProduto:'ti-package',reuniaoRapida:'ti-calendar-bolt'};
+const TRASH_TYPE_LABELS={task:'Tarefas',rotina:'Rotinas',note:'Notas',project:'Projetos',projectPro:'Projetos',meeting:'Reuniões',compromisso:'Compromissos',person:'Pessoas',equipamento:'Equipamentos',ordem:'Ordens de Manutenção',fornecedor:'Fornecedores',orcamento:'Orçamentos',preventiva:'Planos de preventiva',fichaProduto:'Produtos',reuniaoRapida:'Reuniões rápidas',sensorial:'Análise sensorial'};
+const TRASH_TYPE_ICONS={task:'ti-check',rotina:'ti-repeat',note:'ti-notes',project:'ti-folders',projectPro:'ti-folders',meeting:'ti-speakerphone',compromisso:'ti-calendar-time',person:'ti-user',equipamento:'ti-settings-automation',ordem:'ti-clipboard-list',fornecedor:'ti-building-store',orcamento:'ti-receipt-2',preventiva:'ti-calendar-repeat',fichaProduto:'ti-package',reuniaoRapida:'ti-calendar-bolt',sensorial:'ti-test-pipe'};
 let _trashFilter='todos';
 function setTrashFilter(t){ _trashFilter=t; renderLixeira(); }
 
