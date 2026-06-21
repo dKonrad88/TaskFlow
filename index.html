@@ -4803,8 +4803,8 @@ function _novoProjectPro({nome, tipo='outro', cor='#185FA5', dono=null, prazoIni
 // Cria fase (estrutura)
 // Helper unificado: busca projeto de uma tarefa nos dois sistemas
 function _getTaskProject(t){
-  if(t.projectProId){ const pp=projectsPro.find(x=>x.id===t.projectProId); if(pp) return {name:pp.nome,color:pp.cor||'var(--blue-mid)',isPro:true}; }
-  if(t.projectId){ const p=projects.find(x=>x.id===t.projectId); if(p) return {name:p.name,color:p.color||'var(--blue-mid)',isPro:false}; }
+  if(t.projectProId){ const pp=_projectProById(t.projectProId); if(pp) return {name:pp.nome,color:pp.cor||'var(--blue-mid)',isPro:true}; }
+  if(t.projectId){ const p=_projectById(t.projectId); if(p) return {name:p.name,color:p.color||'var(--blue-mid)',isPro:false}; }
   return null;
 }
 
@@ -14440,7 +14440,7 @@ function renderEquipe(){
     ).join('');
   } else { // setor
     const porSetor={};
-    tarefasEquipe.forEach(t=>{ const pe=people.find(x=>x.id===t.executor); const s=pe?(pe.setor||pe.macroSetor||'Sem setor'):'Sem setor'; (porSetor[s]=porSetor[s]||[]).push(t); });
+    tarefasEquipe.forEach(t=>{ const pe=_personById(t.executor); const s=pe?(pe.setor||pe.macroSetor||'Sem setor'):'Sem setor'; (porSetor[s]=porSetor[s]||[]).push(t); });
     listaHTML=Object.keys(porSetor).sort((a,b)=>a.localeCompare(b,'pt-BR')).map(s=>
       _secHead('var(--purple)','ti-building',s,porSetor[s].length)+_tabela(porSetor[s])
     ).join('');
@@ -14487,7 +14487,26 @@ function refreshUI(){
   },30);
 }
 
+// Índices id->entidade reconstruídos no início de cada render — trocam .find() O(n) por .get() O(1)
+// nos renderizadores de linha (tableRowHTML/taskHTML) e afins. Os helpers caem em .find() se o id
+// não estiver no índice (segurança para chamadas fora do ciclo de render).
+let _idxPeople=null,_idxMeetings=null,_idxRotinas=null,_idxProjects=null,_idxProjectsPro=null,_idxTasks=null;
+function _rebuildIndexes(){
+  _idxPeople=new Map((people||[]).map(p=>[p.id,p]));
+  _idxMeetings=new Map((meetings||[]).map(m=>[m.id,m]));
+  _idxRotinas=new Map((rotinas||[]).map(r=>[r.id,r]));
+  _idxProjects=new Map((projects||[]).map(p=>[p.id,p]));
+  _idxProjectsPro=new Map((projectsPro||[]).map(p=>[p.id,p]));
+  _idxTasks=new Map((tasks||[]).map(t=>[t.id,t]));
+}
+function _taskById(id){ if(id==null) return undefined; if(_idxTasks&&_idxTasks.has(id)) return _idxTasks.get(id); return (tasks||[]).find(t=>t.id===id); }
+function _personById(id){ if(id==null) return undefined; if(_idxPeople&&_idxPeople.has(id)) return _idxPeople.get(id); return (people||[]).find(p=>p.id===id); }
+function _meetingById(id){ if(id==null) return undefined; if(_idxMeetings&&_idxMeetings.has(id)) return _idxMeetings.get(id); return (meetings||[]).find(m=>m.id===id); }
+function _rotinaById(id){ if(id==null) return undefined; if(_idxRotinas&&_idxRotinas.has(id)) return _idxRotinas.get(id); return (rotinas||[]).find(r=>r.id===id); }
+function _projectById(id){ if(id==null) return undefined; if(_idxProjects&&_idxProjects.has(id)) return _idxProjects.get(id); return (projects||[]).find(p=>p.id===id); }
+function _projectProById(id){ if(id==null) return undefined; if(_idxProjectsPro&&_idxProjectsPro.has(id)) return _idxProjectsPro.get(id); return (projectsPro||[]).find(p=>p.id===id); }
 function render(){
+  _rebuildIndexes();
   // MODO HUB: renderizar Meu dia! quando hubView === 'meudia'
   if(hubView === 'meudia'){
     renderMeuDia();
@@ -15682,7 +15701,7 @@ function kanbanCardHTML(t){
       <div class="kanban-task-title" style="${isDone?'text-decoration:line-through;opacity:.55':''}">${escapeHTML(t.title)}${(()=>{
         // GUILHERME V3: badge de aguardando no kanban
         if(t.kanbanCol!=='waiting' || !t.aguardandoDe) return '';
-        const pAg = people.find(p=>p.id===t.aguardandoDe);
+        const pAg = _personById(t.aguardandoDe);
         if(!pAg) return '';
         const isMe = t.aguardandoDe === CURRENT_USER_ID;
         const cor = isMe ? 'var(--danger)' : 'var(--orange)';
@@ -18231,7 +18250,7 @@ function tableRowHTML(t){
   // GUILHERME V3: badge "aguardando de fulano" quando task em waiting
   let aguardandoBadge = '';
   if(t.kanbanCol==='waiting' && t.aguardandoDe){
-    const pAg = people.find(p=>p.id===t.aguardandoDe);
+    const pAg = _personById(t.aguardandoDe);
     if(pAg){
       const isMe = t.aguardandoDe === CURRENT_USER_ID;
       const cor = isMe ? 'var(--danger)' : 'var(--orange)';
@@ -18266,7 +18285,7 @@ function tableRowHTML(t){
   // Coluna Executor
   let pessCell = '';
   if(showPess){
-    const exec = t.executor ? people.find(p=>p.id===t.executor) : null;
+    const exec = t.executor ? _personById(t.executor) : null;
     pessCell = `<td><span class="tt-cell-editable ${exec?'':'tt-cell-empty'}" onclick="event.stopPropagation();ttOpenInlineDropdown(${t.id},'executor',this)">${exec?`<i class="ti ti-hammer" style="font-size:12px;color:var(--text3)"></i> ${escapeHTML(exec.name)}`:'Sem executor'}</span></td>`;
   }
 
@@ -18308,7 +18327,7 @@ function tableRowHTML(t){
   // Coluna Reunião (reunião de origem da tarefa)
   let reuniaoCell = '';
   if(fieldPrefs.reuniao){
-    const mt=t.meetingId?meetings.find(x=>x.id===t.meetingId):null;
+    const mt=t.meetingId?_meetingById(t.meetingId):null;
     reuniaoCell = `<td>${mt?`<span class="tt-cell-editable" style="cursor:pointer" onclick="event.stopPropagation();openReuniaoView('${mt.id}')" title="Abrir reunião"><i class="ti ti-speakerphone" style="font-size:12px;color:var(--orange)"></i> ${escapeHTML(mt.title)}</span>`:'<span class="tt-cell-editable tt-cell-empty">—</span>'}</td>`;
   }
 
@@ -18582,7 +18601,7 @@ function taskHTML(t){
     const prioMap={urgente:'chip-urgente',alta:'chip-alta',media:'chip-media',baixa:'chip-baixa',trivial:'chip-trivial'};
     const prioIcon={urgente:'ti-flag',alta:'ti-flag',media:'ti-flag',baixa:'ti-flag',trivial:'ti-flag'};
     const prioLabel=PRIO_LABEL;
-    const r=rotinas.find(x=>x.id===t._rotinaId);
+    const r=_rotinaById(t._rotinaId);
     const nextAfter=r?nextOccurrenceAfter(r,t._rotinaDate):'';
     return `<div class="task" data-task-id="${t.id}" style="border-left:3px solid var(--blue-teal)">
       <div class="task-check" onclick="toggleRotinaTask('${t._rotinaId}','${t._rotinaDate}')" style="border-color:var(--blue-teal)" title="Marcar como feito"></div>
@@ -18604,7 +18623,7 @@ function taskHTML(t){
   const prioLabel=PRIO_LABEL;
   const overdue=t.date&&t.date<today&&!t.done?' overdue':'';
   
-  const _execP=people.find(x=>x.id===(t.executor||(t.people&&t.people[0])||''));
+  const _execP=_personById(t.executor||(t.people&&t.people[0])||'');
   const peopleChips=_execP?`<span class="chip chip-proj" style="cursor:pointer" data-exec-anchor="${t.id}" onclick="event.stopPropagation();ttOpenInlineDropdown(${t.id},'executor',this)" title="Trocar executor"><i class="ti ti-hammer"></i>${escapeHTML(_execP.name)}</span>`:`<span class="chip chip-proj" style="cursor:pointer;border:1px dashed var(--border);color:var(--text3)" data-exec-anchor="${t.id}" onclick="event.stopPropagation();ttOpenInlineDropdown(${t.id},'executor',this)" title="Definir executor"><i class="ti ti-hammer"></i>Sem executor</span>`;
   // GUILHERME V3: bugfix — antes o input[type=date] ficava absoluto e invisível por cima
   // do chip. Em alguns navegadores/situações isso não dispara o date picker.
@@ -18666,7 +18685,7 @@ function taskHTML(t){
   // GUILHERME V3: badge "aguardando de" no card
   let cardAguardandoBadge = '';
   if(t.kanbanCol==='waiting' && t.aguardandoDe){
-    const pAg = people.find(p=>p.id===t.aguardandoDe);
+    const pAg = _personById(t.aguardandoDe);
     if(pAg){
       const isMe = t.aguardandoDe === CURRENT_USER_ID;
       const cor = isMe ? 'var(--danger)' : 'var(--orange)';
@@ -23402,9 +23421,9 @@ function renderFaseExpandida(p, f){
 
   // Grupos de setor
   let gruposHTML = (f.grupos||[]).map(g=>{
-    const tarefas = (g.tarefaIds||[]).map(tid=>tasks.find(t=>t.id===tid)).filter(Boolean);
+    const tarefas = (g.tarefaIds||[]).map(tid=>_taskById(tid)).filter(Boolean);
     const tarefasHTML = tarefas.length ? tarefas.map(t=>{
-      const exec = t.executor ? people.find(x=>x.id===t.executor) : null;
+      const exec = t.executor ? _personById(t.executor) : null;
       const prioMapF=PRIO_LABEL;
       const statusHtmlF = statusChipHTML({...t, projectProId: p.id});
       const execPill = exec
@@ -24043,7 +24062,7 @@ function renderProjectProTarefas(p){
       return `<div style="display:inline-flex;flex-direction:column;gap:0;align-items:flex-start"><span title="${atual?'Em andamento agora':'Período previsto'}" style="font-size:10.5px;font-weight:600;color:${cor};background:${bg};padding:3px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ${icon}" style="font-size:11px"></i>${txt}</span>${gantt}</div>`;
     };
     const linha = (t, scopeFaseId) => {
-      const exec = t.executor ? people.find(x=>x.id===t.executor) : null;
+      const exec = t.executor ? _personById(t.executor) : null;
       const prioMap=PRIO_LABEL;
       const cell='padding:7px 9px;border-bottom:0.5px solid var(--border);border-right:0.5px solid var(--border);vertical-align:middle';
       const st=t._status;
@@ -24152,7 +24171,7 @@ function renderProjectProTarefas(p){
     let idx=parseInt(sessionStorage.getItem('pp-foco-idx-'+p.id)||'0',10);
     if(isNaN(idx)||idx<0||idx>=fila.length) idx=0;
     const t=fila[idx];
-    const exec = t.executor ? people.find(x=>x.id===t.executor) : null;
+    const exec = t.executor ? _personById(t.executor) : null;
     const campoVazio='border:1px dashed var(--border);color:var(--text3)';
     const campoCheio='border:0.5px solid var(--border);background:var(--bg2);color:var(--text)';
     const _fld=(label,icon,preenchido,conteudo,onclick,extraAttr='')=>`
