@@ -7325,6 +7325,11 @@ const SENS_NUM = {
   hedonica:        {'Gostei muito':5,'Gostei':4,'Indiferente':3,'Desgostei':2,'Desgostei muito':1},
   intencao_compra: {'Certamente compraria':5,'Provavelmente compraria':4,'Talvez comprasse/talvez não':3,'Provavelmente não compraria':2,'Certamente não compraria':1},
 };
+// Resolve a escala de uma pergunta: pré-definida (SENS_ESCALAS) ou personalizada (opções na própria pergunta).
+function _sensEsc(p){
+  if(p && p.escala==='custom') return { nome:(p.escalaNome||'Personalizada'), tipo:'escala', opcoes:(p.opcoes||[]).filter(o=>String(o).trim()!=='') };
+  return SENS_ESCALAS[p && p.escala] || { nome:'—', tipo:'escala', opcoes:[] };
+}
 
 // Estado da view
 let sensorialTestes   = null;       // lazy load
@@ -7532,7 +7537,7 @@ function _sensFocoHTML(t){
   if(!nQ) return `<div style="text-align:center; padding:40px 0; color:var(--text3);">Sem perguntas configuradas.</div>`;
   sensFocoIdx=Math.max(0, Math.min(nQ-1, sensFocoIdx));
   const idx=sensFocoIdx, p=t.perguntas[idx];
-  const esc=SENS_ESCALAS[p.escala];
+  const esc=_sensEsc(p);
   const ultimo=idx===nQ-1;
   // Uma pergunta por vez — o avaliador responde ESTA pergunta para cada amostra (código).
   const cards=t.amostras.map(a=>{
@@ -7569,7 +7574,7 @@ function _sensFocoHTML(t){
     </div>`;
 }
 function _sensPerguntaBlocoHTML(t, p, nCol){
-  const esc = SENS_ESCALAS[p.escala];
+  const esc = _sensEsc(p);
   const titulo = `<div style="font-size:13.5px; font-weight:700; color:var(--text); margin:20px 0 8px;">${escapeHTML(p.texto)}${p.obrigatoria?' <span style="color:var(--danger)">*</span>':''} <span style="font-size:10.5px; font-weight:600; color:var(--text3);">· ${esc.nome}</span></div>`;
   if(esc.tipo==='texto'){
     const cels = t.amostras.map(a=>{
@@ -7748,7 +7753,7 @@ function _sensResultadosHTML(t){
 
   // JAR dulçor + textura descritiva (distribuições)
   const jar=t.perguntas.find(p=>p.escala==='jar_dulcor');
-  const _distBars=(p)=>{ const esc=SENS_ESCALAS[p.escala]; return `
+  const _distBars=(p)=>{ const esc=_sensEsc(p); return `
     <div style="background:var(--card); border:1px solid var(--border); border-radius:11px; padding:14px 16px;">
       <div style="font-size:13px; font-weight:700; color:var(--text); margin-bottom:10px;">${escapeHTML(p.texto)}</div>
       <div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12px; min-width:${160+t.amostras.length*70}px;">
@@ -7757,7 +7762,8 @@ function _sensResultadosHTML(t){
       </table></div>
     </div>`; };
   const textura=t.perguntas.find(p=>p.escala==='textura_desc');
-  const distBlocks = [jar,textura].filter(Boolean).map(_distBars).join('');
+  const customs=t.perguntas.filter(p=>p.escala==='custom' && _sensEsc(p).opcoes.length);
+  const distBlocks = [jar,textura,...customs].filter(Boolean).map(_distBars).join('');
 
   // Participantes — lista única de avaliadores (abre em modal pelo botão do topo).
   const _parts=[]; { const _v=new Set(); (t.respostas||[]).forEach(r=>{ if(_v.has(r.avaliador)) return; _v.add(r.avaliador); _parts.push(r); }); }
@@ -7847,7 +7853,18 @@ function sensEdSet(campo,val){ sensEditorBuf[campo]=val; }
 function sensEdSetAmostra(i,campo,val){ sensEditorBuf.amostras[i][campo]=val; }
 function sensEdTogglePergunta(id){ const p=sensEditorBuf.perguntas.find(x=>x.id===id); if(p) p._off=!p._off; renderSensorialEditor(); }
 function sensEdAddPergunta(){ sensEditorBuf.perguntas.push({id:_sensId(), texto:'Nova pergunta', escala:'hedonica', obrigatoria:true, _custom:true}); renderSensorialEditor(); }
-function sensEdSetPergunta(id,campo,val){ const p=sensEditorBuf.perguntas.find(x=>x.id===id); if(p) p[campo]=(campo==='obrigatoria')? (val==='true'||val===true) : val; }
+function sensEdSetPergunta(id,campo,val){
+  const p=sensEditorBuf.perguntas.find(x=>x.id===id); if(!p) return;
+  if(campo==='obrigatoria'){ p.obrigatoria=(val==='true'||val===true); return; }
+  p[campo]=val;
+  if(campo==='escala'){
+    if(val==='custom' && (!Array.isArray(p.opcoes) || p.opcoes.length<2)) p.opcoes=['',''];
+    renderSensorialEditor(); // mostra/esconde o editor de opções
+  }
+}
+function sensEdAddOpcao(id){ const p=sensEditorBuf.perguntas.find(x=>x.id===id); if(!p) return; p.opcoes=p.opcoes||[]; p.opcoes.push(''); renderSensorialEditor(); }
+function sensEdDelOpcao(id,oi){ const p=sensEditorBuf.perguntas.find(x=>x.id===id); if(!p||!p.opcoes) return; p.opcoes.splice(oi,1); renderSensorialEditor(); }
+function sensEdSetOpcao(id,oi,val){ const p=sensEditorBuf.perguntas.find(x=>x.id===id); if(!p||!p.opcoes) return; p.opcoes[oi]=val; }
 function sensEdDelPergunta(id){ sensEditorBuf.perguntas=sensEditorBuf.perguntas.filter(x=>x.id!==id); renderSensorialEditor(); }
 function sensSalvarEditor(){
   const b=sensEditorBuf;
@@ -7855,7 +7872,13 @@ function sensSalvarEditor(){
   if(b.amostras.some(a=>!String(a.codigo).trim())){ toast('Toda amostra precisa de um código'); return; }
   b.perguntas = b.perguntas.filter(p=>!p._off);
   if(!b.perguntas.length){ toast('Inclua ao menos 1 pergunta'); return; }
-  b.perguntas.forEach(p=>{ delete p._off; delete p._custom; });
+  // Perguntas personalizadas: limpa opções vazias e exige ao menos 2.
+  for(const p of b.perguntas){
+    if(p.escala!=='custom') continue;
+    p.opcoes=(p.opcoes||[]).map(o=>String(o).trim()).filter(Boolean);
+    if(p.opcoes.length<2){ toast(`A pergunta "${p.texto||'sem nome'}" precisa de ao menos 2 opções`); return; }
+  }
+  b.perguntas.forEach(p=>{ delete p._off; delete p._custom; if(p.escala!=='custom') delete p.opcoes; });
   delete b._novo;
   _sensLoad();
   const idx=(sensorialTestes||[]).findIndex(t=>t.id===b.id);
@@ -7874,14 +7897,33 @@ function renderSensorialEditor(){
       <input value="${escapeAttr(a.identidadeReal)}" oninput="sensEdSetAmostra(${i},'identidadeReal',this.value)" placeholder="Identidade real — ex.: Gordura marca X (oculta no teste cego)" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">
       <button onclick="sensEdDelAmostra(${i})" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:8px; cursor:pointer;"><i class="ti ti-trash"></i></button>
     </div>`).join('');
-  const escOpts=(sel)=>Object.keys(SENS_ESCALAS).map(k=>`<option value="${k}" ${sel===k?'selected':''}>${SENS_ESCALAS[k].nome}</option>`).join('');
-  const perguntaRows = b.perguntas.map(p=>`
-    <div style="display:grid; grid-template-columns:26px 1fr 200px 34px; gap:8px; align-items:center; margin-bottom:7px; opacity:${p._off?'.45':'1'};">
-      <input type="checkbox" ${p._off?'':'checked'} onclick="sensEdTogglePergunta('${p.id}')" style="cursor:pointer; width:17px; height:17px;">
-      <input value="${escapeAttr(p.texto)}" oninput="sensEdSetPergunta('${p.id}','texto',this.value)" placeholder="Texto da pergunta" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">
-      <select onchange="sensEdSetPergunta('${p.id}','escala',this.value)" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:12.5px; color:var(--text); font-family:inherit; cursor:pointer;">${escOpts(p.escala)}</select>
-      <button onclick="sensEdDelPergunta('${p.id}')" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:8px; cursor:pointer;"><i class="ti ti-trash"></i></button>
-    </div>`).join('');
+  const escOpts=(sel)=>Object.keys(SENS_ESCALAS).map(k=>`<option value="${k}" ${sel===k?'selected':''}>${SENS_ESCALAS[k].nome}</option>`).join('')+`<option value="custom" ${sel==='custom'?'selected':''}>✏️ Personalizada (eu defino as opções)</option>`;
+  const perguntaRows = b.perguntas.map(p=>{
+    const isCustom = p.escala==='custom';
+    const optsEditor = isCustom ? `
+      <div style="margin:9px 0 2px; padding-left:34px;">
+        <div style="font-size:10.5px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">Opções de resposta ${_hint('As alternativas que o avaliador vai escolher — aparecem como botões. Mínimo 2.')}</div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          ${(p.opcoes||[]).map((o,oi)=>`<div style="display:flex; gap:6px; align-items:center; max-width:440px;">
+              <span style="font-size:11px; color:var(--text3); width:16px; flex-shrink:0; text-align:right;">${oi+1}.</span>
+              <input value="${escapeAttr(o)}" oninput="sensEdSetOpcao('${p.id}',${oi},this.value)" placeholder="Texto da opção" style="flex:1; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:7px; padding:6px 9px; font-size:12.5px; color:var(--text); font-family:inherit;">
+              <button onclick="sensEdDelOpcao('${p.id}',${oi})" title="Remover opção" style="background:none; border:1px solid var(--border); color:var(--text3); border-radius:7px; width:28px; height:28px; cursor:pointer; flex-shrink:0;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-x"></i></button>
+            </div>`).join('')}
+        </div>
+        <button onclick="sensEdAddOpcao('${p.id}')" style="margin-top:7px; background:none; border:1px dashed var(--border); color:var(--text3); border-radius:7px; padding:5px 12px; font-size:11.5px; font-weight:600; cursor:pointer; font-family:inherit;" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'"><i class="ti ti-plus"></i> Opção</button>
+        ${(p.opcoes||[]).filter(o=>String(o).trim()!=='').length<2?`<div style="font-size:11px; color:var(--amber); margin-top:6px;"><i class="ti ti-alert-triangle"></i> Adicione ao menos 2 opções.</div>`:''}
+      </div>` : '';
+    return `
+    <div style="margin-bottom:9px; opacity:${p._off?'.45':'1'}; ${isCustom?'background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:9px 11px;':''}">
+      <div style="display:grid; grid-template-columns:26px 1fr 200px 34px; gap:8px; align-items:center;">
+        <input type="checkbox" ${p._off?'':'checked'} onclick="sensEdTogglePergunta('${p.id}')" style="cursor:pointer; width:17px; height:17px;">
+        <input value="${escapeAttr(p.texto)}" oninput="sensEdSetPergunta('${p.id}','texto',this.value)" placeholder="Texto da pergunta" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; color:var(--text); font-family:inherit;">
+        <select onchange="sensEdSetPergunta('${p.id}','escala',this.value)" style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:12.5px; color:var(--text); font-family:inherit; cursor:pointer;">${escOpts(p.escala)}</select>
+        <button onclick="sensEdDelPergunta('${p.id}')" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:8px; cursor:pointer;"><i class="ti ti-trash"></i></button>
+      </div>
+      ${optsEditor}
+    </div>`;
+  }).join('');
   // Vínculo com reunião — lista todas, com as do MESMO DIA do teste em destaque.
   const _ms=[...(meetings||[])].sort((x,y)=>(y.date||'').localeCompare(x.date||''));
   const _same=_ms.filter(m=>m.date===b.data), _oth=_ms.filter(m=>m.date!==b.data);
@@ -7909,7 +7951,6 @@ function renderSensorialEditor(){
           <div style="display:flex; flex-direction:column; gap:11px;">
             <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Ideia do teste</label><textarea oninput="sensEdSet('ideiaTeste',this.value)" rows="2" placeholder="Qual a pergunta que este teste responde?" style="width:100%; box-sizing:border-box; resize:vertical; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;">${escapeHTML(b.ideiaTeste||'')}</textarea></div>
             <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">O que mudou</label><textarea oninput="sensEdSet('oQueMudou',this.value)" rows="2" placeholder="O que difere entre as amostras (e o que ficou igual)" style="width:100%; box-sizing:border-box; resize:vertical; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;">${escapeHTML(b.oQueMudou||'')}</textarea></div>
-            <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">O que observar na degustação</label><textarea oninput="sensEdSet('atencao',this.value)" rows="2" placeholder="Atributos para prestar atenção: maciez, sabor, aparência…" style="width:100%; box-sizing:border-box; resize:vertical; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;">${escapeHTML(b.atencao||'')}</textarea></div>
           </div>
         </div>
 
@@ -8011,13 +8052,12 @@ function _sensPresSlideHTML(t, key){
       </div>`;
   }
   if(key==='observar'){
-    const attrs=(t.perguntas||[]).filter(p=>SENS_ESCALAS[p.escala] && SENS_ESCALAS[p.escala].tipo!=='texto').map(p=>`<div style="display:flex; align-items:center; gap:10px; font-size:clamp(15px,2vw,19px); color:var(--text);"><i class="ti ti-point-filled" style="color:var(--blue-mid)"></i> ${escapeHTML(p.texto)}</div>`).join('');
+    const attrs=(t.perguntas||[]).filter(p=>_sensEsc(p).tipo!=='texto').map(p=>`<div style="display:flex; align-items:center; gap:10px; font-size:clamp(15px,2vw,19px); color:var(--text);"><i class="ti ti-point-filled" style="color:var(--blue-mid)"></i> ${escapeHTML(p.texto)}</div>`).join('');
     const blocos=[
-      t.oQueMudou?`<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--amber); border-radius:12px; padding:20px 24px;"><div style="font-size:12px; font-weight:800; color:var(--amber); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;"><i class="ti ti-arrows-exchange"></i> O que mudou</div><div style="font-size:clamp(15px,2vw,19px); color:var(--text); line-height:1.5;">${escapeHTML(t.oQueMudou)}</div></div>`:'',
-      t.atencao?`<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--blue-mid); border-radius:12px; padding:20px 24px;"><div style="font-size:12px; font-weight:800; color:var(--blue-mid); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;"><i class="ti ti-eye"></i> O que observar</div><div style="font-size:clamp(15px,2vw,19px); color:var(--text); line-height:1.5;">${escapeHTML(t.atencao)}</div></div>`:'',
-      attrs?`<div><div style="font-size:12px; font-weight:800; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:12px;">Você vai avaliar</div><div style="display:flex; flex-direction:column; gap:10px;">${attrs}</div></div>`:'',
+      t.oQueMudou?`<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--amber); border-radius:12px; padding:22px 26px;"><div style="font-size:12px; font-weight:800; color:var(--amber); text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px;"><i class="ti ti-arrows-exchange"></i> O que mudou</div><div style="font-size:clamp(15px,2vw,19px); color:var(--text); line-height:1.5;">${escapeHTML(t.oQueMudou)}</div></div>`:'',
+      attrs?`<div style="background:var(--card); border:1px solid var(--border); border-left:4px solid var(--success); border-radius:12px; padding:22px 26px;"><div style="font-size:12px; font-weight:800; color:var(--success); text-transform:uppercase; letter-spacing:.5px; margin-bottom:14px;"><i class="ti ti-checklist"></i> Você vai avaliar</div><div style="display:flex; flex-direction:column; gap:13px;">${attrs}</div></div>`:'',
     ].filter(Boolean).join('');
-    return `<div style="max-width:860px; margin:auto; width:100%; padding:40px 28px;">${blocos||'<div style="text-align:center; color:var(--text3); font-size:16px;">Prove cada amostra com atenção e registre sua avaliação.</div>'}</div>`;
+    return `<div style="max-width:820px; margin:auto; width:100%; padding:48px 28px; display:flex; flex-direction:column; gap:22px;">${blocos||'<div style="text-align:center; color:var(--text3); font-size:16px;">Prove cada amostra com atenção e registre sua avaliação.</div>'}</div>`;
   }
   if(key==='codigos'){
     const rows=(t.amostras||[]).map(a=>`<div style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px 20px; display:flex; align-items:center; gap:16px;">
