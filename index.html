@@ -6445,6 +6445,7 @@ function renderManutencao(){
   const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
+  if(manutencaoView==='pcm'){ renderPCM(); return; }
   if(manutencaoView==='ordens'){ renderOrdens(); return; }
   if(manutencaoView==='equipamentos'){ renderEquipamentos(); return; }
   if(manutencaoView==='preventivas'){ renderPreventivas(); return; }
@@ -7157,6 +7158,78 @@ function renderPreventivas(){
       <h1 style="font-size:23px; font-weight:700; color:var(--text); margin-bottom:4px;">Preventivas</h1>
       <div style="font-size:12.5px; color:var(--text3); margin-bottom:18px;">Planos dos equipamentos por vencimento — ${nTotal} plano${nTotal!==1?'s':''}${nAtras?` · <span style="color:var(--danger); font-weight:700;">${nAtras} atrasado${nAtras!==1?'s':''}</span>`:''}. <strong>Gerar OS</strong> abre a ordem preventiva preenchida.</div>
       ${nTotal? corpo : '<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-calendar-off" style="font-size:38px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum plano de preventiva — cadastre nos equipamentos.</div>'}
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MANUTENÇÃO › PAINEL PCM — Bloco 4 (KPIs)
+// Calcula indicadores das OS + equipamentos + preventivas. MTBF e
+// disponibilidade dependem de histórico de operação (virá do ERP do
+// Guilherme) — aqui ficam ILUSTRATIVOS, marcados como tal. Protótipo UX.
+// ════════════════════════════════════════════════════════════════════
+function renderPCM(){
+  _eqLoad(); _osLoad();
+  const main=document.getElementById('task-container'); if(!main) return;
+  const eqs=equipamentos||[], os=ordens||[];
+  const backlog=os.filter(o=>['aberta','planejada','execucao'].includes(o.status)).length;
+  const nCorr=os.filter(o=>o.tipo==='corretiva').length;
+  const nPrev=os.filter(o=>o.tipo&&o.tipo!=='corretiva').length;
+  const totTipo=nCorr+nPrev;
+  const pctPrev=totTipo?Math.round(nPrev/totTipo*100):0, pctCorr=totTipo?100-pctPrev:0;
+  const concl=os.filter(o=>o.status==='concluida');
+  const corrConcl=concl.filter(o=>o.tipo==='corretiva');
+  const baseM=(corrConcl.length?corrConcl:concl).map(o=>_num(o.tempoParada)).filter(v=>v!=null);
+  const mttr=baseM.length?(baseM.reduce((s,v)=>s+v,0)/baseM.length):null;
+  const custoTotal=os.reduce((s,o)=>s+_osCusto(o),0);
+  let planTot=0, planAtras=0; eqs.forEach(e=>(e.planos||[]).forEach(p=>{ const px=_planoProxima(p); if(px){ planTot++; if(new Date(px+'T00:00:00')<new Date(today+'T00:00:00')) planAtras++; } }));
+  const aderencia=planTot?Math.round((1-planAtras/planTot)*100):100;
+  const critCount={A:0,B:0,C:0}; eqs.forEach(e=>{ if(critCount[e.criticidade]!=null) critCount[e.criticidade]++; });
+  const stCount={operando:0,parado:0,manutencao:0}; eqs.forEach(e=>{ if(stCount[e.status]!=null) stCount[e.status]++; });
+
+  const kpi=(label,valor,sub,cor,icon,ilustr)=>`<div style="flex:1; min-width:150px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:15px 16px; position:relative;">
+      ${ilustr?'<span style="position:absolute; top:10px; right:10px; font-size:9px; font-weight:700; color:var(--text3); background:var(--bg2); border:1px solid var(--border); border-radius:20px; padding:1px 7px;" title="Depende de histórico do ERP — valor ilustrativo">ilustrativo</span>':''}
+      <div style="display:flex; align-items:center; gap:7px; font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.4px;"><i class="ti ${icon}" style="color:${cor}"></i> ${label}</div>
+      <div style="font-size:27px; font-weight:800; color:${cor}; margin-top:6px; line-height:1;">${valor}</div>
+      <div style="font-size:11px; color:var(--text3); margin-top:4px;">${sub}</div>
+    </div>`;
+  const sec=t=>`<div style="font-size:11px; font-weight:800; color:var(--text3); text-transform:uppercase; letter-spacing:.6px; margin:24px 0 12px;">${t}</div>`;
+  const bar=(label,n,total,cor)=>{ const pct=total?Math.round(n/total*100):0; return `<div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;"><div style="width:130px; font-size:12.5px; color:var(--text2); flex-shrink:0;">${label}</div><div style="flex:1; height:18px; background:var(--bg2); border-radius:6px; overflow:hidden;"><div style="height:100%; width:${pct}%; background:${cor}; border-radius:6px; transition:width .3s;"></div></div><div style="width:66px; text-align:right; font-size:12px; font-weight:700; color:var(--text2);">${n} · ${pct}%</div></div>`; };
+  const card=inner=>`<div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px 18px;">${inner}</div>`;
+
+  main.innerHTML=`
+    <div style="padding:20px 4px 50px; max-width:1100px;">
+      ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Painel PCM'}])}
+      <h1 style="font-size:23px; font-weight:700; color:var(--text); margin-bottom:4px;">Painel PCM</h1>
+      <div style="font-size:12.5px; color:var(--text3); margin-bottom:18px;">Indicadores de Planejamento e Controle da Manutenção, calculados das OS, equipamentos e planos.</div>
+
+      <div style="display:flex; gap:12px; flex-wrap:wrap;">
+        ${kpi('Backlog', backlog, 'OS abertas/em execução', backlog>0?'var(--amber)':'var(--success)', 'ti-inbox', false)}
+        ${kpi('Preventiva', pctPrev+'%', `corretiva ${pctCorr}% (meta ≤20%)`, pctCorr<=20?'var(--success)':'var(--danger)', 'ti-calendar-check', false)}
+        ${kpi('MTTR', mttr!=null?mttr.toFixed(1)+'h':'—', 'tempo médio de reparo', 'var(--blue-mid)', 'ti-clock-hour-4', false)}
+        ${kpi('Aderência', aderencia+'%', `${planAtras} plano(s) atrasado(s)`, aderencia>=90?'var(--success)':aderencia>=70?'var(--amber)':'var(--danger)', 'ti-target-arrow', false)}
+        ${kpi('Custo manut.', _brl(custoTotal), 'soma das OS (material+MO)', 'var(--text)', 'ti-currency-real', false)}
+      </div>
+
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:12px;">
+        ${kpi('MTBF', '—', 'tempo médio entre falhas', 'var(--text3)', 'ti-activity', true)}
+        ${kpi('Disponibilidade', '—', 'precisa de horas de operação', 'var(--text3)', 'ti-gauge', true)}
+      </div>
+      <div style="font-size:11.5px; color:var(--text3); margin-top:8px; display:flex; align-items:center; gap:6px;"><i class="ti ti-info-circle"></i> MTBF e disponibilidade dependem do histórico de horas de operação/falha — virão do ERP (Guilherme).</div>
+
+      ${sec('Ordens por tipo')}
+      ${card(`${bar('Corretiva', nCorr, totTipo, 'var(--danger)')}${bar('Preventiva/preditiva', nPrev, totTipo, 'var(--success)')}<div style="font-size:11.5px; color:var(--text3); margin-top:4px;"><i class="ti ti-bulb"></i> Quanto mais planejada (preventiva), melhor — corretiva não-planejada ideal ≤ 20%.</div>`)}
+
+      ${sec('Ordens por status')}
+      ${card(Object.keys(OS_STATUS).map(k=>bar(OS_STATUS[k].l, os.filter(o=>o.status===k).length, os.length, OS_STATUS[k].c)).join(''))}
+
+      ${sec('Equipamentos')}
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        ${card(`<div style="font-size:12px; font-weight:700; color:var(--text2); margin-bottom:10px;">Por criticidade</div>${['A','B','C'].map(k=>bar(EQ_CRIT[k].l, critCount[k], eqs.length, EQ_CRIT[k].c)).join('')}`)}
+        ${card(`<div style="font-size:12px; font-weight:700; color:var(--text2); margin-bottom:10px;">Por status</div>${Object.keys(EQ_STATUS).map(k=>bar(EQ_STATUS[k].l, stCount[k], eqs.length, EQ_STATUS[k].c)).join('')}`)}
+      </div>
+
+      ${sec('Preventivas')}
+      ${card(`${bar('Em dia', planTot-planAtras, planTot, 'var(--success)')}${bar('Atrasadas', planAtras, planTot, 'var(--danger)')}<div style="font-size:11.5px; color:var(--text3); margin-top:4px;">${planTot} plano(s) com data · aderência ${aderencia}%. <span onclick="setManutencaoView('preventivas')" style="color:var(--blue-mid); cursor:pointer; font-weight:600;">Ver preventivas →</span></div>`)}
     </div>`;
 }
 
@@ -8233,6 +8306,7 @@ function renderSidebar(){
       ${hubSidebarControls(false, false)}
       ${hubGroupDivider('MANUTENÇÃO')}
       <div style="padding:2px 8px 8px;">
+        ${item('pcm','ti-chart-arcs','Painel PCM', _sub==='pcm')}
         ${item('ordens','ti-clipboard-list','Ordens de Manutenção', _sub==='ordens')}
         ${item('equipamentos','ti-settings-automation','Equipamentos', _sub==='equipamentos')}
         ${item('preventivas','ti-calendar-repeat','Preventivas', _sub==='preventivas')}
