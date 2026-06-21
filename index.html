@@ -99,6 +99,11 @@
   /* Campos sem classe própria (inline): input e select com a MESMA altura (Diego, jun/2026) */
   input:not([class]):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]){ height:40px; box-sizing:border-box; font-family:inherit; }
   textarea:not([class]){ box-sizing:border-box; font-family:inherit; }
+  /* Tooltip de ajuda (ⓘ): passa o mouse e aparece a explicação. Padrão do HUB inteiro. */
+  .hint{ position:relative; display:inline-flex; align-items:center; justify-content:center; cursor:help; color:var(--text3); font-weight:400; font-size:.92em; }
+  .hint::after{ content:attr(data-tip); position:absolute; left:50%; bottom:calc(100% + 7px); transform:translateX(-50%); background:var(--text); color:var(--bg); font-size:11px; font-weight:500; line-height:1.45; text-transform:none; letter-spacing:normal; padding:7px 10px; border-radius:8px; width:max-content; max-width:250px; white-space:normal; text-align:left; opacity:0; pointer-events:none; transition:opacity .15s; z-index:9999; box-shadow:0 6px 18px rgba(0,0,0,.22); }
+  .hint::before{ content:''; position:absolute; left:50%; bottom:calc(100% + 2px); transform:translateX(-50%); border:5px solid transparent; border-top-color:var(--text); opacity:0; transition:opacity .15s; z-index:9999; }
+  .hint:hover::after, .hint:hover::before{ opacity:1; }
   /* Safari não respeita height em <select> sem appearance:none — forçamos + seta customizada */
   select:not([class]){ -webkit-appearance:none !important; appearance:none !important; height:40px !important; box-sizing:border-box; font-family:inherit; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important; background-repeat:no-repeat !important; background-position:right 11px center !important; background-size:13px !important; padding-right:30px !important; }
   html.dark-init body,html.dark-init body.dark{background:#1e1e22;color:#e8e8ee}
@@ -7035,7 +7040,7 @@ function renderEquipamentoEditor(){
         <button onclick="_eqDelPlano('${p.id}')" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:8px; padding:8px 10px; cursor:pointer;"><i class="ti ti-trash"></i></button>
       </div>
       <div style="display:grid; grid-template-columns:1.2fr .6fr 1fr 1fr; gap:8px; align-items:end;">
-        <div>${_lbl('Tipo <span title="TBM = manutenção baseada no TEMPO (dias/semanas/meses). UBM = baseada no USO (horas de operação ou ciclos)." style="cursor:help; color:var(--text3); font-weight:400;">ⓘ</span>')}<select onchange="_eqSetPlano('${p.id}','tipo',this.value)" style="${_ist} cursor:pointer;">${Object.keys(EQ_PLANO_TIPO).map(k=>`<option value="${k}" ${p.tipo===k?'selected':''}>${EQ_PLANO_TIPO[k]}</option>`).join('')}</select></div>
+        <div>${_lbl('Tipo '+_hint('TBM = manutenção baseada no TEMPO (dias/semanas/meses). UBM = baseada no USO (horas de operação ou ciclos).'))}<select onchange="_eqSetPlano('${p.id}','tipo',this.value)" style="${_ist} cursor:pointer;">${Object.keys(EQ_PLANO_TIPO).map(k=>`<option value="${k}" ${p.tipo===k?'selected':''}>${EQ_PLANO_TIPO[k]}</option>`).join('')}</select></div>
         <div>${_lbl('A cada')}<input value="${escapeAttr(p.periodoValor||'')}" oninput="_eqSetPlano('${p.id}','periodoValor',this.value)" placeholder="3" inputmode="numeric" style="${_ist} text-align:center;"></div>
         <div>${_lbl('Período')}<select onchange="_eqSetPlano('${p.id}','periodoUnidade',this.value)" style="${_ist} cursor:pointer;">${EQ_PERIODOS.map(([k,l])=>`<option value="${k}" ${p.periodoUnidade===k?'selected':''}>${l}</option>`).join('')}</select></div>
         <div>${_lbl('Responsável')}<input value="${escapeAttr(p.responsavel||'')}" oninput="_eqSetPlano('${p.id}','responsavel',this.value)" placeholder="Mecânica" style="${_ist}"></div>
@@ -7056,17 +7061,15 @@ function renderEquipamentoEditor(){
       <div style="display:flex; flex-direction:column; gap:14px;">
         ${sec('<i class="ti ti-id"></i> Identificação')}
         <div style="display:grid; grid-template-columns:160px 1fr; gap:12px;">
-          ${campo('Código (TAG) <span title="Código único de identificação do equipamento — a etiqueta (TAG) que fica colada na máquina, ex.: FORN-02." style="cursor:help; color:var(--text3); font-weight:400;">ⓘ</span>','tag','MIST-01')}
+          ${campo('Código (TAG) '+_hint('Código único de identificação do equipamento — a etiqueta (TAG) colada na máquina, ex.: FORN-02.'),'tag','MIST-01')}
           ${campo('Nome *','nome','Misturadora planetária 80L')}
         </div>
         <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px;">
           ${campo('Setor / localização','setor','Produção — Massas')}
-          <div>${_lbl('Criticidade')}<select onchange="_meSet('criticidade',this.value)" style="${_ist} cursor:pointer;">${Object.keys(EQ_CRIT).map(k=>`<option value="${k}" ${b.criticidade===k?'selected':''}>${EQ_CRIT[k].l}</option>`).join('')}</select></div>
-          <div>${_lbl('Situação')}<select onchange="_meSet('status',this.value)" style="${_ist} cursor:pointer;">${Object.keys(EQ_STATUS).map(k=>`<option value="${k}" ${b.status===k?'selected':''}>${EQ_STATUS[k].l}</option>`).join('')}</select></div>
+          <div>${_lbl('Criticidade '+_hint('O quanto o equipamento é importante para a produção: A = se parar, para tudo; B = importante; C = baixo impacto.'))}<select onchange="_meSet('criticidade',this.value)" style="${_ist} cursor:pointer;">${Object.keys(EQ_CRIT).map(k=>`<option value="${k}" ${b.criticidade===k?'selected':''}>${EQ_CRIT[k].l}</option>`).join('')}</select></div>
+          <div>${_lbl('Situação '+_hint('Estado atual do equipamento: operando, parado ou em manutenção.'))}<select onchange="_meSet('status',this.value)" style="${_ist} cursor:pointer;">${Object.keys(EQ_STATUS).map(k=>`<option value="${k}" ${b.status===k?'selected':''}>${EQ_STATUS[k].l}</option>`).join('')}</select></div>
         </div>
-        <div style="font-size:11.5px; color:var(--text3); margin-top:-4px; line-height:1.55;"><strong>Criticidade</strong> = o quanto o equipamento é importante para a produção — <strong>A</strong> (se parar, para tudo), <strong>B</strong> (importante), <strong>C</strong> (baixo impacto). <strong>Situação</strong> = estado atual (operando / parado / em manutenção).</div>
-        ${sec('<i class="ti ti-tool"></i> Dados técnicos (placa)')}
-        <div style="font-size:11.5px; color:var(--text3); margin-top:-4px;">Informações da <strong>placa de identificação</strong> — a etiqueta do fabricante fixada na máquina.</div>
+        ${sec('<i class="ti ti-tool"></i> Dados técnicos (placa) '+_hint('Dados da placa/etiqueta do fabricante fixada na máquina (modelo, série, tensão…).'))}
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
           ${campo('Fabricante','fabricante','Kemper')}
           ${campo('Modelo','modelo','SP80')}
@@ -8266,6 +8269,8 @@ function _sbLixeiraFooter(){
     </button>
   </div>`;
 }
+// Tooltip de ajuda reaproveitável no HUB inteiro: _hint('texto') -> ⓘ que mostra o texto ao passar o mouse.
+function _hint(txt){ return `<span class="hint" data-tip="${escapeAttr(txt)}">ⓘ</span>`; }
 function renderSidebar(){
   const sb=document.getElementById('sidebar');
   if(!sb) return;
