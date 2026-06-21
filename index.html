@@ -96,9 +96,10 @@
 
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  /* Campos de formulário: input e select com a MESMA altura no mesmo contexto (Diego, jun/2026) */
-  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]),
-  select, textarea{ font-family:inherit; line-height:1.4; vertical-align:middle; }
+  /* Campos de formulário sem classe própria (inline): input e select com a MESMA altura (Diego, jun/2026) */
+  input:not([class]):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]),
+  select:not([class]){ height:40px; box-sizing:border-box; font-family:inherit; line-height:1.2; }
+  textarea:not([class]){ box-sizing:border-box; font-family:inherit; }
   html.dark-init body,html.dark-init body.dark{background:#1e1e22;color:#e8e8ee}
   :root{
     --blue-dark:#0d3d6b;--blue-mid:#185FA5;--blue-teal:#1a7a8a;
