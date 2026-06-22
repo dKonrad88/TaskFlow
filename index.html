@@ -20614,10 +20614,13 @@ function _injetarQuickAdd(containerId, tab, customOpts, customQid){
       <button class="quick-add-confirm" onclick="quickAddTask('${qid}',${opts})"><i class="ti ti-corner-down-left" style="font-size:12px"></i></button>
       <button class="quick-add-cancel" onclick="_fecharQuickAdd('${qid}');var b=document.getElementById('${btnId}');if(b)b.style.display=''">Esc</button>
     </div>`;
-  // Posiciona o "Adicionar tarefa" logo após as tarefas em aberto:
-  // se houver a seção "Concluído", insere ANTES dela; senão, no fim.
+  // Posiciona o "Adicionar tarefa":
+  // - Aba Organizar (entrada): no TOPO (logo abaixo do título) — em teste.
+  // - Demais: após as tarefas em aberto (antes do "Concluído", se houver; senão no fim).
   const _doneSec = container.querySelector('#sec-grp-done_col');
-  if(_doneSec){
+  if(tab==='entrada'){
+    container.insertAdjacentHTML('afterbegin', html);
+  } else if(_doneSec){
     _doneSec.insertAdjacentHTML('beforebegin', html);
   } else {
     container.insertAdjacentHTML('beforeend', html);
