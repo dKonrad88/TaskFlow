@@ -4524,9 +4524,21 @@ async function nuvemSignup(){
   }catch(e){ _nuvemMsg(_cloudErr(e)); }
 }
 async function nuvemLogout(){ try{ const c=_sbReady(); if(c) await c.auth.signOut(); }catch(e){} _sbUser=null; _cloudUpdateBtn(); await _nuvemRender(false); if(typeof toast==='function') toast('Desconectado da nuvem'); }
-function nuvemEnviar(){
-  confirmModal({ title:'Enviar para a nuvem', danger:true, confirmLabel:'Enviar', icon:'ti-cloud-up',
-    message:'Isto substitui os dados na nuvem pelos dados atuais DESTE aparelho. Deseja continuar?',
+async function nuvemEnviar(){
+  // Mostra as contagens (aparelho x nuvem) e avisa forte se este aparelho tiver MENOS dados.
+  const local=_cloudKeys().length;
+  let nuvem=null; try{ nuvem=await _cloudCount(); }catch(e){}
+  const perigo = (nuvem!=null && local < nuvem);
+  const aviso = perigo
+    ? '\n\n<span style="color:var(--danger);font-weight:700">⚠️ Este aparelho tem MENOS blocos que a nuvem — você pode estar apagando dados mais recentes do outro aparelho!</span>'
+    : '';
+  confirmModal({
+    title:'Enviar para a nuvem — tem certeza?',
+    danger:true, icon:'ti-cloud-up',
+    confirmLabel:'Sim, substituir a nuvem', cancelLabel:'Cancelar',
+    message:'Isto SUBSTITUI os dados da nuvem pelos dados DESTE aparelho.\n\n'
+      +'Este aparelho: '+local+' bloco(s)\nNuvem agora: '+(nuvem==null?'?':nuvem)+' bloco(s)\n\n'
+      +'Use só no aparelho onde estão seus dados mais recentes.'+aviso,
     onConfirm: async ()=>{
       if(typeof toast==='function') toast('Enviando…');
       const r=await _cloudPushAll();
