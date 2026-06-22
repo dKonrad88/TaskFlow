@@ -6800,6 +6800,29 @@ function osVoltar(){ manutOrdemAberto=null; mntOrdBuf=null; renderManutencao(); 
 function salvarOrdem(){ const b=mntOrdBuf; if(!b) return; if(!String(b.titulo).trim()){ toast('Descreva a ordem (título)'); return; } _osLoad(); delete b._novo; const i=ordens.findIndex(x=>x.id===b.id); if(i>=0) ordens[i]=b; else ordens.push(b); saveOrdens(); toast('Ordem salva'); manutOrdemAberto=null; mntOrdBuf=null; renderManutencao(); }
 function excluirOrdem(id){ _osLoad(); const it=(ordens||[]).find(x=>x.id===id); if(!it) return; moveToTrash('ordem', it); ordens=ordens.filter(x=>x.id!==id); saveOrdens(); manutOrdemAberto=null; mntOrdBuf=null; renderManutencao(); _mostrarFABDesfazer('Ordem excluída', 0); }
 
+// Transformar uma TAREFA em Ordem de Serviço (Manutenção). Um líder cria a tarefa,
+// põe o líder da manutenção como executor, e converte numa OS pré-preenchida.
+// A tarefa NÃO é apagada — fica como rastro de quem solicitou (guarda fromTaskId na OS).
+function transformarEmOS(taskId){
+  const t=(typeof tasks!=='undefined') && tasks.find(x=>x.id===taskId);
+  if(!t){ if(typeof toast==='function') toast('⚠️ Tarefa não encontrada'); return; }
+  _osLoad();
+  const _mapPrio={urgente:'urgente', alta:'urgente', media:'normal', baixa:'baixa', trivial:'baixa'};
+  const execNome=((people||[]).find(x=>x.id===t.executor)||{}).name || '';
+  mntOrdBuf={ id:_mntId('os'), numero:_osNextNum(), equipamentoId:'', tipo:'corretiva',
+    titulo:t.title||'', descricao:t.desc||'', prioridade:_mapPrio[t.prio]||'normal', status:'aberta',
+    solicitante:t.solicitante||'', responsavel:execNome, dataAbertura:today, dataLimite:'', dataConclusao:'',
+    previsaoConclusao:'', maquinaParada:false, compra:false, executado:false, assinaturaSolicitante:'',
+    custoMaterial:'', custoMO:'', tempoParada:'', pecas:'', causa:'', acao:'', obs:'', fromTaskId:t.id, _novo:true };
+  manutOrdemAberto=mntOrdBuf.id;
+  hubView='manutencao'; manutencaoView='ordens'; window._sbOrigemLixCfg=null;
+  if(typeof closeTaskModalDirect==='function') closeTaskModalDirect();
+  if(typeof closeModalDirect==='function') closeModalDirect();
+  const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
+  renderSidebar(); render();
+  if(typeof toast==='function') toast('🔧 Tarefa vira Ordem de Serviço — revise e salve');
+}
+
 function _osFiltrar(){
   let arr=(ordens||[]).slice();
   if(_osStatusF) arr=arr.filter(o=>(o.status||'')===_osStatusF);
@@ -6870,6 +6893,11 @@ function renderOrdemEditor(){
   const selBox=(lbl,key,map)=>`<div>${_lbl(lbl)}<select onchange="_osSet('${key}',this.value)" style="${_ist} cursor:pointer;">${Object.keys(map).map(k=>`<option value="${k}" ${b[key]===k?'selected':''}>${map[k].l}</option>`).join('')}</select></div>`;
   const dataBox=(lbl,key)=>`<div>${_lbl(lbl)}<input type="date" value="${escapeAttr(b[key]||'')}" oninput="_osSet('${key}',this.value)" style="${_ist}"></div>`;
   const chkBox=(lbl,key)=>`<label style="display:flex; align-items:center; gap:9px; background:var(--bg2); border:1px solid ${b[key]?'var(--blue-mid)':'var(--border)'}; border-radius:8px; padding:11px 13px; cursor:pointer; font-size:13px; font-weight:600; color:var(--text); user-select:none;"><input type="checkbox" ${b[key]?'checked':''} onchange="_osSet('${key}',this.checked)" style="width:17px; height:17px; cursor:pointer; accent-color:var(--blue-mid);"> ${lbl}</label>`;
+  const pessoaSel=(lbl,key,ph)=>{ const cur=b[key]||''; const known=(people||[]).some(p=>p.id===cur);
+    let opts=`<option value="">— ${escapeHTML(ph||'selecione')} —</option>`;
+    opts+=(people||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(p=>`<option value="${p.id}" ${cur===p.id?'selected':''}>${escapeHTML(p.name)}${p.setor?' — '+escapeHTML(p.setor):''}</option>`).join('');
+    if(cur && !known) opts+=`<option value="${escapeAttr(cur)}" selected>${escapeHTML(cur)}</option>`;
+    return `<div>${_lbl(lbl)}<select onchange="_osSet('${key}',this.value)" style="${_ist} cursor:pointer;">${opts}</select></div>`; };
   const custo=_osCusto(b);
   main.innerHTML=`
     <div style="padding:20px 4px 60px; max-width:880px;">
@@ -6888,7 +6916,7 @@ function renderOrdemEditor(){
         <div>${_lbl('Detalhes')}<textarea oninput="_osSet('descricao',this.value)" rows="2" placeholder="O que está acontecendo / o que precisa ser feito" style="${_ist} resize:vertical;">${escapeHTML(b.descricao||'')}</textarea></div>
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
           ${selBox('Situação','status',OS_STATUS)}
-          ${campo('Solicitante','solicitante','Quem abriu')}
+          ${pessoaSel('Solicitante','solicitante','quem solicitou')}
           ${campo('Responsável / equipe','responsavel','Mecânica')}
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
@@ -7208,7 +7236,7 @@ function _pvGerarOS(equipId, planoId){
   _eqLoad(); _osLoad();
   const e=(equipamentos||[]).find(x=>x.id===equipId); if(!e) return;
   const p=(e.planos||[]).find(x=>x.id===planoId); if(!p) return;
-  const os={id:_mntId('os'), numero:_osNextNum(), equipamentoId:equipId, tipo:'preventiva', titulo:(p.nome||'Preventiva')+' — '+(e.tag||e.nome||''), descricao:p.atividades||'', prioridade:'media', status:'aberta', solicitante:'PCM', responsavel:p.responsavel||'', dataAbertura:today, dataConclusao:'', custoMaterial:'', custoMO:'', tempoParada:'', pecas:'', causa:'', acao:'', obs:'Gerada do plano de preventiva.'};
+  const os={id:_mntId('os'), numero:_osNextNum(), equipamentoId:equipId, tipo:'preventiva', titulo:(p.nome||'Preventiva')+' — '+(e.tag||e.nome||''), descricao:p.atividades||'', prioridade:'normal', status:'aberta', solicitante:'', responsavel:p.responsavel||'', dataAbertura:today, dataLimite:'', dataConclusao:'', previsaoConclusao:'', maquinaParada:false, compra:false, executado:false, assinaturaSolicitante:'', custoMaterial:'', custoMO:'', tempoParada:'', pecas:'', causa:'', acao:'', obs:'Gerada do plano de preventiva.'};
   ordens.push(os); saveOrdens();
   toast('OS '+os.numero+' gerada');
   setManutencaoView('ordens');
@@ -11762,6 +11790,7 @@ function _renderModalAcoes(t){
     h+=`<button class="m-hdr-acao" ${ja?'disabled':''} onclick="enviarCutucada(${t.id})" title="${ja?'Já cutucou hoje':'Cutucar '+(p?escapeAttr(p.name):'destinatário')}"><i class="ti ti-hand-finger${ja?'-off':''}" style="font-size:17px"></i></button>`;
   }
   h+=`<button class="m-hdr-acao" onclick="transformarEmRotina(${t.id})" title="Transformar em rotina"><i class="ti ti-repeat" style="font-size:17px"></i></button>`;
+  h+=`<button class="m-hdr-acao" onclick="transformarEmOS(${t.id})" title="Transformar em Ordem de Serviço (Manutenção)"><i class="ti ti-tool" style="font-size:17px"></i></button>`;
   h+=`<button class="m-hdr-acao" onclick="adicionarAPautaReuniao(${t.id})" title="Adicionar à pauta de reunião"><i class="ti ti-speakerphone" style="font-size:17px"></i></button>`;
   bar.innerHTML=h;
 }
