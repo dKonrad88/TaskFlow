@@ -20602,6 +20602,20 @@ function _injetarQuickAdd(containerId, tab, customOpts, customQid){
   let opts;
   if(customOpts!==undefined && customOpts!==null) opts=customOpts;
   else opts=tab==='hoje'?`{date:'${today}'}`:(tab==='amanha'?`{date:'${amanha}'}`:`{}`);
+  // Aba Organizar (entrada): caixa moderna SEMPRE visível, no topo, com espaçamento antes da lista.
+  if(tab==='entrada'){
+    container.insertAdjacentHTML('afterbegin', `
+    <div class="qa-entrada-box" style="margin:4px 0 20px;display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;box-shadow:0 1px 2px rgba(0,0,0,.04);transition:border-color .15s,box-shadow .15s">
+      <i class="ti ti-plus" style="color:var(--blue-mid);font-size:17px;flex-shrink:0"></i>
+      <input id="${qid}" placeholder="Nova tarefa — Enter para salvar" autocomplete="off"
+        style="flex:1;min-width:0;border:none;background:transparent;outline:none;font-size:14px;color:var(--text);font-family:inherit;padding:3px 0"
+        onfocus="var b=this.closest('.qa-entrada-box');if(b){b.style.borderColor='var(--blue-mid)';b.style.boxShadow='0 0 0 3px rgba(24,95,165,.12)'}"
+        onblur="var b=this.closest('.qa-entrada-box');if(b){b.style.borderColor='var(--border)';b.style.boxShadow='0 1px 2px rgba(0,0,0,.04)'}"
+        onkeydown="_quickAddKeydown(event,'${qid}',${opts})">
+      <button class="quick-add-confirm" onclick="quickAddTask('${qid}',${opts})" style="flex-shrink:0"><i class="ti ti-plus" style="font-size:12px"></i> Adicionar</button>
+    </div>`);
+    return;
+  }
   const html=`
     <button id="${btnId}" class="quick-add-btn" onclick="_abrirQuickAdd('${qid}');this.style.display='none'">
       <i class="ti ti-plus"></i> Adicionar tarefa
@@ -20614,13 +20628,9 @@ function _injetarQuickAdd(containerId, tab, customOpts, customQid){
       <button class="quick-add-confirm" onclick="quickAddTask('${qid}',${opts})"><i class="ti ti-corner-down-left" style="font-size:12px"></i></button>
       <button class="quick-add-cancel" onclick="_fecharQuickAdd('${qid}');var b=document.getElementById('${btnId}');if(b)b.style.display=''">Esc</button>
     </div>`;
-  // Posiciona o "Adicionar tarefa":
-  // - Aba Organizar (entrada): no TOPO (logo abaixo do título) — em teste.
-  // - Demais: após as tarefas em aberto (antes do "Concluído", se houver; senão no fim).
+  // Demais abas: após as tarefas em aberto (antes do "Concluído", se houver; senão no fim).
   const _doneSec = container.querySelector('#sec-grp-done_col');
-  if(tab==='entrada'){
-    container.insertAdjacentHTML('afterbegin', html);
-  } else if(_doneSec){
+  if(_doneSec){
     _doneSec.insertAdjacentHTML('beforebegin', html);
   } else {
     container.insertAdjacentHTML('beforeend', html);
