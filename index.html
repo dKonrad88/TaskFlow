@@ -6471,7 +6471,7 @@ function renderManutencao(){
   if(manutencaoView==='preventivas'){ renderPreventivas(); return; }
   if(manutencaoView==='fornecedores'){ renderFornecedores(); return; }
   if(manutencaoView==='orcamentos'){ renderOrcamentos(); return; }
-  const titulos={ordens:'Ordens de Manutenção', equipamentos:'Equipamentos', preventivas:'Preventivas'};
+  const titulos={ordens:'Ordens de Serviço', equipamentos:'Equipamentos', preventivas:'Preventivas'};
   const titulo=titulos[manutencaoView]||'Manutenção';
   main.innerHTML = `
     <div style="padding:20px 4px 40px;">
@@ -6777,20 +6777,23 @@ let ordens=null, manutOrdemAberto=null, mntOrdBuf=null;
 let _osQuery='', _osStatusF='';
 const OS_TIPO={corretiva:{l:'Corretiva',c:'var(--danger)',i:'ti-alert-triangle'}, preventiva:{l:'Preventiva',c:'var(--success)',i:'ti-calendar-check'}, preditiva:{l:'Preditiva',c:'var(--blue-mid)',i:'ti-wave-sine'}, melhoria:{l:'Melhoria',c:'var(--amber)',i:'ti-arrow-up-circle'}};
 const OS_STATUS={aberta:{l:'Aberta',c:'var(--text3)',i:'ti-circle'}, planejada:{l:'Planejada',c:'var(--blue-mid)',i:'ti-clipboard-list'}, execucao:{l:'Em execução',c:'var(--amber)',i:'ti-progress'}, concluida:{l:'Concluída',c:'var(--success)',i:'ti-circle-check'}, cancelada:{l:'Cancelada',c:'var(--text3)',i:'ti-circle-x'}};
-const OS_PRIO={alta:{l:'Alta',c:'var(--danger)',i:'ti-arrow-up'}, media:{l:'Média',c:'var(--amber)',i:'ti-minus'}, baixa:{l:'Baixa',c:'var(--success)',i:'ti-arrow-down'}};
+const OS_PRIO={urgente:{l:'Urgente',c:'var(--danger)',i:'ti-alert-triangle'}, normal:{l:'Normal',c:'var(--blue-mid)',i:'ti-minus'}, baixa:{l:'Baixa',c:'var(--success)',i:'ti-arrow-down'}};
 
 function _osSeed(){ return [
-  {id:'os_d1', numero:'OS-0001', equipamentoId:'eq_d3', tipo:'corretiva', titulo:'Datadora borrando a impressão', descricao:'Cabeçote entupido, marcação saindo borrada na embalagem.', prioridade:'alta', status:'execucao', solicitante:'Operação', responsavel:'Mecânica', dataAbertura:today, dataConclusao:'', custoMaterial:'120', custoMO:'80', tempoParada:'3', pecas:'Filtro de tinta (ref. ERP)', causa:'Falta de limpeza programada do cabeçote', acao:'', obs:''},
-  {id:'os_d2', numero:'OS-0002', equipamentoId:'eq_d1', tipo:'preventiva', titulo:'Lubrificação semanal — Misturadora', descricao:'Plano de lubrificação dos mancais.', prioridade:'media', status:'concluida', solicitante:'PCM', responsavel:'Mecânica', dataAbertura:today, dataConclusao:today, custoMaterial:'0', custoMO:'40', tempoParada:'0', pecas:'', causa:'', acao:'Mancais lubrificados; nível de óleo do redutor ok.', obs:''},
-  {id:'os_d3', numero:'OS-0003', equipamentoId:'eq_d2', tipo:'preventiva', titulo:'Inspeção dos queimadores — Forno', descricao:'Inspeção mensal dos queimadores.', prioridade:'media', status:'aberta', solicitante:'PCM', responsavel:'', dataAbertura:today, dataConclusao:'', custoMaterial:'', custoMO:'', tempoParada:'', pecas:'', causa:'', acao:'', obs:''},
+  {id:'os_d1', numero:'OS-0001', equipamentoId:'eq_d3', tipo:'corretiva', titulo:'Datadora borrando a impressão', descricao:'Cabeçote entupido, marcação saindo borrada na embalagem.', prioridade:'urgente', status:'execucao', solicitante:'Operação', responsavel:'Mecânica', dataAbertura:today, dataLimite:'', dataConclusao:'', previsaoConclusao:'', maquinaParada:true, compra:true, executado:false, assinaturaSolicitante:'', custoMaterial:'120', custoMO:'80', tempoParada:'3', pecas:'Filtro de tinta (ref. ERP)', causa:'Falta de limpeza programada do cabeçote', acao:'', obs:''},
+  {id:'os_d2', numero:'OS-0002', equipamentoId:'eq_d1', tipo:'preventiva', titulo:'Lubrificação semanal — Misturadora', descricao:'Plano de lubrificação dos mancais.', prioridade:'normal', status:'concluida', solicitante:'PCM', responsavel:'Mecânica', dataAbertura:today, dataLimite:'', dataConclusao:today, previsaoConclusao:'', maquinaParada:false, compra:false, executado:true, assinaturaSolicitante:'', custoMaterial:'0', custoMO:'40', tempoParada:'0', pecas:'', causa:'', acao:'Mancais lubrificados; nível de óleo do redutor ok.', obs:''},
+  {id:'os_d3', numero:'OS-0003', equipamentoId:'eq_d2', tipo:'preventiva', titulo:'Inspeção dos queimadores — Forno', descricao:'Inspeção mensal dos queimadores.', prioridade:'normal', status:'aberta', solicitante:'PCM', responsavel:'', dataAbertura:today, dataLimite:'', dataConclusao:'', previsaoConclusao:'', maquinaParada:false, compra:false, executado:false, assinaturaSolicitante:'', custoMaterial:'', custoMO:'', tempoParada:'', pecas:'', causa:'', acao:'', obs:''},
 ]; }
-function _osLoad(){ if(ordens===null){ ordens=safeJSON(LS_ORDENS,null); if(!Array.isArray(ordens)){ ordens=_osSeed(); saveOrdens(); } } _eqLoad(); }
+function _osLoad(){ if(ordens===null){ ordens=safeJSON(LS_ORDENS,null); if(!Array.isArray(ordens)){ ordens=_osSeed(); saveOrdens(); }
+  // migração: prioridade antiga (alta/média) -> Urgente/Normal, alinhando à ficha de OS física
+  else { let _mig=false; ordens.forEach(o=>{ if(o.prioridade==='alta'){o.prioridade='urgente';_mig=true;} else if(o.prioridade==='media'){o.prioridade='normal';_mig=true;} else if(!OS_PRIO[o.prioridade]){o.prioridade='normal';_mig=true;} }); if(_mig) saveOrdens(); }
+} _eqLoad(); }
 function saveOrdens(){ safeSetItem(LS_ORDENS, JSON.stringify(ordens||[])); }
 function _osNextNum(){ let mx=0; (ordens||[]).forEach(o=>{ const m=/(\d+)/.exec(o.numero||''); if(m){ const n=parseInt(m[1],10); if(n>mx) mx=n; } }); return 'OS-'+String(mx+1).padStart(4,'0'); }
 function _eqNomeTag(id){ const e=(equipamentos||[]).find(x=>x.id===id); return e?((e.tag?e.tag+' · ':'')+e.nome):'—'; }
 function _osCusto(o){ return (_num(o.custoMaterial)||0)+(_num(o.custoMO)||0); }
 
-function novoOrdem(){ _osLoad(); mntOrdBuf={id:_mntId('os'), numero:_osNextNum(), equipamentoId:'', tipo:'corretiva', titulo:'', descricao:'', prioridade:'media', status:'aberta', solicitante:'', responsavel:'', dataAbertura:today, dataConclusao:'', custoMaterial:'', custoMO:'', tempoParada:'', pecas:'', causa:'', acao:'', obs:'', _novo:true}; manutOrdemAberto=mntOrdBuf.id; renderManutencao(); }
+function novoOrdem(){ _osLoad(); mntOrdBuf={id:_mntId('os'), numero:_osNextNum(), equipamentoId:'', tipo:'corretiva', titulo:'', descricao:'', prioridade:'normal', status:'aberta', solicitante:'', responsavel:'', dataAbertura:today, dataLimite:'', dataConclusao:'', previsaoConclusao:'', maquinaParada:false, compra:false, executado:false, assinaturaSolicitante:'', custoMaterial:'', custoMO:'', tempoParada:'', pecas:'', causa:'', acao:'', obs:'', _novo:true}; manutOrdemAberto=mntOrdBuf.id; renderManutencao(); }
 function editarOrdem(id){ _osLoad(); const o=(ordens||[]).find(x=>x.id===id); if(!o) return; mntOrdBuf=JSON.parse(JSON.stringify(o)); mntOrdBuf._novo=false; manutOrdemAberto=id; renderManutencao(); }
 function _osSet(campo,val){ if(!mntOrdBuf) return; mntOrdBuf[campo]=val; if(campo==='status' && val==='concluida' && !mntOrdBuf.dataConclusao){ mntOrdBuf.dataConclusao=today; renderManutencao(); } }
 function osVoltar(){ manutOrdemAberto=null; mntOrdBuf=null; renderManutencao(); }
@@ -6811,7 +6814,7 @@ function _osLimpar(){ _osQuery=''; _osStatusF=''; renderManutencao(); }
 function _osCardsHTML(){
   const arr=_osFiltrar();
   if(!arr.length) return `<div style="text-align:center; padding:46px 0; color:var(--text3);"><i class="ti ti-search-off" style="font-size:34px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhuma ordem encontrada${(_osQuery||_osStatusF)?` <button onclick="_osLimpar()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;text-decoration:underline;padding:0">Limpar filtros</button>`:''}.</div>`;
-  const card=o=>{ const tp=OS_TIPO[o.tipo]||OS_TIPO.corretiva; const st=OS_STATUS[o.status]||OS_STATUS.aberta; const pr=OS_PRIO[o.prioridade]||OS_PRIO.media; const custo=_osCusto(o);
+  const card=o=>{ const tp=OS_TIPO[o.tipo]||OS_TIPO.corretiva; const st=OS_STATUS[o.status]||OS_STATUS.aberta; const pr=OS_PRIO[o.prioridade]||OS_PRIO.normal; const custo=_osCusto(o);
     return `<div onclick="editarOrdem('${o.id}')" style="background:var(--card); border:1px solid var(--border); border-left:3px solid ${st.c}; border-radius:11px; padding:13px 16px; cursor:pointer; transition:border-color .15s;" onmouseover="this.style.borderColor='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.borderLeftColor='${st.c}'">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
         <div style="display:flex; align-items:center; gap:9px; min-width:0; flex-wrap:wrap;">
@@ -6824,6 +6827,7 @@ function _osCardsHTML(){
         <span style="color:${tp.c}; font-weight:700;"><i class="ti ${tp.i}" style="font-size:11px"></i> ${escapeHTML(tp.l)}</span>
         <span><i class="ti ti-settings-automation"></i> ${escapeHTML(_eqNomeTag(o.equipamentoId))}</span>
         <span style="color:${pr.c};"><i class="ti ${pr.i}" style="font-size:11px"></i> ${escapeHTML(pr.l)}</span>
+        ${o.maquinaParada?`<span style="color:var(--danger); font-weight:700;"><i class="ti ti-player-stop" style="font-size:11px"></i> Máquina parada</span>`:''}
         ${custo>0?`<span><i class="ti ti-currency-real"></i> ${escapeHTML(_brl(custo))}</span>`:''}
         ${o.dataAbertura?`<span><i class="ti ti-calendar"></i> ${escapeHTML(o.dataAbertura)}</span>`:''}
       </div>
@@ -6846,9 +6850,9 @@ function renderOrdens(){
     </div>` : '';
   main.innerHTML=`
     <div style="padding:20px 4px 40px; max-width:1100px;">
-      ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Ordens de Manutenção'}])}
+      ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Ordens de Serviço'}])}
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:4px;">
-        <h1 style="font-size:23px; font-weight:700; color:var(--text);">Ordens de Manutenção</h1>
+        <h1 style="font-size:23px; font-weight:700; color:var(--text);">Ordens de Serviço</h1>
         <button onclick="novoOrdem()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Nova ordem</button>
       </div>
       <div style="font-size:12.5px; color:var(--text3); margin-bottom:14px;">Ordens de serviço por equipamento — corretiva, preventiva e preditiva. Peças vêm do sistema da empresa (ERP).</div>
@@ -6864,6 +6868,8 @@ function renderOrdemEditor(){
   const _ist='width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;';
   const campo=(lbl,key,ph,attrs='')=>`<div>${_lbl(lbl)}<input value="${escapeAttr(b[key]||'')}" oninput="_osSet('${key}',this.value)" placeholder="${escapeAttr(ph||'')}" ${attrs} style="${_ist}"></div>`;
   const selBox=(lbl,key,map)=>`<div>${_lbl(lbl)}<select onchange="_osSet('${key}',this.value)" style="${_ist} cursor:pointer;">${Object.keys(map).map(k=>`<option value="${k}" ${b[key]===k?'selected':''}>${map[k].l}</option>`).join('')}</select></div>`;
+  const dataBox=(lbl,key)=>`<div>${_lbl(lbl)}<input type="date" value="${escapeAttr(b[key]||'')}" oninput="_osSet('${key}',this.value)" style="${_ist}"></div>`;
+  const chkBox=(lbl,key)=>`<label style="display:flex; align-items:center; gap:9px; background:var(--bg2); border:1px solid ${b[key]?'var(--blue-mid)':'var(--border)'}; border-radius:8px; padding:11px 13px; cursor:pointer; font-size:13px; font-weight:600; color:var(--text); user-select:none;"><input type="checkbox" ${b[key]?'checked':''} onchange="_osSet('${key}',this.checked)" style="width:17px; height:17px; cursor:pointer; accent-color:var(--blue-mid);"> ${lbl}</label>`;
   const custo=_osCusto(b);
   main.innerHTML=`
     <div style="padding:20px 4px 60px; max-width:880px;">
@@ -6886,9 +6892,19 @@ function renderOrdemEditor(){
           ${campo('Responsável / equipe','responsavel','Mecânica')}
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
-          <div>${_lbl('Abertura')}<input type="date" value="${escapeAttr(b.dataAbertura||'')}" oninput="_osSet('dataAbertura',this.value)" style="${_ist}"></div>
-          <div>${_lbl('Conclusão')}<input type="date" value="${escapeAttr(b.dataConclusao||'')}" oninput="_osSet('dataConclusao',this.value)" style="${_ist}"></div>
+          ${dataBox('Data da ordem','dataAbertura')}
+          ${dataBox('Data limite','dataLimite')}
+          ${dataBox('Previsão de conclusão','previsaoConclusao')}
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+          ${dataBox('Conclusão (real)','dataConclusao')}
           ${campo('Tempo de parada (h)','tempoParada','0','inputmode="decimal"')}
+          ${campo('Assinatura do solicitante','assinaturaSolicitante','Quem autoriza')}
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+          ${chkBox('Máquina parada','maquinaParada')}
+          ${chkBox('Compra necessária','compra')}
+          ${chkBox('Executado','executado')}
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; align-items:end;">
           ${campo('Custo material (R$)','custoMaterial','0','inputmode="decimal"')}
@@ -8627,7 +8643,7 @@ function renderSidebar(){
       ${hubGroupDivider('MANUTENÇÃO')}
       <div style="padding:2px 8px 8px;">
         ${item('pcm','ti-chart-arcs','Painel PCM', _sub==='pcm')}
-        ${item('ordens','ti-clipboard-list','Ordens de Manutenção', _sub==='ordens')}
+        ${item('ordens','ti-clipboard-list','Ordens de Serviço', _sub==='ordens')}
         ${item('equipamentos','ti-settings-automation','Equipamentos', _sub==='equipamentos')}
         ${item('preventivas','ti-calendar-repeat','Preventivas', _sub==='preventivas')}
         <div style="font-size:11px; font-weight:700; color:var(--text3); letter-spacing:.5px; padding:12px 12px 4px;">COMPRAS</div>
@@ -9097,7 +9113,7 @@ function limparOrfaos(itensExcluidos){
   if(mudouCutucadas) saveCutucadas();
 }
 
-const TRASH_TYPE_LABELS={task:'Tarefas',rotina:'Rotinas',note:'Notas',project:'Projetos',projectPro:'Projetos',meeting:'Reuniões',compromisso:'Compromissos',person:'Pessoas',equipamento:'Equipamentos',ordem:'Ordens de Manutenção',fornecedor:'Fornecedores',orcamento:'Orçamentos',preventiva:'Planos de preventiva',fichaProduto:'Produtos',reuniaoRapida:'Reuniões rápidas',sensorial:'Análise sensorial'};
+const TRASH_TYPE_LABELS={task:'Tarefas',rotina:'Rotinas',note:'Notas',project:'Projetos',projectPro:'Projetos',meeting:'Reuniões',compromisso:'Compromissos',person:'Pessoas',equipamento:'Equipamentos',ordem:'Ordens de Serviço',fornecedor:'Fornecedores',orcamento:'Orçamentos',preventiva:'Planos de preventiva',fichaProduto:'Produtos',reuniaoRapida:'Reuniões rápidas',sensorial:'Análise sensorial'};
 const TRASH_TYPE_ICONS={task:'ti-check',rotina:'ti-repeat',note:'ti-notes',project:'ti-folders',projectPro:'ti-folders',meeting:'ti-speakerphone',compromisso:'ti-calendar-time',person:'ti-user',equipamento:'ti-settings-automation',ordem:'ti-clipboard-list',fornecedor:'ti-building-store',orcamento:'ti-receipt-2',preventiva:'ti-calendar-repeat',fichaProduto:'ti-package',reuniaoRapida:'ti-calendar-bolt',sensorial:'ti-test-pipe'};
 let _trashFilter='todos';
 function setTrashFilter(t){ _trashFilter=t; renderLixeira(); }
