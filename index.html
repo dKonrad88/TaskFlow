@@ -6948,6 +6948,7 @@ function renderOrdemEditor(){
         <div style="display:flex; gap:10px; justify-content:space-between; margin-top:8px;">
           ${b._novo?'<span></span>':`<button onclick="excluirOrdem('${b.id}')" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:9px; padding:11px 18px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit;"><i class="ti ti-trash"></i> Excluir</button>`}
           <div style="display:flex; gap:10px;">
+            ${b._novo?'':`<button onclick="gerarPDFOrdem('${b.id}')" style="background:none; border:1px solid var(--border); color:var(--blue-mid); border-radius:9px; padding:11px 18px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit;"><i class="ti ti-file-text"></i> Visualizar PDF</button>`}
             <button onclick="osVoltar()" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:9px; padding:11px 20px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit;">Cancelar</button>
             <button onclick="salvarOrdem()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:11px 26px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit;">Salvar</button>
           </div>
@@ -29213,6 +29214,171 @@ async function gerarPDFReuniao(meetingId){
     console.error('Erro ao gerar PDF:',err);
     toast('⚠️ Erro ao gerar PDF — verifique o console');
   }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PDF da ORDEM DE SERVIÇO (OS) — pré-visualização (modal) + download.
+// Espelha o padrão de gerarPDFReuniao (pdfMake, A4, cabeçalho Klain, rodapé).
+// Usa o buffer em edição (mntOrdBuf) se for a mesma OS, p/ refletir alterações
+// ainda não salvas. Inclui os campos da OS física (prazo, parada, compra,
+// executado, assinatura) e bloco de assinaturas p/ impressão.
+// ════════════════════════════════════════════════════════════════════
+async function gerarPDFOrdem(id){
+  try{
+    if(typeof ensurePdfMakeLoaded==='function') await ensurePdfMakeLoaded();
+    if(typeof pdfMake==='undefined'){ toast('⚠️ Biblioteca PDF não carregada. Tente novamente em alguns segundos.'); return; }
+  }catch(e){ console.error(e); toast('⚠️ Não foi possível carregar a biblioteca PDF.'); return; }
+  if(typeof _osLoad==='function') _osLoad();
+  const o = (typeof mntOrdBuf!=='undefined' && mntOrdBuf && mntOrdBuf.id===id) ? mntOrdBuf : (ordens||[]).find(x=>x.id===id);
+  if(!o){ toast('⚠️ Ordem não encontrada'); return; }
+  const eq=(equipamentos||[]).find(x=>x.id===o.equipamentoId);
+  const osPessoa=v=>{ const p=(people||[]).find(x=>x.id===v); return p?p.name:(v||'—'); };
+  const simNao=v=> v?'Sim':'Não';
+
+  const dfmt=d=> d? new Date(d+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}) : '—';
+  const tipoTxt=(OS_TIPO[o.tipo]||{}).l||o.tipo||'—';
+  const prioTxt=(OS_PRIO[o.prioridade]||{}).l||o.prioridade||'—';
+  const sitTxt=(OS_STATUS[o.status]||{}).l||o.status||'—';
+  const tipoCor={corretiva:'#A32D2D',preventiva:'#3B6D11',preditiva:'#185FA5',melhoria:'#B47C0A'}[o.tipo]||'#555';
+  const prioCor={urgente:'#A32D2D',normal:'#185FA5',baixa:'#3B6D11'}[o.prioridade]||'#555';
+  const sitCor={aberta:'#888',planejada:'#185FA5',execucao:'#B47C0A',concluida:'#3B6D11',cancelada:'#888'}[o.status]||'#555';
+  const custoTot=_osCusto(o);
+
+  const infoTable=(rows)=>({
+    table:{ widths:['auto','*'], body: rows.map(r=>[
+      {text:r[0],bold:true,color:'#555',fontSize:9.5,margin:[0,1,0,1]},
+      {text:(r[1]==null||r[1]==='')?'—':String(r[1]),fontSize:9.5,color:'#333',margin:[0,1,0,1]}
+    ]) },
+    layout:{ hLineWidth:()=>0, vLineWidth:()=>0, paddingTop:()=>1.5, paddingBottom:()=>1.5, paddingLeft:()=>0, paddingRight:()=>10 },
+    margin:[0,0,0,8]
+  });
+  const secao=(t)=>({text:t.toUpperCase(), fontSize:10, bold:true, color:'#0D3D6B', margin:[0,12,0,4]});
+
+  const content=[
+    {text:'ORDEM DE SERVIÇO', fontSize:10, bold:true, color:'#999', margin:[0,8,0,2]},
+    {columns:[
+      {text:o.numero||'—', fontSize:22, bold:true, color:'#0D3D6B', width:'*'},
+      {text:sitTxt.toUpperCase(), fontSize:11, bold:true, color:sitCor, alignment:'right', margin:[0,9,0,0]}
+    ]},
+    {text:o.titulo||'(sem título)', fontSize:13, color:'#333', margin:[0,3,0,10]},
+    {columns:[
+      {text:[{text:'Tipo:  ',bold:true,color:'#555'},{text:tipoTxt,color:tipoCor,bold:true}], fontSize:10},
+      {text:[{text:'Prioridade:  ',bold:true,color:'#555'},{text:prioTxt,color:prioCor,bold:true}], fontSize:10, alignment:'right'}
+    ], margin:[0,0,0,4]}
+  ];
+
+  // Sinalizadores (chips) — só os ativos
+  const flags=[];
+  if(o.maquinaParada) flags.push({text:'■ Máquina parada', color:'#A32D2D', bold:true, fontSize:9.5});
+  if(o.compra) flags.push({text:'■ Compra necessária', color:'#B47C0A', bold:true, fontSize:9.5});
+  if(flags.length){
+    const inter=[]; flags.forEach((f,i)=>{ if(i) inter.push({text:'      ',fontSize:9.5}); inter.push(f); });
+    content.push({text:inter, margin:[0,0,0,8]});
+  } else {
+    content[content.length-1].margin=[0,0,0,12];
+  }
+
+  content.push(
+    secao('Equipamento'),
+    infoTable( eq ? [
+      ['Identificação:', (eq.tag?eq.tag+' · ':'')+eq.nome],
+      ['Setor:', eq.setor],
+      ['Criticidade:', eq.criticidade?('Classe '+eq.criticidade):'—']
+    ] : [['Identificação:','— sem equipamento vinculado —']]),
+    secao('Dados da ordem'),
+    infoTable([
+      ['Solicitante:', osPessoa(o.solicitante)],
+      ['Responsável / equipe:', o.responsavel],
+      ['Data da ordem:', dfmt(o.dataAbertura)],
+      ['Data limite:', o.dataLimite?dfmt(o.dataLimite):'—'],
+      ['Previsão de conclusão:', o.previsaoConclusao?dfmt(o.previsaoConclusao):'—'],
+      ['Conclusão (real):', o.dataConclusao?dfmt(o.dataConclusao):'—'],
+      ['Tempo de parada:', o.tempoParada?(o.tempoParada+' h'):'—'],
+      ['Executado:', simNao(o.executado)]
+    ])
+  );
+
+  [['Detalhes',o.descricao],['Causa',o.causa],['Ação executada',o.acao],['Peças / materiais (ref. ERP)',o.pecas],['Observações',o.obs]].forEach(([tit,val])=>{
+    if(val && String(val).trim()){ content.push(secao(tit), {text:String(val), fontSize:10, color:'#333', margin:[0,0,0,2]}); }
+  });
+
+  content.push(secao('Custos'));
+  content.push({
+    table:{ widths:['*','auto'], body:[
+      [{text:'Material',fontSize:10,color:'#555'},{text:_brl(_num(o.custoMaterial)||0),fontSize:10,color:'#333',alignment:'right'}],
+      [{text:'Mão de obra',fontSize:10,color:'#555'},{text:_brl(_num(o.custoMO)||0),fontSize:10,color:'#333',alignment:'right'}],
+      [{text:'Total',fontSize:11,bold:true,color:'#0D3D6B'},{text:_brl(custoTot),fontSize:11,bold:true,color:'#0D3D6B',alignment:'right'}]
+    ]},
+    layout:{ hLineWidth:(i)=> i===2?1:0, hLineColor:()=>'#ddd', vLineWidth:()=>0, paddingTop:()=>3, paddingBottom:()=>3, paddingLeft:()=>0, paddingRight:()=>2 },
+    margin:[0,0,0,6]
+  });
+
+  // Bloco de assinaturas (OS física p/ assinar)
+  content.push({
+    columns:[
+      { stack:[ {text:'____________________________________', color:'#999', margin:[0,0,0,3]}, {text:'Solicitante'+(o.assinaturaSolicitante?(' — '+o.assinaturaSolicitante):''), fontSize:9, color:'#666'} ], width:'*' },
+      { text:'', width:30 },
+      { stack:[ {text:'____________________________________', color:'#999', margin:[0,0,0,3]}, {text:'Manutenção', fontSize:9, color:'#666'} ], width:'*' }
+    ],
+    margin:[0,34,0,0]
+  });
+
+  const docDefinition={
+    pageSize:'A4',
+    pageMargins:[50,60,50,60],
+    header:{ margin:[50,20,50,0], columns:[
+      {text:'KLA',color:'#185FA5',fontSize:14,bold:true,width:'auto'},
+      {text:'IN',color:'#A32D2D',fontSize:14,bold:true,width:'auto'},
+      {text:'ORDEM DE SERVIÇO',alignment:'right',color:'#888',fontSize:10,margin:[0,2,0,0]}
+    ]},
+    footer:function(currentPage,pageCount){ return { margin:[50,0,50,20], columns:[
+      {text:`Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`, color:'#aaa', fontSize:9},
+      {text:`${currentPage} / ${pageCount}`, alignment:'right', color:'#aaa', fontSize:9}
+    ]}; },
+    content,
+    defaultStyle:{ font:'Roboto', color:'#333' }
+  };
+
+  const slug=(o.numero||'OS').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'').substring(0,40);
+  const fileName=`OS_${slug}_${o.dataAbertura||today}.pdf`;
+
+  let pdfDoc;
+  try{ pdfDoc=pdfMake.createPdf(docDefinition); }
+  catch(err){ console.error('Erro ao gerar PDF da OS:',err); toast('⚠️ Erro ao gerar PDF — verifique o console'); return; }
+  _osPdfModal(pdfDoc, fileName);
+}
+
+function _osPdfModal(pdfDoc, fileName){
+  const old=document.getElementById('osPdfOverlay'); if(old) old.remove();
+  const ov=document.createElement('div');
+  ov.id='osPdfOverlay';
+  ov.style.cssText='position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; padding:24px;';
+  ov.innerHTML=`
+    <div style="background:var(--card,#fff); border-radius:14px; width:min(900px,96vw); height:min(92vh,1100px); display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.45);">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 18px; border-bottom:1px solid var(--border,#e5e7eb);">
+        <div style="font-size:15px; font-weight:700; color:var(--text,#111); display:flex; align-items:center; gap:8px;"><i class="ti ti-file-text"></i> Pré-visualização da OS</div>
+        <div style="display:flex; gap:10px;">
+          <button id="osPdfBaixar" style="background:var(--blue-mid,#185FA5); color:#fff; border:none; border-radius:9px; padding:9px 18px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-download"></i> Baixar PDF</button>
+          <button id="osPdfFechar" style="background:none; border:1px solid var(--border,#ccc); color:var(--text2,#555); border-radius:9px; padding:9px 16px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;">Fechar</button>
+        </div>
+      </div>
+      <div style="flex:1; background:#525659; overflow:hidden;">
+        <iframe id="osPdfFrame" style="width:100%; height:100%; border:none; background:#525659;" title="Pré-visualização do PDF"></iframe>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  const fechar=()=>{ if(ov._blobUrl){ try{URL.revokeObjectURL(ov._blobUrl);}catch(_){ } } ov.remove(); document.removeEventListener('keydown',onKey); };
+  const onKey=(ev)=>{ if(ev.key==='Escape') fechar(); };
+  document.addEventListener('keydown',onKey);
+  ov.addEventListener('click',(ev)=>{ if(ev.target===ov) fechar(); });
+  const bFechar=document.getElementById('osPdfFechar'); if(bFechar) bFechar.onclick=fechar;
+  const bBaixar=document.getElementById('osPdfBaixar'); if(bBaixar) bBaixar.onclick=()=>{ try{ pdfDoc.download(fileName); }catch(err){ console.error(err); toast('⚠️ Erro ao baixar'); } };
+  try{
+    pdfDoc.getBlob(function(blob){
+      const url=URL.createObjectURL(blob); ov._blobUrl=url;
+      const f=document.getElementById('osPdfFrame'); if(f) f.src=url;
+    });
+  }catch(err){ console.error('Erro ao renderizar preview da OS:',err); toast('⚠️ Não foi possível pré-visualizar — use Baixar PDF'); }
 }
 
 // ── Gerar HTML das tarefas da reunião (separadas por anteriores/novas)
