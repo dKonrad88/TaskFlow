@@ -109,9 +109,9 @@
   html.dark-init body,html.dark-init body.dark{background:#1e1e22;color:#e8e8ee}
   :root{
     --blue-dark:#0d3d6b;--blue-mid:#185FA5;--blue-teal:#1a7a8a;
-    --bg:#f5f5f2;--bg2:#ededea;--bg3:#fff;
-    --text:#1a1a1a;--text2:#555;--text3:#6b6b6b;
-    --border:#ddd;--card:#fff;
+    --bg:#e9ebf0;--bg2:#dfe2e9;--bg3:#fff;
+    --text:#1a1a1a;--text2:#4b5563;--text3:#6b7280;
+    --border:#d3d8e0;--card:#fff;
     --success:#3B6D11;--success-bg:#EAF3DE;
     --danger:#A32D2D;--danger-bg:#FCEBEB;
     --amber:#854F0B;--amber-bg:#FAEEDA;
@@ -6610,12 +6610,12 @@ function _pcpCorpoHTML(){
     }).join('');
     return header+rows;
   }).join('');
-  const tabela=`<div style="overflow-x:auto; border:1px solid var(--border); border-radius:12px;">
+  const tabela=`<div style="overflow:hidden; border:1px solid var(--border); border-radius:12px; background:var(--card);"><div style="overflow-x:auto;">
     <table style="width:100%; border-collapse:collapse; min-width:${med?'940':'720'}px; white-space:nowrap;">
       <thead>${head}</thead>
       <tbody>${corpo || `<tr><td colspan="${ncol}" style="padding:24px; text-align:center; color:var(--text3);">Nenhum item para os filtros atuais.</td></tr>`}</tbody>
     </table>
-  </div>
+  </div></div>
   <div style="display:flex; gap:14px; margin-top:10px; font-size:11px; color:var(--text2); flex-wrap:wrap; align-items:center;">
     <span style="color:var(--text3); font-weight:600;">DDV:</span>
     <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--success);"></span> folga (≥10)</span>
