@@ -1463,7 +1463,8 @@
   .reun-top-grid{display:grid;grid-template-columns:1fr 1fr 246px;gap:14px;margin-bottom:14px;align-items:start}
   @media(max-width:900px){.reun-top-grid{grid-template-columns:1fr}}
   /* 4 cards iguais (2x2), sem esticar um pelo outro */
-  .reun-grid4{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  .reun-grid4{display:grid;grid-template-columns:minmax(340px,500px) 1fr;gap:14px;align-items:start}
+  .reun-col{display:flex;flex-direction:column;gap:14px;min-width:0}
   @media(max-width:760px){.reun-grid4{grid-template-columns:1fr}}
   .reun-card4{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;min-height:130px}
   .reun-card4-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:6px}
@@ -6177,12 +6178,21 @@ function irParaProjetos(){
 // MÓDULO PRODUÇÃO (SISPRO) — Ficha de Produto
 // Protótipo de layout. Migração de dados do Sispro atual → backend (Guilherme).
 // ════════════════════════════════════════════════════════════════════
-let producaoView = 'produtos';        // 'produtos' | 'ordens' | 'checklists'
+let producaoView = 'produtos';        // 'produtos' | 'pcp' | 'ordens' | 'checklists'
 let produtoTipoFiltro = 'todos';      // filtro por tipo de produção na lista
 let produtoBusca = '';                // busca textual na lista de produtos
 let fichaProdutoAberta = null;        // id da ficha em edição (null = lista)
 let fichasProduto = [];               // array de fichas { id, ... }
 const LS_FICHAS_PRODUTO = 'taskflow_fichas_produto';
+
+// ─── PCP · Planejamento de produção (DDV) — espelho da aba Histórico do SISPRO ───
+let pcpSubView = 'historico';   // 'historico' | 'lotes' | 'resumo' | 'compras' | 'producao'
+let pcpItens = [];              // linhas coladas do SISPRO
+let pcpBusca = '';              // Pesquisar (produto/código)
+let pcpDdvSugestao = '';        // filtra DDV <= valor (candidatos a produzir)
+let pcpMostrarMedias = false;   // colunas MSV/MQV/MMV (escondidas por padrão)
+let pcpColapsadas = {};         // linhas (grupos) colapsadas
+const LS_PCP = 'taskflow_pcp_ddv';
 
 // ─── PADRÃO DE NAVEGAÇÃO DO HUB ───
 // ─── PADRÃO DE NAVEGAÇÃO DO HUB ───
@@ -6427,6 +6437,7 @@ function renderProducao(){
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
 
+  if(producaoView === 'pcp') return renderPCP();
   if(producaoView !== 'produtos'){
     const titulo = producaoView==='ordens'?'Ordens de Produção':'Checklists';
     main.innerHTML = `<div style="padding:20px 4px;">
@@ -6438,6 +6449,253 @@ function renderProducao(){
   }
   if(fichaProdutoAberta) return renderFichaProduto(fichaProdutoAberta);
   return renderListaProdutos();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PCP — Planejamento de produção (DDV) · espelho da aba Histórico do SISPRO
+// Fonte dos dados: "Copiar" no SISPRO → "Colar do SISPRO" aqui (protótipo de UX, dados descartáveis).
+// ════════════════════════════════════════════════════════════════════
+function loadPCP(){
+  const v = safeJSON(LS_PCP, null);
+  if(v===null){ pcpItens = _pcpSeed(); savePCP(); }
+  else pcpItens = Array.isArray(v) ? v : [];
+}
+function savePCP(){ safeSetItem(LS_PCP, JSON.stringify(pcpItens)); }
+function setPcpSubView(v){ pcpSubView=v; renderPCP(); }
+function _pcpSetBusca(v){ pcpBusca=v; const el=document.getElementById('pcp-corpo'); if(el) el.innerHTML=_pcpCorpoHTML(); }
+function _pcpSetDdvSug(v){ pcpDdvSugestao=v; const el=document.getElementById('pcp-corpo'); if(el) el.innerHTML=_pcpCorpoHTML(); }
+function _pcpToggleMedias(){ pcpMostrarMedias=!pcpMostrarMedias; renderPCP(); }
+function _pcpToggleLinha(L){ pcpColapsadas[L]=!pcpColapsadas[L]; const el=document.getElementById('pcp-corpo'); if(el) el.innerHTML=_pcpCorpoHTML(); }
+function _pcpLimpar(){ if(!confirm('Limpar a tabela do PCP? Os dados colados serão removidos deste aparelho.')) return; pcpItens=[]; savePCP(); renderPCP(); toast('Tabela do PCP limpa'); }
+
+// Helpers numéricos / de status (semáforo do DDV)
+function _pcpNum(s){ if(s==null) return NaN; let t=String(s).trim(); if(!t||t==='—'||t==='-') return NaN; t=t.replace(/\./g,'').replace(',','.').replace(/[^0-9.\-]/g,''); const n=parseFloat(t); return isNaN(n)?NaN:n; }
+function _pcpNorm(s){ return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,''); }
+function _pcpEsc(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function _pcpStatus(ddvStr){ const n=_pcpNum(ddvStr); if(isNaN(n)) return {key:'',cor:'var(--text2)'}; if(n<=0) return {key:'ruptura',cor:'var(--danger)'}; if(n<10) return {key:'atencao',cor:'var(--amber)'}; return {key:'folga',cor:'var(--success)'}; }
+
+function _pcpFiltrados(){
+  const q=_pcpNorm(pcpBusca); const sug=_pcpNum(pcpDdvSugestao);
+  return pcpItens.filter(it=>{
+    if(q){ const hay=_pcpNorm((it.produto||'')+' '+(it.cod||'')); if(!hay.includes(q)) return false; }
+    if(!isNaN(sug)){ const d=_pcpNum(it.ddv); if(isNaN(d)||d>sug) return false; }
+    return true;
+  });
+}
+function _pcpAgrupar(itens){
+  const g={}, ordem=[];
+  itens.forEach(it=>{ const L=(it.linha||'—'); if(!g[L]){ g[L]=[]; ordem.push(L); } g[L].push(it); });
+  return ordem.map(L=>({linha:L, itens:g[L]}));
+}
+
+function renderPCP(){
+  const main=document.getElementById('task-container'); if(!main) return;
+  const _tb=document.querySelector('.main .topbar'); if(_tb) _tb.style.display='none';
+  const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
+  const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
+  main.innerHTML = `
+    <div style="padding:20px 4px 40px;">
+      ${hubBreadcrumb([{label:'Produção', onclick:"setProducaoView('produtos')"},{label:'PCP'}])}
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:2px; flex-wrap:wrap;">
+        <h1 style="font-size:23px; font-weight:700; color:var(--text);">Planejamento de produção <span style="font-size:14px; font-weight:600; color:var(--text3);">(DDV)</span></h1>
+        <div style="display:flex; gap:8px;">
+          ${pcpItens.length?`<button onclick="_pcpLimpar()" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:9px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px;"><i class="ti ti-eraser"></i> Limpar</button>`:''}
+          <button onclick="_pcpColarAbrir()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:9px 16px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-clipboard-plus"></i> Colar do SISPRO</button>
+        </div>
+      </div>
+      <div style="font-size:12.5px; color:var(--text3); margin-bottom:6px;">Cobertura de estoque por produto — DDV = dias que o saldo cobre as vendas. ${_hint('DDV = Saldo ÷ MDV.  Saldo = Estoque + OP/OC + Maras − Pedido.  Verde = folga · âmbar = atenção · vermelho = ruptura.')}</div>
+      ${_pcpTabsHTML()}
+      ${ pcpSubView!=='historico'
+        ? `<div style="padding:54px 0; text-align:center; color:var(--text3); font-size:13px;"><i class="ti ti-tools" style="font-size:24px; display:block; margin-bottom:8px;"></i>Aba em construção.</div>`
+        : `<div style="display:flex; gap:14px; align-items:flex-start; margin-top:16px;">
+            ${_pcpRailHTML()}
+            <div style="flex:1; min-width:0;">${_pcpToolbarHTML()}<div id="pcp-corpo">${_pcpCorpoHTML()}</div></div>
+          </div>`
+      }
+    </div>`;
+}
+
+function _pcpTabsHTML(){
+  const tabs=[['historico','Histórico'],['lotes',"Lotes e OP's"],['resumo','Resumo'],['compras','Ordens de Compra'],['producao','Ordens de Produção']];
+  return `<div style="display:flex; gap:3px; border-bottom:1px solid var(--border); margin-top:10px; flex-wrap:wrap;">
+    ${tabs.map(([id,lbl])=>{ const a=pcpSubView===id; return `<button onclick="setPcpSubView('${id}')" style="background:${a?'var(--card)':'none'}; border:1px solid ${a?'var(--border)':'transparent'}; border-bottom:1px solid ${a?'var(--card)':'transparent'}; margin-bottom:-1px; border-radius:8px 8px 0 0; padding:8px 14px; font-size:12.5px; font-weight:${a?'700':'600'}; color:${a?'var(--blue-mid)':'var(--text2)'}; cursor:pointer; font-family:inherit;">${escapeHTML(lbl)}</button>`; }).join('')}
+  </div>`;
+}
+
+function _pcpRailHTML(){
+  const sel=(lbl,icon,val)=>`<div style="margin-bottom:10px;"><div style="font-size:11px; font-weight:700; color:var(--text2); margin-bottom:4px; display:flex; align-items:center; gap:5px;"><i class="ti ${icon}" style="font-size:13px; color:var(--text3);"></i>${lbl}</div><div style="background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:12px; color:var(--text3); display:flex; justify-content:space-between; align-items:center;">${val} <i class="ti ti-chevron-down" style="font-size:13px;"></i></div></div>`;
+  const per=(lbl,icon,a,b)=>`<div style="margin-bottom:10px;"><div style="font-size:11px; font-weight:700; color:var(--text2); margin-bottom:4px; display:flex; align-items:center; gap:5px;"><i class="ti ${icon}" style="font-size:13px; color:var(--text3);"></i>${lbl}</div><div style="display:flex; gap:5px;"><span style="flex:1; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:6px 6px; font-size:11px; color:var(--text2); text-align:center;">${a}</span><span style="flex:1; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:6px 6px; font-size:11px; color:var(--text2); text-align:center;">${b}</span></div></div>`;
+  return `<div style="width:188px; flex-shrink:0; background:var(--card); border:1px solid var(--border); border-radius:13px; padding:14px 13px;">
+    <div style="font-size:11px; font-weight:800; color:var(--text3); letter-spacing:.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px;"><i class="ti ti-filter"></i> FILTROS</div>
+    ${per('Período Pedidos','ti-calendar-event','15/05/26','27/06/26')}
+    ${per('Período Vendas','ti-cash','08/06/25','08/06/26')}
+    ${per('Período Produção','ti-box','01/01/26','08/06/26')}
+    <div style="margin-bottom:10px;"><div style="font-size:11px; font-weight:700; color:var(--text2); margin-bottom:4px; display:flex; align-items:center; gap:5px;"><i class="ti ti-calendar-stats" style="font-size:13px; color:var(--text3);"></i>DDV Sugestão ${_hint('Mostra só os itens com DDV menor ou igual a este valor (candidatos a produzir).')}</div><input value="${escapeAttr(pcpDdvSugestao)}" oninput="_pcpSetDdvSug(this.value)" placeholder="ex.: 5" inputmode="decimal" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:12px; color:var(--text); font-family:inherit;"></div>
+    ${sel('Redes','ti-chart-bar','Todas')}
+    ${sel('Marcas','ti-tag','Klain')}
+    ${sel('Tipos Produção','ti-packages','Todos')}
+    <div style="margin-bottom:10px;"><div style="font-size:11px; font-weight:700; color:var(--text2); margin-bottom:5px; display:flex; align-items:center; gap:5px;"><i class="ti ti-affiliate" style="font-size:13px; color:var(--text3);"></i>Quantidades em</div>
+      <div style="display:flex; flex-direction:column; gap:5px; font-size:12px; color:var(--text2);">
+        <span><i class="ti ti-circle" style="color:var(--text3); font-size:13px; vertical-align:-2px;"></i> Pacotes</span>
+        <span style="color:var(--blue-mid); font-weight:600;"><i class="ti ti-circle-check" style="font-size:13px; vertical-align:-2px;"></i> Caixas</span>
+        <span><i class="ti ti-circle" style="color:var(--text3); font-size:13px; vertical-align:-2px;"></i> Paletes</span>
+      </div></div>
+    <div><div style="font-size:11px; font-weight:700; color:var(--text2); margin-bottom:5px; display:flex; align-items:center; gap:5px;"><i class="ti ti-building-warehouse" style="font-size:13px; color:var(--text3);"></i>Almoxarifados</div>
+      <div style="display:flex; flex-direction:column; gap:5px; font-size:12px; color:var(--text2);">
+        <span style="color:var(--blue-mid); font-weight:600;"><i class="ti ti-square-check" style="font-size:13px; vertical-align:-2px;"></i> Klain</span>
+        <span><i class="ti ti-square" style="color:var(--text3); font-size:13px; vertical-align:-2px;"></i> Maras</span>
+      </div></div>
+    <div style="margin-top:12px; font-size:10.5px; color:var(--text3); line-height:1.5; border-top:1px solid var(--border); padding-top:10px;">Funcionais: DDV Sugestão e Pesquisar. Os demais espelham o SISPRO (visual).</div>
+  </div>`;
+}
+
+function _pcpToolbarHTML(){
+  return `<div style="display:flex; align-items:center; gap:8px; margin:0 0 12px; flex-wrap:wrap;">
+    <button onclick="_pcpToggleMedias()" style="background:var(--bg3); border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:7px 12px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px;"><i class="ti ti-${pcpMostrarMedias?'eye-off':'columns-3'}"></i> ${pcpMostrarMedias?'Ocultar médias':'Mostrar médias'}</button>
+    <span style="font-size:11.5px; color:var(--text3);">MSV · MQV · MMV</span>
+    <div style="margin-left:auto; position:relative;">
+      <i class="ti ti-search" style="position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--text3); font-size:14px;"></i>
+      <input value="${escapeAttr(pcpBusca)}" oninput="_pcpSetBusca(this.value)" placeholder="Pesquisar produto ou código..." style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:9px; padding:8px 12px 8px 32px; font-size:13px; color:var(--text); font-family:inherit; min-width:250px;">
+    </div>
+  </div>`;
+}
+
+function _pcpCorpoHTML(){
+  if(!pcpItens.length){
+    return `<div style="border:1px dashed var(--border); border-radius:12px; padding:48px 20px; text-align:center; color:var(--text3);">
+      <i class="ti ti-clipboard-off" style="font-size:30px; display:block; margin-bottom:10px;"></i>
+      <div style="font-size:14px; font-weight:600; color:var(--text2); margin-bottom:4px;">Nenhum dado importado</div>
+      <div style="font-size:12.5px; margin-bottom:16px;">Copie a tabela no SISPRO (aba Histórico) e clique em "Colar do SISPRO".</div>
+      <button onclick="_pcpColarAbrir()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:9px 18px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-clipboard-plus"></i> Colar do SISPRO</button>
+    </div>`;
+  }
+  const itens=_pcpFiltrados();
+  const grupos=_pcpAgrupar(itens);
+  const med=pcpMostrarMedias;
+  const cnt=(k)=>itens.filter(it=>_pcpStatus(it.ddv).key===k).length;
+  const kpi=(lbl,val,cor)=>`<div style="background:var(--bg3); border:1px solid var(--border); border-radius:9px; padding:8px 14px; min-width:84px;"><div style="font-size:11px; color:var(--text3);">${lbl}</div><div style="font-size:18px; font-weight:700; color:${cor};">${val}</div></div>`;
+  const graf=`<div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap; align-items:stretch;">
+    ${kpi('Itens', itens.length, 'var(--text)')}
+    ${kpi('Ruptura', cnt('ruptura'), 'var(--danger)')}
+    ${kpi('Atenção', cnt('atencao'), 'var(--amber)')}
+    ${kpi('Folga', cnt('folga'), 'var(--success)')}
+    <div style="flex:1; min-width:200px; border:1px dashed var(--border); border-radius:9px; display:flex; align-items:center; justify-content:center; gap:14px; color:var(--text3); font-size:12px; padding:8px; flex-wrap:wrap;">
+      <span><i class="ti ti-chart-line" style="vertical-align:-2px;"></i> Selecione um produto para ver o gráfico</span>
+      <span style="display:flex; gap:10px; font-size:11px;"><span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--blue-mid);"></span> Vendas</span><span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--success);"></span> Média</span><span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--danger);"></span> 2ª Média</span></span>
+    </div>
+  </div>`;
+  const ncol = med?14:11;
+  const th=(t,extra)=>`<th style="padding:7px 8px; font-weight:700; ${extra||'text-align:right;'}">${t}</th>`;
+  const head=`<tr style="color:var(--text3); border-bottom:1px solid var(--border); font-size:11px;">
+    ${th('Cód.','text-align:left;')}${th('Produto','text-align:left;')}${th('Estoque')}${th('Pedido')}${th('OP/OC')}${th('Maras')}${th('Saldo')}${th('DDV')}${th('DDV S/OP')}${th('MDV')}${med?th('MSV')+th('MQV')+th('MMV'):''}${th('Vendas 261d')}
+  </tr>`;
+  const cel=(v)=>`<td style="padding:6px 8px; text-align:right; color:var(--text2);">${escapeHTML((v==null||v==='')?'—':String(v))}</td>`;
+  const corpo=grupos.map(g=>{
+    const colap=!!pcpColapsadas[g.linha];
+    const rup=g.itens.filter(it=>_pcpStatus(it.ddv).key==='ruptura').length;
+    const header=`<tr><td colspan="${ncol}" onclick="_pcpToggleLinha('${_pcpEsc(g.linha)}')" style="padding:8px 8px 5px; font-weight:700; color:var(--text2); background:var(--bg2); cursor:pointer; user-select:none;"><i class="ti ti-chevron-${colap?'right':'down'}" style="font-size:13px; vertical-align:-2px;"></i> Linha ${escapeHTML(g.linha)} <span style="color:var(--text3); font-weight:400;">(${g.itens.length})</span>${rup?` <span style="color:var(--danger); font-weight:600; font-size:11px;">· ${rup} ruptura</span>`:''}</td></tr>`;
+    if(colap) return header;
+    const rows=g.itens.map(it=>{
+      const st=_pcpStatus(it.ddv), stS=_pcpStatus(it.ddvsop);
+      const saldoN=_pcpNum(it.saldo); const saldoNeg=(!isNaN(saldoN)&&saldoN<0);
+      return `<tr style="border-bottom:1px solid var(--border); font-size:12px;">
+        <td style="padding:6px 8px; text-align:left; color:${it.alerta?'var(--danger)':'var(--text3)'}; white-space:nowrap;">${it.alerta?'<i class="ti ti-alert-triangle" style="font-size:12px; vertical-align:-1px;"></i> ':''}${escapeHTML(it.cod||'')}</td>
+        <td style="padding:6px 8px; text-align:left; color:var(--text);">${escapeHTML(it.produto||'')}</td>
+        ${cel(it.estoque)}${cel(it.pedido)}${cel(it.opoc)}${cel(it.maras)}
+        <td style="padding:6px 8px; text-align:right; color:${saldoNeg?'var(--danger)':'var(--text)'}; font-weight:${saldoNeg?'700':'400'};">${escapeHTML(it.saldo||'—')}</td>
+        <td style="padding:6px 8px; text-align:right; color:${st.cor}; font-weight:700;">${escapeHTML(it.ddv||'—')}</td>
+        <td style="padding:6px 8px; text-align:right; color:${stS.cor};">${escapeHTML(it.ddvsop||'—')}</td>
+        ${cel(it.mdv)}${med?cel(it.msv)+cel(it.mqv)+cel(it.mmv):''}${cel(it.vendas)}
+      </tr>`;
+    }).join('');
+    return header+rows;
+  }).join('');
+  const tabela=`<div style="overflow-x:auto; border:1px solid var(--border); border-radius:12px;">
+    <table style="width:100%; border-collapse:collapse; min-width:${med?'940':'720'}px; white-space:nowrap;">
+      <thead>${head}</thead>
+      <tbody>${corpo || `<tr><td colspan="${ncol}" style="padding:24px; text-align:center; color:var(--text3);">Nenhum item para os filtros atuais.</td></tr>`}</tbody>
+    </table>
+  </div>
+  <div style="display:flex; gap:14px; margin-top:10px; font-size:11px; color:var(--text2); flex-wrap:wrap; align-items:center;">
+    <span style="color:var(--text3); font-weight:600;">DDV:</span>
+    <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--success);"></span> folga (≥10)</span>
+    <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--amber);"></span> atenção (0–10)</span>
+    <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--danger);"></span> ruptura (≤0) <i class="ti ti-alert-triangle" style="font-size:11px;"></i></span>
+  </div>`;
+  return graf + tabela;
+}
+
+// ─── Importação: "Colar do SISPRO" (parser tolerante, baseado no cabeçalho) ───
+function _pcpColarAbrir(){
+  _pcpColarFechar();
+  const ov=document.createElement('div');
+  ov.id='pcp-colar-ov';
+  ov.style.cssText='position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:99999; display:flex; align-items:center; justify-content:center; padding:20px;';
+  ov.innerHTML=`<div style="background:var(--card); border:1px solid var(--border); border-radius:14px; width:min(660px,100%); max-height:88vh; overflow:auto; padding:20px;">
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;"><i class="ti ti-clipboard-text" style="color:var(--blue-mid); font-size:20px;"></i><span style="font-size:16px; font-weight:700; color:var(--text);">Colar do SISPRO</span></div>
+    <div style="font-size:12.5px; color:var(--text3); margin-bottom:12px; line-height:1.55;">No SISPRO (aba <b>Histórico</b>) clique em <b>Copiar</b> e cole aqui (Ctrl V). Mantenha a <b>1ª linha com o cabeçalho</b> das colunas (Código, Produto, Estoque…). As linhas "Linha XXX" agrupam por linha de produção.</div>
+    <textarea id="pcp-colar-txt" rows="9" placeholder="Código&#9;Produto&#9;Estoque&#9;Pedido&#9;OP/OC&#9;Maras&#9;Saldo&#9;DDV&#9;DDV S/OP&#9;MDV&#9;..." style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:9px; padding:10px; font-size:12px; color:var(--text); font-family:ui-monospace,Menlo,Consolas,monospace; resize:vertical; line-height:1.5;"></textarea>
+    <div style="display:flex; justify-content:space-between; gap:10px; margin-top:14px; align-items:center;">
+      <button onclick="_pcpColarFechar()" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:9px; padding:9px 16px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;">Cancelar</button>
+      <button onclick="_pcpColarAplicar()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:9px 20px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-download"></i> Importar</button>
+    </div>
+  </div>`;
+  ov.addEventListener('click', e=>{ if(e.target===ov) _pcpColarFechar(); });
+  document.body.appendChild(ov);
+  setTimeout(()=>{ const t=document.getElementById('pcp-colar-txt'); if(t) t.focus(); }, 30);
+}
+function _pcpColarFechar(){ const o=document.getElementById('pcp-colar-ov'); if(o) o.remove(); }
+function _pcpColarAplicar(){
+  const t=document.getElementById('pcp-colar-txt'); if(!t) return;
+  const parsed=_pcpParse(t.value);
+  if(!parsed.length){ toast('Nada reconhecido — confira se copiou as colunas com o cabeçalho.'); return; }
+  pcpItens=parsed; savePCP(); _pcpColarFechar(); renderPCP();
+  toast(parsed.length+' item(ns) importado(s) do SISPRO');
+}
+function _pcpParse(text){
+  const ALIAS={ codigo:'cod', cod:'cod', produto:'produto', descricao:'produto', estoque:'estoque', pedido:'pedido', opoc:'opoc', maras:'maras', saldo:'saldo', ddv:'ddv', ddvsop:'ddvsop', sop:'ddvsop', mdv:'mdv', msv:'msv', mqv:'mqv', mmv:'mmv', vendas:'vendas' };
+  const DEFAULT_ORDER=['cod','produto','estoque','pedido','opoc','maras','saldo','ddv','ddvsop','mdv','msv','mqv','mmv','vendas'];
+  const out=[]; let colMap=null; let linhaAtual='—';
+  String(text||'').split(/\r?\n/).forEach(raw=>{
+    const line=raw.replace(/\s+$/,''); if(!line.trim()) return;
+    const mg=line.trim().match(/^linha\s+(.+?)(?:\s*\(\s*\d+\s*produtos?\s*\))?$/i);
+    if(mg){ linhaAtual=mg[1].trim().toUpperCase(); return; }
+    const cells=line.split('\t').map(c=>c.trim());
+    const norm=cells.map(_pcpNorm);
+    if(!colMap && norm.some(c=>c==='produto') && norm.some(c=>c==='estoque'||c.indexOf('ddv')===0)){
+      colMap={}; cells.forEach((c,i)=>{ let k=_pcpNorm(c); if(k.indexOf('ddv')===0 && k.indexOf('sop')>0) k='ddvsop'; const m=ALIAS[k]; if(m && colMap[m]==null) colMap[m]=i; }); return;
+    }
+    if(cells.length<3) return;
+    const get=(k)=>{ if(colMap && colMap[k]!=null) return cells[colMap[k]]||''; const idx=DEFAULT_ORDER.indexOf(k); return (idx>=0 && idx<cells.length) ? (cells[idx]||'') : ''; };
+    const alerta=/[⚠!]|⚠/.test(cells[0]);
+    const cod=String(get('cod')).replace(/[⚠!⚠]/g,'').trim();
+    const produto=get('produto');
+    if(!produto && !cod) return;
+    out.push({ cod, produto, linha:linhaAtual, alerta,
+      estoque:get('estoque'), pedido:get('pedido'), opoc:get('opoc'), maras:get('maras'),
+      saldo:get('saldo'), ddv:get('ddv'), ddvsop:get('ddvsop'),
+      mdv:get('mdv'), msv:get('msv'), mqv:get('mqv'), mmv:get('mmv'), vendas:get('vendas') });
+  });
+  return out;
+}
+function _pcpSeed(){
+  const mk=(cod,linha,produto,estoque,pedido,opoc,saldo,ddv,ddvsop,mdv,msv,mqv,mmv,vendas,alerta)=>({cod,linha,produto,estoque,pedido,opoc,maras:'',saldo,ddv,ddvsop,mdv,msv,mqv,mmv,vendas,alerta:!!alerta});
+  return [
+    mk('9','AMENDOIM','Biscoito Broa de Amendoim 250g (ES01)','814,87','452,07','733,33','1.096,13','7,40','2,45','148,07','743,21','1.610,28','3.220,56','38.646,67'),
+    mk('71','AMENDOIM','Biscoito Amendoim c/ Choc. Branco 250g (ES01)','297,80','95,33','333,33','535,80','13,92','5,26','38,49','193,20','418,61','837,22','10.046,60'),
+    mk('70','AMENDOIM','Biscoito Amendoim c/ Choc. ao Leite 250g (ES01)','619,73','545,53','1.000,00','1.074,20','4,90','0,34','219,40','1.101,23','2.386,00','4.772,00','57.264,00',true),
+    mk('1798','PALITINHOS','Palitinho sabor Bacon 138g (ES08)','839,87','214,07','','625,80','7,47','7,47','83,75','420,35','910,75','1.821,51','21.858,07'),
+    mk('1793','PALITINHOS','Palitinho sabor Calabresa 138g (ES08)','282,33','155,33','','127,00','2,34','2,34','54,31','272,57','590,58','1.181,16','14.173,87',true),
+    mk('1795','PALITINHOS','Palitinho sabor Churrasco 138g (ES08)','1.135,80','321,33','','814,47','6,80','6,80','119,83','601,43','1.303,10','2.606,19','31.274,33'),
+    mk('1811','PALITINHOS','Palitinho sabor Oregano 138g (ES08)','91,80','29,67','','62,13','4,71','4,71','13,20','66,26','143,56','287,13','3.445,53',true),
+    mk('1794','PALITINHOS','Palitinho sabor Original 138g (ES08)','966,93','115,00','','851,93','15,36','15,36','55,45','278,32','603,02','1.206,04','14.472,47'),
+    mk('1796','PALITINHOS','Palitinho sabor Pizza 138g (ES08)','371,73','123,00','','248,73','5,68','5,68','43,83','219,97','476,61','953,22','11.438,60'),
+    mk('1815','PALITINHOS','Palitinho sabor Queijo 138g (ES08)','342,80','30,33','','312,47','15,53','15,53','20,12','101,00','218,84','437,68','5.252,13'),
+    mk('1797','PALITINHOS','Palitinho sabor Salsa 138g (ES08)','44,33','63,33','','-19,00','-1,20','-1,20','15,81','79,34','171,89','343,79','4.125,47',true),
+    mk('34','SUSPIRO','Suspiro Tradicional 100g (ES22)','431,07','95,00','','336,07','10,30','10,30','32,64','163,84','354,98','709,96','8.519,47'),
+    mk('3035','SUSPIRO','Suspiro Tradicional 500g','','','','','','','','','','',''),
+    mk('77','SUSPIRO','Suspiro c/ Chocolate Branco 140g (ES22)','133,73','65,67','','68,07','3,49','3,49','19,50','97,85','212,02','424,03','5.088,40',true),
+  ];
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -8650,6 +8908,7 @@ function renderSidebar(){
         <div style="font-size:11px; font-weight:700; color:var(--text3); letter-spacing:.5px; padding:6px 12px 4px;">PRODUÇÃO</div>
         ${item('produtos','ti-package','Produtos', _sub==='produtos')}
         <div style="font-size:11px; font-weight:700; color:var(--text3); letter-spacing:.5px; padding:12px 12px 4px;">PCP</div>
+        ${item('pcp','ti-calendar-stats','Planejamento (DDV)', _sub==='pcp')}
         ${item('ordens','ti-clipboard-list','Ordens de Produção', _sub==='ordens')}
         ${item('checklists','ti-checkup-list','Check list', _sub==='checklists')}
       </div>
@@ -27984,7 +28243,7 @@ function openReuniaoView(id){
     </div>`:'';
   })():'';
 
-  document.getElementById('task-container').innerHTML=`<div style="padding-bottom:40px;max-width:1040px;margin:0 auto">
+  document.getElementById('task-container').innerHTML=`<div style="padding-bottom:40px;max-width:1500px;margin:0 auto">
     <button onclick="renderReunioes()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;padding:0;margin-bottom:16px">
       <i class="ti ti-arrow-left"></i> Voltar às reuniões
     </button>
@@ -28074,8 +28333,10 @@ function openReuniaoView(id){
         </div>`;
       })()}
 
-      <!-- 4 cards iguais (2x2): Pauta · Tarefas / Decisões · Anteriores -->
+      <!-- 2 colunas: ESQUERDA (Pauta + Decisões empilhadas) · DIREITA (Tarefas) -->
       <div class="reun-grid4">
+
+        <div class="reun-col"><!-- COLUNA ESQUERDA -->
 
         <!-- PAUTA como checklist editável -->
         <div class="reun-card4">
@@ -28099,40 +28360,6 @@ function openReuniaoView(id){
           </div>
           <button id="pauta-add-btn-${m.id}" onclick="pautaMostrarAdd('${m.id}')" style="margin-top:8px;background:none;border:1px dashed var(--border);color:var(--text3);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;width:100%;transition:all .2s" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">
             <i class="ti ti-plus"></i> Adicionar assunto
-          </button>
-        </div>
-
-        <!-- TAREFAS inline -->
-        <div class="reun-card4">
-          <div class="reun-card4-title">
-            <span><i class="ti ti-checkbox" style="color:var(--blue-mid)"></i> Tarefas</span>
-          </div>
-          <div id="tarefas-view-${m.id}">
-            ${reunTarefasHTML(m)}
-          </div>
-          <!-- Linha de nova tarefa inline -->
-          <div id="nova-tarefa-row-${m.id}" style="display:none;margin-top:10px">
-            <div style="padding:8px;background:var(--bg2);border-radius:8px">
-              <div style="display:grid;grid-template-columns:18px 1fr 140px 120px;gap:8px;font-size:10px;font-weight:700;color:var(--text3);margin-bottom:5px">
-                <span></span><span>Descrição <span style="color:var(--danger)">*</span></span><span>Executor <span style="color:var(--danger)">*</span></span><span>Data <span style="color:var(--danger)">*</span></span>
-              </div>
-              <div style="display:grid;grid-template-columns:18px 1fr 140px 120px;gap:8px;align-items:center">
-                <i class="ti ti-square" style="font-size:16px;color:var(--text3)"></i>
-                <input id="nt-desc-${m.id}" class="modal-input" placeholder="Descrição da tarefa..." style="padding:6px 10px;font-size:13px" onkeydown="if(event.key==='Enter')saveNovaTarefaInline('${m.id}');if(event.key==='Escape')cancelNovaTarefaInline('${m.id}')">
-                <select id="nt-quem-${m.id}" class="modal-input" style="padding:6px 10px;font-size:12px;min-width:110px">
-                  <option value="">Quem?</option>
-                  ${[...people].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>`<option value="${p.id}">${escapeHTML(p.name)}</option>`).join('')}
-                </select>
-                <input id="nt-data-${m.id}" class="modal-input" type="date" value="${m.date||today}" style="padding:6px 10px;font-size:12px;width:130px">
-              </div>
-            </div>
-            <div style="display:flex;gap:6px;margin-top:6px;justify-content:flex-end">
-              <button onclick="cancelNovaTarefaInline('${m.id}')" class="btn-modal-cancel" style="padding:5px 12px;font-size:12px">Cancelar</button>
-              <button onclick="saveNovaTarefaInline('${m.id}')" class="btn-modal-save" style="padding:5px 12px;font-size:12px"><i class="ti ti-plus"></i> Adicionar</button>
-            </div>
-          </div>
-          <button onclick="mostrarNovaTarefaInline('${m.id}')" id="btn-nova-tarefa-${m.id}" style="margin-top:10px;background:none;border:1px dashed var(--border);color:var(--text3);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;width:100%;transition:all .2s" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">
-            <i class="ti ti-plus"></i> Nova tarefa
           </button>
         </div>
 
@@ -28226,7 +28453,47 @@ function openReuniaoView(id){
           </div>`;
         })()}`;
       })()}
-      </div><!-- fim grid 2x2 -->
+
+        </div><!-- /COLUNA ESQUERDA -->
+
+        <div class="reun-col"><!-- COLUNA DIREITA -->
+
+        <!-- TAREFAS inline -->
+        <div class="reun-card4">
+          <div class="reun-card4-title">
+            <span><i class="ti ti-checkbox" style="color:var(--blue-mid)"></i> Tarefas</span>
+          </div>
+          <div id="tarefas-view-${m.id}">
+            ${reunTarefasHTML(m)}
+          </div>
+          <!-- Linha de nova tarefa inline -->
+          <div id="nova-tarefa-row-${m.id}" style="display:none;margin-top:10px">
+            <div style="padding:8px;background:var(--bg2);border-radius:8px">
+              <div style="display:grid;grid-template-columns:18px 1fr 140px 120px;gap:8px;font-size:10px;font-weight:700;color:var(--text3);margin-bottom:5px">
+                <span></span><span>Descrição <span style="color:var(--danger)">*</span></span><span>Executor <span style="color:var(--danger)">*</span></span><span>Data <span style="color:var(--danger)">*</span></span>
+              </div>
+              <div style="display:grid;grid-template-columns:18px 1fr 140px 120px;gap:8px;align-items:center">
+                <i class="ti ti-square" style="font-size:16px;color:var(--text3)"></i>
+                <input id="nt-desc-${m.id}" class="modal-input" placeholder="Descrição da tarefa..." style="padding:6px 10px;font-size:13px" onkeydown="if(event.key==='Enter')saveNovaTarefaInline('${m.id}');if(event.key==='Escape')cancelNovaTarefaInline('${m.id}')">
+                <select id="nt-quem-${m.id}" class="modal-input" style="padding:6px 10px;font-size:12px;min-width:110px">
+                  <option value="">Quem?</option>
+                  ${[...people].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>`<option value="${p.id}">${escapeHTML(p.name)}</option>`).join('')}
+                </select>
+                <input id="nt-data-${m.id}" class="modal-input" type="date" value="${m.date||today}" style="padding:6px 10px;font-size:12px;width:130px">
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:6px;justify-content:flex-end">
+              <button onclick="cancelNovaTarefaInline('${m.id}')" class="btn-modal-cancel" style="padding:5px 12px;font-size:12px">Cancelar</button>
+              <button onclick="saveNovaTarefaInline('${m.id}')" class="btn-modal-save" style="padding:5px 12px;font-size:12px"><i class="ti ti-plus"></i> Adicionar</button>
+            </div>
+          </div>
+          <button onclick="mostrarNovaTarefaInline('${m.id}')" id="btn-nova-tarefa-${m.id}" style="margin-top:10px;background:none;border:1px dashed var(--border);color:var(--text3);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;width:100%;transition:all .2s" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">
+            <i class="ti ti-plus"></i> Nova tarefa
+          </button>
+        </div>
+
+        </div><!-- /COLUNA DIREITA -->
+      </div><!-- fim grid -->
 
     </div>
   </div>`;
@@ -29582,6 +29849,7 @@ window.addEventListener('load', async ()=>{
   loadEnergia();
   loadPersonPhotos();
   if(typeof loadFichasProduto==='function') loadFichasProduto();
+  if(typeof loadPCP==='function') loadPCP();
   // Migração silenciosa: m.decisoes (texto livre) → m.decisoesItens (lista)
   // Cada linha do texto antigo vira um item de decisão
   let _migrou=false;
