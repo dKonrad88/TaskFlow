@@ -94,9 +94,12 @@
   filtram, modal de colar importa. **Decisões tomadas por mim (mudar se quiser):** PCP entrou como item dentro do
   grupo PCP (preservando Ordens de Produção/Check list); médias ocultas por padrão.
 - **Painel de Reunião — card Tarefas mais largo + layout desacoplado:** (1) container da reunião `max-width` 1040→**1500px**
-  (usa a folga à direita); (2) grid `.reun-grid4` de `1fr 1fr` → **`minmax(340px,500px) 1fr`** — Pauta/Decisões fixas
-  ~500px (inalteradas) e Tarefas pega o resto (≈986px na tela do Diego, ~2×); (3) **reestruturado em 2 colunas
-  independentes** (`.reun-col`): ESQUERDA = Pauta + Decisões + Decisões anteriores empilhadas; DIREITA = Tarefas. Antes
+  (p/ telas bem largas; obs.: o `.main` tem `padding-right:80px` e limita o útil ~1120px num viewport 1520); (2) grid
+  `.reun-grid4` de `1fr 1fr` → **`1fr 2fr`** — Tarefas = **2× a Pauta sempre** (proporção fixa, independe da barra
+  lateral). Tentei antes `minmax(340,500) 1fr` p/ preservar a Pauta em ~500px, mas nesse espaço a Tarefas mal crescia,
+  então voltei p/ `1fr 2fr` (Pauta/Decisões ficam em 1/3 — um pouco mais estreitas, troca aceita pelo Diego);
+  (3) **reestruturado em 2 colunas independentes** (`.reun-col`): ESQUERDA = Pauta + Decisões + Decisões anteriores
+  empilhadas; DIREITA = Tarefas. Antes
   era grid 2×2 e a altura da Tarefas empurrava a Decisões pra baixo (vão crescente) — agora a Decisões gruda na Pauta
   (gap fixo 14px) independente de quantas tarefas existam. Obs.: "Decisões anteriores" passou pra coluna esquerda
   (sob a Decisões) em vez de sob a Tarefas. Verificado no preview: gap Pauta↔Decisões = 14px, form de nova tarefa
