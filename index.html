@@ -2599,9 +2599,7 @@
               <button type="button" onclick="setQuickDate('m-date','hoje');_autoSaveEditField('date')" class="quick-date-btn">Hoje</button>
               <button type="button" onclick="setQuickDate('m-date','amanha');_autoSaveEditField('date')" class="quick-date-btn">Amanhã</button>
               <button type="button" onclick="setQuickDate('m-date','semana');_autoSaveEditField('date')" class="quick-date-btn">Próx. semana</button>
-              <button type="button" id="m-someday-btn" onclick="toggleSomedayFromEditModal()" class="quick-date-btn quick-date-someday" title="Sem urgência — vai pra aba Lembrete"><i class="ti ti-bookmark" style="font-size:11px"></i> Lembrete</button>
             </div>
-            <div id="m-someday-feedback" style="font-size:11px;color:var(--text3);padding-left:20px;display:none"></div>
           </div>
 
           <!-- Prioridade -->
@@ -3187,9 +3185,6 @@
             <button type="button" onclick="setQuickDate('inp-date','hoje')" class="quick-date-btn">Hoje</button>
             <button type="button" onclick="setQuickDate('inp-date','amanha')" class="quick-date-btn">Amanhã</button>
             <button type="button" onclick="setQuickDate('inp-date','semana')" class="quick-date-btn">Próxima semana</button>
-            <button type="button" onclick="setQuickDate('inp-date','someday')" class="quick-date-btn quick-date-someday" title="Sem urgência — vai pra aba Lembrete">
-              <i class="ti ti-bookmark" style="font-size:11px"></i> Lembrete
-            </button>
           </div>
           <div id="quick-date-feedback" style="font-size:11px;color:var(--text3);margin-top:6px;display:none"></div>
         </div>
@@ -4083,12 +4078,13 @@ async function load(){
     // v2 prazo-base (baseline p/ análise honesta): tarefas antigas com data e sem baseline
     // recebem o prazo atual como base (fallback — não recupera replanejamentos já feitos).
     tasks.forEach(t=>{ if(t.date && (t.prazoBase===undefined||t.prazoBase===null)) t.prazoBase=t.date; });
-    // GUILHERME V3 (mai/2026 BUGFIX): migração de tarefas com someday=true E data definida
-    // (estado inconsistente que existia por bug em changeDate). Se tem data válida, NÃO é someday.
+    // jun/2026: feature "Lembrete" (someday) REMOVIDA. Toda tarefa que estava em Lembrete
+    // volta a ser tarefa normal (sem data) — nada é apagado; reaparece em "Sem Prazo".
     let _migradasSomeday=0;
     tasks.forEach(t=>{
-      if(t.someday===true && t.date){
+      if(t.someday===true){
         t.someday=false;
+        if(t.inboxAutoMoved) t.inboxAutoMoved=false;
         _migradasSomeday++;
       }
     });
@@ -4111,7 +4107,7 @@ async function load(){
     if(_migradas>0 || _migradasSomeday>0 || _migradasCancelled>0 || _migradasEscopo>0){
       safeSetItem(LS_TASKS, JSON.stringify(tasks));
       if(window.DEBUG_MIGRATIONS&&_migradas>0) console.log(`[V3] Migração: ${_migradas} tarefa(s) sem createdAt receberam ${today}`);
-      if(window.DEBUG_MIGRATIONS&&_migradasSomeday>0) console.log(`[V3] Migração: ${_migradasSomeday} tarefa(s) com someday=true E data → corrigidas (someday=false)`);
+      if(window.DEBUG_MIGRATIONS&&_migradasSomeday>0) console.log(`[V3] Migração: ${_migradasSomeday} tarefa(s) em "Lembrete" → restauradas (feature removida)`);
       if(window.DEBUG_MIGRATIONS&&_migradasCancelled>0) console.log(`[V3] Migração: ${_migradasCancelled} tarefa(s) com cancelled=true → restauradas (feature removida)`);
       if(window.DEBUG_MIGRATIONS&&_migradasEscopo>0) console.log(`[GESTÃO] Migração: ${_migradasEscopo} tarefa(s) sem escopo → 'klain'`);
     }
@@ -9028,7 +9024,6 @@ function renderSidebar(){
     ${navItem('hoje','ti-sun','Hoje', {badge: hojeCount||null})}
     ${navItem('minhas-tarefas','ti-user-check','Minhas Tarefas')}
     ${navItem('entrada','ti-inbox','Organizar', {badgeClass: entradaCount>=ENTRADA_ALERTA?'danger':'', extraCls:'entrada-item'})}
-    ${navItem('someday','ti-bookmark','Lembrete', {extraCls:'someday-item'})}
     ${_mostraEquipe ? navItem('equipe','ti-users-group','Equipe', {badge: equipeCount||null}) : ''}
   </div>`;
 
@@ -13704,7 +13699,6 @@ function abrirModalRevisaoAtrasadas(atrasadas){
         <button onclick="revAcao(${t.id},'hoje')" class="rev-btn rev-btn-prim">Hoje</button>
         <button onclick="revAcao(${t.id},'amanha')" class="rev-btn">Amanhã</button>
         <button onclick="revAcao(${t.id},'semana')" class="rev-btn">Esta semana</button>
-        <button onclick="revAcao(${t.id},'someday')" class="rev-btn">💤 Lembrete</button>
         <button onclick="revAcao(${t.id},'cancelar')" class="rev-btn rev-btn-danger">Cancelar tarefa</button>
       </div>
     </div>`;
@@ -13883,7 +13877,7 @@ function _atualizarTabHeaderActions(){
     const seletor = rotinas.length ? `<div style="display:flex;gap:3px;background:var(--bg2);padding:3px;border-radius:10px;margin-right:6px">${_rvOpts.map(v=>`<button onclick="setRotinasView('${v.k}')" title="Visualizar: ${v.l}" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:7px 11px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;${_rotinasView===v.k?'background:var(--blue-mid);color:#fff':'background:transparent;color:var(--text2)'}"><i class="ti ${v.i}"></i>${v.l}</button>`).join('')}</div>` : '';
     html=`${seletor}<button onclick="openRotinaModal()" style="${pri}"><i class="ti ti-plus"></i> Nova rotina</button>`;
   } else if(currentTab==='equipe'){
-    html=`<div style="display:flex;align-items:center;gap:8px">
+    html = (typeof _equipeView!=='undefined' && _equipeView==='uso') ? '' : `<div style="display:flex;align-items:center;gap:8px">
       <button id="equipe-config-btn" onclick="toggleEquipeConfig(event)" title="Filtros e opções" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 11px;cursor:pointer;color:var(--text2);font-size:15px;line-height:1;display:inline-flex;align-items:center" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-dots-vertical"></i></button>
     </div>`;
   } else if(currentTab==='agenda'){
@@ -14392,6 +14386,10 @@ function setEquipeAgrupar(v){ _equipeAgrupar=v; safeSetItem('taskflow_equipe_agr
 function setEquipeOrdenar(v){ _equipeOrdenar=v; safeSetItem('taskflow_equipe_ordenar',v); renderEquipe(); }
 function toggleEquipeExibir(k){ _equipeExibir[k]=!_equipeExibir[k]; safeSetItem('taskflow_equipe_exibir',JSON.stringify(_equipeExibir)); renderEquipe(); }
 
+// Sub-abas da Equipe: 'tarefas' (acompanhamento do dia) | 'uso' (engajamento no gerenciador)
+let _equipeView = (function(){ try{ return safeLSGet('taskflow_equipe_view')||'tarefas'; }catch{ return 'tarefas'; } })();
+function setEquipeView(v){ _equipeView=v; safeSetItem('taskflow_equipe_view',v); render(); }
+
 function _fecharEquipeConfig(){ const p=document.getElementById('equipe-config-pop'); if(p)p.remove(); document.removeEventListener('click',_fecharEquipeConfig); }
 function toggleEquipeConfig(ev){
   ev && ev.stopPropagation();
@@ -14694,15 +14692,82 @@ function renderAnalise(){
   container.innerHTML=`<div style="max-width:1040px;margin:0 auto;padding-bottom:60px">${_analiseChrome(body)}</div>`;
 }
 
+// ── Sub-aba "Uso da equipe": resumo por pessoa pra ver quem está usando o gerenciador.
+// 3 números simples por pessoa: tarefas não concluídas, tarefas que ela solicitou, e atrasadas.
+function _equipeUsoStats(){
+  return people.map(p=>{
+    let naoConcl=0, solic=0, atras=0;
+    tasks.forEach(t=>{
+      if(t.solicitante===p.id) solic++;
+      if(t.executor===p.id && !t.done){
+        naoConcl++;
+        if(t.date && t.date<today) atras++;
+      }
+    });
+    return {p, naoConcl, solic, atras, total:naoConcl+solic};
+  // ativos no topo (mais atividade), inativos por último; empate = ordem alfabética
+  }).sort((a,b)=> b.total-a.total || (a.p.name||'').localeCompare(b.p.name||'','pt-BR'));
+}
+function _equipeUsoHTML(){
+  if(!people.length){
+    return '<div style="text-align:center;padding:50px 20px;color:var(--text3)">Nenhuma pessoa cadastrada ainda. Cadastre na aba <b>Pessoas</b>.</div>';
+  }
+  const linhas=_equipeUsoStats();
+  const ativos=linhas.filter(l=>l.total>0).length;
+  const _th=(l,al)=>`<th style="padding:11px 14px;font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;text-align:${al}">${l}</th>`;
+  const _num=(n,cor)=>`<td style="text-align:center;padding:11px 14px;font-weight:700;font-variant-numeric:tabular-nums;color:${cor}">${n}</td>`;
+  const rows=linhas.map(l=>{
+    const inativo=l.total===0;
+    const inic=(l.p.name||'?').trim().split(/\s+/).map(w=>w[0]||'').slice(0,2).join('').toUpperCase();
+    return `<tr style="border-top:1px solid var(--border);${inativo?'opacity:.5':''}">
+      <td style="padding:10px 14px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:30px;height:30px;border-radius:50%;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);flex-shrink:0">${inic}</div>
+          <div style="min-width:0">
+            <div style="font-weight:600;color:var(--text)">${escapeHTML(l.p.name||'—')}</div>
+            ${l.p.setor?`<div style="font-size:11px;color:var(--text3)">${escapeHTML(l.p.setor)}</div>`:''}
+          </div>
+        </div>
+      </td>
+      ${_num(l.naoConcl, l.naoConcl?'var(--text)':'var(--text3)')}
+      ${_num(l.solic, l.solic?'var(--text)':'var(--text3)')}
+      ${_num(l.atras, l.atras?'var(--danger)':'var(--text3)')}
+    </tr>`;
+  }).join('');
+  return `
+  <div style="font-size:13px;color:var(--text3);margin-bottom:12px"><i class="ti ti-info-circle" style="font-size:13px"></i> ${ativos} de ${people.length} pessoas com atividade. Quem aparece esmaecido ainda não tem tarefas — provavelmente não está usando.</div>
+  <div style="overflow:hidden;border:1px solid var(--border);border-radius:12px;background:var(--card)">
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <thead><tr style="background:var(--bg2)">
+          ${_th('Pessoa','left')}${_th('Não concluídas','center')}${_th('Solicitadas','center')}${_th('Atrasadas','center')}
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
 function renderEquipe(){
   const container=document.getElementById('task-container');
   if(!container) return;
+
+  // Seletor de sub-abas (Tarefas / Uso da equipe) — aparece no topo das duas visões.
+  const _evOpts=[{k:'tarefas',i:'ti-list-check',l:'Tarefas'},{k:'uso',i:'ti-chart-bar',l:'Uso da equipe'}];
+  const seletorEquipe=`<div style="display:flex;gap:3px;background:var(--bg2);padding:3px;border-radius:10px;width:fit-content;margin-bottom:16px">${_evOpts.map(v=>`<button onclick="setEquipeView('${v.k}')" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:7px 13px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;${_equipeView===v.k?'background:var(--blue-mid);color:#fff':'background:transparent;color:var(--text2)'}"><i class="ti ${v.i}"></i>${v.l}</button>`).join('')}</div>`;
+
+  // Sub-aba "Uso": independe de gerenciar equipe — mostra todas as pessoas.
+  if(_equipeView==='uso'){
+    container.innerHTML = seletorEquipe + _equipeUsoHTML();
+    try{ _atualizarTabHeaderActions(); }catch{}
+    return;
+  }
 
   const cargosGer = getSetoresGerenciados(CURRENT_USER_ID);
   const equipe = getEquipeGerenciada(CURRENT_USER_ID);
 
   if(!equipe.length){
-    container.innerHTML=`<div style="text-align:center;padding:60px 20px;color:var(--text3)">
+    container.innerHTML=seletorEquipe+`<div style="text-align:center;padding:60px 20px;color:var(--text3)">
       <i class="ti ti-users-group" style="font-size:42px;display:block;margin-bottom:12px;opacity:.3"></i>
       Você ainda não gerencia nenhuma equipe com membros.<br>
       <span style="font-size:13px">Defina gestores/diretores na aba <b>Pessoas</b> → botão <b>Gerir equipe</b> em cada departamento.</span>
@@ -14797,7 +14862,7 @@ function renderEquipe(){
 
   const privacidadeHTML=`<div style="font-size:11px;color:var(--text3);text-align:center;margin-top:20px;padding:10px;background:var(--bg2);border-radius:8px"><i class="ti ti-lock" style="font-size:12px"></i> Tarefas marcadas como <b>pessoais</b> pela equipe não aparecem aqui — apenas tarefas Klain.</div>`;
 
-  container.innerHTML = filtrosHTML + listaHTML + privacidadeHTML;
+  container.innerHTML = seletorEquipe + filtrosHTML + listaHTML + privacidadeHTML;
   try{ _atualizarTabHeaderActions(); }catch{}
 }
 
@@ -21763,8 +21828,8 @@ document.addEventListener('click',e=>{
 // ── GUILHERME V3 (mai/2026): ENVELHECIMENTO DA ENTRADA ──────────────────────
 // Roda 1x no carregamento (após load(), com tasks já preenchido). Itens sem executor
 // que ficam parados na Entrada:
-//   • 7-13 dias  → cutucada (notificação, no máx. 1x por dia)
-//   • 14+ dias   → rebaixados pra "Lembrete" automaticamente (marcados; NUNCA apagados)
+//   • 7+ dias  → cutucada (notificação, no máx. 1x por dia)
+// (jun/2026: rebaixamento aos 14 dias → "Lembrete" removido junto com a feature.)
 // O indicador visual "parado há Xd" no card é renderizado em taskHTML (3d âmbar, 7d vermelho).
 const LS_INBOX_NUDGE='taskflow_inbox_nudge_date';
 function _idadeEntrada(t){
@@ -21774,21 +21839,8 @@ function _idadeEntrada(t){
 }
 function processarEnvelhecimentoEntrada(){
   if(!Array.isArray(tasks) || !tasks.length) return;
-  // 1) Rebaixamento automático aos 14 dias
-  let rebaixados=0;
-  tasks.filter(t=>!t.done && !t.executor && !t.someday).forEach(t=>{
-    if(_idadeEntrada(t) >= 14){
-      t.someday=true;
-      t.inboxAutoMoved=true;
-      t.inboxAutoMovedAt=today;
-      rebaixados++;
-    }
-  });
-  if(rebaixados>0){
-    safeSetItem(LS_TASKS, JSON.stringify(tasks)); // mesmo padrão do save em lote
-    _criarNotifEntrada('rebaixou', rebaixados);
-  }
-  // 2) Cutucada dos 7 dias (no máximo 1x por dia)
+  // jun/2026: rebaixamento automático aos 14 dias → "Lembrete" REMOVIDO junto com a feature.
+  // Cutucada dos 7 dias (no máximo 1x por dia)
   const parados7=tasks.filter(t=>!t.done && !t.executor && !t.someday && _idadeEntrada(t)>=7).length;
   if(parados7>0){
     let ultima=null;
