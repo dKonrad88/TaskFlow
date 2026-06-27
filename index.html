@@ -3982,6 +3982,8 @@ function aplicarTema(id){
 }
 const LS_MIGR_PROJ_REM='taskflow_migracao_projects_removida';
 const LS_SUGESTOES='taskflow_sugestoes';
+const LS_IDEIAS_NOTIFS='taskflow_ideias_notifs'; // notificações do Mural de Ideias (por usuário simulado)
+const LS_IDEIAS_EU='taskflow_ideias_eu';         // usuário "logado" simulado no Mural (protótipo)
 const LS_MACRO_COLAPSADOS='taskflow_macro_colapsados';
 const LS_REUN_GRUPOS_COLAPSADOS='taskflow_reun_grupos_colapsados';
 
@@ -8835,10 +8837,16 @@ function _fichaExemploPaoDeMel(){
 
 // Lixeira é compartilhada por todas as áreas — rodapé fixo da sidebar de cada hub.
 function irParaLixeira(){ if(typeof setTab==='function') setTab('lixeira', null); }
+function irParaMural(){ if(typeof setTab==='function') setTab('mural', null); }
 function _sbLixeiraFooter(){
-  const at = (typeof currentTab!=='undefined' && currentTab==='lixeira');
+  const atL = (typeof currentTab!=='undefined' && currentTab==='lixeira');
+  const atM = (typeof currentTab!=='undefined' && currentTab==='mural');
+  const nlid = (typeof _ideiaNotifNaoLidas==='function') ? _ideiaNotifNaoLidas() : 0;
   return `<div style="padding:6px 8px 10px; margin-top:8px; border-top:1px solid var(--border);">
-    <button class="sbnav-item" onclick="irParaLixeira()" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border:none; border-radius:9px; font-size:13px; font-weight:600; color:${at?'var(--blue-mid)':'var(--text2)'}; background:${at?'color-mix(in srgb, var(--blue-mid) 12%, transparent)':'none'}; cursor:pointer; width:100%; font-family:inherit;" ${at?'':'onmouseover="this.style.background=\'var(--bg2)\'" onmouseout="this.style.background=\'none\'"'}>
+    <button class="sbnav-item" onclick="irParaMural()" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border:none; border-radius:9px; font-size:13px; font-weight:600; color:${atM?'var(--blue-mid)':'var(--text2)'}; background:${atM?'color-mix(in srgb, var(--blue-mid) 12%, transparent)':'none'}; cursor:pointer; width:100%; font-family:inherit;" ${atM?'':'onmouseover="this.style.background=\'var(--bg2)\'" onmouseout="this.style.background=\'none\'"'}>
+      <i class="ti ti-bulb"></i> <span>Mural de Ideias</span>${nlid?`<span class="sbnav-badge danger" style="margin-left:auto;">${nlid}</span>`:''}
+    </button>
+    <button class="sbnav-item" onclick="irParaLixeira()" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border:none; border-radius:9px; font-size:13px; font-weight:600; color:${atL?'var(--blue-mid)':'var(--text2)'}; background:${atL?'color-mix(in srgb, var(--blue-mid) 12%, transparent)':'none'}; cursor:pointer; width:100%; font-family:inherit;" ${atL?'':'onmouseover="this.style.background=\'var(--bg2)\'" onmouseout="this.style.background=\'none\'"'}>
       <i class="ti ti-trash"></i> <span>Lixeira</span>
     </button>
   </div>`;
@@ -10799,6 +10807,208 @@ async function enviarSugestaoUI(){
   } else {
     if(feedback){feedback.textContent='❌ Erro ao enviar. Tente novamente.';feedback.style.color='var(--danger)';}
   }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MURAL DE IDEIAS (upvote board) — PROTÓTIPO de UX/regra de negócio p/ o
+// Guilherme implementar de verdade no backend da Empresa. Reaproveita a
+// chave LS_SUGESTOES (mesma fonte do form "Sugestão e Melhoria" da Ajuda),
+// estendendo o item: { id, titulo, descricao, tipo, status, autorId,
+// criadoEm, votos:[userId], comentarios:[{id,autorId,texto,data}] }.
+// Identidade é SIMULADA (na Empresa = login de cada um). Dados descartáveis.
+// REGRAS: 1 voto/pessoa/ideia (toggle); só admin (Diego) muda status; autor
+// ou admin excluem; notificação em comentário e mudança de status (voto NÃO
+// notifica, p/ evitar inundação).
+// ════════════════════════════════════════════════════════════════════
+const IDEIA_TIPO={ feature:{l:'Funcionalidade',c:'#185FA5',i:'ti-sparkles'}, melhoria:{l:'Melhoria',c:'#3B6D11',i:'ti-arrow-up-circle'}, correcao:{l:'Correção',c:'#A32D2D',i:'ti-bug'} };
+const IDEIA_STATUS={ nova:{l:'Nova',c:'#7a7a7a'}, analise:{l:'Em análise',c:'#185FA5'}, planejada:{l:'Planejada',c:'#B47C0A'}, feita:{l:'Feita',c:'#3B6D11'}, recusada:{l:'Recusada',c:'#A32D2D'} };
+let _ideiaEu = ((typeof safeLSGet==='function' && safeLSGet(LS_IDEIAS_EU)) || (typeof CURRENT_USER_ID!=='undefined'?CURRENT_USER_ID:''));
+let _ideiaSort='votos';   // 'votos' | 'recentes'
+let _ideiaFStatus='';     // '' = todos
+let _ideiaFTipo='';
+
+function _ideiaMapStatus(s){ return (s && IDEIA_STATUS[s]) ? s : 'nova'; }
+function _ideiaMapCat(c){ c=(c||'').toString().toLowerCase(); if(c.indexOf('func')>=0) return 'feature'; if(c.indexOf('bug')>=0||c.indexOf('corre')>=0||c.indexOf('erro')>=0) return 'correcao'; return 'melhoria'; }
+function _ideiaNorm(s){ s=s||{}; return { id:s.id, titulo:s.titulo||'', descricao:s.descricao||'', tipo:(s.tipo&&IDEIA_TIPO[s.tipo])?s.tipo:_ideiaMapCat(s.categoria), categoria:s.categoria, status:_ideiaMapStatus(s.status), autorId:s.autorId||null, criadoEm:s.criadoEm||'', votos:Array.isArray(s.votos)?s.votos:[], comentarios:Array.isArray(s.comentarios)?s.comentarios:[] }; }
+function _ideiasAll(){ const a=safeJSON(LS_SUGESTOES,[]); return Array.isArray(a)?a.map(_ideiaNorm):[]; }
+function _ideiaMut(id, fn){ const a=safeJSON(LS_SUGESTOES,[]); if(!Array.isArray(a)) return; const i=a.findIndex(s=>String(s.id)===String(id)); if(i<0) return; const n=_ideiaNorm(a[i]); fn(n); a[i]=n; safeSetItem(LS_SUGESTOES, JSON.stringify(a)); }
+function _ideiaNome(id){ const p=(typeof _personById==='function')?_personById(id):null; return p?p.name:'—'; }
+function _ideiaEhAdmin(){ return _ideiaEu===(typeof CURRENT_USER_ID!=='undefined'?CURRENT_USER_ID:'__'); }
+
+// Notificações (por usuário simulado)
+function _ideiaNotifsObj(){ const o=safeJSON(LS_IDEIAS_NOTIFS,{}); return (o&&typeof o==='object'&&!Array.isArray(o))?o:{}; }
+function _ideiaNotif(userId, texto, ideiaId){ if(!userId) return; const o=_ideiaNotifsObj(); if(!Array.isArray(o[userId])) o[userId]=[]; o[userId].unshift({ id:_mntId('ntf'), texto, ideiaId, data:new Date().toISOString(), lida:false }); o[userId]=o[userId].slice(0,50); safeSetItem(LS_IDEIAS_NOTIFS, JSON.stringify(o)); }
+function _ideiaNotifsEu(){ const o=_ideiaNotifsObj(); return Array.isArray(o[_ideiaEu])?o[_ideiaEu]:[]; }
+function _ideiaNotifNaoLidas(){ return _ideiaNotifsEu().filter(n=>!n.lida).length; }
+function _ideiaNotifMarcarLidas(){ const o=_ideiaNotifsObj(); (o[_ideiaEu]||[]).forEach(n=>n.lida=true); safeSetItem(LS_IDEIAS_NOTIFS, JSON.stringify(o)); }
+function _ideiaToggleNotifs(){ window._ideiaNotifOpen=!window._ideiaNotifOpen; if(window._ideiaNotifOpen) _ideiaNotifMarcarLidas(); renderMural(); }
+
+// Ações
+function _ideiaSetEu(id){ _ideiaEu=id; try{ if(typeof safeSetItem==='function') safeSetItem(LS_IDEIAS_EU, id); }catch(_){ } window._ideiaNotifOpen=false; renderMural(); if(typeof renderSidebar==='function') renderSidebar(); }
+function _ideiaSetSort(v){ _ideiaSort=v; renderMural(); }
+function _ideiaSetF(which,val){ if(which==='status') _ideiaFStatus=val; else _ideiaFTipo=val; renderMural(); }
+function _ideiaVotar(id){ _ideiaMut(id, s=>{ const i=s.votos.indexOf(_ideiaEu); if(i>=0) s.votos.splice(i,1); else s.votos.push(_ideiaEu); }); _ideiaRefresh(); }
+function _ideiaComentar(id){ const ta=document.getElementById('ideia-coment-input'); if(!ta) return; const txt=(ta.value||'').trim(); if(!txt){ ta.focus(); return; } _ideiaMut(id, s=>{ s.comentarios.push({ id:_mntId('cmt'), autorId:_ideiaEu, texto:txt, data:new Date().toISOString() }); if(s.autorId && s.autorId!==_ideiaEu) _ideiaNotif(s.autorId, `💬 ${_ideiaNome(_ideiaEu)} comentou em "${s.titulo}"`, s.id); }); _ideiaRefresh(); }
+function _ideiaSetStatus(id, st){ _ideiaMut(id, s=>{ const old=s.status; s.status=st; if(s.autorId && s.autorId!==_ideiaEu && old!==st) _ideiaNotif(s.autorId, `📌 Sua ideia "${s.titulo}" agora está: ${(IDEIA_STATUS[st]||{}).l||st}`, s.id); }); _ideiaRefresh(); if(typeof toast==='function') toast('Status atualizado'); }
+function _ideiaExcluir(id){ const s=_ideiasAll().find(x=>String(x.id)===String(id)); if(!s) return; if(!(_ideiaEhAdmin()||s.autorId===_ideiaEu)){ if(typeof toast==='function') toast('Só o autor ou o admin podem excluir'); return; } const a=safeJSON(LS_SUGESTOES,[]).filter(x=>String(x.id)!==String(id)); safeSetItem(LS_SUGESTOES, JSON.stringify(a)); _ideiaFecharModal(); renderMural(); if(typeof toast==='function') toast('Ideia removida'); }
+function _ideiaSalvarNova(){ const t=(document.getElementById('ideia-novo-titulo')?.value||'').trim(); const d=(document.getElementById('ideia-novo-desc')?.value||'').trim(); const tp=document.getElementById('ideia-novo-tipo')?.value||'melhoria'; if(!t){ document.getElementById('ideia-novo-titulo')?.focus(); return; } let a=safeJSON(LS_SUGESTOES,[]); if(!Array.isArray(a)) a=[]; a.unshift({ id:_mntId('idea'), titulo:t, descricao:d, tipo:tp, categoria:tp, status:'nova', autorId:_ideiaEu, criadoEm:new Date().toISOString(), votos:[], comentarios:[] }); safeSetItem(LS_SUGESTOES, JSON.stringify(a)); _ideiaFecharModal(); renderMural(); if(typeof toast==='function') toast('💡 Ideia publicada!'); }
+
+function _ideiaFecharModal(){ const m=document.getElementById('ideia-modal'); if(m) m.remove(); window._ideiaModalId=null; }
+function _ideiaRefresh(){ if(typeof currentTab!=='undefined' && currentTab==='mural') renderMural(); if(window._ideiaModalId) _ideiaAbrir(window._ideiaModalId); }
+
+function _ideiaNova(){
+  _ideiaFecharModal();
+  const ov=document.createElement('div'); ov.id='ideia-modal';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9200;display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.onclick=e=>{ if(e.target===ov) _ideiaFecharModal(); };
+  const ist='width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;';
+  const lbl='font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:5px;';
+  ov.innerHTML=`<div style="background:var(--card);border-radius:14px;width:100%;max-width:520px;box-shadow:0 24px 60px rgba(0,0,0,.35);">
+    <div style="padding:15px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="margin:0;font-size:15px;color:var(--text);"><i class="ti ti-bulb" style="color:var(--amber);"></i> Nova ideia</h3>
+      <button onclick="_ideiaFecharModal()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px;"><i class="ti ti-x"></i></button>
+    </div>
+    <div style="padding:18px 20px;display:flex;flex-direction:column;gap:12px;">
+      <div><label style="${lbl}">Título *</label><input id="ideia-novo-titulo" placeholder="Resuma a ideia em uma linha" style="${ist}"></div>
+      <div><label style="${lbl}">Descrição</label><textarea id="ideia-novo-desc" rows="4" placeholder="Explique o problema/ideia e por que ajudaria" style="${ist} resize:vertical;"></textarea></div>
+      <div><label style="${lbl}">Tipo</label><select id="ideia-novo-tipo" style="${ist} cursor:pointer;">${Object.keys(IDEIA_TIPO).map(k=>`<option value="${k}" ${k==='melhoria'?'selected':''}>${IDEIA_TIPO[k].l}</option>`).join('')}</select></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;">
+        <button onclick="_ideiaFecharModal()" style="background:none;border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancelar</button>
+        <button onclick="_ideiaSalvarNova()" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Publicar</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  setTimeout(()=>{ const el=document.getElementById('ideia-novo-titulo'); if(el) el.focus(); },50);
+}
+
+function _ideiaAbrir(id){
+  const s=_ideiasAll().find(x=>String(x.id)===String(id)); if(!s) return;
+  window._ideiaModalId=id; window._ideiaNotifOpen=false;
+  _ideiaFecharModal();
+  const tp=IDEIA_TIPO[s.tipo]||IDEIA_TIPO.melhoria, st=IDEIA_STATUS[s.status]||IDEIA_STATUS.nova;
+  const voted=s.votos.indexOf(_ideiaEu)>=0;
+  const podeAdmin=_ideiaEhAdmin();
+  const podeExcluir=podeAdmin||s.autorId===_ideiaEu;
+  const comentsHTML = s.comentarios.length ? s.comentarios.map(c=>`
+    <div style="display:flex;gap:9px;padding:9px 0;border-top:1px solid var(--border);">
+      <div style="width:28px;height:28px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);flex-shrink:0;">${escapeHTML((_ideiaNome(c.autorId)||'?').slice(0,1).toUpperCase())}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;"><b style="color:var(--text);">${escapeHTML(_ideiaNome(c.autorId))}</b> <span style="color:var(--text3);">· ${c.data?new Date(c.data).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''}</span></div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.45;margin-top:2px;white-space:pre-wrap;">${escapeHTML(c.texto)}</div>
+      </div>
+    </div>`).join('') : `<div style="font-size:12.5px;color:var(--text3);padding:10px 0;">Sem comentários ainda. Seja o primeiro.</div>`;
+  const selStatus='background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:700;color:var(--text);font-family:inherit;cursor:pointer;';
+  const statusCtrl = podeAdmin
+    ? `<select onchange="_ideiaSetStatus('${s.id}',this.value)" style="${selStatus}">${Object.keys(IDEIA_STATUS).map(k=>`<option value="${k}" ${s.status===k?'selected':''}>${IDEIA_STATUS[k].l}</option>`).join('')}</select>`
+    : `<span style="font-size:11.5px;font-weight:700;color:${st.c};border:1px solid ${st.c};padding:2px 9px;border-radius:20px;">${st.l}</span>`;
+  const ov=document.createElement('div'); ov.id='ideia-modal';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9200;display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.onclick=e=>{ if(e.target===ov) _ideiaFecharModal(); };
+  ov.innerHTML=`<div style="background:var(--card);border-radius:14px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.35);">
+    <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--card);z-index:1;">
+      <span style="font-size:11px;font-weight:700;color:${tp.c};background:color-mix(in srgb,${tp.c} 13%,transparent);padding:3px 10px;border-radius:20px;"><i class="ti ${tp.i}"></i> ${tp.l}</span>
+      <button onclick="_ideiaFecharModal()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px;"><i class="ti ti-x"></i></button>
+    </div>
+    <div style="padding:18px 20px;">
+      <div style="display:flex;gap:14px;align-items:flex-start;">
+        <button onclick="_ideiaVotar('${s.id}')" title="${voted?'Remover voto':'Votar'}" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;width:54px;padding:8px 0;border-radius:10px;border:1px solid ${voted?'var(--blue-mid)':'var(--border)'};background:${voted?'color-mix(in srgb,var(--blue-mid) 14%,transparent)':'var(--bg2)'};color:${voted?'var(--blue-mid)':'var(--text2)'};cursor:pointer;font-family:inherit;">
+          <i class="ti ti-chevron-up" style="font-size:20px;"></i><span style="font-size:17px;font-weight:800;">${s.votos.length}</span>
+        </button>
+        <div style="flex:1;min-width:0;">
+          <h3 style="margin:0 0 7px;font-size:17px;color:var(--text);">${escapeHTML(s.titulo)}</h3>
+          <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:10px;">
+            ${statusCtrl}
+            <span style="font-size:11.5px;color:var(--text3);">por ${escapeHTML(_ideiaNome(s.autorId))}${s.criadoEm?' · '+new Date(s.criadoEm).toLocaleDateString('pt-BR'):''}</span>
+          </div>
+          ${s.descricao?`<div style="font-size:13.5px;color:var(--text2);line-height:1.5;white-space:pre-wrap;">${escapeHTML(s.descricao)}</div>`:''}
+        </div>
+      </div>
+      <div style="margin-top:20px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:2px;">Comentários (${s.comentarios.length})</div>
+        ${comentsHTML}
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <textarea id="ideia-coment-input" rows="1" placeholder="Escreva um comentário..." style="flex:1;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:13px;color:var(--text);font-family:inherit;resize:vertical;"></textarea>
+          <button onclick="_ideiaComentar('${s.id}')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:0 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Comentar</button>
+        </div>
+      </div>
+      ${podeExcluir?`<div style="margin-top:16px;text-align:right;"><button onclick="_ideiaExcluir('${s.id}')" style="background:none;border:1px solid var(--border);color:var(--danger);border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;"><i class="ti ti-trash"></i> Excluir</button></div>`:''}
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+
+function renderMural(){
+  const main=document.getElementById('task-container'); if(!main) return;
+  let list=_ideiasAll();
+  if(_ideiaFStatus) list=list.filter(s=>s.status===_ideiaFStatus);
+  if(_ideiaFTipo) list=list.filter(s=>s.tipo===_ideiaFTipo);
+  if(_ideiaSort==='recentes') list.sort((a,b)=>String(b.criadoEm).localeCompare(String(a.criadoEm)));
+  else list.sort((a,b)=>(b.votos.length-a.votos.length)||String(b.criadoEm).localeCompare(String(a.criadoEm)));
+
+  const naoLidas=_ideiaNotifNaoLidas();
+  const peopleOpts=(people||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(p=>`<option value="${p.id}" ${p.id===_ideiaEu?'selected':''}>${escapeHTML(p.name)}${p.setor?' — '+escapeHTML(p.setor):''}</option>`).join('');
+  const selF='background:var(--card);border:1px solid var(--border);border-radius:8px;padding:7px 11px;font-size:12.5px;color:var(--text);font-family:inherit;cursor:pointer;';
+  const optStatus=`<option value="">Todos os status</option>`+Object.keys(IDEIA_STATUS).map(k=>`<option value="${k}" ${_ideiaFStatus===k?'selected':''}>${IDEIA_STATUS[k].l}</option>`).join('');
+  const optTipo=`<option value="">Todos os tipos</option>`+Object.keys(IDEIA_TIPO).map(k=>`<option value="${k}" ${_ideiaFTipo===k?'selected':''}>${IDEIA_TIPO[k].l}</option>`).join('');
+
+  const notifs=_ideiaNotifsEu();
+  const notifPanel = window._ideiaNotifOpen ? `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:6px;margin-bottom:14px;">
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;padding:5px 9px;">Notificações</div>
+    ${notifs.length?notifs.slice(0,20).map(n=>`<button onclick="${n.ideiaId?`_ideiaAbrir('${n.ideiaId}')`:'_ideiaToggleNotifs()'}" style="display:block;width:100%;text-align:left;background:none;border:none;border-top:1px solid var(--border);padding:9px;font-size:12.5px;color:var(--text2);cursor:pointer;font-family:inherit;">${escapeHTML(n.texto)} <span style="color:var(--text3);font-size:11px;">· ${n.data?new Date(n.data).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}):''}</span></button>`).join(''):`<div style="font-size:12px;color:var(--text3);padding:10px 9px;">Sem novidades.</div>`}
+  </div>` : '';
+
+  const card=s=>{
+    const tp=IDEIA_TIPO[s.tipo]||IDEIA_TIPO.melhoria, st=IDEIA_STATUS[s.status]||IDEIA_STATUS.nova;
+    const voted=s.votos.indexOf(_ideiaEu)>=0;
+    const dt=s.criadoEm?new Date(s.criadoEm).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}):'';
+    return `<div onclick="_ideiaAbrir('${s.id}')" style="display:flex;gap:14px;align-items:flex-start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)'">
+      <button onclick="event.stopPropagation();_ideiaVotar('${s.id}')" title="${voted?'Remover voto':'Votar'}" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:1px;width:48px;padding:7px 0;border-radius:9px;border:1px solid ${voted?'var(--blue-mid)':'var(--border)'};background:${voted?'color-mix(in srgb,var(--blue-mid) 14%,transparent)':'var(--bg2)'};color:${voted?'var(--blue-mid)':'var(--text2)'};cursor:pointer;font-family:inherit;">
+        <i class="ti ti-chevron-up" style="font-size:18px;"></i><span style="font-size:15px;font-weight:800;">${s.votos.length}</span>
+      </button>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14.5px;font-weight:700;color:var(--text);margin-bottom:3px;">${escapeHTML(s.titulo)||'(sem título)'}</div>
+        ${s.descricao?`<div style="font-size:12.5px;color:var(--text2);line-height:1.45;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHTML(s.descricao)}</div>`:''}
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:11px;font-weight:700;color:${tp.c};background:color-mix(in srgb,${tp.c} 12%,transparent);padding:2px 8px;border-radius:20px;"><i class="ti ${tp.i}"></i> ${tp.l}</span>
+          <span style="font-size:11px;font-weight:700;color:${st.c};border:1px solid ${st.c};padding:1px 8px;border-radius:20px;">${st.l}</span>
+          <span style="font-size:11px;color:var(--text3);">${escapeHTML(_ideiaNome(s.autorId))}${dt?' · '+dt:''}</span>
+          ${s.comentarios.length?`<span style="font-size:11px;color:var(--text3);"><i class="ti ti-message-circle"></i> ${s.comentarios.length}</span>`:''}
+        </div>
+      </div>
+    </div>`;
+  };
+
+  main.innerHTML=`<div style="padding:20px 4px 60px;max-width:840px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px;">
+      <div>
+        <h1 style="font-size:22px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:9px;"><i class="ti ti-bulb" style="color:var(--amber);"></i> Mural de Ideias</h1>
+        <div style="font-size:13px;color:var(--text3);margin-top:3px;">Sugira melhorias e vote nas ideias da equipe.</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button onclick="_ideiaToggleNotifs()" title="Notificações" style="position:relative;width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:${window._ideiaNotifOpen?'var(--bg2)':'var(--card)'};color:var(--text2);cursor:pointer;font-size:17px;"><i class="ti ti-bell"></i>${naoLidas?`<span style="position:absolute;top:-5px;right:-5px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 3px;box-sizing:border-box;">${naoLidas}</span>`:''}</button>
+        <button onclick="_ideiaNova()" style="background:var(--blue-mid);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;"><i class="ti ti-plus"></i> Sugerir</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin:10px 0 14px;">
+      <span style="font-size:12px;color:var(--text3);"><i class="ti ti-user-circle"></i> Você está como:</span>
+      <select onchange="_ideiaSetEu(this.value)" style="background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:5px 9px;font-size:12.5px;color:var(--text);font-family:inherit;cursor:pointer;">${peopleOpts}</select>
+      ${(typeof _hint==='function')?_hint('Simulação de identidade só no protótipo. No sistema da Empresa, cada um já entra com o próprio login corporativo.'):''}
+    </div>
+    ${notifPanel}
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+      <div style="display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+        <button onclick="_ideiaSetSort('votos')" style="border:none;padding:7px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;background:${_ideiaSort==='votos'?'var(--blue-mid)':'var(--card)'};color:${_ideiaSort==='votos'?'#fff':'var(--text2)'};">Mais votadas</button>
+        <button onclick="_ideiaSetSort('recentes')" style="border:none;border-left:1px solid var(--border);padding:7px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;background:${_ideiaSort==='recentes'?'var(--blue-mid)':'var(--card)'};color:${_ideiaSort==='recentes'?'#fff':'var(--text2)'};">Recentes</button>
+      </div>
+      <select onchange="_ideiaSetF('status',this.value)" style="${selF}">${optStatus}</select>
+      <select onchange="_ideiaSetF('tipo',this.value)" style="${selF}">${optTipo}</select>
+      <span style="font-size:12px;color:var(--text3);margin-left:auto;">${list.length} ideia${list.length===1?'':'s'}</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      ${list.length?list.map(card).join(''):`<div style="text-align:center;padding:50px 20px;color:var(--text3);"><i class="ti ti-bulb-off" style="font-size:34px;"></i><div style="margin-top:10px;font-size:14px;">Nenhuma ideia ainda. Clique em <b>Sugerir</b> pra começar.</div></div>`}
+    </div>
+  </div>`;
 }
 
 function toggleAjuda(id){
@@ -15052,6 +15262,7 @@ function render(){
   if(currentTab==='projetos-pro'){renderProjetosPro();return;}
   if(currentTab==='reunioes'){renderReunioes();return;}
   if(currentTab==='lixeira'){renderLixeira();return;}
+  if(currentTab==='mural'){renderMural();return;}
   if(currentTab==='ajuda'){renderAjuda();return;}
   if(currentTab==='configuracoes'){renderConfiguracoes();return;}
   if(currentTab==='agenda'){renderAgenda();return;}
