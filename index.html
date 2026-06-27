@@ -9012,6 +9012,9 @@ function renderSidebar(){
   // GUILHERME V3: contagem de tarefas "Lembrete"
   const somedayCount = tasks.filter(t=>!t.done && t.someday).length;
 
+  // Solicitadas: badge = confirmações aguardando o double-check do solicitante (eu).
+  const _solicConfirmCount = (typeof _solicConfirmacoes==='function') ? _solicConfirmacoes().length : 0;
+
   // GESTÃO DE EQUIPE: contagem de tarefas Klain da equipe gerenciada (não concluídas)
   const _equipeGerenciada = getEquipeGerenciada(CURRENT_USER_ID);
   const _equipeIds = new Set(_equipeGerenciada.map(p=>p.id));
@@ -9023,6 +9026,7 @@ function renderSidebar(){
   const fixosHTML = `<div class="sbnav-fixed">
     ${navItem('hoje','ti-sun','Hoje', {badge: hojeCount||null})}
     ${navItem('minhas-tarefas','ti-user-check','Minhas Tarefas')}
+    ${navItem('solicitadas','ti-send','Solicitadas', {badge: _solicConfirmCount||null, badgeClass:'warn'})}
     ${navItem('entrada','ti-inbox','Organizar', {badgeClass: entradaCount>=ENTRADA_ALERTA?'danger':'', extraCls:'entrada-item'})}
     ${_mostraEquipe ? navItem('equipe','ti-users-group','Equipe', {badge: equipeCount||null}) : ''}
   </div>`;
@@ -13933,9 +13937,9 @@ function setTab(tab,el){
   if(el && el.classList) el.classList.add('active');
   renderSidebar();
   // Mapa de títulos e subtítulos para cada aba
-  const titles={dash:'📊 Painel',rotinas:'🔁 Rotinas',hoje:'📅 Tarefas de Hoje','minhas-tarefas':'👤 Minhas Tarefas',equipe:'👥 Tarefas da Equipe',entrada:'📥 Organizar',someday:'💤 Lembrete',atrasadas:'🚨 Tarefas Atrasadas',amanha:'🌅 Tarefas de Amanhã',semana:'📆 Tarefas da Semana',pendentes:'⏰ Tarefas Pendentes','prox-semana':'📆 Próxima Semana',concluidas:'✅ Concluídas',todas:'📋 Todas as Tarefas',pessoas:'👤 Por Pessoa',anotacoes:'📝 Anotações',agenda:'🗓️ Agenda',projetos:'📁 Projetos',['projetos-pro']:'📁 Projetos',reunioes:'📅 Reuniões',analise:'📊 Análise',lixeira:'🗑️ Lixeira',ajuda:'❓ Ajuda'};
+  const titles={dash:'📊 Painel',rotinas:'🔁 Rotinas',hoje:'📅 Tarefas de Hoje','minhas-tarefas':'👤 Minhas Tarefas',solicitadas:'📤 Solicitadas',equipe:'👥 Tarefas da Equipe',entrada:'📥 Organizar',someday:'💤 Lembrete',atrasadas:'🚨 Tarefas Atrasadas',amanha:'🌅 Tarefas de Amanhã',semana:'📆 Tarefas da Semana',pendentes:'⏰ Tarefas Pendentes','prox-semana':'📆 Próxima Semana',concluidas:'✅ Concluídas',todas:'📋 Todas as Tarefas',pessoas:'👤 Por Pessoa',anotacoes:'📝 Anotações',agenda:'🗓️ Agenda',projetos:'📁 Projetos',['projetos-pro']:'📁 Projetos',reunioes:'📅 Reuniões',analise:'📊 Análise',lixeira:'🗑️ Lixeira',ajuda:'❓ Ajuda'};
   const _fmtTab=x=>x.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit'}).replace('.','');
-  const subs={dash:'Visão geral de todas as suas tarefas',rotinas:'Tarefas que se repetem automaticamente',hoje:'Foque no que importa agora','minhas-tarefas':'Tarefas onde você é o executor',equipe:'Atrasadas e de hoje — o que precisa da sua atenção agora',entrada:'Tarefas sem executor — classifique com calma',someday:'Tarefas sem urgência — sem data definida',atrasadas:'Tarefas com data vencida ainda não concluídas',amanha:'O que vem pela frente',semana:`Visão semanal — ${_fmtTab(_mon)} a ${_fmtTab(_sun)}`,pendentes:'Tarefas ainda não concluídas','prox-semana':`Visão da próxima semana — ${_fmtTab(_proxMon)} a ${_fmtTab(_proxSun)}`,concluidas:'Ótimo trabalho!',todas:'Visão completa',pessoas:'Selecione uma pessoa para filtrar',anotacoes:'Blocos rápidos para ideias, reuniões, lembretes e decisões',agenda:'Visualização por dias, estilo Notion',projetos:'Gerencie projetos e equipas',['projetos-pro']:'Projetos com fases, setores e tarefas vinculadas',reunioes:'Hub de reuniões — histórico, pauta e ATA',analise:'Pontualidade e gargalos — pessoal, equipe e reuniões',lixeira:'Itens excluídos — recuperáveis em 30 dias',ajuda:'Tudo o que você precisa saber para usar o sistema'};
+  const subs={dash:'Visão geral de todas as suas tarefas',rotinas:'Tarefas que se repetem automaticamente',hoje:'Foque no que importa agora','minhas-tarefas':'Tarefas onde você é o executor',solicitadas:'Tarefas que você pediu a outras pessoas — e confirmações pendentes',equipe:'Atrasadas e de hoje — o que precisa da sua atenção agora',entrada:'Tarefas sem executor — classifique com calma',someday:'Tarefas sem urgência — sem data definida',atrasadas:'Tarefas com data vencida ainda não concluídas',amanha:'O que vem pela frente',semana:`Visão semanal — ${_fmtTab(_mon)} a ${_fmtTab(_sun)}`,pendentes:'Tarefas ainda não concluídas','prox-semana':`Visão da próxima semana — ${_fmtTab(_proxMon)} a ${_fmtTab(_proxSun)}`,concluidas:'Ótimo trabalho!',todas:'Visão completa',pessoas:'Selecione uma pessoa para filtrar',anotacoes:'Blocos rápidos para ideias, reuniões, lembretes e decisões',agenda:'Visualização por dias, estilo Notion',projetos:'Gerencie projetos e equipas',['projetos-pro']:'Projetos com fases, setores e tarefas vinculadas',reunioes:'Hub de reuniões — histórico, pauta e ATA',analise:'Pontualidade e gargalos — pessoal, equipe e reuniões',lixeira:'Itens excluídos — recuperáveis em 30 dias',ajuda:'Tudo o que você precisa saber para usar o sistema'};
   document.getElementById('tab-title').textContent=titles[tab];
   document.getElementById('tab-title').style.display='';
   document.getElementById('tab-sub').style.display='';
@@ -13959,10 +13963,10 @@ function setTab(tab,el){
   const groupSel=document.getElementById('task-group-sel');
   if(groupSel) groupSel.style.display=tab==='pessoas'?'none':'';
   const viewToggle=document.getElementById('view-toggle');
-  if(viewToggle) viewToggle.classList.toggle('show',!['pessoas','anotacoes','agenda','projetos','projetos-pro','dash','rotinas','configuracoes','ajuda','reunioes','lixeira','entrada','someday'].includes(tab));
+  if(viewToggle) viewToggle.classList.toggle('show',!['pessoas','anotacoes','agenda','projetos','projetos-pro','dash','rotinas','configuracoes','ajuda','reunioes','lixeira','entrada','someday','solicitadas','equipe'].includes(tab));
   document.getElementById('note-add-btn').style.display='none'; // movido para sub-navbar
   const _taskBtn=document.getElementById('task-add-btn');
-  const _showTask=sidebarPersonId||!['dash','rotinas','projetos','projetos-pro','pessoas','anotacoes','agenda','reunioes','lixeira','ajuda','configuracoes'].includes(tab);
+  const _showTask=sidebarPersonId||!['dash','rotinas','projetos','projetos-pro','pessoas','anotacoes','agenda','reunioes','lixeira','ajuda','configuracoes','solicitadas','equipe'].includes(tab);
   // GUILHERME V3: 'minhas-tarefas' já está incluído por exclusão (não está na lista de tabs sem botão)
   if(_taskBtn) _taskBtn.style.display=_showTask?'':'none';
   closeTaskModalDirect();
@@ -14866,6 +14870,81 @@ function renderEquipe(){
   try{ _atualizarTabHeaderActions(); }catch{}
 }
 
+/* ─── ABA SOLICITADAS ─────────────────────────────────────────────────
+   Tarefas que EU (usuário logado) pedi a outras pessoas.
+   - "Solicitadas": pedidas a outros e ainda não concluídas (acompanhar).
+   - "Confirmações": o executor concluiu e está aguardando o meu double-check.
+   Para não inundar com o histórico, "Confirmações" só conta tarefas concluídas
+   a partir do dia em que a função entrou no ar (taskflow_confirm_since). */
+let _solicView = (function(){ try{ return safeLSGet('taskflow_solic_view')||'solicitadas'; }catch{ return 'solicitadas'; } })();
+function setSolicView(v){ _solicView=v; safeSetItem('taskflow_solic_view',v); render(); }
+
+function _confirmSince(){
+  try{ let s=safeLSGet('taskflow_confirm_since'); if(!s){ s=today; safeSetItem('taskflow_confirm_since',s); } return s; }
+  catch{ return today; }
+}
+function _solicPendentes(){
+  return tasks.filter(t=> t.solicitante===CURRENT_USER_ID && t.executor && t.executor!==CURRENT_USER_ID && !t.done);
+}
+function _solicConfirmacoes(){
+  const since=_confirmSince();
+  return tasks.filter(t=> t.solicitante===CURRENT_USER_ID && t.executor && t.executor!==CURRENT_USER_ID && t.done && !t.confirmadoSolic && t.doneAt && t.doneAt>=since);
+}
+
+function confirmarTarefa(id){
+  const t=tasks.find(x=>x.id===id); if(!t) return;
+  t.confirmadoSolic=true;
+  if(typeof saveTask_db==='function') saveTask_db(t); else safeSetItem(LS_TASKS,JSON.stringify(tasks));
+  if(typeof toast==='function') toast('✓ Tarefa confirmada');
+  refreshUI();
+}
+function reabrirTarefa(id){
+  const t=tasks.find(x=>x.id===id); if(!t) return;
+  t.done=false; t.confirmadoSolic=false; t.doneAt=null; if(t.kanbanCol==='done_col') t.kanbanCol='doing';
+  if(typeof saveTask_db==='function') saveTask_db(t); else safeSetItem(LS_TASKS,JSON.stringify(tasks));
+  if(typeof toast==='function') toast('↩ Reaberta para o executor');
+  refreshUI();
+}
+
+function _solicPendentesHTML(pend){
+  if(!pend.length) return `<div style="text-align:center;padding:50px 20px;color:var(--text3)"><i class="ti ti-send" style="font-size:34px;display:block;margin-bottom:10px;opacity:.3"></i>Você não tem tarefas pendentes que pediu a outras pessoas.<br><span style="font-size:13px">Quando você cria uma tarefa e define <b>outra pessoa</b> como executor, ela aparece aqui.</span></div>`;
+  const _secHead=(nome,count)=>`<div style="display:flex;align-items:center;gap:8px;margin:22px 0 10px"><i class="ti ti-user" style="color:var(--blue-mid);font-size:16px"></i><span style="font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">${escapeHTML(nome)}</span><span style="background:var(--bg2);border-radius:99px;padding:1px 9px;font-size:11px;color:var(--text3);font-weight:700">${count}</span><div style="flex:1;height:1px;background:var(--border)"></div></div>`;
+  const porExec={};
+  pend.forEach(t=>{ (porExec[t.executor]=porExec[t.executor]||[]).push(t); });
+  const ids=Object.keys(porExec).sort((a,b)=>{ const na=(_personById(a)||{}).name||'', nb=(_personById(b)||{}).name||''; return na.localeCompare(nb,'pt-BR'); });
+  return ids.map(id=>{ const pe=_personById(id); const nome=pe?pe.name:'Sem executor'; return _secHead(nome+(pe&&pe.setor?' · '+pe.setor:''), porExec[id].length)+renderTaskTable(porExec[id]); }).join('');
+}
+function _solicConfirmacoesHTML(conf){
+  if(!conf.length) return `<div style="text-align:center;padding:50px 20px;color:var(--success);font-size:14px;font-weight:600"><i class="ti ti-checkup-list" style="font-size:30px;display:block;margin-bottom:10px"></i>Nada para confirmar agora.<br><span style="font-size:13px;color:var(--text3);font-weight:400">Quando alguém concluir uma tarefa que você pediu, ela aparece aqui para o seu double-check.</span></div>`;
+  const arr=[...conf].sort((a,b)=>(b.doneAt||'').localeCompare(a.doneAt||''));
+  const _fmt=(iso)=>{ try{ return new Date(iso+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}); }catch{ return iso; } };
+  return `<div style="font-size:13px;color:var(--text3);margin-bottom:14px"><i class="ti ti-info-circle" style="font-size:13px"></i> O executor marcou estas como concluídas. Confira e <b>confirme</b> — ou <b>reabra</b> se ainda não estiver ok.</div>`
+    + arr.map(t=>{
+    const pe=_personById(t.executor); const nome=pe?pe.name:'—';
+    return `<div style="display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 16px;margin-bottom:10px">
+      <i class="ti ti-circle-check" style="font-size:22px;color:var(--success);flex-shrink:0"></i>
+      <div style="flex:1;min-width:0;cursor:pointer" onclick="openEdit(${t.id})">
+        <div style="font-weight:600;color:var(--text)">${escapeHTML(t.title||'(sem título)')}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">Concluída por <b>${escapeHTML(nome)}</b>${t.doneAt?' · '+_fmt(t.doneAt):''}</div>
+      </div>
+      <button onclick="confirmarTarefa(${t.id})" style="background:var(--success);color:#fff;border:none;border-radius:9px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;flex-shrink:0"><i class="ti ti-check"></i> Confirmar</button>
+      <button onclick="reabrirTarefa(${t.id})" title="Reabrir para o executor" style="background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0"><i class="ti ti-arrow-back-up"></i></button>
+    </div>`;
+  }).join('');
+}
+
+function renderSolicitadas(){
+  const container=document.getElementById('task-container');
+  if(!container) return;
+  const pend=_solicPendentes();
+  const conf=_solicConfirmacoes();
+  const _opts=[{k:'solicitadas',i:'ti-send',l:'Solicitadas',n:pend.length},{k:'confirmacoes',i:'ti-checkup-list',l:'Confirmações',n:conf.length}];
+  const seletor=`<div style="display:flex;gap:3px;background:var(--bg2);padding:3px;border-radius:10px;width:fit-content;margin-bottom:16px">${_opts.map(v=>`<button onclick="setSolicView('${v.k}')" style="display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;padding:7px 13px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;${_solicView===v.k?'background:var(--blue-mid);color:#fff':'background:transparent;color:var(--text2)'}"><i class="ti ${v.i}"></i>${v.l}${v.n?` <span style="background:${_solicView===v.k?'rgba(255,255,255,.25)':'var(--bg3)'};border-radius:99px;padding:0 7px;font-size:11px;font-weight:700">${v.n}</span>`:''}</button>`).join('')}</div>`;
+  const corpo = (_solicView==='confirmacoes') ? _solicConfirmacoesHTML(conf) : _solicPendentesHTML(pend);
+  container.innerHTML = seletor + corpo;
+  try{ _atualizarTabHeaderActions(); }catch{}
+}
+
 // Cutucar: cria uma notificação interna pra pessoa responsável pela tarefa
 // Cutucar da aba Equipe — reusa o sistema oficial de cutucadas (enviarCutucada),
 // que já trata limite diário, rastreio de resposta, badge e notificação.
@@ -14962,6 +15041,7 @@ function render(){
   }
   // GESTÃO DE EQUIPE: aba "Equipe" — tarefas Klain das pessoas dos setores gerenciados.
   if(currentTab==='equipe'){ renderEquipe(); return; }
+  if(currentTab==='solicitadas'){ renderSolicitadas(); return; }
   if(currentTab==='analise'){ renderAnalise(); return; }
   if(currentTab==='dash'){renderDash();return;}
   if(currentTab==='rotinas'){renderRotinas();return;}
