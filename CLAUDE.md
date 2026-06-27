@@ -11,6 +11,22 @@
 (com fases, setores e cronograma), reuniões, rotinas, notas, agenda e qualidade
 (análise sensorial), entre outros.
 
+## ⭐ PAPEL DESTE REPO — é um PROTÓTIPO (LEIA E PARE DE RE-DISCUTIR)
+Confirmado pelo Diego (jun/2026): este `index.html` é **protótipo de TELAS, visual e
+LÓGICA / REGRA DE NEGÓCIO**. Serve para **passar a ideia de UX e as regras** para o
+**Guilherme**, que está montando o sistema **de verdade dentro do banco de dados e do
+servidor da Empresa**.
+- O HUB que a **turma piloto (7 pessoas)** usa/testa é a build do **Guilherme no servidor
+  da Empresa** — **NÃO é este git**. Telas que aparecem nos prints da turma e não existem
+  aqui (ou vice-versa) são ESPERADAS: são sistemas diferentes. **Não tentar "reconciliar
+  código" nem achar que falta algo** — aqui se prototipa, lá se implementa de verdade.
+- **Identidade real** dos usuários = **login da Empresa no PC** (cada um usa o próprio
+  login corporativo; o sistema do Guilherme sabe quem é). Aqui no protótipo a identidade é
+  **simulada** (usuário "logado" fake p/ demonstrar a regra).
+- **Dados aqui são DESCARTÁVEIS** (localStorage), como no sensorial. Recursos multiusuário
+  reais (votação compartilhada, votos de várias pessoas, notificações de verdade) são
+  responsabilidade do **backend do Guilherme** — aqui só se demonstra o FORMATO e as REGRAS.
+
 ## Onde vivem as coisas (LEIA ANTES DE MEXER)
 - **Código / layout** → `index.html`, versionado no **git** e publicado via **GitHub Pages**.
   - Repositório GitHub: https://github.com/dKonrad88/TaskFlow  (**PÚBLICO** · conta dKonrad88)
