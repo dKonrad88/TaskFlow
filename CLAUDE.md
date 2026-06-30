@@ -101,6 +101,15 @@ servidor da Empresa**.
   comparativo DENTRO do módulo, mas **injetar via nuvem foi DESCARTADO** — pra pegar 1 orçamento ele teria que "Baixar da
   nuvem", que **sobrescreve TODO o local** (risco crítico da auditoria). Importar-colar é em-código, sem tocar em dados.
   JSON pronto do comparativo salvo no scratchpad (`orcamento_pipocas.json`).
+- **Orçamentos agora suportam ITENS (quantidade × valor) na comparação** (`_orcComparacaoHTML` reescrito + helpers
+  `_moAddItem`/`_moDelItem`/`_moSetItem`/`_moToggleItem`/`_moToggleCot`/`_moSetItemVal`/`_moRecalcTotais`/`_moItemVal`).
+  Cada item é uma linha com checkbox (liga/desliga do **Total**) + nome editável; cada cotação tem qtd×valor unitário
+  por item; **chips no topo ligam/desligam cotações (colunas)**; linha **"Total (itens marcados)"** recalcula sozinha.
+  Quando há itens, a linha "Preço" do quadro de critérios some (o Total assume) e o insight "mais barato" usa o Total.
+  **Aditivo** (`b.itens`/`cotacao.itensVals`/`it.off`/`cotacao.off` — undefined = comportamento antigo; sem migração).
+  Edição de qtd/valor faz recálculo direcionado por id (`orcsub-*`/`orctot-*`) p/ não perder foco. JSON v2 com itens
+  pré-preenchidos (canhões + linha) no scratchpad (`orcamento_pipocas_v2.json`).
+- ⚠️ **Também NÃO testado em navegador** (preview/python indisponível) — revisado à mão; o Diego precisa clicar e confirmar.
 - ⚠️ **NÃO testado em navegador** (preview MCP caiu citando Python; sem Node p/ checar sintaxe). Código revisado à mão,
   espelha padrões do módulo, mas o Diego precisa **clicar e confirmar**. (Honestidade: passo de verificação pulado.)
 - **AUDITORIA ampla (4 agentes) — achados em aberto, NÃO corrigidos ainda** (o Diego pediu só a varredura):
