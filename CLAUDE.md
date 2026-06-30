@@ -89,6 +89,32 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-06-30 — PC da Empresa — Comparativo de 2 orçamentos (pipocas 300×500) + "Importar" em Orçamentos + AUDITORIA
+- **Comparou 2 propostas Valmaq** (linha de Pipocas Caramelizadas): `.docx` 300 kg/h (Prop. 0210.26) × `.pdf` 500 kg/h
+  (Prop. 0214.26). Extração: docx via PowerShell (zip→document.xml); PDF via **Word COM** (`SaveAs2` wdFormatText) —
+  pdftoppm/Python/Node NÃO existem nesta máquina. Resultados-chave: TOTAL R$ 1,9M × R$ 3,2M (+68%); canhões 14×R$30k
+  × 25×R$32k; tambores Ø900→Ø1000; pré-secador 1→2 un. Entreguei tabela markdown + comparativo visual (show_widget).
+  ⚠️ Doc do 500 tem typo ("300 Kg/hora" no cabeçalho do Item 2) e **sem linha "INVESTIMENTO TOTAL"** (somei 800k+2,4M).
+- **Novo "Importar (colar)" no módulo Manutenção › Orçamentos** (`_orcImportarUI`/`_orcImportarSalvar`, logo após
+  `novoOrcamento`; botão no cabeçalho de `renderOrcamentos`). Cola JSON (1 ou vários) → **additivo** (push em `orcamentos`,
+  `saveOrcamentos`), regenera só o id do orçamento (`_mntId('or')`), preserva campos/cotações. Motivo: o Diego queria o
+  comparativo DENTRO do módulo, mas **injetar via nuvem foi DESCARTADO** — pra pegar 1 orçamento ele teria que "Baixar da
+  nuvem", que **sobrescreve TODO o local** (risco crítico da auditoria). Importar-colar é em-código, sem tocar em dados.
+  JSON pronto do comparativo salvo no scratchpad (`orcamento_pipocas.json`).
+- ⚠️ **NÃO testado em navegador** (preview MCP caiu citando Python; sem Node p/ checar sintaxe). Código revisado à mão,
+  espelha padrões do módulo, mas o Diego precisa **clicar e confirmar**. (Honestidade: passo de verificação pulado.)
+- **AUDITORIA ampla (4 agentes) — achados em aberto, NÃO corrigidos ainda** (o Diego pediu só a varredura):
+  - 🔴 CRÍTICO dados: push automático à nuvem pode subir estado parcial por cima da nuvem (sem a salvaguarda do "Enviar"
+    manual) — `_cloudOnLocalWrite` ~4410; e corrida boot×auto-push (`_cloudInit` setTimeout 1500 × migrações do load).
+  - 🟠 ALTO: XSS no painel de Notificações (`n.texto` cru em `_notifItemHTML` ~21948 — cross-user com backend);
+    `saveTask_db` re-serializa array inteiro (~120KB) a cada toggle; ~15-20 varreduras de `tasks` por clique
+    (`updateStats` 2× no toggle); IDs `Date.now()` puro colidem; migração Projetos zera `LS_PROJECTS` 1ª vez sem Lixeira.
+  - 🟡 MÉDIO: **Mural de Ideias sem entrada em titles/subs → cabeçalho "undefined" + botões de tarefa indevidos**
+    (~14150; fix trivial, espelhar 'solicitadas'); toasts com dados crus; push/pull engolem erro de rede; backup pré-pull
+    em catch vazio + 1 slot só; "Enviar" diz "substitui" mas é upsert-only; Supabase script sem `defer`.
+  - 🟢 BAIXO: dash "Uso da equipe" conta Solicitadas concluídas (decisão de produto); vários `.find` quentes.
+  - **Quick wins recomendados:** Mural "undefined" (M1), escape das notificações (A1), `defer` no Supabase.
+
 ### 2026-06-27 — Mac de casa — Mural de Ideias (upvote board) — PROTÓTIPO
 - Nova **área global "Mural de Ideias"** (rodapé da sidebar, junto da Lixeira, em todas as áreas):
   `irParaMural()` = `setTab('mural',null)`; roteado em `render()` (`currentTab==='mural'→renderMural()`).

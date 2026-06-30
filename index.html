@@ -6920,7 +6920,10 @@ function renderOrcamentos(){
       ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Orçamentos'}])}
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:4px;">
         <h1 style="font-size:23px; font-weight:700; color:var(--text);">Orçamentos</h1>
-        <button onclick="novoOrcamento()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Novo orçamento</button>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button onclick="_orcImportarUI()" title="Colar um orçamento em JSON" style="background:var(--bg2); color:var(--text2); border:1px solid var(--border); border-radius:9px; padding:10px 14px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-clipboard-text"></i> Importar</button>
+          <button onclick="novoOrcamento()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Novo orçamento</button>
+        </div>
       </div>
       <div style="font-size:12.5px; color:var(--text3); margin-bottom:18px;">Junte as cotações de vários fornecedores e compare numa tabela só.</div>
       ${arr.length? `<div style="display:flex; flex-direction:column; gap:9px;">${arr.map(card).join('')}</div>`
@@ -6928,6 +6931,53 @@ function renderOrcamentos(){
     </div>`;
 }
 function novoOrcamento(){ mntOrcBuf={id:_mntId('or'), titulo:'', descricao:'', data:today, status:'aberto', escolhidoId:null, campos:[], cotacoes:[], _novo:true}; manutOrcamentoAberto=mntOrcBuf.id; renderManutencao(); }
+
+// Importar orçamento(s) colando JSON — additivo, não toca nos existentes (caminho seguro,
+// sem depender da nuvem). Aceita um objeto ou um array de orçamentos.
+function _orcImportarUI(){
+  if(document.getElementById('orc-import-ov')) return;
+  const ov=document.createElement('div');
+  ov.id='orc-import-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.onclick=(e)=>{ if(e.target===ov) ov.remove(); };
+  ov.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;max-width:560px;width:100%;padding:20px 22px;box-shadow:0 12px 40px rgba(0,0,0,.25);">
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px;"><i class="ti ti-clipboard-text" style="font-size:20px;color:var(--blue-mid)"></i><div style="font-size:16px;font-weight:700;color:var(--text);">Importar orçamento (colar)</div></div>
+    <div style="font-size:12.5px;color:var(--text3);margin-bottom:12px;">Cole o JSON de um orçamento (ou vários). Ele é <b>adicionado</b> à lista — não afeta os existentes.</div>
+    <textarea id="orc-import-ta" spellcheck="false" placeholder='{"titulo":"...","cotacoes":[...]}' style="width:100%;height:200px;font-family:monospace;font-size:12px;border:1px solid var(--border);border-radius:9px;padding:10px;background:var(--bg);color:var(--text);resize:vertical;box-sizing:border-box;"></textarea>
+    <div id="orc-import-msg" style="font-size:12px;color:var(--danger);margin-top:8px;display:none;"></div>
+    <div style="display:flex;justify-content:flex-end;gap:9px;margin-top:14px;">
+      <button onclick="document.getElementById('orc-import-ov').remove()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text2);font-family:inherit;">Cancelar</button>
+      <button onclick="_orcImportarSalvar()" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;"><i class="ti ti-download"></i> Importar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  setTimeout(()=>{ const ta=document.getElementById('orc-import-ta'); if(ta) ta.focus(); },30);
+}
+function _orcImportarSalvar(){
+  const ta=document.getElementById('orc-import-ta'); const msg=document.getElementById('orc-import-msg');
+  const showErr=(t)=>{ if(msg){ msg.textContent=t; msg.style.display=''; } };
+  if(!ta) return;
+  let data;
+  try{ data=JSON.parse(ta.value); }catch(e){ showErr('JSON inválido: '+e.message); return; }
+  const arr=Array.isArray(data)?data:[data];
+  const validos=arr.filter(o=>o && typeof o==='object' && (o.titulo || Array.isArray(o.cotacoes)));
+  if(!validos.length){ showErr('Nenhum orçamento válido (precisa de "titulo" e/ou "cotacoes").'); return; }
+  _mntLoad();
+  validos.forEach(o=>{
+    o.id=_mntId('or');
+    if(!Array.isArray(o.campos)) o.campos=[];
+    if(!Array.isArray(o.cotacoes)) o.cotacoes=[];
+    o.cotacoes.forEach(c=>{ if(!c.id) c.id=_mntId('ct'); if(!c.extra || typeof c.extra!=='object') c.extra={}; });
+    if(!o.data) o.data=today;
+    if(!o.status) o.status='aberto';
+    o.escolhidoId=o.escolhidoId||null;
+    orcamentos.push(o);
+  });
+  saveOrcamentos();
+  const ovEl=document.getElementById('orc-import-ov'); if(ovEl) ovEl.remove();
+  if(typeof toast==='function') toast(validos.length+(validos.length===1?' orçamento importado':' orçamentos importados'));
+  renderManutencao();
+}
 function editarOrcamento(id){ _mntLoad(); const o=(orcamentos||[]).find(x=>x.id===id); if(!o) return; mntOrcBuf=JSON.parse(JSON.stringify(o)); if(!Array.isArray(mntOrcBuf.cotacoes)) mntOrcBuf.cotacoes=[]; if(!Array.isArray(mntOrcBuf.campos)) mntOrcBuf.campos=[]; mntOrcBuf.cotacoes.forEach(c=>{ if(!c.extra) c.extra={}; }); mntOrcBuf._novo=false; manutOrcamentoAberto=id; renderManutencao(); }
 function _moSet(campo,val){ if(mntOrcBuf) mntOrcBuf[campo]=val; }
 function _moAddCotacao(){ if(!mntOrcBuf) return; mntOrcBuf.cotacoes.push({id:_mntId('ct'), fornecedorId:'', fornecedorNome:'', preco:'', prazoDias:'', pagamento:'', frete:'', garantia:'', obs:'', extra:{}}); renderManutencao(); }
