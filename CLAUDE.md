@@ -109,6 +109,12 @@ servidor da Empresa**.
   **Aditivo** (`b.itens`/`cotacao.itensVals`/`it.off`/`cotacao.off` — undefined = comportamento antigo; sem migração).
   Edição de qtd/valor faz recálculo direcionado por id (`orcsub-*`/`orctot-*`) p/ não perder foco. JSON v2 com itens
   pré-preenchidos (canhões + linha) no scratchpad (`orcamento_pipocas_v2.json`).
+- **Simulador de negociação na comparação** (`_simCardHTML`/`_simSet`/`_simPagto`/`_simScheduleHTML`/`_simAddInterval`/
+  `_simInpStyle`/`_simLab`, após `_moRecalcTotais`): 1 card por cotação ativa. Campos interligados **Desconto % ↔ Alvo
+  R$/kg ↔ Total simulado** (R$/kg usa a Capacidade, pré-preenchida do campo "Capac…"); mostra Economia. **Cronograma de
+  pagamento** flexível: Entrada %, Nº parcelas, Intervalo + unidade (dias/meses), data Início → tabela com datas e valores.
+  É **client-side, NÃO persiste** (cenário "brincar"); base acompanha o Total dos itens (sincronizada em `_moRecalcTotais`
+  via `_simSet(cid,'reset')`). Pedido do Diego: negociar por MATERIAL (itens) e ter alavancas de what-if (desc/R$kg/total).
 - ⚠️ **Também NÃO testado em navegador** (preview/python indisponível) — revisado à mão; o Diego precisa clicar e confirmar.
 - ⚠️ **NÃO testado em navegador** (preview MCP caiu citando Python; sem Node p/ checar sintaxe). Código revisado à mão,
   espelha padrões do módulo, mas o Diego precisa **clicar e confirmar**. (Honestidade: passo de verificação pulado.)

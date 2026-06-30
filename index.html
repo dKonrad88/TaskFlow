@@ -7024,7 +7024,11 @@ function _orcComparacaoHTML(b){
   const itensRows=itens.map(it=>`<tr style="border-bottom:1px solid color-mix(in srgb, var(--border) 50%, transparent); ${it.off?'opacity:.45;':''}"><td style="padding:7px 10px; position:sticky; left:0; background:var(--bg); min-width:180px;"><div style="display:flex; align-items:center; gap:7px;"><input type="checkbox" ${it.off?'':'checked'} title="Incluir no total" onchange="_moToggleItem('${it.id}')" style="cursor:pointer;"><input value="${escapeAttr(it.nome||'')}" oninput="_moSetItem('${it.id}',this.value)" placeholder="Nome do item" style="flex:1; border:none; background:none; font-size:12.5px; color:var(--text); font-family:inherit; outline:none; min-width:90px;"><button onclick="_moDelItem('${it.id}')" title="Remover item" style="background:none; border:none; color:var(--text3); cursor:pointer; padding:2px;"><i class="ti ti-x" style="font-size:13px"></i></button></div></td>${cots.map(c=>{ const q=_moItemVal(c,it.id,'qtd'), u=_moItemVal(c,it.id,'unit'); const sub=(_num(q)||0)*(_num(u)||0); return `<td style="padding:7px 10px;"><div style="display:flex; align-items:center; gap:5px;"><input value="${escapeAttr(q)}" oninput="_moSetItemVal('${c.id}','${it.id}','qtd',this.value)" placeholder="qtd" inputmode="decimal" style="width:48px; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:7px; padding:5px 6px; font-size:12px; color:var(--text); font-family:inherit; text-align:center;"><span style="color:var(--text3); font-size:11px;">×</span><input value="${escapeAttr(u)}" oninput="_moSetItemVal('${c.id}','${it.id}','unit',this.value)" placeholder="valor unit." inputmode="decimal" style="width:84px; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:7px; padding:5px 6px; font-size:12px; color:var(--text); font-family:inherit;"></div><div style="font-size:11px; color:var(--text3); margin-top:3px;">= <span id="orcsub-${c.id}-${it.id}">${sub?escapeHTML(_brl(sub)):'—'}</span></div></td>`; }).join('')}</tr>`).join('');
   const totalRow=`<tr style="border-top:2px solid var(--border);"><td style="padding:10px; position:sticky; left:0; background:var(--bg); font-size:12px; font-weight:800; color:var(--text);">Total (itens marcados)</td>${cots.map(c=>`<td style="padding:10px; font-size:13.5px; font-weight:800; color:var(--blue-mid);"><span id="orctot-${c.id}">${escapeHTML(_brl(cotTotal(c)))}</span></td>`).join('')}</tr>`;
   const itensSection=`<div style="margin-top:20px;"><div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;"><div style="font-size:11px; font-weight:800; color:var(--text3); text-transform:uppercase; letter-spacing:.6px;">Itens (quantidade × valor) ${_hint('Liste itens (canhões, tambores…) com quantidade e valor unitário. Desmarque um item p/ tirá-lo do total; desmarque uma cotação nas bolinhas acima. O Total recalcula sozinho.')}</div><button onclick="_moAddItem()" style="background:none; border:1px solid var(--blue-mid); color:var(--blue-mid); border-radius:7px; padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-plus"></i> Item</button></div>${itens.length? `<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse;"><thead>${itensHead}</thead><tbody>${itensRows}</tbody><tfoot>${totalRow}</tfoot></table></div>` : '<div style="font-size:12px; color:var(--text3); padding:10px 0; border:1px dashed var(--border); border-radius:10px; text-align:center;">Sem itens ainda. Clique em “+ Item” para detalhar o orçamento por peça (com quantidade e valor) e poder ligar/desligar cada um.</div>'}</div>`;
-  return _chips + `<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse;"><thead>${head}</thead><tbody>${body}</tbody></table></div>${insight}${itensSection}`;
+  // ── Simulador de negociação (what-if): desconto / R$ por kg / total-alvo + cronograma de pagamento
+  const _capDe=(c)=>{ const cp=(b.campos||[]).find(x=>/capac/i.test(x.label||'')); return cp? ((c.extra&&c.extra[cp.id])||'') : ''; };
+  const simCards=cots.filter(c=>cotTotal(c)>0).map(c=>_simCardHTML(c, cotTotal(c), _capDe(c))).join('');
+  const simSection = simCards ? `<div style="margin-top:22px;"><div style="font-size:11px; font-weight:800; color:var(--text3); text-transform:uppercase; letter-spacing:.6px; margin-bottom:3px;">Simulador de negociação ${_hint('Brinque com cenários: aplique um desconto %, um alvo de R$/kg, ou um total-alvo (os três se atualizam juntos) — e simule o pagamento (entrada, parcelas, intervalo em dias/meses, datas). Cenários NÃO são salvos.')}</div><div style="font-size:11px; color:var(--text3); margin-bottom:10px;">Cenários temporários (não salvos). A base acompanha o Total dos itens marcados.</div><div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:12px;">${simCards}</div></div>` : '';
+  return _chips + `<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse;"><thead>${head}</thead><tbody>${body}</tbody></table></div>${insight}${itensSection}${simSection}`;
 }
 function _moItemVal(c,itemId,field){ return (c && c.itensVals && c.itensVals[itemId] && c.itensVals[itemId][field]) || ''; }
 function _moAddItem(){ if(!mntOrcBuf) return; if(!Array.isArray(mntOrcBuf.itens)) mntOrcBuf.itens=[]; mntOrcBuf.itens.push({id:_mntId('it'), nome:''}); _moRefreshComparacao(); }
@@ -7033,7 +7037,70 @@ function _moSetItem(itemId,val){ if(!mntOrcBuf) return; const it=(mntOrcBuf.iten
 function _moToggleItem(itemId){ if(!mntOrcBuf) return; const it=(mntOrcBuf.itens||[]).find(x=>x.id===itemId); if(it) it.off=!it.off; _moRefreshComparacao(); }
 function _moToggleCot(cid){ if(!mntOrcBuf) return; const c=(mntOrcBuf.cotacoes||[]).find(x=>x.id===cid); if(c) c.off=!c.off; _moRefreshComparacao(); }
 function _moSetItemVal(cid,itemId,field,val){ if(!mntOrcBuf) return; const c=(mntOrcBuf.cotacoes||[]).find(x=>x.id===cid); if(!c) return; if(!c.itensVals) c.itensVals={}; if(!c.itensVals[itemId]) c.itensVals[itemId]={}; c.itensVals[itemId][field]=val; _moRecalcTotais(); }
-function _moRecalcTotais(){ const b=mntOrcBuf; if(!b) return; const itens=b.itens||[]; (b.cotacoes||[]).filter(c=>!c.off).forEach(c=>{ let tot=0; itens.forEach(it=>{ const q=_num(_moItemVal(c,it.id,'qtd'))||0, u=_num(_moItemVal(c,it.id,'unit'))||0; const sub=q*u; if(!it.off) tot+=sub; const se=document.getElementById('orcsub-'+c.id+'-'+it.id); if(se) se.textContent=sub?_brl(sub):'—'; }); const te=document.getElementById('orctot-'+c.id); if(te) te.textContent=_brl(tot); }); }
+function _moRecalcTotais(){ const b=mntOrcBuf; if(!b) return; const itens=b.itens||[]; (b.cotacoes||[]).filter(c=>!c.off).forEach(c=>{ let tot=0; itens.forEach(it=>{ const q=_num(_moItemVal(c,it.id,'qtd'))||0, u=_num(_moItemVal(c,it.id,'unit'))||0; const sub=q*u; if(!it.off) tot+=sub; const se=document.getElementById('orcsub-'+c.id+'-'+it.id); if(se) se.textContent=sub?_brl(sub):'—'; }); const te=document.getElementById('orctot-'+c.id); if(te) te.textContent=_brl(tot); const sbl=document.getElementById('sim-baseLbl-'+c.id); if(sbl) sbl.textContent=_brl(tot); const sb=document.getElementById('sim-base-'+c.id); if(sb){ sb.value=Math.round(tot); if(typeof _simSet==='function') _simSet(c.id,'reset'); } }); }
+
+// ── Simulador de negociação (what-if) — cálculo client-side, NÃO persiste no orçamento.
+function _simInpStyle(){ return 'width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:7px; padding:6px 8px; font-size:12px; color:var(--text); font-family:inherit; margin-top:3px;'; }
+function _simLab(txt, inner){ return `<label style="font-size:10.5px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block;">${txt}${inner}</label>`; }
+function _simCardHTML(c, base, capV){
+  const cid=c.id; const st=_simInpStyle();
+  const sched=_simScheduleHTML(base, 30, 7, 30, 'dias', today);
+  return `<div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px;">
+    <div style="font-size:13px; font-weight:800; color:var(--text);">${escapeHTML(_cotNome(c))}</div>
+    <div style="font-size:11px; color:var(--text3); margin-bottom:10px;">Base (itens marcados): <span id="sim-baseLbl-${cid}">${_brl(base)}</span></div>
+    <input type="hidden" id="sim-base-${cid}" value="${Math.round(base)}">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+      ${_simLab('Capacidade (kg/h)', `<input id="sim-cap-${cid}" value="${escapeAttr(capV||'')}" oninput="_simSet('${cid}','cap')" inputmode="decimal" style="${st}">`)}
+      ${_simLab('Desconto (%)', `<input id="sim-desc-${cid}" oninput="_simSet('${cid}','desc')" inputmode="decimal" placeholder="ex.: 20" style="${st}">`)}
+      ${_simLab('Alvo R$/kg', `<input id="sim-rkg-${cid}" oninput="_simSet('${cid}','rkg')" inputmode="decimal" placeholder="ex.: 4800" style="${st}">`)}
+      ${_simLab('Total simulado', `<input id="sim-tot-${cid}" value="${Math.round(base)}" oninput="_simSet('${cid}','tot')" inputmode="decimal" style="${st}">`)}
+    </div>
+    <div style="font-size:12px; color:var(--success); font-weight:700; margin:9px 0 4px;">Economia: <span id="sim-econ-${cid}">—</span></div>
+    <div style="border-top:1px solid var(--border); padding-top:10px; margin-top:6px;">
+      <div style="font-size:10.5px; font-weight:800; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:7px;">Pagamento</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        ${_simLab('Entrada (%)', `<input id="sim-ent-${cid}" value="30" oninput="_simPagto('${cid}')" inputmode="decimal" style="${st}">`)}
+        ${_simLab('Nº parcelas', `<input id="sim-np-${cid}" value="7" oninput="_simPagto('${cid}')" inputmode="numeric" style="${st}">`)}
+        ${_simLab('Intervalo', `<input id="sim-iv-${cid}" value="30" oninput="_simPagto('${cid}')" inputmode="numeric" style="${st}">`)}
+        ${_simLab('Unidade', `<select id="sim-un-${cid}" onchange="_simPagto('${cid}')" style="${st} cursor:pointer;"><option value="dias">dias</option><option value="meses">meses</option></select>`)}
+      </div>
+      ${_simLab('Início', `<input type="date" id="sim-dt-${cid}" value="${today}" onchange="_simPagto('${cid}')" style="${st}">`)}
+      <div id="sim-pag-${cid}" style="margin-top:10px;">${sched}</div>
+    </div>
+  </div>`;
+}
+function _simAddInterval(dtStr, n, unit){ const d=new Date(dtStr+'T12:00'); if(isNaN(d.getTime())) return new Date(); if(unit==='meses') d.setMonth(d.getMonth()+n); else d.setDate(d.getDate()+n); return d; }
+function _simScheduleHTML(total, entPct, np, ivN, unit, dtStr){
+  total=total||0; entPct=entPct||0; np=Math.max(0,Math.round(np||0)); ivN=Math.round(ivN||0);
+  const ent=total*entPct/100; const restante=total-ent; const parc=np>0?restante/np:0;
+  const fmt=d=>{ try{ return d.toLocaleDateString('pt-BR'); }catch(e){ return '—'; } };
+  const rows=[['Entrada ('+(Math.round(entPct*10)/10)+'%)', new Date(dtStr+'T12:00'), ent]];
+  for(let i=1;i<=np;i++){ rows.push(['Parcela '+i, _simAddInterval(dtStr, i*ivN, unit), parc]); }
+  const body=rows.map(r=>`<tr><td style="padding:4px 8px; color:var(--text2);">${r[0]}</td><td style="padding:4px 8px; color:var(--text3);">${fmt(r[1])}</td><td style="padding:4px 8px; text-align:right; font-weight:600; color:var(--text);">${_brl(r[2])}</td></tr>`).join('');
+  return `<table style="width:100%; border-collapse:collapse; font-size:11.5px;"><tbody>${body}<tr style="border-top:1px solid var(--border);"><td style="padding:5px 8px; font-weight:800;">Total</td><td></td><td style="padding:5px 8px; text-align:right; font-weight:800; color:var(--blue-mid);">${_brl(total)}</td></tr></tbody></table>`;
+}
+function _simSet(cid, src){
+  const g=id=>document.getElementById(id); if(!g('sim-base-'+cid)) return;
+  const base=_num(g('sim-base-'+cid).value)||0; const cap=_num(g('sim-cap-'+cid).value)||0;
+  if(src==='reset'){ g('sim-tot-'+cid).value=base?Math.round(base):''; g('sim-desc-'+cid).value=''; g('sim-rkg-'+cid).value=cap?Math.round(base/cap):''; const e0=g('sim-econ-'+cid); if(e0) e0.textContent='—'; _simPagto(cid); return; }
+  let tot;
+  if(src==='desc'){ const d=_num(g('sim-desc-'+cid).value); tot=base*(1-((d||0)/100)); }
+  else if(src==='rkg'){ const r=_num(g('sim-rkg-'+cid).value); tot=cap?((r||0)*cap):0; }
+  else if(src==='tot'){ tot=_num(g('sim-tot-'+cid).value)||0; }
+  else { tot=_num(g('sim-tot-'+cid).value)||base; }
+  if(src!=='tot') g('sim-tot-'+cid).value = tot?Math.round(tot):'';
+  if(src!=='desc') g('sim-desc-'+cid).value = base? (Math.round((1-tot/base)*1000)/10) : '';
+  if(src!=='rkg') g('sim-rkg-'+cid).value = cap? Math.round(tot/cap) : '';
+  const ec=g('sim-econ-'+cid); if(ec){ ec.textContent = base? (_brl(base-tot)+' ('+(Math.round((1-tot/base)*1000)/10)+'% off)') : '—'; }
+  _simPagto(cid);
+}
+function _simPagto(cid){
+  const g=id=>document.getElementById(id); const pe=g('sim-pag-'+cid); if(!pe) return;
+  const total=_num(g('sim-tot-'+cid).value)||0; const ent=_num(g('sim-ent-'+cid).value)||0;
+  const np=_num(g('sim-np-'+cid).value)||0; const iv=_num(g('sim-iv-'+cid).value)||0;
+  const un=g('sim-un-'+cid)?g('sim-un-'+cid).value:'dias'; const dt=g('sim-dt-'+cid)?g('sim-dt-'+cid).value:today;
+  pe.innerHTML=_simScheduleHTML(total, ent, np, iv, un, dt);
+}
 function renderOrcamentoEditor(){
   const b=mntOrcBuf; if(!b){ orcVoltar(); return; }
   const main=document.getElementById('task-container'); if(!main) return;
