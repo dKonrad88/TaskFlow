@@ -6594,7 +6594,7 @@ function _pcpCorpoHTML(){
   const med=pcpMostrarMedias;
   const cnt=(k)=>itens.filter(it=>_pcpStatus(it.ddv).key===k).length;
   const aProduzir=itens.filter(it=>{ const s=_pcpSugestao(it); return s!=null && s>0; }).length;
-  const kpi=(lbl,val,cor)=>`<div style="background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:9px 15px; min-width:88px;"><div style="font-size:11px; color:var(--text3);">${lbl}</div><div style="font-size:19px; font-weight:800; color:${cor}; font-variant-numeric:tabular-nums;">${val}</div></div>`;
+  const kpi=(lbl,val,cor)=>`<div style="background:color-mix(in srgb, ${cor} 13%, transparent); border:1px solid color-mix(in srgb, ${cor} 30%, transparent); border-radius:10px; padding:9px 15px; min-width:88px;"><div style="font-size:11px; color:var(--text2); font-weight:600;">${lbl}</div><div style="font-size:20px; font-weight:800; color:${cor}; font-variant-numeric:tabular-nums;">${val}</div></div>`;
   const graf=`<div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:stretch;">
     ${kpi('Itens', itens.length, 'var(--text)')}
     ${kpi('Ruptura', cnt('ruptura'), 'var(--danger)')}
