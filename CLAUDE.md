@@ -89,6 +89,20 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-01 — PC da Empresa — NOVO REPO "taskflow-mobile" (protótipo mobile p/ a turma testar)
+- **Repo novo, SEPARADO deste:** https://github.com/dKonrad88/taskflow-mobile (público) · Pages:
+  **https://dkonrad88.github.io/taskflow-mobile/** . Pasta local: `G:\g_Diego\HTML\taskflow-mobile\` (`index.html` + README).
+  ⚠️ NÃO confundir com este repo TaskFlow (protótipo do HUB). O mobile é só a **captura rápida** pra turma testar UX.
+- **Origem:** evoluiu do mockup `G:\g_Publico\- DIEGO\TaskFlow\taskflow-mobile-*.html` (original→v2→A/B→COMBINADO).
+  O publicado é o **COMBINADO**: Organizar como 1ª aba com caixa "Nova tarefa" inline (Enter salva) + chips Hoje/Amanhã/
+  Sem data; FAB ＋ abre captura rápida (tarefa/nota) que **fica aberta** p/ lançar em série; abas Organizar·Atrasadas·
+  Hoje·Amanhã·Solicitadas·Notas; Solicitadas c/ sub-abas Solicitadas/Confirmações.
+- **Persistência:** localStorage POR APARELHO (`tfm_tasks`/`tfm_notas`/`tfm_uid`), `persist()` em cada render, `loadStore()`
+  no boot, `resetStore()` p/ limpar. NÃO é multiusuário (dados não compartilham entre pessoas — isso é backend do Guilherme).
+- ⚠️ **NÃO testado em navegador por mim** (preview/Python/Node indisponíveis nesta máquina). Revisado à mão. O Diego
+  precisa abrir o Pages e confirmar. Se algo quebrar, é só corrigir o `index.html` do repo taskflow-mobile e `git push`.
+- Arquivos de mockup antigos (original/v2/A/B) seguem em `g_Publico` — pode apagar deixando só o COMBINADO (não feito ainda).
+
 ### 2026-06-30 — PC da Empresa — Comparativo de 2 orçamentos (pipocas 300×500) + "Importar" em Orçamentos + AUDITORIA
 - **Comparou 2 propostas Valmaq** (linha de Pipocas Caramelizadas): `.docx` 300 kg/h (Prop. 0210.26) × `.pdf` 500 kg/h
   (Prop. 0214.26). Extração: docx via PowerShell (zip→document.xml); PDF via **Word COM** (`SaveAs2` wdFormatText) —
