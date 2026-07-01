@@ -6495,7 +6495,7 @@ function renderPCP(){
     <div style="padding:20px 4px 40px;">
       ${hubBreadcrumb([{label:'Produção', onclick:"setProducaoView('produtos')"},{label:'PCP'}])}
       <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:2px; flex-wrap:wrap;">
-        <h1 style="font-size:23px; font-weight:700; color:var(--text);">Planejamento de produção <span style="font-size:14px; font-weight:600; color:var(--text3);">(DDV)</span></h1>
+        <h1 style="font-size:23px; font-weight:700; color:var(--text);">PCP <span style="font-size:14px; font-weight:600; color:var(--text3);">Planejamento de produção · DDV</span></h1>
         <div style="display:flex; gap:8px;">
           ${pcpItens.length?`<button onclick="_pcpLimpar()" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:9px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px;"><i class="ti ti-eraser"></i> Limpar</button>`:''}
           <button onclick="_pcpColarAbrir()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:9px 16px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-clipboard-plus"></i> Colar do SISPRO</button>
@@ -6669,7 +6669,10 @@ function _pcpParse(text){
     const cod=String(get('cod')).replace(/[⚠!⚠]/g,'').trim();
     const produto=get('produto');
     if(!produto && !cod) return;
-    out.push({ cod, produto, linha:linhaAtual, alerta,
+    // Se não veio linha "Linha X", agrupa pelo código de setor (ESxx) achado no nome do produto.
+    let linha=linhaAtual;
+    if(linha==='—'){ const mes=String(produto).match(/\(\s*(ES\s?\d+)\s*\)/i); if(mes) linha=mes[1].replace(/\s+/g,'').toUpperCase(); }
+    out.push({ cod, produto, linha, alerta,
       estoque:get('estoque'), pedido:get('pedido'), opoc:get('opoc'), maras:get('maras'),
       saldo:get('saldo'), ddv:get('ddv'), ddvsop:get('ddvsop'),
       mdv:get('mdv'), msv:get('msv'), mqv:get('mqv'), mmv:get('mmv'), vendas:get('vendas') });
@@ -9048,7 +9051,7 @@ function renderSidebar(){
         <div style="font-size:11px; font-weight:700; color:var(--text3); letter-spacing:.5px; padding:6px 12px 4px;">PRODUÇÃO</div>
         ${item('produtos','ti-package','Produtos', _sub==='produtos')}
         <div style="font-size:11px; font-weight:700; color:var(--text3); letter-spacing:.5px; padding:12px 12px 4px;">PCP</div>
-        ${item('pcp','ti-calendar-stats','Planejamento (DDV)', _sub==='pcp')}
+        ${item('pcp','ti-calendar-stats','PCP', _sub==='pcp')}
         ${item('ordens','ti-clipboard-list','Ordens de Produção', _sub==='ordens')}
         ${item('checklists','ti-checkup-list','Check list', _sub==='checklists')}
       </div>
