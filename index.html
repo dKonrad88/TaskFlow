@@ -6536,14 +6536,14 @@ function _pcpTabsHTML(){
 }
 
 function _pcpRailHTML(){
-  const sel=(lbl,icon,val)=>`<div style="margin-bottom:10px;"><div style="font-size:11px; font-weight:700; color:var(--text2); margin-bottom:4px; display:flex; align-items:center; gap:5px;"><i class="ti ${icon}" style="font-size:13px; color:var(--text3);"></i>${lbl}</div><div style="background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:12px; color:var(--text3); display:flex; justify-content:space-between; align-items:center;">${val} <i class="ti ti-chevron-down" style="font-size:13px;"></i></div></div>`;
-  const per=(lbl,icon,a,b)=>`<div style="margin-bottom:10px;"><div style="font-size:11px; font-weight:700; color:var(--text2); margin-bottom:4px; display:flex; align-items:center; gap:5px;"><i class="ti ${icon}" style="font-size:13px; color:var(--text3);"></i>${lbl}</div><div style="display:flex; gap:5px;"><span style="flex:1; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:6px 6px; font-size:11px; color:var(--text2); text-align:center;">${a}</span><span style="flex:1; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:6px 6px; font-size:11px; color:var(--text2); text-align:center;">${b}</span></div></div>`;
+  const sel=(lbl,icon,val)=>`<div style="margin-bottom:10px;"><div style="font-size:11px; font-weight:700; color:var(--text2); margin-bottom:4px; display:flex; align-items:center; gap:5px;"><i class="ti ${icon}" style="font-size:13px; color:var(--text3);"></i>${lbl}</div><div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:12px; color:var(--text3); display:flex; justify-content:space-between; align-items:center;">${val} <i class="ti ti-chevron-down" style="font-size:13px;"></i></div></div>`;
+  const per=(lbl,icon,a,b)=>`<div style="margin-bottom:10px;"><div style="font-size:11px; font-weight:700; color:var(--text2); margin-bottom:4px; display:flex; align-items:center; gap:5px;"><i class="ti ${icon}" style="font-size:13px; color:var(--text3);"></i>${lbl}</div><div style="display:flex; gap:5px;"><span style="flex:1; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:6px 6px; font-size:11px; color:var(--text2); text-align:center;">${a}</span><span style="flex:1; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:6px 6px; font-size:11px; color:var(--text2); text-align:center;">${b}</span></div></div>`;
   return `<div style="width:188px; flex-shrink:0; background:var(--bg2); border:1px solid var(--border); border-radius:13px; padding:14px 13px;">
     <div style="font-size:11px; font-weight:800; color:var(--text3); letter-spacing:.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px;"><i class="ti ti-filter"></i> FILTROS</div>
     ${per('Período Pedidos','ti-calendar-event','15/05/26','27/06/26')}
     ${per('Período Vendas','ti-cash','08/06/25','08/06/26')}
     ${per('Período Produção','ti-box','01/01/26','08/06/26')}
-    <div style="margin-bottom:10px;"><div style="font-size:11px; font-weight:700; color:var(--text2); margin-bottom:4px; display:flex; align-items:center; gap:5px;"><i class="ti ti-calendar-stats" style="font-size:13px; color:var(--text3);"></i>DDV Sugestão ${_hint('Mostra só os itens com DDV menor ou igual a este valor (candidatos a produzir).')}</div><input value="${escapeAttr(pcpDdvSugestao)}" oninput="_pcpSetDdvSug(this.value)" placeholder="ex.: 5" inputmode="decimal" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:12px; color:var(--text); font-family:inherit;"></div>
+    <div style="margin-bottom:10px;"><div style="font-size:11px; font-weight:700; color:var(--text2); margin-bottom:4px; display:flex; align-items:center; gap:5px;"><i class="ti ti-calendar-stats" style="font-size:13px; color:var(--text3);"></i>DDV Sugestão ${_hint('Mostra só os itens com DDV menor ou igual a este valor (candidatos a produzir).')}</div><input value="${escapeAttr(pcpDdvSugestao)}" oninput="_pcpSetDdvSug(this.value)" placeholder="ex.: 5" inputmode="decimal" style="width:100%; box-sizing:border-box; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:12px; color:var(--text); font-family:inherit;"></div>
     ${sel('Redes','ti-chart-bar','Todas')}
     ${sel('Marcas','ti-tag','Klain')}
     ${sel('Tipos Produção','ti-packages','Todos')}
@@ -6564,9 +6564,9 @@ function _pcpRailHTML(){
 
 function _pcpToolbarHTML(){
   return `<div style="display:flex; align-items:center; gap:8px; margin:0 0 12px; flex-wrap:wrap;">
-    <button onclick="_pcpToggleMedias()" style="background:var(--bg3); border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:7px 12px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px;"><i class="ti ti-${pcpMostrarMedias?'eye-off':'columns-3'}"></i> ${pcpMostrarMedias?'Ocultar médias':'Mostrar médias'}</button>
+    <button onclick="_pcpToggleMedias()" style="background:var(--bg); border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:7px 12px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px;"><i class="ti ti-${pcpMostrarMedias?'eye-off':'columns-3'}"></i> ${pcpMostrarMedias?'Ocultar médias':'Mostrar médias'}</button>
     <span style="font-size:11.5px; color:var(--text3);">MSV · MQV · MMV</span>
-    <div style="display:flex; align-items:center; gap:6px; background:var(--bg3); border:1px solid var(--blue-mid); border-radius:8px; padding:5px 10px;">
+    <div style="display:flex; align-items:center; gap:6px; background:var(--bg); border:1px solid var(--blue-mid); border-radius:8px; padding:5px 10px;">
       <i class="ti ti-target" style="color:var(--blue-mid); font-size:15px;"></i>
       <span style="font-size:12px; color:var(--text2); font-weight:600;">DDV-alvo</span>
       <input value="${escapeAttr(pcpDdvAlvo)}" oninput="_pcpSetDdvAlvo(this.value)" inputmode="decimal" style="width:44px; border:none; background:none; font-size:14px; font-weight:800; color:var(--blue-mid); font-family:inherit; outline:none; text-align:center;">
@@ -6575,7 +6575,7 @@ function _pcpToolbarHTML(){
     </div>
     <div style="margin-left:auto; position:relative;">
       <i class="ti ti-search" style="position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--text3); font-size:14px;"></i>
-      <input value="${escapeAttr(pcpBusca)}" oninput="_pcpSetBusca(this.value)" placeholder="Pesquisar produto ou código..." style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:9px; padding:8px 12px 8px 32px; font-size:13px; color:var(--text); font-family:inherit; min-width:250px;">
+      <input value="${escapeAttr(pcpBusca)}" oninput="_pcpSetBusca(this.value)" placeholder="Pesquisar produto ou código..." style="box-sizing:border-box; background:var(--bg); border:1px solid var(--border); border-radius:9px; padding:8px 12px 8px 32px; font-size:13px; color:var(--text); font-family:inherit; min-width:250px;">
     </div>
   </div>`;
 }
