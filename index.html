@@ -6189,6 +6189,7 @@ let pcpItens = [];              // linhas coladas do SISPRO
 let pcpBusca = '';              // Pesquisar (produto/código)
 let pcpDdvSugestao = '';        // filtra DDV <= valor (candidatos a produzir)
 let pcpMostrarMedias = false;   // colunas MSV/MQV/MMV (escondidas por padrão)
+let pcpDdvAlvo = 15;            // DDV-alvo (dias de cobertura desejada) p/ calcular a sugestão de produção
 let pcpColapsadas = {};         // linhas (grupos) colapsadas
 const LS_PCP = 'taskflow_pcp_ddv';
 
@@ -6462,6 +6463,9 @@ function savePCP(){ safeSetItem(LS_PCP, JSON.stringify(pcpItens)); }
 function setPcpSubView(v){ pcpSubView=v; renderPCP(); }
 function _pcpSetBusca(v){ pcpBusca=v; const el=document.getElementById('pcp-corpo'); if(el) el.innerHTML=_pcpCorpoHTML(); }
 function _pcpSetDdvSug(v){ pcpDdvSugestao=v; const el=document.getElementById('pcp-corpo'); if(el) el.innerHTML=_pcpCorpoHTML(); }
+function _pcpSetDdvAlvo(v){ pcpDdvAlvo=v; const el=document.getElementById('pcp-corpo'); if(el) el.innerHTML=_pcpCorpoHTML(); }
+// Sugestão de produção p/ atingir o DDV-alvo: (DDV-alvo × MDV) − Saldo. null = sem dados; 0 = estoque suficiente.
+function _pcpSugestao(it){ const alvo=_pcpNum(pcpDdvAlvo), mdv=_pcpNum(it.mdv), saldo=_pcpNum(it.saldo); if(isNaN(alvo)||isNaN(mdv)||isNaN(saldo)) return null; const s=alvo*mdv-saldo; return s>0?Math.round(s):0; }
 function _pcpToggleMedias(){ pcpMostrarMedias=!pcpMostrarMedias; renderPCP(); }
 function _pcpToggleLinha(L){ pcpColapsadas[L]=!pcpColapsadas[L]; const el=document.getElementById('pcp-corpo'); if(el) el.innerHTML=_pcpCorpoHTML(); }
 function _pcpLimpar(){ if(!confirm('Limpar a tabela do PCP? Os dados colados serão removidos deste aparelho.')) return; pcpItens=[]; savePCP(); renderPCP(); toast('Tabela do PCP limpa'); }
@@ -6492,6 +6496,17 @@ function renderPCP(){
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
   main.innerHTML = `
+    <style>
+    .pcpt{width:100%;border-collapse:collapse;font-size:12px}
+    .pcpt thead th{background:var(--bg2);color:var(--text3);font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:9px 8px;border-bottom:2px solid var(--border)}
+    .pcpt tbody td{padding:8px 8px;border-bottom:1px solid color-mix(in srgb,var(--border) 55%,transparent)}
+    .pcpt tbody tr.alt td{background:color-mix(in srgb,var(--bg2) 38%,transparent)}
+    .pcpt tbody tr.r:hover td{background:color-mix(in srgb,var(--blue-mid) 8%,transparent)}
+    .pcpt .pcpg td{background:var(--bg2);font-weight:800;color:var(--text);padding:9px 10px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
+    .pcp-n{text-align:right;font-variant-numeric:tabular-nums;color:var(--text2);white-space:nowrap}
+    .pcp-chip{display:inline-block;min-width:40px;text-align:center;padding:2px 9px;border-radius:20px;font-weight:800;font-size:11.5px}
+    .pcp-sug{display:inline-block;padding:2px 9px;border-radius:7px;font-weight:800;font-size:12px;background:color-mix(in srgb,var(--blue-mid) 14%,transparent);color:var(--blue-mid)}
+    </style>
     <div style="padding:20px 4px 40px;">
       ${hubBreadcrumb([{label:'Produção', onclick:"setProducaoView('produtos')"},{label:'PCP'}])}
       <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:2px; flex-wrap:wrap;">
@@ -6551,6 +6566,13 @@ function _pcpToolbarHTML(){
   return `<div style="display:flex; align-items:center; gap:8px; margin:0 0 12px; flex-wrap:wrap;">
     <button onclick="_pcpToggleMedias()" style="background:var(--bg3); border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:7px 12px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px;"><i class="ti ti-${pcpMostrarMedias?'eye-off':'columns-3'}"></i> ${pcpMostrarMedias?'Ocultar médias':'Mostrar médias'}</button>
     <span style="font-size:11.5px; color:var(--text3);">MSV · MQV · MMV</span>
+    <div style="display:flex; align-items:center; gap:6px; background:var(--bg3); border:1px solid var(--blue-mid); border-radius:8px; padding:5px 10px;">
+      <i class="ti ti-target" style="color:var(--blue-mid); font-size:15px;"></i>
+      <span style="font-size:12px; color:var(--text2); font-weight:600;">DDV-alvo</span>
+      <input value="${escapeAttr(pcpDdvAlvo)}" oninput="_pcpSetDdvAlvo(this.value)" inputmode="decimal" style="width:44px; border:none; background:none; font-size:14px; font-weight:800; color:var(--blue-mid); font-family:inherit; outline:none; text-align:center;">
+      <span style="font-size:11px; color:var(--text3);">dias</span>
+      ${_hint('Dias de cobertura que você quer manter. Sugestão de produção = DDV-alvo × MDV − Saldo (arredondado).')}
+    </div>
     <div style="margin-left:auto; position:relative;">
       <i class="ti ti-search" style="position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--text3); font-size:14px;"></i>
       <input value="${escapeAttr(pcpBusca)}" oninput="_pcpSetBusca(this.value)" placeholder="Pesquisar produto ou código..." style="box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:9px; padding:8px 12px 8px 32px; font-size:13px; color:var(--text); font-family:inherit; min-width:250px;">
@@ -6571,54 +6593,64 @@ function _pcpCorpoHTML(){
   const grupos=_pcpAgrupar(itens);
   const med=pcpMostrarMedias;
   const cnt=(k)=>itens.filter(it=>_pcpStatus(it.ddv).key===k).length;
-  const kpi=(lbl,val,cor)=>`<div style="background:var(--bg3); border:1px solid var(--border); border-radius:9px; padding:8px 14px; min-width:84px;"><div style="font-size:11px; color:var(--text3);">${lbl}</div><div style="font-size:18px; font-weight:700; color:${cor};">${val}</div></div>`;
-  const graf=`<div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap; align-items:stretch;">
+  const aProduzir=itens.filter(it=>{ const s=_pcpSugestao(it); return s!=null && s>0; }).length;
+  const kpi=(lbl,val,cor)=>`<div style="background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:9px 15px; min-width:88px;"><div style="font-size:11px; color:var(--text3);">${lbl}</div><div style="font-size:19px; font-weight:800; color:${cor}; font-variant-numeric:tabular-nums;">${val}</div></div>`;
+  const graf=`<div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:stretch;">
     ${kpi('Itens', itens.length, 'var(--text)')}
     ${kpi('Ruptura', cnt('ruptura'), 'var(--danger)')}
     ${kpi('Atenção', cnt('atencao'), 'var(--amber)')}
     ${kpi('Folga', cnt('folga'), 'var(--success)')}
-    <div style="flex:1; min-width:200px; border:1px dashed var(--border); border-radius:9px; display:flex; align-items:center; justify-content:center; gap:14px; color:var(--text3); font-size:12px; padding:8px; flex-wrap:wrap;">
+    ${kpi('A produzir', aProduzir, 'var(--blue-mid)')}
+    <div style="flex:1; min-width:200px; border:1px dashed var(--border); border-radius:10px; display:flex; align-items:center; justify-content:center; gap:14px; color:var(--text3); font-size:12px; padding:8px; flex-wrap:wrap;">
       <span><i class="ti ti-chart-line" style="vertical-align:-2px;"></i> Selecione um produto para ver o gráfico</span>
       <span style="display:flex; gap:10px; font-size:11px;"><span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--blue-mid);"></span> Vendas</span><span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--success);"></span> Média</span><span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--danger);"></span> 2ª Média</span></span>
     </div>
   </div>`;
-  const ncol = med?14:11;
-  const th=(t,extra)=>`<th style="padding:7px 8px; font-weight:700; ${extra||'text-align:right;'}">${t}</th>`;
-  const head=`<tr style="color:var(--text3); border-bottom:1px solid var(--border); font-size:11px;">
-    ${th('Cód.','text-align:left;')}${th('Produto','text-align:left;')}${th('Estoque')}${th('Pedido')}${th('OP/OC')}${th('Maras')}${th('Saldo')}${th('DDV')}${th('DDV S/OP')}${th('MDV')}${med?th('MSV')+th('MQV')+th('MMV'):''}${th('Vendas 261d')}
-  </tr>`;
-  const cel=(v)=>`<td style="padding:6px 8px; text-align:right; color:var(--text2);">${escapeHTML((v==null||v==='')?'—':String(v))}</td>`;
+  const ncol = med?15:12;
+  const thL=(t)=>`<th style="text-align:left;">${t}</th>`;
+  const thR=(t)=>`<th style="text-align:right;">${t}</th>`;
+  const head=`<tr>${thL('Cód.')}${thL('Produto')}${thR('Estoque')}${thR('Pedido')}${thR('OP/OC')}${thR('Maras')}${thR('Saldo')}${thR('DDV')}${thR('DDV S/OP')}${thR('Sugestão')}${thR('MDV')}${med?thR('MSV')+thR('MQV')+thR('MMV'):''}${thR('Vendas 261d')}</tr>`;
+  const cel=(v)=>`<td class="pcp-n">${escapeHTML((v==null||v==='')?'—':String(v))}</td>`;
+  const ddvCel=(val,st)=>{ if(val==null||val===''||val==='—') return '<td class="pcp-n">—</td>'; return `<td style="text-align:right;"><span class="pcp-chip" style="background:color-mix(in srgb, ${st.cor} 16%, transparent); color:${st.cor};">${escapeHTML(String(val))}</span></td>`; };
+  let ri=0;
   const corpo=grupos.map(g=>{
     const colap=!!pcpColapsadas[g.linha];
     const rup=g.itens.filter(it=>_pcpStatus(it.ddv).key==='ruptura').length;
-    const header=`<tr><td colspan="${ncol}" onclick="_pcpToggleLinha('${_pcpEsc(g.linha)}')" style="padding:8px 8px 5px; font-weight:700; color:var(--text2); background:var(--bg2); cursor:pointer; user-select:none;"><i class="ti ti-chevron-${colap?'right':'down'}" style="font-size:13px; vertical-align:-2px;"></i> Linha ${escapeHTML(g.linha)} <span style="color:var(--text3); font-weight:400;">(${g.itens.length})</span>${rup?` <span style="color:var(--danger); font-weight:600; font-size:11px;">· ${rup} ruptura</span>`:''}</td></tr>`;
+    const header=`<tr class="pcpg"><td colspan="${ncol}" onclick="_pcpToggleLinha('${_pcpEsc(g.linha)}')"><i class="ti ti-chevron-${colap?'right':'down'}" style="font-size:13px; vertical-align:-2px;"></i> Linha ${escapeHTML(g.linha)} <span style="color:var(--text3); font-weight:500;">(${g.itens.length})</span>${rup?` <span style="color:var(--danger); font-weight:700; font-size:11px;">· ${rup} ruptura</span>`:''}</td></tr>`;
     if(colap) return header;
     const rows=g.itens.map(it=>{
+      ri++; const alt=ri%2===0?' alt':'';
       const st=_pcpStatus(it.ddv), stS=_pcpStatus(it.ddvsop);
       const saldoN=_pcpNum(it.saldo); const saldoNeg=(!isNaN(saldoN)&&saldoN<0);
-      return `<tr style="border-bottom:1px solid var(--border); font-size:12px;">
-        <td style="padding:6px 8px; text-align:left; color:${it.alerta?'var(--danger)':'var(--text3)'}; white-space:nowrap;">${it.alerta?'<i class="ti ti-alert-triangle" style="font-size:12px; vertical-align:-1px;"></i> ':''}${escapeHTML(it.cod||'')}</td>
-        <td style="padding:6px 8px; text-align:left; color:var(--text);">${escapeHTML(it.produto||'')}</td>
+      const sug=_pcpSugestao(it);
+      const sugCel = sug==null ? '<td class="pcp-n">—</td>'
+        : sug>0 ? `<td style="text-align:right;"><span class="pcp-sug">${sug.toLocaleString('pt-BR')}</span></td>`
+        : '<td style="text-align:right; color:var(--success);"><i class="ti ti-check" style="font-size:14px;" title="Estoque suficiente"></i></td>';
+      return `<tr class="r${alt}">
+        <td style="text-align:left; color:${it.alerta?'var(--danger)':'var(--text3)'}; white-space:nowrap;">${it.alerta?'<i class="ti ti-alert-triangle" style="font-size:12px; vertical-align:-1px;"></i> ':''}${escapeHTML(it.cod||'')}</td>
+        <td style="text-align:left; color:var(--text); font-weight:500;">${escapeHTML(it.produto||'')}</td>
         ${cel(it.estoque)}${cel(it.pedido)}${cel(it.opoc)}${cel(it.maras)}
-        <td style="padding:6px 8px; text-align:right; color:${saldoNeg?'var(--danger)':'var(--text)'}; font-weight:${saldoNeg?'700':'400'};">${escapeHTML(it.saldo||'—')}</td>
-        <td style="padding:6px 8px; text-align:right; color:${st.cor}; font-weight:700;">${escapeHTML(it.ddv||'—')}</td>
-        <td style="padding:6px 8px; text-align:right; color:${stS.cor};">${escapeHTML(it.ddvsop||'—')}</td>
+        <td class="pcp-n" style="color:${saldoNeg?'var(--danger)':'var(--text)'}; font-weight:${saldoNeg?'800':'600'};">${escapeHTML(it.saldo||'—')}</td>
+        ${ddvCel(it.ddv, st)}
+        <td class="pcp-n" style="color:${stS.cor};">${escapeHTML(it.ddvsop||'—')}</td>
+        ${sugCel}
         ${cel(it.mdv)}${med?cel(it.msv)+cel(it.mqv)+cel(it.mmv):''}${cel(it.vendas)}
       </tr>`;
     }).join('');
     return header+rows;
   }).join('');
-  const tabela=`<div style="overflow:hidden; border:1px solid var(--border); border-radius:12px; background:var(--card);"><div style="overflow-x:auto;">
-    <table style="width:100%; border-collapse:collapse; min-width:${med?'940':'720'}px; white-space:nowrap;">
+  const tabela=`<div style="overflow:hidden; border:1px solid var(--border); border-radius:12px; background:var(--card); box-shadow:0 1px 3px rgba(0,0,0,.05);"><div style="overflow-x:auto;">
+    <table class="pcpt" style="min-width:${med?'1020':'820'}px; white-space:nowrap;">
       <thead>${head}</thead>
       <tbody>${corpo || `<tr><td colspan="${ncol}" style="padding:24px; text-align:center; color:var(--text3);">Nenhum item para os filtros atuais.</td></tr>`}</tbody>
     </table>
   </div></div>
-  <div style="display:flex; gap:14px; margin-top:10px; font-size:11px; color:var(--text2); flex-wrap:wrap; align-items:center;">
-    <span style="color:var(--text3); font-weight:600;">DDV:</span>
+  <div style="display:flex; gap:16px; margin-top:10px; font-size:11px; color:var(--text2); flex-wrap:wrap; align-items:center;">
+    <span style="color:var(--text3); font-weight:700;">DDV:</span>
     <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--success);"></span> folga (≥10)</span>
     <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--amber);"></span> atenção (0–10)</span>
-    <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--danger);"></span> ruptura (≤0) <i class="ti ti-alert-triangle" style="font-size:11px;"></i></span>
+    <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--danger);"></span> ruptura (≤0)</span>
+    <span style="margin-left:6px;"><span class="pcp-sug" style="padding:1px 7px;">nº</span> = quanto produzir p/ atingir o DDV-alvo · <i class="ti ti-check" style="color:var(--success);"></i> estoque ok</span>
   </div>`;
   return graf + tabela;
 }
