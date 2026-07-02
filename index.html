@@ -6472,9 +6472,9 @@ function _pcpToggleLinha(L){ pcpColapsadas[L]=!pcpColapsadas[L]; const el=docume
 function _pcpLimpar(){ if(!confirm('Limpar a tabela do PCP? Os dados colados serão removidos deste aparelho.')) return; pcpItens=[]; savePCP(); renderPCP(); toast('Tabela do PCP limpa'); }
 
 // Helpers numéricos / de status (semáforo do DDV)
-function _pcpNum(s){ if(s==null) return NaN; let t=String(s).trim(); if(!t||t==='—'||t==='-') return NaN; t=t.replace(/\./g,'').replace(',','.').replace(/[^0-9.\-]/g,''); const n=parseFloat(t); return isNaN(n)?NaN:n; }
+function _pcpNum(s){ if(s==null) return NaN; if(typeof s==='number') return s; let t=String(s).trim(); if(!t||t==='—'||t==='-') return NaN; if(t.indexOf(',')>=0) t=t.replace(/\./g,'').replace(',','.'); /* pt-BR: vírgula = decimal, ponto = milhar. Sem vírgula, o ponto é tratado como decimal (edição manual). */ t=t.replace(/[^0-9.\-]/g,''); const n=parseFloat(t); return isNaN(n)?NaN:n; }
 function _pcpNorm(s){ return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,''); }
-function _pcpEsc(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function _pcpEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 function _pcpStatus(ddv){ const n=(typeof ddv==='number')?ddv:_pcpNum(ddv); if(isNaN(n)) return {key:'',cor:'var(--text2)'}; if(n<=0) return {key:'ruptura',cor:'var(--danger)'}; if(n<10) return {key:'atencao',cor:'var(--amber)'}; return {key:'folga',cor:'var(--success)'}; }
 // ── Modelo VIVO: Saldo/DDV/DDV S/OP/Sugestão calculados das entradas editáveis (Estoque/Pedido/OP-OC/Maras/MDV) ──
 function _pcpCalc(it){
@@ -6496,7 +6496,10 @@ function _pcpDdvsopHTML(c){ if(isNaN(c.ddvsop)) return '<span class="pcp-n">—<
 function _pcpSugHTML(c){ if(c.sug==null) return '<span class="pcp-n">—</span>'; return c.sug>0?`<span class="pcp-sug">${c.sug.toLocaleString('pt-BR')}</span>`:'<i class="ti ti-check" style="color:var(--success); font-size:14px;" title="Estoque suficiente"></i>'; }
 let _pcpSaveTimer=null;
 function _pcpSaveDeb(){ if(_pcpSaveTimer) clearTimeout(_pcpSaveTimer); _pcpSaveTimer=setTimeout(()=>{ _pcpSaveTimer=null; savePCP(); },400); }
-function _pcpEdit(idx,field,value){ if(!pcpItens[idx]) return; pcpItens[idx][field]=value; _pcpSaveDeb(); _pcpUpdateRow(idx); _pcpUpdateKPIs(); }
+function _pcpEdit(idx,field,value){ if(!pcpItens[idx]) return; pcpItens[idx][field]=value; _pcpUpdateRow(idx); _pcpSettle(idx,field); }
+// Após a pausa de digitação: salva, re-renderiza o corpo (reaplica filtro + conserta KPIs/contadores) e devolve o foco.
+let _pcpSettleTimer=null;
+function _pcpSettle(idx,field){ if(_pcpSettleTimer) clearTimeout(_pcpSettleTimer); _pcpSettleTimer=setTimeout(()=>{ _pcpSettleTimer=null; savePCP(); const el=document.getElementById('pcp-corpo'); if(el) el.innerHTML=_pcpCorpoHTML(); const inp=document.getElementById('pcp-inp-'+idx+'-'+field); if(inp){ inp.focus(); try{ const v=inp.value; inp.setSelectionRange(v.length,v.length); }catch(e){} } },500); }
 function _pcpUpdateRow(idx){ const it=pcpItens[idx]; if(!it) return; const c=_pcpCalc(it); const set=(id,html)=>{ const el=document.getElementById(id); if(el) el.innerHTML=html; }; set('pcp-saldo-'+idx,_pcpSaldoHTML(c)); set('pcp-ddv-'+idx,_pcpDdvHTML(c)); set('pcp-ddvsop-'+idx,_pcpDdvsopHTML(c)); set('pcp-sug-'+idx,_pcpSugHTML(c)); }
 function _pcpUpdateKPIs(){ const itens=_pcpFiltrados(); const cnt=k=>itens.filter(it=>_pcpStatus(_pcpCalc(it).ddv).key===k).length; const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; }; set('pcp-kpi-itens',itens.length); set('pcp-kpi-ruptura',cnt('ruptura')); set('pcp-kpi-atencao',cnt('atencao')); set('pcp-kpi-folga',cnt('folga')); set('pcp-kpi-produzir',itens.filter(it=>{const s=_pcpCalc(it).sug; return s!=null&&s>0;}).length); }
 function _pcpRestaurar(){ const o=safeJSON(LS_PCP_ORIG,null); if(!Array.isArray(o)||!o.length){ toast('Sem valores do SISPRO para restaurar'); return; } if(!confirm('Restaurar os valores originais colados do SISPRO? Suas edições serão descartadas.')) return; pcpItens=JSON.parse(JSON.stringify(o)); savePCP(); renderPCP(); toast('Valores do SISPRO restaurados'); }
@@ -6620,14 +6623,14 @@ function _pcpCorpoHTML(){
       <button onclick="_pcpColarAbrir()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:9px 18px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-clipboard-plus"></i> Colar do SISPRO</button>
     </div>`;
   }
-  const itens=_pcpFiltrados();
-  const grupos=_pcpAgrupar(itens);
+  const _idxMap=new Map(pcpItens.map((it,i)=>[it,i]));
+  const rows0=_pcpFiltrados().map(it=>({it, c:_pcpCalc(it), idx:_idxMap.get(it)}));
   const med=pcpMostrarMedias;
-  const cnt=(k)=>itens.filter(it=>_pcpStatus(_pcpCalc(it).ddv).key===k).length;
-  const aProduzir=itens.filter(it=>{ const s=_pcpCalc(it).sug; return s!=null && s>0; }).length;
+  const cnt=(k)=>rows0.filter(x=>_pcpStatus(x.c.ddv).key===k).length;
+  const aProduzir=rows0.filter(x=>x.c.sug!=null && x.c.sug>0).length;
   const kpi=(lbl,val,cor,id)=>`<div style="background:color-mix(in srgb, ${cor} 13%, transparent); border:1px solid color-mix(in srgb, ${cor} 30%, transparent); border-radius:10px; padding:9px 15px; min-width:88px;"><div style="font-size:11px; color:var(--text2); font-weight:600;">${lbl}</div><div id="${id}" style="font-size:20px; font-weight:800; color:${cor}; font-variant-numeric:tabular-nums;">${val}</div></div>`;
   const graf=`<div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:stretch;">
-    ${kpi('Itens', itens.length, 'var(--text)','pcp-kpi-itens')}
+    ${kpi('Itens', rows0.length, 'var(--text)','pcp-kpi-itens')}
     ${kpi('Ruptura', cnt('ruptura'), 'var(--danger)','pcp-kpi-ruptura')}
     ${kpi('Atenção', cnt('atencao'), 'var(--amber)','pcp-kpi-atencao')}
     ${kpi('Folga', cnt('folga'), 'var(--success)','pcp-kpi-folga')}
@@ -6641,17 +6644,16 @@ function _pcpCorpoHTML(){
   const thR=(t)=>`<th style="text-align:right;">${t}</th>`;
   const head=`<tr>${thL('Cód.')}${thL('Produto')}${thR('Estoque')}${thR('Pedido')}${thR('OP/OC')}${thR('Maras')}${thR('Saldo')}${thR('DDV')}${thR('DDV S/OP')}${thR('Sugestão')}${thR('MDV')}${med?thR('MSV')+thR('MQV')+thR('MMV'):''}${thR('Vendas 261d')}</tr>`;
   const cel=(v)=>`<td class="pcp-n">${escapeHTML((v==null||v==='')?'—':String(v))}</td>`;
-  const einp=(idx,field,val)=>`<td style="padding:3px 5px; text-align:right;"><input value="${escapeAttr(val==null?'':String(val))}" oninput="_pcpEdit(${idx},'${field}',this.value)" inputmode="decimal" class="pcp-edit"></td>`;
+  const einp=(idx,field,val)=>`<td style="padding:3px 5px; text-align:right;"><input id="pcp-inp-${idx}-${field}" value="${escapeAttr(val==null?'':String(val))}" oninput="_pcpEdit(${idx},'${field}',this.value)" inputmode="decimal" class="pcp-edit"></td>`;
+  const _gr={}, _ord=[]; rows0.forEach(x=>{ const L=x.it.linha||'—'; if(!_gr[L]){ _gr[L]=[]; _ord.push(L); } _gr[L].push(x); });
   let ri=0;
-  const corpo=grupos.map(g=>{
-    const colap=!!pcpColapsadas[g.linha];
-    const rup=g.itens.filter(it=>_pcpStatus(_pcpCalc(it).ddv).key==='ruptura').length;
-    const header=`<tr class="pcpg"><td colspan="${ncol}" onclick="_pcpToggleLinha('${_pcpEsc(g.linha)}')"><i class="ti ti-chevron-${colap?'right':'down'}" style="font-size:13px; vertical-align:-2px;"></i> Linha ${escapeHTML(g.linha)} <span style="color:var(--text3); font-weight:500;">(${g.itens.length})</span>${rup?` <span style="color:var(--danger); font-weight:700; font-size:11px;">· ${rup} ruptura</span>`:''}</td></tr>`;
+  const corpo=_ord.map(L=>{
+    const arr=_gr[L]; const colap=!!pcpColapsadas[L];
+    const rup=arr.filter(x=>_pcpStatus(x.c.ddv).key==='ruptura').length;
+    const header=`<tr class="pcpg"><td colspan="${ncol}" onclick="_pcpToggleLinha('${_pcpEsc(L)}')"><i class="ti ti-chevron-${colap?'right':'down'}" style="font-size:13px; vertical-align:-2px;"></i> Linha ${escapeHTML(L)} <span style="color:var(--text3); font-weight:500;">(${arr.length})</span>${rup?` <span style="color:var(--danger); font-weight:700; font-size:11px;">· ${rup} ruptura</span>`:''}</td></tr>`;
     if(colap) return header;
-    const rows=g.itens.map(it=>{
-      ri++; const alt=ri%2===0?' alt':'';
-      const idx=pcpItens.indexOf(it);
-      const c=_pcpCalc(it);
+    const rows=arr.map(x=>{
+      ri++; const alt=ri%2===0?' alt':''; const it=x.it, idx=x.idx, c=x.c;
       return `<tr class="r${alt}">
         <td style="text-align:left; color:${it.alerta?'var(--danger)':'var(--text3)'}; white-space:nowrap;">${it.alerta?'<i class="ti ti-alert-triangle" style="font-size:12px; vertical-align:-1px;"></i> ':''}${escapeHTML(it.cod||'')}</td>
         <td style="text-align:left; color:var(--text); font-weight:500;">${escapeHTML(it.produto||'')}</td>
@@ -6763,7 +6765,7 @@ function _pcpParse(text){
     const cells=line.split('\t').map(c=>c.trim());
     const norm=cells.map(_pcpNorm);
     if(!colMap && norm.some(c=>c==='produto') && norm.some(c=>c==='estoque'||c.indexOf('ddv')===0)){
-      colMap={}; cells.forEach((c,i)=>{ let k=_pcpNorm(c); if(k.indexOf('ddv')===0 && k.indexOf('sop')>0) k='ddvsop'; const m=ALIAS[k]; if(m && colMap[m]==null) colMap[m]=i; }); return;
+      colMap={}; cells.forEach((c,i)=>{ let k=_pcpNorm(c); if(k.indexOf('ddv')===0 && k.indexOf('sop')>0) k='ddvsop'; let m=ALIAS[k]; if(!m){ for(const ak in ALIAS){ if(k.indexOf(ak)===0){ m=ALIAS[ak]; break; } } } if(m && colMap[m]==null) colMap[m]=i; }); return;
     }
     if(cells.length<3) return;
     const get=(k)=>{ if(colMap && colMap[k]!=null) return cells[colMap[k]]||''; const idx=DEFAULT_ORDER.indexOf(k); return (idx>=0 && idx<cells.length) ? (cells[idx]||'') : ''; };
@@ -7142,7 +7144,8 @@ function _moSetItem(itemId,val){ if(!mntOrcBuf) return; const it=(mntOrcBuf.iten
 function _moToggleItem(itemId){ if(!mntOrcBuf) return; const it=(mntOrcBuf.itens||[]).find(x=>x.id===itemId); if(it) it.off=!it.off; _moRefreshComparacao(); }
 function _moToggleCot(cid){ if(!mntOrcBuf) return; const c=(mntOrcBuf.cotacoes||[]).find(x=>x.id===cid); if(c) c.off=!c.off; _moRefreshComparacao(); }
 function _moSetItemVal(cid,itemId,field,val){ if(!mntOrcBuf) return; const c=(mntOrcBuf.cotacoes||[]).find(x=>x.id===cid); if(!c) return; if(!c.itensVals) c.itensVals={}; if(!c.itensVals[itemId]) c.itensVals[itemId]={}; c.itensVals[itemId][field]=val; _moRecalcTotais(); }
-function _moRecalcTotais(){ const b=mntOrcBuf; if(!b) return; const itens=b.itens||[]; (b.cotacoes||[]).filter(c=>!c.off).forEach(c=>{ let tot=0; itens.forEach(it=>{ const q=_num(_moItemVal(c,it.id,'qtd'))||0, u=_num(_moItemVal(c,it.id,'unit'))||0; const sub=q*u; if(!it.off) tot+=sub; const se=document.getElementById('orcsub-'+c.id+'-'+it.id); if(se) se.textContent=sub?_brl(sub):'—'; }); const te=document.getElementById('orctot-'+c.id); if(te) te.textContent=_brl(tot); const sbl=document.getElementById('sim-baseLbl-'+c.id); if(sbl) sbl.textContent=_brl(tot); const sb=document.getElementById('sim-base-'+c.id); if(sb){ sb.value=Math.round(tot); if(typeof _simSet==='function') _simSet(c.id,'reset'); } }); }
+let _moSimTimer=null;
+function _moRecalcTotais(){ const b=mntOrcBuf; if(!b) return; const itens=b.itens||[]; let _need=false; (b.cotacoes||[]).filter(c=>!c.off).forEach(c=>{ let tot=0; itens.forEach(it=>{ const q=_num(_moItemVal(c,it.id,'qtd'))||0, u=_num(_moItemVal(c,it.id,'unit'))||0; const sub=q*u; if(!it.off) tot+=sub; const se=document.getElementById('orcsub-'+c.id+'-'+it.id); if(se) se.textContent=sub?_brl(sub):'—'; }); const te=document.getElementById('orctot-'+c.id); if(te) te.textContent=_brl(tot); const sbl=document.getElementById('sim-baseLbl-'+c.id); if(sbl) sbl.textContent=_brl(tot); const sb=document.getElementById('sim-base-'+c.id); if(sb){ sb.value=Math.round(tot); if(typeof _simSet==='function') _simSet(c.id,'reset'); } else if(tot>0){ _need=true; } }); if(_need){ if(_moSimTimer) clearTimeout(_moSimTimer); _moSimTimer=setTimeout(()=>{ _moSimTimer=null; _moRefreshComparacao(); }, 600); } }
 
 // ── Simulador de negociação (what-if) — cálculo client-side, NÃO persiste no orçamento.
 function _simInpStyle(){ return 'width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:7px; padding:6px 8px; font-size:12px; color:var(--text); font-family:inherit; margin-top:3px;'; }
@@ -7176,7 +7179,7 @@ function _simCardHTML(c, base, capV){
 }
 function _simAddInterval(dtStr, n, unit){ const d=new Date(dtStr+'T12:00'); if(isNaN(d.getTime())) return new Date(); if(unit==='meses') d.setMonth(d.getMonth()+n); else d.setDate(d.getDate()+n); return d; }
 function _simScheduleHTML(total, entPct, np, ivN, unit, dtStr){
-  total=total||0; entPct=entPct||0; np=Math.max(0,Math.round(np||0)); ivN=Math.round(ivN||0);
+  total=total||0; entPct=entPct||0; np=Math.max(0,Math.round(np||0)); ivN=Math.round(ivN||0); if(!dtStr) dtStr=today;
   const ent=total*entPct/100; const restante=total-ent; const parc=np>0?restante/np:0;
   const fmt=d=>{ try{ return d.toLocaleDateString('pt-BR'); }catch(e){ return '—'; } };
   const rows=[['Entrada ('+(Math.round(entPct*10)/10)+'%)', new Date(dtStr+'T12:00'), ent]];
@@ -15153,7 +15156,7 @@ function _equipeUsoStats(){
   return people.map(p=>{
     let naoConcl=0, solic=0, atras=0;
     tasks.forEach(t=>{
-      if(t.solicitante===p.id) solic++;
+      if(t.solicitante===p.id && !t.done) solic++;
       if(t.executor===p.id && !t.done){
         naoConcl++;
         if(t.date && t.date<today) atras++;
