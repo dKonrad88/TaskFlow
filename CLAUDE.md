@@ -89,6 +89,35 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-02 — PC da Empresa — PCP editável (modelo vivo) + Ordens de Produção + AUDITORIA/fixes · MOBILE CONGELADO
+- 🚫 **MOBILE CONGELADO (decisão do Diego, 02/jul):** o repo `taskflow-mobile` (https://dkonrad88.github.io/taskflow-mobile/)
+  foi **só um teste** — **NÃO mexer mais nele** (nem melhorar, nem corrigir) a partir de agora, salvo o Diego pedir explicitamente.
+  Guardar só a referência: código em `G:\g_Diego\HTML\taskflow-mobile\index.html` (é o COMBINADO); mockups A/B/COMBINADO em
+  `G:\g_Publico\- DIEGO\TaskFlow\`. Se surgir bug lá, **não corrigir** — anotar e seguir.
+- **PCP virou "modelo vivo" (Produção › PCP):** colunas **Estoque/Pedido/OP-OC/Maras/MDV editáveis** (inputs inline);
+  **Saldo/DDV/DDV S/OP/Sugestão + KPIs recalculam ao vivo**. Helpers novos: `_pcpCalc` (Saldo=Est+OP/OC+Maras−Pedido;
+  DDV=Saldo/MDV; DDVs/OP=(Saldo−OP/OC)/MDV; Sugestão=DDV-alvo×MDV−Saldo), `_pcpFmt`, `_pcpSaldoHTML`/`_pcpDdvHTML`/
+  `_pcpDdvsopHTML`/`_pcpSugHTML`, `_pcpEdit`→`_pcpUpdateRow`(imediato)+`_pcpSettle`(re-render debounced 500ms que reaplica
+  filtro/KPIs e devolve o foco por id `pcp-inp-<idx>-<field>`). Coluna **Sugestão de produção** + campo **DDV-alvo** (padrão 15,
+  `pcpDdvAlvo`, NÃO persiste ainda). Botão **"Restaurar colado"** (backup `LS_PCP_ORIG` gravado no colar). Renomeado
+  "Planejamento (DDV)" → **PCP**. Visual: KPIs tingidos, chips de DDV, zebra, FILTROS em cinza, campos não-brancos no tema claro.
+- **Sub-aba "Ordens de Produção" ATIVADA** (`_pcpProducaoHTML`): sugestões (sug>0) viram lista de OP por linha, ordenadas por
+  urgência (menor DDV), com KPIs (itens a produzir/urgentes/volume) e badge RUPTURA/ATENÇÃO. Outras sub-abas seguem "em construção".
+- **AUDITORIA (4 agentes) + FIXES aplicados** no `index.html`: `_pcpNum` agora tolera **ponto decimal** na edição (era bug
+  crítico — "1000.5"→10005); recálculo único por render (memo)+`Map` de índices (fim do O(n²)); `_pcpEsc` escapa `"`/`<`/`&`
+  (fecha XSS no onclick da linha colada); `_pcpParse` casa cabeçalho **por prefixo** ("Vendas (261 dias)"); "Uso da equipe"
+  coluna Solicitadas conta só `!done`; simulador de Orçamento aparece ao vivo (0→>0) + guard de "Invalid Date"; mobile `esc()`
+  escapa `'` (último toque no mobile antes de congelar). Commits: `06feb85` (app), `0b19022` (mobile).
+- ⚠️ **NADA testado em navegador por mim** (preview/Python/Node indisponíveis nesta máquina há várias sessões). Tudo revisado
+  à mão. O Diego precisa **abrir o PCP e clicar** (colar SISPRO, editar Estoque/Pedido com vírgula E ponto, ver recálculo+KPIs,
+  aba Ordens de Produção). Dados PCP em `LS_PCP='taskflow_pcp_ddv'`; colar via "Colar do SISPRO".
+- **PENDÊNCIAS PCP (próximos passos):** (B) **FEFO/validade** — cruzar giro×vencimento, precisa do paste da aba **"Lotes e OP's"**
+  do SISPRO (validade/dias em estoque — NÃO vem no Histórico); persistir `pcpDdvAlvo` + repeti-lo na aba Produção; ativar
+  sub-abas Resumo/Ordens de Compra; afinar cortes do semáforo. Baixa prio da auditoria: regenerar ids no import de orçamento;
+  overflow de fim de mês no cronograma do simulador.
+- ⚠️ CRÍTICOS ANTIGOS ainda abertos (da auditoria de 30/jun, não corrigidos): push automático à nuvem pode subir estado parcial
+  (`_cloudOnLocalWrite`) + corrida boot×auto-push; XSS nas Notificações (`n.texto` cru); Mural "undefined" no cabeçalho.
+
 ### 2026-07-01 — PC da Empresa — NOVO REPO "taskflow-mobile" (protótipo mobile p/ a turma testar)
 - **Repo novo, SEPARADO deste:** https://github.com/dKonrad88/taskflow-mobile (público) · Pages:
   **https://dkonrad88.github.io/taskflow-mobile/** . Pasta local: `G:\g_Diego\HTML\taskflow-mobile\` (`index.html` + README).
