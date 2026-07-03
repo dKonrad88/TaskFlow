@@ -89,6 +89,37 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-03 — PC da Empresa — NOVA ÁREA "Marketing" › aba "Influenciadores" (embaixadoras: controle + gamificação)
+- **Nova ÁREA de topo "Marketing"** (mesmo padrão de Produção/Manutenção/Qualidade): botão na home (Meu dia), em ordem
+  **alfabética entre Manutenção e Produção**. `hubView` ganhou valor `'marketing'`. Funções `switchToMarketing`/`setMarketingView`/
+  `renderMarketing` + bloco de sidebar `_sbView==='marketing'` + dispatch em `render()`. Ícone `ti-speakerphone`.
+- **Aba "Influenciadores"** (`renderInfluenciadores`, breadcrumb Marketing › Influenciadores) com **6 sub-abas in-screen** (barra
+  de tabs `_influSubTabsHTML`, estado `influView` persistido em `LS_INFLU_VIEW='taskflow_influ_view'`):
+  1. **Painel** — KPIs (ativas, % do envio, kits, publicaram, conteúdos) + card do envio atual + top-3 do ranking.
+  2. **Embaixadoras** — CRUD completo (nome/@/seguidores/nicho/cidade/endereço/status). Excluir → **Lixeira** (`moveToTrash`) + FAB Desfazer.
+  3. **Envios & Processo** — 1 envio/mês; ao abrir mostra as **39 ETAPAS (texto do Diego, verbatim)** agrupadas em 5 fases
+     (planejamento/kit/expedição/acompanhamento/fechamento) com checkbox + **progresso %** + nota por etapa; **etapa 22 traz a
+     observação Luiza↔Robson**. Abaixo, **tabela por embaixadora** (qtd, rastreio, rastreio-enviado, entregue, publicou, avaliação).
+  4. **Conteúdos** — registrar story/reel/post + toggle "Repostado no perfil Klain".
+  5. **Ranking** — leaderboard com medalhas; **pontos DERIVADOS** (recalculados dos conteúdos+entregas × pesos, nunca persistidos).
+  6. **Regras** — editar pesos da gamificação (reel/post/story/repost/entrega/cumpriu/penalidade) em `LS_MKT_CONFIG`.
+- **Inspiração:** site **Inside Creator** (insidecreator.com.br — plataforma de EGC/gamificação p/ colaboradores), repaginado
+  aqui p/ **embaixadoras** (influenciadoras). Foco duplo pedido pelo Diego: **controle geral** + **gamificação**.
+- **Dados:** chaves novas `taskflow_embaixadoras` / `taskflow_envios` / `taskflow_mkt_config` / `taskflow_influ_view` /
+  `taskflow_mkt_seeded` (prefixo `taskflow_` → entram no sync da nuvem). Lazy-load `_mktLoad()` (não mexe no `load()` do boot).
+  **Seed de demonstração** (5 embaixadoras + 1 "Envio de Julho" em acompanhamento) grava 1x, guardado por flag; pra abrir "vivo"
+  na demo do Guilherme. Novos tipos na Lixeira: `embaixadora` + `envio` (labels/icons + `restoreFromTrash` com `_mktLoad()`).
+- **Bug pego e corrigido na revisão:** minha função `_meSet` colidia com a do editor de **Equipamentos** (redeclaração de função
+  → a minha sobrescrevia e quebraria a edição de equipamentos). Renomeada p/ **`_mktEmbSet`**. Também endureci o link do conteúdo
+  (só rende `<a>` se for http/https). Varredura estática (subagente): 0 refs indefinidas, 0 redeclarações, delimitadores balanceados,
+  5 hooks corretos, texto de usuário todo escapado (sem XSS em innerHTML/onclick).
+- ⚠️ **NÃO testado em navegador por mim** (sem Node nem Python nesta máquina, como nas sessões anteriores). Revisado à mão + varredura.
+  **O Diego precisa abrir e clicar:** Meu dia → **Marketing** → **Influenciadores** → passear pelas 6 abas, criar embaixadora,
+  abrir o envio e marcar etapas, registrar conteúdo, ver o ranking. Publicado só aparece no Pages **após commit+push** (~1min) + Ctrl+Shift+R.
+- **PENDÊNCIAS Marketing (próximos passos):** confirmar com Diego/Luiza o texto final das 39 etapas + o agrupamento em fases;
+  decidir se "produtos do envio" viram formulário editável (hoje é seed); campos de data de envio/recebimento por embaixadora
+  existem no modelo mas ainda não têm input na tabela; possível "temporada"/reset mensal do ranking; ligar embaixadora↔pessoa se quiser.
+
 ### 2026-07-02 — PC da Empresa — PCP editável (modelo vivo) + Ordens de Produção + AUDITORIA/fixes · MOBILE CONGELADO
 - 🚫 **MOBILE CONGELADO (decisão do Diego, 02/jul):** o repo `taskflow-mobile` (https://dkonrad88.github.io/taskflow-mobile/)
   foi **só um teste** — **NÃO mexer mais nele** (nem melhorar, nem corrigir) a partir de agora, salvo o Diego pedir explicitamente.

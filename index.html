@@ -7860,6 +7860,544 @@ function renderPCM(){
     </div>`;
 }
 
+// ════════════════════════════════════════════════════════════════════
+// MÓDULO MARKETING › INFLUENCIADORES (Embaixadoras Klain)
+// Protótipo de UX/regra de negócio. Inspirado no "Inside Creator" (EGC/gamificação),
+// repaginado p/ EMBAIXADORAS: controle (cadastro + envio mensal + processo de 39 etapas)
+// + gamificação (pontos, ranking, conteúdos). Dados descartáveis (localStorage, prefixo
+// taskflow_ → entra no sync da nuvem). Espelha os padrões de Produção/Manutenção.
+// ════════════════════════════════════════════════════════════════════
+const LS_EMBAIXADORAS='taskflow_embaixadoras';
+const LS_ENVIOS='taskflow_envios';
+const LS_MKT_CONFIG='taskflow_mkt_config';
+const LS_INFLU_VIEW='taskflow_influ_view';
+const LS_MKT_SEEDED='taskflow_mkt_seeded';
+
+let marketingView='influenciadores';
+let influView=(function(){ try{ return safeLSGet(LS_INFLU_VIEW)||'painel'; }catch(e){ return 'painel'; } })();
+let embaixadoras=null, envios=null, mktConfig=null;
+let mktEmbBuf=null, mktEmbAberto=null, mktEnvioAberto=null;
+
+// Pontuação padrão da gamificação (editável em "Regras" → LS_MKT_CONFIG)
+const MKT_PONTOS_DEFAULT={reel:40, post:30, story:15, repost:10, entrega:10, cumpriu:20, naoPublicou:-20};
+
+// Fases do processo (agrupam as 39 etapas)
+const MKT_FASES=[
+  {k:'planejamento', l:'Planejamento', i:'ti-bulb', cor:'var(--blue-mid)'},
+  {k:'kit', l:'Pedido, cartinha & montagem do kit', i:'ti-package', cor:'var(--purple)'},
+  {k:'expedicao', l:'Notas, etiquetas & envio', i:'ti-truck-delivery', cor:'var(--orange)'},
+  {k:'acompanhamento', l:'Entregas & publicações', i:'ti-device-mobile', cor:'var(--amber)'},
+  {k:'fechamento', l:'Fechamento', i:'ti-flag', cor:'var(--success)'}
+];
+const MKT_STATUS={
+  planejamento:{l:'Planejamento', cor:'var(--blue-mid)'},
+  producao:{l:'Produção do kit', cor:'var(--purple)'},
+  expedicao:{l:'Expedição', cor:'var(--orange)'},
+  acompanhamento:{l:'Acompanhamento', cor:'var(--amber)'},
+  fechado:{l:'Fechado', cor:'var(--success)'}
+};
+const MKT_AVALIACAO={
+  otima:{l:'Ótima', cor:'var(--success)'},
+  boa:{l:'Boa', cor:'var(--blue-mid)'},
+  parcial:{l:'Parcial', cor:'var(--amber)'},
+  nao_cumpriu:{l:'Não cumpriu', cor:'var(--danger)'}
+};
+
+// As 39 etapas do processo mensal de embaixadoras (texto do Diego, verbatim). Os slugs
+// s01..s39 mantêm o estado de conclusão estável mesmo se o texto for editado depois.
+const ENVIO_ETAPAS_TEMPLATE=[
+  {id:'s01', fase:'planejamento', titulo:'Definir o objetivo do envio do mês'},
+  {id:'s02', fase:'planejamento', titulo:'Escolher os produtos que serão enviados'},
+  {id:'s03', fase:'planejamento', titulo:'Verificar estoque, validade e disponibilidade dos produtos'},
+  {id:'s04', fase:'planejamento', titulo:'Definir a quantidade de produtos para cada embaixadora'},
+  {id:'s05', fase:'planejamento', titulo:'Atualizar a lista de embaixadoras participantes'},
+  {id:'s06', fase:'planejamento', titulo:'Definir o briefing da campanha das embaixadoras'},
+  {id:'s07', fase:'planejamento', titulo:'Definir o prazo que as embaixadoras vão entregar o material'},
+  {id:'s08', fase:'kit', titulo:'Lançamento do pedido no sistema — envio para faturamento'},
+  {id:'s09', fase:'kit', titulo:'Aprovar o texto da cartinha'},
+  {id:'s10', fase:'kit', titulo:'Desenvolver a cartinha do mês'},
+  {id:'s11', fase:'kit', titulo:'Imprimir as cartinhas'},
+  {id:'s12', fase:'kit', titulo:'Solicitação da separação dos produtos para a expedição'},
+  {id:'s13', fase:'kit', titulo:'Conferir os produtos separados'},
+  {id:'s14', fase:'kit', titulo:'Montar os kits'},
+  {id:'s15', fase:'kit', titulo:'Conferir cada kit montado'},
+  {id:'s16', fase:'kit', titulo:'Identificar cada caixa com o nome da embaixadora'},
+  {id:'s17', fase:'kit', titulo:'Fechar e lacrar as embalagens'},
+  {id:'s18', fase:'expedicao', titulo:'Recebimento das notas fiscais emitidas para o envio'},
+  {id:'s19', fase:'expedicao', titulo:'Emitir as etiquetas de envio na plataforma Melhor Envio'},
+  {id:'s20', fase:'expedicao', titulo:'Colar as etiquetas nas caixas'},
+  {id:'s21', fase:'expedicao', titulo:'Conferir se cada etiqueta corresponde à embaixadora correta'},
+  {id:'s22', fase:'expedicao', titulo:'Entregar os kits para a transportadora, Correios ou responsável pelo envio', obs:'Geralmente a Luiza entra em contato com o Robson para combinar o envio.'},
+  {id:'s23', fase:'expedicao', titulo:'Registrar a data de envio'},
+  {id:'s24', fase:'expedicao', titulo:'Registrar o código de rastreio de cada kit'},
+  {id:'s25', fase:'expedicao', titulo:'Enviar o código de rastreio para cada embaixadora'},
+  {id:'s26', fase:'acompanhamento', titulo:'Acompanhar o andamento das entregas'},
+  {id:'s27', fase:'acompanhamento', titulo:'Enviar combinados e briefing'},
+  {id:'s28', fase:'acompanhamento', titulo:'Verificar os status dos envios'},
+  {id:'s29', fase:'acompanhamento', titulo:'Confirmar a chegada do kit com cada embaixadora'},
+  {id:'s30', fase:'acompanhamento', titulo:'Registrar a data de recebimento'},
+  {id:'s31', fase:'acompanhamento', titulo:'Monitorar os stories, reels e posts publicados'},
+  {id:'s32', fase:'acompanhamento', titulo:'Registrar quais embaixadoras publicaram'},
+  {id:'s33', fase:'acompanhamento', titulo:'Cobrar, de forma educada, quem ainda não publicou dentro do prazo'},
+  {id:'s34', fase:'acompanhamento', titulo:'Repostar os conteúdos no perfil da Klain'},
+  {id:'s35', fase:'acompanhamento', titulo:'Atualizar a planilha de controle do mês'},
+  {id:'s36', fase:'acompanhamento', titulo:'Registrar problemas, atrasos ou observações'},
+  {id:'s37', fase:'acompanhamento', titulo:'Avaliar o cumprimento das entregas de cada embaixadora'},
+  {id:'s38', fase:'fechamento', titulo:'Fazer o fechamento do mês'},
+  {id:'s39', fase:'fechamento', titulo:'Planejar o próximo envio'}
+];
+
+// ── Persistência (lazy-load, espelha o padrão _mntLoad da Manutenção) ──
+function _mktLoad(){
+  if(embaixadoras===null) embaixadoras=safeJSON(LS_EMBAIXADORAS, []);
+  if(envios===null) envios=safeJSON(LS_ENVIOS, []);
+  if(mktConfig===null){
+    const c=safeJSON(LS_MKT_CONFIG, null);
+    mktConfig=(c&&typeof c==='object')?c:{pontos:Object.assign({},MKT_PONTOS_DEFAULT)};
+    if(!mktConfig.pontos) mktConfig.pontos=Object.assign({},MKT_PONTOS_DEFAULT);
+  }
+  if(!embaixadoras.length && !envios.length && !safeLSGet(LS_MKT_SEEDED)){ _mktSeed(); }
+}
+function saveEmbaixadoras(){ safeSetItem(LS_EMBAIXADORAS, JSON.stringify(embaixadoras)); }
+function saveEnvios(){ safeSetItem(LS_ENVIOS, JSON.stringify(envios)); }
+function saveMktConfig(){ safeSetItem(LS_MKT_CONFIG, JSON.stringify(mktConfig)); }
+function _mktNovasEtapas(){ return ENVIO_ETAPAS_TEMPLATE.map(t=>({id:t.id, titulo:t.titulo, fase:t.fase, obs:t.obs||'', done:false, concluidoEm:null, nota:''})); }
+function _mktNovoParticipante(embId){ return {embaixadoraId:embId, qtd:1, rastreio:'', dataEnvio:'', rastreioEnviado:false, entregue:false, dataRecebimento:'', publicou:false, avaliacao:null}; }
+
+// ── Seed de demonstração (dados fictícios p/ o protótipo abrir "vivo") ──
+function _mktSeed(){
+  embaixadoras=[
+    {id:_mntId('emb'), nome:'Marina Alves', instagram:'@marina.alves', seguidores:'48200', cidade:'Curitiba/PR', endereco:'', categoria:'Lifestyle', status:'ativa', obs:'Ótimo engajamento em stories.', entrouEm:today},
+    {id:_mntId('emb'), nome:'Bianca Rocha', instagram:'@bibirocha', seguidores:'132000', cidade:'São Paulo/SP', endereco:'', categoria:'Gastronomia', status:'ativa', obs:'', entrouEm:today},
+    {id:_mntId('emb'), nome:'Yasmin Costa', instagram:'@yasmincosta', seguidores:'27600', cidade:'Florianópolis/SC', endereco:'', categoria:'Fitness', status:'ativa', obs:'', entrouEm:today},
+    {id:_mntId('emb'), nome:'Duda Martins', instagram:'@dudamartins', seguidores:'89400', cidade:'Porto Alegre/RS', endereco:'', categoria:'Maternidade', status:'ativa', obs:'', entrouEm:today},
+    {id:_mntId('emb'), nome:'Larissa Nunes', instagram:'@lari.nunes', seguidores:'15300', cidade:'Belo Horizonte/MG', endereco:'', categoria:'Doces & receitas', status:'pausada', obs:'Pediu pausa neste mês.', entrouEm:today}
+  ];
+  const mesRef=String(today).slice(0,7);
+  const env={id:_mntId('env'), titulo:'Envio '+_mktMesLabel(mesRef), mesRef, objetivo:'Divulgar a nova linha de doces caramelizados e gerar conteúdo em reels.', produtos:[{nome:'Pipoca caramelizada 100g', qtd:2},{nome:'Paçoca zero 80g', qtd:2},{nome:'Kit degustação', qtd:1}], status:'acompanhamento', criadoEm:new Date().toISOString(), etapas:_mktNovasEtapas(), participantes:[], conteudos:[], problemas:[]};
+  env.etapas.forEach(et=>{ if(et.fase==='planejamento'||et.fase==='kit'||et.fase==='expedicao'){ et.done=true; et.concluidoEm=today; } });
+  embaixadoras.filter(e=>e.status==='ativa').forEach((e,i)=>{
+    const p=_mktNovoParticipante(e.id);
+    p.qtd=(e.categoria==='Gastronomia')?5:3;
+    p.rastreio='AA'+(123456780+i)+'BR'; p.dataEnvio=today; p.rastreioEnviado=true; p.entregue=i<3; if(i<3) p.dataRecebimento=today;
+    if(i<2){ p.publicou=true; p.avaliacao='otima'; } else if(i===2){ p.publicou=true; p.avaliacao='boa'; }
+    env.participantes.push(p);
+  });
+  const ativas=embaixadoras.filter(e=>e.status==='ativa');
+  if(ativas[0]){ env.conteudos.push({id:_mntId('cnt'), envioId:env.id, embaixadoraId:ativas[0].id, tipo:'reel', link:'', data:today, repostado:true}); env.conteudos.push({id:_mntId('cnt'), envioId:env.id, embaixadoraId:ativas[0].id, tipo:'story', link:'', data:today, repostado:false}); }
+  if(ativas[1]){ env.conteudos.push({id:_mntId('cnt'), envioId:env.id, embaixadoraId:ativas[1].id, tipo:'post', link:'', data:today, repostado:true}); }
+  if(ativas[2]){ env.conteudos.push({id:_mntId('cnt'), envioId:env.id, embaixadoraId:ativas[2].id, tipo:'story', link:'', data:today, repostado:false}); }
+  envios=[env];
+  saveEmbaixadoras(); saveEnvios();
+  safeSetItem(LS_MKT_SEEDED,'1');
+}
+
+// ── Helpers de exibição ──
+function _mktMesLabel(mesRef){
+  const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  if(!mesRef||String(mesRef).indexOf('-')<0) return mesRef||'';
+  const parts=String(mesRef).split('-'); const mi=parseInt(parts[1],10)-1;
+  return (meses[mi]||parts[1])+'/'+parts[0];
+}
+function _mktDataBR(d){ if(!d) return ''; const p=String(d).slice(0,10).split('-'); if(p.length<3) return d; return p[2]+'/'+p[1]; }
+function _mktFmtNum(v){ const n=parseInt(String(v).replace(/\D/g,''),10); if(isNaN(n)) return String(v); return n.toLocaleString('pt-BR'); }
+function _mktEmb(id){ _mktLoad(); return (embaixadoras||[]).find(x=>x.id===id); }
+function _mktEmbNome(id){ const e=_mktEmb(id); return e?e.nome:'—'; }
+function _mktEnvio(id){ _mktLoad(); return (envios||[]).find(e=>e.id===id); }
+function _mktPart(e, embId){ return (e.participantes||[]).find(p=>p.embaixadoraId===embId); }
+function _mktProgEnvio(e){ const t=(e&&e.etapas)||[]; const total=t.length||39; const feitas=t.filter(x=>x.done).length; return {total, feitas, pct: total?Math.round(feitas/total*100):0}; }
+function _mktProgBar(pct, cor){ cor=cor||'var(--blue-mid)'; return `<div style="height:8px; background:var(--bg2); border-radius:99px; overflow:hidden;"><div style="height:100%; width:${Math.max(0,Math.min(100,pct||0))}%; background:${cor}; border-radius:99px; transition:width .3s;"></div></div>`; }
+function _mktChip(txt, cor){ return `<span style="display:inline-block; padding:2px 10px; border-radius:99px; font-size:11.5px; font-weight:700; background:color-mix(in srgb, ${cor} 16%, transparent); color:${cor}; white-space:nowrap;">${escapeHTML(txt)}</span>`; }
+function _mktKpi(label, val, cor, sub){ return `<div style="flex:1; min-width:130px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px 16px;"><div style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">${escapeHTML(label)}</div><div style="font-size:23px; font-weight:800; color:${cor||'var(--text)'}; line-height:1;">${val}</div>${sub?`<div style="font-size:11.5px; color:var(--text3); margin-top:5px;">${escapeHTML(sub)}</div>`:''}</div>`; }
+
+// ── Pontuação (DERIVADA — nunca persistida — recalculada dos conteúdos/entregas) ──
+function _mktPontosEmb(embId){
+  _mktLoad();
+  const w=(mktConfig&&mktConfig.pontos)||MKT_PONTOS_DEFAULT;
+  let pts=0, posts=0, reels=0, stories=0, reposts=0, entregas=0, cumpriu=0, faltas=0;
+  (envios||[]).forEach(env=>{
+    (env.conteudos||[]).filter(c=>c.embaixadoraId===embId).forEach(c=>{
+      if(c.tipo==='post'){ pts+=(+w.post||0); posts++; }
+      else if(c.tipo==='reel'){ pts+=(+w.reel||0); reels++; }
+      else if(c.tipo==='story'){ pts+=(+w.story||0); stories++; }
+      if(c.repostado){ pts+=(+w.repost||0); reposts++; }
+    });
+    (env.participantes||[]).filter(p=>p.embaixadoraId===embId).forEach(p=>{
+      if(p.entregue){ pts+=(+w.entrega||0); entregas++; }
+      if(p.avaliacao==='otima'||p.avaliacao==='boa'){ pts+=(+w.cumpriu||0); cumpriu++; }
+      if(p.avaliacao==='nao_cumpriu'){ pts+=(+w.naoPublicou||0); faltas++; }
+    });
+  });
+  return {pts, posts, reels, stories, reposts, entregas, cumpriu, faltas, publicacoes:posts+reels+stories};
+}
+
+// ── Navegação da área ──
+function switchToMarketing(){
+  hubView='marketing';
+  marketingView='influenciadores';
+  mktEmbBuf=null; mktEmbAberto=null; mktEnvioAberto=null;
+  const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
+  renderSidebar(); render();
+}
+function setMarketingView(v){
+  hubView='marketing'; window._sbOrigemLixCfg=null; // sai de Lixeira/Config se estávamos em overlay
+  marketingView=v;
+  mktEmbBuf=null; mktEmbAberto=null; mktEnvioAberto=null;
+  renderSidebar(); renderMarketing();
+}
+function setInfluView(v){
+  influView=v; safeSetItem(LS_INFLU_VIEW, v);
+  mktEnvioAberto=null; mktEmbBuf=null; mktEmbAberto=null;
+  renderInfluenciadores();
+}
+function renderMarketing(){
+  const main=document.getElementById('task-container'); if(!main) return;
+  const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
+  const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
+  const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
+  if(marketingView==='influenciadores') return renderInfluenciadores();
+  main.innerHTML=`<div style="padding:20px 4px 40px;">${hubBreadcrumb([{label:'Marketing', onclick:"setMarketingView('influenciadores')"},{label:'Em construção'}])}<h1 style="font-size:23px; font-weight:700; color:var(--text);">Em construção</h1></div>`;
+}
+function _influSubTabsHTML(){
+  _mktLoad();
+  const nEmb=(embaixadoras||[]).length;
+  const nEnv=(envios||[]).length;
+  const nCnt=(envios||[]).reduce((a,e)=>a+((e.conteudos||[]).length),0);
+  const tabs=[
+    ['painel','Painel','ti-layout-dashboard',''],
+    ['embaixadoras','Embaixadoras','ti-users', nEmb?String(nEmb):''],
+    ['envios','Envios & Processo','ti-package-export', nEnv?String(nEnv):''],
+    ['conteudos','Conteúdos','ti-photo', nCnt?String(nCnt):''],
+    ['ranking','Ranking','ti-trophy',''],
+    ['config','Regras','ti-adjustments','']
+  ];
+  return `<div style="display:flex; gap:2px; flex-wrap:wrap; border-bottom:1px solid var(--border); margin-top:16px;">
+    ${tabs.map(function(t){ const id=t[0],lbl=t[1],icon=t[2],badge=t[3]; const a=influView===id; return `<button onclick="setInfluView('${id}')" style="display:flex; align-items:center; gap:7px; padding:9px 14px; border:none; border-bottom:2px solid ${a?'var(--blue-mid)':'transparent'}; background:none; color:${a?'var(--blue-mid)':'var(--text2)'}; font-size:13px; font-weight:${a?'700':'600'}; cursor:pointer; font-family:inherit; margin-bottom:-1px;">
+      <i class="ti ${icon}"></i> ${lbl}${badge?` <span style="background:var(--bg2); color:var(--text2); border-radius:99px; font-size:10.5px; font-weight:700; padding:1px 7px;">${badge}</span>`:''}
+    </button>`; }).join('')}
+  </div>`;
+}
+function renderInfluenciadores(){
+  _mktLoad();
+  const main=document.getElementById('task-container'); if(!main) return;
+  const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
+  const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
+  const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
+  let body;
+  if(influView==='embaixadoras') body = mktEmbAberto? _influEmbEditorHTML() : _influEmbaixadorasHTML();
+  else if(influView==='envios') body = mktEnvioAberto? _influEnvioDetalheHTML(mktEnvioAberto) : _influEnviosHTML();
+  else if(influView==='conteudos') body = _influConteudosHTML();
+  else if(influView==='ranking') body = _influRankingHTML();
+  else if(influView==='config') body = _influConfigHTML();
+  else body = _influPainelHTML();
+  main.innerHTML=`<div style="padding:20px 4px 60px; max-width:1180px;">
+    ${hubBreadcrumb([{label:'Marketing', onclick:"setMarketingView('influenciadores')"},{label:'Influenciadores'}])}
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+      <h1 style="font-size:23px; font-weight:700; color:var(--text); margin:0;">Influenciadores</h1>
+      <span style="background:color-mix(in srgb, var(--blue-mid) 14%, transparent); color:var(--blue-mid); font-size:12px; font-weight:700; padding:3px 10px; border-radius:99px;">Embaixadoras Klain</span>
+    </div>
+    <div style="color:var(--text3); font-size:13px; margin-top:5px;">Gestão de embaixadoras, processo de envio do mês e gamificação de conteúdo.</div>
+    ${_influSubTabsHTML()}
+    <div style="margin-top:20px;">${body}</div>
+  </div>`;
+}
+
+// ── PAINEL ──
+function _influPainelHTML(){
+  _mktLoad();
+  const ativas=(embaixadoras||[]).filter(e=>e.status==='ativa').length;
+  const total=(embaixadoras||[]).length;
+  const env=(envios||[]).find(e=>e.status!=='fechado')||(envios||[])[0];
+  const prog=env?_mktProgEnvio(env):{pct:0,feitas:0,total:39};
+  const totKits=env?(env.participantes||[]).reduce((a,p)=>a+(parseInt(p.qtd,10)||0),0):0;
+  const partN=env?(env.participantes||[]).length:0;
+  const publicaram=env?(env.participantes||[]).filter(p=>p.publicou).length:0;
+  const taxa=partN?Math.round(publicaram/partN*100):0;
+  const nConteudos=(envios||[]).reduce((a,e)=>a+((e.conteudos||[]).length),0);
+  const kpis=`<div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px;">
+    ${_mktKpi('Embaixadoras ativas', ativas, 'var(--blue-mid)', total>ativas?('de '+total+' no total'):'todas ativas')}
+    ${_mktKpi('Envio atual', env?prog.pct+'%':'—', prog.pct>=100?'var(--success)':'var(--amber)', env?(prog.feitas+'/'+prog.total+' etapas'):'nenhum envio')}
+    ${_mktKpi('Kits no envio', totKits, 'var(--purple)', partN?(partN+' embaixadoras'):'')}
+    ${_mktKpi('Já publicaram', publicaram+'/'+partN, taxa>=70?'var(--success)':taxa>=40?'var(--amber)':'var(--danger)', taxa+'% de cumprimento')}
+    ${_mktKpi('Conteúdos gerados', nConteudos, 'var(--blue-teal)', 'stories, reels e posts')}
+  </div>`;
+  let envCard;
+  if(env){
+    const st=MKT_STATUS[env.status]||MKT_STATUS.planejamento;
+    envCard=`<div style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px 20px; margin-bottom:18px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+        <div style="display:flex; align-items:center; gap:10px;"><i class="ti ti-package-export" style="font-size:20px; color:var(--blue-mid);"></i><span style="font-size:16px; font-weight:800; color:var(--text);">${escapeHTML(env.titulo)}</span>${_mktChip(st.l, st.cor)}</div>
+        <button onclick="abrirEnvio('${env.id}')" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-arrow-right"></i> Abrir processo</button>
+      </div>
+      ${env.objetivo?`<div style="font-size:13px; color:var(--text2); margin-bottom:12px;"><i class="ti ti-target" style="color:var(--text3);"></i> ${escapeHTML(env.objetivo)}</div>`:''}
+      <div style="display:flex; align-items:center; gap:10px;"><div style="flex:1;">${_mktProgBar(prog.pct)}</div><span style="font-size:12px; font-weight:700; color:var(--text2);">${prog.pct}%</span></div>
+    </div>`;
+  } else {
+    envCard=`<div style="background:var(--card); border:1px dashed var(--border); border-radius:14px; padding:24px; text-align:center; margin-bottom:18px;">
+      <div style="color:var(--text3); font-size:13px; margin-bottom:12px;">Nenhum envio criado ainda.</div>
+      <button onclick="novoEnvio()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:9px 16px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-plus"></i> Criar envio do mês</button>
+    </div>`;
+  }
+  const rank=(embaixadoras||[]).map(e=>({e, s:_mktPontosEmb(e.id)})).sort((a,b)=>b.s.pts-a.s.pts).slice(0,3);
+  const medal=['#d4af37','#9fa6ad','#cd7f32'];
+  const rankCard=rank.length?`<div style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px 20px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;"><span style="font-size:14px; font-weight:800; color:var(--text);"><i class="ti ti-trophy" style="color:#d4af37;"></i> Top embaixadoras</span><button onclick="setInfluView('ranking')" style="background:none; border:none; color:var(--blue-mid); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;">Ver ranking →</button></div>
+    ${rank.map((r,i)=>`<div style="display:flex; align-items:center; gap:12px; padding:8px 0; border-top:${i?'1px solid var(--border)':'none'};">
+      <span style="font-size:16px; font-weight:800; color:${medal[i]||'var(--text3)'}; width:24px;">${i+1}º</span>
+      <div style="flex:1; min-width:0;"><div style="font-size:13.5px; font-weight:700; color:var(--text);">${escapeHTML(r.e.nome)}</div><div style="font-size:11.5px; color:var(--text3);">${escapeHTML(r.e.instagram||'')} · ${r.s.publicacoes} publicações</div></div>
+      <span style="font-size:15px; font-weight:800; color:var(--blue-mid);">${r.s.pts} pts</span>
+    </div>`).join('')}
+  </div>`:'';
+  return kpis+envCard+rankCard;
+}
+
+// ── EMBAIXADORAS (CRUD + soft-delete → Lixeira) ──
+function _influEmbaixadorasHTML(){
+  _mktLoad();
+  const arr=(embaixadoras||[]).slice().sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));
+  const statusChip=e=>{ const map={ativa:{l:'Ativa',cor:'var(--success)'},pausada:{l:'Pausada',cor:'var(--amber)'},inativa:{l:'Inativa',cor:'var(--text3)'}}; const s=map[e.status]||map.ativa; return _mktChip(s.l, s.cor); };
+  const card=e=>`<div onclick="editarEmbaixadora('${e.id}')" style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px 16px; cursor:pointer; transition:border-color .15s;" onmouseover="this.style.borderColor='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)'">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <div style="display:flex; align-items:center; gap:11px; min-width:0;">
+        <div style="width:38px; height:38px; border-radius:50%; background:color-mix(in srgb, var(--blue-mid) 16%, transparent); color:var(--blue-mid); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;">${escapeHTML(String(e.nome||'?').trim().charAt(0).toUpperCase())}</div>
+        <div style="min-width:0;"><div style="font-size:14px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(e.nome)}</div><div style="font-size:12px; color:var(--text3);">${escapeHTML(e.instagram||'')}</div></div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+        ${statusChip(e)}
+        <button onclick="event.stopPropagation(); excluirEmbaixadora('${e.id}')" title="Excluir (vai para a Lixeira)" style="background:none; border:none; color:var(--text3); cursor:pointer; padding:4px;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-trash" style="font-size:15px;"></i></button>
+      </div>
+    </div>
+    <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:10px; font-size:11.5px; color:var(--text3);">
+      ${e.seguidores?`<span><i class="ti ti-users"></i> ${escapeHTML(_mktFmtNum(e.seguidores))} seguidores</span>`:''}
+      ${e.categoria?`<span><i class="ti ti-tag"></i> ${escapeHTML(e.categoria)}</span>`:''}
+      ${e.cidade?`<span><i class="ti ti-map-pin"></i> ${escapeHTML(e.cidade)}</span>`:''}
+      <span><i class="ti ti-star"></i> ${_mktPontosEmb(e.id).pts} pts</span>
+    </div>
+  </div>`;
+  return `<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+    <div style="font-size:13px; color:var(--text3);">${arr.length} embaixadora${arr.length!==1?'s':''} cadastrada${arr.length!==1?'s':''}</div>
+    <button onclick="novoEmbaixadora()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:9px 15px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-plus"></i> Nova embaixadora</button>
+  </div>
+  ${arr.length?`<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:12px;">${arr.map(card).join('')}</div>`:`<div style="text-align:center; padding:40px; color:var(--text3); font-size:13px; background:var(--card); border:1px dashed var(--border); border-radius:12px;">Nenhuma embaixadora ainda. Clique em <b>Nova embaixadora</b> para começar.</div>`}`;
+}
+function _influEmbEditorHTML(){
+  const b=mktEmbBuf; if(!b) return _influEmbaixadorasHTML();
+  const inpStyle='width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:9px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;';
+  const labStyle='display:block; font-size:11px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px;';
+  const campo=(lbl,key,ph)=>`<div><label style="${labStyle}">${lbl}</label><input value="${escapeAttr(b[key]||'')}" oninput="_mktEmbSet('${key}', this.value)" placeholder="${escapeAttr(ph||'')}" style="${inpStyle}"></div>`;
+  const sel=(lbl,key,opts)=>`<div><label style="${labStyle}">${lbl}</label><select onchange="_mktEmbSet('${key}', this.value)" style="${inpStyle}">${opts.map(o=>`<option value="${o[0]}" ${b[key]===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>`;
+  return `<div style="max-width:640px;">
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;"><button onclick="cancelarEmbaixadora()" style="background:none; border:none; color:var(--text2); font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;"><i class="ti ti-arrow-left"></i> Voltar</button><span style="font-size:16px; font-weight:800; color:var(--text);">${b._novo?'Nova embaixadora':'Editar embaixadora'}</span></div>
+    <div style="display:flex; flex-direction:column; gap:14px; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px;">
+      ${campo('Nome *','nome','Nome da embaixadora')}
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">${campo('Instagram','instagram','@usuario')}${campo('Seguidores','seguidores','ex: 25000')}</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">${campo('Categoria / nicho','categoria','ex: Gastronomia')}${sel('Status','status',[['ativa','Ativa'],['pausada','Pausada'],['inativa','Inativa']])}</div>
+      ${campo('Cidade / UF','cidade','ex: Curitiba/PR')}
+      ${campo('Endereço para envio','endereco','Rua, número, CEP…')}
+      <div><label style="${labStyle}">Observações</label><textarea oninput="_mktEmbSet('obs', this.value)" placeholder="Notas internas…" style="${inpStyle} min-height:70px; resize:vertical;">${escapeHTML(b.obs||'')}</textarea></div>
+    </div>
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:16px;">
+      ${b._novo?'<span></span>':`<button onclick="excluirEmbaixadora('${b.id}')" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:9px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;"><i class="ti ti-trash"></i> Excluir</button>`}
+      <div style="display:flex; gap:10px;"><button onclick="cancelarEmbaixadora()" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:9px; padding:9px 16px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;">Cancelar</button><button onclick="salvarEmbaixadora()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:9px 18px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-check"></i> Salvar</button></div>
+    </div>
+  </div>`;
+}
+function _mktEmbSet(k,v){ if(mktEmbBuf) mktEmbBuf[k]=v; }
+function novoEmbaixadora(){ _mktLoad(); mktEmbBuf={id:_mntId('emb'), nome:'', instagram:'', seguidores:'', cidade:'', endereco:'', categoria:'', status:'ativa', obs:'', entrouEm:today, _novo:true}; mktEmbAberto=mktEmbBuf.id; influView='embaixadoras'; safeSetItem(LS_INFLU_VIEW,'embaixadoras'); renderInfluenciadores(); }
+function editarEmbaixadora(id){ _mktLoad(); const e=(embaixadoras||[]).find(x=>x.id===id); if(!e) return; mktEmbBuf=JSON.parse(JSON.stringify(e)); mktEmbBuf._novo=false; mktEmbAberto=id; influView='embaixadoras'; renderInfluenciadores(); }
+function cancelarEmbaixadora(){ mktEmbAberto=null; mktEmbBuf=null; renderInfluenciadores(); }
+function salvarEmbaixadora(){ const b=mktEmbBuf; if(!b) return; if(!String(b.nome).trim()){ toast('Dê um nome à embaixadora'); return; } _mktLoad(); delete b._novo; const i=embaixadoras.findIndex(x=>x.id===b.id); if(i>=0) embaixadoras[i]=b; else embaixadoras.push(b); saveEmbaixadoras(); toast('Embaixadora salva'); mktEmbAberto=null; mktEmbBuf=null; renderInfluenciadores(); }
+function excluirEmbaixadora(id){ _mktLoad(); const it=(embaixadoras||[]).find(x=>x.id===id); if(!it) return; moveToTrash('embaixadora', it); embaixadoras=embaixadoras.filter(x=>x.id!==id); saveEmbaixadoras(); mktEmbAberto=null; mktEmbBuf=null; renderInfluenciadores(); _mostrarFABDesfazer('Embaixadora excluída', 0); }
+
+// ── ENVIOS + PROCESSO (39 etapas) ──
+function _influEnviosHTML(){
+  _mktLoad();
+  const arr=(envios||[]).slice();
+  const card=e=>{ const prog=_mktProgEnvio(e); const st=MKT_STATUS[e.status]||MKT_STATUS.planejamento; const partN=(e.participantes||[]).length; return `<div onclick="abrirEnvio('${e.id}')" style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px 18px; cursor:pointer;" onmouseover="this.style.borderColor='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)'">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px;">
+      <div style="display:flex; align-items:center; gap:9px; min-width:0;"><i class="ti ti-package-export" style="font-size:18px; color:var(--blue-mid);"></i><span style="font-size:15px; font-weight:800; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(e.titulo)}</span></div>
+      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">${_mktChip(st.l, st.cor)}<button onclick="event.stopPropagation(); excluirEnvio('${e.id}')" title="Excluir (vai para a Lixeira)" style="background:none; border:none; color:var(--text3); cursor:pointer; padding:4px;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-trash" style="font-size:15px;"></i></button></div>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;"><div style="flex:1;">${_mktProgBar(prog.pct)}</div><span style="font-size:12px; font-weight:700; color:var(--text2);">${prog.feitas}/${prog.total}</span></div>
+    <div style="font-size:11.5px; color:var(--text3);"><i class="ti ti-users"></i> ${partN} embaixadora${partN!==1?'s':''} · <i class="ti ti-photo"></i> ${(e.conteudos||[]).length} conteúdos</div>
+  </div>`; };
+  return `<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+    <div style="font-size:13px; color:var(--text3);">${arr.length} envio${arr.length!==1?'s':''}</div>
+    <button onclick="novoEnvio()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:9px 15px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-plus"></i> Novo envio do mês</button>
+  </div>
+  ${arr.length?`<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:12px;">${arr.map(card).join('')}</div>`:`<div style="text-align:center; padding:40px; color:var(--text3); font-size:13px; background:var(--card); border:1px dashed var(--border); border-radius:12px;">Nenhum envio ainda. Crie o <b>envio do mês</b> para instanciar as 39 etapas do processo.</div>`}`;
+}
+function _influEnvioDetalheHTML(id){
+  const e=_mktEnvio(id); if(!e){ mktEnvioAberto=null; return _influEnviosHTML(); }
+  const prog=_mktProgEnvio(e);
+  const st=MKT_STATUS[e.status]||MKT_STATUS.planejamento;
+  const statusSel=`<select onchange="_mktEnvioSet('${e.id}','status',this.value)" style="background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:6px 10px; font-size:12.5px; font-weight:700; color:${st.cor}; font-family:inherit;">${Object.keys(MKT_STATUS).map(k=>`<option value="${k}" ${e.status===k?'selected':''}>${MKT_STATUS[k].l}</option>`).join('')}</select>`;
+  const header=`<div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;"><button onclick="voltarEnvios()" style="background:none; border:none; color:var(--text2); font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;"><i class="ti ti-arrow-left"></i> Envios</button></div>
+  <div style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px 20px; margin-bottom:18px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+      <div style="display:flex; align-items:center; gap:10px;"><i class="ti ti-package-export" style="font-size:22px; color:var(--blue-mid);"></i><span style="font-size:18px; font-weight:800; color:var(--text);">${escapeHTML(e.titulo)}</span></div>
+      <div style="display:flex; align-items:center; gap:8px;">${statusSel}<button onclick="excluirEnvio('${e.id}')" title="Excluir (vai para a Lixeira)" style="background:none; border:1px solid var(--border); color:var(--danger); border-radius:8px; padding:6px 10px; font-size:12px; cursor:pointer; font-family:inherit;"><i class="ti ti-trash"></i></button></div>
+    </div>
+    <label style="display:block; font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px;">Objetivo do envio (etapa 1)</label>
+    <textarea oninput="_mktEnvioSet('${e.id}','objetivo',this.value)" placeholder="Qual o objetivo desse envio?" style="width:100%; box-sizing:border-box; min-height:52px; background:var(--bg3); border:1px solid var(--border); border-radius:9px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit; resize:vertical; margin-bottom:12px;">${escapeHTML(e.objetivo||'')}</textarea>
+    <div style="display:flex; align-items:center; gap:12px;"><div style="flex:1;">${_mktProgBar(prog.pct, prog.pct>=100?'var(--success)':'var(--blue-mid)')}</div><span style="font-size:13px; font-weight:800; color:${prog.pct>=100?'var(--success)':'var(--text2)'};">${prog.pct}% · ${prog.feitas}/${prog.total} etapas</span></div>
+  </div>`;
+  const processo=`<div style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:6px 4px 12px; margin-bottom:18px;">
+    <div style="padding:12px 16px 4px; font-size:15px; font-weight:800; color:var(--text);"><i class="ti ti-list-check" style="color:var(--blue-mid);"></i> Processo do envio — 39 etapas</div>
+    ${MKT_FASES.map(f=>{
+      const steps=(e.etapas||[]).filter(x=>x.fase===f.k);
+      if(!steps.length) return '';
+      const feitas=steps.filter(s=>s.done).length;
+      return `<div style="padding:10px 16px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;"><i class="ti ${f.i}" style="color:${f.cor};"></i><span style="font-size:12px; font-weight:800; color:${f.cor}; text-transform:uppercase; letter-spacing:.4px;">${f.l}</span><span style="font-size:11px; color:var(--text3);">${feitas}/${steps.length}</span></div>
+        ${steps.map(s=>_mktEtapaRowHTML(e.id, s)).join('')}
+      </div>`;
+    }).join('')}
+  </div>`;
+  return header+processo+_mktParticipantesHTML(e);
+}
+function _mktEtapaRowHTML(envId, s){
+  const num=parseInt(String(s.id).replace('s',''),10);
+  return `<div style="display:flex; align-items:flex-start; gap:10px; padding:7px 6px 7px 8px; border-radius:8px;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='none'">
+    <input type="checkbox" ${s.done?'checked':''} onclick="_mktEtapaToggle('${envId}','${s.id}')" style="margin-top:2px; width:16px; height:16px; cursor:pointer; accent-color:var(--blue-mid); flex-shrink:0;">
+    <div style="flex:1; min-width:0;">
+      <div style="font-size:13px; color:${s.done?'var(--text3)':'var(--text)'}; ${s.done?'text-decoration:line-through;':''}"><span style="color:var(--text3); font-weight:700; font-size:11px;">${num}.</span> ${escapeHTML(s.titulo)}${s.done&&s.concluidoEm?` <span style="font-size:10.5px; color:var(--success);">✓ ${_mktDataBR(s.concluidoEm)}</span>`:''}</div>
+      ${s.obs?`<div style="font-size:11.5px; color:var(--amber); margin-top:2px;"><i class="ti ti-info-circle"></i> ${escapeHTML(s.obs)}</div>`:''}
+      <input value="${escapeAttr(s.nota||'')}" onchange="_mktEtapaNota('${envId}','${s.id}',this.value)" placeholder="anotação…" style="margin-top:4px; width:100%; max-width:440px; box-sizing:border-box; background:none; border:none; border-bottom:1px dashed var(--border); padding:2px 0; font-size:11.5px; color:var(--text2); font-family:inherit;">
+    </div>
+  </div>`;
+}
+function _mktParticipantesHTML(e){
+  _mktLoad();
+  const parts=(e.participantes||[]);
+  const naoPart=(embaixadoras||[]).filter(emb=>!parts.some(p=>p.embaixadoraId===emb.id));
+  const addSel=naoPart.length?`<select id="mkt-part-add" style="background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:6px 10px; font-size:12.5px; color:var(--text); font-family:inherit;"><option value="">+ Adicionar…</option>${naoPart.map(emb=>`<option value="${emb.id}">${escapeHTML(emb.nome)}</option>`).join('')}</select><button onclick="_mktPartAddFromSel('${e.id}')" style="background:var(--bg2); border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:6px 10px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit;">Adicionar</button>`:'';
+  const avalSel=p=>`<select onchange="_mktPartAval('${e.id}','${p.embaixadoraId}',this.value)" style="background:var(--bg3); border:1px solid var(--border); border-radius:7px; padding:4px 6px; font-size:11.5px; color:var(--text); font-family:inherit;"><option value="">—</option>${Object.keys(MKT_AVALIACAO).map(k=>`<option value="${k}" ${p.avaliacao===k?'selected':''}>${MKT_AVALIACAO[k].l}</option>`).join('')}</select>`;
+  const row=p=>{ const emb=_mktEmb(p.embaixadoraId); const nome=emb?emb.nome:'(removida)'; return `<tr>
+    <td style="padding:8px 10px; font-weight:700; color:var(--text); white-space:nowrap;">${escapeHTML(nome)}</td>
+    <td style="padding:8px 6px; text-align:center;"><input value="${escapeAttr(p.qtd!=null?p.qtd:'')}" onchange="_mktPartSet('${e.id}','${p.embaixadoraId}','qtd',this.value)" style="width:48px; text-align:center; background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:4px; font-size:12px; color:var(--text); font-family:inherit;"></td>
+    <td style="padding:8px 6px;"><input value="${escapeAttr(p.rastreio||'')}" onchange="_mktPartSet('${e.id}','${p.embaixadoraId}','rastreio',this.value)" placeholder="código" style="width:112px; background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:4px 6px; font-size:11.5px; color:var(--text); font-family:inherit;"></td>
+    <td style="padding:8px 6px; text-align:center;"><input type="checkbox" ${p.rastreioEnviado?'checked':''} onclick="_mktPartToggle('${e.id}','${p.embaixadoraId}','rastreioEnviado')" style="cursor:pointer; accent-color:var(--blue-mid);" title="Rastreio enviado à embaixadora"></td>
+    <td style="padding:8px 6px; text-align:center;"><input type="checkbox" ${p.entregue?'checked':''} onclick="_mktPartToggle('${e.id}','${p.embaixadoraId}','entregue')" style="cursor:pointer; accent-color:var(--success);" title="Kit entregue"></td>
+    <td style="padding:8px 6px; text-align:center;"><input type="checkbox" ${p.publicou?'checked':''} onclick="_mktPartToggle('${e.id}','${p.embaixadoraId}','publicou')" style="cursor:pointer; accent-color:var(--purple);" title="Publicou"></td>
+    <td style="padding:8px 6px; text-align:center;">${avalSel(p)}</td>
+    <td style="padding:8px 6px; text-align:center;"><button onclick="_mktPartDel('${e.id}','${p.embaixadoraId}')" title="Remover deste envio" style="background:none; border:none; color:var(--text3); cursor:pointer;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-x"></i></button></td>
+  </tr>`; };
+  return `<div style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px;"><span style="font-size:15px; font-weight:800; color:var(--text);"><i class="ti ti-users" style="color:var(--blue-mid);"></i> Embaixadoras deste envio (${parts.length})</span><div style="display:flex; gap:6px; align-items:center;">${addSel}</div></div>
+    <div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12px; min-width:640px;">
+      <thead><tr style="text-align:center; color:var(--text3); font-size:10.5px; text-transform:uppercase; letter-spacing:.3px; border-bottom:1px solid var(--border);">
+        <th style="padding:6px 10px; text-align:left;">Embaixadora</th><th style="padding:6px;">Qtd</th><th style="padding:6px;">Rastreio</th><th style="padding:6px;" title="Rastreio enviado">Rastr.✓</th><th style="padding:6px;">Entregue</th><th style="padding:6px;">Publicou</th><th style="padding:6px;">Avaliação</th><th style="padding:6px;"></th>
+      </tr></thead>
+      <tbody>${parts.length?parts.map(row).join(''):`<tr><td colspan="8" style="padding:20px; text-align:center; color:var(--text3);">Nenhuma embaixadora neste envio. Use o seletor acima.</td></tr>`}</tbody>
+    </table></div>
+  </div>`;
+}
+function abrirEnvio(id){ _mktLoad(); mktEnvioAberto=id; influView='envios'; safeSetItem(LS_INFLU_VIEW,'envios'); renderInfluenciadores(); }
+function voltarEnvios(){ mktEnvioAberto=null; renderInfluenciadores(); }
+function novoEnvio(){
+  _mktLoad();
+  const mesRef=String(today).slice(0,7);
+  const e={id:_mntId('env'), titulo:'Envio '+_mktMesLabel(mesRef), mesRef, objetivo:'', produtos:[], status:'planejamento', criadoEm:new Date().toISOString(), etapas:_mktNovasEtapas(), participantes:[], conteudos:[], problemas:[]};
+  (embaixadoras||[]).filter(x=>x.status==='ativa').forEach(x=>{ e.participantes.push(_mktNovoParticipante(x.id)); });
+  envios.unshift(e); saveEnvios(); mktEnvioAberto=e.id; influView='envios'; safeSetItem(LS_INFLU_VIEW,'envios'); renderInfluenciadores(); toast('Novo envio criado com as 39 etapas');
+}
+function excluirEnvio(id){ _mktLoad(); const it=(envios||[]).find(x=>x.id===id); if(!it) return; moveToTrash('envio', it); envios=envios.filter(x=>x.id!==id); saveEnvios(); mktEnvioAberto=null; renderInfluenciadores(); _mostrarFABDesfazer('Envio excluído', 0); }
+function _mktEnvioSet(id, field, val){ const e=_mktEnvio(id); if(!e) return; e[field]=val; saveEnvios(); if(field==='status') renderInfluenciadores(); }
+function _mktEtapaToggle(envId, etapaId){ const e=_mktEnvio(envId); if(!e) return; const et=(e.etapas||[]).find(x=>x.id===etapaId); if(!et) return; et.done=!et.done; et.concluidoEm=et.done?today:null; saveEnvios(); renderInfluenciadores(); }
+function _mktEtapaNota(envId, etapaId, val){ const e=_mktEnvio(envId); if(!e) return; const et=(e.etapas||[]).find(x=>x.id===etapaId); if(!et) return; et.nota=val; saveEnvios(); }
+function _mktPartSet(envId, embId, field, val){ const e=_mktEnvio(envId); if(!e) return; const p=_mktPart(e, embId); if(!p) return; p[field]=val; saveEnvios(); }
+function _mktPartToggle(envId, embId, field){ const e=_mktEnvio(envId); if(!e) return; const p=_mktPart(e, embId); if(!p) return; p[field]=!p[field]; if(field==='entregue'&&p.entregue&&!p.dataRecebimento) p.dataRecebimento=today; saveEnvios(); renderInfluenciadores(); }
+function _mktPartAval(envId, embId, val){ const e=_mktEnvio(envId); if(!e) return; const p=_mktPart(e, embId); if(!p) return; p.avaliacao=val||null; saveEnvios(); renderInfluenciadores(); }
+function _mktPartAddFromSel(envId){ const sel=document.getElementById('mkt-part-add'); if(!sel||!sel.value) return; const e=_mktEnvio(envId); if(!e) return; if(_mktPart(e, sel.value)) return; e.participantes.push(_mktNovoParticipante(sel.value)); saveEnvios(); renderInfluenciadores(); }
+function _mktPartDel(envId, embId){ const e=_mktEnvio(envId); if(!e) return; e.participantes=(e.participantes||[]).filter(p=>p.embaixadoraId!==embId); saveEnvios(); renderInfluenciadores(); }
+
+// ── CONTEÚDOS ──
+function _influConteudosHTML(){
+  _mktLoad();
+  const all=[];
+  (envios||[]).forEach(e=>{ (e.conteudos||[]).forEach(c=>all.push(Object.assign({envTitulo:e.titulo}, c))); });
+  all.sort((a,b)=>String(b.data).localeCompare(String(a.data)));
+  const tipoMeta={story:{l:'Story',cor:'var(--blue-teal)',i:'ti-circle'},reel:{l:'Reel',cor:'var(--purple)',i:'ti-video'},post:{l:'Post',cor:'var(--blue-mid)',i:'ti-photo'}};
+  const selStyle='background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:12.5px; color:var(--text); font-family:inherit;';
+  const envOpts=(envios||[]).map(e=>`<option value="${e.id}">${escapeHTML(e.titulo)}</option>`).join('');
+  const embOpts=(embaixadoras||[]).map(e=>`<option value="${e.id}">${escapeHTML(e.nome)}</option>`).join('');
+  const form=((envios||[]).length&&(embaixadoras||[]).length)?`<div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:16px;">
+    <div style="font-size:13px; font-weight:700; color:var(--text); margin-bottom:10px;"><i class="ti ti-plus"></i> Registrar publicação</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <select id="mkt-cnt-env" style="${selStyle}">${envOpts}</select>
+      <select id="mkt-cnt-emb" style="${selStyle}">${embOpts}</select>
+      <select id="mkt-cnt-tipo" style="${selStyle}"><option value="story">Story</option><option value="reel">Reel</option><option value="post">Post</option></select>
+      <input id="mkt-cnt-link" placeholder="link (opcional)" style="flex:1; min-width:140px; ${selStyle}">
+      <button onclick="_mktAddConteudo()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:8px; padding:7px 14px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;">Registrar</button>
+    </div>
+  </div>`:`<div style="background:var(--card); border:1px dashed var(--border); border-radius:12px; padding:16px; margin-bottom:16px; color:var(--text3); font-size:12.5px;">Cadastre embaixadoras e crie um envio para registrar conteúdos.</div>`;
+  const row=c=>{ const t=tipoMeta[c.tipo]||tipoMeta.post; return `<div style="display:flex; align-items:center; gap:12px; padding:11px 14px; background:var(--card); border:1px solid var(--border); border-radius:10px;">
+    <div style="width:34px; height:34px; border-radius:9px; background:color-mix(in srgb, ${t.cor} 16%, transparent); color:${t.cor}; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i class="ti ${t.i}"></i></div>
+    <div style="flex:1; min-width:0;"><div style="font-size:13px; font-weight:700; color:var(--text);">${escapeHTML(_mktEmbNome(c.embaixadoraId))} · ${t.l}</div><div style="font-size:11.5px; color:var(--text3);">${escapeHTML(c.envTitulo)} · ${_mktDataBR(c.data)}${(c.link&&/^https?:\/\//i.test(c.link))?` · <a href="${escapeAttr(c.link)}" target="_blank" rel="noopener" style="color:var(--blue-mid);">abrir</a>`:''}</div></div>
+    <button onclick="_mktToggleRepost('${c.envioId}','${c.id}')" title="Repostado no perfil da Klain" style="background:${c.repostado?'color-mix(in srgb, var(--success) 16%, transparent)':'none'}; border:1px solid ${c.repostado?'var(--success)':'var(--border)'}; color:${c.repostado?'var(--success)':'var(--text3)'}; border-radius:8px; padding:5px 9px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap;"><i class="ti ti-repeat"></i> ${c.repostado?'Repostado':'Repostar'}</button>
+    <button onclick="_mktDelConteudo('${c.envioId}','${c.id}')" style="background:none; border:none; color:var(--text3); cursor:pointer;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-trash"></i></button>
+  </div>`; };
+  return form+(all.length?`<div style="display:flex; flex-direction:column; gap:8px;">${all.map(row).join('')}</div>`:`<div style="text-align:center; padding:30px; color:var(--text3); font-size:13px;">Nenhum conteúdo registrado ainda.</div>`);
+}
+function _mktAddConteudo(){
+  _mktLoad();
+  const envEl=document.getElementById('mkt-cnt-env'), embEl=document.getElementById('mkt-cnt-emb'), tipoEl=document.getElementById('mkt-cnt-tipo'), linkEl=document.getElementById('mkt-cnt-link');
+  const envId=envEl?envEl.value:'', embId=embEl?embEl.value:'', tipo=(tipoEl?tipoEl.value:'story')||'story', link=(linkEl?linkEl.value:'').trim();
+  const e=_mktEnvio(envId); if(!e){ toast('Selecione um envio'); return; }
+  if(!embId){ toast('Selecione uma embaixadora'); return; }
+  e.conteudos=e.conteudos||[];
+  e.conteudos.push({id:_mntId('cnt'), envioId:envId, embaixadoraId:embId, tipo:tipo, link:link, data:today, repostado:false});
+  const p=_mktPart(e, embId); if(p) p.publicou=true;
+  saveEnvios(); renderInfluenciadores(); toast('Conteúdo registrado');
+}
+function _mktToggleRepost(envId, cntId){ const e=_mktEnvio(envId); if(!e) return; const c=(e.conteudos||[]).find(x=>x.id===cntId); if(!c) return; c.repostado=!c.repostado; saveEnvios(); renderInfluenciadores(); }
+function _mktDelConteudo(envId, cntId){ const e=_mktEnvio(envId); if(!e) return; e.conteudos=(e.conteudos||[]).filter(x=>x.id!==cntId); saveEnvios(); renderInfluenciadores(); }
+
+// ── RANKING (gamificação) ──
+function _influRankingHTML(){
+  _mktLoad();
+  const rank=(embaixadoras||[]).map(e=>({e, s:_mktPontosEmb(e.id)})).sort((a,b)=>b.s.pts-a.s.pts);
+  if(!rank.length) return `<div style="text-align:center; padding:40px; color:var(--text3); font-size:13px;">Cadastre embaixadoras e registre conteúdos para ver o ranking.</div>`;
+  const medal=['#d4af37','#9fa6ad','#cd7f32'];
+  const maxPts=Math.max(1, ...rank.map(r=>r.s.pts));
+  const row=(r,i)=>`<div style="display:flex; align-items:center; gap:14px; padding:14px 16px; background:var(--card); border:1px solid ${i===0?'#d4af37':'var(--border)'}; border-radius:12px;">
+    <div style="width:34px; height:34px; border-radius:50%; background:${i<3?medal[i]:'var(--bg2)'}; color:${i<3?'#fff':'var(--text2)'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; flex-shrink:0;">${i+1}</div>
+    <div style="flex:1; min-width:0;">
+      <div style="font-size:14px; font-weight:800; color:var(--text);">${escapeHTML(r.e.nome)}</div>
+      <div style="font-size:11.5px; color:var(--text3); margin-bottom:5px;">${escapeHTML(r.e.instagram||'')} · ${r.s.publicacoes} publicações (${r.s.reels}R/${r.s.posts}P/${r.s.stories}S) · ${r.s.reposts} reposts</div>
+      ${_mktProgBar(Math.round(r.s.pts/maxPts*100), i===0?'#d4af37':'var(--blue-mid)')}
+    </div>
+    <div style="text-align:right; flex-shrink:0;"><div style="font-size:20px; font-weight:800; color:${i===0?'#c99700':'var(--blue-mid)'};">${r.s.pts}</div><div style="font-size:10.5px; color:var(--text3);">pontos</div></div>
+  </div>`;
+  return `<div style="font-size:12.5px; color:var(--text3); margin-bottom:14px;"><i class="ti ti-info-circle"></i> Pontuação calculada dos conteúdos e entregas. Ajuste os pesos em <b onclick="setInfluView('config')" style="color:var(--blue-mid); cursor:pointer;">Regras</b>.</div>
+  <div style="display:flex; flex-direction:column; gap:10px;">${rank.map(row).join('')}</div>`;
+}
+
+// ── REGRAS (pesos da gamificação) ──
+function _influConfigHTML(){
+  _mktLoad();
+  const w=mktConfig.pontos||MKT_PONTOS_DEFAULT;
+  const campo=(k,lbl,hint)=>`<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 0; border-bottom:1px solid var(--border);">
+    <div><div style="font-size:13px; font-weight:600; color:var(--text);">${lbl}</div><div style="font-size:11.5px; color:var(--text3);">${hint}</div></div>
+    <input type="number" value="${w[k]!=null?w[k]:0}" onchange="_mktCfgSet('${k}',this.value)" style="width:82px; text-align:center; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:7px; font-size:14px; font-weight:700; color:var(--text); font-family:inherit;">
+  </div>`;
+  return `<div style="max-width:560px; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px 20px;">
+    <div style="font-size:15px; font-weight:800; color:var(--text); margin-bottom:6px;"><i class="ti ti-adjustments" style="color:var(--blue-mid);"></i> Pesos da gamificação</div>
+    <div style="font-size:12px; color:var(--text3); margin-bottom:12px;">Pontos que cada ação vale no ranking das embaixadoras.</div>
+    ${campo('reel','Reel publicado','Vídeo curto — costuma valer mais')}
+    ${campo('post','Post no feed','Publicação no feed')}
+    ${campo('story','Story publicado','Story nas 24h')}
+    ${campo('repost','Repost no perfil Klain','Bônus quando a Klain reposta o conteúdo')}
+    ${campo('entrega','Kit entregue','Confirmação de recebimento do kit')}
+    ${campo('cumpriu','Cumpriu o combinado','Bônus p/ avaliação Ótima/Boa')}
+    ${campo('naoPublicou','Não cumpriu (penalidade)','Desconto p/ avaliação "Não cumpriu"')}
+    <div style="margin-top:14px; text-align:right;"><button onclick="_mktCfgReset()" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:7px 12px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit;">Restaurar padrão</button></div>
+  </div>`;
+}
+function _mktCfgSet(k, v){ _mktLoad(); if(!mktConfig.pontos) mktConfig.pontos={}; mktConfig.pontos[k]=Number(v)||0; saveMktConfig(); }
+function _mktCfgReset(){ _mktLoad(); mktConfig.pontos=Object.assign({},MKT_PONTOS_DEFAULT); saveMktConfig(); renderInfluenciadores(); toast('Pesos restaurados'); }
+
 // ─── ÁREA QUALIDADE ───
 let qualidadeView = 'indicadores';   // 'indicadores' | 'naoconformidades' | 'auditorias'
 function switchToQualidade(){
@@ -9128,6 +9666,9 @@ function renderSidebar(){
         <button class="sbnav-item" onclick="switchToManutencao()" style="display:flex; align-items:center; gap:10px; padding:10px 12px; border:none; border-radius:9px; font-size:13px; font-weight:600; color:var(--text2); background:none; cursor:pointer; width:100%; font-family:inherit; margin-bottom:2px;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='none'">
           <i class="ti ti-tool"></i> <span>Manutenção</span>
         </button>
+        <button class="sbnav-item" onclick="switchToMarketing()" style="display:flex; align-items:center; gap:10px; padding:10px 12px; border:none; border-radius:9px; font-size:13px; font-weight:600; color:var(--text2); background:none; cursor:pointer; width:100%; font-family:inherit; margin-bottom:2px;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='none'">
+          <i class="ti ti-speakerphone"></i> <span>Marketing</span>
+        </button>
         <button class="sbnav-item" onclick="switchToProducao()" style="display:flex; align-items:center; gap:10px; padding:10px 12px; border:none; border-radius:9px; font-size:13px; font-weight:600; color:var(--text2); background:none; cursor:pointer; width:100%; font-family:inherit; margin-bottom:2px;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='none'">
           <i class="ti ti-building-factory-2"></i> <span>Produção</span>
         </button>
@@ -9185,6 +9726,26 @@ function renderSidebar(){
         <div style="font-size:11px; font-weight:700; color:var(--text3); letter-spacing:.5px; padding:12px 12px 4px;">COMPRAS</div>
         ${item('fornecedores','ti-building-store','Fornecedores', _sub==='fornecedores')}
         ${item('orcamentos','ti-receipt-2','Orçamentos', _sub==='orcamentos')}
+      </div>
+      ${_sbLixeiraFooter()}
+    `;
+    return;
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // MODO MARKETING: sidebar do módulo
+  // ════════════════════════════════════════════════════════════════════
+  if(_sbView === 'marketing'){
+    const _sub=(typeof marketingView!=='undefined')?marketingView:'influenciadores';
+    const item=(id,icon,label,ativo)=>`
+      <button class="sbnav-item ${ativo?'active':''}" onclick="setMarketingView('${id}')" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border:none; border-radius:9px; font-size:13px; font-weight:600; color:${ativo?'var(--blue-mid)':'var(--text2)'}; background:${ativo?'color-mix(in srgb, var(--blue-mid) 12%, transparent)':'none'}; cursor:pointer; width:100%; font-family:inherit; margin-bottom:2px;" ${ativo?'':'onmouseover="this.style.background=\'var(--bg2)\'" onmouseout="this.style.background=\'none\'"'}>
+        <i class="ti ${icon}"></i> <span>${label}</span>
+      </button>`;
+    sb.innerHTML = `
+      ${hubSidebarControls(false, false)}
+      ${hubGroupDivider('MARKETING')}
+      <div style="padding:2px 8px 8px;">
+        ${item('influenciadores','ti-heart-handshake','Influenciadores', _sub==='influenciadores')}
       </div>
       ${_sbLixeiraFooter()}
     `;
@@ -9591,6 +10152,10 @@ function restoreFromTrash(idx){
     _reunioesRapidas.push(item); safeSetItem(LS_REUNIOES_RAPIDAS, JSON.stringify(_reunioesRapidas));
   } else if(type==='sensorial'){
     _sensLoad(); sensorialTestes.push(item); saveSensorial_db();
+  } else if(type==='embaixadora'){
+    _mktLoad(); embaixadoras.push(item); saveEmbaixadoras();
+  } else if(type==='envio'){
+    _mktLoad(); envios.push(item); saveEnvios();
   }
   trash.splice(idx,1);
   saveTrash_db();
@@ -9652,8 +10217,8 @@ function limparOrfaos(itensExcluidos){
   if(mudouCutucadas) saveCutucadas();
 }
 
-const TRASH_TYPE_LABELS={task:'Tarefas',rotina:'Rotinas',note:'Notas',project:'Projetos',projectPro:'Projetos',meeting:'Reuniões',compromisso:'Compromissos',person:'Pessoas',equipamento:'Equipamentos',ordem:'Ordens de Serviço',fornecedor:'Fornecedores',orcamento:'Orçamentos',preventiva:'Planos de preventiva',fichaProduto:'Produtos',reuniaoRapida:'Reuniões rápidas',sensorial:'Análise sensorial'};
-const TRASH_TYPE_ICONS={task:'ti-check',rotina:'ti-repeat',note:'ti-notes',project:'ti-folders',projectPro:'ti-folders',meeting:'ti-speakerphone',compromisso:'ti-calendar-time',person:'ti-user',equipamento:'ti-settings-automation',ordem:'ti-clipboard-list',fornecedor:'ti-building-store',orcamento:'ti-receipt-2',preventiva:'ti-calendar-repeat',fichaProduto:'ti-package',reuniaoRapida:'ti-calendar-bolt',sensorial:'ti-test-pipe'};
+const TRASH_TYPE_LABELS={task:'Tarefas',rotina:'Rotinas',note:'Notas',project:'Projetos',projectPro:'Projetos',meeting:'Reuniões',compromisso:'Compromissos',person:'Pessoas',equipamento:'Equipamentos',ordem:'Ordens de Serviço',fornecedor:'Fornecedores',orcamento:'Orçamentos',preventiva:'Planos de preventiva',fichaProduto:'Produtos',reuniaoRapida:'Reuniões rápidas',sensorial:'Análise sensorial',embaixadora:'Embaixadoras',envio:'Envios'};
+const TRASH_TYPE_ICONS={task:'ti-check',rotina:'ti-repeat',note:'ti-notes',project:'ti-folders',projectPro:'ti-folders',meeting:'ti-speakerphone',compromisso:'ti-calendar-time',person:'ti-user',equipamento:'ti-settings-automation',ordem:'ti-clipboard-list',fornecedor:'ti-building-store',orcamento:'ti-receipt-2',preventiva:'ti-calendar-repeat',fichaProduto:'ti-package',reuniaoRapida:'ti-calendar-bolt',sensorial:'ti-test-pipe',embaixadora:'ti-heart-handshake',envio:'ti-package-export'};
 let _trashFilter='todos';
 function setTrashFilter(t){ _trashFilter=t; renderLixeira(); }
 
@@ -15465,6 +16030,10 @@ function render(){
   }
   if(hubView === 'manutencao'){
     renderManutencao();
+    return;
+  }
+  if(hubView === 'marketing'){
+    renderMarketing();
     return;
   }
   if(hubView === 'qualidade'){
