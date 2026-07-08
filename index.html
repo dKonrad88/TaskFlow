@@ -2479,6 +2479,7 @@
         </div>
         <button class="btn-add" id="note-add-btn" onclick="addNote()" style="display: none;"><i class="ti ti-plus"></i> Nova Anotação</button>
         <div id="pp-header-actions" style="display: none; align-items: center; gap: 8px;">
+          <button onclick="_ppImportarUI()" title="Importar projeto (colar JSON)" style="background:var(--card);color:var(--text2);border:1px solid var(--border);border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-clipboard-text"></i> Importar</button>
           <button onclick="abrirGerenciadorTemplatesProj()" style="background:var(--card);color:var(--text2);border:1px solid var(--border);border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-template"></i> Templates</button>
           <button onclick="abrirModalNovoProjectPro()" style="background:linear-gradient(135deg,#185FA5,#3a8dd0);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(24,95,165,.25)"><i class="ti ti-plus"></i> Novo projeto</button>
         </div>
@@ -24227,6 +24228,114 @@ function renderProjetosPro(){
     </div>`;
 
   container.innerHTML = headerHTML + toolbar + `<div id="pp-grupos">${_ppGruposHTML()}</div>`;
+}
+
+// ─── IMPORTAR PROJETO (colar JSON) ───────────────────────────────
+// Mesmo padrão do "Importar" de Orçamentos: aditivo, em-código, NÃO toca na nuvem.
+// Cria o Projeto Pro + fases + grupos(setores) + tarefas vinculadas (projectProId/FaseId/GrupoId).
+// Formato aceito (1 objeto ou array):
+// { nome, tipo?, cor?, descricao?, status?, prioridade?, prazoInicio?, prazoFim?,
+//   dono?, coordenador?, coordenador2?, pessoas?[], executorPadrao?,
+//   fases:[ { nome, prazoFase?, grupos?:["Setor",...],
+//             tarefas:[ { title, desc?, grupo?, date?, prio?, done?, executor?, solicitante? } ] } ] }
+function _ppImportarUI(){
+  if(document.getElementById('pp-import-ov')) return;
+  const ov=document.createElement('div');
+  ov.id='pp-import-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.onclick=(e)=>{ if(e.target===ov) ov.remove(); };
+  ov.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;max-width:620px;width:100%;padding:20px 22px;box-shadow:0 12px 40px rgba(0,0,0,.25);">
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px;"><i class="ti ti-clipboard-text" style="font-size:20px;color:var(--blue-mid)"></i><div style="font-size:16px;font-weight:700;color:var(--text);">Importar projeto (colar)</div></div>
+    <div style="font-size:12.5px;color:var(--text3);margin-bottom:12px;">Cole o JSON de um projeto (com fases, setores e tarefas). Ele é <b>adicionado</b> — não afeta os projetos existentes. As tarefas entram já vinculadas ao projeto e à fase.</div>
+    <textarea id="pp-import-ta" spellcheck="false" placeholder='{"nome":"...","fases":[...]}' style="width:100%;height:230px;font-family:monospace;font-size:12px;border:1px solid var(--border);border-radius:9px;padding:10px;background:var(--bg);color:var(--text);resize:vertical;box-sizing:border-box;"></textarea>
+    <div id="pp-import-msg" style="font-size:12px;color:var(--danger);margin-top:8px;display:none;"></div>
+    <div style="display:flex;justify-content:flex-end;gap:9px;margin-top:14px;">
+      <button onclick="document.getElementById('pp-import-ov').remove()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text2);font-family:inherit;">Cancelar</button>
+      <button onclick="_ppImportarSalvar()" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;"><i class="ti ti-download"></i> Importar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  setTimeout(()=>{ const ta=document.getElementById('pp-import-ta'); if(ta) ta.focus(); },30);
+}
+function _ppImportarSalvar(){
+  const ta=document.getElementById('pp-import-ta'); const msg=document.getElementById('pp-import-msg');
+  const showErr=(t)=>{ if(msg){ msg.textContent=t; msg.style.display=''; } };
+  if(!ta) return;
+  let data;
+  try{ data=JSON.parse(ta.value); }catch(e){ showErr('JSON inválido: '+e.message); return; }
+  const arr=Array.isArray(data)?data:[data];
+  const validos=arr.filter(o=>o && typeof o==='object' && o.nome);
+  if(!validos.length){ showErr('Nenhum projeto válido (precisa de "nome").'); return; }
+  const PRIO_OK={urgente:1,alta:1,media:1,baixa:1,trivial:1};
+  const base=Date.now(); let seq=0;
+  let nProj=0, nTask=0;
+  validos.forEach(o=>{
+    const p=_novoProjectPro({
+      nome:String(o.nome),
+      tipo:o.tipo||'outro',
+      cor:o.cor||'#185FA5',
+      dono:o.dono||CURRENT_USER_ID,
+      prazoInicio:o.prazoInicio||null,
+      prazoFim:o.prazoFim||null,
+      descricao:o.descricao||''
+    });
+    p.status=o.status||'ativo';
+    p.prioridade=(o.prioridade==='alta'||o.prioridade==='baixa')?o.prioridade:'normal';
+    p.coordenador=o.coordenador||CURRENT_USER_ID;
+    if(o.coordenador2) p.coordenador2=o.coordenador2;
+    p.favorito=!!o.favorito;
+    const membros=new Set(Array.isArray(o.pessoas)?o.pessoas:[]);
+    if(p.dono) membros.add(p.dono);
+    if(p.coordenador) membros.add(p.coordenador);
+    p.fases=[];
+    (Array.isArray(o.fases)?o.fases:[]).forEach((f,fi)=>{
+      const fase=_novaFase(String(f.nome||('Fase '+(fi+1))), fi+1);
+      fase.id='fase_'+base+'_'+(seq++);
+      if(f.prazoFase) fase.prazoFase=f.prazoFase;
+      fase.grupos=[];
+      const grupoNames=Array.isArray(f.grupos)?f.grupos.map(String):[];
+      (Array.isArray(f.tarefas)?f.tarefas:[]).forEach(tk=>{ if(tk && tk.grupo && !grupoNames.includes(String(tk.grupo))) grupoNames.push(String(tk.grupo)); });
+      const grupoByName={};
+      grupoNames.forEach(gn=>{ const g=_novoGrupo(gn); g.id='grp_'+base+'_'+(seq++); g.tarefaIds=[]; fase.grupos.push(g); grupoByName[gn.toLowerCase()]=g; });
+      (Array.isArray(f.tarefas)?f.tarefas:[]).forEach((tk)=>{
+        if(!tk || typeof tk!=='object') return;
+        const tid=base+(++seq);
+        const exec=tk.executor||o.executorPadrao||CURRENT_USER_ID;
+        const nt={
+          id:tid,
+          title:String(tk.title||'(sem título)'),
+          prio:PRIO_OK[tk.prio]?tk.prio:'media',
+          executor:exec||null,
+          people:exec?[exec]:[],
+          projectId:null,
+          projectProId:p.id,
+          projectProFaseId:fase.id,
+          date:tk.date||null,
+          done:!!tk.done,
+          escopo:'klain',
+          desc:tk.desc?String(tk.desc):'',
+          subtasks:[],
+          solicitante:tk.solicitante||CURRENT_USER_ID,
+          _persisted:true,
+          createdAt:(tk.date||today)
+        };
+        if(nt.done) nt.doneAt=nt.date||today;
+        const g=tk.grupo?grupoByName[String(tk.grupo).toLowerCase()]:null;
+        if(g){ nt.projectProGrupoId=g.id; nt.setorManual=true; g.tarefaIds.push(tid); }
+        if(exec) membros.add(exec);
+        tasks.push(nt);
+        if(typeof saveTask_db==='function') saveTask_db(nt);
+        nTask++;
+      });
+      p.fases.push(fase);
+    });
+    p.pessoas=Array.from(membros);
+    saveProjectPro_db(p); // faz o push em projectsPro + persiste
+    nProj++;
+  });
+  const ovEl=document.getElementById('pp-import-ov'); if(ovEl) ovEl.remove();
+  if(typeof toast==='function') toast(nProj+(nProj===1?' projeto importado':' projetos importados')+' · '+nTask+' tarefa'+(nTask===1?'':'s'));
+  render();
 }
 
 // Card de um projeto na lista
