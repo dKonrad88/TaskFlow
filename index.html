@@ -2480,7 +2480,7 @@
         <button class="btn-add" id="note-add-btn" onclick="addNote()" style="display: none;"><i class="ti ti-plus"></i> Nova Anotação</button>
         <div id="pp-header-actions" style="display: none; align-items: center; gap: 8px;">
           <button onclick="_ppImportarUI()" title="Importar projeto (colar JSON)" style="background:var(--card);color:var(--text2);border:1px solid var(--border);border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-clipboard-text"></i> Importar</button>
-          <button onclick="abrirGerenciadorTemplatesProj()" style="background:var(--card);color:var(--text2);border:1px solid var(--border);border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-template"></i> Templates</button>
+          <button onclick="abrirGerenciadorTemplatesProj()" title="Modelos prontos + os seus" style="background:var(--card);color:var(--text2);border:1px solid var(--border);border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-layout-grid"></i> Modelos</button>
           <button onclick="abrirModalNovoProjectPro()" style="background:linear-gradient(135deg,#185FA5,#3a8dd0);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(24,95,165,.25)"><i class="ti ti-plus"></i> Novo projeto</button>
         </div>
         <div id="tab-header-actions" style="display: none; align-items: center; gap: 8px;"></div>
@@ -4148,6 +4148,8 @@ async function load(){
       }
       safeSetItem(LS_MIGR_PROJ_REM, '1');
     }
+    // Seed 1x: projeto de exemplo "Implantação do Hub Klain" (7 fases, 21 tarefas)
+    if(typeof _seedImplantacaoHub==='function') _seedImplantacaoHub();
     meetings=safeJSON(LS_MEETINGS, []);
     _reunioesRapidas=safeJSON(LS_REUNIOES_RAPIDAS, []);
     compromissos=safeJSON(LS_COMPROMISSOS, []);
@@ -23944,6 +23946,159 @@ try { _ppTiposCustom = JSON.parse(safeLSGet(LS_PP_TIPOS_CUSTOM)||'{}'); } catch(
 // PP_TIPOS é o merge dos dois — base + custom
 let PP_TIPOS = {...PP_TIPOS_BASE, ..._ppTiposCustom};
 
+// ═══════════════════════════════════════════════════════════════
+// MODELOS PRONTOS DE PROJETO (built-in) — resolvem a dor de "não saber
+// quais fases/tarefas existem". São FIXOS no código (não vão pro
+// localStorage: não poluem o sync, não somem por engano, evoluem via git).
+// Mesma estrutura que criarProjetoDeTemplate consome:
+//   {id, nome, tipo, cor, descricao, fases:[{nome, grupos:[{setor, tarefas:[{title, prio?}]}]}]}
+// prio omitido = 'media'. Instanciar em 1 clique = projeto com fases+setores+tarefas.
+// ═══════════════════════════════════════════════════════════════
+const PROJ_MODELOS = [
+  {
+    id:'seed_implantacao', nome:'Implantação de Sistema', tipo:'bi', cor:'#6B46C1',
+    descricao:'Colocar um sistema novo pra rodar na empresa, por ondas, do escopo ao go-live.',
+    fases:[
+      {nome:'1. Levantamento & Escopo', grupos:[
+        {setor:'Gestão/PMO', tarefas:[{title:'Definir objetivo e indicadores de sucesso',prio:'alta'},{title:'Definir orçamento e prazo'},{title:'Listar áreas impactadas'}]},
+        {setor:'TI', tarefas:[{title:'Mapear processo atual (as-is)'},{title:'Levantar requisitos técnicos'},{title:'Avaliar infraestrutura/servidor'}]},
+      ]},
+      {nome:'2. Seleção & Contratação', grupos:[
+        {setor:'Compras', tarefas:[{title:'Cotar fornecedores/licenças'},{title:'Negociar contrato'},{title:'Definir SLA de suporte'}]},
+        {setor:'Jurídico', tarefas:[{title:'Revisar contrato e LGPD'}]},
+      ]},
+      {nome:'3. Configuração & Migração', grupos:[
+        {setor:'TI', tarefas:[{title:'Provisionar ambiente'},{title:'Parametrizar módulos'},{title:'Integrar com sistemas atuais'}]},
+        {setor:'Áreas-chave', tarefas:[{title:'Migrar dados legados'},{title:'Validar cadastros mestres'}]},
+      ]},
+      {nome:'4. Testes & Treinamento', grupos:[
+        {setor:'Piloto', tarefas:[{title:'Rodar teste com grupo pequeno'},{title:'Registrar bugs'},{title:'Homologar',prio:'alta'}]},
+        {setor:'Treinamento', tarefas:[{title:'Treinar usuários'},{title:'Criar manual/FAQ'}]},
+      ]},
+      {nome:'5. Go-live & Estabilização', grupos:[
+        {setor:'TI', tarefas:[{title:'Virada de chave (go-live)',prio:'alta'},{title:'Suporte intensivo na 1ª semana'},{title:'Desativar sistema antigo'}]},
+        {setor:'Gestão', tarefas:[{title:'Medir adoção'},{title:'Revisão pós-implantação (lições aprendidas)'}]},
+      ]},
+    ]
+  },
+  {
+    id:'seed_produto', nome:'Lançamento de Novo Produto', tipo:'produto', cor:'#185FA5',
+    descricao:'Da ideia ao lançamento comercial: fórmula, embalagem, produção e venda.',
+    fases:[
+      {nome:'1. Ideação & Viabilidade', grupos:[
+        {setor:'P&D/Qualidade', tarefas:[{title:'Definir conceito e público',prio:'alta'},{title:'Estudo de viabilidade (custo x preço)'}]},
+        {setor:'Comercial', tarefas:[{title:'Pesquisar tendências/concorrentes'},{title:'Validar demanda com clientes-chave'}]},
+      ]},
+      {nome:'2. Desenvolvimento da Fórmula', grupos:[
+        {setor:'P&D', tarefas:[{title:'Desenvolver protótipos'},{title:'Ajustar fórmula'},{title:'Ficha técnica'}]},
+        {setor:'Qualidade', tarefas:[{title:'Análise sensorial interna'},{title:'Definir validade/shelf-life'},{title:'Análises laboratoriais'}]},
+      ]},
+      {nome:'3. Embalagem & Regulatório', grupos:[
+        {setor:'Marketing', tarefas:[{title:'Definir nome do produto'},{title:'Design da embalagem'}]},
+        {setor:'Regulatório', tarefas:[{title:'Rótulo conforme ANVISA'},{title:'Tabela nutricional'},{title:'Registro/legislação'}]},
+      ]},
+      {nome:'4. Produção Piloto & Escala', grupos:[
+        {setor:'Produção', tarefas:[{title:'Rodar lote piloto'},{title:'Definir receita industrial'},{title:'Aprovar amostras'}]},
+        {setor:'PCP', tarefas:[{title:'Escalonar produção'},{title:'Planejar capacidade e insumos'}]},
+      ]},
+      {nome:'5. Lançamento Comercial', grupos:[
+        {setor:'Comercial', tarefas:[{title:'Definir preço e política comercial',prio:'alta'},{title:'Treinar equipe de vendas'},{title:'Cadastrar nos clientes'}]},
+        {setor:'Marketing', tarefas:[{title:'Campanha de lançamento'},{title:'Material de PDV'},{title:'Ação com influenciadoras'}]},
+      ]},
+    ]
+  },
+  {
+    id:'seed_obra', nome:'Obra / Nova Linha de Produção', tipo:'obra', cor:'#8B5E3C',
+    descricao:'Do projeto executivo ao start-up de uma obra ou linha nova.',
+    fases:[
+      {nome:'1. Planejamento & Projeto', grupos:[
+        {setor:'Engenharia', tarefas:[{title:'Definir escopo e layout'},{title:'Projeto executivo'},{title:'Requisitos de utilidades (energia/água/ar)'}]},
+        {setor:'Gestão', tarefas:[{title:'Orçamento e cronograma'},{title:'Aprovar investimento',prio:'alta'}]},
+      ]},
+      {nome:'2. Contratação', grupos:[
+        {setor:'Compras', tarefas:[{title:'Cotar empreiteiras'},{title:'Cotar equipamentos'},{title:'Fechar contratos'}]},
+        {setor:'SST/Jurídico', tarefas:[{title:'Licenças e alvarás'},{title:'Documentação de segurança'}]},
+      ]},
+      {nome:'3. Execução', grupos:[
+        {setor:'Obra Civil', tarefas:[{title:'Preparar local'},{title:'Fundação/estrutura'},{title:'Instalações elétricas e hidráulicas'}]},
+        {setor:'Montagem', tarefas:[{title:'Receber e instalar equipamentos'},{title:'Interligar utilidades'}]},
+      ]},
+      {nome:'4. Comissionamento', grupos:[
+        {setor:'Manutenção', tarefas:[{title:'Testes a vazio'},{title:'Testes com carga'},{title:'Ajustes/calibração'}]},
+        {setor:'Qualidade', tarefas:[{title:'Validação sanitária'},{title:'Aprovação',prio:'alta'}]},
+      ]},
+      {nome:'5. Start-up & Entrega', grupos:[
+        {setor:'Produção', tarefas:[{title:'Treinar operadores'},{title:'Produção assistida'},{title:'Ramp-up'}]},
+        {setor:'Gestão', tarefas:[{title:'Encerramento e as-built'},{title:'Lições aprendidas'}]},
+      ]},
+    ]
+  },
+  {
+    id:'seed_campanha', nome:'Campanha de Marketing', tipo:'campanha', cor:'#C97A00',
+    descricao:'Da estratégia à mensuração de uma campanha ou ação de marketing.',
+    fases:[
+      {nome:'1. Estratégia', grupos:[
+        {setor:'Marketing', tarefas:[{title:'Definir objetivo e KPIs',prio:'alta'},{title:'Definir público e mensagem'},{title:'Definir orçamento'},{title:'Montar cronograma'}]},
+      ]},
+      {nome:'2. Criação', grupos:[
+        {setor:'Criação', tarefas:[{title:'Conceito criativo'},{title:'Produzir peças (vídeo/foto/arte)'},{title:'Escrever copy'},{title:'Aprovação'}]},
+      ]},
+      {nome:'3. Produção & Seleção', grupos:[
+        {setor:'Marketing', tarefas:[{title:'Selecionar influenciadoras/canais'},{title:'Preparar kits'},{title:'Briefing/roteiro'}]},
+        {setor:'Compras', tarefas:[{title:'Comprar mídia'},{title:'Contratar produção'}]},
+      ]},
+      {nome:'4. Veiculação', grupos:[
+        {setor:'Marketing', tarefas:[{title:'Publicar conteúdos'},{title:'Enviar kits'},{title:'Acompanhar postagens'},{title:'Responder comunidade'}]},
+      ]},
+      {nome:'5. Mensuração', grupos:[
+        {setor:'Marketing', tarefas:[{title:'Coletar métricas'},{title:'Calcular ROI'},{title:'Montar relatório'},{title:'Registrar aprendizados'}]},
+      ]},
+    ]
+  },
+  {
+    id:'seed_evento', nome:'Evento / Feira', tipo:'evento', cor:'#A32D2D',
+    descricao:'Organizar um evento ou participação em feira, da concepção ao pós.',
+    fases:[
+      {nome:'1. Concepção', grupos:[
+        {setor:'Organização', tarefas:[{title:'Definir objetivo e formato',prio:'alta'},{title:'Definir data e local'},{title:'Definir orçamento'},{title:'Definir público/convidados'}]},
+      ]},
+      {nome:'2. Planejamento', grupos:[
+        {setor:'Logística', tarefas:[{title:'Reservar espaço'},{title:'Contratar fornecedores (buffet/som/estande)'},{title:'Organizar transporte'}]},
+        {setor:'Marketing', tarefas:[{title:'Divulgação e convites'},{title:'Material gráfico'}]},
+      ]},
+      {nome:'3. Pré-evento', grupos:[
+        {setor:'Organização', tarefas:[{title:'Confirmar presenças (RSVP)'},{title:'Montar cronograma do dia'},{title:'Checklist final'}]},
+        {setor:'Produção', tarefas:[{title:'Montagem do espaço/estande'}]},
+      ]},
+      {nome:'4. Realização', grupos:[
+        {setor:'Equipe', tarefas:[{title:'Recepção/credenciamento'},{title:'Condução do evento'},{title:'Registro (foto/vídeo)'}]},
+      ]},
+      {nome:'5. Pós-evento', grupos:[
+        {setor:'Organização', tarefas:[{title:'Desmontagem'},{title:'Enviar agradecimentos'},{title:'Pesquisa de satisfação'},{title:'Relatório e prestação de contas'}]},
+      ]},
+    ]
+  },
+  {
+    id:'seed_pdca', nome:'Melhoria de Processo (PDCA)', tipo:'outro', cor:'#0d7a7a',
+    descricao:'Resolver um problema ou melhorar um processo usando o ciclo PDCA.',
+    fases:[
+      {nome:'1. Planejar (Plan)', grupos:[
+        {setor:'Time', tarefas:[{title:'Definir problema e meta',prio:'alta'},{title:'Medir situação atual'},{title:'Analisar causas (Ishikawa / 5 porquês)'},{title:'Montar plano de ação (5W2H)'}]},
+      ]},
+      {nome:'2. Executar (Do)', grupos:[
+        {setor:'Time', tarefas:[{title:'Implementar ações'},{title:'Treinar envolvidos'},{title:'Registrar execução'}]},
+      ]},
+      {nome:'3. Verificar (Check)', grupos:[
+        {setor:'Time', tarefas:[{title:'Medir resultados'},{title:'Comparar com a meta'},{title:'Analisar desvios'}]},
+      ]},
+      {nome:'4. Agir (Act)', grupos:[
+        {setor:'Time', tarefas:[{title:'Padronizar o que funcionou'},{title:'Documentar procedimento'},{title:'Replicar/expandir'},{title:'Registrar lições aprendidas'}]},
+      ]},
+    ]
+  },
+];
+function _projModeloById(id){ return PROJ_MODELOS.find(m=>m.id===id) || null; }
+
 function _salvarPpTiposCustom(){
   safeSetItem(LS_PP_TIPOS_CUSTOM, JSON.stringify(_ppTiposCustom));
   PP_TIPOS = {...PP_TIPOS_BASE, ..._ppTiposCustom};
@@ -24180,14 +24335,56 @@ function renderProjetosPro(){
   const headerHTML = '';
 
   if(!projectsPro.length){
+    const _metodo=[
+      ['🎯','Objetivo','O que o projeto entrega, e até quando.'],
+      ['🗂️','Fases','As grandes etapas, na ordem (ex.: Planejar → Executar → Entregar).'],
+      ['🏢','Setores','Quem faz o quê em cada fase (as áreas/times).'],
+      ['✅','Tarefas','As ações concretas, com responsável e prazo.'],
+    ].map(([e,t,d],i)=>`
+      <div style="flex:1;min-width:150px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;position:relative">
+        <div style="position:absolute;top:10px;right:12px;font-size:11px;font-weight:800;color:var(--text3);opacity:.5">${i+1}</div>
+        <div style="font-size:22px;line-height:1">${e}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:6px">${t}</div>
+        <div style="font-size:11.5px;color:var(--text3);margin-top:3px;line-height:1.4">${d}</div>
+      </div>`).join('<div style="align-self:center;color:var(--text3);font-size:16px">→</div>');
+
+    const _modelosCards=PROJ_MODELOS.map(m=>{
+      const tot=_tplTotais(m); const tipo=PP_TIPOS[m.tipo]||{icon:'ti-folder'}; const cor=m.cor||'#185FA5';
+      return `<div onclick="criarProjetoDeTemplate('${m.id}')" title="Criar um projeto a partir deste modelo"
+        style="cursor:pointer;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;transition:all .15s;display:flex;flex-direction:column;gap:6px"
+        onmouseover="this.style.borderColor='${cor}';this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,.08)'"
+        onmouseout="this.style.borderColor='var(--border)';this.style.transform='';this.style.boxShadow=''">
+        <div style="display:flex;align-items:center;gap:9px">
+          <div style="width:34px;height:34px;border-radius:9px;background:${cor}1f;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ${tipo.icon}" style="color:${cor};font-size:17px"></i></div>
+          <div style="font-size:13.5px;font-weight:700;color:var(--text);line-height:1.25">${escapeHTML(m.nome)}</div>
+        </div>
+        <div style="font-size:11.5px;color:var(--text3);line-height:1.4">${escapeHTML(m.descricao||'')}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px"><i class="ti ti-layout-rows" style="font-size:11px"></i> ${tot.fases} fases · <i class="ti ti-checklist" style="font-size:11px"></i> ${tot.tarefas} tarefas · <span style="color:${cor};font-weight:700">Usar →</span></div>
+      </div>`;
+    }).join('');
+
     container.innerHTML = `
       ${headerHTML}
-      <div class="empty" style="padding:60px 20px">
-        <i class="ti ti-folder-star" style="font-size:64px;color:var(--blue-mid);opacity:.4"></i>
-        <p style="margin-top:16px;font-size:15px"><b>Nenhum projeto criado ainda</b></p>
-        <p style="font-size:13px;color:var(--text3);max-width:380px;margin:8px auto">
-          Crie seu primeiro projeto usando o botão <b>+ Novo projeto</b> no canto superior direito.
-        </p>
+      <div style="max-width:1000px;margin:0 auto;padding:8px 0 40px">
+        <div style="text-align:center;margin-bottom:22px">
+          <i class="ti ti-folder-star" style="font-size:50px;color:var(--blue-mid);opacity:.5"></i>
+          <h2 style="margin:12px 0 4px;font-size:20px;color:var(--text)">Seu primeiro projeto</h2>
+          <p style="font-size:13.5px;color:var(--text3);max-width:520px;margin:0 auto;line-height:1.5">Um projeto no Hub é organizado assim — do maior para o menor. Não precisa decorar: <b>comece por um modelo pronto</b> e ajuste.</p>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px">${_metodo}</div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <div style="font-size:14px;font-weight:800;color:var(--text)"><i class="ti ti-sparkles" style="color:var(--amber)"></i> Comece por um modelo pronto</div>
+          <div style="font-size:12px;color:var(--text3)">Cada um já vem com fases, setores e tarefas de exemplo.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-bottom:26px">${_modelosCards}</div>
+
+        <div style="display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:22px">
+          <span style="font-size:13px;color:var(--text3)">Prefere montar você mesmo?</span>
+          <button onclick="abrirModalNovoProjectPro()" style="background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-plus"></i> Criar do zero</button>
+          <button onclick="_ppImportarUI()" style="background:none;color:var(--text3);border:1px solid var(--border);border-radius:9px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-clipboard-text"></i> Importar (colar)</button>
+        </div>
       </div>`;
     return;
   }
@@ -24425,6 +24622,12 @@ function abrirModalNovoProjectPro(){
         <button onclick="fecharModalNovoProjectPro()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px"><i class="ti ti-x"></i></button>
       </div>
       <div style="padding:20px 24px">
+        <div onclick="fecharModalNovoProjectPro();abrirGerenciadorTemplatesProj()" title="Escolher um modelo pronto (com fases e tarefas)" style="display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(24,95,165,.10),rgba(24,95,165,.04));border:1px solid var(--blue-mid);border-radius:10px;padding:11px 14px;margin-bottom:16px;cursor:pointer">
+          <i class="ti ti-sparkles" style="color:var(--amber);font-size:18px;flex-shrink:0"></i>
+          <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--text)">Começar de um modelo pronto</div><div style="font-size:11.5px;color:var(--text3)">Já vem com fases, setores e tarefas — bem mais rápido.</div></div>
+          <i class="ti ti-chevron-right" style="color:var(--blue-mid);font-size:16px"></i>
+        </div>
+        <div style="text-align:center;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px">ou preencha do zero</div>
         <div style="margin-bottom:14px">
           <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Nome do projeto <span style="color:var(--danger);font-weight:700">*</span></label>
           <input id="pp-nome" type="text" placeholder="Ex: Nova obra Pavilhão 3" autofocus style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg2);color:var(--text);box-sizing:border-box" />
@@ -24432,13 +24635,13 @@ function abrirModalNovoProjectPro(){
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
           <div>
-            <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Tipo</label>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Tipo ${_hint('Categoria do projeto — muda só o ícone e a cor. Ex.: Obra, Novo Produto, Campanha.')}</label>
             <select id="pp-tipo" onchange="if(this.value==='__novo__'){ppAdicionarTipo('pp-tipo')}" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg2);color:var(--text);box-sizing:border-box">
               ${_ppTipoOpcoes('produto')}
             </select>
           </div>
           <div>
-            <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Dono <span style="color:var(--danger);font-weight:700">*</span></label>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Dono <span style="color:var(--danger);font-weight:700">*</span> ${_hint('Responsável final pelo projeto; é quem confirma o encerramento. Por padrão também coordena.')}</label>
             <select id="pp-dono" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg2);color:var(--text);box-sizing:border-box">
               ${pessoaOpcoes}
             </select>
@@ -24501,6 +24704,7 @@ function criarProjectPro(){
 
   const novo = _novoProjectPro({nome, tipo, cor, dono, prazoInicio, prazoFim, descricao});
   novo.status = 'planejamento';
+  novo.coordenador = dono; // nasce "governável" — o dono coordena por padrão (dá pra trocar em Editar)
   // Adiciona o dono automaticamente nas pessoas
   if(dono && !novo.pessoas.includes(dono)) novo.pessoas.push(dono);
   // Cria uma fase inicial vazia pra começar
@@ -24565,32 +24769,41 @@ function salvarProjetoComoTemplate(projId){
 
 // ── Instanciar um novo projeto a partir de um template ──
 function criarProjetoDeTemplate(tplId){
-  const tpl=_projTemplates.find(t=>t.id===tplId);
-  if(!tpl){toast('⚠️ Template não encontrado');return;}
+  // Aceita tanto modelo pronto (built-in PROJ_MODELOS) quanto "Meus modelos" (_projTemplates)
+  const tpl=_projTemplates.find(t=>t.id===tplId) || _projModeloById(tplId);
+  if(!tpl){toast('⚠️ Modelo não encontrado');return;}
   const novo=_novoProjectPro({nome:tpl.nome, tipo:tpl.tipo||'outro', cor:tpl.cor||'#185FA5', dono:CURRENT_USER_ID, prazoInicio:today, descricao:tpl.descricao||''});
   novo.status='planejamento';
+  novo.coordenador=CURRENT_USER_ID; // já nasce "governável"
   if(!novo.pessoas.includes(CURRENT_USER_ID)) novo.pessoas.push(CURRENT_USER_ID);
 
+  // ids únicos por instância (evita colisão de Date.now() em loop apertado)
+  const _base=Date.now(); let _seq=0;
   (tpl.fases||[]).forEach((f,fi)=>{
     const fase=_novaFase(f.nome, f.ordem||(fi+1));
+    fase.id='fase_'+_base+'_'+(_seq++);
     (f.grupos||[]).forEach(g=>{
       const grupo=_novoGrupo(g.setor||'Geral');
+      grupo.id='grp_'+_base+'_'+(_seq++);
       (g.tarefas||[]).forEach(tt=>{
         const execId=tt.executor||null;
         const nt={
-          id:_ppNewTaskId(),
+          id:_base+(++_seq),
           title:tt.title||'(sem título)',
           prio:tt.prio||'media',
           date:null,
           done:false,
           escopo:'klain',
-          
           executor:execId,
           people:execId?[execId]:[],
           createdAt:today,
           kanbanCol:'todo',
           projectProId:novo.id,
-          subtasks:(tt.subtasks||[]).map((s,si)=>({id:'sub_'+Date.now()+'_'+si+'_'+Math.floor(Math.random()*1000), text:s.text||'', done:false}))
+          projectProFaseId:fase.id,      // <- fase (progresso da fase conta)
+          projectProGrupoId:grupo.id,    // <- setor (agrupamento no detalhe)
+          setorManual:true,             // não deixa a derivação por executor sobrescrever
+          _persisted:true,
+          subtasks:(tt.subtasks||[]).map((s,si)=>({id:'sub_'+_base+'_'+si+'_'+(_seq++), text:s.text||'', done:false}))
         };
         tasks.push(nt);
         saveTask_db(nt);
@@ -24604,8 +24817,91 @@ function criarProjetoDeTemplate(tplId){
 
   saveProjectPro_db(novo);
   document.getElementById('pp-tpl-manager')?.remove();
-  toast(`✨ Projeto "${escapeHTML(novo.nome)}" criado a partir do template!`);
+  document.getElementById('pp-modelo-preview')?.remove();
+  toast(`✨ Projeto "${escapeHTML(novo.nome)}" criado a partir do modelo!`);
   abrirProjectProView(novo.id);
+}
+
+// ── Seed de demonstração: projeto real "Implantação do Hub Klain" ──
+// Roda 1x (flag), para o protótipo abrir "vivo" com um projeto de exemplo
+// completo (7 fases, setores, 21 tarefas). Aditivo, não some, não duplica.
+const LS_IMPL_SEEDED='taskflow_impl_seeded';
+function _seedImplantacaoHub(){
+  try{
+    if(safeLSGet(LS_IMPL_SEEDED)) return;
+    if((projectsPro||[]).some(p=>p&&p.nome==='Implantação do Hub Klain')){ safeSetItem(LS_IMPL_SEEDED,'1'); return; }
+    const DADOS={
+      nome:'Implantação do Hub Klain', tipo:'bi', cor:'#185FA5', status:'ativo', prioridade:'alta',
+      prazoInicio:'2026-06-20', prazoFim:'2026-08-17',
+      descricao:'Colocar toda a equipe usando o Hub Klain (foco inicial no Gerenciador), onda a onda, medindo adoção e evoluindo o produto com o Guilherme. Dono: Diego · Coordenação: Diego + Guilherme.',
+      fases:[
+        {nome:'1. Fundação & Piloto (concluída)', prazoFase:'2026-07-01', tarefas:[
+          {title:'Definir arquitetura, áreas e ambiente', grupo:'Fundação', date:'2026-06-20', prio:'media', done:true, desc:'Backend (servidor/Supabase), login corporativo e estrutura de áreas do Hub: Gerenciador, Reuniões, Projetos, Rotinas, Notas, Lembretes.'},
+          {title:'Onboarding do grupo piloto (13 pessoas)', grupo:'Piloto', date:'2026-07-01', prio:'alta', done:true, desc:'Primeiros usuários já implantados: Diego, Guilherme, Débora, Maria, Camila, Luiza, Samuel, Gabriel, Stefano, Valesca, Verônica, Michele, Joel.'},
+        ]},
+        {nome:'2. Onda 1 — 20/07 (8 pessoas)', prazoFase:'2026-07-27', tarefas:[
+          {title:'Preparar acessos — Onda 1', grupo:'Preparar', date:'2026-07-18', prio:'media', desc:'Criar/confirmar login corporativo e cadastro + preparar material. Pessoas: Mauro, Jenifer, Pâmela, Nicole, Sabrina, Maiara, Augusto, Taina.'},
+          {title:'Treinamento em grupo — Onda 1 (20/07)', grupo:'Treinar', date:'2026-07-20', prio:'alta', desc:'Sessão de treinamento. Mostrar Meu Dia, Minhas Tarefas, Solicitadas, Organizar e Rotinas. Pessoas: Mauro, Jenifer, Pâmela, Nicole, Sabrina, Maiara, Augusto, Taina.'},
+          {title:'Acompanhar adoção — 1ª semana (Onda 1)', grupo:'Acompanhar', date:'2026-07-27', prio:'media', desc:"Checar uso no dashboard 'Uso da equipe' e tirar dúvidas dos 8 da Onda 1."},
+        ]},
+        {nome:'3. Onda 2 — 27/07 (3 pessoas)', prazoFase:'2026-08-03', tarefas:[
+          {title:'Preparar acessos — Onda 2', grupo:'Preparar', date:'2026-07-24', prio:'media', desc:'Criar/confirmar login e cadastro + preparar material. Pessoas: Tamires, Natalha, Luciano.'},
+          {title:'Treinamento em grupo — Onda 2 (27/07)', grupo:'Treinar', date:'2026-07-27', prio:'alta', desc:'Sessão de treinamento. Pessoas: Tamires, Natalha, Luciano.'},
+          {title:'Acompanhar adoção — 1ª semana (Onda 2)', grupo:'Acompanhar', date:'2026-08-03', prio:'media', desc:'Checar uso e tirar dúvidas dos 3 da Onda 2.'},
+        ]},
+        {nome:'4. Onda 3 — 03/08 (5 pessoas)', prazoFase:'2026-08-10', tarefas:[
+          {title:'Preparar acessos — Onda 3', grupo:'Preparar', date:'2026-07-31', prio:'media', desc:'Criar/confirmar login e cadastro + preparar material. Pessoas: Denise, Adriana, Andrea, Josimar, Alan.'},
+          {title:'Treinamento em grupo — Onda 3 (03/08)', grupo:'Treinar', date:'2026-08-03', prio:'alta', desc:'Sessão de treinamento. Pessoas: Denise, Adriana, Andrea, Josimar, Alan.'},
+          {title:'Acompanhar adoção — 1ª semana (Onda 3)', grupo:'Acompanhar', date:'2026-08-10', prio:'media', desc:'Checar uso e tirar dúvidas dos 5 da Onda 3.'},
+        ]},
+        {nome:'5. Onda 4 — 10/08 (4 pessoas)', prazoFase:'2026-08-17', tarefas:[
+          {title:'Preparar acessos — Onda 4', grupo:'Preparar', date:'2026-08-07', prio:'media', desc:'Criar/confirmar login e cadastro + preparar material. Pessoas: Camili, Evelin, Carlos, Cris.'},
+          {title:'Treinamento em grupo — Onda 4 (10/08)', grupo:'Treinar', date:'2026-08-10', prio:'alta', desc:'Sessão de treinamento. Pessoas: Camili, Evelin, Carlos, Cris.'},
+          {title:'Acompanhar adoção — 1ª semana (Onda 4)', grupo:'Acompanhar', date:'2026-08-17', prio:'media', desc:'Checar uso e tirar dúvidas dos 4 da Onda 4.'},
+        ]},
+        {nome:'6. Operadores (só celular) — a definir', tarefas:[
+          {title:'DECIDIR: estratégia para operadores (só celular)', grupo:'Definir estratégia mobile', prio:'alta', desc:'Definir COMO e QUANDO os operadores que só usam celular entram no Hub. Pessoas: Emanuele, Everaldo, Rogério, Samuel, Danielli, Suelen, Paulo, Rose, Luiz. (Confirmar se há mais de um Samuel.)'},
+          {title:'Preparar acessos — Operadores (mobile)', grupo:'Preparar', prio:'media', desc:'Após a decisão: criar login/cadastro e preparar material focado em celular.'},
+          {title:'Treinamento — Operadores (mobile)', grupo:'Treinar', prio:'media', desc:'Sessão de treinamento focada no uso por celular.'},
+        ]},
+        {nome:'7. Adoção, Suporte & Evolução (contínua)', tarefas:[
+          {title:'Acompanhar adoção semanal', grupo:'Medir adoção', prio:'media', desc:"Usar o dashboard 'Uso da equipe' para ver quem usa / quem não usa e agir sobre os inativos."},
+          {title:'Abrir canal de dúvidas / suporte da implantação', grupo:'Suporte & dúvidas', prio:'media', desc:'Definir onde a equipe tira dúvidas + usar o Mural de Ideias como funil de feedback e priorização.'},
+          {title:'Priorizar backlog de melhorias com o Guilherme', grupo:'Backlog (Guilherme)', prio:'alta', desc:'Solicitações já abertas ao Guilherme: #859 alterar status na listagem, #861 votação de melhorias, #1107 editar datas inline, #1078 comunicação interna, #1139 recolher/expandir grupos.'},
+          {title:'Definir rotinas padrão por função', grupo:'Rotinas padrão', prio:'media', desc:'Modelos de rotina por cargo (ex.: conciliação de estoque, contas a pagar/receber, aprovar OC, análise de mercado).'},
+        ]},
+      ]
+    };
+    const PRIO_OK={urgente:1,alta:1,media:1,baixa:1,trivial:1};
+    const base=Date.now(); let seq=0;
+    const p=_novoProjectPro({nome:DADOS.nome, tipo:DADOS.tipo, cor:DADOS.cor, dono:CURRENT_USER_ID, prazoInicio:DADOS.prazoInicio, prazoFim:DADOS.prazoFim, descricao:DADOS.descricao});
+    p.status=DADOS.status; p.prioridade=DADOS.prioridade; p.coordenador=CURRENT_USER_ID;
+    if(!p.pessoas.includes(CURRENT_USER_ID)) p.pessoas.push(CURRENT_USER_ID);
+    p.fases=[];
+    DADOS.fases.forEach((f,fi)=>{
+      const fase=_novaFase(f.nome, fi+1); fase.id='fase_'+base+'_'+(seq++);
+      if(f.prazoFase) fase.prazoFase=f.prazoFase;
+      fase.grupos=[];
+      const gmap={};
+      (f.tarefas||[]).forEach(tk=>{ const gn=tk.grupo||'Geral'; const k=gn.toLowerCase(); if(!gmap[k]){ const g=_novoGrupo(gn); g.id='grp_'+base+'_'+(seq++); g.tarefaIds=[]; fase.grupos.push(g); gmap[k]=g; } });
+      (f.tarefas||[]).forEach(tk=>{
+        const tid=base+(++seq);
+        const g=gmap[(tk.grupo||'Geral').toLowerCase()];
+        // executor/solicitante = null de PROPÓSITO: assim as tarefas do exemplo NÃO vazam
+        // para Meu Dia / Minhas Tarefas / Atrasadas / "Uso da equipe" (esses filtros excluem
+        // tarefa de projeto sem executor). Elas vivem dentro do projeto; o Diego atribui quem quiser.
+        const nt={id:tid, title:tk.title, prio:PRIO_OK[tk.prio]?tk.prio:'media', executor:null, people:[], projectId:null, projectProId:p.id, projectProFaseId:fase.id, projectProGrupoId:g?g.id:null, setorManual:!!g, date:tk.date||null, done:!!tk.done, escopo:'klain', desc:tk.desc||'', subtasks:[], solicitante:null, _persisted:true, createdAt:(tk.date||today)};
+        if(nt.done) nt.doneAt=nt.date||today;
+        if(g) g.tarefaIds.push(tid);
+        tasks.push(nt);
+        if(typeof saveTask_db==='function') saveTask_db(nt);
+      });
+      p.fases.push(fase);
+    });
+    saveProjectPro_db(p);
+    safeSetItem(LS_IMPL_SEEDED,'1');
+    if(window.DEBUG_MIGRATIONS) console.log('[seedImplantacao] projeto exemplo criado');
+  }catch(e){ console.warn('[seedImplantacao]',e); }
 }
 
 // ── Gerenciador de templates de projeto ──
@@ -24616,39 +24912,91 @@ function abrirGerenciadorTemplatesProj(){
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9100;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s';
   ov.onclick=e=>{if(e.target===ov) ov.remove();};
 
-  const lista=_projTemplates.length
-    ? _projTemplates.map(tpl=>{
-        const tot=_tplTotais(tpl);
-        const tipo=PP_TIPOS[tpl.tipo]||{label:tpl.tipo||'Outro',color:tpl.cor||'#185FA5',icon:'ti-folder'};
-        return `<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);margin-bottom:8px">
-          <div style="width:38px;height:38px;border-radius:10px;background:${tpl.cor||'#185FA5'}1f;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <i class="ti ${tipo.icon}" style="color:${tpl.cor||'#185FA5'};font-size:18px"></i>
-          </div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(tpl.nome)}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px">${tot.fases} fase${tot.fases!==1?'s':''} · ${tot.tarefas} tarefa${tot.tarefas!==1?'s':''}</div>
-          </div>
-          <button onclick="criarProjetoDeTemplate('${tpl.id}')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-plus" style="font-size:13px"></i> Usar</button>
-          <button onclick="abrirEditorProjTemplate('${tpl.id}')" title="Editar" style="background:var(--card);border:1px solid var(--border);color:var(--text2);border-radius:7px;width:32px;height:32px;cursor:pointer;flex-shrink:0"><i class="ti ti-pencil"></i></button>
-          <button onclick="excluirProjTemplate('${tpl.id}')" title="Excluir" style="background:var(--card);border:1px solid var(--border);color:var(--text3);border-radius:7px;width:32px;height:32px;cursor:pointer;flex-shrink:0" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-trash"></i></button>
-        </div>`;
-      }).join('')
-    : `<div style="text-align:center;padding:30px 20px;color:var(--text3)">
-        <i class="ti ti-template" style="font-size:40px;opacity:.3;display:block;margin-bottom:10px"></i>
-        <div style="font-size:13px">Nenhum template ainda.</div>
-        <div style="font-size:12px;margin-top:4px">Crie um do zero, ou salve um projeto existente como template (no menu do projeto).</div>
+  // Linha de um modelo/template. builtin=true → Modelos prontos (só Usar/Prévia). false → Meus modelos (Usar/Prévia/Editar/Excluir).
+  const _tplRow=(tpl,builtin)=>{
+    const tot=_tplTotais(tpl);
+    const tipo=PP_TIPOS[tpl.tipo]||{label:tpl.tipo||'Outro',color:tpl.cor||'#185FA5',icon:'ti-folder'};
+    const cor=tpl.cor||'#185FA5';
+    const acoesExtra = builtin ? '' :
+      `<button onclick="abrirEditorProjTemplate('${tpl.id}')" title="Editar" style="background:var(--card);border:1px solid var(--border);color:var(--text2);border-radius:7px;width:32px;height:32px;cursor:pointer;flex-shrink:0"><i class="ti ti-pencil"></i></button>
+       <button onclick="excluirProjTemplate('${tpl.id}')" title="Excluir" style="background:var(--card);border:1px solid var(--border);color:var(--text3);border-radius:7px;width:32px;height:32px;cursor:pointer;flex-shrink:0" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-trash"></i></button>`;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);margin-bottom:8px">
+      <div style="width:38px;height:38px;border-radius:10px;background:${cor}1f;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="ti ${tipo.icon}" style="color:${cor};font-size:18px"></i>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(tpl.nome)}</div>
+        ${tpl.descricao?`<div style="font-size:11px;color:var(--text3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(tpl.descricao)}</div>`:''}
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${tot.fases} fase${tot.fases!==1?'s':''} · ${tot.tarefas} tarefa${tot.tarefas!==1?'s':''}</div>
+      </div>
+      <button onclick="_ppModeloPreview('${tpl.id}')" title="Ver o que vem dentro" style="background:var(--card);border:1px solid var(--border);color:var(--text2);border-radius:7px;width:32px;height:32px;cursor:pointer;flex-shrink:0" onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text2)'"><i class="ti ti-eye"></i></button>
+      <button onclick="criarProjetoDeTemplate('${tpl.id}')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-plus" style="font-size:13px"></i> Usar</button>
+      ${acoesExtra}
+    </div>`;
+  };
+  const _secHdr=(txt,sub)=>`<div style="margin:2px 0 10px"><div style="font-size:12px;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">${txt}</div>${sub?`<div style="font-size:11.5px;color:var(--text3);margin-top:2px">${sub}</div>`:''}</div>`;
+  const modelosHTML = PROJ_MODELOS.map(m=>_tplRow(m,true)).join('');
+  const meusHTML = _projTemplates.length
+    ? _projTemplates.map(tpl=>_tplRow(tpl,false)).join('')
+    : `<div style="text-align:center;padding:20px;color:var(--text3);border:1px dashed var(--border);border-radius:10px">
+        <div style="font-size:12.5px">Você ainda não salvou modelos seus.</div>
+        <div style="font-size:11.5px;margin-top:3px">Use um modelo pronto acima, ou salve um projeto existente como modelo (ícone <i class="ti ti-template"></i> no projeto).</div>
       </div>`;
 
-  ov.innerHTML=`<div style="background:var(--card);border-radius:14px;width:100%;max-width:560px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:scaleIn .25s cubic-bezier(.34,1.3,.64,1)">
+  ov.innerHTML=`<div style="background:var(--card);border-radius:14px;width:100%;max-width:580px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:scaleIn .25s cubic-bezier(.34,1.3,.64,1)">
     <div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-      <h3 style="margin:0;font-size:16px;color:var(--text)"><i class="ti ti-template" style="color:var(--blue-mid)"></i> Templates de projeto</h3>
+      <h3 style="margin:0;font-size:16px;color:var(--text)"><i class="ti ti-layout-grid" style="color:var(--blue-mid)"></i> Modelos de projeto</h3>
       <button onclick="document.getElementById('pp-tpl-manager').remove()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px"><i class="ti ti-x"></i></button>
     </div>
     <div style="padding:16px 22px;overflow-y:auto;flex:1">
-      ${lista}
+      ${_secHdr('✨ Modelos prontos', 'Comece por um destes — já vêm com fases, setores e tarefas. Você ajusta depois.')}
+      ${modelosHTML}
+      <div style="height:16px"></div>
+      ${_secHdr('Meus modelos', 'Modelos que você criou ou salvou de projetos seus.')}
+      ${meusHTML}
     </div>
     <div style="padding:14px 22px;border-top:1px solid var(--border)">
-      <button onclick="abrirEditorProjTemplate()" style="width:100%;background:var(--bg2);color:var(--blue-mid);border:1px dashed var(--blue-mid);border-radius:9px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i class="ti ti-plus"></i> Novo template do zero</button>
+      <button onclick="abrirEditorProjTemplate()" style="width:100%;background:var(--bg2);color:var(--blue-mid);border:1px dashed var(--blue-mid);border-radius:9px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i class="ti ti-plus"></i> Criar meu próprio modelo</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+
+// Prévia (read-only) do que vem dentro de um modelo/template, antes de instanciar.
+function _ppModeloPreview(id){
+  const tpl=_projModeloById(id) || _projTemplates.find(t=>t.id===id);
+  if(!tpl){ toast('⚠️ Modelo não encontrado'); return; }
+  document.getElementById('pp-modelo-preview')?.remove();
+  const tot=_tplTotais(tpl);
+  const tipo=PP_TIPOS[tpl.tipo]||{label:tpl.tipo||'Outro',color:tpl.cor||'#185FA5',icon:'ti-folder'};
+  const cor=tpl.cor||'#185FA5';
+  const arvore=(tpl.fases||[]).map(f=>{
+    const setores=(f.grupos||[]).map(g=>{
+      const tar=(g.tarefas||[]).map(t=>`<div style="font-size:12px;color:var(--text2);padding:2px 0 2px 18px;position:relative"><span style="position:absolute;left:4px;color:var(--text3)">·</span>${escapeHTML(t.title||'')}</div>`).join('');
+      return `<div style="margin:6px 0 6px 10px"><div style="font-size:12px;font-weight:700;color:var(--text)"><i class="ti ti-building" style="font-size:12px;color:${cor}"></i> ${escapeHTML(g.setor||'Geral')}</div>${tar}</div>`;
+    }).join('');
+    return `<div style="border-left:3px solid ${cor};padding:8px 0 8px 12px;margin-bottom:8px"><div style="font-size:13px;font-weight:800;color:var(--text)">${escapeHTML(f.nome||'')}</div>${setores}</div>`;
+  }).join('');
+  const ov=document.createElement('div');
+  ov.id='pp-modelo-preview';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9250;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s';
+  ov.onclick=e=>{ if(e.target===ov) ov.remove(); };
+  ov.innerHTML=`<div style="background:var(--card);border-radius:14px;width:100%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:scaleIn .25s cubic-bezier(.34,1.3,.64,1)">
+    <div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+      <div style="width:38px;height:38px;border-radius:10px;background:${cor}1f;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ${tipo.icon}" style="color:${cor};font-size:18px"></i></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:16px;font-weight:800;color:var(--text)">${escapeHTML(tpl.nome)}</div>
+        <div style="font-size:11px;color:var(--text3)">${tot.fases} fase${tot.fases!==1?'s':''} · ${tot.tarefas} tarefa${tot.tarefas!==1?'s':''}</div>
+      </div>
+      <button onclick="document.getElementById('pp-modelo-preview').remove()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px"><i class="ti ti-x"></i></button>
+    </div>
+    <div style="padding:16px 22px;overflow-y:auto;flex:1">
+      ${tpl.descricao?`<div style="font-size:12.5px;color:var(--text2);margin-bottom:14px;line-height:1.5">${escapeHTML(tpl.descricao)}</div>`:''}
+      ${arvore}
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">
+      <button onclick="document.getElementById('pp-modelo-preview').remove()" style="background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer">Fechar</button>
+      <button onclick="criarProjetoDeTemplate('${tpl.id}')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-plus"></i> Usar este modelo</button>
     </div>
   </div>`;
   document.body.appendChild(ov);
@@ -24764,7 +25112,7 @@ function _renderTplEdBody(){
       return `<div style="border:1px solid var(--border);border-radius:8px;padding:9px 10px;margin-bottom:7px;background:var(--card)">
         <div style="display:flex;gap:6px;align-items:center;margin-bottom:7px">
           <i class="ti ti-users" style="color:var(--text3);font-size:13px"></i>
-          <input type="text" value="${escapeAttr(g.setor||'')}" oninput="_tplSet('grupo',${fi},${gi},null,'setor',this.value)" placeholder="Setor / grupo" style="${inp};flex:1;font-weight:600" />
+          <input type="text" value="${escapeAttr(g.setor||'')}" oninput="_tplSet('grupo',${fi},${gi},null,'setor',this.value)" placeholder="Setor (ex.: Compras)" style="${inp};flex:1;font-weight:600" />
           <button onclick="_tplDelGrupo(${fi},${gi})" title="Remover grupo" style="background:none;border:none;color:var(--text3);cursor:pointer" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-trash" style="font-size:14px"></i></button>
         </div>
         ${tarefasHTML}
@@ -24777,7 +25125,7 @@ function _renderTplEdBody(){
         <button onclick="_tplDelFase(${fi})" title="Remover fase" style="background:none;border:none;color:var(--text3);cursor:pointer" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-trash"></i></button>
       </div>
       ${gruposHTML}
-      <button onclick="_tplAddGrupo(${fi})" style="background:none;border:1px dashed var(--border);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;padding:6px 10px;border-radius:7px;display:inline-flex;align-items:center;gap:4px;margin-top:2px"><i class="ti ti-plus" style="font-size:12px"></i> setor / grupo</button>
+      <button onclick="_tplAddGrupo(${fi})" style="background:none;border:1px dashed var(--border);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;padding:6px 10px;border-radius:7px;display:inline-flex;align-items:center;gap:4px;margin-top:2px"><i class="ti ti-plus" style="font-size:12px"></i> setor</button>
     </div>`;
   }).join('');
 
@@ -25055,7 +25403,30 @@ function renderProjectProVisao(p, prog){
         <button onclick="setProjectProTab('fases')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer"><i class="ti ti-plus"></i> Adicionar fase</button>
       </div>`;
 
-  return cardsHTML + fasesHTML;
+  // Guia "como montar" — só enquanto o projeto ainda não tem tarefas
+  let guiaHTML='';
+  if(prog.total===0){
+    const temFase=nFases>0;
+    const temSetor=(p.fases||[]).some(f=>(f.grupos||[]).length>0);
+    const passos=[
+      {n:1,ok:temFase,t:'Defina as fases',d:'As grandes etapas do projeto, na ordem.'},
+      {n:2,ok:temSetor,t:'Adicione os setores',d:'As áreas/times responsáveis em cada fase.'},
+      {n:3,ok:false,t:'Crie as tarefas',d:'As ações concretas, com responsável e prazo.'},
+    ].map(s=>`
+      <div style="flex:1;min-width:160px;display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid ${s.ok?'var(--success)':'var(--border)'};border-radius:11px;padding:12px 14px">
+        <div style="width:24px;height:24px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;background:${s.ok?'var(--success)':'var(--bg2)'};color:${s.ok?'#fff':'var(--text3)'}">${s.ok?'<i class="ti ti-check"></i>':s.n}</div>
+        <div><div style="font-size:13px;font-weight:700;color:var(--text)">${s.t}</div><div style="font-size:11.5px;color:var(--text3);margin-top:2px;line-height:1.4">${s.d}</div></div>
+      </div>`).join('');
+    guiaHTML=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:800;color:var(--text)"><i class="ti ti-map-2" style="color:var(--blue-mid)"></i> Como montar este projeto</div>
+        <button onclick="setProjectProTab('fases')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px">Ir para Fases <i class="ti ti-arrow-right"></i></button>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">${passos}</div>
+    </div>`;
+  }
+
+  return guiaHTML + cardsHTML + fasesHTML;
 }
 
 // ─── ABA: FASES (gerenciar) ──────────────────────────────────────
@@ -25338,7 +25709,7 @@ function adicionarGrupo(projectId, faseId){
   overlay.innerHTML = `
     <div style="background:var(--card);border-radius:14px;width:100%;max-width:460px;box-shadow:0 24px 60px rgba(0,0,0,.3)">
       <div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-        <h3 style="margin:0;font-size:16px"><i class="ti ti-building" style="color:${p.cor}"></i> Adicionar grupo de setor</h3>
+        <h3 style="margin:0;font-size:16px"><i class="ti ti-building" style="color:${p.cor}"></i> Adicionar setor ${_hint('Setor = a área/time responsável por um conjunto de tarefas desta fase (ex.: Compras, Produção).')}</h3>
         <button onclick="document.getElementById('pp-modal-grupo').remove()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px"><i class="ti ti-x"></i></button>
       </div>
       <div style="padding:18px 22px">
