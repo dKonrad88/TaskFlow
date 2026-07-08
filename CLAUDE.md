@@ -89,6 +89,35 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-08 — PC da Empresa — Projetos: "Importar (colar)" + projeto "Implantação do Hub Klain" (dogfooding)
+- **Contexto/pedido do Diego:** usar a própria seção **Projetos** (projectsPro) pra planejar a **implantação do Hub Klain** na
+  empresa (dogfooding) — e assim entender como a seção Projetos vai se comportar. Ele mandou os prints da build do **Guilherme**
+  (`hub.biscoitosklain.com.br` — sidebar Gerenciador: Meu Dia · Minhas Tarefas · Solicitadas · Organizar · Histórico · Lembretes;
+  Gestão: Projetos · Reuniões · Notas · Rotinas) + o **cronograma de ondas de pessoas**. ⚠️ Lembrar: aquela build é do Guilherme,
+  NÃO este git. O projeto que montei vive no **protótipo** (este `index.html` / Pages), pra demonstrar formato/regras.
+- **NOVO "Importar (colar)" no Projetos** (`_ppImportarUI`/`_ppImportarSalvar`, logo após `renderProjetosPro` ~24232; botão
+  "Importar" na topbar `pp-header-actions` ~2482, antes de Templates). Cola JSON (1 ou vários projetos) → cria **projectPro**
+  (`_novoProjectPro`) + **fases** (`_novaFase`) + **grupos/setores** (`_novoGrupo`) + **tarefas** vinculadas por
+  `projectProId`/`projectProFaseId`/`projectProGrupoId` (com `setorManual=true` p/ o setor não ser sobrescrito pela derivação por
+  executor). **Aditivo, em-código, NÃO toca na nuvem** (mesmo motivo do Importar de Orçamentos: "Baixar da nuvem" sobrescreveria
+  tudo). IDs únicos por `base=Date.now()`+contador. Prio validada contra `PRIO_LABEL` (urgente/alta/media/baixa/trivial→senão media).
+  Defaults: `executor`/`dono`/`coordenador` = `CURRENT_USER_ID` (Diego `p1779098505705`) → as tarefas TAMBÉM aparecem em Minhas
+  Tarefas/Meu Dia por data. Formato do JSON documentado no comentário acima da função.
+- **JSON do projeto pronto** no scratchpad: `projeto_implantacao_hub.json` (validado no PowerShell: **7 fases, 21 tarefas**).
+  Estrutura: F1 Fundação & Piloto (concluída, 13 pilotos) · F2 Onda 1 20/07 (8) · F3 Onda 2 27/07 (3) · F4 Onda 3 03/08 (5) ·
+  F5 Onda 4 10/08 (4) · F6 Operadores só-celular (a definir, 9 — inclui tarefa "DECIDIR estratégia mobile") · F7 Adoção/Suporte/
+  Evolução (contínua: medir adoção, suporte, **backlog do Guilherme** #859/#861/#1107/#1078/#1139, rotinas padrão). Cada onda = 3
+  tarefas (Preparar/Treinar/Acompanhar) com datas amarradas. Granularidade escolhida pelo Diego = **por onda (enxuto)**.
+- ⚠️ **Ambiguidade a confirmar com o Diego:** "Samuel" apareceu 3× (1 em pilotos + 2 em só-celular) — dedupliquei p/ 1 em só-celular;
+  confirmar se são pessoas diferentes. E o grupo só-celular está como decisão aberta (F6) porque ele mesmo marcou "precisamos definir".
+- ⚠️ **NÃO testado em navegador por mim** (sem Node/Python/preview nesta máquina, como sempre). Revisado à mão + JSON validado +
+  checado 0 redeclaração de função. **Diego precisa:** abrir o **protótipo** (Pages, após ~1min do push + Ctrl+Shift+R) → Gestão →
+  **Projetos** → **Importar** → colar o conteúdo do `projeto_implantacao_hub.json` → conferir se o projeto aparece com as 7 fases,
+  setores e tarefas, e navegar. Se algo estiver torto, me trazer. Commit `6d9ec20` (push OK na 2ª tentativa; 1ª falhou por rede/firewall da Empresa).
+- **Próximos passos possíveis:** transformar em **template de projeto** (reusar p/ próximas implantações); ligar tarefas a **pessoas reais**
+  (hoje executor=Diego; poderia criar/associar people p/ o dashboard "Uso da equipe" ficar vivo); botão "Exportar projeto (JSON)" p/
+  o caminho de volta; confirmar as ambiguidades acima.
+
 ### 2026-07-03 — PC da Empresa — NOVA ÁREA "Marketing" › aba "Influenciadores" (embaixadoras: controle + gamificação)
 - **Nova ÁREA de topo "Marketing"** (mesmo padrão de Produção/Manutenção/Qualidade): botão na home (Meu dia), em ordem
   **alfabética entre Manutenção e Produção**. `hubView` ganhou valor `'marketing'`. Funções `switchToMarketing`/`setMarketingView`/
