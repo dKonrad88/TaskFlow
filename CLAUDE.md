@@ -89,6 +89,44 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-08 (2) — PC da Empresa — Projetos: MODELOS PRONTOS + onboarding do método + seed do projeto exemplo
+- **Pedido do Diego (estava fora, "só faça"):** melhorar a seção **Projetos** ao máximo p/ **40 pessoas** usarem (simples + completo),
+  atacando a dor central dele: **não saber pensar/organizar em fases e tarefas**. Criar o projeto "Implantação do Hub Klain" inteiro
+  como exemplo, e entregar um **passo a passo** de como montar um projeto do zero. Ultracode ligado → 2 workflows (design + verificação adversarial).
+- **Descoberta-chave:** o sistema de **templates de projeto já existia** (`_projTemplates`, `criarProjetoDeTemplate`, `abrirGerenciadorTemplatesProj`)
+  mas **nascia VAZIO** — e `criarProjetoDeTemplate` tinha **BUG**: não setava `projectProFaseId`/`projectProGrupoId` → toda tarefa de modelo
+  nascia solta e a fase mostrava 0%. Corrigido (espelha o importador `_ppImportarSalvar`).
+- **O que entrou (commit `16436f9`):**
+  - **`PROJ_MODELOS`** (const fixa no código, logo após `let PP_TIPOS`): **6 modelos prontos** — Implantação de Sistema (bi), Lançamento de
+    Novo Produto (produto), Obra/Nova Linha (obra), Campanha (campanha), Evento/Feira (evento), Melhoria PDCA (outro). Cada um com fases +
+    setores + tarefas de exemplo. **Não vão pro localStorage** (não poluem sync, evoluem via git). `_projModeloById(id)`.
+  - **Galeria "Modelos"** (`abrirGerenciadorTemplatesProj` reescrita) em 2 seções: **Modelos prontos** (Usar/Prévia) + **Meus modelos**
+    (Usar/Prévia/Editar/Excluir). Nova **`_ppModeloPreview(id)`** (árvore fases→setores→tarefas antes de instanciar). Botão da topbar renomeado
+    "Templates"→**"Modelos"** (ícone `ti-layout-grid`).
+  - **`criarProjetoDeTemplate` corrigida**: aceita built-in (`_projModeloById`) + `_projTemplates`; vincula tarefa a fase/setor (ids únicos
+    por `base+contador`); `coordenador=CURRENT_USER_ID`.
+  - **Estado-vazio da lista** (`renderProjetosPro`) reescrito: ensina o **método** (🎯 Objetivo → 🗂️ Fases → 🏢 Setores → ✅ Tarefas) +
+    grid dos modelos + "Criar do zero"/"Importar".
+  - **Visão geral**: guia **"Como montar este projeto"** (stepper Fases→Setores→Tarefas) aparece enquanto `prog.total===0`.
+  - **Modal Novo projeto**: banner **"Começar de um modelo pronto"**; **`criarProjectPro`: coordenador = dono** por padrão (I8).
+  - **`_hint`** em Tipo/Dono/Setor; padroniza **"Setor"** (era "grupo de setor"/"setor / grupo").
+  - **Seed 1x** (`LS_IMPL_SEEDED='taskflow_impl_seeded'`, chamado em `load()` após a migração de projetos): cria o projeto real
+    **"Implantação do Hub Klain"** (7 fases, 21 tarefas). ⚠️ **Tarefas com `executor=null` de propósito** — a verificação adversarial pegou
+    que `executor=Diego` faria as 21 tarefas **vazarem** p/ Meu Dia/Minhas Tarefas/Atrasadas/"Uso da equipe" (esses filtros só excluem
+    tarefa de projeto SEM executor). Com `executor=null` o projeto fica completo (progresso/setores certos) mas não polui listas pessoais.
+- **Verificação (ultracode):** workflow de 10 subagentes (5 lentes caçadoras + verificação cética). Resultado: **0 erro de sintaxe, 0 ref
+  quebrada, 0 XSS, render-shape ok**. 1 bug real confirmado (vazamento do seed) → **corrigido**. Descartados: "seed esconde o estado-vazio"
+  (é intencional — o Diego pediu o exemplo; o método também está na galeria/guia/stepper) e "rename re-semeia" (falso: flag é o guard primário).
+- **Guia entregue:** Artifact **"Como montar um projeto do zero"** (método Objetivo→Fases→Setores→Tarefas + heurísticas p/ achar fases/tarefas
+  + erros comuns + checklist). Fonte em `scratchpad/guia_montar_projeto.html`. É o "passo a passo" que o Diego pediu; serve tb p/ as 40 pessoas.
+- ⚠️ **NÃO testado em navegador** (sem preview/Node aqui). **Diego precisa:** abrir o protótipo (Pages, ~1min pós-push + Ctrl+Shift+R) →
+  Gestão → **Projetos**. Vai ver o projeto **"Implantação do Hub Klain"** já criado. Testar: abrir o projeto e navegar fases/setores/tarefas;
+  botão **Modelos** → Prévia + Usar um modelo pronto (confere se cria projeto com fases/tarefas e progresso certo); "Novo projeto" → banner de modelo.
+  Pra ver o **estado-vazio** que ensina o método, teria que ficar sem nenhum projeto (ele só aparece com a lista vazia).
+- **Próximos passos possíveis:** (a) decidir se o seed deve rodar p/ todo mundo ou só demo; (b) ligar tarefas do exemplo a pessoas reais se
+  quiser o dashboard "Uso da equipe" vivo; (c) botão "Exportar projeto (JSON)"; (d) as melhorias de menor prioridade não feitas (I10 enxugar
+  toolbar, I11 memoizar progresso, I12 proteger excluir/Lixeira, I13 não sobrescrever data manual pela projeção do cronograma).
+
 ### 2026-07-08 — PC da Empresa — Projetos: "Importar (colar)" + projeto "Implantação do Hub Klain" (dogfooding)
 - **Contexto/pedido do Diego:** usar a própria seção **Projetos** (projectsPro) pra planejar a **implantação do Hub Klain** na
   empresa (dogfooding) — e assim entender como a seção Projetos vai se comportar. Ele mandou os prints da build do **Guilherme**
