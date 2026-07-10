@@ -89,6 +89,34 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-10 (7) — PC da Empresa — REUNIÕES: fix horário + varredura do painel + ATA turbinada (PLAUD/Compor/Extrair)
+- **Pedido do Diego:** (a) no seletor de horário, o **Fim** deveria seguir o **Início** (abria sempre em 08:00); (b) comparar o painel
+  de reuniões com Fellow & cia. e **variar bugs/melhorias dentro do painel**; depois "faça na ordem que achar melhor".
+- **FIX HORÁRIO (commit `a2020cd`):** `drumFieldHTML` ganhou `opts {fallbackId, propagateToId}` (data-attrs). `openDrumPicker` — se o
+  campo abrir vazio, começa no valor do fallback (**Fim começa no Início**). `drumConfirm` — ao confirmar, se o alvo estiver vazio,
+  ele recebe o valor (**escolher Início já preenche o Fim**). Aplicado nos 3 pares: Reunião Rápida, Reunião completa, Compromisso.
+  **Bônus:** removidos os `<input hidden>`/`type=time` avulsos que **duplicavam o id** de `reun-hora-inicio/fim` e `comp-inicio/fim`
+  (getElementById pegava o avulso; o hidden do drum ficava órfão) — agora 1 input por campo.
+- **VARREDURA DEDICADA do Painel (commit `8d69ecf`):** 3 bugs corrigidos — (1) `saveNovaTarefaInline` usava `id:Date.now()` puro →
+  `+random` (colisão em cliques rápidos) + `_persisted`; (2) `estatisticasPresenca` fazia `.date.localeCompare` sem guard → **crash na
+  tela da pessoa** se reunião encerrada sem date → `(b.date||'')`; (3) `cancelNovaTarefaInline` não limpava o executor. **Sem bug crítico
+  no painel** (encerramento/carry-over/recorrência sólidos).
+- **ATA TURBINADA (commit `c710f06`) — inspirado em Fellow/AI note-takers:**
+  - **PLAUD na reunião COMPLETA** (antes só na rápida): resumo+link no modal da ATA (`abrirAtaReuniao`), ids `ata-plaud-*` p/ não colidir.
+  - **"Compor rascunho da ATA"** (`_reunComporAta`/`_reunAtaRascunho`): gera a ATA em texto de título/data/participantes+presença/pauta
+    (com status)/decisões/ações/resumo PLAUD. Confirma antes de sobrescrever ATA existente.
+  - **"Quebrar resumo em itens"** (`_reunPlaudExtrair`/`_plaudLinhaPara`): cada linha do resumo do PLAUD vira **Pauta/Decisão/Tarefa**
+    com 1 clique (tarefa nasce sem executor → aparece no painel + Organizar p/ atribuir). ⭐ é o diferencial (usa o device PLAUD).
+  - **Decisões com re-render PONTUAL** (`_reunDecisoesListHTML` extraída): add/remove atualiza só a lista (não perde scroll; linha fica
+    aberta p/ registrar em série). Antes chamava `openReuniaoView` (re-render total).
+  - **Tarefa da reunião** agora tem `solicitante=CURRENT_USER_ID` → entra em **Solicitadas** (loop de cobrança).
+- **ANÁLISE (Fellow & cia.) — o que ainda FALTA (não feito):** ⭐ **Modelos de reunião** (1:1/Daily/Semanal/Retrô — pauta pré-pronta,
+  reaproveita o motor dos modelos de Projeto); notas/talking-points + dono + time-box por item de pauta; lembrete pré-reunião + recap
+  pós (notificar cada um com "suas ações"); nota de efetividade; 1:1 com pauta compartilhada; ligar decisão→tarefa + placar de ações;
+  parking lot. Pequenos ainda abertos: excluir tarefa "anterior" não atualiza o placar do topo; checkboxes são `<div>` (sem teclado/a11y).
+- ⚠️ **NÃO testado em navegador** (sem preview do index.html aqui). Diego confere no Pages: seletor de horário (Fim segue Início);
+  painel → ATA → PLAUD/Compor/Quebrar em itens; adicionar decisão sem perder scroll.
+
 ### 2026-07-10 (6) — PC da Empresa — Projetos (modelos/seed/importar) + VARREDURA multi-agente (42 achados) + lote seguro
 - ⚠️ **Correção de data:** as duas entradas mais abaixo rotuladas **"2026-07-08" (Projetos MODELOS / Projetos Importar) são desta MESMA
   sessão (2026-07-10, PC da Empresa)** — datei errado. O código delas está no git e íntegro (confirmado: coexiste com o trabalho de
