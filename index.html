@@ -14944,6 +14944,7 @@ function setTab(tab,el){
   sidebarPersonId=null; // limpa seleção da sidebar
   activeProjectId=null; // limpa projecto aberto
   activeProjectProId=null; activeFaseId=null; // V3: ao navegar por aba, sai do projeto aberto (volta à lista)
+  window._activeReuniaoId=null; // ao navegar por aba, fecha o Painel de Reunião aberto (volta à lista)
   // GUILHERME V3 (mai/2026): limpar todos os chips/filtros do header ao trocar de aba
   const _chipEl=document.getElementById('tab-proj-chips');
   if(_chipEl){_chipEl.innerHTML='';_chipEl.style.display='none';}
@@ -16078,7 +16079,12 @@ function render(){
   // GUILHERME V3 (mai/2026): "Projetos" antigo foi removido — redireciona para Projetos Pro.
   if(currentTab==='projetos'){ currentTab='projetos-pro'; renderProjetosPro(); return; }
   if(currentTab==='projetos-pro'){renderProjetosPro();return;}
-  if(currentTab==='reunioes'){renderReunioes();return;}
+  if(currentTab==='reunioes'){
+    // Preserva o Painel de Reunião aberto num re-render global (ex.: troca de tema). Sem isso, cairia na lista.
+    if(window._activeReuniaoId && meetings.some(x=>x.id===window._activeReuniaoId)) openReuniaoView(window._activeReuniaoId);
+    else renderReunioes();
+    return;
+  }
   if(currentTab==='lixeira'){renderLixeira();return;}
   if(currentTab==='mural'){renderMural();return;}
   if(currentTab==='ajuda'){renderAjuda();return;}
@@ -29942,7 +29948,7 @@ function openReuniaoView(id){
   })():'';
 
   document.getElementById('task-container').innerHTML=`<div style="padding-bottom:40px;max-width:1500px;margin:0 auto">
-    <button onclick="renderReunioes()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;padding:0;margin-bottom:16px">
+    <button onclick="window._activeReuniaoId=null;renderReunioes()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;padding:0;margin-bottom:16px">
       <i class="ti ti-arrow-left"></i> Voltar às reuniões
     </button>
     <div style="width:100%">

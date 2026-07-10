@@ -89,6 +89,21 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-10 (4) — PC da Produção — BUG: trocar de tema saía do Painel de Reunião (corrigido) + varredura do HUB
+- **Sintoma (Diego):** dentro do Painel de Reunião, ao **mudar de tema**, caía de volta na lista (perdia o painel).
+- **Causa:** `aplicarTema()` chama `render()`; o `render()` para `currentTab==='reunioes'` chamava `renderReunioes()` (a LISTA),
+  ignorando o painel — que é aberto imperativamente por `openReuniaoView` (guardado em `window._activeReuniaoId`), não relido pelo render.
+- **Varredura do HUB (a pedido do Diego):** as OUTRAS telas de detalhe **não** têm o bug porque relêem seu estado no re-render:
+  Manutenção (`manutEquipAberto`/`manutOrdemAberto`/`manutOrcamentoAberto`/`manutFornecedorAberto` em `renderManutencao`),
+  Produção (`fichaProdutoAberta` + PCP via `producaoView` em `renderProducao`), Projetos (`activeProjectProId` em `renderProjetosPro`),
+  Pessoa (`sidebarPersonId`), Qualidade/sensorial (`qualidadeView`). **Só o Painel de Reunião** era imperativo sem guard. 
+- **Fix (commit desta entrada):** (1) `render()` no ramo `reunioes` reabre o painel se `window._activeReuniaoId` estiver setado e a
+  reunião existir (senão a lista); (2) `setTab()` limpa `window._activeReuniaoId` (navegar por aba fecha o painel → clicar "Reuniões"
+  mostra a lista); (3) botão "Voltar às reuniões" limpa `window._activeReuniaoId` antes de `renderReunioes()`. Sem efeito colateral:
+  `iniciarCronometroReuniao` já dá `clearInterval` antes de recriar, então reabrir o painel não empilha cronômetro.
+- Verificado no navegador: abrir painel → trocar tema (claro↔escuro) **continua no painel**; Voltar → lista; navegar por aba → fecha.
+  Boot limpo, 0 erro.
+
 ### 2026-07-10 (3) — PC da Produção — BUG: tarefa pendente sumia após 2+ continuações de reunião (corrigido)
 - **Sintoma (Diego, testando):** encerrou uma reunião com 2 tarefas em aberto, concluiu 1, e agendou a próxima (continuação).
   A tarefa que sobrou **não veio** pra nova reunião — ficou "Nenhuma tarefa ainda".
