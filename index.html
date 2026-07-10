@@ -30706,7 +30706,7 @@ function estatisticasPresenca(personId){
   // Últimas 3 faltas (ordenadas por data desc)
   const ultimasFaltas=encerradas
     .filter(m=>!m.presencas||m.presencas[personId]!==true)
-    .sort((a,b)=>b.date.localeCompare(a.date))
+    .sort((a,b)=>(b.date||'').localeCompare(a.date||'')) // guard: reunião sem date não quebra o sort
     .slice(0,3)
     .map(m=>({id:m.id,title:m.title,date:m.date}));
   return {total,presentes,faltas,pct,ultimasFaltas};
@@ -31501,7 +31501,8 @@ function mostrarNovaTarefaInline(meetingId){
 function cancelNovaTarefaInline(meetingId){
   document.getElementById('nova-tarefa-row-'+meetingId).style.display='none';
   document.getElementById('btn-nova-tarefa-'+meetingId).style.display='';
-  document.getElementById('nt-desc-'+meetingId).value='';
+  const _d=document.getElementById('nt-desc-'+meetingId); if(_d) _d.value='';
+  const _q=document.getElementById('nt-quem-'+meetingId); if(_q) _q.value='';
 }
 
 // ── Salvar nova tarefa inline da reunião
@@ -31513,19 +31514,19 @@ function saveNovaTarefaInline(meetingId){
   const data=document.getElementById('nt-data-'+meetingId)?.value;
   if(!data){ try{toast('⚠️ Defina uma data');document.getElementById('nt-data-'+meetingId)?.focus();}catch{} return; }
   const t={
-    id:Date.now(),
+    id:Date.now()+Math.floor(Math.random()*1000), // +random: evita colisão de id em cliques rápidos
     title:desc,
     prio:'media',
     date:data,
     executor:quem,
     people:quem?[quem]:[],
-
     kanbanCol:'todo',
     done:false,
     escopo:'klain',
     meetingId:meetingId,
     subtasks:[],
     attachments:[],
+    _persisted:true,
     createdAt:today,
   };
   tasks.push(t);
