@@ -4404,7 +4404,7 @@ function _sbReady(){
     return _sbc;
   }catch(e){ console.warn('[nuvem] cliente falhou', e); return null; }
 }
-function _isCloudKey(k){ return typeof k==='string' && k.indexOf('taskflow')===0; }
+function _isCloudKey(k){ return typeof k==='string' && k.indexOf('taskflow')===0 && k!=='taskflow__backup_pre_pull'; }
 function _cloudKeys(){
   const out=[];
   try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(_isCloudKey(k)) out.push(k); } }catch(e){}
@@ -4538,10 +4538,10 @@ async function nuvemEnviar(){
   confirmModal({
     title:'Enviar para a nuvem — tem certeza?',
     danger:true, icon:'ti-cloud-up',
-    confirmLabel:'Sim, substituir a nuvem', cancelLabel:'Cancelar',
-    message:'Isto SUBSTITUI os dados da nuvem pelos dados DESTE aparelho.\n\n'
+    confirmLabel:'Sim, enviar', cancelLabel:'Cancelar',
+    message:'Isto ENVIA os dados DESTE aparelho para a nuvem, sobrescrevendo o que já existe lá.\n\n'
       +'Este aparelho: '+local+' bloco(s)\nNuvem agora: '+(nuvem==null?'?':nuvem)+' bloco(s)\n\n'
-      +'Use só no aparelho onde estão seus dados mais recentes.'+aviso,
+      +'⚠️ Atualiza/mescla — NÃO apaga da nuvem o que você excluiu aqui. Use só no aparelho onde estão seus dados mais recentes.'+aviso,
     onConfirm: async ()=>{
       if(typeof toast==='function') toast('Enviando…');
       const r=await _cloudPushAll();
@@ -5665,7 +5665,7 @@ function createNextTaskFromRotina(r,doneDate){
 // Essas tarefas só aparecem na aba específica "Lembrete".
 function getTodayTasks(){
   // Mostra só tarefas onde o usuário atual é executor, ou tarefas sem executor (entrada)
-  return tasks.filter(t=>t.date===today && !t.someday && (t.executor===CURRENT_USER_ID || !t.executor));
+  return tasks.filter(t=>t.date===today && !t.someday && (t.executor===CURRENT_USER_ID || !t.executor) && (!t.projectProId || t.executor));
 }
 function getAtrasadas(){return tasks.filter(t=>!t.done&&t.date&&t.date<today&&!t.someday&&(t.executor===CURRENT_USER_ID||!t.executor) && (!t.projectProId || t.executor))}
 function getAmanha(){return tasks.filter(t=>t.date===amanha && !t.someday && (!t.projectProId || t.executor));}
@@ -6772,7 +6772,9 @@ function _pcpParse(text){
       colMap={}; cells.forEach((c,i)=>{ let k=_pcpNorm(c); if(k.indexOf('ddv')===0 && k.indexOf('sop')>0) k='ddvsop'; let m=ALIAS[k]; if(!m){ for(const ak in ALIAS){ if(k.indexOf(ak)===0){ m=ALIAS[ak]; break; } } } if(m && colMap[m]==null) colMap[m]=i; }); return;
     }
     if(cells.length<3) return;
-    const get=(k)=>{ if(colMap && colMap[k]!=null) return cells[colMap[k]]||''; const idx=DEFAULT_ORDER.indexOf(k); return (idx>=0 && idx<cells.length) ? (cells[idx]||'') : ''; };
+    // Se o cabeçalho foi reconhecido (colMap), NÃO cair no índice posicional para colunas ausentes
+    // (isso lia a célula errada e corrompia Saldo/DDV/Sugestão). Fallback posicional só sem cabeçalho.
+    const get=(k)=>{ if(colMap) return (colMap[k]!=null) ? (cells[colMap[k]]||'') : ''; const idx=DEFAULT_ORDER.indexOf(k); return (idx>=0 && idx<cells.length) ? (cells[idx]||'') : ''; };
     const alerta=/[⚠!]|⚠/.test(cells[0]);
     const cod=String(get('cod')).replace(/[⚠!⚠]/g,'').trim();
     const produto=get('produto');
@@ -13529,7 +13531,7 @@ function enviarCutucada(taskId){
     id:'ntf'+Date.now(),
     tipo:'cutucada',
     intencao:'aguardando',
-    texto:`👋 ${(people.find(p=>p.id===CURRENT_USER_ID)?.name)||'Alguém'} cutucou você sobre "${t.title}"`,
+    texto:`👋 ${escapeHTML((people.find(p=>p.id===CURRENT_USER_ID)?.name)||'Alguém')} cutucou você sobre "${escapeHTML(t.title)}"`,
     ref:String(t.id),
     cutucadaId:cut.id,
     ts:new Date().toISOString(),
@@ -13569,7 +13571,7 @@ function responderCutucada(cutucadaId, resposta){
   _notifs.unshift({
     id:'ntf'+Date.now(),
     tipo:'cutucada_resposta',
-    texto:`💬 ${respNome} respondeu "${resposta}" sobre "${tituloTarefa}"`,
+    texto:`💬 ${escapeHTML(respNome)} respondeu "${escapeHTML(resposta)}" sobre "${escapeHTML(tituloTarefa)}"`,
     ref:String(cut.taskId),
     ts:new Date().toISOString(),
     lida:false
@@ -14962,9 +14964,9 @@ function setTab(tab,el){
   if(el && el.classList) el.classList.add('active');
   renderSidebar();
   // Mapa de títulos e subtítulos para cada aba
-  const titles={dash:'📊 Painel',rotinas:'🔁 Rotinas',hoje:'📅 Tarefas de Hoje','minhas-tarefas':'👤 Minhas Tarefas',solicitadas:'📤 Solicitadas',equipe:'👥 Tarefas da Equipe',entrada:'📥 Organizar',someday:'💤 Lembrete',atrasadas:'🚨 Tarefas Atrasadas',amanha:'🌅 Tarefas de Amanhã',semana:'📆 Tarefas da Semana',pendentes:'⏰ Tarefas Pendentes','prox-semana':'📆 Próxima Semana',concluidas:'✅ Concluídas',todas:'📋 Todas as Tarefas',pessoas:'👤 Por Pessoa',anotacoes:'📝 Anotações',agenda:'🗓️ Agenda',projetos:'📁 Projetos',['projetos-pro']:'📁 Projetos',reunioes:'📅 Reuniões',analise:'📊 Análise',lixeira:'🗑️ Lixeira',ajuda:'❓ Ajuda'};
+  const titles={dash:'📊 Painel',rotinas:'🔁 Rotinas',hoje:'📅 Tarefas de Hoje','minhas-tarefas':'👤 Minhas Tarefas',solicitadas:'📤 Solicitadas',equipe:'👥 Tarefas da Equipe',entrada:'📥 Organizar',someday:'💤 Lembrete',atrasadas:'🚨 Tarefas Atrasadas',amanha:'🌅 Tarefas de Amanhã',semana:'📆 Tarefas da Semana',pendentes:'⏰ Tarefas Pendentes','prox-semana':'📆 Próxima Semana',concluidas:'✅ Concluídas',todas:'📋 Todas as Tarefas',pessoas:'👤 Por Pessoa',anotacoes:'📝 Anotações',agenda:'🗓️ Agenda',projetos:'📁 Projetos',['projetos-pro']:'📁 Projetos',reunioes:'📅 Reuniões',analise:'📊 Análise',lixeira:'🗑️ Lixeira',ajuda:'❓ Ajuda',mural:'💡 Mural de Ideias'};
   const _fmtTab=x=>x.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit'}).replace('.','');
-  const subs={dash:'Visão geral de todas as suas tarefas',rotinas:'Tarefas que se repetem automaticamente',hoje:'Foque no que importa agora','minhas-tarefas':'Tarefas onde você é o executor',solicitadas:'Tarefas que você pediu a outras pessoas — e confirmações pendentes',equipe:'Atrasadas e de hoje — o que precisa da sua atenção agora',entrada:'Tarefas sem executor — classifique com calma',someday:'Tarefas sem urgência — sem data definida',atrasadas:'Tarefas com data vencida ainda não concluídas',amanha:'O que vem pela frente',semana:`Visão semanal — ${_fmtTab(_mon)} a ${_fmtTab(_sun)}`,pendentes:'Tarefas ainda não concluídas','prox-semana':`Visão da próxima semana — ${_fmtTab(_proxMon)} a ${_fmtTab(_proxSun)}`,concluidas:'Ótimo trabalho!',todas:'Visão completa',pessoas:'Selecione uma pessoa para filtrar',anotacoes:'Blocos rápidos para ideias, reuniões, lembretes e decisões',agenda:'Visualização por dias, estilo Notion',projetos:'Gerencie projetos e equipas',['projetos-pro']:'Projetos com fases, setores e tarefas vinculadas',reunioes:'Hub de reuniões — histórico, pauta e ATA',analise:'Pontualidade e gargalos — pessoal, equipe e reuniões',lixeira:'Itens excluídos — recuperáveis em 30 dias',ajuda:'Tudo o que você precisa saber para usar o sistema'};
+  const subs={dash:'Visão geral de todas as suas tarefas',rotinas:'Tarefas que se repetem automaticamente',hoje:'Foque no que importa agora','minhas-tarefas':'Tarefas onde você é o executor',solicitadas:'Tarefas que você pediu a outras pessoas — e confirmações pendentes',equipe:'Atrasadas e de hoje — o que precisa da sua atenção agora',entrada:'Tarefas sem executor — classifique com calma',someday:'Tarefas sem urgência — sem data definida',atrasadas:'Tarefas com data vencida ainda não concluídas',amanha:'O que vem pela frente',semana:`Visão semanal — ${_fmtTab(_mon)} a ${_fmtTab(_sun)}`,pendentes:'Tarefas ainda não concluídas','prox-semana':`Visão da próxima semana — ${_fmtTab(_proxMon)} a ${_fmtTab(_proxSun)}`,concluidas:'Ótimo trabalho!',todas:'Visão completa',pessoas:'Selecione uma pessoa para filtrar',anotacoes:'Blocos rápidos para ideias, reuniões, lembretes e decisões',agenda:'Visualização por dias, estilo Notion',projetos:'Gerencie projetos e equipas',['projetos-pro']:'Projetos com fases, setores e tarefas vinculadas',reunioes:'Hub de reuniões — histórico, pauta e ATA',analise:'Pontualidade e gargalos — pessoal, equipe e reuniões',lixeira:'Itens excluídos — recuperáveis em 30 dias',ajuda:'Tudo o que você precisa saber para usar o sistema',mural:'Ideias e melhorias — vote, comente e acompanhe'};
   document.getElementById('tab-title').textContent=titles[tab];
   document.getElementById('tab-title').style.display='';
   document.getElementById('tab-sub').style.display='';
@@ -22718,7 +22720,7 @@ function _criarNotifMencao(projectProId, projectNome, autorId, texto){
     id: 'n'+Date.now()+Math.random().toString(36).slice(2,6),
     tipo: 'mencao_projeto',
     ref: projectProId,
-    texto: `@${autor?autor.name:'Alguém'} mencionou você no projeto "${projectNome}": "${texto.slice(0,60)}${texto.length>60?'…':''}"`,
+    texto: `@${escapeHTML(autor?autor.name:'Alguém')} mencionou você no projeto "${escapeHTML(projectNome||'')}": "${escapeHTML(texto.slice(0,60))}${texto.length>60?'…':''}"`,
     ts: agora,
     lida: false,
     cor: 'var(--blue-mid)',
