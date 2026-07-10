@@ -28316,7 +28316,7 @@ function renderReunioes(){
   }
 
   // ── Lista de reuniões em cards
-  if(!meetings.length && !_reunioesRapidas.length){
+  if(!meetings.length && !_reunioesRapidas.length && !(compromissos||[]).length){
     container.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding-bottom:40px">
       ${subNav}
       <div class="empty"><i class="ti ti-calendar-event"></i><p>Nenhuma reunião criada ainda.<br>Clique no botão <b>+</b> no canto inferior para criar.</p></div>
@@ -29042,10 +29042,11 @@ function reunRapidaItemHTML(rr, opts={}){
 }
 
 function excluirReuniaoRapidaConfirm(id){
-  if(!confirm('Excluir esta reunião rápida?')) return;
+  const it=(_reunioesRapidas||[]).find(x=>x.id===id);
+  if(it) moveToTrash('reuniaoRapida', {...it});
   deleteReuniaoRapida_db(id);
   render();
-  toast('🗑️ Reunião rápida excluída');
+  _mostrarFABDesfazer('Reunião rápida excluída', 0);
 }
 
 // ── Render de COMPROMISSO na aba Reuniões (formato lista) ──
@@ -29097,10 +29098,11 @@ function reunCompromissoMuralHTML(c){
 }
 
 function excluirCompromissoConfirm(id){
-  if(!confirm('Excluir este compromisso?')) return;
+  const item=compromissos.find(x=>x.id===id);
+  if(item) moveToTrash('compromisso',{...item});
   deleteCompromisso_db(id);
   render();
-  toast('🗑️ Compromisso excluído');
+  _mostrarFABDesfazer('Compromisso excluído', 0);
 }
 
 function reunListItemHTML(m,opts={}){
@@ -29925,31 +29927,18 @@ function openReuniaoView(id){
           </div>`;
       })()}
 
-      ${(()=>{ // ── Da reunião anterior: tarefas com status (accountability automático) ──
+      ${(()=>{ // ── Da reunião anterior: RESUMO de accountability (a lista acionável vive no card Tarefas) ──
         if(!m.continuacaoDe) return '';
         const ant=meetings.find(x=>x.id===m.continuacaoDe); if(!ant) return '';
         const ts=tasks.filter(t=>t.meetingId===ant.id);
         if(!ts.length) return '';
         const feitas=ts.filter(t=>t.done).length;
-        const pend=ts.filter(t=>!t.done);
-        const todasOk=pend.length===0;
+        const pend=ts.length-feitas;
+        const todasOk=pend===0;
         const dataAnt=ant.date?new Date(ant.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}):'';
-        const pendHTML=pend.slice(0,6).map(t=>{
-          const ex=people.find(x=>x.id===t.executor);
-          const atrasada=t.date&&t.date<today;
-          return `<div onclick="openEdit(${t.id})" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" title="Abrir tarefa">
-            <i class="ti ${atrasada?'ti-alarm':'ti-circle'}" style="font-size:12px;color:${atrasada?'var(--danger)':'var(--text3)'};flex-shrink:0"></i>
-            <span style="flex:1;font-size:12.5px;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(t.title)}</span>
-            ${ex?`<span style="font-size:10.5px;font-weight:700;color:var(--text2);background:var(--bg2);padding:1px 8px;border-radius:99px;white-space:nowrap">${escapeHTML(ex.name.split(' ')[0])}</span>`:''}
-            ${t.date?`<span style="font-size:10.5px;color:${atrasada?'var(--danger)':'var(--text3)'};white-space:nowrap;font-weight:${atrasada?'700':'500'}">${formatDate(t.date)}</span>`:''}
-          </div>`;
-        }).join('')+(pend.length>6?`<div style="font-size:11px;color:var(--text3);padding:6px 0">+${pend.length-6} pendentes…</div>`:'');
-        return `<div style="background:${todasOk?'var(--success-bg)':'var(--card)'};border:1px solid ${todasOk?'var(--success)':'var(--border)'};border-left:3px solid ${todasOk?'var(--success)':'var(--orange-dark)'};border-radius:12px;padding:12px 16px;margin-bottom:14px">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;${todasOk?'':'margin-bottom:6px'}">
-            <span style="font-size:12.5px;font-weight:700;color:var(--text);display:inline-flex;align-items:center;gap:6px"><i class="ti ti-history-toggle" style="color:${todasOk?'var(--success)':'var(--orange-dark)'}"></i> Da reunião anterior${dataAnt?` <span style="font-weight:500;color:var(--text3)">(${dataAnt})</span>`:''}</span>
-            <span style="font-size:11.5px;font-weight:800;color:${todasOk?'var(--success)':'var(--text2)'}">${feitas}/${ts.length} tarefas concluídas${todasOk?' ✓':''}</span>
-          </div>
-          ${todasOk?'':pendHTML}
+        return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:${todasOk?'var(--success-bg)':'var(--card)'};border:1px solid ${todasOk?'var(--success)':'var(--border)'};border-left:3px solid ${todasOk?'var(--success)':'var(--orange-dark)'};border-radius:12px;padding:10px 16px;margin-bottom:14px">
+          <span style="font-size:12.5px;font-weight:700;color:var(--text);display:inline-flex;align-items:center;gap:6px"><i class="ti ti-history-toggle" style="color:${todasOk?'var(--success)':'var(--orange-dark)'}"></i> Da reunião anterior${dataAnt?` <span style="font-weight:500;color:var(--text3)">(${dataAnt})</span>`:''}</span>
+          <span style="font-size:11.5px;font-weight:800;color:${todasOk?'var(--success)':'var(--text2)'}">${feitas}/${ts.length} concluídas${todasOk?' ✓':` · ${pend} pendente${pend>1?'s':''} — veja em Tarefas ↓`}</span>
         </div>`;
       })()}
 
@@ -31392,8 +31381,9 @@ function saveNovaTarefaInline(meetingId){
     title:desc,
     prio:'media',
     date:data,
+    executor:quem,
     people:quem?[quem]:[],
-    
+
     kanbanCol:'todo',
     done:false,
     escopo:'klain',

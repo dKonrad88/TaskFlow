@@ -89,6 +89,42 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-10 — PC da Produção — REUNIÕES: revisão a fundo + MODELO DECIDIDO + 5 fixes da revisão
+- **Contexto novo (importante):** o HUB de verdade do **Guilherme** já está rodando com **~20 pessoas**, tudo no banco/servidor da Empresa.
+  Este TaskFlow é **base de teste de layout/UX/regra**. O **próximo passo do Guilherme = Reuniões**, então o Diego quer afinar o
+  Painel de Reuniões aqui com calma antes de virar backend.
+- **Revisão (3 subagentes)** do módulo de reuniões — achados-chave: **3 entidades paralelas** (`meetings` com `title/date`,
+  `_reunioesRapidas` com `titulo/data`, `compromissos`) forçam código duplicado; campos mortos em `meetings` (`tarefas[]`,
+  `localTipo`, `etiquetas[]`, `localExterno` lido mas sem input); dupla fonte de verdade em decisões (`decisoes` × `decisoesItens`);
+  `REUN_STATUS.continuacao` declarado e nunca usado; dois conceitos contraditórios de "em andamento"; sem encerramento automático.
+- **⭐ MODELO DECIDIDO com o Diego (guia p/ o Guilherme):**
+  1. **Reunião = UMA entidade, dois estágios.** Nasce **rápida** (assunto·quando·participantes· **PLAUD: resumo em texto + link da gravação**),
+     sem pauta/ATA. Botão **"Abrir painel completo"** promove pra **completa** (pauta/decisões/tarefas/ATA/recorrência) — mesma reunião,
+     **nada migrado**; o resumo do PLAUD vira rascunho da ATA. Selinho ⚡ enquanto rápida. → mata a coleção `_reunioesRapidas` separada
+     (vira `meetings` com `nivel:'rapida'|'completa'`).
+  2. **Compromisso = entidade separada, tempo pessoal/externo** (almoço, corte, treino). Só título·categoria·quando·onde.
+  3. **Visibilidade = participantes (regra única, sem toggle de privacidade).** Todo encontro (rápida/completa/compromisso) pode ter
+     participantes do HUB e **aparece na agenda de TODOS os envolvidos** (dono + participantes). Compromisso sozinho (corte de cabelo) =
+     só o dono vê (privado por consequência); com gente do HUB = aparece pra eles. **No backend (Guilherme): RLS = `dono OU eu ∈ participantes`**
+     (o ponto crítico multiusuário) + notificar quem é adicionado + query de agenda = "encontros onde sou dono ou participante".
+  4. **Lista com 2 seções** (Reuniões · Compromissos) em vez dos 4 filtros atuais; "rápida" é estágio, não tipo.
+- **5 FIXES já aplicados nesta sessão (commit desta entrada):**
+  1. **Dedup "Da reunião anterior"** — antes aparecia 2×: banner no topo (com lista) + seção no card Tarefas (mesma lista). Agora o banner
+     do topo virou **só o placar** ("X/Y concluídas · N pendentes — veja em Tarefas ↓"); a lista acionável fica só no card Tarefas
+     (`openReuniaoView`, IIFE ~29928).
+  2. **Bug `executor`** — `saveNovaTarefaInline` (~31390) gravava só `people:[quem]` e **nunca `executor`** → responsável sumia no
+     accountability e saía "—" no PDF. Agora grava `executor:quem` também.
+  3. **Excluir reunião rápida** (card) → agora **soft-delete p/ Lixeira + FAB Desfazer** (era `confirm()`+delete direto). `excluirReuniaoRapidaConfirm`.
+  4. **Excluir compromisso** (card na aba Reuniões) → idem, Lixeira + Desfazer. `excluirCompromissoConfirm`.
+  5. **Empty-state** da lista agora conta `compromissos` (antes, lista só com compromissos mostrava "Nenhuma reunião criada ainda").
+- ⚠️ **NÃO testado em navegador por mim** — o **preview MCP caiu no meio da sessão**; revisado à mão (edições cirúrgicas em blocos/funções
+  fechados). Diego precisa abrir o Pages (~1min pós-push + Ctrl+Shift+R) → aba **Reuniões** e conferir: painel sem a duplicação; criar tarefa
+  na reunião e ver o executor no accountability/PDF; excluir rápida/compromisso e usar Desfazer.
+- **PRÓXIMO PASSO (grande, ainda NÃO feito):** implementar a **unificação** no protótipo — fundir `_reunioesRapidas` em `meetings`
+  (`nivel`), view leve da rápida + botão "Abrir painel completo", campos PLAUD (texto+link), lista em 2 seções, compromisso filtrado por
+  dono. É reestruturação; fazer com migração sem perder dados. Outros itens da revisão em aberto: código morto no painel
+  (`partsHTML/projHTML/proxDataTxt` ~29843), `decisoes` legado, recorrência por dias fixos, encerramento automático, anexos base64 (cota).
+
 ### 2026-07-08 (2) — PC da Empresa — Projetos: MODELOS PRONTOS + onboarding do método + seed do projeto exemplo
 - **Pedido do Diego (estava fora, "só faça"):** melhorar a seção **Projetos** ao máximo p/ **40 pessoas** usarem (simples + completo),
   atacando a dor central dele: **não saber pensar/organizar em fases e tarefas**. Criar o projeto "Implantação do Hub Klain" inteiro
