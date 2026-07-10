@@ -19027,13 +19027,11 @@ function renderNovoCompromisso(container, subNav){
           </div>
           <div>
             <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-clock-play"></i> Início</div>
-            <input id="comp-inicio" class="modal-input" type="time" value="${c?(c.horaInicio||''):(window._preCompHora||'')}" style="display:none">
-            <div>${drumFieldHTML('comp-inicio','Hora de início',c?(c.horaInicio||''):(window._preCompHora||''))}</div>
+            <div>${drumFieldHTML('comp-inicio','Hora de início',c?(c.horaInicio||''):(window._preCompHora||''),{propagateToId:'comp-fim'})}</div>
           </div>
           <div>
             <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-clock-stop"></i> Fim</div>
-            <input id="comp-fim" class="modal-input" type="time" value="${c?(c.horaFim||''):''}" style="display:none">
-            <div>${drumFieldHTML('comp-fim','Hora de término',c?(c.horaFim||''):'')}</div>
+            <div>${drumFieldHTML('comp-fim','Hora de término',c?(c.horaFim||''):'',{fallbackId:'comp-inicio'})}</div>
           </div>
         </div>
 
@@ -22282,9 +22280,13 @@ const ITEM_H=44;
 function openDrumPicker(inputId, label){
   _drumTargetId=inputId;
 
-  // Ler valor atual do input
+  // Ler valor atual do input; se vazio, começar no campo de fallback (ex.: Fim começa no Início)
   const inp=document.getElementById(inputId);
-  const raw=inp?.value||'';
+  let raw=inp?.value||'';
+  if(!raw && inp){
+    const fb=inp.getAttribute('data-fallback');
+    if(fb){ const fbv=document.getElementById(fb)?.value||''; if(fbv) raw=fbv; }
+  }
   const match=raw.match(/^(\d{1,2}):(\d{2})$/);
   _drumH=match?parseInt(match[1]):8;
   _drumM=match?Math.round(parseInt(match[2])/5)*5:0;
@@ -22418,6 +22420,16 @@ function drumConfirm(){
   if(inp)inp.value=v;
   const trig=document.getElementById(_drumTargetId+'-trigger');
   if(trig){const s=trig.querySelector('.drum-val');if(s)s.textContent=v;}
+  // Propaga p/ o campo-alvo se ele estiver vazio (ex.: escolher Início já preenche o Fim; depois o usuário ajusta)
+  const prop=inp?.getAttribute('data-propagate');
+  if(prop){
+    const pinp=document.getElementById(prop);
+    if(pinp && !pinp.value){
+      pinp.value=v;
+      const ptrig=document.getElementById(prop+'-trigger');
+      if(ptrig){ const ps=ptrig.querySelector('.drum-val'); if(ps) ps.textContent=v; }
+    }
+  }
   drumClose();
 }
 function drumCancel(){drumClose();}
@@ -22427,12 +22439,16 @@ function drumClose(){
   p.style.display='none';p.style.transform='';
   _drumTargetId=null;
 }
-function drumFieldHTML(inputId,label,val=''){
+function drumFieldHTML(inputId,label,val='',opts){
+  opts=opts||{};
   const d=val||'--:--';
+  // data-fallback: se este campo abrir vazio, o picker começa no valor deste outro campo (ex.: Fim começa no Início).
+  // data-propagate: ao confirmar ESTE campo, se o campo-alvo estiver vazio, ele recebe o mesmo valor (ex.: escolher Início preenche o Fim).
+  const dataAttrs=(opts.fallbackId?` data-fallback="${opts.fallbackId}"`:'')+(opts.propagateToId?` data-propagate="${opts.propagateToId}"`:'');
   return `<button type="button" id="${inputId}-trigger" class="drum-trigger"
     onclick="openDrumPicker('${inputId}','${label}')" title="Selecionar hora">
     <i class="ti ti-clock drum-ico"></i><span class="drum-val">${d}</span>
-  </button><input type="hidden" id="${inputId}" value="${val}">`;
+  </button><input type="hidden" id="${inputId}" value="${val}"${dataAttrs}>`;
 }
 
 /* ── BUSCA GLOBAL ──────────────────────────────────────────────
@@ -29291,11 +29307,11 @@ function openReuniaoRapidaModal(idEditar){
           </div>
           <div>
             <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-clock-play"></i> Início <span style="font-size:10px;color:var(--text3);font-weight:400">(opcional)</span></div>
-            ${drumFieldHTML('rr-inicio','Início',rr?(rr.horaInicio||''):'')}
+            ${drumFieldHTML('rr-inicio','Início',rr?(rr.horaInicio||''):'',{propagateToId:'rr-fim'})}
           </div>
           <div>
             <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-clock-stop"></i> Fim <span style="font-size:10px;color:var(--text3);font-weight:400">(opcional)</span></div>
-            ${drumFieldHTML('rr-fim','Fim',rr?(rr.horaFim||''):'')}
+            ${drumFieldHTML('rr-fim','Fim',rr?(rr.horaFim||''):'',{fallbackId:'rr-inicio'})}
           </div>
         </div>
 
@@ -29561,13 +29577,11 @@ function renderNovaReuniaoForm(container, subNav){
               </div>
               <div>
                 <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-clock-play"></i> Início <span style="color:var(--danger);font-weight:700">*</span></div>
-                <input id="reun-hora-inicio" type="hidden" value="${m?(m.horaInicio||''):''}">
-                ${drumFieldHTML('reun-hora-inicio','Início',m?(m.horaInicio||''):'')}
+                ${drumFieldHTML('reun-hora-inicio','Início',m?(m.horaInicio||''):'',{propagateToId:'reun-hora-fim'})}
               </div>
               <div>
                 <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-clock-stop"></i> Fim <span style="color:var(--danger);font-weight:700">*</span></div>
-                <input id="reun-hora-fim" type="hidden" value="${m?(m.horaFim||''):''}">
-                ${drumFieldHTML('reun-hora-fim','Fim',m?(m.horaFim||''):'')}
+                ${drumFieldHTML('reun-hora-fim','Fim',m?(m.horaFim||''):'',{fallbackId:'reun-hora-inicio'})}
               </div>
             </div>
 
