@@ -89,6 +89,32 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-10 (6) — PC da Empresa — Projetos (modelos/seed/importar) + VARREDURA multi-agente (42 achados) + lote seguro
+- ⚠️ **Correção de data:** as duas entradas mais abaixo rotuladas **"2026-07-08" (Projetos MODELOS / Projetos Importar) são desta MESMA
+  sessão (2026-07-10, PC da Empresa)** — datei errado. O código delas está no git e íntegro (confirmado: coexiste com o trabalho de
+  07-10 do PC da Produção — reuniões/FAB — sem conflito). Só o rótulo de data ficou errado; deixei-as onde estão pra não arriscar mover bloco.
+- **Nesta sessão (07-10, PC da Empresa) foram 3 blocos de trabalho:** (a) Projetos "Importar (colar)"; (b) Projetos modelos prontos +
+  onboarding + seed "Implantação do Hub Klain"; (c) **VARREDURA** do app. (a) e (b) detalhados nas entradas "2026-07-08" abaixo.
+- **VARREDURA (pedido "faça uma varredura atrás de melhorias e bugs"):** workflow ultracode de 8 caçadores paralelos + verificação cética
+  → **45 achados, 42 confirmados** (relatório em `scratchpad/wr717iaqm.output`).
+- **🔴 CRÍTICO ainda ABERTO (não corrigido — precisa decisão):** **auto-push cego à nuvem** (`_cloudOnLocalWrite`~4413→`_cloudPushKey`~4418):
+  toda gravação com sessão logada faz upsert do local por cima da nuvem SEM comparar `updated_at`. Abrir numa máquina com dados velhos
+  (sessão reconecta ~1,5s) + editar 1 tarefa = apaga edições da outra máquina. Fix requer decisão: flag `_cloudPulledThisSession` OU
+  comparar `updated_at`. Agravante: seeds de demo (Marketing/Manutenção/PCP) sobem à nuvem só de ABRIR a aba.
+- **LOTE SEGURO APLICADO (commit `b291990`):** (1) **XSS Notificações** — escapa campos do usuário na FONTE (`cutucar`~13532,
+  `responderCutucada`~13572, `_criarNotifMencao`~22721), preservando `<b>` (sink `_notifItemHTML` 22810/22832 segue com markup fixo).
+  (2) **Mural "undefined"** — add `mural` aos mapas `titles`/`subs` do `setTab`. (3) **`getTodayTasks`** ganhou guard
+  `(!t.projectProId||t.executor)`. (4) **`_pcpParse` get()** — com cabeçalho reconhecido retorna '' p/ coluna ausente (parou de corromper
+  Saldo/DDV/Sugestão). (5) **Texto "Enviar p/ nuvem"** — era "SUBSTITUI"; agora diz que atualiza/mescla (é upsert-only). (6) **Backup
+  pré-pull fora do sync** (`_isCloudKey` exclui `taskflow__backup_pre_pull`).
+- **MANTIDOS EM ESPERA (precisam decisão/cuidado):** cronograma reescreve `t.date` no render da aba Tarefas (⚠️ corromperia as datas do
+  seed — **evitar abrir a aba "Tarefas/Planilha" do projeto exemplo até decidir** — I13); excluir projeto→restaurar devolve projeto VAZIO
+  (tarefas órfãs); `_cloudPullAll` backup/aplicação parcial retorna ok:true; `toast()`+corpo de Nota (rich-text) XSS latente; perf da lista
+  de Projetos (memoizar/índices/debounce) + `_ppTarefasOrdenadas` grava no render + `updateStats` varre 8-9× + `saveTask_db` re-serializa
+  120KB; concluir rotina no Painel/Cartões não avança; constantes de data não recalculam à meia-noite; DDV-alvo/filtros PCP não persistem;
+  código morto (restos do "Lembrete/someday" + migração destrutiva no boot, `markTaskDoneFromHub`, `_pcpUpdateKPIs`).
+- ⚠️ Fixes revisados por grep; **NÃO testados em navegador** (sem preview aqui). Diego confere no Pages.
+
 ### 2026-07-10 (5) — PC da Produção — FAB "Nova tarefa" agora abre o MODAL COMPLETO (igual editar)
 - **Pedido do Diego:** ao criar tarefa pelo **FAB**, trazer o **modal completo** (todos os campos), como se fosse editar.
 - **Contexto:** o HUB tem 2 modais de tarefa — `#task-modal` (quick-add inline, o que o FAB usava via `toggleForm`) e
@@ -201,7 +227,7 @@ servidor da Empresa**.
   dono. É reestruturação; fazer com migração sem perder dados. Outros itens da revisão em aberto: código morto no painel
   (`partsHTML/projHTML/proxDataTxt` ~29843), `decisoes` legado, recorrência por dias fixos, encerramento automático, anexos base64 (cota).
 
-### 2026-07-08 (2) — PC da Empresa — Projetos: MODELOS PRONTOS + onboarding do método + seed do projeto exemplo
+### 2026-07-10 — PC da Empresa — Projetos: MODELOS PRONTOS + onboarding do método + seed do projeto exemplo (rotulado 07-08 por engano; ver entrada 07-10 (6))
 - **Pedido do Diego (estava fora, "só faça"):** melhorar a seção **Projetos** ao máximo p/ **40 pessoas** usarem (simples + completo),
   atacando a dor central dele: **não saber pensar/organizar em fases e tarefas**. Criar o projeto "Implantação do Hub Klain" inteiro
   como exemplo, e entregar um **passo a passo** de como montar um projeto do zero. Ultracode ligado → 2 workflows (design + verificação adversarial).
@@ -239,7 +265,7 @@ servidor da Empresa**.
   quiser o dashboard "Uso da equipe" vivo; (c) botão "Exportar projeto (JSON)"; (d) as melhorias de menor prioridade não feitas (I10 enxugar
   toolbar, I11 memoizar progresso, I12 proteger excluir/Lixeira, I13 não sobrescrever data manual pela projeção do cronograma).
 
-### 2026-07-08 — PC da Empresa — Projetos: "Importar (colar)" + projeto "Implantação do Hub Klain" (dogfooding)
+### 2026-07-10 — PC da Empresa — Projetos: "Importar (colar)" + projeto "Implantação do Hub Klain" (dogfooding) (rotulado 07-08 por engano; ver entrada 07-10 (6))
 - **Contexto/pedido do Diego:** usar a própria seção **Projetos** (projectsPro) pra planejar a **implantação do Hub Klain** na
   empresa (dogfooding) — e assim entender como a seção Projetos vai se comportar. Ele mandou os prints da build do **Guilherme**
   (`hub.biscoitosklain.com.br` — sidebar Gerenciador: Meu Dia · Minhas Tarefas · Solicitadas · Organizar · Histórico · Lembretes;
