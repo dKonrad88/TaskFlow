@@ -89,6 +89,21 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-10 (3) — PC da Produção — BUG: tarefa pendente sumia após 2+ continuações de reunião (corrigido)
+- **Sintoma (Diego, testando):** encerrou uma reunião com 2 tarefas em aberto, concluiu 1, e agendou a próxima (continuação).
+  A tarefa que sobrou **não veio** pra nova reunião — ficou "Nenhuma tarefa ainda".
+- **Causa:** o carry-over (`reunTarefasHTML` + banner "Da reunião anterior") só olhava **1 nível** pra trás
+  (`m.continuacaoDe`), mas a tarefa **nunca troca de `meetingId`** — continua na reunião de origem. Numa cadeia
+  M1→M2→M3, a M3 procurava tarefas da M2 (que não tem nenhuma própria) e não achava a pendente que ainda pertence à M1.
+  Reproduzido no preview (M3 dizia "Nenhuma tarefa"; tarefas com meetingId===M2 = 0).
+- **Fix (commit desta entrada):** novo helper **`_reunAncestraisIds(m)`** sobe toda a cadeia `continuacaoDe` (guarda anti-ciclo,
+  máx 20). `reunTarefasHTML` agora puxa pendentes de **todas** as reuniões anteriores da cadeia (`!done && anc.includes(meetingId)`);
+  o banner de placar soma a cadeia inteira. Verificado no navegador: M3 (2 saltos) mostra a pendente + "1/2 concluídas · 1 pendente";
+  M2 (1 salto) sem regressão; a concluída não aparece; boot limpo, 0 erro.
+- ⚠️ Nota de design (p/ o Guilherme / futura decisão): tarefas carregadas **não são "re-homeadas"** pra nova reunião — o
+  vínculo fica no `meetingId` de origem e o carry-over é por cadeia. Alternativa seria reassinar `meetingId` no encerramento;
+  optei por não mexer no dado (menos destrutivo). Decidir qual regra vale no backend.
+
 ### 2026-07-10 (2) — PC da Produção — REUNIÕES: unificação IMPLEMENTADA (rápida = estágio; PLAUD; 2 seções)
 - Implementado o **modelo decidido** (ver entrada anterior). O preview voltou por outro canal (`Claude_Browser`), então
   **verifiquei tudo no navegador** (migração, view leve, promover, cards, filtro) — 0 erro de console, boot limpo.

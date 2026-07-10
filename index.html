@@ -29988,10 +29988,11 @@ function openReuniaoView(id){
           </div>`;
       })()}
 
-      ${(()=>{ // ── Da reunião anterior: RESUMO de accountability (a lista acionável vive no card Tarefas) ──
-        if(!m.continuacaoDe) return '';
-        const ant=meetings.find(x=>x.id===m.continuacaoDe); if(!ant) return '';
-        const ts=tasks.filter(t=>t.meetingId===ant.id);
+      ${(()=>{ // ── Da reunião anterior: RESUMO de accountability (soma a cadeia; lista acionável vive no card Tarefas) ──
+        const _anc=_reunAncestraisIds(m);
+        if(!_anc.length) return '';
+        const ant=meetings.find(x=>x.id===m.continuacaoDe);
+        const ts=tasks.filter(t=>_anc.indexOf(t.meetingId)>-1);
         if(!ts.length) return '';
         const feitas=ts.filter(t=>t.done).length;
         const pend=ts.length-feitas;
@@ -31353,12 +31354,24 @@ function delTarefaReuniao(taskId){
   toast('🗑️ Tarefa movida para a lixeira');
 }
 
+// Sobe a cadeia continuacaoDe e devolve os ids de TODAS as reuniões anteriores (guarda anti-ciclo).
+function _reunAncestraisIds(m){
+  const ids=[]; let cur=m, guard=0;
+  while(cur && cur.continuacaoDe && guard<20){
+    const ant=meetings.find(x=>x.id===cur.continuacaoDe);
+    if(!ant || ids.indexOf(ant.id)>-1) break;
+    ids.push(ant.id); cur=ant; guard++;
+  }
+  return ids;
+}
 function reunTarefasHTML(m){
   // Tarefas desta reunião
   const tarefasNovas=tasks.filter(t=>t.meetingId===m.id&&!t.done);
-  // Tarefas pendentes da reunião anterior (se for continuação)
-  const tarefasAnteriores=m.continuacaoDe
-    ? tasks.filter(t=>!t.done&&t.meetingId===m.continuacaoDe)
+  // Pendentes de TODA a cadeia anterior (não só o pai direto): uma tarefa que atravessa
+  // 2+ reuniões continua com o meetingId da reunião de origem — se olhasse só o pai, sumiria.
+  const _anc=_reunAncestraisIds(m);
+  const tarefasAnteriores=_anc.length
+    ? tasks.filter(t=>!t.done&&_anc.indexOf(t.meetingId)>-1)
     : [];
 
   const tarefaRow=(t)=>{
