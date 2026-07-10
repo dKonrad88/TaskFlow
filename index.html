@@ -30115,20 +30115,6 @@ function openReuniaoView(id){
       <!-- DECISÕES TOMADAS -->
       ${(()=>{
         const encerrada=m.status==='encerrada';
-        const itens=m.decisoesItens||[];
-        const itensHTML=itens.length
-          ? itens.map((d,i)=>{
-              const data=d.data||'';
-              const dataTxt=data?new Date(data+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}):'';
-              return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)" id="decisao-row-${m.id}-${i}">
-                <i class="ti ti-point-filled" style="color:var(--blue-mid);font-size:14px;flex-shrink:0"></i>
-                <span style="flex:1;font-size:13px;color:var(--text);line-height:1.4">${escapeHTML(d.texto||'')}</span>
-                ${dataTxt?`<span style="font-size:10px;color:var(--text3);white-space:nowrap">${dataTxt}</span>`:''}
-                ${encerrada?'':`<button onclick="removerDecisao('${m.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 4px;line-height:1;flex-shrink:0" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'" title="Remover">×</button>`}
-              </div>`;
-            }).join('')
-          : `<div style="font-size:13px;color:var(--text3);font-style:italic;padding:6px 0">Nenhuma decisão registrada ainda${encerrada?'.':' — adicione abaixo.'}</div>`;
-
         const addRow=encerrada ? '' : `
           <div id="decisao-add-row-${m.id}" style="display:none;margin-top:8px">
             <input id="decisao-add-inp-${m.id}" type="text" placeholder="Escreva a decisão tomada..." class="modal-input" style="margin-bottom:6px" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarAddDecisao('${m.id}')}if(event.key==='Escape')cancelarAddDecisao('${m.id}')">
@@ -30146,7 +30132,7 @@ function openReuniaoView(id){
             <span><i class="ti ti-gavel" style="color:var(--blue-mid)"></i> Decisões tomadas</span>
             ${encerrada?'<span style="font-size:10px;color:var(--text3);font-weight:400">🔒 encerrada</span>':''}
           </div>
-          <div id="decisoes-list-${m.id}">${itensHTML}</div>
+          <div id="decisoes-list-${m.id}">${_reunDecisoesListHTML(m)}</div>
           ${addRow}
         </div>
 
@@ -30295,6 +30281,23 @@ function reunPautaHTML(m){
   return principalHTML + restHTML;
 }
 
+// HTML da lista de decisões (reutilizado no render e no add/remove p/ update pontual sem perder scroll)
+function _reunDecisoesListHTML(m){
+  const encerrada=m.status==='encerrada';
+  const itens=m.decisoesItens||[];
+  if(!itens.length) return `<div style="font-size:13px;color:var(--text3);font-style:italic;padding:6px 0">Nenhuma decisão registrada ainda${encerrada?'.':' — adicione abaixo.'}</div>`;
+  return itens.map((d,i)=>{
+    const data=d.data||'';
+    const dataTxt=data?new Date(data+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}):'';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)" id="decisao-row-${m.id}-${i}">
+      <i class="ti ti-point-filled" style="color:var(--blue-mid);font-size:14px;flex-shrink:0"></i>
+      <span style="flex:1;font-size:13px;color:var(--text);line-height:1.4">${escapeHTML(d.texto||'')}</span>
+      ${dataTxt?`<span style="font-size:10px;color:var(--text3);white-space:nowrap">${dataTxt}</span>`:''}
+      ${encerrada?'':`<button onclick="removerDecisao('${m.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 4px;line-height:1;flex-shrink:0" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'" title="Remover">×</button>`}
+    </div>`;
+  }).join('');
+}
+
 // Toggle do check da pauta principal
 function togglePautaPrincipal(meetingId){
   const m=meetings.find(x=>x.id===meetingId);
@@ -30395,9 +30398,10 @@ function confirmarAddDecisao(meetingId){
     autorId:CURRENT_USER_ID
   });
   saveMeeting_db(m);
-  inp.value='';
-  // Re-render só o painel da reunião (mais simples e seguro)
-  openReuniaoView(meetingId);
+  // Update pontual da lista (não re-renderiza o painel todo → não perde o scroll)
+  const wrap=document.getElementById('decisoes-list-'+meetingId);
+  if(wrap) wrap.innerHTML=_reunDecisoesListHTML(m);
+  if(inp){ inp.value=''; inp.focus(); } // mantém a linha aberta p/ registrar mais
   toast('⚖️ Decisão registrada');
 }
 
@@ -30407,7 +30411,8 @@ function removerDecisao(meetingId,idx){
   if(m.status==='encerrada'){toast('🔒 Reunião encerrada — não pode remover');return;}
   m.decisoesItens.splice(idx,1);
   saveMeeting_db(m);
-  openReuniaoView(meetingId);
+  const wrap=document.getElementById('decisoes-list-'+meetingId);
+  if(wrap) wrap.innerHTML=_reunDecisoesListHTML(m);
   toast('🗑️ Decisão removida');
 }
 
@@ -30511,16 +30516,31 @@ function abrirAtaReuniao(id){
   ov.id='ata-modal-ov';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9300;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s';
   ov.onclick=e=>{ if(e.target===ov){ salvarAta(id,document.getElementById('ata-view-'+id)?.value||''); ov.remove(); } };
-  ov.innerHTML=`<div style="background:var(--card);border-radius:14px;width:100%;max-width:600px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:scaleIn .25s cubic-bezier(.34,1.3,.64,1)">
-    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start">
+  const _resumo=escapeHTML(m.plaudResumo||'');
+  const _link=escapeAttr(m.plaudLink||'');
+  ov.innerHTML=`<div style="background:var(--card);border-radius:14px;width:100%;max-width:600px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:scaleIn .25s cubic-bezier(.34,1.3,.64,1)">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;flex-shrink:0">
       <div>
         <h3 style="margin:0;font-size:16px;color:var(--text);font-weight:800">ATA / Resumo</h3>
-        <div style="font-size:12px;color:var(--text3);margin-top:3px">Registre o resumo da reunião sem ocupar espaço no painel principal.</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:3px">Grave o resumo do PLAUD e componha a ATA a partir do encontro.</div>
       </div>
       <button onclick="salvarAta('${id}',document.getElementById('ata-view-${id}').value);document.getElementById('ata-modal-ov').remove()" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;cursor:pointer;color:var(--text3);width:30px;height:30px;flex-shrink:0"><i class="ti ti-x"></i></button>
     </div>
-    <div style="padding:16px 20px">
-      <textarea id="ata-view-${id}" style="width:100%;min-height:240px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;outline:none;line-height:1.7" placeholder="Cole aqui a ATA ou resumo da reunião..." onblur="salvarAta('${id}',this.value)">${m.ata?escapeHTML(m.ata):''}</textarea>
+    <div style="padding:16px 20px;overflow-y:auto;flex:1">
+      <!-- PLAUD (funciona na reunião completa também) -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--purple);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:6px;display:flex;align-items:center;gap:5px"><i class="ti ti-microphone" style="font-size:13px"></i> Resumo do PLAUD</div>
+        <textarea id="ata-plaud-resumo-${id}" onblur="_reunSetPlaud('${id}','plaudResumo',this.value)" rows="3" placeholder="Cole aqui o resumo/transcrição do PLAUD..." style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text);font-family:inherit;resize:vertical;line-height:1.5">${_resumo}</textarea>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+          <input id="ata-plaud-link-${id}" value="${_link}" onblur="_reunSetPlaud('${id}','plaudLink',this.value)" placeholder="Link da gravação (https://...)" style="flex:1;min-width:160px;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--text);font-family:inherit">
+          <button onclick="_reunPlaudExtrair('${id}')" title="Transforma cada linha do resumo em pauta, decisão ou tarefa" style="background:var(--purple);color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;white-space:nowrap"><i class="ti ti-wand"></i> Quebrar em itens</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px"><i class="ti ti-notes"></i> ATA</span>
+        <button onclick="_reunComporAta('${id}')" title="Monta um rascunho a partir de pauta, decisões, tarefas e resumo" style="background:none;border:1px solid var(--blue-mid);color:var(--blue-mid);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-file-text"></i> Compor rascunho</button>
+      </div>
+      <textarea id="ata-view-${id}" style="width:100%;min-height:220px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;outline:none;line-height:1.7" placeholder="Cole aqui a ATA ou clique em Compor rascunho..." onblur="salvarAta('${id}',this.value)">${m.ata?escapeHTML(m.ata):''}</textarea>
       <div style="display:flex;justify-content:flex-end;margin-top:14px">
         <button onclick="salvarAta('${id}',document.getElementById('ata-view-${id}').value);document.getElementById('ata-modal-ov').remove()" class="btn-modal-save" style="padding:9px 18px;font-size:13px"><i class="ti ti-check"></i> Salvar e fechar</button>
       </div>
@@ -30528,6 +30548,93 @@ function abrirAtaReuniao(id){
   </div>`;
   document.body.appendChild(ov);
   setTimeout(()=>document.getElementById('ata-view-'+id)?.focus(),80);
+}
+
+// Monta um rascunho de ATA a partir do que foi produzido no encontro (texto puro p/ o textarea)
+function _reunAtaRascunho(m){
+  const L=[];
+  L.push(`ATA — ${m.title||''}`);
+  const dataFmt=m.date?new Date(m.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}):'';
+  const hora=(m.horaInicio&&m.horaFim)?`${m.horaInicio}–${m.horaFim}`:(m.horaInicio||'');
+  const cab=[dataFmt,hora].filter(Boolean).join(' · '); if(cab) L.push(cab);
+  const pres=m.presencas||{};
+  const parts=(m.participantes||[]).map(pid=>{const p=people.find(x=>x.id===pid);return p?(p.name+(pres[pid]===true?'':' (ausente)')):'';}).filter(Boolean);
+  if(parts.length) L.push('Participantes: '+parts.join(', '));
+  L.push('');
+  const pautaAll=[];
+  if(m.pautaPrincipal) pautaAll.push({t:m.pautaPrincipal,d:!!m.pautaPrincipalDone});
+  (m.pauta||[]).forEach((t,i)=>pautaAll.push({t,d:!!(m.pautaDone||[])[i]}));
+  if(pautaAll.length){ L.push('PAUTA'); pautaAll.forEach(p=>L.push(`  ${p.d?'[x]':'[ ]'} ${p.t}`)); L.push(''); }
+  const dec=m.decisoesItens||[];
+  if(dec.length){ L.push('DECISÕES'); dec.forEach(d=>L.push(`  • ${d.texto||''}`)); L.push(''); }
+  const ts=tasks.filter(t=>t.meetingId===m.id);
+  if(ts.length){ L.push('AÇÕES'); ts.forEach(t=>{ const r=(t.people||[]).map(pid=>{const p=people.find(x=>x.id===pid);return p?p.name:'';}).filter(Boolean).join(', '); const dt=t.date?new Date(t.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}):''; L.push(`  • ${t.title}${r?` — ${r}`:''}${dt?` (${dt})`:''}${t.done?' [concluída]':''}`); }); L.push(''); }
+  if(m.plaudResumo){ L.push('RESUMO (PLAUD)'); L.push(m.plaudResumo); if(m.plaudLink) L.push('Gravação: '+m.plaudLink); }
+  return L.join('\n').trim();
+}
+function _reunComporAta(id){
+  const m=meetings.find(x=>x.id===id); if(!m) return;
+  const ta=document.getElementById('ata-view-'+id); if(!ta) return;
+  const draft=_reunAtaRascunho(m);
+  if(ta.value.trim() && !confirm('Já existe conteúdo na ATA. Substituir pelo rascunho gerado?\n\n(O texto atual será perdido.)')) return;
+  ta.value=draft;
+  salvarAta(id, draft);
+  ta.focus();
+  toast('📝 Rascunho da ATA gerado — revise e ajuste');
+}
+
+// Quebra o resumo do PLAUD em linhas; cada uma vira pauta, decisão ou tarefa com 1 clique
+function _reunPlaudExtrair(id){
+  const m=meetings.find(x=>x.id===id); if(!m) return;
+  // pega o valor mais recente do textarea (caso o usuário tenha colado agora e não deu blur)
+  const _live=document.getElementById('ata-plaud-resumo-'+id)?.value;
+  if(_live!=null && _live.trim()!==(m.plaudResumo||'').trim()){ m.plaudResumo=_live.trim(); saveMeeting_db(m); }
+  const resumo=(m.plaudResumo||'').trim();
+  if(!resumo){ toast('⚠️ Cole o resumo do PLAUD primeiro'); return; }
+  const linhas=resumo.split(/\r?\n/).map(s=>s.replace(/^[\s\-\*•·\d\.\)]+/,'').trim()).filter(s=>s.length>2);
+  window._plaudLinhas=linhas;
+  document.getElementById('plaud-extrair-ov')?.remove();
+  const ov=document.createElement('div');
+  ov.id='plaud-extrair-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9450;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s';
+  ov.onclick=e=>{ if(e.target===ov) ov.remove(); };
+  const _bt=(t,cor,tipo,i)=>`<button onclick="_plaudLinhaPara('${id}','${tipo}',${i})" style="background:none;border:1px solid ${cor};color:${cor};border-radius:7px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${t}</button>`;
+  const rows=linhas.map((ln,i)=>`
+    <div id="plaud-ln-${i}" style="display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+      <span style="flex:1;font-size:13px;color:var(--text);line-height:1.45">${escapeHTML(ln)}</span>
+      <div style="display:flex;gap:5px;flex-shrink:0">
+        ${_bt('Pauta','var(--blue-mid)','pauta',i)}
+        ${_bt('Decisão','var(--purple)','decisao',i)}
+        ${_bt('Tarefa','var(--success)','tarefa',i)}
+      </div>
+    </div>`).join('');
+  ov.innerHTML=`<div style="background:var(--card);border-radius:14px;width:100%;max-width:660px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:scaleIn .25s cubic-bezier(.34,1.3,.64,1)">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start">
+      <div><h3 style="margin:0;font-size:16px;color:var(--text)"><i class="ti ti-wand" style="color:var(--purple)"></i> Quebrar resumo em itens</h3><div style="font-size:12px;color:var(--text3);margin-top:3px">Cada linha do resumo pode virar Pauta, Decisão ou Tarefa (sem executor — atribua depois).</div></div>
+      <button onclick="document.getElementById('plaud-extrair-ov').remove()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px"><i class="ti ti-x"></i></button>
+    </div>
+    <div style="padding:8px 20px 12px;overflow-y:auto;flex:1">${rows||'<div style="color:var(--text3);font-size:13px;padding:20px;text-align:center">Nada para extrair.</div>'}</div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end"><button onclick="document.getElementById('plaud-extrair-ov').remove()" class="btn-modal-save" style="padding:8px 16px;font-size:13px"><i class="ti ti-check"></i> Concluir</button></div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+function _plaudLinhaPara(id,tipo,idx){
+  const m=meetings.find(x=>x.id===id); if(!m) return;
+  const txt=(window._plaudLinhas||[])[idx]; if(!txt) return;
+  if(tipo==='pauta'){
+    if(!m.pauta) m.pauta=[]; m.pauta.push(txt); saveMeeting_db(m);
+    const w=document.getElementById('pauta-view-'+id); if(w) w.innerHTML=reunPautaHTML(m);
+  } else if(tipo==='decisao'){
+    if(!m.decisoesItens) m.decisoesItens=[]; m.decisoesItens.push({texto:txt,data:today,autorId:CURRENT_USER_ID}); saveMeeting_db(m);
+    const w=document.getElementById('decisoes-list-'+id); if(w) w.innerHTML=_reunDecisoesListHTML(m);
+  } else if(tipo==='tarefa'){
+    const t={id:Date.now()+Math.floor(Math.random()*1000),title:txt,prio:'media',date:m.date||today,executor:null,people:[],kanbanCol:'todo',done:false,escopo:'klain',meetingId:id,solicitante:CURRENT_USER_ID,subtasks:[],attachments:[],_persisted:true,createdAt:today};
+    tasks.push(t); saveTask_db(t);
+    const w=document.getElementById('tarefas-view-'+id); if(w) w.innerHTML=reunTarefasHTML(m);
+    if(typeof updateStats==='function') updateStats();
+  }
+  const row=document.getElementById('plaud-ln-'+idx); if(row){ row.style.opacity='.4'; row.style.pointerEvents='none'; }
+  toast(tipo==='pauta'?'➕ Adicionado à pauta':tipo==='decisao'?'⚖️ Virou decisão':'✅ Virou tarefa');
 }
 
 // Modal: Anexos
@@ -31524,6 +31631,7 @@ function saveNovaTarefaInline(meetingId){
     done:false,
     escopo:'klain',
     meetingId:meetingId,
+    solicitante:CURRENT_USER_ID, // quem conduz "pediu" a ação → entra em Solicitadas p/ acompanhar (loop de cobrança)
     subtasks:[],
     attachments:[],
     _persisted:true,
