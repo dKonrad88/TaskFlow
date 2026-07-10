@@ -4153,6 +4153,7 @@ async function load(){
     meetings=safeJSON(LS_MEETINGS, []);
     _reunioesRapidas=safeJSON(LS_REUNIOES_RAPIDAS, []);
     compromissos=safeJSON(LS_COMPROMISSOS, []);
+    if(typeof _migrarRapidasParaReunioes==='function') _migrarRapidasParaReunioes();
     const savedSalas=safeJSON(LS_SALAS, null);
     salas=Array.isArray(savedSalas)?savedSalas:DEFAULT_SALAS;
     if(!Array.isArray(savedSalas)) safeSetItem(LS_SALAS,JSON.stringify(DEFAULT_SALAS));
@@ -14883,12 +14884,13 @@ function _atualizarTabHeaderActions(){
   const secHover=` onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"`;
   let html='';
   if(currentTab==='reunioes' && reuniaoTab!=='historico'){
-    // Filtro de tipo em ícones (cada tipo com sua cor/ícone)
+    // Unificado: 'rapida' virou estágio da reunião, não tipo. Normaliza valor antigo persistido.
+    if(reunFiltroTipo==='rapida'){ reunFiltroTipo='reuniao'; safeSetItem('taskflow_reun_filtro','reuniao'); }
+    // Filtro em 2 seções + Todas (cada uma com sua cor/ícone)
     const _filtroOpts=[
       {k:'todos',i:'ti-stack-2',l:'Todas',cor:'var(--text2)'},
-      {k:'reuniao',i:'ti-speakerphone',l:'Reunião',cor:'var(--blue-mid)'},
-      {k:'rapida',i:'ti-users',l:'Reunião rápida',cor:'var(--purple)'},
-      {k:'compromisso',i:'ti-calendar-time',l:'Compromisso',cor:'var(--orange-dark)'},
+      {k:'reuniao',i:'ti-speakerphone',l:'Reuniões',cor:'var(--blue-mid)'},
+      {k:'compromisso',i:'ti-calendar-time',l:'Compromissos',cor:'var(--orange-dark)'},
     ];
     const _filtroSel=`<div style="display:flex;gap:3px;background:var(--bg2);padding:3px;border-radius:10px;margin-right:6px">${_filtroOpts.map(f=>{const on=reunFiltroTipo===f.k;return `<button onclick="setReuniaoFiltro('${f.k}')" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:7px 11px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;transition:all .12s;${on?`background:${f.cor};color:#fff`:'background:transparent;color:var(--text3)'}"><i class="ti ${f.i}" style="font-size:15px"></i>${f.l}</button>`;}).join('')}</div>`;
     const _rvsel='';
@@ -28355,7 +28357,7 @@ function renderReunioes(){
   };
 
   meetings.forEach(m=>{
-    if(reunFiltroTipo!=='todos' && reunFiltroTipo!=='reuniao') return;
+    if(reunFiltroTipo!=='todos' && reunFiltroTipo!=='reuniao' && reunFiltroTipo!=='rapida') return;
     if(m.status==='encerrada'){
       grupos.antigas.reunioes.push(m);
       return;
@@ -28890,6 +28892,7 @@ function _reuniaoEmAndamento(m){
 }
 
 function _reuniaoSemPauta(m){
+  if(m.nivel==='rapida') return false; // rápida é sem pauta de propósito — não é pendência
   // Heurística: sem pautaPrincipal e sem itens de pauta
   const temPrincipal = m.pautaPrincipal && m.pautaPrincipal.trim().length > 0;
   const temItens = Array.isArray(m.pauta) && m.pauta.length > 0;
@@ -28959,6 +28962,7 @@ function reunMuralItemHTML(m){
   let chip;
   if(_emAndamento) chip=`<span style="${chipBase};background:var(--danger);color:#fff"><i class="ti ti-broadcast" style="font-size:9px"></i> Agora</span>`;
   else if(_pendEncerr) chip=`<span style="${chipBase};background:rgba(201,122,0,.15);color:var(--amber)"><i class="ti ti-clock-exclamation" style="font-size:9px"></i> Encerrar</span>`;
+  else if(m.nivel==='rapida') chip=`<span style="${chipBase};background:color-mix(in srgb,var(--purple) 14%,transparent);color:var(--purple)"><i class="ti ti-bolt" style="font-size:9px"></i> Rápida</span>`;
   else if(_semPauta&&m.status==='agendada') chip=`<span style="${chipBase};background:rgba(163,45,45,.1);color:var(--danger)"><i class="ti ti-alert-triangle" style="font-size:9px"></i> Sem pauta</span>`;
   else chip=`<span class="reun-status ${st.cls}" style="font-size:10px;padding:2px 8px">${st.label}</span>`;
 
@@ -29115,7 +29119,7 @@ function reunListItemHTML(m,opts={}){
   const dBbg=isHoje?'var(--success-bg)':'var(--bg2)';
 
   const chipBase='display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap;flex-shrink:0';
-  const chip=_emAndamento?`<span style="${chipBase};background:var(--danger);color:#fff" title="Acontecendo agora"><i class="ti ti-broadcast" style="font-size:11px"></i> Agora</span>`:'';
+  const chip=_emAndamento?`<span style="${chipBase};background:var(--danger);color:#fff" title="Acontecendo agora"><i class="ti ti-broadcast" style="font-size:11px"></i> Agora</span>`:(m.nivel==='rapida'?`<span style="${chipBase};background:color-mix(in srgb,var(--purple) 14%,transparent);color:var(--purple)" title="Reunião rápida"><i class="ti ti-bolt" style="font-size:10px"></i> Rápida</span>`:'');
 
   const indent=opts.indent?'margin-left:22px;':'';
   return `<div class="reun-row" onclick="openReuniaoView('${m.id}')" style="${indent}position:relative;display:flex;align-items:center;gap:14px;padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color .15s,box-shadow .15s">
@@ -29332,27 +29336,25 @@ function salvarReuniaoRapida(){
   const data=document.getElementById('rr-data')?.value||today;
   const ov=document.getElementById('rr-modal-overlay');
   const participantes=[...(ov?._rrSelParts||[])];
-  const obj={
-    titulo,
-    data,
+  // Unificado: reunião rápida agora é uma reunião nível 'rapida' em `meetings` (que pode virar completa).
+  const m={
+    id:'reun'+Date.now()+Math.floor(Math.random()*9999),
+    nivel:'rapida',
+    title:titulo, date:data,
     horaInicio:document.getElementById('rr-inicio')?.value||'',
     horaFim:document.getElementById('rr-fim')?.value||'',
-    participantes,
-    obs:document.getElementById('rr-obs')?.value.trim()||'',
+    tipo:'Reunião rápida', status:'agendada', facilitador:CURRENT_USER_ID,
+    participantes, projetos:[],
+    pauta:[], pautaDone:[], pautaPrincipal:'', decisoesItens:[], presencas:{}, anexos:[],
+    plaudResumo:document.getElementById('rr-obs')?.value.trim()||'', plaudLink:'',
     createdAt:today,
   };
-  if(editingReuniaoRapidaId){
-    const rr=_reunioesRapidas.find(x=>x.id===editingReuniaoRapidaId);
-    if(rr) Object.assign(rr,obj);
-    saveReuniaoRapida_db(rr||{...obj,id:editingReuniaoRapidaId});
-    toast('✅ Reunião rápida atualizada!');
-  } else {
-    const rr={id:'rr'+Date.now()+Math.floor(Math.random()*9999),...obj};
-    saveReuniaoRapida_db(rr);
-    toast('⚡ Reunião rápida registrada!');
-  }
+  meetings.push(m);
+  saveMeeting_db(m);
+  editingReuniaoRapidaId=null;
   fecharReuniaoRapidaModal();
-  if(currentTab==='agenda') render();
+  toast('⚡ Reunião rápida criada');
+  openReuniaoView(m.id);
 }
 
 function editarReuniaoRapida(id){
@@ -29378,6 +29380,64 @@ function excluirReuniaoRapida(id){
   fecharReuniaoRapidaModal();
   if(currentTab==='agenda') render();
   _mostrarFABDesfazer('Reunião rápida excluída', 0);
+}
+// Migração 1x: reuniões rápidas antigas (_reunioesRapidas) viram reuniões nível 'rapida' em `meetings`.
+// Aditiva e idempotente (id determinístico 'reunrr_'+id evita duplicar em re-execução/multi-máquina).
+function _migrarRapidasParaReunioes(){
+  if(!Array.isArray(_reunioesRapidas) || !_reunioesRapidas.length) return;
+  let mudou=false;
+  _reunioesRapidas.forEach(rr=>{
+    const novoId='reunrr_'+rr.id;
+    if(meetings.some(x=>x.id===novoId)) return;
+    meetings.push({
+      id:novoId, nivel:'rapida',
+      title:rr.titulo||'Reunião rápida', date:rr.data||today,
+      horaInicio:rr.horaInicio||'', horaFim:rr.horaFim||'',
+      tipo:'Reunião rápida', status:'agendada', facilitador:CURRENT_USER_ID,
+      participantes:Array.isArray(rr.participantes)?rr.participantes:[], projetos:[],
+      pauta:[], pautaDone:[], pautaPrincipal:'', decisoesItens:[], presencas:{}, anexos:[],
+      plaudResumo:rr.obs||'', plaudLink:'', createdAt:rr.createdAt||today,
+    });
+    mudou=true;
+  });
+  if(mudou){
+    _reunioesRapidas=[];
+    safeSetItem(LS_MEETINGS, JSON.stringify(meetings));
+    safeSetItem(LS_REUNIOES_RAPIDAS, JSON.stringify(_reunioesRapidas));
+  }
+}
+// Topo da reunião nível 'rapida': captura leve (PLAUD) + botão para promover a completa.
+function _reunRapidaTopoHTML(m){
+  const resumo=escapeHTML(m.plaudResumo||'');
+  const link=escapeAttr(m.plaudLink||'');
+  return `<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid var(--purple);border-radius:12px;padding:14px 16px;margin-bottom:14px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+      <span style="font-size:13px;font-weight:700;color:var(--text);display:inline-flex;align-items:center;gap:7px;"><i class="ti ti-bolt" style="color:var(--purple)"></i> Reunião rápida <span style="font-weight:500;color:var(--text3);font-size:11.5px;">registro leve — sem pauta/ATA</span></span>
+      <button onclick="_reunPromoverCompleta('${m.id}')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;"><i class="ti ti-layout-list"></i> Abrir painel completo</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px;display:flex;align-items:center;gap:5px;"><i class="ti ti-microphone" style="font-size:13px;"></i> Resumo (PLAUD)</div>
+        <textarea id="plaud-resumo-${m.id}" onblur="_reunSetPlaud('${m.id}','plaudResumo',this.value)" placeholder="Cole aqui o resumo/transcrição do PLAUD..." rows="3" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text);font-family:inherit;resize:vertical;line-height:1.5;">${resumo}</textarea>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px;display:flex;align-items:center;gap:5px;"><i class="ti ti-link" style="font-size:13px;"></i> Link da gravação (PLAUD)</div>
+        <input id="plaud-link-${m.id}" value="${link}" onblur="_reunSetPlaud('${m.id}','plaudLink',this.value)" placeholder="https://..." style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text);font-family:inherit;">
+      </div>
+    </div>
+  </div>`;
+}
+function _reunSetPlaud(id,campo,val){
+  const m=meetings.find(x=>x.id===id); if(!m) return;
+  m[campo]=(val||'').trim(); saveMeeting_db(m);
+}
+function _reunPromoverCompleta(id){
+  const m=meetings.find(x=>x.id===id); if(!m) return;
+  m.nivel='completa';
+  if(!m.ata && m.plaudResumo) m.ata=m.plaudResumo; // resumo do PLAUD vira rascunho da ATA
+  saveMeeting_db(m);
+  toast('📋 Painel completo aberto — pauta, decisões e ATA disponíveis');
+  openReuniaoView(id);
 }
 // ─── FIM REUNIÃO RÁPIDA ───────────────────────────────────────────────
 
@@ -29727,7 +29787,7 @@ function saveReuniao(){
     if(m) Object.assign(m,obj);
     saveMeeting_db(m||{...obj,id:editingReuniaoId,tarefas:[]});
   } else {
-    const m={id:'reun'+Date.now(),...obj,tarefas:[]};
+    const m={id:'reun'+Date.now(),...obj,nivel:'completa',tarefas:[]};
     meetings.push(m);
     saveMeeting_db(m);
   }
@@ -29893,6 +29953,7 @@ function openReuniaoView(id){
           <div style="display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap">
             <span style="font-size:20px;font-weight:800;color:var(--text)">${escapeHTML(m.title)}</span>
             <span class="reun-status ${st.cls}" style="font-size:10px">${st.label}</span>
+            ${m.nivel==='rapida'?`<span style="font-size:10px;font-weight:800;color:var(--purple);background:color-mix(in srgb,var(--purple) 14%,transparent);padding:2px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-bolt" style="font-size:11px"></i> rápida</span>`:''}
           </div>
           <div style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:14px;flex-wrap:wrap">
             <span><i class="ti ti-calendar" style="font-size:12px"></i> ${dateLabel||'Sem data'}</span>
@@ -29958,10 +30019,12 @@ function openReuniaoView(id){
         </div>`;
       })()}
 
-      <!-- 2 colunas: ESQUERDA (Pauta + Decisões empilhadas) · DIREITA (Tarefas) -->
-      <div class="reun-grid4">
+      ${m.nivel==='rapida' ? _reunRapidaTopoHTML(m) : ''}
 
-        <div class="reun-col"><!-- COLUNA ESQUERDA -->
+      <!-- 2 colunas: ESQUERDA (Pauta + Decisões empilhadas) · DIREITA (Tarefas). Rápida esconde a esquerda e deixa Tarefas full-width -->
+      <div class="reun-grid4" style="${m.nivel==='rapida'?'grid-template-columns:1fr':''}">
+
+        <div class="reun-col" style="${m.nivel==='rapida'?'display:none':''}"><!-- COLUNA ESQUERDA -->
 
         <!-- PAUTA como checklist editável -->
         <div class="reun-card4">

@@ -89,6 +89,35 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-10 (2) — PC da Produção — REUNIÕES: unificação IMPLEMENTADA (rápida = estágio; PLAUD; 2 seções)
+- Implementado o **modelo decidido** (ver entrada anterior). O preview voltou por outro canal (`Claude_Browser`), então
+  **verifiquei tudo no navegador** (migração, view leve, promover, cards, filtro) — 0 erro de console, boot limpo.
+- **Estágio 1 — Dados (migração aditiva):** `_migrarRapidasParaReunioes()` (chamada no `load()` logo após carregar
+  meetings/rápidas/compromissos). Cada `_reunioesRapidas` vira uma reunião em `meetings` com **`nivel:'rapida'`**, id
+  determinístico `'reunrr_'+id` (idempotente, sem duplicar em multi-máquina), `titulo→title`, `data→date`, `obs→plaudResumo`;
+  depois esvazia `_reunioesRapidas` e persiste. Testado: migra, mapeia campos, esvazia. ✅
+- **Estágio 2 — Painel (view leve + promover):** em `openReuniaoView`, se `m.nivel==='rapida'` mostra
+  **`_reunRapidaTopoHTML`** (card roxo PLAUD: **Resumo (textarea)** + **Link da gravação**, salvos on-blur por
+  `_reunSetPlaud`) + botão **"Abrir painel completo"** (`_reunPromoverCompleta`: seta `nivel='completa'`, e **se ATA vazia
+  copia o resumo do PLAUD pra ATA**). No modo rápida o grid vira 1 coluna e a **coluna esquerda (Pauta+Decisões+Anteriores)
+  é escondida** (`display:none`), deixando só **Tarefas full-width** (rápida ainda captura tarefas). Selinho **⚡ rápida** no
+  cabeçalho. `saveReuniao` agora marca reunião nova como `nivel:'completa'`; **`salvarReuniaoRapida` REAPONTADA** — cria uma
+  reunião `nivel:'rapida'` em `meetings` (não mais no array antigo) e abre o painel leve. Testado: topo PLAUD, promover,
+  ATA semeada, esquerda esconde/reaparece. ✅
+- **Estágio 3 — Lista (2 seções + selinho):** segmented control de 4→**3** (`Todas · Reuniões · Compromissos`), tira
+  "Reunião rápida" (virou estágio); normaliza valor antigo `reunFiltroTipo==='rapida'`→`'reuniao'`. Cards (lista e mural)
+  ganham chip **⚡ Rápida**; `_reuniaoSemPauta` retorna `false` p/ rápida (não é pendência). Reuniões nível rápida abrem
+  `openReuniaoView` (painel leve), não o editor antigo. Testado: 3 opções, chip, normalização, sem "Sem pauta". ✅
+- **Compat/legado:** `_reunioesRapidas` fica vazio; funções antigas (`editarReuniaoRapida`, `duplicarReuniaoRapida`,
+  `reunRapida*HTML`) ficam inertes (array vazio) — não removidas p/ não arriscar. Restore da Lixeira tipo `reuniaoRapida`
+  ainda funciona (re-migra no próximo load). **Compromisso privado por dono = regra do BACKEND** (Guilherme, RLS); no
+  protótipo single-user não filtrei (evita esconder dado).
+- ⚠️ **Diego testar no navegador** (Pages ~1min + Ctrl+Shift+R): criar reunião rápida (Novo → Reunião rápida) → cai no painel
+  leve com PLAUD → "Abrir painel completo" → vira completa com ATA rascunhada; lista mostra ⚡; filtro só Reuniões/Compromissos.
+- **Ainda em aberto (revisão):** código morto no painel (`partsHTML/projHTML/proxDataTxt`), `decisoes` legado, recorrência por
+  dias fixos, encerramento automático, anexos base64. E o **layout do painel completo** (proporção Pauta 1/3 × Tarefas 2/3) —
+  o Diego pediu Tarefas 2×; reavaliar se quiser reequilibrar.
+
 ### 2026-07-10 — PC da Produção — REUNIÕES: revisão a fundo + MODELO DECIDIDO + 5 fixes da revisão
 - **Contexto novo (importante):** o HUB de verdade do **Guilherme** já está rodando com **~20 pessoas**, tudo no banco/servidor da Empresa.
   Este TaskFlow é **base de teste de layout/UX/regra**. O **próximo passo do Guilherme = Reuniões**, então o Diego quer afinar o
