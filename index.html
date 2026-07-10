@@ -13670,7 +13670,7 @@ function fabAction(tipo){
         abrirCapturaRapida();
         break;
       case 'tarefa':
-        toggleForm();
+        abrirNovaTarefaCompleta();
         break;
       case 'reuniao':
         // GUILHERME V3: FAB → openReuniaoModal() direto. Não muda mais a tab.
@@ -21253,8 +21253,46 @@ function closeModalDirect(){
   ttStop();
   // BUGFIX: limpar _ddCallbacks ao fechar o modal evita memory leak (acúmulo de callbacks)
   if(window._ddCallbacks) window._ddCallbacks={};
+  // Tarefa NOVA aberta no modal completo (rascunho): se fechou sem título, descarta (não polui listas/nuvem).
+  const _draftId=window._novaTarefaDraftId;
+  if(_draftId){
+    window._novaTarefaDraftId=null;
+    const dt=tasks.find(x=>x.id===_draftId);
+    if(dt && !(dt.title||'').trim()){
+      tasks=tasks.filter(x=>x.id!==_draftId);
+      if(typeof deleteTask_db==='function') deleteTask_db(_draftId);
+    } else if(dt){ delete dt._novaDraft; }
+  }
   document.getElementById('edit-modal').classList.remove('open');
   editingId=null;
+  if(_draftId && typeof render==='function') render(); // atualiza a lista (some o rascunho, ou aparece a nova tarefa)
+}
+
+// FAB "Nova tarefa": cria uma tarefa RASCUNHO e abre o MESMO modal completo de editar.
+function abrirNovaTarefaCompleta(){
+  const _exec = sidebarPersonId || null;
+  const t={
+    id:Date.now()+Math.floor(Math.random()*9999),
+    title:'', prio:'media', date:today, someday:false, done:false, escopo:'klain',
+    executor:_exec, solicitante:null, people:_exec?[_exec]:[],
+    createdAt:today, subtasks:[], attachments:[], comments:[], kanbanCol:'todo', meetingId:null,
+    _novaDraft:true
+  };
+  // Pré-vincula a projeto/fase se estiver dentro de um Projeto Pro (igual ao quick-add)
+  if(currentTab==='projetos-pro' && activeProjectProId){
+    t.projectProId=activeProjectProId;
+    if(activeFaseId) t.projectProFaseId=activeFaseId;
+  }
+  if(window._ppQuickCtx){
+    t.projectProId=window._ppQuickCtx.projectId;
+    if(window._ppQuickCtx.faseId) t.projectProFaseId=window._ppQuickCtx.faseId;
+    if(window._ppQuickCtx.grupoId) t.projectProGrupoId=window._ppQuickCtx.grupoId;
+    window._ppQuickCtx=null;
+  }
+  tasks.push(t);
+  window._novaTarefaDraftId=t.id;
+  openEdit(t.id);
+  setTimeout(()=>{ const mt=document.getElementById('m-title'); if(mt){ mt.focus(); } }, 90);
 }
 
 // Guardar alterações de uma tarefa no modal Editar Tarefa

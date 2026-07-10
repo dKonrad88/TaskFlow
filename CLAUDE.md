@@ -89,6 +89,23 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-10 (5) — PC da Produção — FAB "Nova tarefa" agora abre o MODAL COMPLETO (igual editar)
+- **Pedido do Diego:** ao criar tarefa pelo **FAB**, trazer o **modal completo** (todos os campos), como se fosse editar.
+- **Contexto:** o HUB tem 2 modais de tarefa — `#task-modal` (quick-add inline, o que o FAB usava via `toggleForm`) e
+  `#edit-modal` (completo: descrição, executor, solicitante, projeto/fase, reunião, subtarefas, anexos, comentários, histórico).
+  O completo (`openEdit(id)`) é atrelado a uma tarefa existente e **auto-salva por campo** (onblur `_autoSaveEditField`).
+- **Solução (convenção do próprio código — criar-em-branco-e-abrir-editor, igual `novoEquipamento`):** nova função
+  **`abrirNovaTarefaCompleta()`** cria uma tarefa **rascunho** (`_novaDraft:true`, formato canônico espelhado do quick-add ~21907,
+  pré-vínculo a Projeto Pro se estiver num), faz push em `tasks`, e chama `openEdit(id)` + foca o título. `fabAction('tarefa')`
+  agora chama essa função (era `toggleForm()`).
+- **Descarte seguro:** `closeModalDirect()` ganhou guarda — se fechar (X/fora/etc.) com **título vazio**, remove o rascunho de
+  `tasks` (+ `deleteTask_db`), não polui listas nem a nuvem; se tem título, limpa a flag e mantém. Sempre `render()` no fim quando
+  havia rascunho (some o vazio, ou aparece a nova tarefa).
+- Verificado no navegador: FAB → abre `#edit-modal` completo (Salvar + Executor + título vazio); fechar sem título **descarta**;
+  preencher título/prio + fechar **mantém** a tarefa (flag removida); boot limpo, 0 erro.
+- Obs.: só o **FAB** mudou. Outros pontos de "nova tarefa" (quick-add do cabeçalho/inline) seguem com o `#task-modal` rápido —
+  se o Diego quiser padronizar todos no completo, é trocar as outras chamadas de `toggleForm`.
+
 ### 2026-07-10 (4) — PC da Produção — BUG: trocar de tema saía do Painel de Reunião (corrigido) + varredura do HUB
 - **Sintoma (Diego):** dentro do Painel de Reunião, ao **mudar de tema**, caía de volta na lista (perdia o painel).
 - **Causa:** `aplicarTema()` chama `render()`; o `render()` para `currentTab==='reunioes'` chamava `renderReunioes()` (a LISTA),
