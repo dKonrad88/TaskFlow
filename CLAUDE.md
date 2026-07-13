@@ -89,6 +89,60 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-13 (2) — PC da Empresa — Sidebar (largura + grupos sem fundo) + LOTE do backlog (2 críticos, 2 altos, modelos de reunião, XSS toast, a11y)
+- **Pedido do Diego:** "faça tudo que está em aberto, pode editar sem permissão" + 2 ajustes de sidebar: (a) tirar o **fundo** dos títulos de
+  grupo (deixar só ícone+título, cores mantidas); (b) **regulador de largura** da sidebar (cada um põe na largura que quiser).
+- **SIDEBAR — 2 ajustes (commit `6a383f9`):**
+  1. `.sbnav-group-header` perdeu `background` e `border-left` (agora `background:transparent`); hover sutil mantido; cores do texto
+     intactas (claro e `body.dark`).
+  2. **Regulador de largura:** `.sidebar` usa `width:var(--sidebar-w,280px)`. Nova alça `<div id="sidebar-resizer">` (6px, entre sidebar
+     e main) — arrastar redimensiona (200–560px), **duplo-clique reseta** (280px), **setas ←/→** movem 16px (a11y, `tabindex=0`).
+     Persiste por aparelho em `LS_SIDEBAR_WIDTH='taskflow_sidebar_width'`. JS: `_applySidebarWidth`/`_loadSidebarWidth`/`_initSidebarResizer`
+     (chamados no boot perto de `_applySidebarVisibilityState`). ⚠️ **Troquei** os seletores de `.sidebar.sb-hidden + X` (adjacente) para
+     `body.sb-collapsed X` — o resizer entrou entre `.sidebar` e `.sidebar-edge-actions` e quebraria o `+`. `toggleSidebarVisibility` e
+     `_applySidebarVisibilityState` já alternam `sb-collapsed` no body junto com `sb-hidden`.
+- **🔴 CRÍTICO #1 — auto-push cego RESOLVIDO (commit `6a383f9`):** decidi (você mandou fazer) por **portão de sessão + reconciliação por
+  `updated_at`** (mais robusto que só a flag). Novo estado `_cloudSyncedThisSession` + carimbo `LS_CLOUD_SYNCED_TS` (`taskflow__cloud_synced_ts`,
+  **excluída do sync**). Push automático (`_cloudOnLocalWrite`/`_cloudPushKey`) **só liga** depois que o aparelho reconcilia na sessão
+  (`_cloudReconcileOnConnect`): se a nuvem não mudou desde a última sync deste aparelho (maior `updated_at` == carimbo), religa sozinho;
+  se outro aparelho mexeu (ou nunca sincronizou aqui, ou erro de rede), fica **pausado** e pede Baixar/Enviar. Guard de conflito por chave
+  no `_cloudPushKey`. Baixar/Enviar/auto-seed carimbam e religam. Botão ☁️ mostra `ti-cloud-check` (sincronizado) vs `ti-cloud` (pausado).
+  ⚠️ **1º boot pós-deploy:** usuário logado verá "envio pausado" até 1 clique em Baixar OU Enviar (o carimbo ainda não existe) — é a direção
+  segura por design; depois fica transparente. **Baixe a nuvem 1× ao abrir** (a regra de ouro agora é reforçada pelo próprio app).
+- **🔴 CRÍTICO #2 — cronograma reescrevia t.date RESOLVIDO (commit `6a383f9`):** decisão = **data manual vence**. `renderProjectProTarefas`
+  (~26350) só re-projeta datas de tarefa **sem `dateManual`**. `_autoSaveEditField('date')` seta `dateManual` ao definir data à mão. Seed do
+  "Implantação do Hub Klain" marca `dateManual` nas tarefas com data (ondas). **Migração 1x** `taskflow_datemanual_migr_v1`: marca tarefas de
+  projeto JÁ existentes que têm data (preserva o que está hoje). Trade-off: reordenar não re-flui datas já fixadas — se preferir "esteira
+  manda sempre", me avise.
+- **🟠 ALTO #3 — restaurar projeto vazio RESOLVIDO (commit `6e617f2`):** `excluirProjectPro` guarda `_linkedTasks` (id+fase+grupo) no item da
+  Lixeira; `restoreFromTrash` (ramo projectPro) **religa** as tarefas (se ainda existirem). Não volta mais vazio / tarefas órfãs.
+- **🟠 ALTO #4 — pull inseguro RESOLVIDO (commit `6e617f2`):** `_cloudPullAll` **aborta** se o backup pré-pull falhar (não sobrescreve sem
+  cópia); aplicação **parcial** (quota no meio) retorna `ok:false` (não afirma sucesso em estado misto). Mantido `setItem` cru no apply
+  (não dispara o mirror durante o Baixar).
+- **toast() sem XSS (commit `6e617f2`):** mensagem via `textContent` (DOM), não `innerHTML` — fecha o XSS latente quando concatena dados do
+  usuário. Botão Desfazer e ícone preservados. (Confirmei: nenhum caller passava HTML de propósito.)
+- **a11y painel de reunião (commit `6e617f2`):** checkboxes de pauta principal, itens de pauta e tarefas ganharam `role=checkbox` +
+  `tabindex=0` + `aria-checked` + teclado (Espaço/Enter). Placar do topo ao excluir tarefa "da reunião anterior" **já estava** ok
+  (`delTarefaReuniao` reabre o painel).
+- **🟡 MODELOS DE REUNIÃO (commit `4c3f574`):** `REUNIAO_MODELOS` (fixo no código, espelha os modelos de Projeto): **1:1, Daily, Semanal da
+  equipe, Retrospectiva, Kickoff, Planejamento**. Chips "Começar de um modelo" na coluna direita do form da Nova Reunião (**não aparece ao
+  editar**). Aplicar preenche pauta principal + tipo + título sugerido + itens da pauta (`_reunAplicarModelo` + `_reunRebuildPautaList`).
+- **Verificação:** revisão estática dedicada por subagente sobre todo o diff `d32fe44..HEAD` (7 áreas) = **0 problemas** (sintaxe, refs,
+  template literals, CSS×JS da sidebar, resizer sem vazamento, lógica do portão de sync sem trava/sem push cego). ⚠️ **NÃO testado em
+  navegador por mim** (esta máquina não roda preview — o `preview_start` travou). **Você confere no Pages (Ctrl+Shift+R).**
+- **CONFERIR no Pages:** (1) grupos da sidebar sem fundo; (2) arrastar a borda direita da sidebar p/ redimensionar (dbl-clique reseta);
+  (3) ☁️ vai aparecer "pausado" — clique **Baixar** 1× (baixa a nuvem e religa o auto-push); (4) abrir projeto → aba Tarefas NÃO corrompe as
+  datas das ondas; (5) excluir projeto → Lixeira → Restaurar → volta COM as tarefas; (6) Nova Reunião → chip de modelo preenche a pauta.
+- **AINDA EM ABERTO (não feito — decisão/escopo):**
+  - **Histórico e Lembretes (telas):** **NÃO fiz** — "Lembrete/someday" foi **removido** deste protótipo numa sessão anterior (a teu pedido),
+    então recriar uma tela "Lembretes" **contradiz** aquela decisão. Preciso que você diga o que "Lembretes" deve ser aqui (é o backlog
+    #1078/#1139 do Guilherme? uma tela nova?) antes de eu codar. Histórico idem (definir o que ele mostra).
+  - **XSS do corpo de Nota (rich-text):** não corrigido de propósito — Nota guarda HTML real (negrito/listas); escapar quebra a formatação e
+    um sanitizador por regex dá falsa segurança. É XSS latente **só no cenário multiusuário** → responsabilidade do **backend do Guilherme**
+    (sanitizar no servidor). Mesmo caso do `_notifItemHTML`.
+  - Menores latentes: performance da lista de Projetos (memoizar progresso/cronograma + debounce na busca); limpar código morto (restos do
+    Lembrete/someday, Kanban/Cartões inertes); `importarDadosJSON` (safeLSClear) desloga do Supabase.
+
 ### 2026-07-13 — PC da Empresa — SIDEBAR unificada em acordeão + só Lista (Painel/Cartões removidos)
 - **Pedido do Diego (com mockups aprovados via show_widget):** (a) "trazer o Gerenciador pra fora" — sidebar única em **acordeão**:
   grupos **Gerenciador**, **Gestão** e cada **Área** expandindo INLINE (sem "voltar ao início"), com separador **ÁREAS**; remover
