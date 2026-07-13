@@ -28487,6 +28487,53 @@ document.querySelectorAll('.menu-tab:not([onclick*="hoje"])').forEach(b=>b.class
 ════════════════════════════════════════════════════════════════════ */
 
 const REUN_TIPOS=['Liderança','Operacional','1:1','Comercial','Estratégica','Outra'];
+// ── Modelos de reunião: pauta pré-pronta p/ os ritos mais comuns. Reaproveita o motor
+// da reunião (pautaPrincipal + pauta[]). São FIXOS no código (não vão ao localStorage/nuvem,
+// evoluem pelo git) — espelham a ideia dos modelos de Projeto. Aplicar preenche o form.
+const REUNIAO_MODELOS=[
+  {id:'1a1', nome:'1:1', icon:'ti-users', tipo:'1:1', tituloSugerido:'1:1 — ', pautaPrincipal:'Acompanhamento individual',
+   pauta:['Como você está? (bem-estar)','O que avançou desde a última','Bloqueios / onde precisa de ajuda','Feedback (dos dois lados)','Desenvolvimento e carreira','Combinados até a próxima']},
+  {id:'daily', nome:'Daily', icon:'ti-run', tipo:'Operacional', tituloSugerido:'Daily — ', pautaPrincipal:'Sincronização diária',
+   pauta:['O que fiz desde ontem','O que vou fazer hoje','Impedimentos']},
+  {id:'semanal', nome:'Semanal da equipe', icon:'ti-calendar-week', tipo:'Operacional', tituloSugerido:'Semanal — ', pautaPrincipal:'Reunião semanal da equipe',
+   pauta:['Revisão da semana (metas/indicadores)','Pendências da semana passada','Prioridades da semana','Riscos e bloqueios','Avisos e combinados']},
+  {id:'retro', nome:'Retrospectiva', icon:'ti-refresh', tipo:'Estratégica', tituloSugerido:'Retrospectiva — ', pautaPrincipal:'Retrospectiva',
+   pauta:['O que foi bem','O que não foi bem','O que aprendemos','Ações de melhoria (com responsável)']},
+  {id:'kickoff', nome:'Kickoff de projeto', icon:'ti-rocket', tipo:'Estratégica', tituloSugerido:'Kickoff — ', pautaPrincipal:'Kickoff do projeto',
+   pauta:['Objetivo e escopo','Papéis e responsáveis','Cronograma e marcos','Riscos','Próximos passos']},
+  {id:'planejamento', nome:'Planejamento', icon:'ti-target', tipo:'Estratégica', tituloSugerido:'Planejamento — ', pautaPrincipal:'Planejamento do período',
+   pauta:['Metas do período','Iniciativas / projetos','Recursos necessários','Responsáveis e prazos','Como vamos medir']},
+];
+// Reconstrói a lista de itens de pauta a partir de window._reunPauta (sem re-renderizar o form todo)
+function _reunRebuildPautaList(){
+  const lista=document.getElementById('pauta-list'); if(!lista) return;
+  const arr=window._reunPauta||[];
+  if(!arr.length){ lista.innerHTML='<div data-pauta-empty style="padding:20px;text-align:center;color:var(--text3);font-size:12px;font-style:italic">Sem itens na pauta ainda.<br>Clique em "+ Adicionar".</div>'; return; }
+  lista.innerHTML=arr.map((txt,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px" id="pauta-row-${i}">
+      <i class="ti ti-grip-vertical" style="color:var(--text3);font-size:14px"></i>
+      <input class="modal-input pauta-inp" data-idx="${i}" style="flex:1" placeholder="Assunto ${i+1}..." value="${escapeAttr(txt)}" oninput="pautaUpdate(${i},this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();pautaAddItem()}">
+      <button onclick="pautaRemove(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;font-size:14px" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-x"></i></button>
+    </div>`).join('');
+}
+// Aplica um modelo ao form da Nova Reunião: preenche pauta principal, tipo, título (se vazio) e itens.
+function _reunAplicarModelo(id){
+  const mod=REUNIAO_MODELOS.find(x=>x.id===id); if(!mod) return;
+  const pp=document.getElementById('reun-pauta-principal'); if(pp && mod.pautaPrincipal) pp.value=mod.pautaPrincipal;
+  const tp=document.getElementById('reun-tipo'); if(tp && mod.tipo && REUN_TIPOS.includes(mod.tipo)) tp.value=mod.tipo;
+  const ti=document.getElementById('reun-title'); if(ti && !ti.value.trim() && mod.tituloSugerido){ ti.value=mod.tituloSugerido; }
+  window._reunPauta=[...(mod.pauta||[])];
+  _reunRebuildPautaList();
+  document.querySelectorAll('[data-reunmod]').forEach(el=>{
+    const on=el.getAttribute('data-reunmod')===id;
+    el.classList.toggle('sel',on);
+    el.style.borderColor=on?'var(--blue-mid)':'var(--border)';
+    el.style.color=on?'#fff':'var(--text2)';
+    el.style.background=on?'var(--blue-mid)':'var(--bg2)';
+  });
+  if(ti && mod.tituloSugerido && ti.value===mod.tituloSugerido){ try{ ti.focus(); ti.setSelectionRange(ti.value.length, ti.value.length); }catch(e){} }
+  if(typeof toast==='function') toast('📋 Modelo aplicado: '+mod.nome);
+}
 const REUN_STATUS={
   agendada:{label:'Agendada',cls:'reun-status-agendada',color:'var(--blue-mid)'},
   andamento:{label:'Em andamento',cls:'reun-status-andamento',color:'var(--success)'},
@@ -29857,6 +29904,14 @@ function renderNovaReuniaoForm(container, subNav){
 
           <!-- COLUNA DIREITA: Conteúdo da reunião -->
           <div style="display:flex;flex-direction:column;gap:14px">
+
+            ${editingReuniaoId ? '' : `<!-- Modelos de reunião -->
+            <div>
+              <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-layout-grid"></i> Começar de um modelo <span style="font-size:10px;color:var(--text3);font-weight:400">— preenche a pauta</span></div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                ${REUNIAO_MODELOS.map(mm=>`<button type="button" data-reunmod="${mm.id}" onclick="_reunAplicarModelo('${mm.id}')" style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;background:var(--bg2);color:var(--text2);border:1px solid var(--border);font-family:inherit;transition:all .15s" onmouseover="if(!this.classList.contains('sel')){this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'}" onmouseout="if(!this.classList.contains('sel')){this.style.borderColor='var(--border)';this.style.color='var(--text2)'}"><i class="ti ${mm.icon}" style="font-size:13px"></i>${mm.nome}</button>`).join('')}
+              </div>
+            </div>`}
 
             <!-- Pauta principal -->
             <div>
