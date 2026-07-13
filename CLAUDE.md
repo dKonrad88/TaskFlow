@@ -89,6 +89,41 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-13 (3) — PC da Empresa — Sidebar "Início" + REDESIGN da tela de Projetos (toolbar/menu, cabeçalho, Visão geral em 2 colunas)
+- **Contexto:** continuação da sessão (2) abaixo. Diego foi refinando a UI por prints, ao vivo; eu editava + commitava + push a cada ajuste.
+  Tudo publicado no Pages. ⚠️ **NADA testado em navegador por mim** (esta máquina não roda preview/Node) — Diego confere no Pages (Ctrl+Shift+R).
+  ⚠️ **Cache:** um F5 comum servia versão velha (arquivo ~2MB). Confirmei via `curl` que o Pages estava com o código novo — era cache do
+  navegador. **Sempre Ctrl+Shift+R.** (Não há service worker próprio; só cache HTTP.)
+- **SIDEBAR (commit `936c6ba`):** o botão do topo (`hubMeuDiaItem`) mudou de rótulo **"Meu dia!" → "Início"** (6 variantes na função; ícone
+  `ti-sun` e cor personalizada mantidos; ainda chama `voltarMeuDia`). O **item "Início"** (redundante) foi **removido de dentro do grupo
+  Gerenciador** (era o `voltarMeuDia` com `ti-home`, ~10038); **"Meu Dia"** (aba `hoje`) permanece.
+- **PROJETOS — toolbar/menu (commits `40d7492` → `e25dd7d`):** Agrupar/Ordenar saíram da barra e viraram um **menu ⋮** (`_ppToggleMenu`/
+  `_ppMenuOpen`; popover com backdrop `position:fixed` z190 + painel z200). O ⋮ **vive no header** (`#pp-menu-host`, primeiro filho de
+  `#pp-header-actions`, **ao lado do "Importar"**), preenchido por `_ppMenuBtnHTML` no fim de `renderProjetosPro`. **Os 3 chips
+  (Atrasados/Ativos/Meus) foram REMOVIDOS** (a filtragem `_ppChips`/`_ppFiltrar` continua no código, sem UI → tudo `false`). Toolbar agora =
+  só a busca. Bolinha azul no ⋮ quando `_ppGroup!=='tipo' || _ppSort!=='prioridade'`. `abrirProjectProView` zera `_ppMenuOpen`.
+- **PROJETOS — cabeçalho do projeto (`renderProjectProView`, commits `d289edc`, `196556d`, `bae268c`, `395774d`, `e1db895`):**
+  - **Breadcrumb** (`← Projetos › nome`) saiu do corpo e foi pra **topbar**: injetado em `#tab-title` (`_tt.innerHTML=breadcrumbHTML`, span
+    auto-dimensionado — **NÃO mexer no `font-size` do #tab-title**, senão vaza pras outras telas que usam `textContent`). `#tab-sub` segue hidden.
+  - **Sub-navbar (abas):** tirei a **linha separadora de 1px acima**; as abas ficaram **sem fundo no ativo**, só o **sublinhado colorido**
+    (`p.cor`) indica a ativa; o **track `border-bottom:1px`** ficou (Diego pediu de volta pra tela não ficar "pelada"). ⚠️ **BUG pego e
+    corrigido (`bae268c`):** `overflow-x:auto` força `overflow-y:auto`; um `margin-bottom:-1px` que pus criou 1px de sobra → **scrollbar
+    vertical do Windows (setinhas)** apareceu. Fix = tirei o `-1px` e fixei `overflow-y:hidden`.
+  - **Descrição do projeto removida do cabeçalho** (a pedido; `p.descricao` continua salva/editável no lápis, só não aparece ali).
+  - **"Como começar"** virou **ícone de ajuda** (`ti-help-circle`, classe `reun-ico`) na fileira de ícones do header, **antes de
+    Participantes** (`ajudaIconHTML`); clica → painelzinho `#pp-ajuda-panel` (stepper Fases/Setores/Tarefas + botão). Só quando 0 tarefas.
+- **PROJETOS — Visão geral em 2 COLUNAS (`renderProjectProVisao`, commit `e1db895`) — mockup aprovado via show_widget:**
+  - **Header enxuto:** só título+status+ícones (removi do header a linha tipo/início/prazo e o bloco de %/atrasadas/Dono do canto).
+  - **Coluna 1 (`minmax(0,300px)`):** cartão de infos (**tipo · Início · Prazo · Dono**) + **cards empilhados** Tarefas · Atrasadas ·
+    **Pessoas** (novo). **Coluna 2 (`1fr`):** **Progresso do projeto** (% + barra + conclusão prevista via `_conclCard`/`_ppAnalise`) +
+    **Fases do projeto** (lista leve, `abrirFaseEspecifica`). Classe `.pp-visao-2col` empilha em 1 coluna abaixo de 720px (`<style>` inline no return).
+  - Código morto inofensivo deixado: `_linhaPessoas`/`pessoasHeader`/`proximaFase`/`progressoBloco` (definidos, sem uso) e `_ppToggleChip`.
+- **Verificação:** edições cirúrgicas + greps de balanceamento/refs órfãs a cada passo (0 dangling). **NÃO testei em navegador.**
+- **CONFERIR no Pages (Ctrl+Shift+R):** sidebar botão "Início"; Projetos → ⋮ ao lado de Importar abrindo Agrupar/Ordenar, sem os 3 chips;
+  abrir um projeto → breadcrumb no topo, abas limpas c/ track, sem descrição, ícone "?" ao lado de Participantes; Visão geral em 2 colunas.
+- **EM ABERTO (mesmo da entrada (2)):** Histórico/Lembretes (precisa Diego definir o que é — contradiz a remoção do "Lembrete"); XSS do
+  corpo de Nota (rich-text → backend do Guilherme sanitiza); perf da lista de Projetos; limpar código morto.
+
 ### 2026-07-13 (2) — PC da Empresa — Sidebar (largura + grupos sem fundo) + LOTE do backlog (2 críticos, 2 altos, modelos de reunião, XSS toast, a11y)
 - **Pedido do Diego:** "faça tudo que está em aberto, pode editar sem permissão" + 2 ajustes de sidebar: (a) tirar o **fundo** dos títulos de
   grupo (deixar só ícone+título, cores mantidas); (b) **regulador de largura** da sidebar (cada um põe na largura que quiser).
