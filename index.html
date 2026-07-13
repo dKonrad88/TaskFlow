@@ -25620,86 +25620,88 @@ function renderProjectProVisao(p, prog){
       cor: _estoura ? 'var(--danger)' : (_s!=null ? 'var(--success)' : 'var(--text2)'),
     };
   }
-  const cards = [
-    {icon:'ti-checklist', label:'Tarefas',          valor: `${prog.feitas}/${prog.total}`, cor:'var(--blue-mid)'},
-    {icon:'ti-alert-triangle', label:'Atrasadas',   valor: prog.atrasadas,                  cor: prog.atrasadas>0?'var(--danger)':'var(--text3)'},
-    {icon:'ti-users', label:'Pessoas',              valor: nPessoas,                        cor:'var(--orange)'},
-    ...(_conclCard?[_conclCard]:[]),
-  ];
-  const cardsHTML = `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px">
-      ${cards.map(c=>`
-        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
-          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-weight:600">${c.label}</div>
-          <div style="font-size:24px;font-weight:800;color:${c.cor};margin-top:4px;display:flex;align-items:center;gap:6px"><i class="ti ${c.icon}" style="font-size:20px"></i>${c.valor}</div>
-        </div>
-      `).join('')}
-    </div>`;
+  const temFase=nFases>0;
+  const temSetor=(p.fases||[]).some(f=>(f.grupos||[]).length>0);
+  const temTarefa=prog.total>0;
 
-  // Linha de fases — sem card externo (evita card dentro de card)
-  const fasesHTML = nFases > 0
-    ? `<div style="margin-bottom:20px">
-        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px"><i class="ti ti-layout-rows" style="color:var(--text2)"></i> Fases do projeto</div>
-        <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;padding-top:2px">
-          ${(p.fases||[]).map(f=>{
-            const fp = _calcularProgressoFase(f);
-            const corFase = fp.pct===100 ? 'var(--success)' : fp.pct>0 ? p.cor : 'var(--text3)';
-
-            // Dias restantes da fase
-            let prazoHTML = '';
-            if(f.prazoFase){
-              const dr = Math.round((new Date(f.prazoFase+'T00:00:00') - new Date(today+'T00:00:00')) / 86400000);
-              let dCor = 'var(--text3)', dIcon = 'ti-calendar-due';
-              const dText = dr < 0 ? `${Math.abs(dr)}d atrasada` : dr === 0 ? 'Vence hoje' : `${dr}d restantes`;
-              if(dr < 0 || dr === 0){ dCor = 'var(--danger)'; dIcon = 'ti-alarm'; }
-              else if(dr <= 3){ dCor = 'var(--amber)'; dIcon = 'ti-clock-exclamation'; }
-              else { dCor = 'var(--success)'; }
-              prazoHTML = `<div style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:${dCor};margin-top:5px"><i class="ti ${dIcon}" style="font-size:10px"></i>${dText}</div>`;
-            }
-
-            return `<div onclick="abrirFaseEspecifica('${f.id}')" style="background:var(--card);border:1px solid var(--border);border-left:3px solid ${corFase};border-radius:10px;padding:11px 14px;min-width:150px;cursor:pointer;transition:all .15s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 14px rgba(0,0,0,.06)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-              <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">${escapeHTML(f.nome)}</div>
-              <div style="font-size:10px;color:var(--text3)">${fp.feitas}/${fp.total} tarefas</div>
-              <div style="margin-top:6px;height:4px;background:var(--bg2);border-radius:99px;overflow:hidden">
-                <div style="height:100%;background:${corFase};width:${fp.pct}%"></div>
-              </div>
-              <div style="font-size:11px;font-weight:700;color:${corFase};margin-top:4px">${fp.pct}%</div>
-              ${prazoHTML}
-            </div>`;
-          }).join('')}
-        </div>
-      </div>`
-    : `<div style="background:var(--card);border:1px dashed var(--border);border-radius:12px;padding:32px 20px;text-align:center;margin-bottom:20px">
-        <i class="ti ti-layout-rows" style="font-size:36px;color:var(--text3);opacity:.5"></i>
-        <p style="margin:10px 0 4px;font-size:14px;color:var(--text2);font-weight:600">Nenhuma fase ainda</p>
-        <p style="margin:0 0 14px;font-size:12px;color:var(--text3)">Organize o projeto em fases (ex: Planejamento, Execução, Entrega)</p>
-        <button onclick="setProjectProTab('fases')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer"><i class="ti ti-plus"></i> Adicionar fase</button>
-      </div>`;
-
-  // Guia "como montar" — só enquanto o projeto ainda não tem tarefas
-  let guiaHTML='';
-  if(prog.total===0){
-    const temFase=nFases>0;
-    const temSetor=(p.fases||[]).some(f=>(f.grupos||[]).length>0);
-    const passos=[
-      {n:1,ok:temFase,t:'Defina as fases',d:'As grandes etapas do projeto, na ordem.'},
-      {n:2,ok:temSetor,t:'Adicione os setores',d:'As áreas/times responsáveis em cada fase.'},
-      {n:3,ok:false,t:'Crie as tarefas',d:'As ações concretas, com responsável e prazo.'},
-    ].map(s=>`
-      <div style="flex:1;min-width:160px;display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid ${s.ok?'var(--success)':'var(--border)'};border-radius:11px;padding:12px 14px">
-        <div style="width:24px;height:24px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;background:${s.ok?'var(--success)':'var(--bg2)'};color:${s.ok?'#fff':'var(--text3)'}">${s.ok?'<i class="ti ti-check"></i>':s.n}</div>
-        <div><div style="font-size:13px;font-weight:700;color:var(--text)">${s.t}</div><div style="font-size:11.5px;color:var(--text3);margin-top:2px;line-height:1.4">${s.d}</div></div>
-      </div>`).join('');
-    guiaHTML=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:20px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-        <div style="font-size:14px;font-weight:800;color:var(--text)"><i class="ti ti-map-2" style="color:var(--blue-mid)"></i> Como montar este projeto</div>
-        <button onclick="setProjectProTab('fases')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px">Ir para Fases <i class="ti ti-arrow-right"></i></button>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">${passos}</div>
+  // ── FOCO ("Comece aqui") — só enquanto o projeto ainda não tem tarefas.
+  // Mostra UM próximo passo, em vez de encher a tela de números zerados.
+  let focoHTML='';
+  if(!temTarefa){
+    const stepAtual = !temFase?1 : !temSetor?2 : 3;   // 1 Fases · 2 Setores · 3 Tarefas
+    const subs={1:'Comece dividindo o projeto em fases — as grandes etapas, na ordem.',
+                2:'Você já tem as fases. Agora adicione os setores (as áreas responsáveis) em cada fase.',
+                3:'Fases e setores prontos. Agora crie as primeiras tarefas, com responsável e prazo.'};
+    const btnLabel = stepAtual===1 ? 'Adicionar fases' : 'Continuar nas Fases';
+    const pills=['Fases','Setores','Tarefas'].map((lb,i)=>{
+      const n=i+1;
+      const estado = n<stepAtual?'ok' : n===stepAtual?'now':'todo';
+      if(estado==='ok') return `<span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--success);background:color-mix(in srgb,var(--success) 12%,transparent);padding:6px 12px;border-radius:99px"><i class="ti ti-circle-check" style="font-size:15px"></i>${lb}</span>`;
+      if(estado==='now') return `<span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:#fff;background:var(--blue-mid);padding:6px 12px;border-radius:99px"><span style="width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.25);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">${n}</span>${lb}</span>`;
+      return `<span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text3);background:var(--bg2);padding:6px 12px;border-radius:99px"><span style="width:16px;height:16px;border-radius:50%;background:var(--bg3);display:inline-flex;align-items:center;justify-content:center;font-size:10px">${n}</span>${lb}</span>`;
+    }).join('<i class="ti ti-chevron-right" style="font-size:14px;color:var(--text3)"></i>');
+    focoHTML=`<div style="background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--blue-mid);border-radius:0 12px 12px 0;padding:18px 20px;margin-bottom:18px">
+      <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:3px">Comece aqui</div>
+      <div style="font-size:12.5px;color:var(--text2);margin-bottom:16px;line-height:1.5">${subs[stepAtual]}</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:16px;flex-wrap:wrap">${pills}</div>
+      <button onclick="setProjectProTab('fases')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:9px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-family:inherit">${btnLabel} <i class="ti ti-arrow-right" style="font-size:15px"></i></button>
     </div>`;
   }
 
-  return guiaHTML + cardsHTML + fasesHTML;
+  // ── Resumo de progresso — só quando JÁ tem tarefas (barra fina + conclusão prevista).
+  let resumoHTML='';
+  if(temTarefa){
+    const _cc = _conclCard;
+    const atrasadasChip = prog.atrasadas>0
+      ? `<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--danger);background:var(--danger-bg);padding:4px 10px;border-radius:99px"><i class="ti ti-alert-triangle" style="font-size:13px"></i>${prog.atrasadas} atrasada${prog.atrasadas>1?'s':''}</span>`
+      : '';
+    const conclChip = _cc
+      ? `<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:${_cc.cor};background:var(--bg2);padding:4px 10px;border-radius:99px"><i class="ti ${_cc.icon}" style="font-size:13px"></i>${_cc.label}: ${formatDate(_an.baseFimUsada)}</span>`
+      : '';
+    resumoHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:var(--text)">Progresso</span>
+        <span style="font-size:13px;font-weight:800;color:${p.cor}">${prog.pct}% <span style="font-size:11px;font-weight:600;color:var(--text3)">· ${prog.feitas}/${prog.total} tarefas</span></span>
+      </div>
+      <div style="height:8px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:${p.cor};width:${prog.pct}%;transition:width .3s"></div></div>
+      ${(conclChip||atrasadasChip)?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${conclChip}${atrasadasChip}</div>`:''}
+    </div>`;
+  }
+
+  // ── Fases do projeto — lista leve (linhas), reutilizada nos dois estados.
+  let fasesHTML='';
+  if(temFase){
+    const linhas=(p.fases||[]).map(f=>{
+      const fp = _calcularProgressoFase(f);
+      const corFase = fp.pct===100 ? 'var(--success)' : fp.pct>0 ? p.cor : 'var(--text3)';
+      let prazoHTML='';
+      if(f.prazoFase){
+        const dr = Math.round((new Date(f.prazoFase+'T00:00:00') - new Date(today+'T00:00:00')) / 86400000);
+        let dCor='var(--text3)', dIcon='ti-calendar-due';
+        const dText = dr < 0 ? `${Math.abs(dr)}d atrasada` : dr === 0 ? 'Vence hoje' : `${dr}d`;
+        if(dr < 0 || dr === 0){ dCor='var(--danger)'; dIcon='ti-alarm'; }
+        else if(dr <= 3){ dCor='var(--amber)'; dIcon='ti-clock-exclamation'; }
+        prazoHTML=`<span style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;color:${dCor};white-space:nowrap"><i class="ti ${dIcon}" style="font-size:11px"></i>${dText}</span>`;
+      }
+      return `<div onclick="abrirFaseEspecifica('${f.id}')" style="display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-left:3px solid ${corFase};border-radius:0 10px 10px 0;padding:11px 14px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='var(--card)'">
+        <span style="font-size:13px;font-weight:700;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(f.nome)}</span>
+        ${prazoHTML}
+        <span style="font-size:11px;color:var(--text3);white-space:nowrap">${fp.feitas}/${fp.total} tarefas</span>
+        <div style="width:90px;height:5px;background:var(--bg2);border-radius:99px;overflow:hidden;flex-shrink:0"><div style="height:100%;background:${corFase};width:${fp.pct}%"></div></div>
+        <span style="font-size:11px;font-weight:700;color:${corFase};width:32px;text-align:right">${fp.pct}%</span>
+      </div>`;
+    }).join('');
+    fasesHTML=`<div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="ti ti-layout-rows" style="font-size:14px"></i> Fases do projeto</div>
+      <div style="display:flex;flex-direction:column;gap:7px">${linhas}</div>
+    </div>`;
+  }
+
+  // ── Linha de stats discreta (substitui as caixas de números).
+  const _atr = prog.atrasadas>0 ? `${prog.atrasadas} atrasada${prog.atrasadas>1?'s':''}` : 'nenhuma atrasada';
+  const statsHTML=`<div style="font-size:11.5px;color:var(--text3);border-top:1px solid var(--border);padding-top:12px">${nFases} fase${nFases!==1?'s':''} · ${prog.total} tarefa${prog.total!==1?'s':''} · ${nPessoas} pessoa${nPessoas!==1?'s':''} · ${_atr}</div>`;
+
+  return focoHTML + resumoHTML + fasesHTML + statsHTML;
 }
 
 // ─── ABA: FASES (gerenciar) ──────────────────────────────────────
