@@ -25590,6 +25590,8 @@ function renderProjectProView(id){
   const _tt=document.getElementById('tab-title'); if(_tt){ _tt.style.display=''; _tt.innerHTML=breadcrumbHTML; }
   const _ts=document.getElementById('tab-sub'); if(_ts) _ts.style.display='none';
   const _ppa=document.getElementById('pp-header-actions'); if(_ppa) _ppa.style.display='none';
+  // Visão geral: largura personalizada das colunas + separador arrastável
+  if(activeProjectProTab==='visao'){ if(typeof _loadPpColW==='function') _loadPpColW(); if(typeof _initPpColResizer==='function') _initPpColResizer(); }
 }
 
 function setProjectProTab(tab){
@@ -25602,6 +25604,36 @@ let activeAnaliseView = 'geral';
 function setAnaliseView(v){
   activeAnaliseView = v;
   render();
+}
+
+// ── Regulador de largura das 2 colunas da Visão geral (separador arrastável) ──
+const LS_PP_COL1_W='taskflow_pp_col1_w';
+const PP_COL1_MIN=200, PP_COL1_MAX=620, PP_COL1_DEFAULT=300;
+function _applyPpColW(px){
+  const w=Math.round(Math.min(PP_COL1_MAX,Math.max(PP_COL1_MIN,px||PP_COL1_DEFAULT)));
+  document.documentElement.style.setProperty('--pp-col1-w', w+'px');
+  return w;
+}
+function _loadPpColW(){
+  let w=PP_COL1_DEFAULT;
+  try{ const s=safeLSGet(LS_PP_COL1_W); if(s){ const n=parseInt(s,10); if(!isNaN(n)) w=n; } }catch(e){}
+  _applyPpColW(w);
+}
+function _initPpColResizer(){
+  const rez=document.getElementById('pp-col-resizer'); if(!rez || rez._wired) return;
+  const col1=rez.previousElementSibling; if(!col1) return;
+  rez._wired=true;
+  let startX=0, startW=0, dragging=false;
+  const onMove=(e)=>{ if(!dragging) return; const x=(e.touches?e.touches[0].clientX:e.clientX); _applyPpColW(startW+(x-startX)); e.preventDefault(); };
+  const onUp=()=>{ if(!dragging) return; dragging=false; rez.classList.remove('dragging'); document.body.classList.remove('pp-col-resizing');
+    document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); document.removeEventListener('touchmove',onMove); document.removeEventListener('touchend',onUp);
+    const cur=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--pp-col1-w'),10)||PP_COL1_DEFAULT;
+    try{ safeSetItem(LS_PP_COL1_W,String(cur)); }catch(e){} };
+  const onDown=(e)=>{ dragging=true; startX=(e.touches?e.touches[0].clientX:e.clientX); startW=col1.getBoundingClientRect().width; rez.classList.add('dragging'); document.body.classList.add('pp-col-resizing');
+    document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',onUp); document.addEventListener('touchmove',onMove,{passive:false}); document.addEventListener('touchend',onUp); e.preventDefault(); };
+  rez.addEventListener('mousedown',onDown); rez.addEventListener('touchstart',onDown,{passive:false});
+  rez.addEventListener('dblclick',()=>{ _applyPpColW(PP_COL1_DEFAULT); try{ safeSetItem(LS_PP_COL1_W,String(PP_COL1_DEFAULT)); }catch(e){} });
+  rez.addEventListener('keydown',(e)=>{ if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight') return; const cur=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--pp-col1-w'),10)||PP_COL1_DEFAULT; const w=_applyPpColW(cur+(e.key==='ArrowRight'?16:-16)); try{ safeSetItem(LS_PP_COL1_W,String(w)); }catch(err){} e.preventDefault(); });
 }
 
 // ─── ABA: VISÃO GERAL ────────────────────────────────────────────
@@ -25653,7 +25685,7 @@ function renderProjectProVisao(p, prog){
     <div style="flex:1;min-width:0"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600">${label}</div></div>
     <div style="font-size:19px;font-weight:800;color:${cor}">${valor}</div>
   </div>`;
-  const col1 = `<div style="display:flex;flex-direction:column;gap:12px">
+  const col1 = `<div class="pp-col1" style="flex:0 0 var(--pp-col1-w,300px);min-width:0;display:flex;flex-direction:column;gap:12px">
     ${infoCard}
     ${statCard('ti-checklist','Tarefas',`${prog.feitas}/${prog.total}`,'var(--blue-mid)')}
     ${statCard('ti-alert-triangle','Atrasadas',prog.atrasadas,prog.atrasadas>0?'var(--danger)':'var(--text3)')}
@@ -25707,10 +25739,18 @@ function renderProjectProVisao(p, prog){
       <button onclick="setProjectProTab('fases')" style="margin-top:6px;background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer"><i class="ti ti-plus"></i> Adicionar fase</button>
     </div>`;
   }
-  const col2 = `<div style="display:flex;flex-direction:column;gap:16px">${progressoCard}${fasesBloco}</div>`;
+  const col2 = `<div class="pp-col2" style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:16px">${progressoCard}${fasesBloco}</div>`;
 
-  return `<style>@media(max-width:720px){.pp-visao-2col{grid-template-columns:1fr!important}}</style>
-    <div class="pp-visao-2col" style="display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:22px;padding-bottom:10px">${col1}${col2}</div>`;
+  return `<style>
+    .pp-visao-2col{display:flex;align-items:stretch;padding-bottom:10px}
+    body.pp-col-resizing .pp-col1{transition:none}
+    .pp-col-resizer{flex:0 0 22px;align-self:stretch;cursor:col-resize;position:relative;touch-action:none;min-height:60px}
+    .pp-col-resizer::before{content:"";position:absolute;top:2px;bottom:2px;left:50%;transform:translateX(-50%);width:3px;border-radius:99px;background:var(--border);opacity:0;transition:opacity .15s}
+    .pp-col-resizer:hover::before,.pp-col-resizer.dragging::before{opacity:1;background:var(--blue-mid)}
+    body.pp-col-resizing{cursor:col-resize;user-select:none}
+    @media(max-width:720px){.pp-visao-2col{flex-direction:column}.pp-col1{flex:0 0 auto!important;width:auto}.pp-col-resizer{display:none}}
+  </style>
+    <div class="pp-visao-2col">${col1}<div class="pp-col-resizer" id="pp-col-resizer" title="Arraste para ajustar as colunas (duplo-clique reseta)" role="separator" aria-orientation="vertical" aria-label="Ajustar largura das colunas" tabindex="0"></div>${col2}</div>`;
 }
 
 // ─── ABA: FASES (gerenciar) ──────────────────────────────────────
