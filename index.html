@@ -12849,7 +12849,7 @@ function abrirModalAjustarTempo(){
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px">
           <div>
             <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Início</label>
-            <input id="aj-inicio" type="time" value="${_fmtT(haUmaHora)}" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);box-sizing:border-box" />
+            <input id="aj-inicio" type="time" value="${_fmtT(haUmaHora)}" onchange="_horaAutoFim(this,'aj-fim',60)" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);box-sizing:border-box" />
           </div>
           <div>
             <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Fim</label>
@@ -18670,7 +18670,9 @@ function calDragStart(e,compId){
   const clientY=e.touches?e.touches[0].clientY:e.clientY;
   const clientX=e.touches?e.touches[0].clientX:e.clientX;
   const offsetY=clientY-slotRect.top; // onde no slot o user clicou
-  const durMin=(horaToMin(comp.horaFim)||0)-(horaToMin(comp.horaInicio)||0);
+  // Duração preservada no drag: se não houver Fim válido (>Início), usa 30min (mesmo default do render) — evita duração negativa.
+  const _sMin=horaToMin(comp.horaInicio), _fMin=horaToMin(comp.horaFim);
+  const durMin=(_sMin!=null && _fMin!=null && _fMin>_sMin)?(_fMin-_sMin):30;
 
   // Ghost visual
   const ghost=document.createElement('div');
@@ -18911,12 +18913,11 @@ function duplicarCompromissoNaLista(id){
 function excluirCompromissoNaLista(id){
   const item=compromissos.find(x=>x.id===id);
   if(!item) return;
-  if(!confirm('Excluir este compromisso?')) return;
   moveToTrash('compromisso',{...item});
   deleteCompromisso_db(id);
   if(currentTab==='agenda') renderAgenda();
   renderListaCompromissos();
-  toast('🗑️ Compromisso excluído');
+  _mostrarFABDesfazer('Compromisso excluído', 0);
 }
 function excluirCompromisso(id){
   const item=compromissos.find(x=>x.id===id);
@@ -19027,7 +19028,7 @@ function renderNovoCompromisso(container, subNav){
           </div>
           <div>
             <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-clock-play"></i> Início</div>
-            <div>${drumFieldHTML('comp-inicio','Hora de início',c?(c.horaInicio||''):(window._preCompHora||''),{propagateToId:'comp-fim'})}</div>
+            <div>${drumFieldHTML('comp-inicio','Hora de início',c?(c.horaInicio||''):(window._preCompHora||''),{propagateToId:'comp-fim',addMin:30})}</div>
           </div>
           <div>
             <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-clock-stop"></i> Fim</div>
@@ -19221,6 +19222,9 @@ function salvarCompromisso(){
   if(!data){toast('⚠️ Escolhe uma data');return;}
   let _catVal=document.getElementById('comp-cat-val')?.value||'outro';
   if(_catVal==='__novo__') _catVal=document.getElementById('comp-cat-val')?.dataset.prev||'outro';
+  const _cIni=document.getElementById('comp-inicio')?.value||'';
+  const _cFim=document.getElementById('comp-fim')?.value||'';
+  if(_cIni && _cFim && horaToMin(_cFim)<=horaToMin(_cIni)){ toast('⚠️ O horário de término deve ser depois do início'); return; }
   const obj={
     id:editingCompromissoId||(Date.now()+''),
     titulo,
@@ -22420,14 +22424,16 @@ function drumConfirm(){
   if(inp)inp.value=v;
   const trig=document.getElementById(_drumTargetId+'-trigger');
   if(trig){const s=trig.querySelector('.drum-val');if(s)s.textContent=v;}
-  // Propaga p/ o campo-alvo se ele estiver vazio (ex.: escolher Início já preenche o Fim; depois o usuário ajusta)
+  // Propaga p/ o Fim: se vazio OU antes do Início, recebe Início + duração padrão (bloco real, como num calendário)
   const prop=inp?.getAttribute('data-propagate');
   if(prop){
     const pinp=document.getElementById(prop);
-    if(pinp && !pinp.value){
-      pinp.value=v;
+    if(pinp && (!pinp.value || pinp.value<=v)){
+      const add=parseInt(inp.getAttribute('data-propagate-add')||'0',10)||0;
+      const pv=add>0?_horaAddMin(v,add):v;
+      pinp.value=pv;
       const ptrig=document.getElementById(prop+'-trigger');
-      if(ptrig){ const ps=ptrig.querySelector('.drum-val'); if(ps) ps.textContent=v; }
+      if(ptrig){ const ps=ptrig.querySelector('.drum-val'); if(ps) ps.textContent=pv; }
     }
   }
   drumClose();
@@ -22444,11 +22450,25 @@ function drumFieldHTML(inputId,label,val='',opts){
   const d=val||'--:--';
   // data-fallback: se este campo abrir vazio, o picker começa no valor deste outro campo (ex.: Fim começa no Início).
   // data-propagate: ao confirmar ESTE campo, se o campo-alvo estiver vazio, ele recebe o mesmo valor (ex.: escolher Início preenche o Fim).
-  const dataAttrs=(opts.fallbackId?` data-fallback="${opts.fallbackId}"`:'')+(opts.propagateToId?` data-propagate="${opts.propagateToId}"`:'');
+  // data-propagate-add: minutos de duração padrão somados ao Início ao preencher o Fim (ex.: 60 = bloco de 1h).
+  const dataAttrs=(opts.fallbackId?` data-fallback="${opts.fallbackId}"`:'')+(opts.propagateToId?` data-propagate="${opts.propagateToId}"`:'')+(opts.addMin?` data-propagate-add="${opts.addMin}"`:'');
   return `<button type="button" id="${inputId}-trigger" class="drum-trigger"
     onclick="openDrumPicker('${inputId}','${label}')" title="Selecionar hora">
     <i class="ti ti-clock drum-ico"></i><span class="drum-val">${d}</span>
   </button><input type="hidden" id="${inputId}" value="${val}"${dataAttrs}>`;
+}
+// Soma minutos a um "HH:MM" (clampa no mesmo dia: 00:00–23:59).
+function _horaAddMin(hhmm, add){
+  const m=String(hhmm||'').match(/^(\d{1,2}):(\d{2})$/); if(!m) return hhmm;
+  let tot=parseInt(m[1],10)*60+parseInt(m[2],10)+(parseInt(add,10)||0);
+  if(tot>23*60+59) tot=23*60+59; if(tot<0) tot=0;
+  return String(Math.floor(tot/60)).padStart(2,'0')+':'+String(tot%60).padStart(2,'0');
+}
+// Auto-preenche o Fim (input nativo) ao mudar o Início: se o Fim está vazio OU antes do Início, vira Início(+duração).
+function _horaAutoFim(startEl, endId, add){
+  const s=startEl&&startEl.value; if(!s) return;
+  const e=document.getElementById(endId); if(!e) return;
+  if(!e.value || e.value<=s){ e.value=(add>0)?_horaAddMin(s,add):s; }
 }
 
 /* ── BUSCA GLOBAL ──────────────────────────────────────────────
@@ -28514,7 +28534,9 @@ function renderReunioes(){
   // Pega a primeira de "em andamento" ou "hoje" ou "amanhã" ou "esta semana" ou "próxima semana"
   let _proxReuniao = null;
   for(const k of ['emAndamento','hoje','amanha','semana','proxSemana']){
-    if(grupos[k].reunioes.length){ _proxReuniao = grupos[k].reunioes[0]; break; }
+    // Só reuniões (rápidas/completas) podem ser o destaque "Próxima reunião" — compromissos abrem outro editor.
+    const _cand = grupos[k].reunioes.find(r=>!r._compromisso);
+    if(_cand){ _proxReuniao = _cand; break; }
   }
   let proxReuniaoHTML = '';
   if(_proxReuniao){
@@ -29307,7 +29329,7 @@ function openReuniaoRapidaModal(idEditar){
           </div>
           <div>
             <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-clock-play"></i> Início <span style="font-size:10px;color:var(--text3);font-weight:400">(opcional)</span></div>
-            ${drumFieldHTML('rr-inicio','Início',rr?(rr.horaInicio||''):'',{propagateToId:'rr-fim'})}
+            ${drumFieldHTML('rr-inicio','Início',rr?(rr.horaInicio||''):'',{propagateToId:'rr-fim',addMin:60})}
           </div>
           <div>
             <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-clock-stop"></i> Fim <span style="font-size:10px;color:var(--text3);font-weight:400">(opcional)</span></div>
@@ -29577,7 +29599,7 @@ function renderNovaReuniaoForm(container, subNav){
               </div>
               <div>
                 <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-clock-play"></i> Início <span style="color:var(--danger);font-weight:700">*</span></div>
-                ${drumFieldHTML('reun-hora-inicio','Início',m?(m.horaInicio||''):'',{propagateToId:'reun-hora-fim'})}
+                ${drumFieldHTML('reun-hora-inicio','Início',m?(m.horaInicio||''):'',{propagateToId:'reun-hora-fim',addMin:60})}
               </div>
               <div>
                 <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-clock-stop"></i> Fim <span style="color:var(--danger);font-weight:700">*</span></div>
@@ -29776,6 +29798,7 @@ function saveReuniao(){
   if(!_rIni){ try{toast('⚠️ Defina a hora de início');}catch{} return; }
   const _rFim=document.getElementById('reun-hora-fim')?.value||'';
   if(!_rFim){ try{toast('⚠️ Defina a hora de fim');}catch{} return; }
+  if(horaToMin(_rFim)<=horaToMin(_rIni)){ try{toast('⚠️ A hora de fim deve ser depois do início');}catch{} return; }
   const _rCond=document.getElementById('reun-facilitador')?.value||'';
   if(!_rCond){ try{toast('⚠️ Escolha quem conduz');document.getElementById('reun-facilitador')?.focus();}catch{} return; }
   const _rPauta=document.getElementById('reun-pauta-principal')?.value.trim()||'';
@@ -29819,7 +29842,8 @@ function saveReuniao(){
     facilitador:document.getElementById('reun-facilitador')?.value||'',
     frequencia:document.getElementById('reun-freq')?.value||'unica',
     pautaPrincipal:document.getElementById('reun-pauta-principal')?.value.trim()||'',
-    participantes:[...(window._reunSelParts||[])],
+    // Quem conduz entra automaticamente como participante (senão fica fora da presença/agenda da própria reunião).
+    participantes:(function(){ const p=[...(window._reunSelParts||[])]; const f=document.getElementById('reun-facilitador')?.value||''; if(f && p.indexOf(f)<0) p.push(f); return p; })(),
     projetos:[...(window._reunSelProjs||[])],
     createdAt:today,
     // Pauta: usa o que foi digitado no form (window._reunPauta).
@@ -29842,6 +29866,7 @@ function saveReuniao(){
     continuacaoDe:editingReuniaoId?(meetings.find(x=>x.id===editingReuniaoId)?.continuacaoDe||null):null,
     pautaPrincipalDone:editingReuniaoId?(meetings.find(x=>x.id===editingReuniaoId)?.pautaPrincipalDone||false):false,
   };
+  let _novaReunId=null;
   if(editingReuniaoId){
     const m=meetings.find(x=>x.id===editingReuniaoId);
     if(m) Object.assign(m,obj);
@@ -29850,6 +29875,7 @@ function saveReuniao(){
     const m={id:'reun'+Date.now(),...obj,nivel:'completa',tarefas:[]};
     meetings.push(m);
     saveMeeting_db(m);
+    _novaReunId=m.id;
   }
   const eraEdicao=!!editingReuniaoId;
   const _savedReunId=editingReuniaoId;
@@ -29857,8 +29883,10 @@ function saveReuniao(){
   window._reunSelParts=[];window._reunSelProjs=[];window._reunPauta=[];
   reuniaoTab='reunioes';
   fecharReuniaoModal();
-  if(eraEdicao && _savedReunId && meetings.find(x=>x.id===_savedReunId)){
-    openReuniaoView(_savedReunId);
+  // Criar-e-abrir: ao criar, cai direto no painel da nova reunião (fluxo contínuo criar → pauta/tarefas), como no FAB e em "novo equipamento".
+  const _abrirId = eraEdicao ? _savedReunId : _novaReunId;
+  if(_abrirId && meetings.some(x=>x.id===_abrirId)){
+    openReuniaoView(_abrirId);
   } else {
     renderReunioes();
   }
@@ -30740,7 +30768,7 @@ function abrirProximaReuniaoModal(id){
       <h3 style="margin:0 0 14px;font-size:15px;color:var(--text);display:flex;align-items:center;gap:7px"><i class="ti ti-calendar-plus" style="color:var(--blue-mid)"></i> Próxima reunião</h3>
       <input type="date" id="prox-date-${id}" value="${dataSug}" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg2);color:var(--text);box-sizing:border-box;margin-bottom:10px">
       <div style="display:flex;gap:10px;margin-bottom:4px">
-        <input type="time" id="prox-ini-${id}" value="${m.horaInicio||''}" style="flex:1;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg2);color:var(--text);box-sizing:border-box">
+        <input type="time" id="prox-ini-${id}" value="${m.horaInicio||''}" onchange="_horaAutoFim(this,'prox-fim-${id}',60)" style="flex:1;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg2);color:var(--text);box-sizing:border-box">
         <input type="time" id="prox-fim-${id}" value="${m.horaFim||''}" style="flex:1;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg2);color:var(--text);box-sizing:border-box">
       </div>
     </div>
@@ -31514,10 +31542,16 @@ function delTarefaReuniao(taskId){
   tasks=tasks.filter(x=>x.id!==taskId);
   deleteTask_db(taskId);
   renderSidebar();updateStats();
-  // Re-render só o bloco de tarefas da reunião
-  const m=meetings.find(x=>x.id===meetingId);
-  const wrap=document.getElementById('tarefas-view-'+meetingId);
-  if(wrap&&m) wrap.innerHTML=reunTarefasHTML(m);
+  // Re-render pelo painel ABERTO: a tarefa pode pertencer a uma reunião ANCESTRAL (cadeia de continuação),
+  // cujo container 'tarefas-view-<id>' não está no DOM. Reabrir o painel ativo atualiza o card de Tarefas E o placar do topo.
+  const _mid=window._activeReuniaoId;
+  if(_mid && meetings.some(x=>x.id===_mid)){
+    openReuniaoView(_mid);
+  } else {
+    const m=meetings.find(x=>x.id===meetingId);
+    const wrap=document.getElementById('tarefas-view-'+meetingId);
+    if(wrap&&m) wrap.innerHTML=reunTarefasHTML(m);
+  }
   toast('🗑️ Tarefa movida para a lixeira');
 }
 

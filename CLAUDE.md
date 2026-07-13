@@ -89,6 +89,38 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-13 — PC da Produção — HORÁRIO (duração padrão + pares nativos) + VARREDURA nova (11 bugs) + fixes Agenda/Reuniões
+- **Contexto/sandbox:** a sessão anterior rodou numa cópia dessincronizada; o repo real já estava em `462cdc0` (com o fix horário
+  `a2020cd`, a varredura de 42 achados, unificação de reuniões, FAB modal completo etc.). Esta sessão trabalha sobre o `462cdc0` real.
+- **HORÁRIO — feature turbinada (pedido do Diego "em todo o HUB, Fim segue o Início"):** o drum já fazia Fim=Início quando vazio
+  (commit `a2020cd`, **verifiquei no navegador que funciona**). Agreguei: (1) **duração padrão** — ao escolher o Início, o Fim vira
+  **Início+60min** (reunião/rápida) ou **+30min** (compromisso) em vez de 0min, via novo `opts.addMin`→`data-propagate-add` em
+  `drumFieldHTML` + `_horaAddMin` (clampa 23:59); (2) o Fim agora segue também quando está **antes** do Início (não só vazio), sem
+  sobrescrever um Fim válido posterior; (3) os **2 pares NATIVOS** que faltavam ganharam auto-fill via `_horaAutoFim(this,endId,add)`:
+  "Agendar próxima reunião" (`prox-ini/fim`, +60) e "Registro de horas" (`aj-inicio/fim`, +60). Verificado no navegador (duração,
+  override, preserva Fim válido, clamp, nativo). ⚠️ Se o Diego preferir Fim=Início EXATO (0min), é só zerar os `addMin`.
+- **VARREDURA NOVA (workflow 20 agentes, ~1.9M tokens):** 11 bugs confirmados (verificação adversarial), 27 melhorias, 5 pares de horário.
+- **FIXES aplicados AGORA (Agenda/Reuniões — autorizado pelo Diego; commit desta entrada), todos verificados no navegador:**
+  1. **Card "Próxima reunião" pegava COMPROMISSO** (renderReunioes ~28532) → clique morto/dados vazios. Agora `_proxReuniao` usa
+     `grupos[k].reunioes.find(r=>!r._compromisso)`.
+  2. **Excluir tarefa "Da reunião anterior" não sumia do painel** (`delTarefaReuniao` ~31527): re-render mirava `tarefas-view-<meetingId>`
+     do ancestral (fora do DOM). Agora reabre pelo `window._activeReuniaoId` (atualiza card Tarefas + placar).
+  3. **Arrastar compromisso sem Fim → duração negativa** (`calDragStart` ~18673): `durMin` agora cai p/ 30min quando não há Fim>Início.
+  4. **`salvarCompromisso` sem validação Fim≥Início** → bloqueia com toast. Mesma validação em **`saveReuniao`**.
+  - Melhorias (Reuniões): **facilitador entra como participante** automaticamente; **criar reunião abre o painel** (criar-e-abrir);
+    **excluir compromisso na lista** deixou de usar `confirm()` → Lixeira + FAB Desfazer (padrão do HUB).
+- **BUGS confirmados NÃO tocados (fora de Agenda/Reuniões — precisam do seu OK):**
+  - 🔴 **Auto-push cego sobrescreve a nuvem sem comparar `updated_at`** (`_cloudPushKey` ~4419) — perda de dados entre aparelhos (já é o
+    crítico antigo). E `_cloudPullAll` backup/aplicação em catch vazio retorna ok:true; `safeSetItem` quota-fail = perda silenciosa;
+    `importarDadosJSON` (safeLSClear) desloga do Supabase e chaves importadas não sobem.
+  - **Tarefas:** arrastar p/ Concluído (`dropCard` done_col ~17327) **não grava `doneAt`** → quebra aba Confirmações + KPIs; `getSemana`/
+    `getProxSemana` (~5674) sem o guard `(!projectProId||executor)` → seed de projeto vaza p/ Semana/Próxima.
+  - **Secundárias:** restaurar projeto excluído devolve projeto **vazio** (tarefas viram órfãs).
+  - Melhorias latentes: `toast()` e `_notifItemHTML`/corpo de Nota usam innerHTML sem escape (XSS latente cross-user no backend);
+    grade da Agenda esconde eventos fora de 05–23h; layout de colunas estreita eventos sem conflito; PCP/ranking sem debounce.
+- ⚠️ **Diego conferir no Pages** (Ctrl+Shift+R): criar reunião/compromisso → escolher Início 15:00 → Fim vira 16:00/15:30; "Agendar
+  próxima" e "Registro de horas" idem; excluir tarefa "Da reunião anterior" some na hora; criar reunião cai no painel.
+
 ### 2026-07-10 (7) — PC da Empresa — REUNIÕES: fix horário + varredura do painel + ATA turbinada (PLAUD/Compor/Extrair)
 - **Pedido do Diego:** (a) no seletor de horário, o **Fim** deveria seguir o **Início** (abria sempre em 08:00); (b) comparar o painel
   de reuniões com Fellow & cia. e **variar bugs/melhorias dentro do painel**; depois "faça na ordem que achar melhor".
