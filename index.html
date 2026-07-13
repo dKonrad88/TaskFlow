@@ -2468,9 +2468,7 @@
         <div class="dd-stack" id="view-toggle-stack" style="display: none;">
           <span class="dd-label">VISUALIZAR</span>
           <div class="view-toggle" id="view-toggle" aria-label="Modo de visualização">
-            <button class="view-btn" id="view-list" onclick="setAllView('list')" title="Lista"><i class="ti ti-list"></i> Lista</button>
-            <button class="view-btn" id="view-cards" onclick="setAllView('cards')" title="Cartões"><i class="ti ti-layout-grid"></i> Cartões</button>
-            <button class="view-btn active" id="view-painel" onclick="setAllView('painel')" title="Painel"><i class="ti ti-layout-columns"></i> Painel</button>
+            <button class="view-btn active" id="view-list" onclick="setAllView('list')" title="Lista"><i class="ti ti-list"></i> Lista</button>
           </div>
         </div>
         <div class="dd-stack" id="minhas-config-stack" style="display: none;">
@@ -9970,7 +9968,7 @@ function selectSidebarPerson(id){
   renderSidebar();
   render();
 }
-let allView=safeLSGet(LS_ALLVIEW)||'list';
+let allView='list'; // FIXO: só Lista em todas as telas (Painel/Cartões removidos a pedido do Diego)
 
 const STORE_FIELDS_NAV='taskflow_field_prefs_nav';
 const STORE_FIELDS_SB='taskflow_field_prefs_sidebar';
@@ -15070,7 +15068,7 @@ function updateViewToggle(){
   const _hidePrio = isHojeMain && (typeof hojeView==='undefined' || hojeView!=='lista');
   box.classList.toggle('show',show && !_hidePrio);
   const vstack=document.getElementById('view-toggle-stack');
-  if(vstack) vstack.style.display=(show && !_hidePrio)?'':'none';
+  if(vstack) vstack.style.display='none'; // toggle Lista/Painel/Cartões removido — sempre Lista
   // V3: fields-toggle / task-sort-sel / task-group-sel agora são geridos pelo
   // bloco do menu de 3 pontos (mais abaixo) — NÃO os mexemos aqui pra evitar
   // que "voltem" pra barra quando deveriam estar dentro do ⋮.
@@ -15218,8 +15216,8 @@ function ddSyncTrigger(kind){
 }
 
 function setAllView(view){
-  allView=view;
-  safeSetItem(LS_ALLVIEW,view);
+  allView='list'; // fixo: Painel/Cartões removidos — sempre Lista
+  safeSetItem(LS_ALLVIEW,'list');
   updateViewToggle();
   render();
 }
@@ -24279,9 +24277,9 @@ function _selecionarStatusProjeto(projectId, novo){
 
 // ─── LISTA DE PROJETOS PRO (tela principal) ──────────────────────
 // ── Lista de projetos: visualização (cartões/lista) + agrupamento. Estado persiste. ──
-let _ppView = (function(){ try{ return safeLSGet('taskflow_pp_view')||'cartoes'; }catch{ return 'cartoes'; } })();   // 'cartoes' | 'lista'
+let _ppView = 'lista';   // FIXO: Projetos só em Lista (Cartões removido)
 let _ppGroup = (function(){ try{ return safeLSGet('taskflow_pp_group')||'tipo'; }catch{ return 'tipo'; } })();        // tipo|status|prioridade|dono|prazo|nenhum
-function setPpView(v){ _ppView=v; safeSetItem('taskflow_pp_view',v); render(); }
+function setPpView(v){ _ppView='lista'; render(); } // fixo em Lista
 function setPpGroup(g){ _ppGroup=g; safeSetItem('taskflow_pp_group',g); render(); }
 let _ppSort = (function(){ try{ return safeLSGet('taskflow_pp_sort')||'prioridade'; }catch{ return 'prioridade'; } })();  // prioridade|prazo|progresso|recentes
 let _ppQuery = '';                                  // busca textual (efêmera)
@@ -24474,7 +24472,7 @@ function renderProjetosPro(){
   }
 
   // Barra: agrupamento + alternador de visualização (cartões/lista). Estado persiste.
-  if(_ppView!=='lista' && _ppView!=='cartoes') _ppView='cartoes';
+  _ppView='lista'; // fixo em Lista (Cartões removido)
   const _grpDefs=[['tipo','Tipo'],['status','Status'],['prioridade','Prioridade'],['dono','Dono'],['prazo','Prazo'],['nenhum','Sem agrupar']];
   if(!_grpDefs.some(g=>g[0]===_ppGroup)) _ppGroup='tipo';
   const _sortDefs=[['prioridade','Prioridade'],['prazo','Prazo'],['progresso','Progresso'],['recentes','Recentes']];
@@ -24486,9 +24484,6 @@ function renderProjetosPro(){
         <div style="position:relative;flex:1;min-width:200px;max-width:400px">
           <i class="ti ti-search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:15px"></i>
           <input id="pp-busca" value="${escapeAttr(_ppQuery)}" oninput="_ppSetQuery(this.value)" placeholder="Buscar projeto…" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:9px 11px 9px 34px;font-size:13px;color:var(--text);font-family:inherit">
-        </div>
-        <div style="display:inline-flex;gap:3px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:3px;margin-left:auto">
-          ${[['cartoes','ti-layout-grid','Cartões'],['lista','ti-list','Lista']].map(([v,ic,lb])=>{const at=_ppView===v;return `<button onclick="setPpView('${v}')" title="${lb}" style="display:inline-flex;align-items:center;gap:5px;border:none;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;background:${at?'var(--card)':'transparent'};color:${at?'var(--blue-mid)':'var(--text3)'};box-shadow:${at?'0 1px 2px rgba(0,0,0,.08)':'none'};transition:all .15s"><i class="ti ${ic}" style="font-size:14px"></i>${lb}</button>`;}).join('')}
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
