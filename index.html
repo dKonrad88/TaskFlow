@@ -25501,17 +25501,19 @@ function renderProjectProView(id){
     }
   }
 
+  // Breadcrumb — renderizado no TOPO (na topbar), não mais dentro do corpo.
+  const breadcrumbHTML = `<span style="display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:400">
+      <span onclick="voltarParaProjetosPro()" style="color:var(--blue-mid);cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:5px" title="Voltar aos projetos"><i class="ti ti-arrow-left"></i> Projetos</span>
+      <i class="ti ti-chevron-right" style="font-size:12px;color:var(--text3)"></i>
+      <span style="color:var(--text3);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:360px">${escapeHTML(p.nome)}</span>
+    </span>`;
+
   // Header do projeto — estilo clean (igual Painel de Reunião)
   const headerHTML = `
     ${encerramentoBanner}
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap">
       <div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:6px">
-        <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;align-self:flex-start;flex-wrap:wrap">
-          <span onclick="voltarParaProjetosPro()" style="color:var(--blue-mid);cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:5px" title="Voltar aos projetos"><i class="ti ti-arrow-left"></i> Projetos</span>
-          <i class="ti ti-chevron-right" style="font-size:12px;color:var(--text3)"></i>
-          <span style="color:var(--text3);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px">${escapeHTML(p.nome)}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:2px">
+        <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
           <i class="ti ${tipo.icon}" style="font-size:20px;color:${p.cor}"></i>
           <span style="font-size:21px;font-weight:800;color:var(--text)">${escapeHTML(p.nome)}</span>
           <span id="pp-status-badge" onclick="event.stopPropagation();abrirMenuStatusProjeto('${p.id}',event)" style="background:${status.color}22;color:${status.color};font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.3px;cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="Mudar status"><i class="ti ${status.icon}"></i> ${status.label} <i class="ti ti-chevron-down" style="font-size:11px;opacity:.7"></i></span>
@@ -25537,8 +25539,7 @@ function renderProjectProView(id){
         ${_linhaPessoas?`<div style="font-size:12px;color:var(--text3);display:flex;gap:14px;flex-wrap:wrap;justify-content:flex-end;text-align:right;max-width:420px">${_linhaPessoas}</div>`:''}
       </div>
     </div>
-    ${p.descricao?`<div style="font-size:12.5px;color:var(--text2);margin-top:10px;line-height:1.5;max-width:760px">${escapeHTML(p.descricao)}</div>`:''}
-    <div style="height:1px;background:var(--border);margin:16px 0 0"></div>`;
+    ${p.descricao?`<div style="font-size:12.5px;color:var(--text2);margin-top:10px;line-height:1.5;max-width:760px">${escapeHTML(p.descricao)}</div>`:''}`;
 
   // Sub-abas
   const subTabs = [
@@ -25549,9 +25550,9 @@ function renderProjectProView(id){
     {id:'anotacoes', label:'Comentários', icon:'ti-message-circle'},
   ];
   const tabsHTML = `
-    <div style="display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:18px;overflow-x:auto">
+    <div style="display:flex;gap:4px;margin:14px 0 18px;overflow-x:auto">
       ${subTabs.map(t=>`
-        <button onclick="setProjectProTab('${t.id}')" style="background:${activeProjectProTab===t.id?'var(--bg2)':'transparent'};border:none;border-bottom:2px solid ${activeProjectProTab===t.id?p.cor:'transparent'};color:${activeProjectProTab===t.id?'var(--text)':'var(--text3)'};padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s">
+        <button onclick="setProjectProTab('${t.id}')" style="background:transparent;border:none;border-bottom:2px solid ${activeProjectProTab===t.id?p.cor:'transparent'};color:${activeProjectProTab===t.id?'var(--text)':'var(--text3)'};padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s">
           <i class="ti ${t.icon}"></i> ${t.label}
         </button>`).join('')}
     </div>`;
@@ -25569,8 +25570,10 @@ function renderProjectProView(id){
   // Só o corpo varia: Tarefas usa planilha larga (1320px); demais abas mantêm 1040px.
   const _bodyMax = activeProjectProTab==='tarefas' ? 1320 : 1040;
   container.innerHTML = `<div style="max-width:1320px;margin:0 auto">${headerHTML + tabsHTML + `<div style="max-width:${_bodyMax}px;padding-bottom:60px">${bodyHTML}</div>`}</div>`;
-  // Dentro do projeto: esconde o título do topo (o título do projeto fica no corpo)
-  const _tt=document.getElementById('tab-title'); if(_tt) _tt.style.display='none';
+  // Dentro do projeto: a topbar mostra o BREADCRUMB (isolado no topo); o título do projeto
+  // fica no corpo. Só innerHTML (span auto-dimensionado) — não mexo no font-size do #tab-title
+  // pra não vazar pras outras telas (elas voltam a usar textContent = título grande).
+  const _tt=document.getElementById('tab-title'); if(_tt){ _tt.style.display=''; _tt.innerHTML=breadcrumbHTML; }
   const _ts=document.getElementById('tab-sub'); if(_ts) _ts.style.display='none';
   const _ppa=document.getElementById('pp-header-actions'); if(_ppa) _ppa.style.display='none';
 }
