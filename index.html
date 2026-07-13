@@ -25546,26 +25546,12 @@ function renderProjectProView(id){
           <span style="font-size:21px;font-weight:800;color:var(--text)">${escapeHTML(p.nome)}</span>
           <span id="pp-status-badge" onclick="event.stopPropagation();abrirMenuStatusProjeto('${p.id}',event)" style="background:${status.color}22;color:${status.color};font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.3px;cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="Mudar status"><i class="ti ${status.icon}"></i> ${status.label} <i class="ti ti-chevron-down" style="font-size:11px;opacity:.7"></i></span>
         </div>
-        <div style="font-size:12px;color:var(--text3);display:flex;gap:14px;flex-wrap:wrap">
-          <span><i class="ti ${tipo.icon}" style="font-size:12px"></i> ${tipo.label}</span>
-          ${p.prazoInicio?`<span><i class="ti ti-calendar-event" style="font-size:12px"></i> Início: ${formatDate(p.prazoInicio)}</span>`:''}
-          ${p.prazoFim?`<span><i class="ti ti-calendar-due" style="font-size:12px"></i> Prazo: ${formatDate(p.prazoFim)}</span>`:''}
-        </div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex-shrink:0">
-        <div style="display:flex;gap:6px;align-items:center">
-          ${ajudaIconHTML}
-          <button class="reun-ico" onclick="abrirModalEquipe('${p.id}')" title="Participantes"><i class="ti ti-users"></i></button>
-          <button class="reun-ico" onclick="salvarProjetoComoTemplate('${p.id}')" title="Salvar como template"><i class="ti ti-template"></i></button>
-          <button class="reun-ico" onclick="editarProjectPro('${p.id}')" title="Editar projeto"><i class="ti ti-pencil"></i></button>
-        </div>
-        <div style="display:flex;align-items:center;gap:9px;width:240px">
-          <span style="font-size:17px;font-weight:800;color:${p.cor};line-height:1;white-space:nowrap">${prog.pct}%</span>
-          <div style="flex:1;height:7px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:linear-gradient(90deg,${p.cor},${p.cor}cc);width:${prog.pct}%;transition:width .4s cubic-bezier(.4,0,.2,1)"></div></div>
-          <span style="font-size:11px;color:var(--text3);white-space:nowrap">${prog.feitas}/${prog.total}</span>
-        </div>
-        ${prog.atrasadas>0?`<div style="font-size:11px;color:var(--danger);font-weight:700"><i class="ti ti-alert-triangle"></i> ${prog.atrasadas} atrasada${prog.atrasadas>1?'s':''}</div>`:''}
-        ${_linhaPessoas?`<div style="font-size:12px;color:var(--text3);display:flex;gap:14px;flex-wrap:wrap;justify-content:flex-end;text-align:right;max-width:420px">${_linhaPessoas}</div>`:''}
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+        ${ajudaIconHTML}
+        <button class="reun-ico" onclick="abrirModalEquipe('${p.id}')" title="Participantes"><i class="ti ti-users"></i></button>
+        <button class="reun-ico" onclick="salvarProjetoComoTemplate('${p.id}')" title="Salvar como template"><i class="ti ti-template"></i></button>
+        <button class="reun-ico" onclick="editarProjectPro('${p.id}')" title="Editar projeto"><i class="ti ti-pencil"></i></button>
       </div>
     </div>`;
 
@@ -25652,36 +25638,42 @@ function renderProjectProVisao(p, prog){
   const temFase=nFases>0;
   const temTarefa=prog.total>0;
 
-  // ── Cards pequenos: Tarefas + Atrasadas (compactos).
-  const miniCard=(icon,label,valor,cor)=>`<div style="display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 13px">
-    <i class="ti ${icon}" style="font-size:16px;color:${cor}"></i>
-    <div style="line-height:1.15"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600">${label}</div><div style="font-size:17px;font-weight:800;color:${cor}">${valor}</div></div>
+  const tipo = (typeof PP_TIPOS!=='undefined' && (PP_TIPOS[p.tipo]||PP_TIPOS.outro)) || {icon:'ti-folder',label:''};
+  const dono = p.dono ? people.find(x=>x.id===p.dono) : null;
+
+  // ── COLUNA 1: infos do projeto (tipo/início/prazo/dono) + indicadores empilhados ──
+  const infoCard = `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:9px">
+    <div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2)"><i class="ti ${tipo.icon}" style="font-size:15px;color:var(--text3)"></i>${escapeHTML(tipo.label||'Projeto')}</div>
+    ${p.prazoInicio?`<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2)"><i class="ti ti-calendar-event" style="font-size:15px;color:var(--text3)"></i>Início: ${formatDate(p.prazoInicio)}</div>`:''}
+    ${p.prazoFim?`<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2)"><i class="ti ti-calendar-due" style="font-size:15px;color:var(--text3)"></i>Prazo: ${formatDate(p.prazoFim)}</div>`:''}
+    ${dono?`<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2);border-top:1px solid var(--border);padding-top:9px"><i class="ti ti-crown" style="font-size:15px;color:var(--amber)"></i>${escapeHTML(dono.name)} <span style="color:var(--text3)">· Dono</span></div>`:''}
   </div>`;
-  const miniCardsHTML = miniCard('ti-checklist','Tarefas',`${prog.feitas}/${prog.total}`,'var(--blue-mid)')
-    + miniCard('ti-alert-triangle','Atrasadas',prog.atrasadas,prog.atrasadas>0?'var(--danger)':'var(--text3)');
+  const statCard=(icon,label,valor,cor)=>`<div style="display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 14px">
+    <i class="ti ${icon}" style="font-size:18px;color:${cor}"></i>
+    <div style="flex:1;min-width:0"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600">${label}</div></div>
+    <div style="font-size:19px;font-weight:800;color:${cor}">${valor}</div>
+  </div>`;
+  const col1 = `<div style="display:flex;flex-direction:column;gap:12px">
+    ${infoCard}
+    ${statCard('ti-checklist','Tarefas',`${prog.feitas}/${prog.total}`,'var(--blue-mid)')}
+    ${statCard('ti-alert-triangle','Atrasadas',prog.atrasadas,prog.atrasadas>0?'var(--danger)':'var(--text3)')}
+    ${statCard('ti-users','Pessoas',nPessoas,'var(--orange)')}
+  </div>`;
 
-  // ── Topo: cards pequenos (Tarefas/Atrasadas). O "Como começar" agora é ícone no header.
-  const topoHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">${miniCardsHTML}</div>`;
+  // ── COLUNA 2: progresso (% + barra) + fases do projeto ──
+  const conclLine = _conclCard
+    ? `<div style="display:flex;align-items:center;gap:6px;margin-top:11px;font-size:12px;font-weight:600;color:${_conclCard.cor}"><i class="ti ${_conclCard.icon}" style="font-size:14px"></i>${_conclCard.label}: ${formatDate(_an.baseFimUsada)}</div>`
+    : '';
+  const progressoCard = `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:700;color:var(--text)">Progresso do projeto</span>
+      <span style="font-size:15px;font-weight:800;color:${p.cor}">${prog.pct}% <span style="font-size:11px;font-weight:600;color:var(--text3)">· ${prog.feitas}/${prog.total}</span></span>
+    </div>
+    <div style="height:9px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:${p.cor};width:${prog.pct}%;transition:width .3s"></div></div>
+    ${conclLine}
+  </div>`;
 
-  // ── Resumo de progresso — só quando JÁ tem tarefas (barra fina + conclusão prevista).
-  let resumoHTML='';
-  if(temTarefa){
-    const _cc = _conclCard;
-    const conclChip = _cc
-      ? `<div style="display:flex;align-items:center;gap:6px;margin-top:12px;font-size:12px;font-weight:600;color:${_cc.cor}"><i class="ti ${_cc.icon}" style="font-size:14px"></i>${_cc.label}: ${formatDate(_an.baseFimUsada)}${_cc.cor==='var(--danger)'?'':''}</div>`
-      : '';
-    resumoHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:18px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px;flex-wrap:wrap">
-        <span style="font-size:13px;font-weight:700;color:var(--text)">Progresso</span>
-        <span style="font-size:13px;font-weight:800;color:${p.cor}">${prog.pct}% <span style="font-size:11px;font-weight:600;color:var(--text3)">· ${prog.feitas}/${prog.total} tarefas</span></span>
-      </div>
-      <div style="height:8px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:${p.cor};width:${prog.pct}%;transition:width .3s"></div></div>
-      ${conclChip}
-    </div>`;
-  }
-
-  // ── Fases do projeto — lista leve (linhas), reutilizada nos dois estados.
-  let fasesHTML='';
+  let fasesBloco='';
   if(temFase){
     const linhas=(p.fases||[]).map(f=>{
       const fp = _calcularProgressoFase(f);
@@ -25703,13 +25695,22 @@ function renderProjectProVisao(p, prog){
         <span style="font-size:11px;font-weight:700;color:${corFase};width:32px;text-align:right">${fp.pct}%</span>
       </div>`;
     }).join('');
-    fasesHTML=`<div style="margin-bottom:16px">
+    fasesBloco=`<div>
       <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="ti ti-layout-rows" style="font-size:14px"></i> Fases do projeto</div>
       <div style="display:flex;flex-direction:column;gap:7px">${linhas}</div>
     </div>`;
+  } else {
+    fasesBloco=`<div style="background:var(--card);border:1px dashed var(--border);border-radius:12px;padding:28px 20px;text-align:center">
+      <i class="ti ti-layout-rows" style="font-size:32px;color:var(--text3);opacity:.5"></i>
+      <p style="margin:8px 0 4px;font-size:13.5px;color:var(--text2);font-weight:600">Nenhuma fase ainda</p>
+      <p style="margin:0 0 6px;font-size:12px;color:var(--text3)">Organize o projeto em fases (ex.: Planejamento, Execução, Entrega).</p>
+      <button onclick="setProjectProTab('fases')" style="margin-top:6px;background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer"><i class="ti ti-plus"></i> Adicionar fase</button>
+    </div>`;
   }
+  const col2 = `<div style="display:flex;flex-direction:column;gap:16px">${progressoCard}${fasesBloco}</div>`;
 
-  return topoHTML + resumoHTML + fasesHTML;
+  return `<style>@media(max-width:720px){.pp-visao-2col{grid-template-columns:1fr!important}}</style>
+    <div class="pp-visao-2col" style="display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:22px;padding-bottom:10px">${col1}${col2}</div>`;
 }
 
 // ─── ABA: FASES (gerenciar) ──────────────────────────────────────
