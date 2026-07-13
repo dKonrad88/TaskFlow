@@ -25549,9 +25549,9 @@ function renderProjectProView(id){
     {id:'anotacoes', label:'Comentários', icon:'ti-message-circle'},
   ];
   const tabsHTML = `
-    <div style="display:flex;gap:4px;margin:14px 0 18px;border-bottom:1px solid var(--border);overflow-x:auto">
+    <div style="display:flex;gap:4px;margin:14px 0 18px;border-bottom:1px solid var(--border);overflow-x:auto;overflow-y:hidden">
       ${subTabs.map(t=>`
-        <button onclick="setProjectProTab('${t.id}')" style="background:transparent;border:none;border-bottom:2px solid ${activeProjectProTab===t.id?p.cor:'transparent'};margin-bottom:-1px;color:${activeProjectProTab===t.id?'var(--text)':'var(--text3)'};padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s">
+        <button onclick="setProjectProTab('${t.id}')" style="background:transparent;border:none;border-bottom:2px solid ${activeProjectProTab===t.id?p.cor:'transparent'};color:${activeProjectProTab===t.id?'var(--text)':'var(--text3)'};padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s">
           <i class="ti ${t.icon}"></i> ${t.label}
         </button>`).join('')}
     </div>`;
