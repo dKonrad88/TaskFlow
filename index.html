@@ -25624,39 +25624,55 @@ function renderProjectProVisao(p, prog){
   const temSetor=(p.fases||[]).some(f=>(f.grupos||[]).length>0);
   const temTarefa=prog.total>0;
 
-  // ── FOCO ("Comece aqui") — só enquanto o projeto ainda não tem tarefas.
-  // Mostra UM próximo passo, em vez de encher a tela de números zerados.
-  let focoHTML='';
+  // ── Ícone de ajuda "Como começar" (canto superior direito) — só enquanto o projeto
+  // ainda não tem tarefas. Clicar abre um painelzinho com o próximo passo. Substitui o
+  // bloco grande "Comece aqui" (fica discreto, mas continua à mão).
+  let ajudaHTML='';
   if(!temTarefa){
     const stepAtual = !temFase?1 : !temSetor?2 : 3;   // 1 Fases · 2 Setores · 3 Tarefas
     const subs={1:'Comece dividindo o projeto em fases — as grandes etapas, na ordem.',
                 2:'Você já tem as fases. Agora adicione os setores (as áreas responsáveis) em cada fase.',
                 3:'Fases e setores prontos. Agora crie as primeiras tarefas, com responsável e prazo.'};
     const btnLabel = stepAtual===1 ? 'Adicionar fases' : 'Continuar nas Fases';
-    const pills=['Fases','Setores','Tarefas'].map((lb,i)=>{
-      const n=i+1;
-      const estado = n<stepAtual?'ok' : n===stepAtual?'now':'todo';
-      if(estado==='ok') return `<span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--success);background:color-mix(in srgb,var(--success) 12%,transparent);padding:6px 12px;border-radius:99px"><i class="ti ti-circle-check" style="font-size:15px"></i>${lb}</span>`;
-      if(estado==='now') return `<span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:#fff;background:var(--blue-mid);padding:6px 12px;border-radius:99px"><span style="width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.25);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">${n}</span>${lb}</span>`;
-      return `<span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text3);background:var(--bg2);padding:6px 12px;border-radius:99px"><span style="width:16px;height:16px;border-radius:50%;background:var(--bg3);display:inline-flex;align-items:center;justify-content:center;font-size:10px">${n}</span>${lb}</span>`;
-    }).join('<i class="ti ti-chevron-right" style="font-size:14px;color:var(--text3)"></i>');
-    focoHTML=`<div style="background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--blue-mid);border-radius:0 12px 12px 0;padding:18px 20px;margin-bottom:18px">
-      <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:3px">Comece aqui</div>
-      <div style="font-size:12.5px;color:var(--text2);margin-bottom:16px;line-height:1.5">${subs[stepAtual]}</div>
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:16px;flex-wrap:wrap">${pills}</div>
-      <button onclick="setProjectProTab('fases')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:9px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-family:inherit">${btnLabel} <i class="ti ti-arrow-right" style="font-size:15px"></i></button>
+    const passos=['Fases','Setores','Tarefas'].map((lb,i)=>{
+      const n=i+1, estado = n<stepAtual?'ok' : n===stepAtual?'now':'todo';
+      const circ = estado==='ok'
+        ? `<span style="width:18px;height:18px;border-radius:50%;background:var(--success);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0"><i class="ti ti-check"></i></span>`
+        : `<span style="width:18px;height:18px;border-radius:50%;background:${estado==='now'?'var(--blue-mid)':'var(--bg2)'};color:${estado==='now'?'#fff':'var(--text3)'};display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${n}</span>`;
+      const cor = estado==='now'?'var(--text)':estado==='ok'?'var(--text2)':'var(--text3)';
+      return `<div style="display:flex;align-items:center;gap:9px"><span>${circ}</span><span style="font-size:12.5px;font-weight:${estado==='now'?'700':'600'};color:${cor}">${lb}</span>${estado==='now'?'<span style="font-size:10px;font-weight:700;color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 12%,transparent);padding:1px 7px;border-radius:99px;margin-left:auto">agora</span>':''}</div>`;
+    }).join('');
+    ajudaHTML=`<div style="position:relative;flex-shrink:0">
+      <button aria-expanded="false" aria-controls="pp-ajuda-panel" onclick="var e=document.getElementById('pp-ajuda-panel');var op=e.style.display!=='none';e.style.display=op?'none':'block';this.setAttribute('aria-expanded',(!op).toString())" title="Como começar este projeto" style="display:inline-flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:7px 12px;font-size:12px;font-weight:600;color:var(--blue-mid);cursor:pointer;font-family:inherit"><i class="ti ti-help-circle" style="font-size:16px"></i>Como começar</button>
+      <div id="pp-ajuda-panel" style="display:none;position:absolute;top:calc(100% + 6px);right:0;z-index:200;width:300px;max-width:82vw;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:15px 16px;text-align:left">
+        <div style="font-size:13.5px;font-weight:800;color:var(--text);margin-bottom:3px">Comece aqui</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:13px;line-height:1.5">${subs[stepAtual]}</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">${passos}</div>
+        <button onclick="setProjectProTab('fases')" style="width:100%;background:var(--blue-mid);color:#fff;border:none;border-radius:9px;padding:9px 16px;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-family:inherit">${btnLabel} <i class="ti ti-arrow-right" style="font-size:15px"></i></button>
+      </div>
     </div>`;
   }
+
+  // ── Cards pequenos: Tarefas + Atrasadas (compactos).
+  const miniCard=(icon,label,valor,cor)=>`<div style="display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 13px">
+    <i class="ti ${icon}" style="font-size:16px;color:${cor}"></i>
+    <div style="line-height:1.15"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600">${label}</div><div style="font-size:17px;font-weight:800;color:${cor}">${valor}</div></div>
+  </div>`;
+  const miniCardsHTML = miniCard('ti-checklist','Tarefas',`${prog.feitas}/${prog.total}`,'var(--blue-mid)')
+    + miniCard('ti-alert-triangle','Atrasadas',prog.atrasadas,prog.atrasadas>0?'var(--danger)':'var(--text3)');
+
+  // ── Topo: cards pequenos à esquerda, ícone de ajuda à direita.
+  const topoHTML=`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">${miniCardsHTML}</div>
+    ${ajudaHTML}
+  </div>`;
 
   // ── Resumo de progresso — só quando JÁ tem tarefas (barra fina + conclusão prevista).
   let resumoHTML='';
   if(temTarefa){
     const _cc = _conclCard;
-    const atrasadasChip = prog.atrasadas>0
-      ? `<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--danger);background:var(--danger-bg);padding:4px 10px;border-radius:99px"><i class="ti ti-alert-triangle" style="font-size:13px"></i>${prog.atrasadas} atrasada${prog.atrasadas>1?'s':''}</span>`
-      : '';
     const conclChip = _cc
-      ? `<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:${_cc.cor};background:var(--bg2);padding:4px 10px;border-radius:99px"><i class="ti ${_cc.icon}" style="font-size:13px"></i>${_cc.label}: ${formatDate(_an.baseFimUsada)}</span>`
+      ? `<div style="display:flex;align-items:center;gap:6px;margin-top:12px;font-size:12px;font-weight:600;color:${_cc.cor}"><i class="ti ${_cc.icon}" style="font-size:14px"></i>${_cc.label}: ${formatDate(_an.baseFimUsada)}${_cc.cor==='var(--danger)'?'':''}</div>`
       : '';
     resumoHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:18px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px;flex-wrap:wrap">
@@ -25664,7 +25680,7 @@ function renderProjectProVisao(p, prog){
         <span style="font-size:13px;font-weight:800;color:${p.cor}">${prog.pct}% <span style="font-size:11px;font-weight:600;color:var(--text3)">· ${prog.feitas}/${prog.total} tarefas</span></span>
       </div>
       <div style="height:8px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:${p.cor};width:${prog.pct}%;transition:width .3s"></div></div>
-      ${(conclChip||atrasadasChip)?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${conclChip}${atrasadasChip}</div>`:''}
+      ${conclChip}
     </div>`;
   }
 
@@ -25697,11 +25713,10 @@ function renderProjectProVisao(p, prog){
     </div>`;
   }
 
-  // ── Linha de stats discreta (substitui as caixas de números).
-  const _atr = prog.atrasadas>0 ? `${prog.atrasadas} atrasada${prog.atrasadas>1?'s':''}` : 'nenhuma atrasada';
-  const statsHTML=`<div style="font-size:11.5px;color:var(--text3);border-top:1px solid var(--border);padding-top:12px">${nFases} fase${nFases!==1?'s':''} · ${prog.total} tarefa${prog.total!==1?'s':''} · ${nPessoas} pessoa${nPessoas!==1?'s':''} · ${_atr}</div>`;
+  // ── Linha de stats discreta (tarefas/atrasadas já viraram cards; aqui fica o resto).
+  const statsHTML=`<div style="font-size:11.5px;color:var(--text3);border-top:1px solid var(--border);padding-top:12px">${nFases} fase${nFases!==1?'s':''} · ${nPessoas} pessoa${nPessoas!==1?'s':''}${(p.prazoFim)?` · prazo ${formatDate(p.prazoFim)}`:''}</div>`;
 
-  return focoHTML + resumoHTML + fasesHTML + statsHTML;
+  return topoHTML + resumoHTML + fasesHTML + statsHTML;
 }
 
 // ─── ABA: FASES (gerenciar) ──────────────────────────────────────
