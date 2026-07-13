@@ -5712,6 +5712,14 @@ function getOrderedPeople(macro,ps){
 // ── V3: estado dos grupos colapsáveis da sidebar de navegação
 const LS_SBNAV_GROUPS='taskflow_v3_sbnav_groups';
 let _sbnavColapsados = (()=>{ try { return JSON.parse(safeLSGet(LS_SBNAV_GROUPS)||'{}'); } catch{ return {}; } })();
+// UNIFICADO (jul/2026): na 1ª vez da sidebar acordeão, as ÁREAS nascem colapsadas (Gerenciador
+// e Gestão ficam abertos). Feito UMA vez (flag), NÃO a cada render — senão brigaria com o toggle
+// (que expande apagando a chave). Depois disso, o estado é 100% do usuário.
+if(!safeLSGet('taskflow_areas_seed_v1')){
+  ['manutencao','marketing','producao','qualidade'].forEach(k=>{ _sbnavColapsados[k]=true; });
+  safeSetItem(LS_SBNAV_GROUPS, JSON.stringify(_sbnavColapsados));
+  safeSetItem('taskflow_areas_seed_v1','1');
+}
 function _saveSbnavGroups(){
   // GUILHERME: usa safeSetItem para tratar QuotaExceededError uniformemente
   if(typeof safeSetItem==='function') safeSetItem(LS_SBNAV_GROUPS, JSON.stringify(_sbnavColapsados));
@@ -9649,10 +9657,10 @@ function renderSidebar(){
   // Gerenciador. Aqui mantemos a sidebar do módulo de origem enquanto a tela global
   // está aberta. A origem fica em window._sbOrigemLixCfg (gated por hubView/currentTab,
   // então uma origem "velha" é inofensiva).
-  let _sbView = hubView;
-  if(hubView==='taskflow' && window._sbOrigemLixCfg && (currentTab==='lixeira' || currentTab==='configuracoes')){
-    _sbView = window._sbOrigemLixCfg;
-  }
+  // UNIFICADO (jul/2026): a sidebar agora é UM acordeão só (Gerenciador + Gestão + Áreas),
+  // igual em todas as telas. Forçamos 'taskflow' → as ramificações por área abaixo viram
+  // código morto (não removidas p/ não arriscar), e o fluxo cai na montagem única lá embaixo.
+  let _sbView = 'taskflow';
 
   // ════════════════════════════════════════════════════════════════════
   // MODO HUB: "Meu dia!" — sidebar minimalista
@@ -9791,7 +9799,8 @@ function renderSidebar(){
     </button>`;
   };
   const navSubItem = (tab, icon, label, opts={}) => {
-    const active = currentTab===tab && !sidebarPersonId ? 'active' : '';
+    const _tf = (typeof hubView==='undefined' || hubView==='taskflow'); // itens do Gerenciador/Gestão só acendem no modo taskflow
+    const active = _tf && currentTab===tab && !sidebarPersonId ? 'active' : '';
     const badgeHTML = opts.badge!==undefined && opts.badge!==null
       ? `<span class="sbnav-badge ${opts.badgeClass||''}">${opts.badge}</span>` : '';
     return `<button class="sbnav-item sbnav-subitem ${active}" onclick="sidebarNavigate('${tab}')">
@@ -9840,83 +9849,64 @@ function renderSidebar(){
     : 0;
   const _mostraEquipe = isGestorOuDiretor(CURRENT_USER_ID) && _equipeGerenciada.length>0;
 
-  const fixosHTML = `<div class="sbnav-fixed">
-    ${navItem('hoje','ti-sun','Hoje', {badge: hojeCount||null})}
-    ${navItem('minhas-tarefas','ti-user-check','Minhas Tarefas')}
-    ${navItem('solicitadas','ti-send','Solicitadas', {badge: _solicConfirmCount||null, badgeClass:'warn'})}
-    ${navItem('entrada','ti-inbox','Organizar', {badgeClass: entradaCount>=ENTRADA_ALERTA?'danger':'', extraCls:'entrada-item'})}
-    ${_mostraEquipe ? navItem('equipe','ti-users-group','Equipe', {badge: equipeCount||null}) : ''}
-  </div>`;
+  // ── Grupo: GERENCIADOR (Início + tarefas do dia) — acordeão
+  const fixosHTML = grupo('gerenciador','ti-checklist','Gerenciador',
+    `<button class="sbnav-item sbnav-subitem ${hubView==='meudia'?'active':''}" onclick="voltarMeuDia()"><i class="ti ti-home"></i><span class="sbnav-label">Início</span></button>` +
+    navSubItem('hoje','ti-sun','Meu Dia', {badge: hojeCount||null}) +
+    navSubItem('minhas-tarefas','ti-user-check','Minhas Tarefas') +
+    navSubItem('solicitadas','ti-send','Solicitadas', {badge: _solicConfirmCount||null, badgeClass:'warn'}) +
+    navSubItem('entrada','ti-inbox','Organizar', {badgeClass: entradaCount>=ENTRADA_ALERTA?'danger':'', extraCls:'entrada-item'})
+  , 'var(--blue-mid)');
 
   // ── Grupo: Gestão (roxo)
   const gestaoHTML = grupo('gestao','ti-folders','Gestão',
     navSubItem('analise','ti-chart-arcs','Análise') +
     navSubItem('projetos-pro','ti-folders','Projetos', {badge: projectsPro.filter(p=>p.status==='ativo').length||null}) +
-    navSubItem('reunioes','ti-speakerphone','Reuniões', {badge: reunHoje||null, badgeClass:'warn'}) +
+    navSubItem('reunioes','ti-microphone','Reuniões', {badge: reunHoje||null, badgeClass:'warn'}) +
     navSubItem('anotacoes','ti-notes','Notas') +
     navSubItem('rotinas','ti-repeat','Rotinas')
   , 'var(--purple)');
 
-  // ── Grupo: Pessoas (com subgrupos por departamento)
-  // GUILHERME V3: filtra o próprio usuário da lista — ele já tem acesso por "Minhas Tarefas".
-  // Para editar dados pessoais (foto, nome, etc), usar Configurações → Perfil.
-  let pessoasHTML = '';
-  const pessoasParaListar = people.filter(p => p.id !== CURRENT_USER_ID);
-  if(pessoasParaListar.length){
-    const grupos={};
-    pessoasParaListar.forEach(p=>{const m=p.macroSetor||'Sem setor';if(!grupos[m])grupos[m]=[];grupos[m].push(p);});
-    const macros = (typeof getOrderedMacros==='function') ? getOrderedMacros(grupos) : Object.keys(grupos);
+  // ── ÁREAS: separador + cada área é um GRUPO que expande inline (chama o setter da área,
+  // que já seta hubView + renderiza). Assim a sidebar fica fixa — sem "voltar ao início".
+  const _areaItem = (area, cur, view, icon, label, setter) => {
+    const active = (hubView===area && cur===view) ? 'active' : '';
+    return `<button class="sbnav-item sbnav-subitem ${active}" onclick="${setter}('${view}')"><i class="ti ${icon}"></i><span class="sbnav-label">${label}</span></button>`;
+  };
+  const _mv=(typeof manutencaoView!=='undefined')?manutencaoView:'';
+  const _pv=(typeof producaoView!=='undefined')?producaoView:'';
+  const _kv=(typeof marketingView!=='undefined')?marketingView:'';
+  const _qv=(typeof qualidadeView!=='undefined')?qualidadeView:'';
+  const areasHTML = hubGroupDivider('ÁREAS')
+    + grupo('manutencao','ti-tool','Manutenção',
+        _areaItem('manutencao',_mv,'pcm','ti-chart-arcs','Painel PCM','setManutencaoView') +
+        _areaItem('manutencao',_mv,'ordens','ti-clipboard-list','Ordens de Serviço','setManutencaoView') +
+        _areaItem('manutencao',_mv,'equipamentos','ti-settings-automation','Equipamentos','setManutencaoView') +
+        _areaItem('manutencao',_mv,'preventivas','ti-calendar-repeat','Preventivas','setManutencaoView') +
+        _areaItem('manutencao',_mv,'fornecedores','ti-building-store','Fornecedores','setManutencaoView') +
+        _areaItem('manutencao',_mv,'orcamentos','ti-receipt-2','Orçamentos','setManutencaoView')
+      , 'var(--text2)')
+    + grupo('marketing','ti-speakerphone','Marketing',
+        _areaItem('marketing',_kv,'influenciadores','ti-heart-handshake','Influenciadores','setMarketingView')
+      , 'var(--text2)')
+    + grupo('producao','ti-building-factory-2','Produção',
+        _areaItem('producao',_pv,'produtos','ti-package','Produtos','setProducaoView') +
+        _areaItem('producao',_pv,'pcp','ti-calendar-stats','PCP','setProducaoView') +
+        _areaItem('producao',_pv,'ordens','ti-clipboard-list','Ordens de Produção','setProducaoView') +
+        _areaItem('producao',_pv,'checklists','ti-checkup-list','Check list','setProducaoView')
+      , 'var(--text2)')
+    + grupo('qualidade','ti-certificate','Qualidade',
+        _areaItem('qualidade',_qv,'sensorial','ti-test-pipe','Análise sensorial','setQualidadeView') +
+        _areaItem('qualidade',_qv,'indicadores','ti-chart-line','Indicadores','setQualidadeView') +
+        _areaItem('qualidade',_qv,'naoconformidades','ti-alert-octagon','Não conformidades','setQualidadeView') +
+        _areaItem('qualidade',_qv,'auditorias','ti-clipboard-check','Auditorias','setQualidadeView')
+      , 'var(--text2)');
 
-    pessoasHTML = macros.map((macro, mi)=>{
-      const color = (typeof MACRO_COLORS!=='undefined') ? MACRO_COLORS[mi%MACRO_COLORS.length] : 'var(--blue-mid)';
-      const ps = (typeof getOrderedPeople==='function') ? getOrderedPeople(macro, grupos[macro]) : grupos[macro];
-      const macroId = 'dept-' + macro.replace(/\W+/g,'_');
-      const colap = _sbnavColapsados[macroId] ? 'colapsado' : '';
-
-      const pessoasItens = ps.map(p=>{
-        const st = _statusFromCount(_psMap.get(p.id)); // PERF: lookup O(1) (ver _buildPersonStatusMap)
-        const active = sidebarPersonId===p.id ? 'active' : '';
-        return `<button class="sbnav-person ${active}"
-          title="${st.tip}"
-          onclick="selectSidebarPerson('${p.id}')">
-          <span class="sbnav-status-dot ${st.cls}"></span>
-          <span class="person-name-wrap">
-            <span class="person-name">${escapeHTML(p.name)}</span>
-            ${p.setor?`<span class="person-setor">${escapeHTML(p.setor)}</span>`:''}
-          </span>
-          ${st.count?`<span class="person-sub">${st.count}</span>`:''}
-        </button>`;
-      }).join('');
-
-      // GUILHERME V3: departamento agora usa bolinha de cor (não mais ícone) — visual mais leve.
-      return `<div class="sbnav-subgroup ${colap}" id="sbgrp-${macroId}" style="--macro-color:${color}">
-        <div class="sbnav-subgroup-header" onclick="toggleSbnavGroup('${macroId}')">
-          ${escapeHTML(macro)}
-          <span class="macro-count">${ps.length}</span>
-          <i class="ti ti-chevron-down sbnav-chev"></i>
-        </div>
-        <div class="sbnav-subgroup-body">${pessoasItens}</div>
-      </div>`;
-    }).join('');
-
-    // GUILHERME V3 (mai/2026): "Ver todas" REMOVIDO da sidebar — agora vive em
-    // Configurações → Pessoas. Aqui ficam só os departamentos e as pessoas.
-  } else {
-    pessoasHTML = navSubItem('pessoas','ti-users','Cadastrar pessoas');
-  }
-  const pessoasGrupoHTML = grupo('pessoas','ti-users','Pessoas', pessoasHTML, 'var(--blue-teal)');
-
-  // ── Lixeira (item solto, sem grupo, no final)
-  const lixeiraHTML = `<div style="padding:8px;border-top:1px solid var(--border);margin-top:8px">
-    ${navItem('lixeira','ti-trash','Lixeira')}
-  </div>`;
-
-  // Sistema de "modo" (pausa/escritório/produção) desativado a pedido do Diego.
-  const temModo = false;
-  // Controles fixos no topo (mesma posição em todas as telas) — com "recolher grupos" pois o Gerenciador tem grupos
+  const temModo = false; // (mantido — usado no bloco de "modo" abaixo, desativado)
   const controlsHTML = hubSidebarControls(true, false);
 
-  sb.innerHTML = controlsHTML + hubGroupDivider('GERENCIADOR DE TAREFAS') + fixosHTML + gestaoHTML + pessoasGrupoHTML + lixeiraHTML;
+  // Sidebar ÚNICA em acordeão: Gerenciador + Gestão + Áreas + rodapé (Mural/Lixeira)
+  sb.innerHTML = controlsHTML + fixosHTML + gestaoHTML + areasHTML + _sbLixeiraFooter();
   // Popula o slot de modo após render
   if(temModo && typeof _atualizarModoSidebar==='function') _atualizarModoSidebar();
 
