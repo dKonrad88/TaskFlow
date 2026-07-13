@@ -25714,10 +25714,7 @@ function renderProjectProVisao(p, prog){
     </div>`;
   }
 
-  // ── Linha de stats discreta (tarefas/atrasadas já viraram cards; aqui fica o resto).
-  const statsHTML=`<div style="font-size:11.5px;color:var(--text3);border-top:1px solid var(--border);padding-top:12px">${nFases} fase${nFases!==1?'s':''} · ${nPessoas} pessoa${nPessoas!==1?'s':''}${(p.prazoFim)?` · prazo ${formatDate(p.prazoFim)}`:''}</div>`;
-
-  return topoHTML + resumoHTML + fasesHTML + statsHTML;
+  return topoHTML + resumoHTML + fasesHTML;
 }
 
 // ─── ABA: FASES (gerenciar) ──────────────────────────────────────
