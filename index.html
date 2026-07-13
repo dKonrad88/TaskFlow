@@ -1551,7 +1551,15 @@
 
 
   .app-body{display:flex;min-height:calc(100vh - 56px)}
-  .sidebar{width:280px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);padding:10px 0 24px;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;transition:width .2s;scrollbar-width:none}
+  .sidebar{width:var(--sidebar-w,280px);flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);padding:10px 0 24px;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;transition:width .2s;scrollbar-width:none}
+  /* Regulador de largura da sidebar — alça fina na borda direita (arrastar p/ redimensionar). */
+  .sidebar-resizer{flex-shrink:0;width:6px;cursor:col-resize;position:sticky;top:56px;height:calc(100vh - 56px);background:transparent;transition:background .15s;z-index:50;touch-action:none}
+  .sidebar-resizer::before{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:34px;border-radius:99px;background:var(--border);opacity:0;transition:opacity .15s}
+  .sidebar-resizer:hover::before,.sidebar-resizer.dragging::before{opacity:1;background:var(--blue-mid)}
+  .sidebar-resizer:hover,.sidebar-resizer.dragging{background:color-mix(in srgb,var(--blue-mid) 8%,transparent)}
+  body.sb-resizing{cursor:col-resize;user-select:none}
+  body.sb-resizing .sidebar{transition:none}
+  body.sb-collapsed .sidebar-resizer{display:none}
   .sidebar::-webkit-scrollbar{display:none}
   .sidebar-section{margin-bottom:20px}
   .sidebar-macro{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;padding:5px 10px;display:flex;align-items:center;gap:6px;cursor:grab;user-select:none;border-radius:6px;margin:0 6px 4px;transition:all .15s;background:color-mix(in srgb,var(--kcol-color,#888) 12%,transparent)}
@@ -1587,7 +1595,7 @@
   /* Botão flutuante de "mostrar barra" — só aparece quando a sidebar está oculta,
      já que o botão de ocultar (no topo) some junto com a sidebar recolhida. */
   .sidebar-edge-actions{display:none}
-  .sidebar.sb-hidden + .sidebar-edge-actions{display:flex;position:fixed;top:64px;left:8px;flex-direction:column;align-items:center;gap:7px;z-index:160;pointer-events:none}
+  body.sb-collapsed .sidebar-edge-actions{display:flex;position:fixed;top:64px;left:8px;flex-direction:column;align-items:center;gap:7px;z-index:160;pointer-events:none}
   .sidebar-edge-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;pointer-events:auto;box-shadow:0 2px 8px rgba(0,0,0,.08)}
   .sidebar-edge-btn:hover{color:var(--blue-mid);opacity:1}
   .sidebar-edge-btn i{font-size:16px}
@@ -1614,8 +1622,8 @@
   body.dark .sbnav-badge.danger{background:rgba(224,128,128,.15);color:#e08080}
   body.dark .sbnav-badge.warn{background:rgba(201,149,58,.15);color:#dba74f}
   .sbnav-group{margin:8px 0 4px}
-  .sbnav-group-header{display:flex;align-items:center;gap:8px;padding:7px 12px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;cursor:pointer;border-radius:6px;margin:0 6px 4px;user-select:none;transition:background .15s;border-left:3px solid var(--sbgrp-color,var(--blue-mid));background:color-mix(in srgb,var(--sbgrp-color,var(--blue-mid)) 8%,transparent);color:var(--sbgrp-color,var(--text2))}
-  .sbnav-group-header:hover{background:color-mix(in srgb,var(--sbgrp-color,var(--blue-mid)) 14%,transparent)}
+  .sbnav-group-header{display:flex;align-items:center;gap:8px;padding:7px 12px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;cursor:pointer;border-radius:6px;margin:0 6px 4px;user-select:none;transition:background .15s;background:transparent;color:var(--sbgrp-color,var(--text2))}
+  .sbnav-group-header:hover{background:color-mix(in srgb,var(--sbgrp-color,var(--blue-mid)) 10%,transparent)}
   .sbnav-group-header i.sbnav-icon{font-size:13px;opacity:.85}
   .sbnav-group-header i.sbnav-chev{font-size:12px;opacity:.7;transition:transform .2s;margin-left:auto}
   .sbnav-group.colapsado .sbnav-chev{transform:rotate(-90deg)}
@@ -1627,8 +1635,8 @@
      - Headers de grupo com texto BRANCO em dark (antes usavam a cor temática que
        ficava ilegível contra fundo escuro). A cor temática vira só borda lateral + fundo sutil. */
   body.dark .sidebar{background:#26262c;border-right-color:#3a3a42}
-  body.dark .sbnav-group-header{color:#e8e8ee;background:color-mix(in srgb,var(--sbgrp-color,var(--blue-mid)) 14%,transparent)}
-  body.dark .sbnav-group-header:hover{background:color-mix(in srgb,var(--sbgrp-color,var(--blue-mid)) 22%,transparent)}
+  body.dark .sbnav-group-header{color:#e8e8ee;background:transparent}
+  body.dark .sbnav-group-header:hover{background:color-mix(in srgb,var(--sbgrp-color,var(--blue-mid)) 16%,transparent)}
   body.dark .sbnav-group-header i.sbnav-icon{color:var(--sbgrp-color,var(--blue-mid));opacity:1}
   body.dark .sbnav-group-header i.sbnav-chev{color:#9999aa;opacity:.8}
   .sbnav-subitem{padding:6px 12px 6px 32px;font-size:12.5px;font-weight:500}
@@ -2390,6 +2398,8 @@
 
   <div class="app-body">
   <div class="sidebar" id="sidebar"></div>
+  <!-- Regulador de largura: arraste p/ personalizar; duplo-clique reseta -->
+  <div class="sidebar-resizer" id="sidebar-resizer" title="Arraste para ajustar a largura (duplo-clique reseta)" role="separator" aria-orientation="vertical" aria-label="Ajustar largura da barra lateral"></div>
   <!-- Botão flutuante: só aparece quando a sidebar está oculta (pra trazer ela de volta) -->
   <div class="sidebar-edge-actions" id="sidebar-edge-actions" aria-label="Mostrar barra lateral">
     <button class="sidebar-edge-btn" id="sb-expand-btn" onclick="event.stopPropagation();toggleSidebarVisibility()" title="Mostrar barra lateral">
@@ -4148,6 +4158,16 @@ async function load(){
     }
     // Seed 1x: projeto de exemplo "Implantação do Hub Klain" (7 fases, 21 tarefas)
     if(typeof _seedImplantacaoHub==='function') _seedImplantacaoHub();
+    // Migração 1x: protege datas de tarefas de projeto JÁ existentes contra a projeção do
+    // cronograma (que reescrevia t.date a cada render). Marca como dateManual as que já têm
+    // data — preserva exatamente o que está hoje (ex.: ondas do projeto-exemplo).
+    if(!safeLSGet('taskflow_datemanual_migr_v1')){
+      let _dm=0;
+      tasks.forEach(t=>{ if(t && t.projectProId && t.date && t.dateManual===undefined){ t.dateManual=true; _dm++; } });
+      if(_dm>0) safeSetItem(LS_TASKS, JSON.stringify(tasks));
+      safeSetItem('taskflow_datemanual_migr_v1','1');
+      if(window.DEBUG_MIGRATIONS) console.log('[migr dateManual] marcadas '+_dm+' tarefa(s) de projeto com data');
+    }
     meetings=safeJSON(LS_MEETINGS, []);
     _reunioesRapidas=safeJSON(LS_REUNIOES_RAPIDAS, []);
     compromissos=safeJSON(LS_COMPROMISSOS, []);
@@ -4393,6 +4413,19 @@ const SUPA_KEY = 'sb_publishable_-i-ZD2z9kbfTCLWu7K7eiQ_10bXjE4c';
 let _sbc = null;             // cliente supabase
 let _sbUser = null;          // usuário logado (ou null)
 const _cloudPushTimers = {}; // debounce por chave
+// ── Portão anti-sobrescrita (fix do "auto-push cego") ────────────────────────
+// PROBLEMA que isto resolve: ao abrir o app num aparelho com dados velhos, a
+// sessão reconecta sozinha e QUALQUER edição subia por cima da nuvem (podia
+// apagar edições feitas no outro aparelho). REGRA nova: o push automático só
+// liga depois que ESTE aparelho reconcilia com a nuvem nesta sessão. A
+// reconciliação usa o carimbo `updated_at` (o mais novo da nuvem) guardado
+// localmente em LS_CLOUD_SYNCED_TS — se a nuvem não mudou desde a última vez,
+// religa sozinho; se outro aparelho mexeu, fica pausado e pede "Baixar".
+// (No backend real do Guilherme, isto vira resolução de conflito por chave.)
+let _cloudSyncedThisSession = false; // true = push automático liberado
+const _cloudPendingKeys = new Set(); // chaves editadas antes de reconciliar
+let _cloudGateAvisado = false;       // avisa 1x que o push está pausado
+const LS_CLOUD_SYNCED_TS = 'taskflow__cloud_synced_ts'; // NÃO sincroniza (excluída)
 
 function _sbReady(){
   if(_sbc) return _sbc;
@@ -4402,7 +4435,46 @@ function _sbReady(){
     return _sbc;
   }catch(e){ console.warn('[nuvem] cliente falhou', e); return null; }
 }
-function _isCloudKey(k){ return typeof k==='string' && k.indexOf('taskflow')===0 && k!=='taskflow__backup_pre_pull'; }
+function _isCloudKey(k){ return typeof k==='string' && k.indexOf('taskflow')===0 && k!=='taskflow__backup_pre_pull' && k!==LS_CLOUD_SYNCED_TS; }
+function _cloudGetSyncedTs(){ try{ return localStorage.getItem(LS_CLOUD_SYNCED_TS)||''; }catch(e){ return ''; } }
+function _cloudSetSyncedTs(ts){ try{ if(ts) localStorage.setItem(LS_CLOUD_SYNCED_TS, ts); }catch(e){} }
+// Maior updated_at da nuvem: null = nuvem vazia · undefined = erro (não sabemos → fica seguro/pausado)
+async function _cloudMaxUpdatedAt(){
+  try{
+    const c=_sbReady(); if(!c||!_sbUser) return undefined;
+    const { data, error } = await c.from('app_state').select('updated_at').eq('user_id',_sbUser.id).order('updated_at',{ascending:false}).limit(1);
+    if(error) throw error;
+    return (data && data.length) ? data[0].updated_at : null;
+  }catch(e){ console.warn('[nuvem] maxUpdatedAt', e); return undefined; }
+}
+// Marca a sessão como sincronizada → libera push e sobe o que ficou na fila
+function _cloudMarkSynced(maxTs){
+  _cloudSyncedThisSession = true;
+  _cloudGateAvisado = false;
+  if(maxTs) _cloudSetSyncedTs(maxTs);
+  const pend = Array.from(_cloudPendingKeys); _cloudPendingKeys.clear();
+  pend.forEach(k=>{ clearTimeout(_cloudPushTimers[k]); _cloudPushTimers[k]=setTimeout(()=>_cloudPushKey(k), 300); });
+  try{ _cloudUpdateBtn(); }catch(e){}
+}
+function _cloudAvisarGate(){
+  if(_cloudGateAvisado) return;
+  _cloudGateAvisado = true;
+  try{ _cloudUpdateBtn(); }catch(e){}
+  if(typeof toast==='function') toast('☁️ Envio automático pausado neste aparelho — abra a Nuvem e escolha Baixar (ou Enviar) para sincronizar.');
+}
+// Reconcilia ao (re)conectar: decide se pode religar o push automático sem risco
+async function _cloudReconcileOnConnect(){
+  if(!_sbUser) return;
+  const remoteMax = await _cloudMaxUpdatedAt();
+  if(remoteMax===undefined){ _cloudSyncedThisSession=false; try{ _cloudUpdateBtn(); }catch(e){} return; } // erro → seguro
+  if(remoteMax===null){ _cloudMarkSynced(null); return; } // nuvem vazia → seguro subir
+  const base = _cloudGetSyncedTs();
+  if(base && Date.parse(remoteMax) <= Date.parse(base)+1000){
+    _cloudMarkSynced(remoteMax); // nuvem não mudou desde a última reconciliação
+  } else {
+    _cloudSyncedThisSession=false; try{ _cloudUpdateBtn(); }catch(e){} // outro aparelho mexeu (ou nunca sincronizou aqui)
+  }
+}
 function _cloudKeys(){
   const out=[];
   try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(_isCloudKey(k)) out.push(k); } }catch(e){}
@@ -4411,15 +4483,39 @@ function _cloudKeys(){
 // chamado pelo safeSetItem após gravar localStorage (espelha a chave, com debounce)
 function _cloudOnLocalWrite(key){
   if(!_sbUser || !_isCloudKey(key)) return;
+  if(!_cloudSyncedThisSession){
+    // Ainda não reconciliamos com a nuvem nesta sessão → NÃO sobrescreve a nuvem
+    // com dados possivelmente velhos. Enfileira até um Baixar/Enviar.
+    _cloudPendingKeys.add(key);
+    _cloudAvisarGate();
+    return;
+  }
   clearTimeout(_cloudPushTimers[key]);
   _cloudPushTimers[key] = setTimeout(()=>{ _cloudPushKey(key); }, 1200);
 }
 async function _cloudPushKey(key){
   try{
     const c=_sbReady(); if(!c || !_sbUser) return;
+    if(!_cloudSyncedThisSession) return; // trava dupla: nunca sobe sem reconciliar
     const val = localStorage.getItem(key);
     if(val===null){ await c.from('app_state').delete().eq('user_id',_sbUser.id).eq('key',key); return; }
-    await c.from('app_state').upsert({ user_id:_sbUser.id, key, value: val }, { onConflict:'user_id,key' });
+    // Guard de conflito por chave: se a nuvem tem uma versão desta chave mais nova
+    // do que a última reconciliação, outro aparelho mexeu → NÃO sobrescreve; pausa e pede Baixar.
+    try{
+      const { data:cur } = await c.from('app_state').select('updated_at').eq('user_id',_sbUser.id).eq('key',key).limit(1);
+      const remoteTs = (cur && cur.length) ? cur[0].updated_at : null;
+      const baseTs = _cloudGetSyncedTs();
+      if(remoteTs && baseTs && Date.parse(remoteTs) > Date.parse(baseTs)+1000){
+        _cloudSyncedThisSession = false;
+        _cloudPendingKeys.add(key);
+        try{ _cloudUpdateBtn(); }catch(e){}
+        if(typeof toast==='function') toast('☁️ Conflito: a nuvem tem uma versão mais nova. Abra a Nuvem e clique Baixar para não perder dados.');
+        return;
+      }
+    }catch(e){}
+    const { data, error } = await c.from('app_state').upsert({ user_id:_sbUser.id, key, value: val }, { onConflict:'user_id,key' }).select('updated_at');
+    if(error) throw error;
+    if(data && data.length && data[0].updated_at) _cloudSetSyncedTs(data[0].updated_at);
   }catch(e){ console.warn('[nuvem] push', key, e); }
 }
 async function _cloudPushAll(){
@@ -4431,6 +4527,8 @@ async function _cloudPushAll(){
       const { error } = await c.from('app_state').upsert(rows.slice(i,i+80), { onConflict:'user_id,key' });
       if(error) throw error;
     }
+    // Enviar explícito = este aparelho é a verdade → libera push e carimba a reconciliação
+    try{ const mx=await _cloudMaxUpdatedAt(); _cloudMarkSynced((mx===undefined||mx===null)?null:mx); }catch(e){ _cloudSyncedThisSession=true; }
     return {ok:true, n:rows.length};
   }catch(e){ console.warn('[nuvem] pushAll', e); return {ok:false, err:(e&&e.message)||String(e)}; }
 }
@@ -4440,20 +4538,24 @@ async function _cloudCount(){
 async function _cloudPullAll(){
   const c=_sbReady(); if(!c || !_sbUser) return {ok:false, err:'sem conexão/sessão'};
   try{
-    const { data, error } = await c.from('app_state').select('key,value').eq('user_id',_sbUser.id);
+    const { data, error } = await c.from('app_state').select('key,value,updated_at').eq('user_id',_sbUser.id);
     if(error) throw error;
     if(!data || !data.length) return {ok:true, n:0, empty:true};
     // backup do estado local atual antes de sobrescrever
     try{ const bk={}; _cloudKeys().forEach(k=>{ bk[k]=localStorage.getItem(k); }); localStorage.setItem('taskflow__backup_pre_pull', JSON.stringify({ts:new Date().toISOString(), data:bk})); }catch(e){}
-    // aplica nuvem -> local (raw, sem re-push)
-    data.forEach(row=>{ try{ const v=row.value; localStorage.setItem(row.key, (typeof v==='string')?v:JSON.stringify(v)); }catch(e){} });
+    // aplica nuvem -> local (raw, sem re-push) e guarda o maior updated_at p/ reconciliar
+    let mx=null;
+    data.forEach(row=>{ try{ const v=row.value; localStorage.setItem(row.key, (typeof v==='string')?v:JSON.stringify(v)); if(row.updated_at && (!mx || row.updated_at>mx)) mx=row.updated_at; }catch(e){} });
+    // Baixar = local ficou idêntico à nuvem → carimba p/ o push religar após o reload
+    if(mx) _cloudSetSyncedTs(mx);
+    _cloudSyncedThisSession = true;
     return {ok:true, n:data.length};
   }catch(e){ console.warn('[nuvem] pullAll', e); return {ok:false, err:(e&&e.message)||String(e)}; }
 }
 async function _cloudRefreshUser(){
   try{ const c=_sbReady(); if(!c) return null; const { data } = await c.auth.getUser(); _sbUser = (data && data.user) ? data.user : null; _cloudUpdateBtn(); return _sbUser; }catch(e){ _sbUser=null; return null; }
 }
-function _cloudUpdateBtn(){ try{ const b=document.getElementById('hdr-cloud-btn'); if(b){ const i=b.querySelector('i'); if(i) i.className='ti '+(_sbUser?'ti-cloud-check':'ti-cloud'); b.title=_sbUser?('Nuvem — conectado ('+(_sbUser.email||'')+')'):'Nuvem — sincronizar (Supabase)'; } }catch(e){} }
+function _cloudUpdateBtn(){ try{ const b=document.getElementById('hdr-cloud-btn'); if(b){ const i=b.querySelector('i'); if(i) i.className='ti '+(_sbUser?(_cloudSyncedThisSession?'ti-cloud-check':'ti-cloud'):'ti-cloud'); b.title=_sbUser?(_cloudSyncedThisSession?('Nuvem — sincronizado ('+(_sbUser.email||'')+')'):'Nuvem — envio pausado: abra e escolha Baixar ou Enviar'):'Nuvem — sincronizar (Supabase)'; } }catch(e){} }
 function _cloudErr(e){ const m=(e&&e.message)?e.message:String(e); if(/Invalid login/i.test(m)) return 'E-mail ou senha incorretos.'; if(/already registered/i.test(m)) return 'Esse e-mail já tem conta — clique em Entrar.'; if(/Email not confirmed/i.test(m)) return 'E-mail não confirmado (veja seu e-mail) ou desligue a confirmação no painel do Supabase.'; if(/at least 6/i.test(m)) return 'A senha precisa de pelo menos 6 caracteres.'; return m; }
 
 // ─── UI (modal) ───
@@ -4560,11 +4662,15 @@ function nuvemBaixar(){
   });
 }
 async function _cloudAutoSeedIfEmpty(){
-  try{ const n=await _cloudCount(); if(n===0){ const r=await _cloudPushAll(); if(r.ok){ if(typeof toast==='function') toast('☁️ Seus dados foram enviados para a nuvem ('+r.n+' blocos)'); _nuvemRender(false); } } }catch(e){}
+  try{
+    const n=await _cloudCount();
+    if(n===0){ const r=await _cloudPushAll(); if(r.ok){ if(typeof toast==='function') toast('☁️ Seus dados foram enviados para a nuvem ('+r.n+' blocos)'); _nuvemRender(false); } }
+    else { await _cloudReconcileOnConnect(); } // nuvem já tem dados → decide se libera o push automático
+  }catch(e){}
 }
 // Reconecta a sessão salva ao abrir o app (para o push automático voltar a valer)
 (function _cloudInit(){
-  const tryInit=()=>{ if(window.supabase){ try{ _cloudRefreshUser(); }catch(e){} } else { setTimeout(tryInit, 800); } };
+  const tryInit=()=>{ if(window.supabase){ try{ _cloudRefreshUser().then(()=>{ if(_sbUser) _cloudReconcileOnConnect(); }); }catch(e){} } else { setTimeout(tryInit, 800); } };
   setTimeout(tryInit, 1500);
 })();
 
@@ -5806,6 +5912,75 @@ function _applySidebarVisibilityState(){
     if(hidden) document.body.classList.add('sb-collapsed');
     updateSidebarEdgeControls();
   } catch(e){console.warn('[sidebar] toggle falhou',e);}
+}
+
+// ── Regulador de largura da sidebar ─────────────────────────────────────────
+// Cada usuário arrasta a alça na borda direita da sidebar e define a largura que
+// quiser (persistida por aparelho em LS_SIDEBAR_WIDTH). Duplo-clique volta ao padrão.
+const LS_SIDEBAR_WIDTH = 'taskflow_sidebar_width';
+const SIDEBAR_W_MIN = 200, SIDEBAR_W_MAX = 560, SIDEBAR_W_DEFAULT = 280;
+function _applySidebarWidth(px){
+  const w = Math.round(Math.min(SIDEBAR_W_MAX, Math.max(SIDEBAR_W_MIN, px||SIDEBAR_W_DEFAULT)));
+  document.documentElement.style.setProperty('--sidebar-w', w+'px');
+  return w;
+}
+function _loadSidebarWidth(){
+  let w = SIDEBAR_W_DEFAULT;
+  try { const s = safeLSGet(LS_SIDEBAR_WIDTH); if(s){ const n = parseInt(s,10); if(!isNaN(n)) w = n; } } catch(e){}
+  _applySidebarWidth(w);
+}
+function _initSidebarResizer(){
+  const rez = document.getElementById('sidebar-resizer');
+  const sb  = document.getElementById('sidebar');
+  if(!rez || !sb || rez._wired) return;
+  rez._wired = true;
+  let startX=0, startW=0, dragging=false;
+  const onMove = (e)=>{
+    if(!dragging) return;
+    const x = (e.touches ? e.touches[0].clientX : e.clientX);
+    const w = _applySidebarWidth(startW + (x - startX));
+    e.preventDefault();
+  };
+  const onUp = ()=>{
+    if(!dragging) return;
+    dragging=false;
+    rez.classList.remove('dragging');
+    document.body.classList.remove('sb-resizing');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onUp);
+    const cur = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w'),10) || SIDEBAR_W_DEFAULT;
+    try { safeSetItem(LS_SIDEBAR_WIDTH, String(cur)); } catch(e){ console.warn('[sidebarWidth] save falhou', e); }
+  };
+  const onDown = (e)=>{
+    dragging=true;
+    startX = (e.touches ? e.touches[0].clientX : e.clientX);
+    startW = sb.getBoundingClientRect().width;
+    rez.classList.add('dragging');
+    document.body.classList.add('sb-resizing');
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onMove, {passive:false});
+    document.addEventListener('touchend', onUp);
+    e.preventDefault();
+  };
+  rez.addEventListener('mousedown', onDown);
+  rez.addEventListener('touchstart', onDown, {passive:false});
+  // Duplo-clique reseta pro padrão
+  rez.addEventListener('dblclick', ()=>{
+    _applySidebarWidth(SIDEBAR_W_DEFAULT);
+    try { safeSetItem(LS_SIDEBAR_WIDTH, String(SIDEBAR_W_DEFAULT)); } catch(e){}
+  });
+  // Teclado (setas) p/ acessibilidade
+  rez.tabIndex = 0;
+  rez.addEventListener('keydown', (e)=>{
+    if(e.key!=='ArrowLeft' && e.key!=='ArrowRight') return;
+    const cur = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w'),10) || SIDEBAR_W_DEFAULT;
+    const w = _applySidebarWidth(cur + (e.key==='ArrowRight'?16:-16));
+    try { safeSetItem(LS_SIDEBAR_WIDTH, String(w)); } catch(err){}
+    e.preventDefault();
+  });
 }
 
 // ── V3: contagem de tarefas "na entrada" (sem executor, não concluídas)
@@ -21612,6 +21787,8 @@ function _autoSaveEditField(campo){
         logHistory(t.id,'data',t.date,v);
         t.date = v;
         if(v && t.someday) t.someday = false; // ao definir data sai de "algum dia"
+        // Data escolhida à mão VENCE a projeção do cronograma (não é reescrita no render).
+        if(v) t.dateManual = true; else delete t.dateManual;
         changed = true;
       }
       break;
@@ -24959,7 +25136,8 @@ function _seedImplantacaoHub(){
         // executor/solicitante = null de PROPÓSITO: assim as tarefas do exemplo NÃO vazam
         // para Meu Dia / Minhas Tarefas / Atrasadas / "Uso da equipe" (esses filtros excluem
         // tarefa de projeto sem executor). Elas vivem dentro do projeto; o Diego atribui quem quiser.
-        const nt={id:tid, title:tk.title, prio:PRIO_OK[tk.prio]?tk.prio:'media', executor:null, people:[], projectId:null, projectProId:p.id, projectProFaseId:fase.id, projectProGrupoId:g?g.id:null, setorManual:!!g, date:tk.date||null, done:!!tk.done, escopo:'klain', desc:tk.desc||'', subtasks:[], solicitante:null, _persisted:true, createdAt:(tk.date||today)};
+        // dateManual: datas das ondas são INTENCIONAIS → a projeção do cronograma não as reescreve
+        const nt={id:tid, title:tk.title, prio:PRIO_OK[tk.prio]?tk.prio:'media', executor:null, people:[], projectId:null, projectProId:p.id, projectProFaseId:fase.id, projectProGrupoId:g?g.id:null, setorManual:!!g, date:tk.date||null, dateManual:!!tk.date, done:!!tk.done, escopo:'klain', desc:tk.desc||'', subtasks:[], solicitante:null, _persisted:true, createdAt:(tk.date||today)};
         if(nt.done) nt.doneAt=nt.date||today;
         if(g) g.tarefaIds.push(tid);
         tasks.push(nt);
@@ -26181,8 +26359,10 @@ function renderProjectProTarefas(p){
   const _proj = _ppProjecao(_ord, _etapas, _anchor);
   const _numHier = _ppNumHier(_ord, _etapas);
   let todas = _ord.map((t,i)=>({...t, ..._ctx(t), _idx:i, _ehUltima:i===_ord.length-1, _status:_ppStatus(t,_ord,_etapas), _prj:_proj.get(t.id), _num:_numHier.get(t.id)}));
-  // Sincroniza t.date com previsão do projeto (início calculado pelo cronograma)
-  todas.forEach(row=>{ if(!row.done && row._prj && row._prj.ini){ const orig=tasks.find(x=>x.id===row.id); if(orig && orig.date!==row._prj.ini){ orig.date=row._prj.ini; if(typeof saveTask_db==='function') saveTask_db(orig); } } });
+  // Sincroniza t.date com a previsão do cronograma — MAS respeita data definida à mão
+  // (dateManual). Assim a projeção preenche/re-flui as automáticas e NÃO corrompe as
+  // datas manuais (ex.: as ondas do projeto-exemplo "Implantação do Hub Klain").
+  todas.forEach(row=>{ if(!row.done && row._prj && row._prj.ini){ const orig=tasks.find(x=>x.id===row.id); if(orig && !orig.dateManual && orig.date!==row._prj.ini){ orig.date=row._prj.ini; if(typeof saveTask_db==='function') saveTask_db(orig); } } });
   const _totalProjeto = todas.length;
   const _concluidas = todas.filter(t=>t.done).length;
 
@@ -31786,6 +31966,9 @@ window.addEventListener('load', async ()=>{
   }
   // GUILHERME V3: restaurar estado da sidebar (oculta/visível)
   if(typeof _applySidebarVisibilityState==='function') _applySidebarVisibilityState();
+  // Largura personalizada da sidebar (regulador) + alça de arraste
+  if(typeof _loadSidebarWidth==='function') _loadSidebarWidth();
+  if(typeof _initSidebarResizer==='function') _initSidebarResizer();
   // GUILHERME V3: checar se precisa abrir modal de revisão de atrasadas
   setTimeout(()=>{ if(typeof checarRevisaoAtrasadas==='function') checarRevisaoAtrasadas(); }, 800);
   // activa aba Hoje visualmente (para quando o usuário entrar no TaskFlow)
