@@ -89,6 +89,29 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-13 — PC da Empresa — SIDEBAR unificada em acordeão + só Lista (Painel/Cartões removidos)
+- **Pedido do Diego (com mockups aprovados via show_widget):** (a) "trazer o Gerenciador pra fora" — sidebar única em **acordeão**:
+  grupos **Gerenciador**, **Gestão** e cada **Área** expandindo INLINE (sem "voltar ao início"), com separador **ÁREAS**; remover
+  **Pessoas** e **Equipe**. (b) Tirar **Painel/Cartões** de tudo → só **Lista**.
+- ⚠️ **Nota de sincronização:** esta sessão (PC da Empresa) começou rotulada 2026-07-10 e o repo reconciliou com trabalho do PC da
+  Produção (entrada 2026-07-13 abaixo). Meus commits `207fb35`+`5782451` (sidebar+view) são descendentes lineares do `8b7a91a` e
+  coexistem com o trabalho de horário/agenda/reuniões — sem conflito. As entradas 07-10 abaixo são desta mesma sessão.
+- **FASE 1 — só Lista (commit `207fb35`):** `allView` fixo em `'list'`; `setAllView` força list; `view-toggle-stack` sempre
+  `display:none`; botões Cartões/Painel removidos do HTML. Projetos: `_ppView` fixo em `'lista'`, `setPpView` força, segmento removido.
+  Render Kanban/Cartões segue no código, só **inerte**.
+- **FASE 2 — sidebar acordeão (commit `5782451`):** `renderSidebar` força `_sbView='taskflow'` → as 5 ramificações por área viram
+  **código morto inofensivo**; montagem única: grupo `gerenciador` (Início→`voltarMeuDia`, Meu Dia→`hoje`, Minhas Tarefas, Solicitadas,
+  Organizar) + grupo `gestao` (Análise/Projetos/Reuniões[`ti-microphone`]/Notas/Rotinas) + `hubGroupDivider('ÁREAS')` + grupos
+  `manutencao`/`marketing`/`producao`/`qualidade` (sub-item chama `setXView`, que já seta hubView+view+renderSidebar+renderX) +
+  `_sbLixeiraFooter()` (Mural+Lixeira). Reusa `grupo()`/`toggleSbnavGroup`/`_sbnavColapsados`. **Removidos:** grupo Pessoas + item Equipe.
+  - **Chave:** `setTab` já seta `hubView='taskflow'` e os setters de área já setam hubView → só `renderSidebar` mudou. `navSubItem` só
+    acende com `hubView==='taskflow'`. **Áreas colapsadas 1×** (flag `taskflow_areas_seed_v1`, na declaração de `_sbnavColapsados` ~5714),
+    NÃO a cada render — ⚠️ **bug do colapso-por-render pego pela revisão de subagente e corrigido** antes do commit.
+- **Verificação:** revisão estática dedicada por subagente (sintaxe/refs/estado-ativo/navegação = ok). ⚠️ **NÃO testado em navegador**.
+  Diego confere no Pages (Ctrl+Shift+R): acordeão; expandir/clicar áreas sem re-colapsar; Início vs Meu Dia; zero Painel/Cartões.
+- **Pendências:** Histórico/Lembretes ficaram de fora (não existem no protótipo); person-view some da sidebar (ainda alcançável por
+  aba/busca); botão "Lista" solitário no person-view (cosmético).
+
 ### 2026-07-13 — PC da Produção — HORÁRIO (duração padrão + pares nativos) + VARREDURA nova (11 bugs) + fixes Agenda/Reuniões
 - **Contexto/sandbox:** a sessão anterior rodou numa cópia dessincronizada; o repo real já estava em `462cdc0` (com o fix horário
   `a2020cd`, a varredura de 42 achados, unificação de reuniões, FAB modal completo etc.). Esta sessão trabalha sobre o `462cdc0` real.
