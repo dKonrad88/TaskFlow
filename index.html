@@ -25508,6 +25508,34 @@ function renderProjectProView(id){
       <span style="color:var(--text3);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:360px">${escapeHTML(p.nome)}</span>
     </span>`;
 
+  // Ajuda "Como começar" — vira ÍCONE no header (ao lado de Participantes), só enquanto 0 tarefas.
+  let ajudaIconHTML='';
+  {
+    const _temFase=(p.fases||[]).length>0;
+    const _temSetor=(p.fases||[]).some(f=>(f.grupos||[]).length>0);
+    const _temTarefa=prog.total>0;
+    if(!_temTarefa){
+      const stepAtual=!_temFase?1:!_temSetor?2:3;
+      const subs={1:'Comece dividindo o projeto em fases — as grandes etapas, na ordem.',2:'Você já tem as fases. Agora adicione os setores (as áreas responsáveis) em cada fase.',3:'Fases e setores prontos. Agora crie as primeiras tarefas, com responsável e prazo.'};
+      const btnLabel=stepAtual===1?'Adicionar fases':'Continuar nas Fases';
+      const passos=['Fases','Setores','Tarefas'].map((lb,i)=>{
+        const n=i+1, estado=n<stepAtual?'ok':n===stepAtual?'now':'todo';
+        const circ=estado==='ok'?`<span style="width:18px;height:18px;border-radius:50%;background:var(--success);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0"><i class="ti ti-check"></i></span>`:`<span style="width:18px;height:18px;border-radius:50%;background:${estado==='now'?'var(--blue-mid)':'var(--bg2)'};color:${estado==='now'?'#fff':'var(--text3)'};display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${n}</span>`;
+        const cor=estado==='now'?'var(--text)':estado==='ok'?'var(--text2)':'var(--text3)';
+        return `<div style="display:flex;align-items:center;gap:9px"><span>${circ}</span><span style="font-size:12.5px;font-weight:${estado==='now'?'700':'600'};color:${cor}">${lb}</span>${estado==='now'?'<span style="font-size:10px;font-weight:700;color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 12%,transparent);padding:1px 7px;border-radius:99px;margin-left:auto">agora</span>':''}</div>`;
+      }).join('');
+      ajudaIconHTML=`<div style="position:relative;display:inline-flex">
+        <button class="reun-ico" aria-expanded="false" aria-controls="pp-ajuda-panel" onclick="var e=document.getElementById('pp-ajuda-panel');var op=e.style.display!=='none';e.style.display=op?'none':'block';this.setAttribute('aria-expanded',(!op).toString())" title="Como começar este projeto"><i class="ti ti-help-circle"></i></button>
+        <div id="pp-ajuda-panel" style="display:none;position:absolute;top:calc(100% + 6px);right:0;z-index:200;width:300px;max-width:82vw;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:15px 16px;text-align:left">
+          <div style="font-size:13.5px;font-weight:800;color:var(--text);margin-bottom:3px">Comece aqui</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:13px;line-height:1.5">${subs[stepAtual]}</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">${passos}</div>
+          <button onclick="setProjectProTab('fases')" style="width:100%;background:var(--blue-mid);color:#fff;border:none;border-radius:9px;padding:9px 16px;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-family:inherit">${btnLabel} <i class="ti ti-arrow-right" style="font-size:15px"></i></button>
+        </div>
+      </div>`;
+    }
+  }
+
   // Header do projeto — estilo clean (igual Painel de Reunião)
   const headerHTML = `
     ${encerramentoBanner}
@@ -25526,6 +25554,7 @@ function renderProjectProView(id){
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex-shrink:0">
         <div style="display:flex;gap:6px;align-items:center">
+          ${ajudaIconHTML}
           <button class="reun-ico" onclick="abrirModalEquipe('${p.id}')" title="Participantes"><i class="ti ti-users"></i></button>
           <button class="reun-ico" onclick="salvarProjetoComoTemplate('${p.id}')" title="Salvar como template"><i class="ti ti-template"></i></button>
           <button class="reun-ico" onclick="editarProjectPro('${p.id}')" title="Editar projeto"><i class="ti ti-pencil"></i></button>
@@ -25621,37 +25650,7 @@ function renderProjectProVisao(p, prog){
     };
   }
   const temFase=nFases>0;
-  const temSetor=(p.fases||[]).some(f=>(f.grupos||[]).length>0);
   const temTarefa=prog.total>0;
-
-  // ── Ícone de ajuda "Como começar" (canto superior direito) — só enquanto o projeto
-  // ainda não tem tarefas. Clicar abre um painelzinho com o próximo passo. Substitui o
-  // bloco grande "Comece aqui" (fica discreto, mas continua à mão).
-  let ajudaHTML='';
-  if(!temTarefa){
-    const stepAtual = !temFase?1 : !temSetor?2 : 3;   // 1 Fases · 2 Setores · 3 Tarefas
-    const subs={1:'Comece dividindo o projeto em fases — as grandes etapas, na ordem.',
-                2:'Você já tem as fases. Agora adicione os setores (as áreas responsáveis) em cada fase.',
-                3:'Fases e setores prontos. Agora crie as primeiras tarefas, com responsável e prazo.'};
-    const btnLabel = stepAtual===1 ? 'Adicionar fases' : 'Continuar nas Fases';
-    const passos=['Fases','Setores','Tarefas'].map((lb,i)=>{
-      const n=i+1, estado = n<stepAtual?'ok' : n===stepAtual?'now':'todo';
-      const circ = estado==='ok'
-        ? `<span style="width:18px;height:18px;border-radius:50%;background:var(--success);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0"><i class="ti ti-check"></i></span>`
-        : `<span style="width:18px;height:18px;border-radius:50%;background:${estado==='now'?'var(--blue-mid)':'var(--bg2)'};color:${estado==='now'?'#fff':'var(--text3)'};display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${n}</span>`;
-      const cor = estado==='now'?'var(--text)':estado==='ok'?'var(--text2)':'var(--text3)';
-      return `<div style="display:flex;align-items:center;gap:9px"><span>${circ}</span><span style="font-size:12.5px;font-weight:${estado==='now'?'700':'600'};color:${cor}">${lb}</span>${estado==='now'?'<span style="font-size:10px;font-weight:700;color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 12%,transparent);padding:1px 7px;border-radius:99px;margin-left:auto">agora</span>':''}</div>`;
-    }).join('');
-    ajudaHTML=`<div style="position:relative;flex-shrink:0">
-      <button aria-expanded="false" aria-controls="pp-ajuda-panel" onclick="var e=document.getElementById('pp-ajuda-panel');var op=e.style.display!=='none';e.style.display=op?'none':'block';this.setAttribute('aria-expanded',(!op).toString())" title="Como começar este projeto" style="display:inline-flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:7px 12px;font-size:12px;font-weight:600;color:var(--blue-mid);cursor:pointer;font-family:inherit"><i class="ti ti-help-circle" style="font-size:16px"></i>Como começar</button>
-      <div id="pp-ajuda-panel" style="display:none;position:absolute;top:calc(100% + 6px);right:0;z-index:200;width:300px;max-width:82vw;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:15px 16px;text-align:left">
-        <div style="font-size:13.5px;font-weight:800;color:var(--text);margin-bottom:3px">Comece aqui</div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:13px;line-height:1.5">${subs[stepAtual]}</div>
-        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">${passos}</div>
-        <button onclick="setProjectProTab('fases')" style="width:100%;background:var(--blue-mid);color:#fff;border:none;border-radius:9px;padding:9px 16px;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-family:inherit">${btnLabel} <i class="ti ti-arrow-right" style="font-size:15px"></i></button>
-      </div>
-    </div>`;
-  }
 
   // ── Cards pequenos: Tarefas + Atrasadas (compactos).
   const miniCard=(icon,label,valor,cor)=>`<div style="display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 13px">
@@ -25661,11 +25660,8 @@ function renderProjectProVisao(p, prog){
   const miniCardsHTML = miniCard('ti-checklist','Tarefas',`${prog.feitas}/${prog.total}`,'var(--blue-mid)')
     + miniCard('ti-alert-triangle','Atrasadas',prog.atrasadas,prog.atrasadas>0?'var(--danger)':'var(--text3)');
 
-  // ── Topo: cards pequenos à esquerda, ícone de ajuda à direita.
-  const topoHTML=`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:16px">
-    <div style="display:flex;gap:10px;flex-wrap:wrap">${miniCardsHTML}</div>
-    ${ajudaHTML}
-  </div>`;
+  // ── Topo: cards pequenos (Tarefas/Atrasadas). O "Como começar" agora é ícone no header.
+  const topoHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">${miniCardsHTML}</div>`;
 
   // ── Resumo de progresso — só quando JÁ tem tarefas (barra fina + conclusão prevista).
   let resumoHTML='';
