@@ -6425,27 +6425,27 @@ function hubMeuDiaItem(ativo, inline){
       const down=`0 1px 0 ${edge}, 0 2px 4px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.3)`;
       const baseI = comum+` padding:6px 13px; border-radius:10px; color:${txtFill}; background:${grad}; border:none; box-shadow:${up}; text-shadow:0 1px 1px rgba(0,0,0,.28); transition:transform .08s, box-shadow .08s;`;
       if(ativo){
-        return `<button style="${baseI} cursor:default;"><i class="ti ti-sun"></i> <span>Meu dia!</span></button>`;
+        return `<button style="${baseI} cursor:default;"><i class="ti ti-sun"></i> <span>Início</span></button>`;
       }
-      return `<button onclick="voltarMeuDia()" style="${baseI} cursor:pointer;" onmousedown="this.style.transform='translateY(3px)';this.style.boxShadow='${down}'" onmouseup="this.style.transform='none';this.style.boxShadow='${up}'" onmouseout="this.style.transform='none';this.style.boxShadow='${up}'"><i class="ti ti-sun"></i> <span>Meu dia!</span></button>`;
+      return `<button onclick="voltarMeuDia()" style="${baseI} cursor:pointer;" onmousedown="this.style.transform='translateY(3px)';this.style.boxShadow='${down}'" onmouseup="this.style.transform='none';this.style.boxShadow='${up}'" onmouseout="this.style.transform='none';this.style.boxShadow='${up}'"><i class="ti ti-sun"></i> <span>Início</span></button>`;
     }
     // Formato suave (padrão): fundo claro com texto/borda na cor escolhida (Brasil = verde com amarelo).
     const baseI = ehBrasil
       ? comum+` padding:5px 11px; border-radius:8px; color:#FFDF00; background:#009739; border:1.5px solid #FFDF00; transition:filter .15s;`
       : comum+` padding:5px 11px; border-radius:8px; color:${cor}; background:color-mix(in srgb, ${cor} 14%, transparent); border:1.5px solid color-mix(in srgb, ${cor} 40%, transparent); transition:filter .15s;`;
     if(ativo){
-      return `<button style="${baseI} cursor:default;"><i class="ti ti-sun"></i> <span>Meu dia!</span></button>`;
+      return `<button style="${baseI} cursor:default;"><i class="ti ti-sun"></i> <span>Início</span></button>`;
     }
-    return `<button onclick="voltarMeuDia()" style="${baseI} cursor:pointer;" onmouseover="this.style.filter='brightness(.96)'" onmouseout="this.style.filter='none'"><i class="ti ti-sun"></i> <span>Meu dia!</span></button>`;
+    return `<button onclick="voltarMeuDia()" style="${baseI} cursor:pointer;" onmouseover="this.style.filter='brightness(.96)'" onmouseout="this.style.filter='none'"><i class="ti ti-sun"></i> <span>Início</span></button>`;
   }
   const base = 'display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:9px; font-size:13px; font-weight:600; color:var(--blue-mid); background:none; border:1.5px solid var(--blue-mid); box-sizing:border-box; width:100%; font-family:inherit; transition:background .15s;';
   if(ativo){
     return `<button style="${base} cursor:default;">
-      <i class="ti ti-sun"></i> <span>Meu dia!</span>
+      <i class="ti ti-sun"></i> <span>Início</span>
     </button>`;
   }
   return `<button onclick="voltarMeuDia()" style="${base} cursor:pointer;" onmouseover="this.style.background='color-mix(in srgb, var(--blue-mid) 8%, transparent)'" onmouseout="this.style.background='none'">
-    <i class="ti ti-sun"></i> <span>Meu dia!</span>
+    <i class="ti ti-sun"></i> <span>Início</span>
   </button>`;
 }
 
@@ -10033,9 +10033,9 @@ function renderSidebar(){
     : 0;
   const _mostraEquipe = isGestorOuDiretor(CURRENT_USER_ID) && _equipeGerenciada.length>0;
 
-  // ── Grupo: GERENCIADOR (Início + tarefas do dia) — acordeão
+  // ── Grupo: GERENCIADOR (tarefas do dia) — acordeão
+  // "Início" saiu do grupo (era redundante): o botão do topo da sidebar já é o Início.
   const fixosHTML = grupo('gerenciador','ti-checklist','Gerenciador',
-    `<button class="sbnav-item sbnav-subitem ${hubView==='meudia'?'active':''}" onclick="voltarMeuDia()"><i class="ti ti-home"></i><span class="sbnav-label">Início</span></button>` +
     navSubItem('hoje','ti-sun','Meu Dia', {badge: hojeCount||null}) +
     navSubItem('minhas-tarefas','ti-user-check','Minhas Tarefas') +
     navSubItem('solicitadas','ti-send','Solicitadas', {badge: _solicConfirmCount||null, badgeClass:'warn'}) +
