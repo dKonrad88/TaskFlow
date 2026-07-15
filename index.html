@@ -25544,7 +25544,6 @@ function renderProjectProView(id){
         <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
           <i class="ti ${tipo.icon}" style="font-size:20px;color:${p.cor}"></i>
           <span style="font-size:21px;font-weight:800;color:var(--text)">${escapeHTML(p.nome)}</span>
-          <span id="pp-status-badge" onclick="event.stopPropagation();abrirMenuStatusProjeto('${p.id}',event)" style="background:${status.color}22;color:${status.color};font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.3px;cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="Mudar status"><i class="ti ${status.icon}"></i> ${status.label} <i class="ti ti-chevron-down" style="font-size:11px;opacity:.7"></i></span>
         </div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
@@ -25685,8 +25684,17 @@ function renderProjectProVisao(p, prog){
     <div style="flex:1;min-width:0"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600">${label}</div></div>
     <div style="font-size:19px;font-weight:800;color:${cor}">${valor}</div>
   </div>`;
+  // Card de STATUS — clicável (abre o menu de troca). Leva o id pp-status-badge, que ancora abrirMenuStatusProjeto.
+  const _st = (typeof PP_STATUS!=='undefined' && (PP_STATUS[p.status]||PP_STATUS.planejamento)) || {label:'—',color:'var(--text3)',icon:'ti-circle'};
+  const statusCard = `<div id="pp-status-badge" onclick="event.stopPropagation();abrirMenuStatusProjeto('${p.id}',event)" title="Mudar status" style="display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='${_st.color}'" onmouseout="this.style.borderColor='var(--border)'">
+    <i class="ti ${_st.icon}" style="font-size:18px;color:${_st.color}"></i>
+    <div style="flex:1;min-width:0"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600">Status</div></div>
+    <span style="font-size:12.5px;font-weight:800;color:${_st.color};text-transform:uppercase;letter-spacing:.3px;white-space:nowrap">${_st.label}</span>
+    <i class="ti ti-chevron-down" style="font-size:13px;color:var(--text3);flex-shrink:0"></i>
+  </div>`;
   const col1 = `<div class="pp-col1" style="flex:0 0 var(--pp-col1-w,300px);min-width:0;display:flex;flex-direction:column;gap:12px">
     ${infoCard}
+    ${statusCard}
     ${statCard('ti-checklist','Tarefas',`${prog.feitas}/${prog.total}`,'var(--blue-mid)')}
     ${statCard('ti-alert-triangle','Atrasadas',prog.atrasadas,prog.atrasadas>0?'var(--danger)':'var(--text3)')}
     ${statCard('ti-users','Pessoas',nPessoas,'var(--orange)')}
