@@ -25695,7 +25695,10 @@ function renderProjectProVisao(p, prog){
   </div>`;
   // Card de STATUS — clicável (abre o menu de troca). Leva o id pp-status-badge, que ancora abrirMenuStatusProjeto.
   const _st = (typeof PP_STATUS!=='undefined' && (PP_STATUS[p.status]||PP_STATUS.planejamento)) || {label:'—',color:'var(--text3)',icon:'ti-circle'};
-  const statusCard = `<div id="pp-status-badge" onclick="event.stopPropagation();abrirMenuStatusProjeto('${p.id}',event)" title="Mudar status" style="display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='${_st.color}'" onmouseout="this.style.borderColor='var(--border)'">
+  // Fundo/borda com um tom BEM fraco da cor do status (color-mix funciona com hex e var(), e acompanha o tema).
+  const _stBg = `color-mix(in srgb, ${_st.color} 9%, var(--card))`;
+  const _stBd = `color-mix(in srgb, ${_st.color} 22%, var(--border))`;
+  const statusCard = `<div id="pp-status-badge" onclick="event.stopPropagation();abrirMenuStatusProjeto('${p.id}',event)" title="Mudar status" style="display:flex;align-items:center;gap:11px;background:${_stBg};border:1px solid ${_stBd};border-radius:10px;padding:11px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='${_st.color}'" onmouseout="this.style.borderColor='${_stBd}'">
     <i class="ti ${_st.icon}" style="font-size:18px;color:${_st.color}"></i>
     <div style="flex:1;min-width:0"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600">Status</div></div>
     <span style="font-size:12.5px;font-weight:800;color:${_st.color};text-transform:uppercase;letter-spacing:.3px;white-space:nowrap">${_st.label}</span>
