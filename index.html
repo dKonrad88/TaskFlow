@@ -25670,14 +25670,23 @@ function renderProjectProVisao(p, prog){
   const temTarefa=prog.total>0;
 
   const tipo = (typeof PP_TIPOS!=='undefined' && (PP_TIPOS[p.tipo]||PP_TIPOS.outro)) || {icon:'ti-folder',label:''};
-  const dono = p.dono ? people.find(x=>x.id===p.dono) : null;
+  const dono   = p.dono         ? people.find(x=>x.id===p.dono)         : null;
+  const coord  = p.coordenador  ? people.find(x=>x.id===p.coordenador)  : null;
+  const coord2 = p.coordenador2 ? people.find(x=>x.id===p.coordenador2) : null;
+  // Linha de pessoa do card de infos (convenção do HUB: Dono = coroa âmbar; coordenador = estrela azul)
+  const _ppLinha=(pp,role,icon,cor)=>pp?`<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2);min-width:0"><i class="ti ${icon}" style="font-size:15px;color:${cor};flex-shrink:0"></i><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(pp.name)}</span><span style="color:var(--text3);white-space:nowrap;flex-shrink:0"> · ${role}</span></div>`:'';
+  const _blocoPessoas=[
+    _ppLinha(dono,'Dono','ti-crown','var(--amber)'),
+    _ppLinha(coord,'1º Coord.','ti-user-star','var(--blue-mid)'),
+    _ppLinha(coord2,'2º Coord.','ti-user-star','var(--blue-mid)'),
+  ].filter(Boolean).join('');
 
-  // ── COLUNA 1: infos do projeto (tipo/início/prazo/dono) + indicadores empilhados ──
+  // ── COLUNA 1: infos do projeto (tipo/início/prazo + dono/coordenadores) + indicadores empilhados ──
   const infoCard = `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:9px">
     <div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2)"><i class="ti ${tipo.icon}" style="font-size:15px;color:var(--text3)"></i>${escapeHTML(tipo.label||'Projeto')}</div>
     ${p.prazoInicio?`<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2)"><i class="ti ti-calendar-event" style="font-size:15px;color:var(--text3)"></i>Início: ${formatDate(p.prazoInicio)}</div>`:''}
     ${p.prazoFim?`<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2)"><i class="ti ti-calendar-due" style="font-size:15px;color:var(--text3)"></i>Prazo: ${formatDate(p.prazoFim)}</div>`:''}
-    ${dono?`<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2);border-top:1px solid var(--border);padding-top:9px"><i class="ti ti-crown" style="font-size:15px;color:var(--amber)"></i>${escapeHTML(dono.name)} <span style="color:var(--text3)">· Dono</span></div>`:''}
+    ${_blocoPessoas?`<div style="border-top:1px solid var(--border);padding-top:9px;display:flex;flex-direction:column;gap:9px">${_blocoPessoas}</div>`:''}
   </div>`;
   const statCard=(icon,label,valor,cor)=>`<div style="display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 14px">
     <i class="ti ${icon}" style="font-size:18px;color:${cor}"></i>
