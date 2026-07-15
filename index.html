@@ -26700,10 +26700,11 @@ function renderProjectProTarefas(p){
   }
 
   if(_modo==='planilha'){
+    // Quick-add ACIMA da planilha (como no Organizar) — lançar tarefa em série sem rolar até o fim.
     return `<div>
       ${filtrosHTML}
+      <div style="margin:10px 0 12px">${_quickAddProHTML(p.id, _alvoFaseId, _alvoGrupoId, _qaTabId, 'Adicionar tarefa')}</div>
       ${_planilhaHTML()}
-      <div style="margin-top:10px">${_quickAddProHTML(p.id, _alvoFaseId, _alvoGrupoId, _qaTabId, 'Adicionar tarefa')}</div>
     </div>`;
   }
 
