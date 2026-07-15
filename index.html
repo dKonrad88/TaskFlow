@@ -420,6 +420,14 @@
      GUILHERME V3: Modo "Lista" agora é TABELA densa (estilo planilha).
      Substitui a lista vertical de cards. Foco em scanning rápido + edição inline.
      ═══════════════════════════════════════════════════════════════ */
+  /* Planilha do projeto (aba Tarefas): mesma LINGUAGEM VISUAL da lista do Organizar (.task-table)
+     — cabeçalho bg2 uppercase, linhas limpas só com separador horizontal, hover — mas mantendo as
+     colunas próprias do cronograma (Ordem/Previsão/Fase/Setor/Dias), que o .task-table não tem. */
+  .pp-planilha{width:100%;border-collapse:collapse;font-size:13px;background:var(--card)}
+  .pp-planilha thead th{background:var(--bg2);text-align:left;padding:7px 10px;font-weight:700;color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap;vertical-align:middle;height:32px}
+  .pp-planilha tbody td{padding:6px 10px;border-top:1px solid var(--border);vertical-align:middle;height:36px}
+  .pp-planilha tbody tr:first-child td{border-top:none}
+  .pp-planilha tbody tr:hover td{background:var(--bg2)}
   .task-table{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;font-size:13px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:8px}
   /* V3: larguras fixas por coluna para alinhar todas as tabelas de grupo (Atrasadas/Hoje/Amanhã...) */
   .task-table [data-col="titulo"]{width:auto}
@@ -26520,7 +26528,9 @@ function renderProjectProTarefas(p){
     const linha = (t, scopeFaseId) => {
       const exec = t.executor ? _personById(t.executor) : null;
       const prioMap=PRIO_LABEL;
-      const cell='padding:7px 9px;border-bottom:0.5px solid var(--border);border-right:0.5px solid var(--border);vertical-align:middle';
+      // Visual (padding/bordas/altura/hover) vem da classe .pp-planilha — igual ao Organizar.
+      // Aqui só sobram larguras/alinhamentos específicos de cada coluna.
+      const cell='';
       const st=t._status;
       const paralelaBtn = t._idx>0
         ? `<button onclick="event.stopPropagation();_ppToggleParalela('${p.id}',${t.id})" ${podeGerir?'':'disabled'} title="${t.ppParalela?'Roda junto com a etapa anterior (clique p/ separar)':'Separada — clique p/ rodar junto com a anterior'}" style="background:none;border:none;cursor:${podeGerir?'pointer':'default'};color:${t.ppParalela?p.cor:'var(--text3)'};padding:0 2px;line-height:1;${podeGerir?'':'opacity:.4'}"><i class="ti ti-${t.ppParalela?'arrow-merge':'arrow-merge-both'}" style="font-size:13px"></i></button>`
@@ -26556,7 +26566,7 @@ function renderProjectProTarefas(p){
         </td>
       </tr>`;
     };
-    const th='padding:8px 9px;text-align:left;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid var(--border);border-right:0.5px solid var(--border);background:var(--bg2)';
+    const th=''; // estilo do cabeçalho vem de .pp-planilha thead th (mesmo do Organizar)
     const linhas=todas; // já vem na ordem de execução
     const _agrupar = sessionStorage.getItem('pp-agrupar-'+p.id)==='1';
     // Botões Lista / Por fase
@@ -26597,8 +26607,8 @@ function renderProjectProTarefas(p){
         return head+rows;
       }).join('') || `<tr><td colspan="9" style="padding:30px;text-align:center;color:var(--text3);font-size:13px">Nenhuma tarefa ainda</td></tr>`;
     }
-    return `${_agToggle}<div style="border:0.5px solid var(--border);border-radius:12px;overflow:hidden;overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse">
+    return `${_agToggle}<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;overflow-x:auto">
+      <table class="pp-planilha">
         <thead><tr>
           <th style="${th};text-align:center;border-top:none" title="Arraste para reordenar; o número é a etapa">Ordem</th>
           <th style="${th}">Tarefa</th><th style="${th}" title="Período previsto de cada tarefa">Previsão</th><th style="${th}">Prioridade</th><th style="${th}">Executor</th>
