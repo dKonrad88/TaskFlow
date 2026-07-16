@@ -1511,6 +1511,9 @@
   .reun-rail-btn:hover{background:var(--bg2);color:var(--blue-mid)}
   .reun-rail-btn i{font-size:19px}
   .reun-rail-btn span{font-size:8.5px;font-weight:600;text-align:center;line-height:1.1}
+  /* Cronômetro da reunião quando ESTOURA o tempo planejado */
+  @keyframes reunTimerPulse{0%,100%{opacity:1}50%{opacity:.5}}
+  .reun-timer-over{animation:reunTimerPulse 1s ease-in-out infinite}
   body.reun-focus .reun-focus-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:60;background:var(--card);border-bottom:1px solid var(--border);padding:11px 30px;margin:0 -30px 16px}
   body.reun-focus .reun-grid4{grid-template-columns:minmax(0,320px) minmax(0,1fr) minmax(0,340px);max-width:1400px;margin-left:auto;margin-right:auto}
   .reun-card4{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;min-height:130px}
@@ -30672,7 +30675,6 @@ function openReuniaoView(id){
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','anexos')" style="${_railActive('anexos')}" title="Anexos"><i class="ti ti-paperclip"></i><span>Anexos</span></button>
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','editar')" style="${_railActive('editar')}" title="Editar reunião (data, hora, sala, recorrência)"><i class="ti ti-pencil"></i><span>Editar</span></button>
         <div style="flex:1"></div>
-        <button class="reun-rail-btn" onclick="abrirProximaReuniaoModal('${m.id}')" title="Agendar próxima reunião"><i class="ti ti-calendar-plus"></i><span>Próxima</span></button>
         ${m.status==='encerrada'
           ? `<button class="reun-rail-btn" onclick="gerarPDFReuniao('${m.id}')" style="color:var(--danger)" title="PDF da ATA"><i class="ti ti-file-download"></i><span>PDF</span></button>`
           : `<button class="reun-rail-btn" onclick="concluirReuniao('${m.id}')" style="color:var(--success)" title="Finalizar reunião"><i class="ti ti-flag"></i><span>Finalizar</span></button>`}
@@ -30716,7 +30718,6 @@ function openReuniaoView(id){
           <button class="reun-ico" onclick="_reunSetSubView('${m.id}','ata')" title="ATA / Resumo" style="${_icoActive('ata')}"><i class="ti ti-notes"></i></button>
           <button class="reun-ico" onclick="_reunSetSubView('${m.id}','anexos')" title="Anexos" style="${_icoActive('anexos')}"><i class="ti ti-paperclip"></i></button>
           <button class="reun-ico" onclick="_reunSetSubView('${m.id}','editar')" title="Editar reunião (data, hora, sala, recorrência)" style="${_icoActive('editar')}"><i class="ti ti-pencil"></i></button>
-          <button class="reun-ico" onclick="abrirProximaReuniaoModal('${m.id}')" title="Agendar próxima reunião"><i class="ti ti-calendar-plus"></i></button>
           ${m.status==='encerrada'?`<button class="reun-ico" onclick="gerarPDFReuniao('${m.id}')" title="Gerar PDF da ATA" style="color:var(--danger)" onmouseover="this.style.background='var(--danger)';this.style.color='#fff';this.style.borderColor='var(--danger)'" onmouseout="this.style.background='var(--card)';this.style.color='var(--danger)';this.style.borderColor='var(--border)'"><i class="ti ti-file-download"></i></button>`:''}
           ${m.status!=='encerrada'?`<button class="reun-ico" onclick="concluirReuniao('${m.id}')" title="Finalizar reunião" style="background:var(--success-bg);border-color:var(--success);color:var(--success)"><i class="ti ti-flag-check"></i></button>`:'<span style="height:34px;padding:0 12px;font-size:12px;color:var(--success);font-weight:700;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-circle-check"></i> Encerrada</span>'}
         </div>
@@ -30895,17 +30896,17 @@ function openReuniaoView(id){
           <!-- Linha de nova tarefa inline -->
           <div id="nova-tarefa-row-${m.id}" style="display:none;margin-top:10px">
             <div style="padding:8px;background:var(--bg2);border-radius:8px">
-              <div style="display:grid;grid-template-columns:18px 1fr 140px 120px;gap:8px;font-size:10px;font-weight:700;color:var(--text3);margin-bottom:5px">
+              <div style="display:grid;grid-template-columns:18px 1fr 140px 132px;gap:8px;font-size:10px;font-weight:700;color:var(--text3);margin-bottom:5px">
                 <span></span><span>Descrição <span style="color:var(--danger)">*</span></span><span>Executor <span style="color:var(--danger)">*</span></span><span>Data <span style="color:var(--danger)">*</span></span>
               </div>
-              <div style="display:grid;grid-template-columns:18px 1fr 140px 120px;gap:8px;align-items:center">
+              <div style="display:grid;grid-template-columns:18px 1fr 140px 132px;gap:8px;align-items:center">
                 <i class="ti ti-square" style="font-size:16px;color:var(--text3)"></i>
                 <input id="nt-desc-${m.id}" class="modal-input" placeholder="Descrição da tarefa..." style="padding:6px 10px;font-size:13px" onkeydown="if(event.key==='Enter')saveNovaTarefaInline('${m.id}');if(event.key==='Escape')cancelNovaTarefaInline('${m.id}')">
                 <select id="nt-quem-${m.id}" class="modal-input" style="padding:6px 10px;font-size:12px;min-width:110px">
                   <option value="">Quem?</option>
                   ${[...people].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>`<option value="${p.id}">${escapeHTML(p.name)}</option>`).join('')}
                 </select>
-                <input id="nt-data-${m.id}" class="modal-input" type="date" value="${m.date||today}" style="padding:6px 10px;font-size:12px;width:130px">
+                <input id="nt-data-${m.id}" class="modal-input" type="date" value="${m.date||today}" style="padding:6px 8px;font-size:12px;width:100%;box-sizing:border-box;min-width:0">
               </div>
             </div>
             <div style="display:flex;gap:6px;margin-top:6px;justify-content:flex-end">
@@ -31983,13 +31984,28 @@ function iniciarCronometroReuniao(meetingId){
     const min=Math.floor((diff%3600)/60);
     const s=diff%60;
     const txt=(h?String(h).padStart(2,'0')+':':'')+String(min).padStart(2,'0')+':'+String(s).padStart(2,'0');
-    if(el) el.textContent=txt;
+    // Estourou o tempo planejado? → vermelho + chamativo (pulsa). Tempo só cresce, então só aplicamos.
+    const plannedMin=parseInt((ft&&ft.dataset.planned)||(el&&el.dataset.planned)||'60',10)||60;
+    const over = diff > plannedMin*60;
+    const overMin = over ? Math.ceil((diff-plannedMin*60)/60) : 0;
+    if(el){
+      el.textContent = over ? (txt+' · +'+overMin+'min') : txt;
+      if(over){
+        const pill=document.getElementById('reun-cronometro-'+meetingId);
+        if(pill){
+          pill.style.color='var(--danger)'; pill.style.background='color-mix(in srgb,var(--danger) 14%,transparent)'; pill.style.borderColor='var(--danger)';
+          pill.classList.add('reun-timer-over');
+          const pIc=pill.querySelector('i.ti'); if(pIc) pIc.className='ti ti-alert-triangle';
+        }
+      }
+    }
     // Modo foco: atualiza o timer + a barra de progresso (decorrido vs planejado)
     if(ft){
-      const elapsedEl=ft.querySelector('.rft-elapsed'); if(elapsedEl) elapsedEl.textContent=String(Math.floor(diff/60)).padStart(2,'0')+':'+String(s).padStart(2,'0');
-      const planned=(parseInt(ft.dataset.planned,10)||60)*60;
+      const elapsedEl=ft.querySelector('.rft-elapsed'); if(elapsedEl){ elapsedEl.textContent=String(Math.floor(diff/60)).padStart(2,'0')+':'+String(s).padStart(2,'0'); if(over){ elapsedEl.style.color='var(--danger)'; elapsedEl.style.fontWeight='900'; elapsedEl.classList.add('reun-timer-over'); } }
+      const planned=plannedMin*60;
       const pct=Math.min(100,(diff/planned)*100);
-      const fill=ft.querySelector('.rft-fill'); if(fill){ fill.style.width=pct+'%'; fill.style.background=pct>=100?'var(--danger)':(pct>=85?'var(--amber)':'var(--success)'); }
+      const fill=ft.querySelector('.rft-fill'); if(fill){ fill.style.width=pct+'%'; fill.style.background=over?'var(--danger)':(pct>=85?'var(--amber)':'var(--success)'); }
+      if(over){ const fIc=ft.querySelector('i.ti'); if(fIc){ fIc.className='ti ti-alert-triangle'; fIc.style.color='var(--danger)'; } }
     }
   };
   tick();
@@ -32785,24 +32801,18 @@ function reunTarefasHTML(m){
     const resp=(t.people||[]).map(pid=>{const p=people.find(x=>x.id===pid);return p?escapeHTML(p.name):'';}).filter(Boolean);
     const dateStr=t.date?new Date(t.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}):'';
     const respHTML=resp.map(nome=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;background:var(--bg2);border:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text2)">${nome}</span>`).join('');
-    // Data de criação — só no painel da reunião
-    let criadoStr='';
-    if(t.createdAt){
-      const criado=new Date(t.createdAt+'T12:00');
-      const hoje=new Date(today+'T12:00');
-      const diffDias=Math.floor((hoje-criado)/(1000*60*60*24));
-      const label=diffDias===0?'hoje':diffDias===1?'1d':diffDias+'d atrás';
-      const cor=diffDias>14?'var(--danger)':diffDias>7?'var(--amber)':'var(--text3)';
-      criadoStr=`<span style="font-size:10px;color:${cor};white-space:nowrap;background:var(--bg2);padding:1px 6px;border-radius:4px" title="Criada em ${criado.toLocaleDateString('pt-BR')}">📅 ${label}</span>`;
-    }
-    return `<div style="display:grid;grid-template-columns:18px 1fr auto auto auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+    // Atrasada: vencida e não concluída → destaque em vermelho na própria linha
+    const atrasada = !t.done && t.date && t.date < today;
+    const dataHTML = atrasada
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--danger);font-weight:700;white-space:nowrap;text-align:right" title="Tarefa atrasada"><i class="ti ti-alert-triangle" style="font-size:11px"></i> atrasada${dateStr?` · ${dateStr}`:''}</span>`
+      : `<span style="font-size:11px;color:var(--text3);white-space:nowrap;text-align:right">${dateStr}</span>`;
+    return `<div style="display:grid;grid-template-columns:18px 1fr auto auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
       <div role="checkbox" tabindex="0" aria-checked="${t.done?'true':'false'}" aria-label="Concluir tarefa" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click();}" onclick="toggle(${t.id})" style="width:18px;height:18px;border-radius:50%;border:2px solid ${t.done?'var(--blue-mid)':'var(--border)'};background:${t.done?'var(--blue-mid)':'transparent'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s">
         ${t.done?'<i class="ti ti-check" style="font-size:10px;color:#fff"></i>':''}
       </div>
       <span style="font-size:13px;color:var(--text);${t.done?'text-decoration:line-through;opacity:.5':''}">${escapeHTML(t.title)}</span>
       <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">${respHTML||'<span style="font-size:11px;color:var(--text3)">—</span>'}</div>
-      ${criadoStr}
-      <span style="font-size:11px;color:var(--text3);white-space:nowrap;text-align:right">${dateStr}</span>
+      ${dataHTML}
       <button onclick="delTarefaReuniao(${t.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px 4px;border-radius:4px;font-size:14px;flex-shrink:0;transition:color .15s" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'" title="Excluir tarefa"><i class="ti ti-trash"></i></button>
     </div>`;
   };
