@@ -102,6 +102,21 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-16 (g) — PC da Empresa — Reuniões: pauta principal azul de novo, modelos só em nova, origem da tarefa, remove banners (commit `cabe0df`, PUSHADO)
+- Mais uma leva de ajustes do Diego (testando continuações no Pages):
+- **Pauta principal VOLTA a ser AZUL** (revert do `e685518`). Em vez dela, **removida a borda/linha azul do CARD "Decisões tomadas"** (agora igual aos outros cards).
+- **Modelos ("Começar de um modelo") só em reunião NOVA** — `+ !m.continuacaoDe` na condição em `reunPautaHTML`. **Isto também corrige o bug do Diego**
+  "criar pauta principal apagava as demais": `_pautaAplicarModelo` (grep confirmou: ÚNICO ponto que faz `m.pauta=[...]`) sobrescreve a pauta; aplicar um
+  modelo numa continuação apagava as pautas carregadas. Sem modelos na continuação, não acontece.
+- **Tarefa "da reunião anterior" mostra DE QUAL reunião** veio, entre () com a data — auto quando `t.meetingId!==m.id` (`fromMeeting`/`fromStr` em `tarefaRow`).
+- **Removidos 2 banners do topo do painel**: "Continuação de: X" (`contLabel` — uso removido, const fica morta e inofensiva) e o resumo "Da reunião
+  anterior X/Y concluídas" (IIFE de accountability removida). A lista acionável segue no card Tarefas, agora com a origem por tarefa.
+- ⚠️ **BUG #6 EM ABERTO (não reproduzi no código)**: continuação abrindo com **pautas marcadas como feitas / data de hoje**. Os 2 caminhos de carry
+  (`reagendarProxima`, `_gerarProximaRecorrente`) só levam pautas PENDENTES e recriam DESMARCADAS (`pautaDone.map(()=>false)`); materialização
+  (`_recNovaOcorrencia`) nasce com `pauta:[]`. Nenhum caminho gera pauta feita numa nova ocorrência. **Suspeita: dado antigo/emaranhado de testes.**
+  Precisa do Diego reproduzir passo-a-passo (qual reunião, o que clicou) — evitei guess-fix em lógica de dados pra não arriscar perda.
+- NÃO testado em navegador; balanço idêntico ao HEAD.
+
 ### 2026-07-16 (f) — PC da Empresa — Painel de Reunião: polimentos pós-teste (commits `e685518`, `61c2acb`, PUSHADOS)
 - Lote de ajustes finos que o Diego pediu testando no Pages:
 - **Pauta principal sem destaque azul** (`e685518`): o item da pauta principal tinha fundo azul + borda-esquerda azul + texto azul/negrito;
