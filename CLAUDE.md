@@ -92,6 +92,23 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-15 (5) — Mac de casa — RECORRÊNCIA etapa 2: encerrar sugere a próxima + "Nova reunião" na Agenda
+- **Encerrar → sugestão automática da próxima** (pedido explícito do Diego). `_encerrarReuniaoFinal` agora chama
+  `_reunProximaDaSerie(m)` (era `_gerarProximaRecorrente`): pega a próxima JÁ materializada via `continuacaoDe`
+  e, se for a última, gera pela regra (respeitando o fim). Depois abre `_abrirSugestaoProxima(id)` — modal
+  "Próxima da série" mostrando a regra + "2ª de 4" + data/hora **editáveis**.
+  - `_sugAplicarProxima(id)`: aplica data/hora **só naquela ocorrência** (as outras não mudam).
+  - `_sugEncerrarSerie(id)`: manda ESTA e as futuras não encerradas da série p/ a **Lixeira** (`moveToTrash('meeting')`).
+  - "Manter" só fecha o modal (a próxima segue agendada como está).
+- **Agenda: botão "Nova reunião"** na navBar (`novaReuniaoNaData(iso)`), abre já na data da semana vista (hoje se
+  a semana atual). O clique no dia/slot CONTINUA indo direto p/ Compromisso (fluxo mais usado, não mexido).
+  `openReuniaoModal(data,hora)` agora aceita pré-preenchimento via `window._preReunData/_preReunHora` (molde do
+  `_preCompData` dos compromissos); form usa esses defaults em `reun-date` e `reun-hora-inicio`.
+- **Verificado no browser:** criar série (4 quintas) → encerrar a 1ª → **0 duplicatas**, modal sugere 23/07
+  ("2ª de 4"); ajustar p/ 24/07 16h mudou **só ela** (as outras 3 seguiram qui 14h); botão da Agenda presente e
+  pré-preenche a data. 0 erros de sintaxe/console.
+- **Pendente (opcional):** chip "3ª de 8" dentro da reunião aberta e "regenerar futuras" ao mudar a regra.
+
 ### 2026-07-15 (4) — Mac de casa — RECORRÊNCIA DE REUNIÕES (etapa 1: regra personalizada + materialização)
 - **Contexto/diagnóstico:** o motor de recorrência existia inteiro (REUN_FREQ, `proximaDataReuniao`,
   `_gerarProximaRecorrente`, banner de data vencida) MAS o campo da UI tinha sido removido em mai/2026 →
@@ -120,8 +137,7 @@ servidor da Empresa**.
   NÃO duplica, a última respeita "após 4". 0 erros de sintaxe/console.
 - **Nota p/ o Guilherme:** materializar é escolha de PROTÓTIPO (comunica a regra com pouco código). No backend
   real o certo é **RRULE + exceções (ocorrências virtuais)**, senão editar a série vira update em massa.
-- **Etapa 2 (pendente):** encerrar → sugerir a próxima data da série; botão "Nova reunião" na Agenda (com data
-  pré-preenchida); mostrar "3ª de 8" na reunião; "excluir série"/"regenerar futuras".
+- **Etapa 2 (FEITA — ver entrada (5) acima):** encerrar → sugere a próxima; botão "Nova reunião" na Agenda.
 
 ### 2026-07-15 (3) — Mac de casa — Header renomeado p/ "Hub Klain"
 - Título do header (span ~linha 2208) passou de "Gerenciador de Tarefas — Diego Konrad" → **"Hub Klain"**.

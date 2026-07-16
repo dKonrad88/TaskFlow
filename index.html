@@ -18694,6 +18694,13 @@ function novoCompromissoNaData(iso,hora){
   window._preCompHora=hora;
   setAgendaTab('novo');
 }
+// Criar REUNIÃO a partir da Agenda (o clique no dia/slot continua indo direto p/
+// Compromisso, que é o fluxo mais usado — este é o caminho explícito da reunião).
+function novaReuniaoNaData(iso, hora){
+  editingReuniaoId=null;
+  window._reunPauta=null; window._reunSelParts=[]; window._reunSelProjs=[];
+  openReuniaoModal(iso||'', hora||'');
+}
 function renderAgendaCalendario(container,subNav){
   const fmtISO=d=>_dateToLocalISO(d);
   // V3: Agenda fixada em modo Grade — toggle e legenda removidos
@@ -18791,6 +18798,7 @@ function renderAgendaCalendario(container,subNav){
     <button onclick="calToday()" class="agenda-jump" style="${calWeekOffset===0?'background:var(--blue-mid);color:#fff;border-color:var(--blue-mid)':''}" >Hoje</button>
     <button onclick="navCalWeek(1)" class="agenda-jump"><i class="ti ti-chevron-right"></i></button>
     <span style="font-size:14px;font-weight:700;color:var(--text)">${semLabel}</span>
+    <button onclick="novaReuniaoNaData('${isos.indexOf(today)>=0?today:isos[0]}')" class="agenda-jump" style="margin-left:auto;background:var(--blue-mid);color:#fff;border-color:var(--blue-mid);font-weight:700" title="Criar reunião nesta semana (com recorrência)"><i class="ti ti-speakerphone"></i> Nova reunião</button>
   </div>`;
 
   container.innerHTML=`<div style="display:flex;flex-direction:column;padding-bottom:40px">${subNav}${toolbar}${navBar}<div class="cal-grade-wrap">
@@ -29763,8 +29771,11 @@ function toggleReunSerie(chave){
 // Mesma estratégia de Rotina: renderiza o form no #task-container, recorta o HTML,
 // restaura a listagem e injeta no modal. Mantém TODA a lógica original intacta
 // (pauta, decisões, ATA, séries, participantes, projetos vinculados etc.).
-function openReuniaoModal(){
+// data/hora opcionais: pré-preenchem a nova reunião (usado pela Agenda), no molde
+// do _preCompData/_preCompHora dos compromissos.
+function openReuniaoModal(data, hora){
   window._reunRec=null; // recorrência recarrega da reunião em edição (ou default p/ nova)
+  window._preReunData=data||''; window._preReunHora=hora||'';
   document.getElementById('reun-modal-overlay')?.remove();
   const ov=document.createElement('div');
   ov.id='reun-modal-overlay';
@@ -30044,7 +30055,7 @@ function renderNovaReuniaoForm(container, subNav){
   const m=editingReuniaoId?meetings.find(x=>x.id===editingReuniaoId):null;
   const macrosSorted=Object.keys(getMacroSetores()).sort((a,b)=>a.localeCompare(b,'pt-BR'));
   // Recorrência: inicia 1x por abertura do form (igual _reunPauta) — não resetar em re-render.
-  if(!window._reunRec) window._reunRec = (m&&m.rec) ? JSON.parse(JSON.stringify(m.rec)) : (_recFromLegacy(m) || _recDefault(m?m.date:today));
+  if(!window._reunRec) window._reunRec = (m&&m.rec) ? JSON.parse(JSON.stringify(m.rec)) : (_recFromLegacy(m) || _recDefault(m?m.date:(window._preReunData||today)));
 
   // Pauta existente — usa window._reunPauta se disponível (ao re-renderizar via pautaAddItem)
   const pautaItems=window._reunPauta||(m?m.pauta||[]:['']);
@@ -30102,11 +30113,11 @@ function renderNovaReuniaoForm(container, subNav){
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
               <div>
                 <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-calendar"></i> Data <span style="color:var(--danger);font-weight:700">*</span></div>
-                <input id="reun-date" class="modal-input" type="date" value="${m?m.date:today}" onchange="atualizarProximaData()">
+                <input id="reun-date" class="modal-input" type="date" value="${m?m.date:(window._preReunData||today)}" onchange="atualizarProximaData()">
               </div>
               <div>
                 <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-clock-play"></i> Início <span style="color:var(--danger);font-weight:700">*</span></div>
-                ${drumFieldHTML('reun-hora-inicio','Início',m?(m.horaInicio||''):'',{propagateToId:'reun-hora-fim',addMin:60})}
+                ${drumFieldHTML('reun-hora-inicio','Início',m?(m.horaInicio||''):(window._preReunHora||''),{propagateToId:'reun-hora-fim',addMin:60})}
               </div>
               <div>
                 <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-clock-stop"></i> Fim <span style="color:var(--danger);font-weight:700">*</span></div>
@@ -31245,6 +31256,71 @@ function _serieInfo(m){
   return idx<0?null:{idx:idx+1, total:irmas.length, irmas};
 }
 
+// ── Encerrar → sugerir a próxima da série ──────────────────────────
+// A próxima normalmente JÁ existe (materializada). Se for a última, tenta gerar
+// pela regra (respeitando o fim). Nunca duplica: guarda `continuacaoDe`.
+function _reunProximaDaSerie(m){
+  if(!m) return null;
+  const enc=(meetings||[]).find(x=>x.continuacaoDe===m.id);
+  return enc || _gerarProximaRecorrente(m);
+}
+function _abrirSugestaoProxima(proxId){
+  const p=(meetings||[]).find(x=>x.id===proxId); if(!p) return;
+  document.getElementById('prox-sug-ov')?.remove();
+  const info=_serieInfo(p), rec=_recDe(p);
+  const dl=new Date(p.date+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+  const inp='padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg2);color:var(--text);box-sizing:border-box;';
+  const ov=document.createElement('div'); ov.id='prox-sug-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9600;display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.onclick=e=>{ if(e.target===ov) ov.remove(); };
+  ov.innerHTML=`<div style="background:var(--card);border-radius:14px;width:100%;max-width:440px;box-shadow:0 24px 60px rgba(0,0,0,.35);">
+    <div style="padding:15px 18px;border-bottom:1px solid var(--border);">
+      <h3 style="margin:0;font-size:15px;color:var(--text);display:flex;align-items:center;gap:7px;"><i class="ti ti-calendar-repeat" style="color:var(--blue-mid)"></i> Próxima da série</h3>
+      ${rec?`<div style="font-size:12px;color:var(--text3);margin-top:4px;">${escapeHTML(_recDescricao(rec))}${info?' · '+info.idx+'ª de '+info.total:''}</div>`:''}
+    </div>
+    <div style="padding:16px 18px;">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:10px;line-height:1.5;">Já agendada para <b style="color:var(--text)">${dl}</b>.<br>Ajuste se precisar — muda <b>só esta</b>, não a série.</div>
+      <input type="date" id="sug-date" value="${p.date}" style="${inp} width:100%; margin-bottom:9px;">
+      <div style="display:flex;gap:9px;">
+        <input type="time" id="sug-ini" value="${p.horaInicio||''}" style="${inp} flex:1;">
+        <input type="time" id="sug-fim" value="${p.horaFim||''}" style="${inp} flex:1;">
+      </div>
+    </div>
+    <div style="padding:12px 18px;display:flex;justify-content:space-between;gap:8px;border-top:1px solid var(--border);align-items:center;">
+      <button onclick="_sugEncerrarSerie('${p.id}')" style="background:none;border:1px solid var(--border);color:var(--danger);border-radius:8px;padding:8px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;">Encerrar série</button>
+      <div style="display:flex;gap:8px;">
+        <button onclick="document.getElementById('prox-sug-ov').remove()" style="background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:8px;padding:8px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;">Manter</button>
+        <button onclick="_sugAplicarProxima('${p.id}')" class="btn-modal-save" style="padding:8px 16px;font-size:12.5px;">Salvar ajuste</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+function _sugAplicarProxima(id){
+  const p=(meetings||[]).find(x=>x.id===id); if(!p) return;
+  const d=document.getElementById('sug-date')?.value;
+  if(!d){ toast('⚠️ Escolhe uma data'); return; }
+  const ini=document.getElementById('sug-ini')?.value||'', fim=document.getElementById('sug-fim')?.value||'';
+  if(ini&&fim&&typeof horaToMin==='function'&&horaToMin(fim)<=horaToMin(ini)){ toast('⚠️ A hora de fim deve ser depois do início'); return; }
+  p.date=d; p.horaInicio=ini; p.horaFim=fim; saveMeeting_db(p);
+  document.getElementById('prox-sug-ov')?.remove();
+  if(typeof renderReunioes==='function') renderReunioes();
+  toast('📅 Próxima ajustada para '+new Date(d+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long'}));
+}
+// Encerrar série = manda esta e as FUTURAS não encerradas p/ a Lixeira (recuperável).
+function _sugEncerrarSerie(id){
+  const p=(meetings||[]).find(x=>x.id===id); if(!p) return;
+  const alvo=(meetings||[]).filter(x=> x.id===p.id || (p.serieId && x.serieId===p.serieId && String(x.date)>=String(p.date) && x.status!=='encerrada'));
+  alvo.forEach(x=>{ try{ moveToTrash('meeting',{...x}); }catch(e){} });
+  const ids=new Set(alvo.map(x=>x.id));
+  meetings=meetings.filter(x=>!ids.has(x.id));
+  safeSetItem(LS_MEETINGS,JSON.stringify(meetings));
+  document.getElementById('prox-sug-ov')?.remove();
+  if(typeof renderReunioes==='function') renderReunioes();
+  const n=alvo.length;
+  toast(`🚫 Série encerrada — ${n} ocorrência${n>1?'s':''} futura${n>1?'s':''} para a Lixeira.`);
+}
+
 function _gerarProximaRecorrente(m, opts){
   opts=opts||{};
   const _rec=_recDe(m);
@@ -31492,17 +31568,20 @@ function _encerrarReuniaoFinal(meetingId){
   m.fimReal=new Date().toISOString();
   if(_cronometroInterval){clearInterval(_cronometroInterval);_cronometroInterval=null;}
   saveMeeting_db(m);
-  // Recorrência: encadeia automaticamente a próxima ocorrência (continuacaoDe). Pauta nasce limpa —
-  // levar assuntos pendentes é a ação explícita do botão "Agendar próxima e levar".
-  const _prox=_gerarProximaRecorrente(m);
+  // Recorrência: traz a PRÓXIMA da série. Normalmente ela já existe (materializada
+  // ao criar a série); se for a última, gera pela regra. Depois abre a sugestão de
+  // data p/ o Diego confirmar/ajustar só aquela ocorrência.
+  const _prox=_reunProximaDaSerie(m);
   openReuniaoView(meetingId);
   const _tCount=tasks.filter(t=>t.meetingId===meetingId).length;
   const _dCount=(m.decisoesItens||[]).length;
   let _msg=`🏁 Reunião finalizada!`;
   const _det=[]; if(_tCount)_det.push(`${_tCount} tarefa${_tCount!==1?'s':''}`); if(_dCount)_det.push(`${_dCount} decis${_dCount!==1?'ões':'ão'}`);
   if(_det.length) _msg+=' '+_det.join(' · ')+'.';
-  if(_prox){ const _dl=new Date(_prox.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long'}); _msg+=` 📅 Próxima já agendada para ${_dl}.`; }
+  if(_prox){ const _dl=new Date(_prox.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long'}); _msg+=` 📅 Próxima: ${_dl}.`; }
   toast(_msg);
+  // Sugestão automática da próxima data (pedido do Diego): confirmar ou ajustar só esta.
+  if(_prox) setTimeout(()=>{ try{ _abrirSugestaoProxima(_prox.id); }catch(e){ console.warn(e); } }, 400);
 }
 
 // Modal de fechamento: resumo do produzido + destino dos assuntos não discutidos.
