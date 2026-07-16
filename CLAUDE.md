@@ -62,14 +62,23 @@ servidor da Empresa**.
       "Confirm email" (pra o 1º cadastro/login funcionar na hora, sem e-mail de confirmação).
     - NÃO confundir com os outros projetos da conta: "Habit Tracker" (HUB) e "Tarefas" (antigo, pausado) — não mexer.
 
-## Fluxo de trabalho (2 máquinas, 1 repositório)
-- **Mac de casa (Codespace)** = máquina **canônica** de desenvolvimento.
-- **PC da Empresa** = uso ocasional.
+## Fluxo de trabalho (VÁRIAS máquinas, 1 repositório)
+- Máquinas em uso: **Mac de casa**, **PC da Empresa**, **PC da Produção** (e o Diego já citou uma "3ª máquina").
+  Não é mais "2 máquinas" — trate como **N**.
 - Os chats do Claude Code são separados; o que sincroniza é **só o git**.
+- ⚠️ **O tráfego é INTENSO e simultâneo.** Em 15/07 chegaram **17+ commits de outras máquinas entre um `fetch` e
+  um `push`** — e numa ocasião a outra máquina refatorou a MESMA área (a OS) enquanto eu editava, obrigando a
+  reescrever a feature na base nova. Um `index.html` de ~33k linhas editado por N máquinas é pólvora: se duas
+  mexerem na mesma função, o merge dói. **Por isso a regra abaixo não é burocracia.**
 
 ### Ao COMEÇAR a sessão (quando o Diego disser "tô no PC" ou "tô no Mac")
 1. `git pull` (trazer o código mais recente).
 2. Ler este `CLAUDE.md` (em especial o Log de handoff).
+
+### SEMPRE, antes de editar E antes de commitar
+`git fetch` + conferir `git rev-list --count HEAD..origin/main`. Se ≠ 0, **parar e analisar** (regra 3) antes de
+qualquer coisa. Receita que funcionou p/ divergência com trabalho local não commitado:
+`git stash` → `git pull --ff-only` → `git stash pop` (conferir conflito) → validar → commitar.
 
 ### Ao TERMINAR a sessão
 1. `git add -A && git commit && git push`.
@@ -92,6 +101,47 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+
+### ⭐ 2026-07-15 — RESUMO DA SESSÃO (Mac) — LEIA ISTO PRIMEIRO
+Sessão longa, toda em **Reuniões/Recorrência** + alguns fixes. Tudo commitado e pushado (último: `271e1c2`).
+O Diego **validou tudo** ("tudo ok") e testou no navegador. As entradas (2)…(8) abaixo têm o detalhe técnico.
+
+**O que mudou hoje (8 commits):**
+| Commit | O quê |
+|---|---|
+| `43d10cf` | Mural de Ideias: sugestões **anônimas** (autor oculto; `autorId` segue gravado só p/ notificar o autor e impedir voto duplo) |
+| `7db3e13` | **FIX**: usuário preso no Kanban mesmo após remover Painel/Cartões (boot ressuscitava `'painel'` do localStorage) |
+| `b66da82` | Header vira **"Hub Klain"** + regra 4: commit/push **autônomos** |
+| `c21221c` | **Recorrência personalizada + ocorrências materializadas** (o grande) |
+| `21fd0a9` | Encerrar **sugere a próxima** da série + botão "Nova reunião" na Agenda |
+| `fb31ea7` | Série **"sem fim"** (janela rolante de 8), **"Continuar +8"**, **"Só esta / Esta e as futuras"** |
+| `f171309` | **Modal de reunião enxuto** — pauta e modelos foram p/ o Painel |
+| `271e1c2` | Aba Reuniões: **sub-navbar por período**; saem filtro de tipo, ⋮ e Mural |
+
+**Como a recorrência funciona agora (resumo p/ não reler tudo):**
+`meeting.rec` é a regra; as ocorrências são **materializadas** (reuniões reais já agendadas → aparecem na Agenda,
+que era a dor do Diego: planejar semanas à frente). Cada ocorrência é **independente** (mudar dia/hora de uma não
+afeta as outras). `serieId` + `continuacaoDe` ligam a série; a guarda `continuacaoDe` impede duplicata ao encerrar.
+Editar uma ocorrência oferece **"Só esta" / "Esta e as futuras"** (regenera). "Termina: nunca" mantém ~8 à frente.
+
+**PENDÊNCIAS (nada urgente, nada quebrado):**
+1. **Decisão do Diego em aberto:** o `<title>` da aba do navegador ainda é "Gerenciador de Tarefas — Diego Konrad"
+   (o header já é "Hub Klain"). Trocar? (O item de sidebar "Gerenciador de Tarefas" deve FICAR — é o nome da área.)
+2. **Oferecido e não respondido:** chip **"3ª de 8"** dentro da reunião aberta (hoje só aparece no modal de
+   encerramento) e **"regenerar futuras"** a partir do painel.
+3. **Código morto acumulado** (não remove nada sem querer — só listando p/ uma limpeza dedicada futura):
+   `renderPainel` + branch do Kanban (`allView==='painel'`) e seção "Estilo do painel" nas configs;
+   `reunFiltroTipo`/`setReuniaoFiltro`; `toggleReuniaoConfig`/`_fecharReuniaoConfig`; `setReuniaoView` e o branch
+   `reunView==='mural'`; `_reunAplicarModelo`/`_reunRebuildPautaList`/`pautaAddItem`/`pautaUpdate`/`pautaRemove`;
+   `REUN_FREQ`/`proximaDataReuniao` (substituídos por `rec`/`_recGerarDatas`, mantidos p/ compat).
+4. `_reuniaoSemPauta` alerta **"Sem pauta"** com mais frequência (a pauta agora se define no Painel). É um nudge
+   correto, mas se incomodar o Diego, revisar.
+5. **Mural de Ideias:** "Excluir" é **definitivo** (não vai p/ a Lixeira) — simplificação de protótipo.
+
+**LIÇÃO QUE SE REPETIU 2× HOJE (não caia nela):** ao remover uma opção de visualização, **não basta tirar o botão**
+— se o valor ficar salvo no localStorage e for lido no boot, o usuário fica **preso sem como sair**. Aconteceu com
+`allView` ('painel' → Kanban) e eu quase repeti com `reunView` ('mural'). **Force o valor e ignore/limpe o LS.**
+
 ### 2026-07-15 (8) — Mac de casa — Aba Reuniões: sub-navbar por PERÍODO; saem filtro de tipo, ⋮ e Mural
 - **Sub-navbar por período** (centralizada, onde ficava a lista): **Hoje · Amanhã · Essa semana · Próxima semana ·
   Mais adiante · Histórico**, com contadores. `REUN_PERIODOS` + `reunPeriodo` (LS `taskflow_reun_periodo`) +
