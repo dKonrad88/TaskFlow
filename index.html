@@ -28817,6 +28817,7 @@ function _recDe(m){ return (m&&m.rec&&m.rec.ativo)?m.rec:_recFromLegacy(m); }
 // ── UI do construtor de recorrência (dentro do form de reunião) ──
 function _recPresetAtual(rec){
   if(!rec||!rec.ativo) return 'nao';
+  if(rec._custom) return 'custom'; // usuário escolheu "Personalizado" explicitamente
   const um=(rec.dias||[]).length===1;
   if(rec.unidade==='semana' && Number(rec.intervalo)===1 && um) return 'semanal';
   if(rec.unidade==='semana' && Number(rec.intervalo)===2 && um) return 'quinzenal';
@@ -28829,11 +28830,11 @@ function _recPreset(v){
   const base=_recBaseData(); const dow=new Date(base+'T12:00').getDay();
   let rec=window._reunRec||_recDefault(base);
   const fim={fimTipo:rec.fimTipo||'apos', fimN:rec.fimN||8, fimData:rec.fimData||''};
-  if(v==='nao'){ rec.ativo=false; }
-  else if(v==='semanal')   rec={..._recDefault(base), ...fim, ativo:true, unidade:'semana', intervalo:1, dias:[dow]};
-  else if(v==='quinzenal') rec={..._recDefault(base), ...fim, ativo:true, unidade:'semana', intervalo:2, dias:[dow]};
-  else if(v==='mensal')    rec={..._recDefault(base), ...fim, ativo:true, unidade:'mes', intervalo:1, mensalModo:'dia', mensalDia:new Date(base+'T12:00').getDate()};
-  else rec.ativo=true;
+  if(v==='nao'){ rec.ativo=false; rec._custom=false; }
+  else if(v==='semanal')   rec={..._recDefault(base), ...fim, ativo:true, unidade:'semana', intervalo:1, dias:[dow], _custom:false};
+  else if(v==='quinzenal') rec={..._recDefault(base), ...fim, ativo:true, unidade:'semana', intervalo:2, dias:[dow], _custom:false};
+  else if(v==='mensal')    rec={..._recDefault(base), ...fim, ativo:true, unidade:'mes', intervalo:1, mensalModo:'dia', mensalDia:new Date(base+'T12:00').getDate(), _custom:false};
+  else { rec.ativo=true; rec._custom=true; } // Personalizado: mostra os controles, independe da forma
   window._reunRec=rec; _recRedraw();
 }
 function _recSet(k,v){
@@ -28881,14 +28882,22 @@ function _recBoxHTML(){
     <option value="custom" ${preset==='custom'?'selected':''}>Personalizado…</option>
   </select>`;
   if(!rec.ativo) return html;
-  // Grupos "A cada N unidade" e "Termina …" na MESMA linha (compacto)
+  const datas=_recGerarDatas(base, rec);
+  const totalTxt = datas.length ? `<b style="color:var(--text2)">${datas.length+1}</b> no total` : `<span style="color:var(--danger)">sem ocorrências — ajuste</span>`;
+  const _resumoLinha=`<div style="margin-top:6px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:8px 11px;font-size:11.5px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span style="color:var(--text2);font-weight:600">${escapeHTML(_recDescricao(rec))}</span><span style="color:var(--text3)">${totalTxt}</span></div>`;
+  // Presets (Semanal/Quinzenal/Mensal): só o RESUMO. Os controles de personalizar
+  // (a cada N, dias, término) aparecem SÓ quando o usuário escolhe "Personalizado".
+  if(preset!=='custom'){
+    html+=_resumoLinha+`<div style="margin-top:5px;font-size:10.5px;color:var(--text3)"><i class="ti ti-adjustments-horizontal" style="font-size:11px"></i> Mudar dias ou término? Escolha <b>Personalizado</b>.</div>`;
+    return html;
+  }
+  // ── Personalizado: controles completos ──────────────────────────────
   const gAcada=`<span style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--text2)"><span>A cada</span>
     <input type="number" min="1" max="12" value="${rec.intervalo}" onchange="_recSet('intervalo',this.value)" style="${ist} width:46px;">
     <select onchange="_recSet('unidade',this.value)" style="${ist} cursor:pointer;"><option value="semana" ${rec.unidade==='semana'?'selected':''}>sem.</option><option value="mes" ${rec.unidade==='mes'?'selected':''}>mês</option></select></span>`;
   const gTermina=`<span style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--text2)"><span>Termina</span>
     <select onchange="_recSet('fimTipo',this.value)" style="${ist} cursor:pointer;"><option value="nunca" ${rec.fimTipo==='nunca'?'selected':''}>nunca</option><option value="apos" ${rec.fimTipo==='apos'?'selected':''}>após</option><option value="ate" ${rec.fimTipo==='ate'?'selected':''}>em</option></select>
     ${rec.fimTipo==='apos'?`<input type="number" min="2" max="${REC_MAX_HARD}" value="${rec.fimN}" onchange="_recSet('fimN',this.value)" style="${ist} width:48px;">`:rec.fimTipo==='ate'?`<input type="date" value="${rec.fimData||''}" onchange="_recSet('fimData',this.value)" style="${ist}">`:''}</span>`;
-  // Dias (semanal) OU regra mensal
   let meioHTML='';
   if(rec.unidade==='semana'){
     meioHTML=`<div style="display:flex;gap:4px;flex-wrap:wrap">${REC_DOW.map((n,i)=>{const on=(rec.dias||[]).map(Number).indexOf(i)>=0;
@@ -28897,8 +28906,6 @@ function _recBoxHTML(){
     meioHTML=`<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px;color:var(--text2)"><select onchange="_recSet('mensalModo',this.value)" style="${ist} cursor:pointer;"><option value="dia" ${rec.mensalModo==='dia'?'selected':''}>No dia</option><option value="nth" ${rec.mensalModo==='nth'?'selected':''}>Na</option></select>
       ${rec.mensalModo==='dia'?`<input type="number" min="1" max="31" value="${rec.mensalDia}" onchange="_recSet('mensalDia',this.value)" style="${ist} width:52px;"><span>do mês</span>`:`<select onchange="_recSet('mensalNth',this.value)" style="${ist} cursor:pointer;">${Object.keys(REC_NTH).map(k=>`<option value="${k}" ${String(rec.mensalNth)===k?'selected':''}>${REC_NTH[k]}</option>`).join('')}</select><select onchange="_recSet('mensalDow',this.value)" style="${ist} cursor:pointer;">${REC_DOW.map((n,i)=>`<option value="${i}" ${Number(rec.mensalDow)===i?'selected':''}>${n}</option>`).join('')}</select>`}</div>`;
   }
-  const datas=_recGerarDatas(base, rec);
-  const totalTxt = datas.length ? `<b style="color:var(--text2)">${datas.length+1}</b> no total` : `<span style="color:var(--danger)">sem ocorrências — ajuste</span>`;
   html+=`<div style="margin-top:6px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;display:flex;flex-direction:column;gap:7px;">
     <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">${gAcada}${gTermina}</div>
     ${meioHTML}
