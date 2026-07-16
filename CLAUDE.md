@@ -102,6 +102,27 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-16 (2) — Mac de casa — Modal de reunião: tira Tipo/Status/Quem-conduz da criação + Sala em 3 modos
+- **Tipo, Status, Quem conduz** saíram da **criação** (modal fica só Título/Data/Hora/Sala/Repetir). Continuam no
+  **Editar** (o form é o mesmo — envolvi o grid em `${editingReuniaoId ? ... : ''}`). Removida a obrigatoriedade
+  de "Quem conduz" no `saveReuniao`. Na criação entram com defaults (status 'agendada', tipo 'Operacional',
+  facilitador vazio) e se ajustam no Editar. ⚠️ NÃO virou aba Info (que é só leitura) — a edição desses 3 campos é
+  pelo **Editar** mesmo, como a outra máquina desenhou.
+- **Sala reformada em 3 modos** (pedido do Diego):
+  - `salaTipo`: `'sala'` (sala de reunião, lista `salas`) · `'pessoa'` (guarda `salaPessoaId`) · `'livre'` (texto
+    em `localExterno`). Campos antigos `m.sala`/`m.localExterno` reaproveitados (compat com registros antigos).
+  - Select com optgroups: "Salas de reunião" + "Sala de uma pessoa" (21 pessoas) + "📍 Outro lugar (digitar)".
+  - **"Minha sala" ↔ "Sala de <Nome>"**: quem é a própria pessoa vê "Minha sala"; todos os outros veem "Sala de
+    Fulano". No protótipo o "eu" é `CURRENT_USER_ID`; no sistema real do Guilherme é o login de cada um (regra
+    demonstrada). Usei **"Sala de <Nome>"** (neutro, sem gênero — não tem esse dado).
+  - Helper `_reunLocalLabel(m)` centraliza a exibição (substituiu 3 cópias de `m.sala?'Sala '+m.sala:localExterno`).
+    Coleta no save via `_reunColetaSala()`. `_reunSalaSelChange()` mostra/esconde o campo livre. `confirmarNovaSala`/
+    `excluirSalaSelecionada` adaptados ao valor prefixado (`sala:` / `pessoa:` / `livre`). `_recNovaOcorrencia`
+    carrega `salaTipo`/`salaPessoaId`/`localExterno` → séries mantêm a sala.
+- **Verificado no browser:** criação sem os 3 campos; sala com os 3 modos; salvou pessoa=Débora com facilitador
+  vazio e status 'agendada'; "Sala de Débora" p/ quem olha e "Minha sala" quando é a própria; campo livre salva o
+  texto; Editar traz os 3 campos + sala pré-selecionada; recorrência (3x) carregou a sala. 0 erros sintaxe/console.
+
 ### 2026-07-16 — Mac de casa — Recorrência: nº de ocorrências volta a aparecer nos PRESETS
 - A outra máquina (commit `35ba705`) tinha escondido TODOS os controles nos presets (Semanal/Quinzenal/Mensal),
   deixando só o resumo — então o nº de ocorrências só dava p/ mudar em "Personalizado". Diego quer poder definir

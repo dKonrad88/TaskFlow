@@ -30183,6 +30183,9 @@ function renderNovaReuniaoForm(container, subNav){
   const macrosSorted=Object.keys(getMacroSetores()).sort((a,b)=>a.localeCompare(b,'pt-BR'));
   // Recorrência: inicia 1x por abertura do form (igual _reunPauta) — não resetar em re-render.
   if(!window._reunRec) window._reunRec = (m&&m.rec) ? JSON.parse(JSON.stringify(m.rec)) : (_recFromLegacy(m) || _recDefault(m?m.date:(window._preReunData||today)));
+  // Sala: valor pré-selecionado (compat com registros antigos que só tinham m.sala/m.localExterno).
+  const _meId = (typeof CURRENT_USER_ID!=='undefined') ? CURRENT_USER_ID : '';
+  const _salaVal = m ? (m.salaPessoaId ? 'pessoa:'+m.salaPessoaId : (m.sala ? 'sala:'+m.sala : (m.localExterno ? 'livre' : ''))) : '';
 
   // (jul/2026) A pauta saiu do modal — é editada no Painel. Nada de pautaHTML aqui.
 
@@ -30246,8 +30249,10 @@ function renderNovaReuniaoForm(container, subNav){
               </div>
             </div>
 
-            <!-- Tipo + Status + Quem conduz (3 colunas) -->
-            <div style="display:grid;grid-template-columns:1fr 1fr 1.15fr;gap:8px">
+            <!-- Tipo + Status + Quem conduz — SÓ ao EDITAR (a criação fica enxuta,
+                 pedido do Diego). Ao criar, entram com defaults e se ajustam depois
+                 no Editar do Painel. -->
+            ${editingReuniaoId ? `<div style="display:grid;grid-template-columns:1fr 1fr 1.15fr;gap:8px">
               <div>
                 <div class="modal-label" style="margin-bottom:4px"><i class="ti ti-tag"></i> Tipo</div>
                 <select id="reun-tipo" class="modal-input">${REUN_TIPOS.map(t=>`<option value="${t}" ${m&&m.tipo===t?'selected':''}>${t}</option>`).join('')}</select>
@@ -30257,22 +30262,31 @@ function renderNovaReuniaoForm(container, subNav){
                 <select id="reun-status" class="modal-input">${Object.entries(REUN_STATUS).map(([k,v])=>`<option value="${k}" ${m&&m.status===k?'selected':''}>${v.label}</option>`).join('')}</select>
               </div>
               <div>
-                <div class="modal-label" style="margin-bottom:4px"><i class="ti ti-microphone"></i> Quem conduz <span style="color:var(--danger);font-weight:700">*</span></div>
+                <div class="modal-label" style="margin-bottom:4px"><i class="ti ti-microphone"></i> Quem conduz</div>
                 <select id="reun-facilitador" class="modal-input"><option value="">— Selecionar —</option>${[...people].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>`<option value="${p.id}" ${m&&m.facilitador===p.id?'selected':''}>${escapeHTML(p.name)}</option>`).join('')}</select>
               </div>
-            </div>
+            </div>` : ''}
 
-            <!-- Sala -->
+            <!-- Sala / local: 3 modos — sala de reunião · sala de uma pessoa · outro lugar (livre).
+                 "Sala de uma pessoa" guarda o id: quem é a própria pessoa vê "Minha sala",
+                 todos os outros veem "Sala de <Nome>" (regra p/ o Guilherme; aqui o "eu" é fixo). -->
             <div>
-              <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-map-pin"></i> Sala <span style="font-size:10px;color:var(--text3);font-weight:400">(opcional)</span></div>
+              <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-map-pin"></i> Sala / local <span style="font-size:10px;color:var(--text3);font-weight:400">(opcional)</span></div>
               <div style="display:flex;gap:6px;align-items:center">
-                <select id="reun-sala" class="modal-input" style="flex:1">
-                  <option value="">— Nenhuma —</option>
-                  ${salas.map(s=>`<option value="${escapeAttr(s)}" ${m&&m.sala===s?'selected':''}>${escapeHTML(s)}</option>`).join('')}
+                <select id="reun-sala" class="modal-input" style="flex:1" onchange="_reunSalaSelChange()">
+                  <option value="" ${_salaVal===''?'selected':''}>— Nenhuma —</option>
+                  <optgroup label="Salas de reunião">
+                    ${salas.map(s=>`<option value="sala:${escapeAttr(s)}" ${_salaVal==='sala:'+s?'selected':''}>${escapeHTML(s)}</option>`).join('')}
+                  </optgroup>
+                  <optgroup label="Sala de uma pessoa">
+                    ${[...people].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>`<option value="pessoa:${p.id}" ${_salaVal==='pessoa:'+p.id?'selected':''}>${p.id===_meId?'Minha sala':'Sala de '+escapeHTML(p.name)}</option>`).join('')}
+                  </optgroup>
+                  <option value="livre" ${_salaVal==='livre'?'selected':''}>📍 Outro lugar (digitar)…</option>
                 </select>
-                <button type="button" onclick="abrirNovaSalaInline()" title="Nova sala" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:15px;flex-shrink:0;transition:all .2s" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-plus"></i></button>
-                <button type="button" onclick="excluirSalaSelecionada()" title="Excluir sala" style="background:var(--bg2);border:1px solid var(--border);color:var(--text3);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:15px;flex-shrink:0;transition:all .2s" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'"><i class="ti ti-trash"></i></button>
+                <button type="button" onclick="abrirNovaSalaInline()" title="Nova sala de reunião" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:15px;flex-shrink:0;transition:all .2s" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-plus"></i></button>
+                <button type="button" onclick="excluirSalaSelecionada()" title="Excluir sala de reunião selecionada" style="background:var(--bg2);border:1px solid var(--border);color:var(--text3);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:15px;flex-shrink:0;transition:all .2s" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'"><i class="ti ti-trash"></i></button>
               </div>
+              <input id="reun-sala-livre" class="modal-input" placeholder="Ex.: Máquina 3 do setor de Salgados, perto da expedição" value="${m?escapeAttr(m.localExterno||''):''}" style="margin-top:6px;display:${_salaVal==='livre'?'block':'none'}">
               <div id="nova-sala-inline" style="display:none;gap:6px;align-items:center;margin-top:6px">
                 <input id="nova-sala-inp" class="modal-input" placeholder="Nome da sala..." style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarNovaSala();}if(event.key==='Escape')cancelarNovaSala()">
                 <button type="button" onclick="confirmarNovaSala()" class="btn-modal-save" style="padding:7px 12px;font-size:13px;flex-shrink:0"><i class="ti ti-check"></i></button>
@@ -30403,8 +30417,7 @@ function saveReuniao(){
   const _rFim=document.getElementById('reun-hora-fim')?.value||'';
   if(!_rFim){ try{toast('⚠️ Defina a hora de fim');}catch{} return; }
   if(horaToMin(_rFim)<=horaToMin(_rIni)){ try{toast('⚠️ A hora de fim deve ser depois do início');}catch{} return; }
-  const _rCond=document.getElementById('reun-facilitador')?.value||'';
-  if(!_rCond){ try{toast('⚠️ Escolha quem conduz');document.getElementById('reun-facilitador')?.focus();}catch{} return; }
+  // "Quem conduz" não é mais obrigatório (saiu da criação; define-se no Editar).
   // (jul/2026) Pauta principal deixou de ser obrigatória aqui: ela é definida
   // DENTRO do Painel da reunião. O modal só cuida do essencial.
 
@@ -30422,9 +30435,9 @@ function saveReuniao(){
     tipo:document.getElementById('reun-tipo')?.value||'Operacional',
     status:document.getElementById('reun-status')?.value||'agendada',
     localTipo:'interno',
-    sala:document.getElementById('reun-sala')?.value||'',
-    localExterno:'',
-    facilitador:document.getElementById('reun-facilitador')?.value||'',
+    ..._reunColetaSala(),
+    // Facilitador: no Editar lê o campo; na criação (campo ausente) preserva/fica vazio.
+    facilitador: document.getElementById('reun-facilitador') ? document.getElementById('reun-facilitador').value : (_reunAnt?_reunAnt.facilitador||'':''),
     // Recorrência: `rec` é a fonte de verdade (regra personalizada). `frequencia`
     // fica só por compatibilidade com registros/telas antigas.
     rec: (window._reunRec && window._reunRec.ativo) ? JSON.parse(JSON.stringify(window._reunRec)) : null,
@@ -30518,8 +30531,11 @@ function confirmarNovaSala(){
   const sel=document.getElementById('reun-sala');
   if(sel){
     const opt=document.createElement('option');
-    opt.value=txt;opt.textContent=txt;opt.selected=true;
-    sel.appendChild(opt);
+    opt.value='sala:'+txt; opt.textContent=txt;
+    const grp=sel.querySelector('optgroup'); // 1º optgroup = "Salas de reunião"
+    if(grp) grp.appendChild(opt); else sel.appendChild(opt);
+    sel.value='sala:'+txt;
+    if(typeof _reunSalaSelChange==='function') _reunSalaSelChange();
   }
   cancelarNovaSala();
   toast('✅ Sala criada: '+txt);
@@ -30527,12 +30543,46 @@ function confirmarNovaSala(){
 function excluirSalaSelecionada(){
   const sel=document.getElementById('reun-sala');
   if(!sel||!sel.value) return;
-  const nome=sel.value;
+  if(sel.value.indexOf('sala:')!==0){ toast('Só dá p/ excluir salas de reunião'); return; }
+  const nome=sel.value.slice(5);
   salas=salas.filter(s=>s!==nome);
   saveSalas();
-  const opt=sel.querySelector('option[value="'+nome+'"]');
-  if(opt) opt.remove();
+  [...sel.options].forEach(o=>{ if(o.value==='sala:'+nome) o.remove(); });
+  sel.value='';
+  if(typeof _reunSalaSelChange==='function') _reunSalaSelChange();
   toast('🗑️ Sala removida: '+nome);
+}
+// Mostra/esconde o campo de texto livre conforme a opção "Outro lugar".
+function _reunSalaSelChange(){
+  const sel=document.getElementById('reun-sala');
+  const livre=document.getElementById('reun-sala-livre');
+  if(!livre) return;
+  const on = sel && sel.value==='livre';
+  livre.style.display = on ? 'block' : 'none';
+  if(on) setTimeout(()=>livre.focus(),50);
+}
+// Coleta a sala/local do modal → {salaTipo, salaPessoaId, sala, localExterno}.
+function _reunColetaSala(){
+  const v=document.getElementById('reun-sala')?.value||'';
+  const livre=(document.getElementById('reun-sala-livre')?.value||'').trim();
+  if(v.indexOf('pessoa:')===0) return {salaTipo:'pessoa', salaPessoaId:v.slice(7), sala:'', localExterno:''};
+  if(v==='livre')              return {salaTipo:'livre',  salaPessoaId:'', sala:'', localExterno:livre};
+  if(v.indexOf('sala:')===0)   return {salaTipo:'sala',   salaPessoaId:'', sala:v.slice(5), localExterno:''};
+  return {salaTipo:'', salaPessoaId:'', sala:'', localExterno:''};
+}
+// Label do local exibido nos cards/painel — resolve "Minha sala" ↔ "Sala de <Nome>"
+// por quem está vendo (no protótipo, o "eu" é CURRENT_USER_ID; no real é o login).
+function _reunLocalLabel(m){
+  if(!m) return '';
+  if(m.salaPessoaId){
+    const me=(typeof CURRENT_USER_ID!=='undefined')?CURRENT_USER_ID:null;
+    if(m.salaPessoaId===me) return 'Minha sala';
+    const p=(people||[]).find(x=>x.id===m.salaPessoaId);
+    return p ? ('Sala de '+p.name) : 'Sala de uma pessoa';
+  }
+  if(m.sala) return 'Sala '+m.sala;
+  if(m.localExterno) return m.localExterno;
+  return '';
 }
 
 // ── Atualizar próxima data sugerida quando muda frequência ou data
@@ -30641,7 +30691,7 @@ function openReuniaoView(id){
 
   // Hora / Local / Facilitador
   const horaTxt=(m.horaInicio&&m.horaFim)?`${m.horaInicio} – ${m.horaFim}`:(m.horaInicio||'');
-  const localTxt=m.sala?`Sala ${m.sala}`:(m.localExterno||'');
+  const localTxt=_reunLocalLabel(m);
   const facilitadorObj=m.facilitador?people.find(x=>x.id===m.facilitador):null;
   const presentesCount=(m.participantes||[]).filter(pid=>presencas[pid]===true).length;
   const totalParts=(m.participantes||[]).length;
@@ -31042,7 +31092,7 @@ function _reunPessoasInlineHTML(m){
 function _reunInfoInlineHTML(m){
   const dateLabel=m.date?new Date(m.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}):'Sem data';
   const horaTxt=(m.horaInicio&&m.horaFim)?`${m.horaInicio} – ${m.horaFim}`:(m.horaInicio||'');
-  const localTxt=m.sala?`Sala ${m.sala}`:(m.localExterno||'');
+  const localTxt=_reunLocalLabel(m);
   const facil=m.facilitador?people.find(x=>x.id===m.facilitador):null;
   const info=[
     `<i class="ti ti-calendar"></i> ${dateLabel}`,
@@ -31416,7 +31466,7 @@ function abrirInfoReuniao(id){
   const presentes=(m.participantes||[]).filter(pid=>presencas[pid]===true).length;
   const dateLabel=m.date?new Date(m.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}):'Sem data';
   const horaTxt=(m.horaInicio&&m.horaFim)?`${m.horaInicio} – ${m.horaFim}`:(m.horaInicio||'');
-  const localTxt=m.sala?`Sala ${m.sala}`:(m.localExterno||'');
+  const localTxt=_reunLocalLabel(m);
   const facil=m.facilitador?people.find(x=>x.id===m.facilitador):null;
   const info=[
     `<i class="ti ti-calendar"></i> ${dateLabel}`,
@@ -31647,7 +31697,8 @@ function _recNovaOcorrencia(base, iso, rec, anteriorId, idx){
     id:'reun'+Date.now()+'_'+idx+Math.floor(Math.random()*10000),
     title:base.title, date:iso,
     horaInicio:base.horaInicio||'', horaFim:base.horaFim||'',
-    tipo:base.tipo||'', status:'agendada', localTipo:'interno', sala:base.sala||'', localExterno:'',
+    tipo:base.tipo||'', status:'agendada', localTipo:'interno',
+    sala:base.sala||'', localExterno:base.localExterno||'', salaTipo:base.salaTipo||'', salaPessoaId:base.salaPessoaId||'',
     facilitador:base.facilitador||'', nivel:'completa',
     rec:JSON.parse(JSON.stringify(rec)), frequencia:'custom',
     serieId:base.serieId, serieIdx:idx,
