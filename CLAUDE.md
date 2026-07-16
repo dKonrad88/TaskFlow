@@ -102,6 +102,54 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-16 — PC da Empresa — Painel de Reuniões: MODO FOCO (tela cheia) + varredura do módulo + 5 mockups
+- **Contexto:** o Diego baixou o **Fellow** e gostou do painel ocupar a tela toda (foco na reunião). Pediu (a) modo tela cheia
+  no Painel de Reunião, (b) varredura total do módulo de reuniões (bugs/robustez/performance), (c) 5 mockups de ideias novas.
+  Autorizou fazer tudo autônomo (ele foi almoçar). ⚠️ **NADA testado em navegador** (máquina sem preview/Node) — Diego confere no
+  Pages (Ctrl+Shift+R).
+- **MODO FOCO / TELA CHEIA (commit `90753dd`)** — baseado no Mockup 1 aprovado + itens dos outros mockups:
+  - Botão **⛶** (`ti-arrows-maximize`) no cabeçalho do Painel → `_toggleReunFocus()` liga `body.reun-focus` e re-abre o painel.
+    `Esc` ou botão sai (`_exitReunFocus`). CSS `body.reun-focus`: esconde `.hdr/.sidebar/#sidebar-resizer/.topbar/.fab-create/.fab-menu`
+    e põe `#task-container{position:fixed;inset:0;z-index:500}` (fullscreen). z-index dos flutuantes (FAB/toast/modais) é >500 → aparecem por cima, ok.
+  - **Barra de foco sticky** no topo (`.reun-focus-bar`, só visível no foco): título+status, **cronômetro com CONTAGEM**
+    (decorrido / planejado + barra que vai verde→âmbar→vermelho conforme passa do tempo), presença X/Y, Iniciar/Finalizar.
+    Duração planejada vem de `_reunPlannedMin(m)` (horaInicio/horaFim, default 60). O `tick` do cronômetro (`iniciarCronometroReuniao`)
+    foi estendido p/ atualizar `#reun-focus-timer-<id>` (`.rft-elapsed` + `.rft-fill`).
+  - **Colunas AJUSTÁVEIS:** separador arrastável `#reun-col-rz` entre esquerda (Pauta+Decisões) e direita (Tarefas). Só aparece no
+    foco (`display:none` fora → não quebra o grid normal de 2 colunas). `--reun-col1-w` (240–680px), persiste em `LS_REUN_COL1_W`,
+    dbl-clique reseta. Funções `_applyReunColW`/`_loadReunColW`/`_initReunColResizer`. A pauta principal já tem destaque no topo
+    (reunPautaHTML) e o "Da reunião anterior" já vem titulado no card de Tarefas (reunTarefasHTML) — os 2 pedidos já existiam.
+  - **Salvaguardas:** limpa `reun-focus` no Voltar, Esc, `setTab`, e um **guard no `render()`** (se saiu do painel por qualquer
+    caminho, desliga o fullscreen). O Painel NORMAL fica 100% inalterado fora do foco.
+- **VARREDURA do módulo de reuniões (2 subagentes) → LOTE de fixes (commit `57cc2fc`):**
+  - 🟠 **ALTO — `reunFiltroTipo` preso:** o filtro de TIPO foi removido da UI (07-15) mas o valor seguia lido do localStorage no boot
+    (e a chave sincroniza pela nuvem). Um `'compromisso'` velho escondia TODAS as reuniões sem saída (armadilha do allView/reunView).
+    Fix: `let reunFiltroTipo='todos'` + limpa o LS no boot.
+  - 🟡 **`_recRegenerarFuturas` estourava o `fimN`** ao editar ocorrência do meio (gerava fimN + nº de anteriores). Reescrita: desconta
+    as anteriores do teto (série mantém exatamente fimN); corrige tb o `serieIdx=1` errado que o `_recMaterializar` setava.
+  - 🟡 **"Termina: em" sem data → 60 reuniões** de uma vez. Guard em `_recGerarDatas` (sem fimData → REC_ROLL, não REC_MAX_HARD).
+  - 🟡 **`renderHistoricoReunioes` crashava** se alguma reunião não tinha `date`/`title` → guards `(a.date||'')`/`(m.title||'')`.
+  - 🟢 id de tarefa por SOMA colidia → `Date.now()*1000+random` (numérico, sem colisão entre ms — mantido numérico p/ não quebrar
+    `onclick="toggle(${id})"` sem aspas). `proximaDataReuniao` usava `toISOString` (UTC) → `_isoLocal`.
+  - **Perf:** `_recMaterializar`/`_serieTopUp`/`_serieContinuar` gravavam o array `meetings` INTEIRO por ocorrência (até 60
+    serializações) → agora `push` + **1** `safeSetItem` no fim. Toggle de tarefa "da reunião anterior" (cadeia 2+ níveis) caía em
+    `render()` global → update pontual via `_reunAncestraisIds`.
+  - **Modo foco preso:** `_serieContinuar`/`_sugAplicarProxima`/`_sugEncerrarSerie` voltavam à lista sem sair do foco → limpam
+    `reun-focus`+`_activeReuniaoId`.
+  - **NÃO feito (baixo/decisão):** `reagendarProxima` não copia `rec`/`serieId` na última da série (limítrofe "by design"); ordenar
+    só os grupos visíveis em `renderReunioes` (perf baixa, N pequeno). Áreas auditadas e OK: duplicata ao encerrar, migração das
+    rápidas, cronômetro (sem vazamento), `saveReuniao` (preserva pauta/serieId, valida Fim≥Início), XSS (tudo escapado), resizer
+    (listeners balanceados), z-index do foco.
+- **5 MOCKUPS de ideias novas** (via show_widget, só visuais — NÃO codados): **A** Modo Apresentação/TV (fontes grandes p/ TV da sala);
+  **B** Kanban de ações (a fazer/fazendo/feito, com carry-over marcado); **C** Timeline da série (ocorrências passadas→agora→futuras,
+  o que herdou); **D** 1:1 focado (pauta dos 2 lados, check-in, histórico da pessoa); **E** Recap pós-reunião (auto-recap + "enviar aos
+  participantes" + PDF + próxima já montada). Recomendei **E** e **B** como maior ganho de eficiência. **Aguardando o Diego escolher** se
+  algum vira feature.
+- **CONFERIR no Pages (Ctrl+Shift+R):** abrir uma reunião → botão ⛶ → tela cheia (some sidebar/header); cronômetro contando (só conta se
+  status='andamento'); arrastar o separador entre as colunas; Esc sai. Lista de Reuniões não pode estar vazia (fix do reunFiltroTipo).
+- **EM ABERTO (herdado):** decisão do `<title>` da aba (Hub Klain), chip "3ª de 8" dentro da reunião, limpeza de código morto (bastante,
+  ver resumo do Mac 07-15); Histórico/Lembretes (contradiz remoção do Lembrete — precisa Diego definir); XSS do corpo de Nota (backend Guilherme).
+
 ### ⭐ 2026-07-15 — RESUMO DA SESSÃO (Mac) — LEIA ISTO PRIMEIRO
 Sessão longa, toda em **Reuniões/Recorrência** + alguns fixes. Tudo commitado e pushado (último: `271e1c2`).
 O Diego **validou tudo** ("tudo ok") e testou no navegador. As entradas (2)…(8) abaixo têm o detalhe técnico.
