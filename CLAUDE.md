@@ -102,6 +102,16 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-16 — Mac de casa — Recorrência: nº de ocorrências volta a aparecer nos PRESETS
+- A outra máquina (commit `35ba705`) tinha escondido TODOS os controles nos presets (Semanal/Quinzenal/Mensal),
+  deixando só o resumo — então o nº de ocorrências só dava p/ mudar em "Personalizado". Diego quer poder definir
+  quantas ocorrências em QUALQUER tipo.
+- Fix cirúrgico em `_recBoxHTML`: o controle **"Termina"** (nunca / após N ocorrências / até data) subiu p/ aparecer
+  também nos presets; só os controles de **dias/intervalo** ficam no "Personalizado". Mudar o término NÃO troca o
+  preset (`_recPresetAtual` só olha unidade/dias/intervalo). `gTermina` agora é definido antes do branch e reusado.
+- Verificado no browser: preset Semanal mostra "Termina após [N] ocorrências"; mudar 8→12 gera 12 no total e
+  segue classificado como Semanal; dias continuam só no Personalizado. 0 erros.
+
 ### 2026-07-16 (g) — PC da Empresa — Reuniões: pauta principal azul de novo, modelos só em nova, origem da tarefa, remove banners (commit `cabe0df`, PUSHADO)
 - Mais uma leva de ajustes do Diego (testando continuações no Pages):
 - **Pauta principal VOLTA a ser AZUL** (revert do `e685518`). Em vez dela, **removida a borda/linha azul do CARD "Decisões tomadas"** (agora igual aos outros cards).
