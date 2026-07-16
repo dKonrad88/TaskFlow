@@ -30724,8 +30724,6 @@ function openReuniaoView(id){
       </div>
       <div id="reun-main-${m.id}">
       ${_sv!=='painel' ? _reunSubViewHTML(m) : `
-      ${contLabel}
-
       ${(()=>{ // ── Reunião recorrente em aberto com data vencida → oferecer atualização ──
         if(!m.frequencia || m.frequencia==='unica' || m.status==='encerrada') return '';
         if(!m.date || m.date>=today) return '';
@@ -30736,22 +30734,6 @@ function openReuniaoView(id){
             <div style="font-size:12.5px; color:var(--text2); display:flex; align-items:center; gap:8px;"><i class="ti ti-calendar-exclamation" style="color:var(--amber); font-size:16px; flex-shrink:0;"></i> <span>Reunião recorrente com data vencida (<b style="color:var(--text)">${atual}</b>). Atualizar para a próxima ocorrência?</span></div>
             <button onclick="_reunAtualizarDataVencida('${m.id}')" style="background:var(--amber); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap;"><i class="ti ti-calendar-up"></i> Atualizar para ${dl}</button>
           </div>`;
-      })()}
-
-      ${(()=>{ // ── Da reunião anterior: RESUMO de accountability (soma a cadeia; lista acionável vive no card Tarefas) ──
-        const _anc=_reunAncestraisIds(m);
-        if(!_anc.length) return '';
-        const ant=meetings.find(x=>x.id===m.continuacaoDe);
-        const ts=tasks.filter(t=>_anc.indexOf(t.meetingId)>-1);
-        if(!ts.length) return '';
-        const feitas=ts.filter(t=>t.done).length;
-        const pend=ts.length-feitas;
-        const todasOk=pend===0;
-        const dataAnt=ant.date?new Date(ant.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}):'';
-        return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:${todasOk?'var(--success-bg)':'var(--card)'};border:1px solid ${todasOk?'var(--success)':'var(--border)'};border-left:3px solid ${todasOk?'var(--success)':'var(--orange-dark)'};border-radius:12px;padding:10px 16px;margin-bottom:14px">
-          <span style="font-size:12.5px;font-weight:700;color:var(--text);display:inline-flex;align-items:center;gap:6px"><i class="ti ti-history-toggle" style="color:${todasOk?'var(--success)':'var(--orange-dark)'}"></i> Da reunião anterior${dataAnt?` <span style="font-weight:500;color:var(--text3)">(${dataAnt})</span>`:''}</span>
-          <span style="font-size:11.5px;font-weight:800;color:${todasOk?'var(--success)':'var(--text2)'}">${feitas}/${ts.length} concluídas${todasOk?' ✓':` · ${pend} pendente${pend>1?'s':''} — veja em Tarefas ↓`}</span>
-        </div>`;
       })()}
 
       ${(()=>{ // ── Análise sensorial vinculada a esta reunião (vínculo reverso) ──
@@ -30819,7 +30801,7 @@ function openReuniaoView(id){
             <i class="ti ti-plus"></i> Adicionar decisão
           </button>`;
 
-        return `<div class="reun-card4" style="border-left:3px solid var(--blue-mid)">
+        return `<div class="reun-card4">
           <div class="reun-card4-title">
             <span><i class="ti ti-gavel" style="color:var(--blue-mid)"></i> Decisões tomadas</span>
             ${encerrada?'<span style="font-size:10px;color:var(--text3);font-weight:400">🔒 encerrada</span>':''}
@@ -31151,12 +31133,12 @@ function reunPautaHTML(m){
     </div>`;
   } else if(m.pautaPrincipal && m.pautaPrincipal.trim()){
     const doneP=!!m.pautaPrincipalDone;
-    principalHTML=`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-      <div role="checkbox" tabindex="0" aria-checked="${doneP?'true':'false'}" aria-label="Concluir pauta principal" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click();}" onclick="togglePautaPrincipal('${m.id}')" style="width:18px;height:18px;border-radius:4px;border:2px solid ${doneP?'var(--blue-mid)':'var(--border)'};background:${doneP?'var(--blue-mid)':'transparent'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s">
+    principalHTML=`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:8px;background:linear-gradient(90deg,color-mix(in srgb, var(--blue-mid) 7%, transparent),transparent);border-left:3px solid var(--blue-mid);border-radius:6px">
+      <div role="checkbox" tabindex="0" aria-checked="${doneP?'true':'false'}" aria-label="Concluir pauta principal" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click();}" onclick="togglePautaPrincipal('${m.id}')" style="width:18px;height:18px;border-radius:4px;border:2px solid ${doneP?'var(--blue-mid)':'var(--blue-mid)'};background:${doneP?'var(--blue-mid)':'transparent'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s">
         ${doneP?'<i class="ti ti-check" style="font-size:10px;color:#fff"></i>':''}
       </div>
-      <i class="ti ti-star-filled" style="font-size:12px;color:var(--text3);flex-shrink:0" title="Pauta principal"></i>
-      <span style="flex:1;font-size:13px;color:var(--text);${doneP?'text-decoration:line-through;opacity:.5':''}">${escapeHTML(m.pautaPrincipal)}</span>
+      <i class="ti ti-star-filled" style="font-size:12px;color:var(--blue-mid);flex-shrink:0"></i>
+      <span style="flex:1;font-size:13px;color:var(--blue-mid);font-weight:700;${doneP?'text-decoration:line-through;opacity:.6':''}">${escapeHTML(m.pautaPrincipal)}</span>
       ${encerrada?'':`<button onclick="_pautaPrincEditar('${m.id}')" title="Editar pauta principal" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 2px" onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-pencil"></i></button>`}
     </div>`;
   } else if(!encerrada){
@@ -31184,7 +31166,7 @@ function reunPautaHTML(m){
   // Saíram do modal de criação — aqui é o lugar certo, já com a reunião existindo.
   let modelosHTML='';
   const vazia=!(m.pautaPrincipal&&m.pautaPrincipal.trim()) && !(m.pauta||[]).length;
-  if(vazia && !encerrada && !editando && typeof REUNIAO_MODELOS!=='undefined'){
+  if(vazia && !encerrada && !editando && !m.continuacaoDe && typeof REUNIAO_MODELOS!=='undefined'){
     modelosHTML=`<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:7px"><i class="ti ti-layout-grid"></i> Começar de um modelo — preenche a pauta</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
@@ -32803,6 +32785,9 @@ function reunTarefasHTML(m){
     const respHTML=resp.map(nome=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;background:var(--bg2);border:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text2)">${nome}</span>`).join('');
     // Atrasada: vencida e não concluída → destaque em vermelho na própria linha
     const atrasada = !t.done && t.date && t.date < today;
+    // Se a tarefa é de outra reunião (carregada da anterior), mostra de qual, entre ()
+    const fromMeeting = (t.meetingId && t.meetingId!==m.id) ? meetings.find(x=>x.id===t.meetingId) : null;
+    const fromStr = fromMeeting ? ` <span style="font-size:10.5px;color:var(--text3);font-weight:500;white-space:nowrap">· de ${escapeHTML(fromMeeting.title||'reunião')}${fromMeeting.date?` (${new Date(fromMeeting.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})})`:''}</span>` : '';
     const dataHTML = atrasada
       ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--danger);font-weight:700;white-space:nowrap;text-align:right" title="Tarefa atrasada"><i class="ti ti-alert-triangle" style="font-size:11px"></i> atrasada${dateStr?` · ${dateStr}`:''}</span>`
       : `<span style="font-size:11px;color:var(--text3);white-space:nowrap;text-align:right">${dateStr}</span>`;
@@ -32810,7 +32795,7 @@ function reunTarefasHTML(m){
       <div role="checkbox" tabindex="0" aria-checked="${t.done?'true':'false'}" aria-label="Concluir tarefa" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click();}" onclick="toggle(${t.id})" style="width:18px;height:18px;border-radius:50%;border:2px solid ${t.done?'var(--blue-mid)':'var(--border)'};background:${t.done?'var(--blue-mid)':'transparent'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s">
         ${t.done?'<i class="ti ti-check" style="font-size:10px;color:#fff"></i>':''}
       </div>
-      <span style="font-size:13px;color:var(--text);${t.done?'text-decoration:line-through;opacity:.5':''}">${escapeHTML(t.title)}</span>
+      <span style="font-size:13px;color:var(--text);${t.done?'text-decoration:line-through;opacity:.5':''}">${escapeHTML(t.title)}${fromStr}</span>
       <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">${respHTML||'<span style="font-size:11px;color:var(--text3)">—</span>'}</div>
       ${dataHTML}
       <button onclick="delTarefaReuniao(${t.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px 4px;border-radius:4px;font-size:14px;flex-shrink:0;transition:color .15s" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'" title="Excluir tarefa"><i class="ti ti-trash"></i></button>
