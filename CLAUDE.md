@@ -89,6 +89,17 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-15 — Mac de casa — Mural de Ideias: sugestões ANÔNIMAS
+- A pedido do Diego, as sugestões do Mural de Ideias agora são **anônimas** (evita atrito/conflito e encoraja
+  franqueza). No `renderMural`/`_ideiaAbrir`: removido o autor do **card** e do **detalhe** (vira "👤 Anônima ·
+  data"); **comentários** viram "Anônimo" + avatar genérico; a **notificação de comentário** não cita mais quem
+  comentou ("💬 Novo comentário em …"); subtítulo passou a avisar "as sugestões são anônimas".
+- ⚠️ O `autorId` continua GRAVADO (invisível na UI) — é usado só p/ (a) o autor receber notificação da própria
+  ideia e (b) impedir voto duplo. A mudança de status (só admin) segue notificando o autor. Ver a entrada do
+  Mural de Ideias mais abaixo p/ a arquitetura completa (reaproveita `LS_SUGESTOES`, dados descartáveis, protótipo).
+- Nota multi-máquina: reconciliei divergência de 17+ commits (PCP/Produção/Orçamentos/Klain Run) — nenhum tocou o
+  Mural; stash + pull ff + pop limpo. Verificado: sintaxe 0 erros (jsc); anonimato já validado no preview antes.
+
 ### 2026-07-13 (3) — PC da Empresa — Sidebar "Início" + REDESIGN da tela de Projetos (toolbar/menu, cabeçalho, Visão geral em 2 colunas)
 - **Contexto:** continuação da sessão (2) abaixo. Diego foi refinando a UI por prints, ao vivo; eu editava + commitava + push a cada ajuste.
   Tudo publicado no Pages. ⚠️ **NADA testado em navegador por mim** (esta máquina não roda preview/Node) — Diego confere no Pages (Ctrl+Shift+R).

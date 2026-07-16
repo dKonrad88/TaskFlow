@@ -11849,7 +11849,7 @@ function _ideiaSetEu(id){ _ideiaEu=id; try{ if(typeof safeSetItem==='function') 
 function _ideiaSetSort(v){ _ideiaSort=v; renderMural(); }
 function _ideiaSetF(which,val){ if(which==='status') _ideiaFStatus=val; else _ideiaFTipo=val; renderMural(); }
 function _ideiaVotar(id){ _ideiaMut(id, s=>{ const i=s.votos.indexOf(_ideiaEu); if(i>=0) s.votos.splice(i,1); else s.votos.push(_ideiaEu); }); _ideiaRefresh(); }
-function _ideiaComentar(id){ const ta=document.getElementById('ideia-coment-input'); if(!ta) return; const txt=(ta.value||'').trim(); if(!txt){ ta.focus(); return; } _ideiaMut(id, s=>{ s.comentarios.push({ id:_mntId('cmt'), autorId:_ideiaEu, texto:txt, data:new Date().toISOString() }); if(s.autorId && s.autorId!==_ideiaEu) _ideiaNotif(s.autorId, `💬 ${_ideiaNome(_ideiaEu)} comentou em "${s.titulo}"`, s.id); }); _ideiaRefresh(); }
+function _ideiaComentar(id){ const ta=document.getElementById('ideia-coment-input'); if(!ta) return; const txt=(ta.value||'').trim(); if(!txt){ ta.focus(); return; } _ideiaMut(id, s=>{ s.comentarios.push({ id:_mntId('cmt'), autorId:_ideiaEu, texto:txt, data:new Date().toISOString() }); if(s.autorId && s.autorId!==_ideiaEu) _ideiaNotif(s.autorId, `💬 Novo comentário em "${s.titulo}"`, s.id); }); _ideiaRefresh(); }
 function _ideiaSetStatus(id, st){ _ideiaMut(id, s=>{ const old=s.status; s.status=st; if(s.autorId && s.autorId!==_ideiaEu && old!==st) _ideiaNotif(s.autorId, `📌 Sua ideia "${s.titulo}" agora está: ${(IDEIA_STATUS[st]||{}).l||st}`, s.id); }); _ideiaRefresh(); if(typeof toast==='function') toast('Status atualizado'); }
 function _ideiaExcluir(id){ const s=_ideiasAll().find(x=>String(x.id)===String(id)); if(!s) return; if(!(_ideiaEhAdmin()||s.autorId===_ideiaEu)){ if(typeof toast==='function') toast('Só o autor ou o admin podem excluir'); return; } const a=safeJSON(LS_SUGESTOES,[]).filter(x=>String(x.id)!==String(id)); safeSetItem(LS_SUGESTOES, JSON.stringify(a)); _ideiaFecharModal(); renderMural(); if(typeof toast==='function') toast('Ideia removida'); }
 function _ideiaSalvarNova(){ const t=(document.getElementById('ideia-novo-titulo')?.value||'').trim(); const d=(document.getElementById('ideia-novo-desc')?.value||'').trim(); const tp=document.getElementById('ideia-novo-tipo')?.value||'melhoria'; if(!t){ document.getElementById('ideia-novo-titulo')?.focus(); return; } let a=safeJSON(LS_SUGESTOES,[]); if(!Array.isArray(a)) a=[]; a.unshift({ id:_mntId('idea'), titulo:t, descricao:d, tipo:tp, categoria:tp, status:'nova', autorId:_ideiaEu, criadoEm:new Date().toISOString(), votos:[], comentarios:[] }); safeSetItem(LS_SUGESTOES, JSON.stringify(a)); _ideiaFecharModal(); renderMural(); if(typeof toast==='function') toast('💡 Ideia publicada!'); }
@@ -11893,9 +11893,9 @@ function _ideiaAbrir(id){
   const podeExcluir=podeAdmin||s.autorId===_ideiaEu;
   const comentsHTML = s.comentarios.length ? s.comentarios.map(c=>`
     <div style="display:flex;gap:9px;padding:9px 0;border-top:1px solid var(--border);">
-      <div style="width:28px;height:28px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);flex-shrink:0;">${escapeHTML((_ideiaNome(c.autorId)||'?').slice(0,1).toUpperCase())}</div>
+      <div style="width:28px;height:28px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--text3);flex-shrink:0;"><i class="ti ti-user" style="font-size:14px;"></i></div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:12px;"><b style="color:var(--text);">${escapeHTML(_ideiaNome(c.autorId))}</b> <span style="color:var(--text3);">· ${c.data?new Date(c.data).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''}</span></div>
+        <div style="font-size:12px;"><b style="color:var(--text2);">Anônimo</b> <span style="color:var(--text3);">· ${c.data?new Date(c.data).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''}</span></div>
         <div style="font-size:13px;color:var(--text2);line-height:1.45;margin-top:2px;white-space:pre-wrap;">${escapeHTML(c.texto)}</div>
       </div>
     </div>`).join('') : `<div style="font-size:12.5px;color:var(--text3);padding:10px 0;">Sem comentários ainda. Seja o primeiro.</div>`;
@@ -11920,7 +11920,7 @@ function _ideiaAbrir(id){
           <h3 style="margin:0 0 7px;font-size:17px;color:var(--text);">${escapeHTML(s.titulo)}</h3>
           <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:10px;">
             ${statusCtrl}
-            <span style="font-size:11.5px;color:var(--text3);">por ${escapeHTML(_ideiaNome(s.autorId))}${s.criadoEm?' · '+new Date(s.criadoEm).toLocaleDateString('pt-BR'):''}</span>
+            <span style="font-size:11.5px;color:var(--text3);"><i class="ti ti-user-off" style="font-size:12px;"></i> Anônima${s.criadoEm?' · '+new Date(s.criadoEm).toLocaleDateString('pt-BR'):''}</span>
           </div>
           ${s.descricao?`<div style="font-size:13.5px;color:var(--text2);line-height:1.5;white-space:pre-wrap;">${escapeHTML(s.descricao)}</div>`:''}
         </div>
@@ -11973,7 +11973,7 @@ function renderMural(){
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span style="font-size:11px;font-weight:700;color:${tp.c};background:color-mix(in srgb,${tp.c} 12%,transparent);padding:2px 8px;border-radius:20px;"><i class="ti ${tp.i}"></i> ${tp.l}</span>
           <span style="font-size:11px;font-weight:700;color:${st.c};border:1px solid ${st.c};padding:1px 8px;border-radius:20px;">${st.l}</span>
-          <span style="font-size:11px;color:var(--text3);">${escapeHTML(_ideiaNome(s.autorId))}${dt?' · '+dt:''}</span>
+          ${dt?`<span style="font-size:11px;color:var(--text3);">${dt}</span>`:''}
           ${s.comentarios.length?`<span style="font-size:11px;color:var(--text3);"><i class="ti ti-message-circle"></i> ${s.comentarios.length}</span>`:''}
         </div>
       </div>
@@ -11984,7 +11984,7 @@ function renderMural(){
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px;">
       <div>
         <h1 style="font-size:22px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:9px;"><i class="ti ti-bulb" style="color:var(--amber);"></i> Mural de Ideias</h1>
-        <div style="font-size:13px;color:var(--text3);margin-top:3px;">Sugira melhorias e vote nas ideias da equipe.</div>
+        <div style="font-size:13px;color:var(--text3);margin-top:3px;">Sugira melhorias e vote — <b style="color:var(--text2);">as sugestões são anônimas</b>.</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button onclick="_ideiaToggleNotifs()" title="Notificações" style="position:relative;width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:${window._ideiaNotifOpen?'var(--bg2)':'var(--card)'};color:var(--text2);cursor:pointer;font-size:17px;"><i class="ti ti-bell"></i>${naoLidas?`<span style="position:absolute;top:-5px;right:-5px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 3px;box-sizing:border-box;">${naoLidas}</span>`:''}</button>
