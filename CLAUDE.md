@@ -102,6 +102,53 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-16 (c) — PC da Empresa — Painel de Reunião: ícones viram ABAS INLINE + novo ícone "Painel" (commit `f80000e`, PUSHADO)
+- **Pedido do Diego (print do modo foco):** cada ícone da trilha (Pessoas/Info/ATA/Anexos) abria um **MODAL** — pra ver outro
+  painel tinha que fechar o atual (perde tempo). Pediu que o conteúdo venha na **ÁREA PRINCIPAL**, alternando conforme o ícone
+  (inline, estilo Fellow), + um **novo ícone "Painel"** pra voltar à visão padrão (Pauta/Decisões/Tarefas).
+- **Como ficou:** novo estado `window._reunSubView` (`painel|pessoas|info|ata|anexos`); **reset p/ 'painel' ao TROCAR de reunião**
+  (`if(window._activeReuniaoId!==id)` no topo de `openReuniaoView`), persiste em re-renders da MESMA reunião. O conteúdo do painel
+  (banners + grid Pauta/Decisões/Tarefas) foi envolvido num **`#reun-main-<id>`** com ternário `_sv==='painel' ? <painel> :
+  _reunSubViewHTML(m)` — **2 edições nas pontas** (linhas ~30718 e ~30917), nada no meio se moveu (baixo risco no arquivo de 33k linhas).
+- **Novas funções** (logo após `openReuniaoView`): `_reunSetSubView(id,view)` (seta o estado + chama `openReuniaoView`; faz **FLUSH da
+  ATA** ao sair da aba p/ não perder texto não-salvo; `scrollTop=0`), `_reunSubViewHTML(m)` (dispatch) e **4 construtores inline**
+  `_reunPessoasInlineHTML`/`_reunInfoInlineHTML`/`_reunAtaInlineHTML`/`_reunAnexosInlineHTML` (adaptados dos modais, sem overlay;
+  **mantêm os MESMOS ids** — `ata-view-<id>`, `ata-plaud-resumo/link-<id>`, `anexo-input-<id>`, `anexos-view-<id>` — então
+  `salvarAta`/`_reunComporAta`/`_reunPlaudExtrair`/`_reunSetPlaud`/`adicionarAnexos`/`renderAnexos` seguem funcionando sem tocar).
+- **Trilha do foco + cabeçalho normal:** ambos ganharam o botão **"Painel"** (`ti-layout-dashboard`) no início das abas; a aba ativa
+  fica **destacada** (`_railActive`/`_icoActive`). Divisores separam ações (Sair/Pausar · Editar/Próxima/Finalizar) das 5 abas de conteúdo.
+- **Toggles internos** (`_toggleParticipanteReuniao`/`togglePresencaModal`/`_setPapelReuniao`) agora re-renderizam o painel inline via
+  `openReuniaoView(mid)` (o `_reunSubView` persiste → a aba certa continua ativa) em vez de reabrir modal.
+- **"Editar" CONTINUA modal** (é o **form de config** com drum-pickers/recorrência — inline seria alto risco e não é o "quick-switch"
+  que incomodava). **Próxima/Finalizar/Sair/Pausar** seguem ações.
+- **Código morto:** os 4 modais antigos `abrir{Presenca,Info,Ata,Anexos}Reuniao` + `fecharPresencaReuniao` ficaram **sem caller vivo**
+  (grep confirmou) — marcados `[SUPERSEDED jul/2026]`, mantidos por segurança (deletar ~250 linhas não-contíguas, intercaladas com
+  funções vivas — `_reunComporAta`/`_reunPlaudExtrair` etc. — às cegas é arriscado; fica p/ a limpeza dedicada).
+- ⚠️ **NÃO testado em navegador** (máquina sem preview; Browser pane não carrega `file://` — policy check travado). Verificação estática:
+  releitura de cada edição + wrapper `#reun-main` conferido (abre 30718/fecha 30917) + **backticks +38 (par), parênteses 225/225,
+  chaves 100/100** no diff. **Diego confere no Pages (Ctrl+Shift+R):** abrir reunião → clicar Pessoas/Info/ATA/Anexos troca o conteúdo
+  na tela **sem modal**; "Painel" volta pra Pauta/Decisões/Tarefas; aba ativa destacada; funciona igual no foco (⛶) e no painel normal;
+  marcar participante/presença/papel mantém a aba; digitar na ATA e trocar de aba **não perde** o texto.
+
+### 2026-07-16 (b) — PC da Empresa — Reuniões: BACKFILL da leva `db335f0`→`49c4934` (não estava no handoff)
+> As entradas abaixo (a partir de "MODO FOCO") param em `a218584`/`57cc2fc`. Esta entrada documenta os 8 commits seguintes.
+- `db335f0`,`9b13fe4`: **modal de criar/editar reunião compactado ~60%** (780→600px; Tipo+Status+Quem conduz numa linha só; padding/gaps
+  menores). **Participantes SAÍRAM do modal** (agora só no Painel); `saveReuniao` preserva `window._reunSelParts` e auto-adiciona o facilitador.
+- `9b13fe4`,`35ba705`: **recorrência (Repetir) enxuta** — controles (a cada N / dias / término) só no **"Personalizado"**; presets
+  (Semanal/Quinzenal/Mensal) mostram só um resumo de 1 linha. Flag `rec._custom` (setada em `_recPreset`, lida em `_recPresetAtual`)
+  distingue a escolha EXPLÍCITA de Personalizado da forma do dado.
+- `63a9d2d`,`49c4934`: **modo foco — ícones viram TRILHA LATERAL** (estilo Fellow, coluna vertical 74px à esquerda). A barra superior do
+  foco ficou só com título+status+cronômetro+presença. ⚠️ Isso **substitui** os ícones no topo descritos na entrada MODO FOCO (`90753dd`).
+  Fix `49c4934`: `.reun-panel-wrap` tem `margin:0 auto` inline que vencia o deslocamento → `margin-left:74px!important`.
+- `6ebfee4`: **timer com PLAY/PAUSA/RETOMAR** (`_toggleReunTimer`): `m.tempoAcumulado` (seg) + `m.inicioReal` (início do trecho atual,
+  null quando pausada) + `m.pausadoReuniao`. Cronômetro (normal+foco) soma o acumulado via `data-acumulado`; ao finalizar guarda
+  `m.duracaoSeg`. Tarefas no foco limitadas a `max-width:1400px` centrado.
+- `0c7c71d`: **modal de Participantes = SELETOR RÁPIDO** (grid 2-3 col com checkbox; frequentes de 2+ reuniões ganham ⭐ e sobem ao topo,
+  via `_reunFreqMap`). Pill só p/ Organizador/Editor; Leitor = nada. **Novo ícone "Info"** (`abrirInfoReuniao`) = detalhes gerais +
+  presença + papéis. ⚠️ **Hoje (entrada `c` acima) esses modais viraram ABAS INLINE.**
+- `8b32c78`: **tema "Biscoito Klain"** (`data-theme="klain"`): base creme + acentos caramelo (header usa `--blue-*` → vira marrom) +
+  fundo com padrão SVG de biscoitos. Registrado no array `TEMAS`; escolher em Configurações → Tema.
+
 ### 2026-07-16 — PC da Empresa — Painel de Reuniões: MODO FOCO (tela cheia) + varredura do módulo + 5 mockups
 - **Contexto:** o Diego baixou o **Fellow** e gostou do painel ocupar a tela toda (foco na reunião). Pediu (a) modo tela cheia
   no Painel de Reunião, (b) varredura total do módulo de reuniões (bugs/robustez/performance), (c) 5 mockups de ideias novas.
