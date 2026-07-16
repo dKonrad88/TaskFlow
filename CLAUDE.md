@@ -89,6 +89,17 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-15 (2) — Mac de casa — FIX: preso no Kanban mesmo com "só Lista"
+- Diego reportou: removeu Painel/Cartões (só quer Lista), mas "Minhas Tarefas" ainda abria em **Kanban**.
+- **Causa:** remoção incompleta. O boot (linha ~32029) fazia `allView=safeLSGet(LS_ALLVIEW)||'painel'`,
+  sobrescrevendo o `allView='list'` forçado na declaração (~10154). Com LS vazio OU com 'painel' salvo de
+  antes, `allView` virava 'painel' → linha ~16285 `if(allView==='painel') renderPainel();return;` desenhava o
+  Kanban. E o botão que gravaria 'list' (`setAllView`) está ESCONDIDO (toggle removido) → usuário sem saída pela UI.
+- **Fix (1 linha, 32029):** `allView='list'; try{ safeSetItem(LS_ALLVIEW,'list'); }catch(e){}` — força Lista no
+  boot E limpa o 'painel' velho do localStorage (conserta retroativo p/ quem já tinha 'painel' salvo).
+- Código morto remanescente (NÃO removido, p/ manter fix mínimo): branch `renderPainel` (16285), seção
+  "Estilo do painel" nas configs (~28070). Limpar depois se quiser. Verificado: sintaxe 0 erros (jsc).
+
 ### 2026-07-15 — Mac de casa — Mural de Ideias: sugestões ANÔNIMAS
 - A pedido do Diego, as sugestões do Mural de Ideias agora são **anônimas** (evita atrito/conflito e encoraja
   franqueza). No `renderMural`/`_ideiaAbrir`: removido o autor do **card** e do **detalhe** (vira "👤 Anônima ·

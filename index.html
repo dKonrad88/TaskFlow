@@ -32026,7 +32026,10 @@ window.addEventListener('load', async ()=>{
   // GUILHERME V3 (mai/2026): limpa tarefa órfã do tour interativo se houver
   // (usuário pode ter fechado navegador no meio do tour). Silencioso.
   try{ _limparOrfasTour(); }catch(e){console.warn('[tour] limparOrfas falhou',e);}
-  try{ allView=safeLSGet(LS_ALLVIEW)||'painel'; }catch(e){ allView=allView||'painel'; }
+  // Painel/Cartões removidos a pedido do Diego — SEMPRE Lista. Ignora e limpa
+  // qualquer 'painel'/'cards' antigo salvo no localStorage (senão o usuário fica
+  // preso no Kanban, já que o botão que gravaria 'list' está escondido).
+  allView='list'; try{ safeSetItem(LS_ALLVIEW,'list'); }catch(e){}
   loadRotinaDone();
   loadSidebarOrder();
   loadCompCats();
