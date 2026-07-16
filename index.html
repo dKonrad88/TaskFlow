@@ -164,6 +164,24 @@
   }
   /* Cabeçalho estilo Copa: faixa verde → amarela → verde → azul (horizontal) */
   body[data-theme="brasil"] .hdr{ background:linear-gradient(90deg,#007A33,#009C3B 38%,#FEDD00 62%,#1c8a44 80%,#002776); }
+  /* ── Tema BISCOITO KLAIN — creme quente + caramelo + fundo de biscoitos ── */
+  body[data-theme="klain"]{
+    --bg:#e9e0ce;--bg2:#e1d5bc;--bg3:#fbf6ec;
+    --text:#392a18;--text2:#6a5637;--text3:#8a7656;
+    --border:#d7c8a6;--card:#fbf6ec;
+    --amber:#8a5510;--amber-bg:#f1e3c6;
+    --success:#5a7a1e;--success-bg:#e8efd6;
+    --danger:#a33232;--danger-bg:#f7e5e0;
+    /* acentos caramelo — o gradiente do cabeçalho (usa estas vars) fica marrom automaticamente */
+    --blue-dark:#5c3d1f;--blue-mid:#9a6a2e;--blue-teal:#b0863f;
+    --pink:#a06a2e;--pink-bg:#f1e3c6;
+    background-color:var(--bg);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='none' stroke='%23cbb98f' stroke-width='1.3' opacity='0.55'%3E%3Ccircle cx='21' cy='21' r='12'/%3E%3Ccircle cx='63' cy='63' r='12'/%3E%3C/g%3E%3Cg fill='%23cbb98f' opacity='0.5'%3E%3Ccircle cx='17' cy='19' r='1.7'/%3E%3Ccircle cx='26' cy='22' r='1.7'/%3E%3Ccircle cx='21' cy='26' r='1.7'/%3E%3Ccircle cx='59' cy='61' r='1.7'/%3E%3Ccircle cx='67' cy='64' r='1.7'/%3E%3Ccircle cx='63' cy='58' r='1.7'/%3E%3C/g%3E%3C/svg%3E");
+    background-repeat:repeat;
+  }
+  body[data-theme="klain"] .sidebar{
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='none' stroke='%23cbb98f' stroke-width='1.3' opacity='0.45'%3E%3Ccircle cx='21' cy='21' r='12'/%3E%3Ccircle cx='63' cy='63' r='12'/%3E%3C/g%3E%3Cg fill='%23cbb98f' opacity='0.4'%3E%3Ccircle cx='17' cy='19' r='1.7'/%3E%3Ccircle cx='26' cy='22' r='1.7'/%3E%3Ccircle cx='21' cy='26' r='1.7'/%3E%3Ccircle cx='59' cy='61' r='1.7'/%3E%3Ccircle cx='67' cy='64' r='1.7'/%3E%3Ccircle cx='63' cy='58' r='1.7'/%3E%3C/g%3E%3C/svg%3E");
+  }
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s}
 
   .hdr{background:linear-gradient(135deg,var(--blue-dark) 0%,var(--blue-mid) 60%,var(--blue-teal) 100%);width:100%;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
@@ -3997,6 +4015,7 @@ const TEMAS=[
   {id:'escuro',    label:'Escuro',     icon:'ti-moon',       dark:true,  sw:['#1e1e22','#7dbf7d']},
   {id:'meianoite', label:'Meia-noite', icon:'ti-moon-stars', dark:true,  sw:['#0e1726','#185FA5']},
   {id:'brasil',    label:'Brasil',     icon:'ti-trophy',     dark:false, sw:['#009739','#FFDF00']},
+  {id:'klain',     label:'Biscoito Klain', icon:'ti-cookie', dark:false, sw:['#e9e0ce','#9a6a2e']},
 ];
 // Botão "Meu dia!" — personalização por usuário (cor + formato), salva em localStorage.
 const LS_MEUDIA_COR='taskflow_meudia_cor';         // rosa | teal | roxo | ambar
@@ -14463,7 +14482,7 @@ function renderConfiguracoes(){
       <!-- GUILHERME V3: toggleDark agora já cuida de re-renderizar a página atual (incl. Configurações).
            Antes precisava chamar renderConfiguracoes() junto — agora não. -->
       ${cardCompacto('ti-palette','var(--blue-mid)','Tema',
-        'Claro, areia, escuro, meia-noite e Brasil 🇧🇷',
+        'Claro, areia, escuro, meia-noite, Brasil 🇧🇷 e Biscoito Klain 🍪',
         `<div style="display:flex;gap:8px;flex-wrap:wrap">${TEMAS.map(t=>{
           const ativo=temaAtual()===t.id;
           return `<button onclick="aplicarTema('${t.id}')" title="${t.label}" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 14px;border-radius:10px;border:2px solid ${ativo?'var(--blue-mid)':'var(--border)'};background:${ativo?'color-mix(in srgb,var(--blue-mid) 8%,transparent)':'var(--bg2)'};cursor:pointer;font-family:inherit;transition:all .15s;min-width:78px">
