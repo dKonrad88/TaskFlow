@@ -1489,9 +1489,13 @@
   .reun-top-grid{display:grid;grid-template-columns:1fr 1fr 246px;gap:14px;margin-bottom:14px;align-items:start}
   @media(max-width:900px){.reun-top-grid{grid-template-columns:1fr}}
   /* 4 cards iguais (2x2), sem esticar um pelo outro */
-  .reun-grid4{display:grid;grid-template-columns:1fr 2fr;gap:14px;align-items:start}
+  .reun-grid4{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr) minmax(0,320px);gap:14px;align-items:start}
   .reun-col{display:flex;flex-direction:column;gap:14px;min-width:0}
-  @media(max-width:760px){.reun-grid4{grid-template-columns:1fr}}
+  /* Painel em 3 colunas: Pauta (order 1) · Tarefas maior no meio (order 2) · Decisões (order 3) */
+  .reun-col-pauta{order:1}
+  .reun-col-tarefas{order:2}
+  .reun-col-dec{order:3}
+  @media(max-width:1040px){.reun-grid4,body.reun-focus .reun-grid4{grid-template-columns:1fr}}
   /* ── Modo FOCO / tela cheia do Painel de Reunião ── */
   .reun-focus-bar{display:none}
   .reun-focus-rail{display:none}
@@ -1508,14 +1512,7 @@
   .reun-rail-btn i{font-size:19px}
   .reun-rail-btn span{font-size:8.5px;font-weight:600;text-align:center;line-height:1.1}
   body.reun-focus .reun-focus-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:60;background:var(--card);border-bottom:1px solid var(--border);padding:11px 30px;margin:0 -30px 16px}
-  body.reun-focus .reun-grid4{display:flex;gap:0;align-items:stretch;grid-template-columns:none;max-width:1400px;margin-left:auto;margin-right:auto}
-  body.reun-focus .reun-grid4>.reun-col:first-child{flex:0 0 var(--reun-col1-w,340px);min-width:0}
-  body.reun-focus .reun-grid4>.reun-col:last-child{flex:1 1 0;min-width:0}
-  body.reun-focus .reun-col-rz{display:block;flex:0 0 16px;align-self:stretch;cursor:col-resize;position:relative;touch-action:none}
-  body.reun-focus .reun-col-rz::before{content:"";position:absolute;top:10px;bottom:10px;left:50%;transform:translateX(-50%);width:3px;border-radius:99px;background:var(--border);opacity:0;transition:opacity .15s}
-  body.reun-focus .reun-col-rz:hover::before,body.reun-focus .reun-col-rz.dragging::before{opacity:1;background:var(--blue-mid)}
-  body.reun-resizing{cursor:col-resize;user-select:none}
-  body.reun-resizing .reun-grid4>.reun-col{transition:none}
+  body.reun-focus .reun-grid4{grid-template-columns:minmax(0,320px) minmax(0,1fr) minmax(0,340px);max-width:1400px;margin-left:auto;margin-right:auto}
   .reun-card4{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;min-height:130px}
   .reun-card4-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:6px}
   /* Botões-ícone do topo */
@@ -30774,10 +30771,10 @@ function openReuniaoView(id){
 
       ${m.nivel==='rapida' ? _reunRapidaTopoHTML(m) : ''}
 
-      <!-- 2 colunas: ESQUERDA (Pauta + Decisões empilhadas) · DIREITA (Tarefas). Rápida esconde a esquerda e deixa Tarefas full-width -->
+      <!-- 3 colunas (via CSS order): Pauta (1) · Tarefas maior no meio (2) · Decisões (3). Rápida esconde Pauta+Decisões e deixa Tarefas full-width -->
       <div class="reun-grid4" style="${m.nivel==='rapida'?'grid-template-columns:1fr':''}">
 
-        <div class="reun-col" style="${m.nivel==='rapida'?'display:none':''}"><!-- COLUNA ESQUERDA -->
+        <div class="reun-col reun-col-pauta" style="${m.nivel==='rapida'?'display:none':''}"><!-- COL PAUTA (order 1) -->
 
         <!-- PAUTA como checklist editável -->
         <div class="reun-card4">
@@ -30803,7 +30800,9 @@ function openReuniaoView(id){
             <i class="ti ti-plus"></i> Adicionar assunto
           </button>
         </div>
+        </div><!-- /COL PAUTA -->
 
+        <div class="reun-col reun-col-dec" style="${m.nivel==='rapida'?'display:none':''}"><!-- COL DECISÕES (order 3) -->
       <!-- DECISÕES TOMADAS -->
       ${(()=>{
         const encerrada=m.status==='encerrada';
@@ -30881,11 +30880,9 @@ function openReuniaoView(id){
         })()}`;
       })()}
 
-        </div><!-- /COLUNA ESQUERDA -->
+        </div><!-- /COL DECISÕES -->
 
-        <div class="reun-col-rz" id="reun-col-rz" title="Arraste para ajustar as colunas" role="separator" aria-orientation="vertical"></div>
-
-        <div class="reun-col"><!-- COLUNA DIREITA -->
+        <div class="reun-col reun-col-tarefas"><!-- COL TAREFAS (order 2, maior) -->
 
         <!-- TAREFAS inline -->
         <div class="reun-card4">
@@ -30921,7 +30918,7 @@ function openReuniaoView(id){
           </button>
         </div>
 
-        </div><!-- /COLUNA DIREITA -->
+        </div><!-- /COL TAREFAS -->
       </div><!-- fim grid -->
       `}
       </div><!-- /reun-main -->
