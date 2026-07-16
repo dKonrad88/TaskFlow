@@ -1477,7 +1477,7 @@
   /* ── Modo FOCO / tela cheia do Painel de Reunião ── */
   .reun-focus-bar{display:none}
   .reun-col-rz{display:none}
-  body.reun-focus .hdr,body.reun-focus .sidebar,body.reun-focus #sidebar-resizer,body.reun-focus .sidebar-resizer,body.reun-focus .topbar{display:none!important}
+  body.reun-focus .hdr,body.reun-focus .sidebar,body.reun-focus #sidebar-resizer,body.reun-focus .sidebar-resizer,body.reun-focus .topbar,body.reun-focus .fab-create,body.reun-focus .fab-menu{display:none!important}
   body.reun-focus #task-container{position:fixed;inset:0;z-index:500;overflow-y:auto;overflow-x:hidden;background:var(--bg);padding:0}
   body.reun-focus .reun-panel-wrap{max-width:none!important;padding:0 26px 40px!important}
   body.reun-focus .reun-voltar-btn,body.reun-focus .reun-normal-header{display:none!important}
@@ -3501,7 +3501,11 @@ let reuniaoTab='reunioes'; // sub-aba activa na aba Reuniões
 // localStorage — quem tivesse 'mural' salvo ficaria preso sem botão p/ sair
 // (foi exatamente o bug do Kanban em allView; ver handoff 15/07 (2)).
 let reunView='lista';
-let reunFiltroTipo=safeLSGet('taskflow_reun_filtro')||'todos'; // 'todos' | 'reuniao' | 'compromisso' | 'rapida'
+// FIX (varredura jul/2026): o filtro de TIPO foi removido da UI (jul/15), mas o valor continuava
+// sendo lido do localStorage no boot — e a chave é sincronizada pela nuvem. Um valor antigo
+// 'compromisso' escondia TODAS as reuniões sem UI p/ reverter (mesma armadilha do allView/reunView).
+// Força 'todos' e limpa o LS (corrige retroativo, inclusive o que veio da nuvem).
+let reunFiltroTipo='todos'; try{ safeSetItem('taskflow_reun_filtro','todos'); }catch(e){} // 'todos' | 'reuniao' | 'compromisso' | 'rapida'
 let ajudaTab='guia'; // sub-aba activa na aba Ajuda: 'guia' | 'sugestao'
 let _ajudaCat='inicio'; // categoria activa no menu lateral do Guia
 let editingReuniaoId=null; // ID da reunião em edição
@@ -5742,7 +5746,7 @@ function rotinaTaskExists(rotinaId,date){
 function createTaskFromRotina(r,date){
   if(!r||!date||rotinaTaskExists(r.id,date)) return;
   const newTask={
-    id:Date.now()+Math.floor(Math.random()*1000),
+    id:Date.now()*1000+Math.floor(Math.random()*1000),
     title:r.title,
     prio:r.prio,
     executor:r.executor||null,
@@ -20826,9 +20830,12 @@ function toggle(id){
   const _doRender = ()=>{
     if(window._activeReuniaoId){
       const mAtiva=meetings.find(x=>x.id===window._activeReuniaoId);
+      // Cobre a CADEIA inteira (não só o pai direto): o painel mostra tarefas de todas as
+      // reuniões anteriores da série via _reunAncestraisIds — assim o update é pontual (sem render global).
+      const _anc=(typeof _reunAncestraisIds==='function')?_reunAncestraisIds(mAtiva):[];
       const pertenceAoPainel=mAtiva && (
         t.meetingId===window._activeReuniaoId ||
-        t.meetingId===mAtiva.continuacaoDe
+        (t.meetingId && _anc.indexOf(t.meetingId)>-1)
       );
       if(pertenceAoPainel){
         const wrap=document.getElementById('tarefas-view-'+window._activeReuniaoId);
@@ -28683,7 +28690,7 @@ function proximaDataReuniao(dataBase,freq){
   // a próxima ocorrência sempre é uma data futura (não repete datas já vencidas).
   let guard=0;
   do { d.setDate(d.getDate()+dias); guard++; } while(d < hoje && guard < 600);
-  return d.toISOString().slice(0,10);
+  return _isoLocal(d); // FIX: era toISOString() (UTC) — inconsistente com o resto do motor; off-by-one em fusos +12/+13
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -28723,8 +28730,12 @@ function _recNthWeekday(y,mo,nth,dow){
 // Gera as datas SEGUINTES à dataInicio conforme a regra (a #1 é a própria reunião).
 function _recGerarDatas(dataInicio, rec){
   const out=[]; if(!rec||!rec.ativo||!dataInicio) return out;
+  // Guard (varredura jul/2026): "Termina: em" (ate) SEM data cairia em REC_MAX_HARD (60) e
+  // materializaria 60 reuniões de uma vez. Sem a data-limite, tratar como janela padrão (REC_ROLL).
+  const _semLimite = rec.fimTipo==='ate' && !rec.fimData;
   const max = rec.fimTipo==='apos'  ? Math.max(0,(parseInt(rec.fimN,10)||1)-1)
             : rec.fimTipo==='nunca' ? REC_ROLL
+            : _semLimite ? REC_ROLL
             : REC_MAX_HARD;
   const lim = (rec.fimTipo==='ate' && rec.fimData) ? rec.fimData : null;
   if(max<=0) return out;
@@ -29286,8 +29297,8 @@ function renderHistoricoReunioes(container, subNav){
   // Agrupar reuniões por título (case-insensitive)
   const grupos={};
   meetings.forEach(m=>{
-    const chave=m.title.trim().toLowerCase();
-    if(!grupos[chave]) grupos[chave]={titulo:m.title,reunioes:[]};
+    const chave=(m.title||'').trim().toLowerCase();
+    if(!grupos[chave]) grupos[chave]={titulo:m.title||'(sem título)',reunioes:[]};
     grupos[chave].reunioes.push(m);
   });
 
@@ -29313,7 +29324,7 @@ function renderHistoricoReunioes(container, subNav){
     const ultimaData=datas[datas.length-1];
     const ultimaLabel=ultimaData?new Date(ultimaData+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}):'—';
     // Próxima agendada
-    const proxima=agendadas.sort((a,b)=>a.date.localeCompare(b.date))[0];
+    const proxima=agendadas.filter(x=>x.date).sort((a,b)=>(a.date||'').localeCompare(b.date||''))[0];
     const proximaLabel=proxima?new Date(proxima.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}):'—';
     // Participantes únicos
     const partSet=new Set(g.reunioes.flatMap(m=>m.participantes||[]));
@@ -29364,7 +29375,7 @@ function renderHistoricoReunioes(container, subNav){
 // ── Detalhe de histórico de uma reunião
 function abrirHistoricoDetalhe(chaveCodificada){
   const chave=decodeURIComponent(chaveCodificada);
-  const grupo=meetings.filter(m=>m.title.trim().toLowerCase()===chave).sort((a,b)=>a.date.localeCompare(b.date));
+  const grupo=meetings.filter(m=>(m.title||'').trim().toLowerCase()===chave).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   if(!grupo.length) return;
   const titulo=grupo[0].title;
   const container=document.getElementById('task-container');
@@ -31339,7 +31350,7 @@ function _plaudLinhaPara(id,tipo,idx){
     if(!m.decisoesItens) m.decisoesItens=[]; m.decisoesItens.push({texto:txt,data:today,autorId:CURRENT_USER_ID}); saveMeeting_db(m);
     const w=document.getElementById('decisoes-list-'+id); if(w) w.innerHTML=_reunDecisoesListHTML(m);
   } else if(tipo==='tarefa'){
-    const t={id:Date.now()+Math.floor(Math.random()*1000),title:txt,prio:'media',date:m.date||today,executor:null,people:[],kanbanCol:'todo',done:false,escopo:'klain',meetingId:id,solicitante:CURRENT_USER_ID,subtasks:[],attachments:[],_persisted:true,createdAt:today};
+    const t={id:Date.now()*1000+Math.floor(Math.random()*1000),title:txt,prio:'media',date:m.date||today,executor:null,people:[],kanbanCol:'todo',done:false,escopo:'klain',meetingId:id,solicitante:CURRENT_USER_ID,subtasks:[],attachments:[],_persisted:true,createdAt:today};
     tasks.push(t); saveTask_db(t);
     const w=document.getElementById('tarefas-view-'+id); if(w) w.innerHTML=reunTarefasHTML(m);
     if(typeof updateStats==='function') updateStats();
@@ -31387,10 +31398,10 @@ function _recMaterializar(m){
   let anterior=m, criadas=0;
   datas.forEach((iso,i)=>{
     const nova=_recNovaOcorrencia(m, iso, rec, anterior.id, i+2);
-    meetings.push(nova); saveMeeting_db(nova);
-    anterior=nova; criadas++;
+    meetings.push(nova); anterior=nova; criadas++; // grava UMA vez no fim (perf: evita N serializações do array)
   });
-  m.serieIdx=1; m.serieTotal=criadas+1; saveMeeting_db(m);
+  m.serieIdx=1; m.serieTotal=criadas+1;
+  try{ safeSetItem(LS_MEETINGS,JSON.stringify(meetings)); }catch(e){}
   return criadas;
 }
 // Monta uma ocorrência nova a partir do "molde" (base): herda título/hora/tipo/sala/
@@ -31424,8 +31435,9 @@ function _serieTopUp(m){
   let anterior=ultima, n=0;
   datas.forEach((iso,i)=>{
     const nova=_recNovaOcorrencia(ultima, iso, rec, anterior.id, irmas.length+i+1);
-    meetings.push(nova); saveMeeting_db(nova); anterior=nova; n++;
+    meetings.push(nova); anterior=nova; n++; // grava UMA vez no fim (perf)
   });
+  if(n>0){ try{ safeSetItem(LS_MEETINGS,JSON.stringify(meetings)); }catch(e){} }
   return n;
 }
 // "Esta e as futuras": apaga as ocorrências futuras da série (p/ a Lixeira) e
@@ -31437,9 +31449,24 @@ function _recRegenerarFuturas(m){
   futuras.forEach(x=>{ try{ moveToTrash('meeting',{...x}); }catch(e){} });
   const ids=new Set(futuras.map(x=>x.id));
   meetings=meetings.filter(x=>!ids.has(x.id));
+  if(!rec||!rec.ativo){ safeSetItem(LS_MEETINGS,JSON.stringify(meetings)); return 0; }
+  // FIX (varredura jul/2026): NÃO usar _recMaterializar aqui — ele trata m como #1 e geraria
+  // fimN-1 seguintes, estourando o total (ficava fimN + nº de anteriores). Aqui descontamos as
+  // ocorrências ANTERIORES a m (que permanecem) do teto, p/ a série manter exatamente fimN.
+  const anteriores=(meetings||[]).filter(x=>x.serieId===m.serieId && String(x.date)<String(m.date)).length;
+  let recGer=rec;
+  if(rec.fimTipo==='apos'){
+    const fimN=Math.max(1,(parseInt(rec.fimN,10)||1));
+    recGer={...rec, fimN:Math.max(1, fimN-anteriores)}; // só p/ GERAR a quantidade certa
+  }
+  const datas=_recGerarDatas(m.date, recGer);
+  let anterior=m, criadas=0;
+  datas.forEach((iso,i)=>{
+    const nova=_recNovaOcorrencia(m, iso, rec, anterior.id, anteriores+i+2); // idx real na série (rec ORIGINAL gravado)
+    meetings.push(nova); anterior=nova; criadas++;
+  });
   safeSetItem(LS_MEETINGS,JSON.stringify(meetings));
-  if(!rec||!rec.ativo) return 0;
-  return _recMaterializar(m);
+  return criadas;
 }
 // Quantas ocorrências a série tem / índice desta (p/ mostrar "3ª de 8")
 function _serieInfo(m){
@@ -31525,10 +31552,12 @@ function _serieContinuar(id){
   let anterior=ultima, n=0;
   datas.forEach((iso,i)=>{
     const nova=_recNovaOcorrencia(ultima, iso, rec, anterior.id, irmas.length+i+1);
-    meetings.push(nova); saveMeeting_db(nova); anterior=nova; n++;
+    meetings.push(nova); anterior=nova; n++; // grava UMA vez no fim (perf: evita N serializações)
   });
   const total=irmas.length+n;
-  (meetings||[]).filter(x=>x.serieId===m.serieId).forEach(x=>{ if(x.rec&&x.rec.fimTipo==='apos'){ x.rec.fimN=total; saveMeeting_db(x); } });
+  (meetings||[]).filter(x=>x.serieId===m.serieId).forEach(x=>{ if(x.rec&&x.rec.fimTipo==='apos'){ x.rec.fimN=total; } });
+  try{ safeSetItem(LS_MEETINGS,JSON.stringify(meetings)); }catch(e){}
+  window._reunFocus=false; document.body.classList.remove('reun-focus'); window._activeReuniaoId=null; // volta à lista (sai do foco)
   document.getElementById('prox-sug-ov')?.remove();
   if(typeof renderReunioes==='function') renderReunioes();
   toast(`🔁 Série continuada — +${n} ocorrência${n>1?'s':''}.`);
@@ -31542,6 +31571,7 @@ function _sugAplicarProxima(id){
   const ini=document.getElementById('sug-ini')?.value||'', fim=document.getElementById('sug-fim')?.value||'';
   if(ini&&fim&&typeof horaToMin==='function'&&horaToMin(fim)<=horaToMin(ini)){ toast('⚠️ A hora de fim deve ser depois do início'); return; }
   p.date=d; p.horaInicio=ini; p.horaFim=fim; saveMeeting_db(p);
+  window._reunFocus=false; document.body.classList.remove('reun-focus'); window._activeReuniaoId=null; // volta à lista (sai do foco)
   document.getElementById('prox-sug-ov')?.remove();
   if(typeof renderReunioes==='function') renderReunioes();
   toast('📅 Próxima ajustada para '+new Date(d+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long'}));
@@ -31554,6 +31584,7 @@ function _sugEncerrarSerie(id){
   const ids=new Set(alvo.map(x=>x.id));
   meetings=meetings.filter(x=>!ids.has(x.id));
   safeSetItem(LS_MEETINGS,JSON.stringify(meetings));
+  window._reunFocus=false; document.body.classList.remove('reun-focus'); window._activeReuniaoId=null; // volta à lista (sai do foco)
   document.getElementById('prox-sug-ov')?.remove();
   if(typeof renderReunioes==='function') renderReunioes();
   const n=alvo.length;
@@ -32547,7 +32578,7 @@ function saveNovaTarefaInline(meetingId){
   const data=document.getElementById('nt-data-'+meetingId)?.value;
   if(!data){ try{toast('⚠️ Defina uma data');document.getElementById('nt-data-'+meetingId)?.focus();}catch{} return; }
   const t={
-    id:Date.now()+Math.floor(Math.random()*1000), // +random: evita colisão de id em cliques rápidos
+    id:Date.now()*1000+Math.floor(Math.random()*1000), // +random: evita colisão de id em cliques rápidos
     title:desc,
     prio:'media',
     date:data,
