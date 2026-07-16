@@ -30593,6 +30593,14 @@ function _initReunColResizer(){
 function openReuniaoView(id){
   const m=meetings.find(x=>x.id===id);
   if(!m) return;
+  // Sub-aba INLINE do painel (Painel/Pessoas/Info/ATA/Anexos). Antes cada ícone abria
+  // um modal (fechar um p/ abrir outro); agora o conteúdo vem na área principal, alternando.
+  // Reset p/ 'painel' ao trocar de reunião (mas persiste em re-renders da mesma reunião).
+  if(window._activeReuniaoId!==id) window._reunSubView='painel';
+  if(!window._reunSubView) window._reunSubView='painel';
+  const _sv=window._reunSubView;
+  const _railActive=(v)=>_sv===v?'background:color-mix(in srgb,var(--blue-mid) 12%,transparent);color:var(--blue-mid)':'';
+  const _icoActive=(v)=>_sv===v?'background:color-mix(in srgb,var(--blue-mid) 12%,transparent);border-color:var(--blue-mid);color:var(--blue-mid)':'';
   const container=document.getElementById('task-container');
   const st=REUN_STATUS[m.status]||REUN_STATUS.agendada;
   const dateLabel=m.date?new Date(m.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}):'';
@@ -30649,11 +30657,14 @@ function openReuniaoView(id){
       <div class="reun-focus-rail">
         <button class="reun-rail-btn" onclick="_exitReunFocus()" title="Sair da tela cheia (Esc)"><i class="ti ti-arrows-minimize"></i><span>Sair</span></button>
         ${m.status!=='encerrada'?(()=>{const running=m.status==='andamento'&&!m.pausadoReuniao;const lbl=running?'Pausar':(m.pausadoReuniao?'Retomar':'Iniciar');return `<button class="reun-rail-btn" onclick="_toggleReunTimer('${m.id}')" style="color:${running?'var(--amber)':'var(--blue-mid)'}" title="${lbl} reunião"><i class="ti ti-player-${running?'pause':'play'}-filled"></i><span>${lbl}</span></button>`;})():''}
-        <button class="reun-rail-btn" onclick="abrirPresencaReuniao('${m.id}')" title="Participantes"><i class="ti ti-users"></i><span>Pessoas</span></button>
-        <button class="reun-rail-btn" onclick="abrirInfoReuniao('${m.id}')" title="Informações da reunião"><i class="ti ti-info-circle"></i><span>Info</span></button>
-        <button class="reun-rail-btn" onclick="abrirAtaReuniao('${m.id}')" title="ATA"><i class="ti ti-notes"></i><span>ATA</span></button>
-        <button class="reun-rail-btn" onclick="abrirAnexosReuniao('${m.id}')" title="Anexos"><i class="ti ti-paperclip"></i><span>Anexos</span></button>
-        <button class="reun-rail-btn" onclick="editReuniao('${m.id}')" title="Editar"><i class="ti ti-pencil"></i><span>Editar</span></button>
+        <div style="height:1px;background:var(--border);width:42px;margin:5px 0;flex-shrink:0"></div>
+        <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','painel')" style="${_railActive('painel')}" title="Painel — pauta, decisões e tarefas"><i class="ti ti-layout-dashboard"></i><span>Painel</span></button>
+        <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','pessoas')" style="${_railActive('pessoas')}" title="Participantes"><i class="ti ti-users"></i><span>Pessoas</span></button>
+        <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','info')" style="${_railActive('info')}" title="Informações da reunião"><i class="ti ti-info-circle"></i><span>Info</span></button>
+        <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','ata')" style="${_railActive('ata')}" title="ATA / Resumo"><i class="ti ti-notes"></i><span>ATA</span></button>
+        <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','anexos')" style="${_railActive('anexos')}" title="Anexos"><i class="ti ti-paperclip"></i><span>Anexos</span></button>
+        <div style="height:1px;background:var(--border);width:42px;margin:5px 0;flex-shrink:0"></div>
+        <button class="reun-rail-btn" onclick="editReuniao('${m.id}')" title="Editar reunião (configurações)"><i class="ti ti-pencil"></i><span>Editar</span></button>
         <button class="reun-rail-btn" onclick="abrirProximaReuniaoModal('${m.id}')" title="Agendar próxima"><i class="ti ti-calendar-plus"></i><span>Próxima</span></button>
         <div style="flex:1"></div>
         ${m.status==='encerrada'
@@ -30693,16 +30704,19 @@ function openReuniaoView(id){
           ${m.status!=='encerrada'?(()=>{const running=m.status==='andamento'&&!m.pausadoReuniao;const lbl=running?'Pausar':(m.pausadoReuniao?'Retomar':'Iniciar');return `<button class="reun-ico" onclick="_toggleReunTimer('${m.id}')" title="${lbl} reunião" style="background:${running?'var(--amber)':'var(--blue-mid)'};border-color:${running?'var(--amber)':'var(--blue-mid)'};color:#fff"><i class="ti ti-player-${running?'pause':'play'}-filled"></i></button>`;})():''}
           ${m.status==='andamento'?`<span id="reun-cronometro-${m.id}" style="padding:0 12px;height:34px;font-size:13px;color:${m.pausadoReuniao?'var(--amber)':'var(--success)'};font-weight:700;background:${m.pausadoReuniao?'var(--amber-bg)':'var(--success-bg)'};border-radius:8px;border:1px solid ${m.pausadoReuniao?'var(--amber)':'var(--success)'};display:inline-flex;align-items:center;gap:5px"><i class="ti ti-${m.pausadoReuniao?'player-pause':'clock-play'}"></i> <span data-inicio="${m.inicioReal||''}" data-acumulado="${m.tempoAcumulado||0}">${_fmtDur(_reunElapsedSec(m))}</span></span>`:''}
           <button class="reun-ico" onclick="_toggleReunFocus()" title="Abrir em tela cheia (foco)"><i class="ti ti-arrows-maximize"></i></button>
-          <button class="reun-ico" onclick="abrirPresencaReuniao('${m.id}')" title="Participantes (${presentesCount}/${totalParts})"><i class="ti ti-users"></i></button>
-          <button class="reun-ico" onclick="abrirInfoReuniao('${m.id}')" title="Informações da reunião"><i class="ti ti-info-circle"></i></button>
-          <button class="reun-ico" onclick="abrirAtaReuniao('${m.id}')" title="ATA"><i class="ti ti-notes"></i></button>
-          <button class="reun-ico" onclick="abrirAnexosReuniao('${m.id}')" title="Anexos"><i class="ti ti-paperclip"></i></button>
+          <button class="reun-ico" onclick="_reunSetSubView('${m.id}','painel')" title="Painel — pauta, decisões e tarefas" style="${_icoActive('painel')}"><i class="ti ti-layout-dashboard"></i></button>
+          <button class="reun-ico" onclick="_reunSetSubView('${m.id}','pessoas')" title="Participantes (${presentesCount}/${totalParts})" style="${_icoActive('pessoas')}"><i class="ti ti-users"></i></button>
+          <button class="reun-ico" onclick="_reunSetSubView('${m.id}','info')" title="Informações da reunião" style="${_icoActive('info')}"><i class="ti ti-info-circle"></i></button>
+          <button class="reun-ico" onclick="_reunSetSubView('${m.id}','ata')" title="ATA / Resumo" style="${_icoActive('ata')}"><i class="ti ti-notes"></i></button>
+          <button class="reun-ico" onclick="_reunSetSubView('${m.id}','anexos')" title="Anexos" style="${_icoActive('anexos')}"><i class="ti ti-paperclip"></i></button>
           <button class="reun-ico" onclick="editReuniao('${m.id}')" title="Editar"><i class="ti ti-pencil"></i></button>
           <button class="reun-ico" onclick="abrirProximaReuniaoModal('${m.id}')" title="Agendar próxima reunião"><i class="ti ti-calendar-plus"></i></button>
           ${m.status==='encerrada'?`<button class="reun-ico" onclick="gerarPDFReuniao('${m.id}')" title="Gerar PDF da ATA" style="color:var(--danger)" onmouseover="this.style.background='var(--danger)';this.style.color='#fff';this.style.borderColor='var(--danger)'" onmouseout="this.style.background='var(--card)';this.style.color='var(--danger)';this.style.borderColor='var(--border)'"><i class="ti ti-file-download"></i></button>`:''}
           ${m.status!=='encerrada'?`<button class="reun-ico" onclick="concluirReuniao('${m.id}')" title="Finalizar reunião" style="background:var(--success-bg);border-color:var(--success);color:var(--success)"><i class="ti ti-flag-check"></i></button>`:'<span style="height:34px;padding:0 12px;font-size:12px;color:var(--success);font-weight:700;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-circle-check"></i> Encerrada</span>'}
         </div>
       </div>
+      <div id="reun-main-${m.id}">
+      ${_sv!=='painel' ? _reunSubViewHTML(m) : `
       ${contLabel}
 
       ${(()=>{ // ── Reunião recorrente em aberto com data vencida → oferecer atualização ──
@@ -30900,6 +30914,8 @@ function openReuniaoView(id){
 
         </div><!-- /COLUNA DIREITA -->
       </div><!-- fim grid -->
+      `}
+      </div><!-- /reun-main -->
 
     </div>
   </div>`;
@@ -30926,6 +30942,149 @@ function openReuniaoView(id){
     window._reunFocusEscWired=true;
     document.addEventListener('keydown',(e)=>{ if(e.key==='Escape' && window._reunFocus) _exitReunFocus(); });
   }
+}
+
+// ── Sub-abas INLINE do Painel de Reunião ─────────────────────────────────────
+// Troca o conteúdo da área principal (#reun-main) entre Painel/Pessoas/Info/ATA/Anexos
+// SEM abrir modal. Chamado pela trilha do foco e pelos ícones do cabeçalho normal.
+function _reunSetSubView(id, view){
+  const prev=window._reunSubView;
+  // Flush da ATA ao sair dela (evita perder texto digitado e não salvo por blur)
+  if(prev==='ata'){
+    const m=meetings.find(x=>x.id===id);
+    if(m){
+      const ta=document.getElementById('ata-view-'+id); if(ta) m.ata=(ta.value||'').trim();
+      const pr=document.getElementById('ata-plaud-resumo-'+id); if(pr) m.plaudResumo=(pr.value||'').trim();
+      const pl=document.getElementById('ata-plaud-link-'+id); if(pl) m.plaudLink=(pl.value||'').trim();
+      saveMeeting_db(m);
+    }
+  }
+  window._reunSubView=view||'painel';
+  openReuniaoView(id);
+  const c=document.getElementById('task-container'); if(c) c.scrollTop=0;
+}
+// Conteúdo da sub-aba ativa (o Painel padrão é renderizado direto no openReuniaoView).
+function _reunSubViewHTML(m){
+  const v=window._reunSubView;
+  if(v==='pessoas') return _reunPessoasInlineHTML(m);
+  if(v==='info')    return _reunInfoInlineHTML(m);
+  if(v==='ata')     return _reunAtaInlineHTML(m);
+  if(v==='anexos')  return _reunAnexosInlineHTML(m);
+  return '';
+}
+// Pessoas — seletor rápido de participantes (marca quem participa; frequentes com ⭐).
+function _reunPessoasInlineHTML(m){
+  const parts=new Set(m.participantes||[]);
+  const papeis=m.papeis||{};
+  const freq=_reunFreqMap(m.id);
+  const _pill=(pid)=>{
+    if(m.organizador===pid||m.facilitador===pid) return `<span style="font-size:9.5px;font-weight:700;color:#fff;background:var(--blue-mid);padding:1px 7px;border-radius:99px;white-space:nowrap;flex-shrink:0">Organizador</span>`;
+    if(papeis[pid]==='editor') return `<span style="font-size:9.5px;font-weight:700;color:#fff;background:var(--amber);padding:1px 7px;border-radius:99px;white-space:nowrap;flex-shrink:0">Editor</span>`;
+    return '';
+  };
+  const _ppl=[...people].sort((a,b)=>{
+    const pa=parts.has(a.id)?0:1, pb=parts.has(b.id)?0:1; if(pa!==pb) return pa-pb;
+    const fa=freq[a.id]||0, fb=freq[b.id]||0; if(fa!==fb) return fb-fa;
+    return a.name.localeCompare(b.name,'pt-BR');
+  });
+  const rows=_ppl.map(p=>{
+    const on=parts.has(p.id); const freqOn=(freq[p.id]||0)>=2;
+    return `<div onclick="_toggleParticipanteReuniao('${m.id}','${p.id}')" style="display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;cursor:pointer;border:1px solid ${on?'var(--blue-mid)':'var(--border)'};background:${on?'color-mix(in srgb,var(--blue-mid) 10%,transparent)':'var(--card)'};transition:all .12s">
+      <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${on?'var(--blue-mid)':'var(--border)'};background:${on?'var(--blue-mid)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${on?'<i class="ti ti-check" style="font-size:10px;color:#fff"></i>':''}</div>
+      <span style="flex:1;min-width:0;font-size:12.5px;font-weight:${on?'700':'500'};color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(p.name)}${freqOn?' <i class="ti ti-star-filled" style="font-size:10px;color:var(--amber)" title="Participa com frequência"></i>':''}</span>
+      ${_pill(p.id)}
+    </div>`;
+  }).join('') || '<div style="grid-column:1/-1;font-size:13px;color:var(--text3);font-style:italic;padding:10px">Nenhuma pessoa cadastrada.</div>';
+  return `<div style="max-width:980px;margin:0 auto">
+    <div class="reun-card4">
+      <div class="reun-card4-title"><span><i class="ti ti-users" style="color:var(--blue-mid)"></i> Participantes <span style="font-size:11px;font-weight:500;color:var(--text3)">· ${parts.size} selecionado${parts.size!==1?'s':''}</span></span></div>
+      <div style="font-size:11.5px;color:var(--text3);margin:-4px 0 12px">Marque quem participa · <i class="ti ti-star-filled" style="font-size:10px;color:var(--amber)"></i> = participa com frequência. Papéis e presença ficam em <b>Info</b>.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px">${rows}</div>
+    </div>
+  </div>`;
+}
+// Info — detalhes gerais + presença (clique no nome) + papéis.
+function _reunInfoInlineHTML(m){
+  const presencas=m.presencas||{};
+  const total=(m.participantes||[]).length;
+  const presentes=(m.participantes||[]).filter(pid=>presencas[pid]===true).length;
+  const dateLabel=m.date?new Date(m.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}):'Sem data';
+  const horaTxt=(m.horaInicio&&m.horaFim)?`${m.horaInicio} – ${m.horaFim}`:(m.horaInicio||'');
+  const localTxt=m.sala?`Sala ${m.sala}`:(m.localExterno||'');
+  const facil=m.facilitador?people.find(x=>x.id===m.facilitador):null;
+  const info=[
+    `<i class="ti ti-calendar"></i> ${dateLabel}`,
+    horaTxt?`<i class="ti ti-clock"></i> ${horaTxt}`:'',
+    localTxt?`<i class="ti ti-map-pin"></i> ${escapeHTML(localTxt)}`:'',
+    facil?`<i class="ti ti-microphone"></i> Conduz: ${escapeHTML(facil.name)}`:'',
+    m.tipo?`<i class="ti ti-tag"></i> ${escapeHTML(m.tipo)}`:''
+  ].filter(Boolean).map(t=>`<div style="font-size:12.5px;color:var(--text2);display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="color:var(--text3)">${t.split('</i>')[0]}</i></span>${t.split('</i>')[1]}</div>`).join('');
+  const papeis=m.papeis||{};
+  const chips=(m.participantes||[]).map(pid=>{
+    const p=people.find(x=>x.id===pid); if(!p) return '';
+    const presente=presencas[pid]===true;
+    const isOrg=m.organizador===pid||m.facilitador===pid;
+    const papel=isOrg?'organizador':(papeis[pid]||'leitor');
+    const roleEl=isOrg
+      ?`<span style="font-size:11px;font-weight:700;color:var(--blue-mid);white-space:nowrap">Organizador</span>`
+      :`<select onchange="event.stopPropagation();_setPapelReuniao('${m.id}','${pid}',this.value)" onclick="event.stopPropagation()" style="font-size:11px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:2px 6px;color:var(--text2);cursor:pointer;font-family:inherit;flex-shrink:0"><option value="editor" ${papel==='editor'?'selected':''}>Editor</option><option value="leitor" ${papel==='leitor'?'selected':''}>Leitor</option></select>`;
+    return `<div onclick="togglePresencaModal('${m.id}','${pid}')" style="display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:9px;background:${presente?'var(--success-bg)':'var(--bg2)'};border:1px solid ${presente?'var(--success)':'var(--border)'};font-size:13px;font-weight:600;color:${presente?'var(--success)':'var(--text2)'};cursor:pointer;transition:all .15s">
+      <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${presente?'var(--success)':'var(--border)'};background:${presente?'var(--success)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${presente?'<i class="ti ti-check" style="font-size:10px;color:#fff"></i>':''}</div>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(p.name)}${isOrg?' <i class="ti ti-microphone" style="font-size:12px;color:var(--blue-mid)" title="Conduz"></i>':''}</span>
+      ${roleEl}
+    </div>`;
+  }).join('')||'<div style="font-size:12.5px;color:var(--text3);font-style:italic">Nenhum participante ainda — use o ícone <b>Pessoas</b> para adicionar.</div>';
+  return `<div style="max-width:640px;margin:0 auto">
+    <div class="reun-card4">
+      <div class="reun-card4-title"><span><i class="ti ti-info-circle" style="color:var(--blue-mid)"></i> Informações da reunião</span></div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:12px 14px;margin-bottom:14px">${info||'<span style="font-size:12px;color:var(--text3)">Sem detalhes</span>'}</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:600"><i class="ti ti-user-check"></i> Presença — ${presentes} de ${total} · clique no nome</div>
+      <div style="display:flex;flex-direction:column;gap:7px">${chips}</div>
+      <div style="margin-top:14px;padding:10px 12px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text3);line-height:1.7">
+        <b style="color:var(--text2)">Papéis:</b>
+        <span style="margin-left:6px"><b style="color:var(--blue-mid)">Organizador</b> — vê, edita e encerra</span>
+        <span style="margin:0 6px">·</span><b style="color:var(--amber)">Editor</b> — vê e edita a pauta
+        <span style="margin:0 6px">·</span><b>Leitor</b> — só visualiza
+      </div>
+    </div>
+  </div>`;
+}
+// ATA — resumo do PLAUD + ATA (salva no blur; "Compor rascunho" e "Quebrar em itens").
+function _reunAtaInlineHTML(m){
+  const id=m.id;
+  const _resumo=escapeHTML(m.plaudResumo||'');
+  const _link=escapeAttr(m.plaudLink||'');
+  return `<div style="max-width:780px;margin:0 auto">
+    <div class="reun-card4">
+      <div class="reun-card4-title"><span><i class="ti ti-notes" style="color:var(--blue-mid)"></i> ATA / Resumo</span></div>
+      <div style="font-size:12px;color:var(--text3);margin:-4px 0 12px">Grave o resumo do PLAUD e componha a ATA a partir do encontro <span style="opacity:.8">(salva automaticamente)</span>.</div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--purple);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:6px;display:flex;align-items:center;gap:5px"><i class="ti ti-microphone" style="font-size:13px"></i> Resumo do PLAUD</div>
+        <textarea id="ata-plaud-resumo-${id}" onblur="_reunSetPlaud('${id}','plaudResumo',this.value)" rows="3" placeholder="Cole aqui o resumo/transcrição do PLAUD..." style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text);font-family:inherit;resize:vertical;line-height:1.5">${_resumo}</textarea>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+          <input id="ata-plaud-link-${id}" value="${_link}" onblur="_reunSetPlaud('${id}','plaudLink',this.value)" placeholder="Link da gravação (https://...)" style="flex:1;min-width:160px;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--text);font-family:inherit">
+          <button onclick="_reunPlaudExtrair('${id}')" title="Transforma cada linha do resumo em pauta, decisão ou tarefa" style="background:var(--purple);color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;white-space:nowrap"><i class="ti ti-wand"></i> Quebrar em itens</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px"><i class="ti ti-notes"></i> ATA</span>
+        <button onclick="_reunComporAta('${id}')" title="Monta um rascunho a partir de pauta, decisões, tarefas e resumo" style="background:none;border:1px solid var(--blue-mid);color:var(--blue-mid);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-file-text"></i> Compor rascunho</button>
+      </div>
+      <textarea id="ata-view-${id}" style="width:100%;min-height:280px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;outline:none;line-height:1.7" placeholder="Cole aqui a ATA ou clique em Compor rascunho..." onblur="salvarAta('${id}',this.value)">${m.ata?escapeHTML(m.ata):''}</textarea>
+    </div>
+  </div>`;
+}
+// Anexos — upload/lista (mesmos ids da versão modal: anexo-input-<id> / anexos-view-<id>).
+function _reunAnexosInlineHTML(m){
+  const id=m.id;
+  return `<div style="max-width:620px;margin:0 auto">
+    <div class="reun-card4">
+      <div class="reun-card4-title"><span><i class="ti ti-paperclip" style="color:var(--blue-mid)"></i> Anexos</span></div>
+      <button onclick="document.getElementById('anexo-input-${id}').click()" style="width:100%;background:var(--bg2);border:1px dashed var(--border);color:var(--text2);border-radius:8px;padding:10px;font-size:12.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:12px" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-plus"></i> Adicionar anexo</button>
+      <input type="file" id="anexo-input-${id}" style="display:none" multiple onchange="adicionarAnexos('${id}',this.files)">
+      <div id="anexos-view-${id}">${renderAnexos(m)}</div>
+    </div>
+  </div>`;
 }
 
 /* ── Funções de acção na vista de reunião ── */
@@ -31176,6 +31335,7 @@ function _reunFreqMap(excludeId){
 // Modal de PARTICIPANTES — seletor RÁPIDO: todas as pessoas com checkbox (marca quem participa).
 // Frequentes destacados (⭐). Pill só p/ Organizador/Editor (Leitor = nada). Detalhes/papéis
 // completos ficam no ícone "Info".
+// [SUPERSEDED jul/2026] Virou sub-aba inline (_reunPessoasInlineHTML via _reunSetSubView). Sem callers vivos — mantido só por segurança.
 function abrirPresencaReuniao(id){
   const m=meetings.find(x=>x.id===id); if(!m) return;
   document.getElementById('presenca-modal-ov')?.remove();
@@ -31225,7 +31385,7 @@ function togglePresencaModal(mid,pid){
   if(!m.presencas) m.presencas={};
   m.presencas[pid]=!m.presencas[pid];
   saveMeeting_db(m);
-  abrirInfoReuniao(mid); // presença agora vive no painel Info
+  openReuniaoView(mid); // re-render inline (sub-aba Info continua ativa)
 }
 // Marca/desmarca participante (checkbox do seletor rápido)
 function _toggleParticipanteReuniao(mid,pid){
@@ -31234,9 +31394,10 @@ function _toggleParticipanteReuniao(mid,pid){
   const i=m.participantes.indexOf(pid);
   if(i>=0) m.participantes.splice(i,1); else m.participantes.push(pid);
   saveMeeting_db(m);
-  abrirPresencaReuniao(mid); // re-render do seletor (mantém aberto)
+  openReuniaoView(mid); // re-render inline (sub-aba Pessoas continua ativa)
 }
 // Painel de INFO da reunião — detalhes gerais + presença + papéis (o que saiu do seletor).
+// [SUPERSEDED jul/2026] Virou sub-aba inline (_reunInfoInlineHTML via _reunSetSubView). Sem callers vivos — mantido só por segurança.
 function abrirInfoReuniao(id){
   const m=meetings.find(x=>x.id===id); if(!m) return;
   document.getElementById('info-modal-ov')?.remove();
@@ -31294,6 +31455,7 @@ function abrirInfoReuniao(id){
 }
 
 // Modal: ATA
+// [SUPERSEDED jul/2026] Virou sub-aba inline (_reunAtaInlineHTML via _reunSetSubView). Sem callers vivos — mantido só por segurança.
 function abrirAtaReuniao(id){
   const m=meetings.find(x=>x.id===id); if(!m) return;
   document.getElementById('ata-modal-ov')?.remove();
@@ -31423,6 +31585,7 @@ function _plaudLinhaPara(id,tipo,idx){
 }
 
 // Modal: Anexos
+// [SUPERSEDED jul/2026] Virou sub-aba inline (_reunAnexosInlineHTML via _reunSetSubView). Sem callers vivos — mantido só por segurança.
 function abrirAnexosReuniao(id){
   const m=meetings.find(x=>x.id===id); if(!m) return;
   document.getElementById('anexos-modal-ov')?.remove();
@@ -32979,8 +33142,8 @@ function _setPapelReuniao(mid, pid, papel){
   var nome=(typeof people!=='undefined')&&(people.find(function(x){return x.id===pid;})||{}).name||'';
   var labels={organizador:'Organizador',editor:'Editor',leitor:'Leitor'};
   if(typeof toast==='function') toast((nome?escapeHTML(nome)+': ':'')+'papel → '+( labels[papel]||papel));
-  // Re-renderiza o painel Info mantendo aberto (papéis vivem lá agora)
-  if(typeof abrirInfoReuniao==='function') abrirInfoReuniao(mid);
+  // Re-render inline mantendo a sub-aba Info aberta (papéis vivem lá agora)
+  if(typeof openReuniaoView==='function') openReuniaoView(mid);
 }
 
 /* ── Modal informativo simples (um botão OK) ─────────────────────────── */
