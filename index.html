@@ -28855,11 +28855,11 @@ function _recBoxHTML(){
       const futuras=(meetings||[]).filter(x=>x.serieId===mEdit.serieId && String(x.date)>String(mEdit.date));
       if(futuras.length){
         if(!window._reunEscopo) window._reunEscopo='esta';
-        escopoHTML=`<div style="margin-bottom:9px;background:color-mix(in srgb, var(--blue-mid) 8%, transparent);border:1px solid var(--blue-mid);border-radius:10px;padding:9px 11px;">
-          <div style="font-size:12px;color:var(--text2);margin-bottom:6px;"><i class="ti ti-repeat"></i> Faz parte de uma série (${futuras.length} futura${futuras.length>1?'s':''}). Aplicar a:</div>
-          <select onchange="window._reunEscopo=this.value;_recRedraw()" style="${ist} width:100%; box-sizing:border-box; cursor:pointer;">
-            <option value="esta" ${window._reunEscopo==='esta'?'selected':''}>Só esta ocorrência (exceção)</option>
-            <option value="futuras" ${window._reunEscopo==='futuras'?'selected':''}>Esta e as futuras (regenerar pela regra)</option>
+        escopoHTML=`<div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;font-size:12px;color:var(--text2)">
+          <i class="ti ti-repeat" style="color:var(--blue-mid);flex-shrink:0"></i><span style="flex-shrink:0">Série (${futuras.length} futura${futuras.length>1?'s':''}):</span>
+          <select onchange="window._reunEscopo=this.value;_recRedraw()" style="${ist} flex:1;min-width:0;cursor:pointer;">
+            <option value="esta" ${window._reunEscopo==='esta'?'selected':''}>Só esta (exceção)</option>
+            <option value="futuras" ${window._reunEscopo==='futuras'?'selected':''}>Esta e as futuras</option>
           </select>
         </div>`;
       }
@@ -28873,52 +28873,29 @@ function _recBoxHTML(){
     <option value="custom" ${preset==='custom'?'selected':''}>Personalizado…</option>
   </select>`;
   if(!rec.ativo) return html;
-  html+=`<div style="margin-top:7px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;display:flex;flex-direction:column;gap:7px;">
-    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px;color:var(--text2);">
-      <span>A cada</span>
-      <input type="number" min="1" max="12" value="${rec.intervalo}" onchange="_recSet('intervalo',this.value)" style="${ist} width:52px;">
-      <select onchange="_recSet('unidade',this.value)" style="${ist} cursor:pointer;">
-        <option value="semana" ${rec.unidade==='semana'?'selected':''}>semana(s)</option>
-        <option value="mes" ${rec.unidade==='mes'?'selected':''}>mês(es)</option>
-      </select>
-    </div>`;
+  // Grupos "A cada N unidade" e "Termina …" na MESMA linha (compacto)
+  const gAcada=`<span style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--text2)"><span>A cada</span>
+    <input type="number" min="1" max="12" value="${rec.intervalo}" onchange="_recSet('intervalo',this.value)" style="${ist} width:46px;">
+    <select onchange="_recSet('unidade',this.value)" style="${ist} cursor:pointer;"><option value="semana" ${rec.unidade==='semana'?'selected':''}>sem.</option><option value="mes" ${rec.unidade==='mes'?'selected':''}>mês</option></select></span>`;
+  const gTermina=`<span style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--text2)"><span>Termina</span>
+    <select onchange="_recSet('fimTipo',this.value)" style="${ist} cursor:pointer;"><option value="nunca" ${rec.fimTipo==='nunca'?'selected':''}>nunca</option><option value="apos" ${rec.fimTipo==='apos'?'selected':''}>após</option><option value="ate" ${rec.fimTipo==='ate'?'selected':''}>em</option></select>
+    ${rec.fimTipo==='apos'?`<input type="number" min="2" max="${REC_MAX_HARD}" value="${rec.fimN}" onchange="_recSet('fimN',this.value)" style="${ist} width:48px;">`:rec.fimTipo==='ate'?`<input type="date" value="${rec.fimData||''}" onchange="_recSet('fimData',this.value)" style="${ist}">`:''}</span>`;
+  // Dias (semanal) OU regra mensal
+  let meioHTML='';
   if(rec.unidade==='semana'){
-    html+=`<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
-      ${REC_DOW.map((n,i)=>{const on=(rec.dias||[]).map(Number).indexOf(i)>=0;
-        return `<button type="button" onclick="_recToggleDia(${i})" style="width:34px;height:28px;border-radius:7px;border:1px solid ${on?'var(--blue-mid)':'var(--border)'};background:${on?'var(--blue-mid)':'var(--bg3)'};color:${on?'#fff':'var(--text2)'};font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">${n}</button>`;}).join('')}
-    </div>`;
+    meioHTML=`<div style="display:flex;gap:4px;flex-wrap:wrap">${REC_DOW.map((n,i)=>{const on=(rec.dias||[]).map(Number).indexOf(i)>=0;
+      return `<button type="button" onclick="_recToggleDia(${i})" style="width:33px;height:26px;border-radius:6px;border:1px solid ${on?'var(--blue-mid)':'var(--border)'};background:${on?'var(--blue-mid)':'var(--bg3)'};color:${on?'#fff':'var(--text2)'};font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit;">${n}</button>`;}).join('')}</div>`;
   } else {
-    html+=`<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:13px;color:var(--text2);">
-      <select onchange="_recSet('mensalModo',this.value)" style="${ist} cursor:pointer;">
-        <option value="dia" ${rec.mensalModo==='dia'?'selected':''}>No dia</option>
-        <option value="nth" ${rec.mensalModo==='nth'?'selected':''}>Na</option>
-      </select>
-      ${rec.mensalModo==='dia'
-        ? `<input type="number" min="1" max="31" value="${rec.mensalDia}" onchange="_recSet('mensalDia',this.value)" style="${ist} width:60px;"><span>do mês</span>`
-        : `<select onchange="_recSet('mensalNth',this.value)" style="${ist} cursor:pointer;">${Object.keys(REC_NTH).map(k=>`<option value="${k}" ${String(rec.mensalNth)===k?'selected':''}>${REC_NTH[k]}</option>`).join('')}</select>
-           <select onchange="_recSet('mensalDow',this.value)" style="${ist} cursor:pointer;">${REC_DOW.map((n,i)=>`<option value="${i}" ${Number(rec.mensalDow)===i?'selected':''}>${n}</option>`).join('')}</select><span>do mês</span>`}
-    </div>`;
+    meioHTML=`<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px;color:var(--text2)"><select onchange="_recSet('mensalModo',this.value)" style="${ist} cursor:pointer;"><option value="dia" ${rec.mensalModo==='dia'?'selected':''}>No dia</option><option value="nth" ${rec.mensalModo==='nth'?'selected':''}>Na</option></select>
+      ${rec.mensalModo==='dia'?`<input type="number" min="1" max="31" value="${rec.mensalDia}" onchange="_recSet('mensalDia',this.value)" style="${ist} width:52px;"><span>do mês</span>`:`<select onchange="_recSet('mensalNth',this.value)" style="${ist} cursor:pointer;">${Object.keys(REC_NTH).map(k=>`<option value="${k}" ${String(rec.mensalNth)===k?'selected':''}>${REC_NTH[k]}</option>`).join('')}</select><select onchange="_recSet('mensalDow',this.value)" style="${ist} cursor:pointer;">${REC_DOW.map((n,i)=>`<option value="${i}" ${Number(rec.mensalDow)===i?'selected':''}>${n}</option>`).join('')}</select>`}</div>`;
   }
-  html+=`<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:13px;color:var(--text2);">
-      <span>Termina</span>
-      <select onchange="_recSet('fimTipo',this.value)" style="${ist} cursor:pointer;">
-        <option value="nunca" ${rec.fimTipo==='nunca'?'selected':''}>nunca</option>
-        <option value="apos" ${rec.fimTipo==='apos'?'selected':''}>após</option>
-        <option value="ate" ${rec.fimTipo==='ate'?'selected':''}>em</option>
-      </select>
-      ${rec.fimTipo==='apos'
-        ? `<input type="number" min="2" max="${REC_MAX_HARD}" value="${rec.fimN}" onchange="_recSet('fimN',this.value)" style="${ist} width:60px;"><span>ocorrências</span>`
-        : rec.fimTipo==='ate'
-        ? `<input type="date" value="${rec.fimData||''}" onchange="_recSet('fimData',this.value)" style="${ist}">`
-        : `<span style="font-size:12px;color:var(--text3);">(mantém ~${REC_ROLL} agendadas à frente, repondo sozinha)</span>`}
-    </div>`;
   const datas=_recGerarDatas(base, rec);
-  const fmt=iso=>new Date(iso+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
-  html+=`<div style="border-top:1px solid var(--border);padding-top:8px;font-size:12px;color:var(--text3);line-height:1.55;">
-      <b style="color:var(--text2);">${escapeHTML(_recDescricao(rec))}</b><br>
-      ${datas.length
-        ? `Próximas: ${datas.slice(0,4).map(fmt).join(' · ')}${datas.length>4?` … +${datas.length-4}`:''} — <b>${datas.length+1}</b> no total (contando esta).`
-        : '<span style="color:var(--danger);">Sem ocorrências futuras — ajuste a regra.</span>'}
+  const totalTxt = datas.length ? `<b style="color:var(--text2)">${datas.length+1}</b> no total` : `<span style="color:var(--danger)">sem ocorrências — ajuste</span>`;
+  html+=`<div style="margin-top:6px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;display:flex;flex-direction:column;gap:7px;">
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">${gAcada}${gTermina}</div>
+    ${meioHTML}
+    <div style="border-top:1px solid var(--border);padding-top:6px;font-size:11.5px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="color:var(--text2);font-weight:600">${escapeHTML(_recDescricao(rec))}</span><span style="color:var(--text3)">${totalTxt}</span>
     </div>
   </div>`;
   return html;
@@ -30260,11 +30237,9 @@ function renderNovaReuniaoForm(container, subNav){
               <div id="reun-rec-box">${_recBoxHTML()}</div>
             </div>
 
-            <!-- Participantes -->
-            <div>
-              <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-users"></i> Participantes</div>
-              <div id="reun-parts-list" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;max-height:132px;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;gap:0">${partsHTML||'<div style="padding:12px;font-size:13px;color:var(--text3)">Nenhuma pessoa cadastrada.</div>'}</div>
-            </div>
+            <!-- Participantes saíram do modal (jul/2026): adicionar/marcar é feito no Painel
+                 (ícone Participantes → "+ Adicionar participante"). Ao editar, a lista atual
+                 é preservada via window._reunSelParts (inicializado com m.participantes). -->
 
             <!-- Projetos -->
             ${projects.length?`<div>
