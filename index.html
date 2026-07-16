@@ -28659,6 +28659,207 @@ function proximaDataReuniao(dataBase,freq){
   return d.toISOString().slice(0,10);
 }
 
+// ════════════════════════════════════════════════════════════════════
+// RECORRÊNCIA DE REUNIÕES — regra personalizada + materialização
+// PROTÓTIPO (p/ o Guilherme): aqui as ocorrências são MATERIALIZADAS (viram
+// reuniões reais já agendadas) pra aparecerem na Agenda e o Diego planejar
+// semanas à frente. Cada ocorrência é independente: mudar dia/hora de UMA não
+// afeta as outras. No backend real, o ideal é RRULE + exceções (ocorrências
+// virtuais); materializar aqui comunica a MESMA regra com muito menos código.
+//
+// Modelo (em meeting.rec):
+//   { ativo, unidade:'semana'|'mes', intervalo:N,
+//     dias:[0..6],                        // unidade 'semana' (0=Dom)
+//     mensalModo:'dia'|'nth', mensalDia:N, mensalNth:1..4|-1, mensalDow:0..6,
+//     fimTipo:'apos'|'ate', fimN:N, fimData:'YYYY-MM-DD' }
+// meeting.serieId liga as ocorrências da mesma série.
+// A reunião criada É a ocorrência #1; a regra gera as SEGUINTES a partir dela.
+// ════════════════════════════════════════════════════════════════════
+const REC_DOW=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const REC_NTH={1:'1ª',2:'2ª',3:'3ª',4:'4ª','-1':'última'};
+const REC_MAX_HARD=60; // teto de segurança de ocorrências geradas
+
+function _recDefault(base){
+  const d=base?new Date(base+'T12:00'):new Date();
+  return { ativo:false, unidade:'semana', intervalo:1, dias:[d.getDay()],
+           mensalModo:'dia', mensalDia:d.getDate(), mensalNth:1, mensalDow:d.getDay(),
+           fimTipo:'apos', fimN:8, fimData:'' };
+}
+function _isoLocal(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
+function _recNthWeekday(y,mo,nth,dow){
+  if(String(nth)==='-1'){ const last=new Date(y,mo+1,0,12); last.setDate(last.getDate()-((last.getDay()-dow+7)%7)); return last; }
+  const first=new Date(y,mo,1,12);
+  const d=new Date(y,mo,1+((dow-first.getDay()+7)%7)+(nth-1)*7,12);
+  return d.getMonth()===mo?d:null;
+}
+// Gera as datas SEGUINTES à dataInicio conforme a regra (a #1 é a própria reunião).
+function _recGerarDatas(dataInicio, rec){
+  const out=[]; if(!rec||!rec.ativo||!dataInicio) return out;
+  const max = rec.fimTipo==='apos' ? Math.max(0,(parseInt(rec.fimN,10)||1)-1) : REC_MAX_HARD;
+  const lim = (rec.fimTipo==='ate' && rec.fimData) ? rec.fimData : null;
+  if(max<=0) return out;
+  const base=new Date(dataInicio+'T12:00');
+  const inter=Math.max(1,parseInt(rec.intervalo,10)||1);
+  if(rec.unidade==='semana'){
+    const dias=(rec.dias&&rec.dias.length)?[...rec.dias].map(Number).sort((a,b)=>a-b):[base.getDay()];
+    const semRef=new Date(base); semRef.setDate(semRef.getDate()-semRef.getDay()); // domingo da semana base
+    for(let s=0; s<520 && out.length<max; s++){
+      const semIni=new Date(semRef); semIni.setDate(semIni.getDate()+s*7*inter);
+      let passouLim=false;
+      for(const dw of dias){
+        const d=new Date(semIni); d.setDate(d.getDate()+dw);
+        const iso=_isoLocal(d);
+        if(lim && iso>lim){ passouLim=true; continue; }
+        if(iso>dataInicio && out.length<max) out.push(iso);
+      }
+      if(passouLim && out.length) break;
+      if(lim && _isoLocal(semIni)>lim) break;
+    }
+  } else {
+    for(let k=1; k<=240 && out.length<max; k++){
+      const ref=new Date(base.getFullYear(), base.getMonth()+k*inter, 1, 12);
+      let dd;
+      if(rec.mensalModo==='nth'){
+        dd=_recNthWeekday(ref.getFullYear(), ref.getMonth(), rec.mensalNth, rec.mensalDow!=null?Number(rec.mensalDow):base.getDay());
+      } else {
+        const ultimo=new Date(ref.getFullYear(), ref.getMonth()+1, 0).getDate();
+        dd=new Date(ref.getFullYear(), ref.getMonth(), Math.min(parseInt(rec.mensalDia,10)||base.getDate(), ultimo), 12);
+      }
+      if(!dd) continue;
+      const iso=_isoLocal(dd);
+      if(lim && iso>lim) break;
+      if(iso>dataInicio) out.push(iso);
+    }
+  }
+  return out;
+}
+// Texto humano da regra (ex.: "Toda Qui, a cada 2 semanas · 8 ocorrências")
+function _recDescricao(rec){
+  if(!rec||!rec.ativo) return 'Não repete';
+  const inter=Math.max(1,parseInt(rec.intervalo,10)||1);
+  let s='';
+  if(rec.unidade==='semana'){
+    const dias=(rec.dias&&rec.dias.length)?[...rec.dias].map(Number).sort((a,b)=>a-b):[];
+    s = dias.length? ('Toda '+dias.map(d=>REC_DOW[d]).join(', ')) : 'Semanal';
+    s += inter>1 ? (', a cada '+inter+' semanas') : '';
+  } else {
+    s = rec.mensalModo==='nth'
+      ? ('Na '+(REC_NTH[String(rec.mensalNth)]||'1ª')+' '+REC_DOW[Number(rec.mensalDow)||0]+' do mês')
+      : ('Todo dia '+(parseInt(rec.mensalDia,10)||1)+' do mês');
+    s += inter>1 ? (', a cada '+inter+' meses') : '';
+  }
+  s += rec.fimTipo==='ate' && rec.fimData
+    ? (' · até '+new Date(rec.fimData+'T12:00').toLocaleDateString('pt-BR'))
+    : (' · '+(parseInt(rec.fimN,10)||1)+' ocorrências');
+  return s;
+}
+// Migração: reuniões antigas com `frequencia` viram `rec` equivalente.
+function _recFromLegacy(m){
+  if(!m || m.rec || !m.frequencia || m.frequencia==='unica') return null;
+  const base=m.date||today; const d=new Date(base+'T12:00');
+  const map={semanal:{u:'semana',i:1}, quinzenal:{u:'semana',i:2}, mensal:{u:'mes',i:1}, bimestral:{u:'mes',i:2}, trimestral:{u:'mes',i:3}};
+  const cfg=map[m.frequencia]; if(!cfg) return null;
+  return { ativo:true, unidade:cfg.u, intervalo:cfg.i, dias:[d.getDay()],
+           mensalModo:'dia', mensalDia:d.getDate(), mensalNth:1, mensalDow:d.getDay(),
+           fimTipo:'apos', fimN:8, fimData:'' };
+}
+function _recDe(m){ return (m&&m.rec&&m.rec.ativo)?m.rec:_recFromLegacy(m); }
+
+// ── UI do construtor de recorrência (dentro do form de reunião) ──
+function _recPresetAtual(rec){
+  if(!rec||!rec.ativo) return 'nao';
+  const um=(rec.dias||[]).length===1;
+  if(rec.unidade==='semana' && Number(rec.intervalo)===1 && um) return 'semanal';
+  if(rec.unidade==='semana' && Number(rec.intervalo)===2 && um) return 'quinzenal';
+  if(rec.unidade==='mes' && Number(rec.intervalo)===1 && rec.mensalModo==='dia') return 'mensal';
+  return 'custom';
+}
+function _recRedraw(){ const box=document.getElementById('reun-rec-box'); if(box) box.innerHTML=_recBoxHTML(); }
+function _recBaseData(){ return document.getElementById('reun-date')?.value||today; }
+function _recPreset(v){
+  const base=_recBaseData(); const dow=new Date(base+'T12:00').getDay();
+  let rec=window._reunRec||_recDefault(base);
+  const fim={fimTipo:rec.fimTipo||'apos', fimN:rec.fimN||8, fimData:rec.fimData||''};
+  if(v==='nao'){ rec.ativo=false; }
+  else if(v==='semanal')   rec={..._recDefault(base), ...fim, ativo:true, unidade:'semana', intervalo:1, dias:[dow]};
+  else if(v==='quinzenal') rec={..._recDefault(base), ...fim, ativo:true, unidade:'semana', intervalo:2, dias:[dow]};
+  else if(v==='mensal')    rec={..._recDefault(base), ...fim, ativo:true, unidade:'mes', intervalo:1, mensalModo:'dia', mensalDia:new Date(base+'T12:00').getDate()};
+  else rec.ativo=true;
+  window._reunRec=rec; _recRedraw();
+}
+function _recSet(k,v){
+  const rec=window._reunRec||(window._reunRec=_recDefault(_recBaseData()));
+  rec[k]=v;
+  if(k==='unidade'&&v==='semana'&&(!rec.dias||!rec.dias.length)) rec.dias=[new Date(_recBaseData()+'T12:00').getDay()];
+  _recRedraw();
+}
+function _recToggleDia(d){
+  const rec=window._reunRec||(window._reunRec=_recDefault(_recBaseData()));
+  const arr=(rec.dias||[]).map(Number); const i=arr.indexOf(d);
+  if(i>=0){ if(arr.length>1) arr.splice(i,1); } else arr.push(d);
+  rec.dias=arr.sort((a,b)=>a-b); _recRedraw();
+}
+function _recBoxHTML(){
+  const base=_recBaseData();
+  const rec=window._reunRec||(window._reunRec=_recDefault(base));
+  const preset=_recPresetAtual(rec);
+  const ist='background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 9px;font-size:13px;color:var(--text);font-family:inherit;';
+  let html=`<select class="modal-input" onchange="_recPreset(this.value)">
+    <option value="nao" ${preset==='nao'?'selected':''}>Não repete</option>
+    <option value="semanal" ${preset==='semanal'?'selected':''}>Semanal</option>
+    <option value="quinzenal" ${preset==='quinzenal'?'selected':''}>Quinzenal (a cada 2 semanas)</option>
+    <option value="mensal" ${preset==='mensal'?'selected':''}>Mensal</option>
+    <option value="custom" ${preset==='custom'?'selected':''}>Personalizado…</option>
+  </select>`;
+  if(!rec.ativo) return html;
+  html+=`<div style="margin-top:8px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:9px;">
+    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:13px;color:var(--text2);">
+      <span>A cada</span>
+      <input type="number" min="1" max="12" value="${rec.intervalo}" onchange="_recSet('intervalo',this.value)" style="${ist} width:58px;">
+      <select onchange="_recSet('unidade',this.value)" style="${ist} cursor:pointer;">
+        <option value="semana" ${rec.unidade==='semana'?'selected':''}>semana(s)</option>
+        <option value="mes" ${rec.unidade==='mes'?'selected':''}>mês(es)</option>
+      </select>
+    </div>`;
+  if(rec.unidade==='semana'){
+    html+=`<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+      ${REC_DOW.map((n,i)=>{const on=(rec.dias||[]).map(Number).indexOf(i)>=0;
+        return `<button type="button" onclick="_recToggleDia(${i})" style="width:40px;height:32px;border-radius:8px;border:1px solid ${on?'var(--blue-mid)':'var(--border)'};background:${on?'var(--blue-mid)':'var(--bg3)'};color:${on?'#fff':'var(--text2)'};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">${n}</button>`;}).join('')}
+    </div>`;
+  } else {
+    html+=`<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:13px;color:var(--text2);">
+      <select onchange="_recSet('mensalModo',this.value)" style="${ist} cursor:pointer;">
+        <option value="dia" ${rec.mensalModo==='dia'?'selected':''}>No dia</option>
+        <option value="nth" ${rec.mensalModo==='nth'?'selected':''}>Na</option>
+      </select>
+      ${rec.mensalModo==='dia'
+        ? `<input type="number" min="1" max="31" value="${rec.mensalDia}" onchange="_recSet('mensalDia',this.value)" style="${ist} width:60px;"><span>do mês</span>`
+        : `<select onchange="_recSet('mensalNth',this.value)" style="${ist} cursor:pointer;">${Object.keys(REC_NTH).map(k=>`<option value="${k}" ${String(rec.mensalNth)===k?'selected':''}>${REC_NTH[k]}</option>`).join('')}</select>
+           <select onchange="_recSet('mensalDow',this.value)" style="${ist} cursor:pointer;">${REC_DOW.map((n,i)=>`<option value="${i}" ${Number(rec.mensalDow)===i?'selected':''}>${n}</option>`).join('')}</select><span>do mês</span>`}
+    </div>`;
+  }
+  html+=`<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:13px;color:var(--text2);">
+      <span>Termina</span>
+      <select onchange="_recSet('fimTipo',this.value)" style="${ist} cursor:pointer;">
+        <option value="apos" ${rec.fimTipo==='apos'?'selected':''}>após</option>
+        <option value="ate" ${rec.fimTipo==='ate'?'selected':''}>em</option>
+      </select>
+      ${rec.fimTipo==='apos'
+        ? `<input type="number" min="2" max="${REC_MAX_HARD}" value="${rec.fimN}" onchange="_recSet('fimN',this.value)" style="${ist} width:60px;"><span>ocorrências</span>`
+        : `<input type="date" value="${rec.fimData||''}" onchange="_recSet('fimData',this.value)" style="${ist}">`}
+    </div>`;
+  const datas=_recGerarDatas(base, rec);
+  const fmt=iso=>new Date(iso+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+  html+=`<div style="border-top:1px solid var(--border);padding-top:8px;font-size:12px;color:var(--text3);line-height:1.55;">
+      <b style="color:var(--text2);">${escapeHTML(_recDescricao(rec))}</b><br>
+      ${datas.length
+        ? `Próximas: ${datas.slice(0,4).map(fmt).join(' · ')}${datas.length>4?` … +${datas.length-4}`:''} — <b>${datas.length+1}</b> no total (contando esta).`
+        : '<span style="color:var(--danger);">Sem ocorrências futuras — ajuste a regra.</span>'}
+    </div>
+  </div>`;
+  return html;
+}
+
 // ── Sub-aba activa
 function setReuniaoTab(tab){
   reuniaoTab=tab;
@@ -29563,6 +29764,7 @@ function toggleReunSerie(chave){
 // restaura a listagem e injeta no modal. Mantém TODA a lógica original intacta
 // (pauta, decisões, ATA, séries, participantes, projetos vinculados etc.).
 function openReuniaoModal(){
+  window._reunRec=null; // recorrência recarrega da reunião em edição (ou default p/ nova)
   document.getElementById('reun-modal-overlay')?.remove();
   const ov=document.createElement('div');
   ov.id='reun-modal-overlay';
@@ -29834,13 +30036,15 @@ function fecharReuniaoModal(){
   if(ov._escHandler) document.removeEventListener('keydown', ov._escHandler);
   ov.remove();
   editingReuniaoId=null;
-  window._reunSelParts=[];window._reunSelProjs=[];window._reunPauta=[];
+  window._reunSelParts=[];window._reunSelProjs=[];window._reunPauta=[];window._reunRec=null;
   reuniaoTab='reunioes';
 }
 
 function renderNovaReuniaoForm(container, subNav){
   const m=editingReuniaoId?meetings.find(x=>x.id===editingReuniaoId):null;
   const macrosSorted=Object.keys(getMacroSetores()).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  // Recorrência: inicia 1x por abertura do form (igual _reunPauta) — não resetar em re-render.
+  if(!window._reunRec) window._reunRec = (m&&m.rec) ? JSON.parse(JSON.stringify(m.rec)) : (_recFromLegacy(m) || _recDefault(m?m.date:today));
 
   // Pauta existente — usa window._reunPauta se disponível (ao re-renderizar via pautaAddItem)
   const pautaItems=window._reunPauta||(m?m.pauta||[]:['']);
@@ -29944,7 +30148,13 @@ function renderNovaReuniaoForm(container, subNav){
               </div>
             </div>
 
-            <!-- Quem conduz (Frequência removida — mai/2026) -->
+            <!-- Recorrência (restaurada jul/2026, agora com regra personalizada + materialização) -->
+            <div>
+              <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-repeat"></i> Repetir</div>
+              <div id="reun-rec-box">${_recBoxHTML()}</div>
+            </div>
+
+            <!-- Quem conduz -->
             <div>
               <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-microphone"></i> Quem conduz <span style="color:var(--danger);font-weight:700">*</span></div>
               <select id="reun-facilitador" class="modal-input">
@@ -30151,7 +30361,10 @@ function saveReuniao(){
     sala:document.getElementById('reun-sala')?.value||'',
     localExterno:'',
     facilitador:document.getElementById('reun-facilitador')?.value||'',
-    frequencia:document.getElementById('reun-freq')?.value||'unica',
+    // Recorrência: `rec` é a fonte de verdade (regra personalizada). `frequencia`
+    // fica só por compatibilidade com registros/telas antigas.
+    rec: (window._reunRec && window._reunRec.ativo) ? JSON.parse(JSON.stringify(window._reunRec)) : null,
+    frequencia: (window._reunRec && window._reunRec.ativo) ? 'custom' : 'unica',
     pautaPrincipal:document.getElementById('reun-pauta-principal')?.value.trim()||'',
     // Quem conduz entra automaticamente como participante (senão fica fora da presença/agenda da própria reunião).
     participantes:(function(){ const p=[...(window._reunSelParts||[])]; const f=document.getElementById('reun-facilitador')?.value||''; if(f && p.indexOf(f)<0) p.push(f); return p; })(),
@@ -30187,11 +30400,13 @@ function saveReuniao(){
     meetings.push(m);
     saveMeeting_db(m);
     _novaReunId=m.id;
+    // Recorrência: materializa as ocorrências seguintes já agendadas (aparecem na Agenda).
+    if(obj.rec) window._recCriadas=_recMaterializar(m);
   }
   const eraEdicao=!!editingReuniaoId;
   const _savedReunId=editingReuniaoId;
   editingReuniaoId=null;
-  window._reunSelParts=[];window._reunSelProjs=[];window._reunPauta=[];
+  window._reunSelParts=[];window._reunSelProjs=[];window._reunPauta=[];window._reunRec=null;
   reuniaoTab='reunioes';
   fecharReuniaoModal();
   // Criar-e-abrir: ao criar, cai direto no painel da nova reunião (fluxo contínuo criar → pauta/tarefas), como no FAB e em "novo equipamento".
@@ -30201,7 +30416,9 @@ function saveReuniao(){
   } else {
     renderReunioes();
   }
-  toast(eraEdicao?'✅ Reunião atualizada!':'📅 Reunião criada!');
+  const _nc=window._recCriadas||0; window._recCriadas=0;
+  toast(eraEdicao ? '✅ Reunião atualizada!'
+                  : (_nc ? `📅 Reunião criada! +${_nc} ocorrência${_nc>1?'s':''} já agendada${_nc>1?'s':''} na agenda.` : '📅 Reunião criada!'));
 }
 
 // ── Toggle local interno/externo
@@ -30248,25 +30465,11 @@ function excluirSalaSelecionada(){
 }
 
 // ── Atualizar próxima data sugerida quando muda frequência ou data
-function atualizarProximaData(){
-  const freq=document.getElementById('reun-freq')?.value||'unica';
-  const data=document.getElementById('reun-date')?.value||today;
-  const wrap=document.getElementById('proxima-data-wrap');
-  const txt=document.getElementById('proxima-data-txt');
-  if(!wrap||!txt) return;
-  if(freq==='unica'){
-    wrap.style.display='none';
-  } else {
-    wrap.style.display='block';
-    const prox=proximaDataReuniao(data,freq);
-    if(prox){
-      const d=new Date(prox+'T12:00');
-      txt.textContent=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
-    } else {
-      txt.textContent='—';
-    }
-  }
-}
+// Chamada pelo onchange do campo Data: redesenha a caixa de recorrência para o
+// preview das próximas datas acompanhar a data escolhida.
+// (Antes: lia 'reun-freq'/'proxima-data-wrap'/'proxima-data-txt', que não existem
+//  desde a remoção de mai/2026 — era código morto.)
+function atualizarProximaData(){ if(typeof _recRedraw==='function') _recRedraw(); }
 
 // ── Editar reunião
 function editReuniao(id){
@@ -31002,11 +31205,58 @@ function abrirAnexosReuniao(id){
 // Cria automaticamente a próxima ocorrência de uma reunião recorrente, já encadeada (continuacaoDe).
 // Herda configs (título, hora, tipo, sala, facilitador, participantes, frequência). Pauta nasce limpa,
 // a menos que opts.migrarPauta. Não duplica se já houver continuação. Retorna a nova reunião ou null.
+// Materializa as ocorrências SEGUINTES de uma série (a reunião `m` é a #1).
+// Cada uma é uma reunião REAL e independente: mudar dia/hora de uma não afeta as
+// outras. Todas carregam a regra (`rec`) — a guarda `continuacaoDe` em
+// _gerarProximaRecorrente impede duplicata ao encerrar; só a ÚLTIMA (que não tem
+// ninguém encadeado nela) pode gerar a seguinte, respeitando o fim da regra.
+function _recMaterializar(m){
+  const rec=_recDe(m); if(!rec||!rec.ativo||!m||!m.date) return 0;
+  const datas=_recGerarDatas(m.date, rec);
+  if(!datas.length) return 0;
+  if(!m.serieId) m.serieId='ser'+Date.now();
+  let anterior=m, criadas=0;
+  datas.forEach((iso,i)=>{
+    const nova={
+      id:'reun'+Date.now()+'_'+i+Math.floor(Math.random()*1000),
+      title:m.title, date:iso,
+      horaInicio:m.horaInicio||'', horaFim:m.horaFim||'',
+      tipo:m.tipo||'', status:'agendada', localTipo:'interno', sala:m.sala||'', localExterno:'',
+      facilitador:m.facilitador||'', nivel:'completa',
+      rec:JSON.parse(JSON.stringify(rec)), frequencia:'custom',
+      serieId:m.serieId, serieIdx:i+2,
+      participantes:[...(m.participantes||[])], projetos:[...(m.projetos||[])],
+      pautaPrincipal:'', pautaPrincipalDone:false, pauta:[], pautaDone:[],
+      ata:'', decisoes:'', decisoesItens:[], presencas:{}, anexos:[],
+      inicioReal:null, fimReal:null, tarefas:[],
+      continuacaoDe:anterior.id, createdAt:today
+    };
+    meetings.push(nova); saveMeeting_db(nova);
+    anterior=nova; criadas++;
+  });
+  m.serieIdx=1; m.serieTotal=criadas+1; saveMeeting_db(m);
+  return criadas;
+}
+// Quantas ocorrências a série tem / índice desta (p/ mostrar "3ª de 8")
+function _serieInfo(m){
+  if(!m||!m.serieId) return null;
+  const irmas=(meetings||[]).filter(x=>x.serieId===m.serieId).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  const idx=irmas.findIndex(x=>x.id===m.id);
+  return idx<0?null:{idx:idx+1, total:irmas.length, irmas};
+}
+
 function _gerarProximaRecorrente(m, opts){
   opts=opts||{};
-  if(!m || !m.frequencia || m.frequencia==='unica') return null;
-  if((meetings||[]).some(x=>x.continuacaoDe===m.id)) return null;
-  const novaData=proximaDataReuniao(m.date, m.frequencia);
+  const _rec=_recDe(m);
+  if(!m || !_rec || !_rec.ativo) return null;
+  if((meetings||[]).some(x=>x.continuacaoDe===m.id)) return null; // já tem próxima (materializada)
+  // Respeita o fim da regra: não estende além do nº de ocorrências configurado.
+  if(_rec.fimTipo==='apos'){
+    const info=_serieInfo(m);
+    const pos=info?info.idx:(Number(m.serieIdx)||1);
+    if(pos>=(parseInt(_rec.fimN,10)||1)) return null;
+  }
+  const novaData=(_recGerarDatas(m.date,_rec)||[])[0];
   if(!novaData) return null;
   let pauta=[], pautaDone=[], pautaPrincipal='';
   if(opts.migrarPauta){
@@ -31020,6 +31270,8 @@ function _gerarProximaRecorrente(m, opts){
     horaInicio:m.horaInicio||'', horaFim:m.horaFim||'',
     tipo:m.tipo||'', status:'agendada', sala:m.sala||'', facilitador:m.facilitador||'',
     frequencia:m.frequencia||'unica',
+    rec:_rec?JSON.parse(JSON.stringify(_rec)):null,
+    serieId:m.serieId||null, serieIdx:(Number(m.serieIdx)||1)+1,
     participantes:[...(m.participantes||[])], projetos:[...(m.projetos||[])],
     pautaPrincipal, pautaPrincipalDone:false, pauta, pautaDone,
     ata:'', decisoes:'', decisoesItens:[], presencas:{}, inicioReal:null, fimReal:null, tarefas:[],

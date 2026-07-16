@@ -92,6 +92,37 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-15 (4) — Mac de casa — RECORRÊNCIA DE REUNIÕES (etapa 1: regra personalizada + materialização)
+- **Contexto/diagnóstico:** o motor de recorrência existia inteiro (REUN_FREQ, `proximaDataReuniao`,
+  `_gerarProximaRecorrente`, banner de data vencida) MAS o campo da UI tinha sido removido em mai/2026 →
+  `saveReuniao` lia um `reun-freq` inexistente e **toda reunião nascia `frequencia:'unica'`**: a recorrência
+  NUNCA disparava. `atualizarProximaData` também apontava p/ 3 elementos inexistentes (código morto).
+- **Problema real do Diego:** a próxima só nascia ao ENCERRAR a atual → a agenda nunca mostrava o futuro e ele
+  não conseguia planejar 2-3 semanas à frente.
+- **Solução (etapa 1):** regra personalizada + **ocorrências MATERIALIZADAS** (viram reuniões reais já agendadas
+  → aparecem na Agenda de imediato, que já lê `meetings` por data via `getEventosDia`).
+  - Novo modelo `meeting.rec` = `{ativo,unidade:'semana'|'mes',intervalo,dias:[0..6],mensalModo:'dia'|'nth',
+    mensalDia,mensalNth,mensalDow,fimTipo:'apos'|'ate',fimN,fimData}` + `serieId`/`serieIdx`/`serieTotal`.
+    `frequencia` fica só p/ compat ('custom'|'unica'). `_recFromLegacy` migra registros antigos.
+  - Motor: `_recGerarDatas` (gera as datas SEGUINTES; a reunião criada é a #1), `_recNthWeekday`, `_recDescricao`,
+    `_isoLocal` (evita bug de fuso do toISOString). Teto `REC_MAX_HARD=60`.
+  - UI no form (onde o campo tinha sido removido, ~"Frequência removida"): `_recBoxHTML`/`_recPreset`/`_recSet`/
+    `_recToggleDia`/`_recRedraw` — presets (Não repete/Semanal/Quinzenal/Mensal/Personalizado) + "a cada N
+    semanas/meses" + chips de dias da semana + mensal por dia OU "1ª/última Qui" + término após N/até data +
+    **preview ao vivo das próximas datas**. `atualizarProximaData()` virou só `_recRedraw()`.
+  - `_recMaterializar(m)` cria as seguintes, encadeadas por `continuacaoDe`, todas com `rec` e mesmo `serieId`.
+  - `_gerarProximaRecorrente` reescrito p/ usar `rec`. **A guarda `continuacaoDe` impede duplicata ao encerrar**
+    (a próxima já existe); só a ÚLTIMA poderia estender, e há guarda p/ respeitar `fimTipo:'apos'`.
+- **Cada ocorrência é independente**: mudar dia/hora de UMA não afeta as outras (é registro real).
+- **Verificado:** 19/19 testes do motor no jsc (semanal, quinzenal, Ter+Qui, mensal dia 31 **sem drift**
+  → 28/02 → 31/03, 1ª/última quinta, término por data/contagem, teto) + no browser: form renderiza, salvar
+  materializou 4 quintas (16→23→30/07→06/08) encadeadas com serieId único, **aparecem na Agenda**, encerrar a 1ª
+  NÃO duplica, a última respeita "após 4". 0 erros de sintaxe/console.
+- **Nota p/ o Guilherme:** materializar é escolha de PROTÓTIPO (comunica a regra com pouco código). No backend
+  real o certo é **RRULE + exceções (ocorrências virtuais)**, senão editar a série vira update em massa.
+- **Etapa 2 (pendente):** encerrar → sugerir a próxima data da série; botão "Nova reunião" na Agenda (com data
+  pré-preenchida); mostrar "3ª de 8" na reunião; "excluir série"/"regenerar futuras".
+
 ### 2026-07-15 (3) — Mac de casa — Header renomeado p/ "Hub Klain"
 - Título do header (span ~linha 2208) passou de "Gerenciador de Tarefas — Diego Konrad" → **"Hub Klain"**.
 - **NÃO alterados** (de propósito, aguardando decisão do Diego): `<title>` da aba (linha 4, ainda "Gerenciador
