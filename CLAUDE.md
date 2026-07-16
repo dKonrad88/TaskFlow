@@ -83,12 +83,23 @@ servidor da Empresa**.
 3. **Divergência local × remoto = NÃO fazer push/pull cego.** Clonar o remoto numa pasta
    SEPARADA, comparar (tamanho, marcadores de funcionalidades) e mostrar as diferenças
    ANTES de decidir o que manter. Nunca sobrescrever trabalho sem o Diego confirmar.
-4. **Confirmar antes** de push/pull ou de qualquer edição que sobrescreva arquivos.
+4. **Commit + push são AUTÔNOMOS** (Diego autorizou em 15/07/2026 — não ficar pedindo "posso commitar?" a
+   cada mudança; só commitar e avisar o que foi feito). **MAS continua obrigatório:** `git fetch` ANTES de
+   editar/commitar, e **divergência local × remoto exige análise + confirmação** (regra 3) — nunca pull/merge
+   cego, nunca force-push. Edição que SOBRESCREVA arquivo alheio também exige confirmação.
 5. Commits terminam com:
    `Co-Authored-By: Claude <noreply@anthropic.com>`
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-15 (3) — Mac de casa — Header renomeado p/ "Hub Klain"
+- Título do header (span ~linha 2208) passou de "Gerenciador de Tarefas — Diego Konrad" → **"Hub Klain"**.
+- **NÃO alterados** (de propósito, aguardando decisão do Diego): `<title>` da aba (linha 4, ainda "Gerenciador
+  de Tarefas — Diego Konrad") e o texto da Ajuda (~10514). O item de sidebar "Gerenciador de Tarefas" (~9866)
+  deve MESMO ficar — ali é o nome da ÁREA dentro do Hub (convive com Manutenção/Produção/Qualidade/Marketing).
+- ⚠️ Regra de trabalho atualizada (Diego, 15/07): **commit + push são AUTÔNOMOS** — não pedir aprovação a cada
+  mudança. Ver "Regras de segurança" nº 4.
+
 ### 2026-07-15 (2) — Mac de casa — FIX: preso no Kanban mesmo com "só Lista"
 - Diego reportou: removeu Painel/Cartões (só quer Lista), mas "Minhas Tarefas" ainda abria em **Kanban**.
 - **Causa:** remoção incompleta. O boot (linha ~32029) fazia `allView=safeLSGet(LS_ALLVIEW)||'painel'`,
