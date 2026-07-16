@@ -28873,10 +28873,10 @@ function _recBoxHTML(){
     <option value="custom" ${preset==='custom'?'selected':''}>Personalizado…</option>
   </select>`;
   if(!rec.ativo) return html;
-  html+=`<div style="margin-top:8px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:9px;">
-    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:13px;color:var(--text2);">
+  html+=`<div style="margin-top:7px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;display:flex;flex-direction:column;gap:7px;">
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px;color:var(--text2);">
       <span>A cada</span>
-      <input type="number" min="1" max="12" value="${rec.intervalo}" onchange="_recSet('intervalo',this.value)" style="${ist} width:58px;">
+      <input type="number" min="1" max="12" value="${rec.intervalo}" onchange="_recSet('intervalo',this.value)" style="${ist} width:52px;">
       <select onchange="_recSet('unidade',this.value)" style="${ist} cursor:pointer;">
         <option value="semana" ${rec.unidade==='semana'?'selected':''}>semana(s)</option>
         <option value="mes" ${rec.unidade==='mes'?'selected':''}>mês(es)</option>
@@ -28885,7 +28885,7 @@ function _recBoxHTML(){
   if(rec.unidade==='semana'){
     html+=`<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
       ${REC_DOW.map((n,i)=>{const on=(rec.dias||[]).map(Number).indexOf(i)>=0;
-        return `<button type="button" onclick="_recToggleDia(${i})" style="width:40px;height:32px;border-radius:8px;border:1px solid ${on?'var(--blue-mid)':'var(--border)'};background:${on?'var(--blue-mid)':'var(--bg3)'};color:${on?'#fff':'var(--text2)'};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">${n}</button>`;}).join('')}
+        return `<button type="button" onclick="_recToggleDia(${i})" style="width:34px;height:28px;border-radius:7px;border:1px solid ${on?'var(--blue-mid)':'var(--border)'};background:${on?'var(--blue-mid)':'var(--bg3)'};color:${on?'#fff':'var(--text2)'};font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">${n}</button>`;}).join('')}
     </div>`;
   } else {
     html+=`<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:13px;color:var(--text2);">
@@ -29881,7 +29881,7 @@ function openReuniaoModal(data, hora){
   const ov=document.createElement('div');
   ov.id='reun-modal-overlay';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9500;display:flex;align-items:flex-start;justify-content:center;padding:30px 20px;overflow-y:auto';
-  ov.innerHTML=`<div id="reun-modal-body" style="width:100%;max-width:780px;position:relative">
+  ov.innerHTML=`<div id="reun-modal-body" style="width:100%;max-width:600px;position:relative">
     <button onclick="fecharReuniaoModal()" style="position:absolute;top:14px;right:14px;background:var(--bg2);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:20px;line-height:1;padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;z-index:10" title="Fechar (Esc)">×</button>
     <div id="reun-modal-form-host"></div>
   </div>`;
@@ -30183,11 +30183,11 @@ function renderNovaReuniaoForm(container, subNav){
 
   container.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding-bottom:40px">
     ${subNav}
-    <div style="width:100%;max-width:920px">
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px">
-        <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:20px;display:flex;align-items:center;gap:8px">
+    <div style="width:100%;max-width:600px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px">
+        <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px">
           <i class="ti ti-calendar-event" style="color:var(--blue-mid)"></i>
-          ${editingReuniaoId?'Editar Reunião':'Nova Reunião'}
+          ${editingReuniaoId?'Editar reunião':'Nova reunião'}
         </div>
 
         <!-- COLUNA ÚNICA — só o essencial da reunião (jul/2026).
@@ -30196,7 +30196,7 @@ function renderNovaReuniaoForm(container, subNav){
              _pautaAplicarModelo). Motivo: o modal de criar/editar deve ter só o
              essencial (quando/quem/recorrência); conteúdo é trabalho do painel. -->
         <div>
-          <div style="display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;flex-direction:column;gap:10px">
 
             <!-- Título -->
             <div>
@@ -30220,19 +30220,19 @@ function renderNovaReuniaoForm(container, subNav){
               </div>
             </div>
 
-            <!-- Tipo + Status -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <!-- Tipo + Status + Quem conduz (3 colunas) -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1.15fr;gap:8px">
               <div>
-                <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-tag"></i> Tipo</div>
-                <select id="reun-tipo" class="modal-input">
-                  ${REUN_TIPOS.map(t=>`<option value="${t}" ${m&&m.tipo===t?'selected':''}>${t}</option>`).join('')}
-                </select>
+                <div class="modal-label" style="margin-bottom:4px"><i class="ti ti-tag"></i> Tipo</div>
+                <select id="reun-tipo" class="modal-input">${REUN_TIPOS.map(t=>`<option value="${t}" ${m&&m.tipo===t?'selected':''}>${t}</option>`).join('')}</select>
               </div>
               <div>
-                <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-activity"></i> Status</div>
-                <select id="reun-status" class="modal-input">
-                  ${Object.entries(REUN_STATUS).map(([k,v])=>`<option value="${k}" ${m&&m.status===k?'selected':''}>${v.label}</option>`).join('')}
-                </select>
+                <div class="modal-label" style="margin-bottom:4px"><i class="ti ti-activity"></i> Status</div>
+                <select id="reun-status" class="modal-input">${Object.entries(REUN_STATUS).map(([k,v])=>`<option value="${k}" ${m&&m.status===k?'selected':''}>${v.label}</option>`).join('')}</select>
+              </div>
+              <div>
+                <div class="modal-label" style="margin-bottom:4px"><i class="ti ti-microphone"></i> Quem conduz <span style="color:var(--danger);font-weight:700">*</span></div>
+                <select id="reun-facilitador" class="modal-input"><option value="">— Selecionar —</option>${[...people].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>`<option value="${p.id}" ${m&&m.facilitador===p.id?'selected':''}>${escapeHTML(p.name)}</option>`).join('')}</select>
               </div>
             </div>
 
@@ -30260,19 +30260,10 @@ function renderNovaReuniaoForm(container, subNav){
               <div id="reun-rec-box">${_recBoxHTML()}</div>
             </div>
 
-            <!-- Quem conduz -->
-            <div>
-              <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-microphone"></i> Quem conduz <span style="color:var(--danger);font-weight:700">*</span></div>
-              <select id="reun-facilitador" class="modal-input">
-                <option value="">— Selecionar —</option>
-                ${[...people].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>`<option value="${p.id}" ${m&&m.facilitador===p.id?'selected':''}>${escapeHTML(p.name)}</option>`).join('')}
-              </select>
-            </div>
-
             <!-- Participantes -->
             <div>
               <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-users"></i> Participantes</div>
-              <div id="reun-parts-list" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;max-height:180px;overflow-y:auto">${partsHTML||'<div style="padding:12px;font-size:13px;color:var(--text3)">Nenhuma pessoa cadastrada.</div>'}</div>
+              <div id="reun-parts-list" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;max-height:132px;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;gap:0">${partsHTML||'<div style="padding:12px;font-size:13px;color:var(--text3)">Nenhuma pessoa cadastrada.</div>'}</div>
             </div>
 
             <!-- Projetos -->
@@ -31204,6 +31195,17 @@ function abrirPresencaReuniao(id){
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:11px 12px;margin-bottom:14px">${info||'<span style="font-size:12px;color:var(--text3)">Sem detalhes</span>'}</div>
       <div style="font-size:12px;color:var(--text3);margin-bottom:10px">${presentes} de ${total} presentes · clique no nome para marcar presença</div>
       <div style="display:flex;flex-direction:column;gap:7px">${chips}</div>
+      ${(()=>{
+        const _naoPart=[...people].filter(p=>!(m.participantes||[]).includes(p.id)).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+        if(!_naoPart.length) return `<div style="margin-top:12px;font-size:11.5px;color:var(--text3);font-style:italic">Todas as pessoas já estão nesta reunião.</div>`;
+        return `<div style="display:flex;gap:6px;margin-top:12px">
+          <select id="reun-add-part-sel" style="flex:1;min-width:0;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text);font-family:inherit;cursor:pointer" onkeydown="if(event.key==='Enter')_addParticipanteReuniao('${m.id}')">
+            <option value="">+ Adicionar participante…</option>
+            ${_naoPart.map(p=>`<option value="${p.id}">${escapeHTML(p.name)}${p.setor?' — '+escapeHTML(p.setor):''}</option>`).join('')}
+          </select>
+          <button onclick="_addParticipanteReuniao('${m.id}')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0"><i class="ti ti-plus"></i> Adicionar</button>
+        </div>`;
+      })()}
       <div style="margin-top:14px;padding:10px 12px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text3);line-height:1.7">
         <b style="color:var(--text2)">Papéis:</b>
         <span style="margin-left:6px"><b style="color:var(--blue-mid)">Organizador</b> — vê, edita e encerra</span>
@@ -31228,6 +31230,15 @@ function togglePresencaModal(mid,pid){
   m.presencas[pid]=!m.presencas[pid];
   saveMeeting_db(m);
   abrirPresencaReuniao(mid);
+}
+// Adiciona um participante direto do modal de Participantes (sem precisar editar a reunião)
+function _addParticipanteReuniao(mid){
+  const m=meetings.find(x=>x.id===mid); if(!m) return;
+  const sel=document.getElementById('reun-add-part-sel'); const pid=sel&&sel.value;
+  if(!pid) return;
+  if(!Array.isArray(m.participantes)) m.participantes=[];
+  if(!m.participantes.includes(pid)){ m.participantes.push(pid); saveMeeting_db(m); if(typeof toast==='function') toast('👤 Participante adicionado'); }
+  abrirPresencaReuniao(mid); // re-renderiza o modal com a pessoa já na lista
 }
 
 // Modal: ATA
