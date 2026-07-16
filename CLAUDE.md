@@ -102,6 +102,18 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-16 (e) — PC da Empresa — Painel de Reunião: visão padrão em 3 COLUNAS (commit `0fc5a9f`, PUSHADO)
+- Pedido do Diego: dividir o Painel (visão padrão) em **3 colunas: Pauta | Tarefas (maior, no meio) | Decisões**.
+- A coluna esquerda antiga (Pauta+Decisões empilhadas) foi **dividida em 2 colunas** (`.reun-col-pauta` + `.reun-col-dec`); Tarefas
+  (`.reun-col-tarefas`) foi pro **meio** com `1fr` (o maior; encolheu vs. o `2fr` anterior). **Ordem visual via CSS `order` (1/2/3)** —
+  não movi fisicamente o bloco grande de Decisões (baixo risco); DOM fica Pauta→Decisões→Tarefas, `order` renderiza Pauta→Tarefas→Decisões.
+- CSS: `.reun-grid4` base virou `grid-template-columns:minmax(0,300px) minmax(0,1fr) minmax(0,320px)`; foco idem (320/1fr/340, max-width
+  1400 centrado). **Separador arrastável (`.reun-col-rz`) removido do HTML** + regras de flex/resizer do foco apagadas; o JS do resizer
+  (`_initReunColResizer`/`_loadReunColW`) fica **inerte** (retorna cedo, não acha o elemento). Rápida: esconde Pauta+Decisões, Tarefas full.
+  Responsivo: `@media(max-width:1040px)` empilha (Pauta > Tarefas > Decisões).
+- ⚠️ NÃO testado em navegador. Balanço do arquivo **idêntico ao HEAD** (parênteses/chaves/**divs**/backticks). **Diego confere no Pages:**
+  3 colunas com Tarefas maior no meio; em tela estreita empilha; rápida só mostra Tarefas.
+
 ### 2026-07-16 (d) — PC da Empresa — Reuniões: Editar vira aba INLINE; Info=só detalhes; Pessoas=participantes+papéis+presença; Próxima desce (commit `ca66829`, PUSHADO)
 - Ajustes que o Diego pediu depois de testar a entrada (c) no Pages (funcionou — abas inline OK):
 - **Editar agora é aba INLINE** (não mais modal): `_reunSetSubView('editar')` → `_reunEditarInlineHTML(m)` renderiza o **MESMO** form
