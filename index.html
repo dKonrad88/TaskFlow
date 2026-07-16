@@ -30648,7 +30648,7 @@ function openReuniaoView(id){
       <!-- Trilha lateral de ícones (só na tela cheia; estilo Fellow) -->
       <div class="reun-focus-rail">
         <button class="reun-rail-btn" onclick="_exitReunFocus()" title="Sair da tela cheia (Esc)"><i class="ti ti-arrows-minimize"></i><span>Sair</span></button>
-        ${m.status==='agendada'?`<button class="reun-rail-btn" onclick="iniciarReuniao('${m.id}')" style="color:var(--blue-mid)" title="Iniciar reunião"><i class="ti ti-player-play-filled"></i><span>Iniciar</span></button>`:''}
+        ${m.status!=='encerrada'?(()=>{const running=m.status==='andamento'&&!m.pausadoReuniao;const lbl=running?'Pausar':(m.pausadoReuniao?'Retomar':'Iniciar');return `<button class="reun-rail-btn" onclick="_toggleReunTimer('${m.id}')" style="color:${running?'var(--amber)':'var(--blue-mid)'}" title="${lbl} reunião"><i class="ti ti-player-${running?'pause':'play'}-filled"></i><span>${lbl}</span></button>`;})():''}
         <button class="reun-rail-btn" onclick="abrirPresencaReuniao('${m.id}')" title="Participantes"><i class="ti ti-users"></i><span>Pessoas</span></button>
         <button class="reun-rail-btn" onclick="abrirAtaReuniao('${m.id}')" title="ATA"><i class="ti ti-notes"></i><span>ATA</span></button>
         <button class="reun-rail-btn" onclick="abrirAnexosReuniao('${m.id}')" title="Anexos"><i class="ti ti-paperclip"></i><span>Anexos</span></button>
@@ -30664,10 +30664,10 @@ function openReuniaoView(id){
       <div class="reun-focus-bar">
         <span style="font-size:15px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px">${escapeHTML(m.title)}</span>
         <span class="reun-status ${st.cls}" style="font-size:10px">${st.label}</span>
-        <div id="reun-focus-timer-${m.id}" data-inicio="${m.status==='andamento'?(m.inicioReal||''):''}" data-planned="${_reunPlannedMin(m)}" style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:99px;padding:5px 14px;min-width:210px">
-          <i class="ti ti-clock-play" style="color:var(--success);font-size:15px"></i>
-          <span style="font-weight:800;font-size:15px;color:var(--text);white-space:nowrap"><span class="rft-elapsed">${m.status==='andamento'?'00:00':'—'}</span> <span style="font-size:11px;font-weight:600;color:var(--text3)">/ ${_reunPlannedMin(m)}min</span></span>
-          <div style="flex:1;min-width:50px;height:5px;background:var(--card);border-radius:99px;overflow:hidden"><div class="rft-fill" style="height:100%;width:0%;background:var(--success);transition:width .5s,background .5s"></div></div>
+        <div id="reun-focus-timer-${m.id}" data-inicio="${m.inicioReal||''}" data-acumulado="${m.tempoAcumulado||0}" data-planned="${_reunPlannedMin(m)}" style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:99px;padding:5px 14px;min-width:210px">
+          <i class="ti ti-${m.pausadoReuniao?'player-pause':'clock-play'}" style="color:${m.pausadoReuniao?'var(--amber)':'var(--success)'};font-size:15px"></i>
+          <span style="font-weight:800;font-size:15px;color:var(--text);white-space:nowrap"><span class="rft-elapsed">${m.status==='andamento'?(String(Math.floor(_reunElapsedSec(m)/60)).padStart(2,'0')+':'+String(_reunElapsedSec(m)%60).padStart(2,'0')):'—'}</span> <span style="font-size:11px;font-weight:600;color:var(--text3)">/ ${_reunPlannedMin(m)}min</span></span>
+          <div style="flex:1;min-width:50px;height:5px;background:var(--card);border-radius:99px;overflow:hidden"><div class="rft-fill" style="height:100%;width:${m.status==='andamento'?Math.min(100,(_reunElapsedSec(m)/((_reunPlannedMin(m)||60)*60))*100):0}%;background:${m.pausadoReuniao?'var(--amber)':'var(--success)'};transition:width .5s,background .5s"></div></div>
         </div>
         <div style="flex:1"></div>
         <span style="font-size:12px;color:var(--text3);font-weight:600"><i class="ti ti-users" style="font-size:13px"></i> ${presentesCount}/${totalParts} presentes</span>
@@ -30689,8 +30689,8 @@ function openReuniaoView(id){
           </div>
         </div>
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-          ${m.status==='agendada'?`<button class="reun-ico" onclick="iniciarReuniao('${m.id}')" title="Iniciar reunião" style="background:var(--blue-mid);border-color:var(--blue-mid);color:#fff"><i class="ti ti-player-play-filled"></i></button>`:''}
-          ${m.status==='andamento'?`<span id="reun-cronometro-${m.id}" style="padding:0 12px;height:34px;font-size:13px;color:var(--success);font-weight:700;background:var(--success-bg);border-radius:8px;border:1px solid var(--success);display:inline-flex;align-items:center;gap:5px"><i class="ti ti-clock-play"></i> <span data-inicio="${m.inicioReal||''}">00:00</span></span>`:''}
+          ${m.status!=='encerrada'?(()=>{const running=m.status==='andamento'&&!m.pausadoReuniao;const lbl=running?'Pausar':(m.pausadoReuniao?'Retomar':'Iniciar');return `<button class="reun-ico" onclick="_toggleReunTimer('${m.id}')" title="${lbl} reunião" style="background:${running?'var(--amber)':'var(--blue-mid)'};border-color:${running?'var(--amber)':'var(--blue-mid)'};color:#fff"><i class="ti ti-player-${running?'pause':'play'}-filled"></i></button>`;})():''}
+          ${m.status==='andamento'?`<span id="reun-cronometro-${m.id}" style="padding:0 12px;height:34px;font-size:13px;color:${m.pausadoReuniao?'var(--amber)':'var(--success)'};font-weight:700;background:${m.pausadoReuniao?'var(--amber-bg)':'var(--success-bg)'};border-radius:8px;border:1px solid ${m.pausadoReuniao?'var(--amber)':'var(--success)'};display:inline-flex;align-items:center;gap:5px"><i class="ti ti-${m.pausadoReuniao?'player-pause':'clock-play'}"></i> <span data-inicio="${m.inicioReal||''}" data-acumulado="${m.tempoAcumulado||0}">${_fmtDur(_reunElapsedSec(m))}</span></span>`:''}
           <button class="reun-ico" onclick="_toggleReunFocus()" title="Abrir em tela cheia (foco)"><i class="ti ti-arrows-maximize"></i></button>
           <button class="reun-ico" onclick="abrirPresencaReuniao('${m.id}')" title="Participantes (${presentesCount}/${totalParts})"><i class="ti ti-users"></i></button>
           <button class="reun-ico" onclick="abrirAtaReuniao('${m.id}')" title="ATA"><i class="ti ti-notes"></i></button>
@@ -31745,6 +31745,7 @@ function iniciarReuniao(meetingId){
   if(!m) return;
   m.status='andamento';
   m.inicioReal=new Date().toISOString();
+  m.pausadoReuniao=false; m.tempoAcumulado=0;
   saveMeeting_db(m);
   toast('▶️ Reunião iniciada');
   openReuniaoView(meetingId);
@@ -31761,7 +31762,8 @@ function iniciarCronometroReuniao(meetingId){
     if(!el && !ft){clearInterval(_cronometroInterval);_cronometroInterval=null;return;}
     const inicio=(el&&el.dataset.inicio) || (ft&&ft.dataset.inicio) || '';
     if(!inicio) return;
-    const diff=Math.floor((Date.now()-new Date(inicio).getTime())/1000);
+    const acumulado=parseInt((el&&el.dataset.acumulado)||(ft&&ft.dataset.acumulado)||'0',10)||0;
+    const diff=acumulado+Math.floor((Date.now()-new Date(inicio).getTime())/1000);
     const h=Math.floor(diff/3600);
     const min=Math.floor((diff%3600)/60);
     const s=diff%60;
@@ -31777,6 +31779,38 @@ function iniciarCronometroReuniao(meetingId){
   };
   tick();
   _cronometroInterval=setInterval(tick,1000);
+}
+
+// ── Play / Pausa / Retomar da reunião ──────────────────────────────
+// Modelo: m.tempoAcumulado (seg já corridos), m.inicioReal (início do trecho atual,
+// null quando pausada), m.pausadoReuniao (bool). Decorrido = acumulado + (agora - inicioReal).
+function _reunElapsedSec(m){
+  if(!m) return 0;
+  let s=(m.tempoAcumulado||0);
+  if(m.inicioReal && !m.pausadoReuniao) s+=Math.floor((Date.now()-new Date(m.inicioReal).getTime())/1000);
+  return Math.max(0,Math.floor(s));
+}
+function _fmtDur(sec){
+  sec=Math.max(0,Math.floor(sec||0));
+  const h=Math.floor(sec/3600), mn=Math.floor((sec%3600)/60), s=sec%60;
+  return (h?String(h).padStart(2,'0')+':':'')+String(mn).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+function _toggleReunTimer(meetingId){
+  const m=meetings.find(x=>x.id===meetingId); if(!m) return;
+  if(m.status==='encerrada'){ toast('🔒 Reunião encerrada'); return; }
+  if(m.status==='agendada'){ // INICIAR
+    m.status='andamento'; m.inicioReal=new Date().toISOString(); m.pausadoReuniao=false; m.tempoAcumulado=0;
+    saveMeeting_db(m); toast('▶️ Reunião iniciada'); openReuniaoView(meetingId); iniciarCronometroReuniao(meetingId); return;
+  }
+  if(m.pausadoReuniao){ // RETOMAR
+    m.inicioReal=new Date().toISOString(); m.pausadoReuniao=false;
+    saveMeeting_db(m); toast('▶️ Reunião retomada'); openReuniaoView(meetingId); iniciarCronometroReuniao(meetingId);
+  } else { // PAUSAR
+    if(m.inicioReal) m.tempoAcumulado=(m.tempoAcumulado||0)+Math.floor((Date.now()-new Date(m.inicioReal).getTime())/1000);
+    m.inicioReal=null; m.pausadoReuniao=true;
+    if(_cronometroInterval){clearInterval(_cronometroInterval);_cronometroInterval=null;}
+    saveMeeting_db(m); toast('⏸️ Reunião pausada'); openReuniaoView(meetingId);
+  }
 }
 
 // ── Estatísticas de presença de uma pessoa
@@ -31875,6 +31909,8 @@ function _encerrarReuniaoFinal(meetingId){
   const m=meetings.find(x=>x.id===meetingId);
   if(!m) return;
   document.getElementById('fech-reun-ov')?.remove();
+  m.duracaoSeg=_reunElapsedSec(m); // tempo ativo real (desconta pausas) — pra stats futuras
+  m.pausadoReuniao=false;
   m.status='encerrada';
   m.fimReal=new Date().toISOString();
   if(_cronometroInterval){clearInterval(_cronometroInterval);_cronometroInterval=null;}
