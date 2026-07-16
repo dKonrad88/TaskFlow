@@ -102,6 +102,26 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-16 (d) — PC da Empresa — Reuniões: Editar vira aba INLINE; Info=só detalhes; Pessoas=participantes+papéis+presença; Próxima desce (commit `ca66829`, PUSHADO)
+- Ajustes que o Diego pediu depois de testar a entrada (c) no Pages (funcionou — abas inline OK):
+- **Editar agora é aba INLINE** (não mais modal): `_reunSetSubView('editar')` → `_reunEditarInlineHTML(m)` renderiza o **MESMO** form
+  (`renderNovaReuniaoForm`) num container detached e captura o HTML (espelha o truque do `openReuniaoModal`). `_reunSetSubView` prepara o
+  estado ao ENTRAR (`editingReuniaoId=id; _reunRec=null; ...`) e limpa ao SAIR. **Cancelar** volta pro Painel (`fecharReuniaoModal` ganhou
+  ramo inline quando não há overlay); **Salvar** idem (`saveReuniao` reseta `window._reunSubView='painel'` antes de reabrir). ⚠️ O modal de
+  `editReuniao` **continua** para criar/editar pela **LISTA** de reuniões (cards kanban ~29683/29839) — lá não há painel aberto. Coexistem.
+- **Info = SÓ detalhes** (data/hora/sala/conduz/tipo). Presença e papéis saíram de lá.
+- **Pessoas = tudo de gente:** seção 1 "Quem participa" (grid de checkbox) + seção 2 "Papéis e presença" (só participantes: dropdown
+  **Organizador/Editor/Leitor** + presença clicando no nome). **"Organizador" = quem conduz** (`m.facilitador`; `m.organizador` nunca foi
+  escrito pelo form — confirmado por grep). `_setPapelReuniao` passou a tratar `'organizador'` (reassina `facilitador`/`organizador`, só 1;
+  rebaixar limpa). `togglePresencaModal`/`_toggleParticipanteReuniao`/`_setPapelReuniao` re-renderizam via `openReuniaoView` (sub-aba Pessoas persiste).
+- **Trilha do foco:** Editar entrou no grupo das ABAS (após Anexos, com destaque ativo); **Próxima desceu** p/ logo acima de Finalizar (depois
+  do `flex:1`) — era o "não seria junto com finalizar?" do Diego. Cabeçalho normal: Editar idem virou aba; Próxima já estava perto de Finalizar.
+- ⚠️ **NÃO testado em navegador.** Balanço do arquivo **idêntico ao HEAD** (parênteses/chaves) + backticks par. **Risco maior = o form de Editar
+  INLINE** (wiring do drum-picker/recorrência nunca rodou nesse contexto; mas espelha o modal, que funciona). **Diego confere no Pages
+  (Ctrl+Shift+R):** aba Editar abre o form no painel → mudar título/hora/sala/recorrência → **Salvar** volta pro Painel com as mudanças; **Cancelar**
+  volta sem mudar; testar drum-picker de hora e a caixa Repetir DENTRO da aba; Info só mostra detalhes; Pessoas permite marcar participante,
+  promover a Organizador (Conduz muda), Editor/Leitor e presença; na trilha, Próxima fica logo acima de Finalizar.
+
 ### 2026-07-16 (c) — PC da Empresa — Painel de Reunião: ícones viram ABAS INLINE + novo ícone "Painel" (commit `f80000e`, PUSHADO)
 - **Pedido do Diego (print do modo foco):** cada ícone da trilha (Pessoas/Info/ATA/Anexos) abria um **MODAL** — pra ver outro
   painel tinha que fechar o atual (perde tempo). Pediu que o conteúdo venha na **ÁREA PRINCIPAL**, alternando conforme o ícone
