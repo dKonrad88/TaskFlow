@@ -28686,6 +28686,7 @@ function proximaDataReuniao(dataBase,freq){
 const REC_DOW=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const REC_NTH={1:'1ª',2:'2ª',3:'3ª',4:'4ª','-1':'última'};
 const REC_MAX_HARD=60; // teto de segurança de ocorrências geradas
+const REC_ROLL=8;      // janela rolante p/ séries "sem fim": sempre ~8 agendadas à frente
 
 function _recDefault(base){
   const d=base?new Date(base+'T12:00'):new Date();
@@ -28703,7 +28704,9 @@ function _recNthWeekday(y,mo,nth,dow){
 // Gera as datas SEGUINTES à dataInicio conforme a regra (a #1 é a própria reunião).
 function _recGerarDatas(dataInicio, rec){
   const out=[]; if(!rec||!rec.ativo||!dataInicio) return out;
-  const max = rec.fimTipo==='apos' ? Math.max(0,(parseInt(rec.fimN,10)||1)-1) : REC_MAX_HARD;
+  const max = rec.fimTipo==='apos'  ? Math.max(0,(parseInt(rec.fimN,10)||1)-1)
+            : rec.fimTipo==='nunca' ? REC_ROLL
+            : REC_MAX_HARD;
   const lim = (rec.fimTipo==='ate' && rec.fimData) ? rec.fimData : null;
   if(max<=0) return out;
   const base=new Date(dataInicio+'T12:00');
@@ -28756,9 +28759,9 @@ function _recDescricao(rec){
       : ('Todo dia '+(parseInt(rec.mensalDia,10)||1)+' do mês');
     s += inter>1 ? (', a cada '+inter+' meses') : '';
   }
-  s += rec.fimTipo==='ate' && rec.fimData
-    ? (' · até '+new Date(rec.fimData+'T12:00').toLocaleDateString('pt-BR'))
-    : (' · '+(parseInt(rec.fimN,10)||1)+' ocorrências');
+  if(rec.fimTipo==='nunca') s += ' · sem fim';
+  else if(rec.fimTipo==='ate' && rec.fimData) s += ' · até '+new Date(rec.fimData+'T12:00').toLocaleDateString('pt-BR');
+  else s += ' · '+(parseInt(rec.fimN,10)||1)+' ocorrências';
   return s;
 }
 // Migração: reuniões antigas com `frequencia` viram `rec` equivalente.
@@ -28812,7 +28815,27 @@ function _recBoxHTML(){
   const rec=window._reunRec||(window._reunRec=_recDefault(base));
   const preset=_recPresetAtual(rec);
   const ist='background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 9px;font-size:13px;color:var(--text);font-family:inherit;';
-  let html=`<select class="modal-input" onchange="_recPreset(this.value)">
+  // Escopo da edição (padrão Google Calendar): só aparece ao EDITAR uma ocorrência
+  // de série que ainda tem futuras. "Só esta" = exceção (ex.: essa semana caiu na
+  // sexta). "Esta e as futuras" = mudou de vez (ex.: quarta -> quinta) → regenera.
+  let escopoHTML='';
+  if(editingReuniaoId){
+    const mEdit=(meetings||[]).find(x=>x.id===editingReuniaoId);
+    if(mEdit && mEdit.serieId){
+      const futuras=(meetings||[]).filter(x=>x.serieId===mEdit.serieId && String(x.date)>String(mEdit.date));
+      if(futuras.length){
+        if(!window._reunEscopo) window._reunEscopo='esta';
+        escopoHTML=`<div style="margin-bottom:9px;background:color-mix(in srgb, var(--blue-mid) 8%, transparent);border:1px solid var(--blue-mid);border-radius:10px;padding:9px 11px;">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:6px;"><i class="ti ti-repeat"></i> Faz parte de uma série (${futuras.length} futura${futuras.length>1?'s':''}). Aplicar a:</div>
+          <select onchange="window._reunEscopo=this.value;_recRedraw()" style="${ist} width:100%; box-sizing:border-box; cursor:pointer;">
+            <option value="esta" ${window._reunEscopo==='esta'?'selected':''}>Só esta ocorrência (exceção)</option>
+            <option value="futuras" ${window._reunEscopo==='futuras'?'selected':''}>Esta e as futuras (regenerar pela regra)</option>
+          </select>
+        </div>`;
+      }
+    }
+  }
+  let html=escopoHTML+`<select class="modal-input" onchange="_recPreset(this.value)">
     <option value="nao" ${preset==='nao'?'selected':''}>Não repete</option>
     <option value="semanal" ${preset==='semanal'?'selected':''}>Semanal</option>
     <option value="quinzenal" ${preset==='quinzenal'?'selected':''}>Quinzenal (a cada 2 semanas)</option>
@@ -28849,12 +28872,15 @@ function _recBoxHTML(){
   html+=`<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:13px;color:var(--text2);">
       <span>Termina</span>
       <select onchange="_recSet('fimTipo',this.value)" style="${ist} cursor:pointer;">
+        <option value="nunca" ${rec.fimTipo==='nunca'?'selected':''}>nunca</option>
         <option value="apos" ${rec.fimTipo==='apos'?'selected':''}>após</option>
         <option value="ate" ${rec.fimTipo==='ate'?'selected':''}>em</option>
       </select>
       ${rec.fimTipo==='apos'
         ? `<input type="number" min="2" max="${REC_MAX_HARD}" value="${rec.fimN}" onchange="_recSet('fimN',this.value)" style="${ist} width:60px;"><span>ocorrências</span>`
-        : `<input type="date" value="${rec.fimData||''}" onchange="_recSet('fimData',this.value)" style="${ist}">`}
+        : rec.fimTipo==='ate'
+        ? `<input type="date" value="${rec.fimData||''}" onchange="_recSet('fimData',this.value)" style="${ist}">`
+        : `<span style="font-size:12px;color:var(--text3);">(mantém ~${REC_ROLL} agendadas à frente, repondo sozinha)</span>`}
     </div>`;
   const datas=_recGerarDatas(base, rec);
   const fmt=iso=>new Date(iso+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
@@ -29774,7 +29800,7 @@ function toggleReunSerie(chave){
 // data/hora opcionais: pré-preenchem a nova reunião (usado pela Agenda), no molde
 // do _preCompData/_preCompHora dos compromissos.
 function openReuniaoModal(data, hora){
-  window._reunRec=null; // recorrência recarrega da reunião em edição (ou default p/ nova)
+  window._reunRec=null; window._reunEscopo=null; // recorrência/escopo recarregam da reunião em edição
   window._preReunData=data||''; window._preReunHora=hora||'';
   document.getElementById('reun-modal-overlay')?.remove();
   const ov=document.createElement('div');
@@ -30404,8 +30430,16 @@ function saveReuniao(){
   let _novaReunId=null;
   if(editingReuniaoId){
     const m=meetings.find(x=>x.id===editingReuniaoId);
-    if(m) Object.assign(m,obj);
-    saveMeeting_db(m||{...obj,id:editingReuniaoId,tarefas:[]});
+    if(m){
+      const _serieId=m.serieId; // Object.assign não pode perder o vínculo da série
+      Object.assign(m,obj);
+      if(_serieId) m.serieId=_serieId;
+      saveMeeting_db(m);
+      // "Esta e as futuras": regenera a partir desta com a regra/dia/hora novos.
+      if(window._reunEscopo==='futuras' && m.serieId) window._recCriadas=_recRegenerarFuturas(m);
+    } else {
+      saveMeeting_db({...obj,id:editingReuniaoId,tarefas:[]});
+    }
   } else {
     const m={id:'reun'+Date.now(),...obj,nivel:'completa',tarefas:[]};
     meetings.push(m);
@@ -30428,8 +30462,10 @@ function saveReuniao(){
     renderReunioes();
   }
   const _nc=window._recCriadas||0; window._recCriadas=0;
-  toast(eraEdicao ? '✅ Reunião atualizada!'
-                  : (_nc ? `📅 Reunião criada! +${_nc} ocorrência${_nc>1?'s':''} já agendada${_nc>1?'s':''} na agenda.` : '📅 Reunião criada!'));
+  const _regen=window._reunEscopo==='futuras'; window._reunEscopo=null;
+  toast(eraEdicao
+    ? (_regen ? `🔁 Série regenerada — ${_nc} ocorrência${_nc!==1?'s':''} futura${_nc!==1?'s':''} recriada${_nc!==1?'s':''} pela regra.` : '✅ Reunião atualizada!')
+    : (_nc ? `📅 Reunião criada! +${_nc} ocorrência${_nc>1?'s':''} já agendada${_nc>1?'s':''} na agenda.` : '📅 Reunião criada!'));
 }
 
 // ── Toggle local interno/externo
@@ -31228,25 +31264,60 @@ function _recMaterializar(m){
   if(!m.serieId) m.serieId='ser'+Date.now();
   let anterior=m, criadas=0;
   datas.forEach((iso,i)=>{
-    const nova={
-      id:'reun'+Date.now()+'_'+i+Math.floor(Math.random()*1000),
-      title:m.title, date:iso,
-      horaInicio:m.horaInicio||'', horaFim:m.horaFim||'',
-      tipo:m.tipo||'', status:'agendada', localTipo:'interno', sala:m.sala||'', localExterno:'',
-      facilitador:m.facilitador||'', nivel:'completa',
-      rec:JSON.parse(JSON.stringify(rec)), frequencia:'custom',
-      serieId:m.serieId, serieIdx:i+2,
-      participantes:[...(m.participantes||[])], projetos:[...(m.projetos||[])],
-      pautaPrincipal:'', pautaPrincipalDone:false, pauta:[], pautaDone:[],
-      ata:'', decisoes:'', decisoesItens:[], presencas:{}, anexos:[],
-      inicioReal:null, fimReal:null, tarefas:[],
-      continuacaoDe:anterior.id, createdAt:today
-    };
+    const nova=_recNovaOcorrencia(m, iso, rec, anterior.id, i+2);
     meetings.push(nova); saveMeeting_db(nova);
     anterior=nova; criadas++;
   });
   m.serieIdx=1; m.serieTotal=criadas+1; saveMeeting_db(m);
   return criadas;
+}
+// Monta uma ocorrência nova a partir do "molde" (base): herda título/hora/tipo/sala/
+// facilitador/participantes; pauta e ata nascem limpas.
+function _recNovaOcorrencia(base, iso, rec, anteriorId, idx){
+  return {
+    id:'reun'+Date.now()+'_'+idx+Math.floor(Math.random()*10000),
+    title:base.title, date:iso,
+    horaInicio:base.horaInicio||'', horaFim:base.horaFim||'',
+    tipo:base.tipo||'', status:'agendada', localTipo:'interno', sala:base.sala||'', localExterno:'',
+    facilitador:base.facilitador||'', nivel:'completa',
+    rec:JSON.parse(JSON.stringify(rec)), frequencia:'custom',
+    serieId:base.serieId, serieIdx:idx,
+    participantes:[...(base.participantes||[])], projetos:[...(base.projetos||[])],
+    pautaPrincipal:'', pautaPrincipalDone:false, pauta:[], pautaDone:[],
+    ata:'', decisoes:'', decisoesItens:[], presencas:{}, anexos:[],
+    inicioReal:null, fimReal:null, tarefas:[],
+    continuacaoDe:anteriorId||null, createdAt:today
+  };
+}
+// Séries "sem fim": mantém ~REC_ROLL ocorrências futuras, repondo conforme encerra.
+function _serieTopUp(m){
+  const rec=_recDe(m);
+  if(!rec||!rec.ativo||rec.fimTipo!=='nunca'||!m||!m.serieId) return 0;
+  const irmas=(meetings||[]).filter(x=>x.serieId===m.serieId).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  const futuras=irmas.filter(x=>String(x.date)>=String(today) && x.status!=='encerrada');
+  if(futuras.length>=REC_ROLL) return 0;
+  const ultima=irmas[irmas.length-1]; if(!ultima) return 0;
+  const faltam=REC_ROLL-futuras.length;
+  const datas=_recGerarDatas(ultima.date, {...rec, fimTipo:'apos', fimN:faltam+1});
+  let anterior=ultima, n=0;
+  datas.forEach((iso,i)=>{
+    const nova=_recNovaOcorrencia(ultima, iso, rec, anterior.id, irmas.length+i+1);
+    meetings.push(nova); saveMeeting_db(nova); anterior=nova; n++;
+  });
+  return n;
+}
+// "Esta e as futuras": apaga as ocorrências futuras da série (p/ a Lixeira) e
+// regenera a partir DESTA, com a regra/dia/hora atuais. Usado quando a reunião
+// muda de vez (ex.: sempre quarta -> agora quinta).
+function _recRegenerarFuturas(m){
+  const rec=_recDe(m); if(!m||!m.serieId) return 0;
+  const futuras=(meetings||[]).filter(x=>x.serieId===m.serieId && String(x.date)>String(m.date) && x.status!=='encerrada');
+  futuras.forEach(x=>{ try{ moveToTrash('meeting',{...x}); }catch(e){} });
+  const ids=new Set(futuras.map(x=>x.id));
+  meetings=meetings.filter(x=>!ids.has(x.id));
+  safeSetItem(LS_MEETINGS,JSON.stringify(meetings));
+  if(!rec||!rec.ativo) return 0;
+  return _recMaterializar(m);
 }
 // Quantas ocorrências a série tem / índice desta (p/ mostrar "3ª de 8")
 function _serieInfo(m){
@@ -31261,6 +31332,7 @@ function _serieInfo(m){
 // pela regra (respeitando o fim). Nunca duplica: guarda `continuacaoDe`.
 function _reunProximaDaSerie(m){
   if(!m) return null;
+  try{ _serieTopUp(m); }catch(e){ console.warn('[rec] topUp',e); } // séries sem fim: repõe a janela
   const enc=(meetings||[]).find(x=>x.continuacaoDe===m.id);
   return enc || _gerarProximaRecorrente(m);
 }
@@ -31295,6 +31367,51 @@ function _abrirSugestaoProxima(proxId){
     </div>
   </div>`;
   document.body.appendChild(ov);
+}
+// Última da série com fim finito: em vez de obrigar a recriar tudo, oferece continuar.
+function _abrirFimDeSerie(mId){
+  const m=(meetings||[]).find(x=>x.id===mId); if(!m) return;
+  const rec=_recDe(m); if(!rec||!rec.ativo) return;
+  const info=_serieInfo(m);
+  document.getElementById('prox-sug-ov')?.remove();
+  const ov=document.createElement('div'); ov.id='prox-sug-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9600;display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.onclick=e=>{ if(e.target===ov) ov.remove(); };
+  ov.innerHTML=`<div style="background:var(--card);border-radius:14px;width:100%;max-width:420px;box-shadow:0 24px 60px rgba(0,0,0,.35);">
+    <div style="padding:15px 18px;border-bottom:1px solid var(--border);">
+      <h3 style="margin:0;font-size:15px;color:var(--text);display:flex;align-items:center;gap:7px;"><i class="ti ti-flag-check" style="color:var(--amber)"></i> Última da série</h3>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;">${escapeHTML(_recDescricao(rec))}${info?' · '+info.idx+'ª de '+info.total:''}</div>
+    </div>
+    <div style="padding:16px 18px;font-size:13px;color:var(--text2);line-height:1.55;">
+      Esta era a <b style="color:var(--text)">última</b> ocorrência programada. Quer continuar com a mesma regra?
+    </div>
+    <div style="padding:12px 18px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--border);">
+      <button onclick="document.getElementById('prox-sug-ov').remove()" style="background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:8px;padding:8px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;">Encerrar série</button>
+      <button onclick="_serieContinuar('${m.id}')" class="btn-modal-save" style="padding:8px 16px;font-size:12.5px;">Continuar +${REC_ROLL}</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+// Continua uma série finita: gera +REC_ROLL a partir da ÚLTIMA e sobe o fimN de todas.
+function _serieContinuar(id){
+  const m=(meetings||[]).find(x=>x.id===id); if(!m||!m.serieId) return;
+  const rec=_recDe(m); if(!rec) return;
+  const irmas=(meetings||[]).filter(x=>x.serieId===m.serieId).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  const ultima=irmas[irmas.length-1]; if(!ultima) return;
+  const datas=_recGerarDatas(ultima.date, {...rec, fimTipo:'apos', fimN:REC_ROLL+1});
+  if(!datas.length){ toast('⚠️ A regra não gera novas datas (verifique o término)'); return; }
+  let anterior=ultima, n=0;
+  datas.forEach((iso,i)=>{
+    const nova=_recNovaOcorrencia(ultima, iso, rec, anterior.id, irmas.length+i+1);
+    meetings.push(nova); saveMeeting_db(nova); anterior=nova; n++;
+  });
+  const total=irmas.length+n;
+  (meetings||[]).filter(x=>x.serieId===m.serieId).forEach(x=>{ if(x.rec&&x.rec.fimTipo==='apos'){ x.rec.fimN=total; saveMeeting_db(x); } });
+  document.getElementById('prox-sug-ov')?.remove();
+  if(typeof renderReunioes==='function') renderReunioes();
+  toast(`🔁 Série continuada — +${n} ocorrência${n>1?'s':''}.`);
+  const prox=(meetings||[]).find(x=>x.continuacaoDe===m.id);
+  if(prox) setTimeout(()=>{ try{ _abrirSugestaoProxima(prox.id); }catch(e){} }, 300);
 }
 function _sugAplicarProxima(id){
   const p=(meetings||[]).find(x=>x.id===id); if(!p) return;
@@ -31581,7 +31698,9 @@ function _encerrarReuniaoFinal(meetingId){
   if(_prox){ const _dl=new Date(_prox.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long'}); _msg+=` 📅 Próxima: ${_dl}.`; }
   toast(_msg);
   // Sugestão automática da próxima data (pedido do Diego): confirmar ou ajustar só esta.
+  // Se a série acabou (era a última de um fim finito), oferece continuar em vez de morrer.
   if(_prox) setTimeout(()=>{ try{ _abrirSugestaoProxima(_prox.id); }catch(e){ console.warn(e); } }, 400);
+  else if(_recDe(m) && m.serieId) setTimeout(()=>{ try{ _abrirFimDeSerie(m.id); }catch(e){ console.warn(e); } }, 400);
 }
 
 // Modal de fechamento: resumo do produzido + destino dos assuntos não discutidos.

@@ -92,6 +92,26 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-15 (6) — Mac de casa — RECORRÊNCIA etapa 3: "sem fim" (janela rolante), continuar série, regenerar futuras
+- **"Termina: nunca"** (`rec.fimTipo='nunca'`) — p/ reunião fixa (ex.: sensorial toda quinta) não precisar
+  escolher número. Materializa `REC_ROLL=8` à frente e **repõe sozinha**: `_serieTopUp(m)` (chamado por
+  `_reunProximaDaSerie`, i.e. ao encerrar) garante sempre ~8 futuras não encerradas. Nunca acaba, nem enche a
+  agenda de 200 reuniões.
+- **"Continuar +8"** — se a série tem fim finito e o Diego encerra a ÚLTIMA, `_abrirFimDeSerie(id)` oferece
+  continuar em vez de morrer; `_serieContinuar(id)` gera +REC_ROLL a partir da última e sobe o `fimN` de toda a
+  série. (Antes ele ficaria preso em "10 de 10" e teria de recriar tudo.)
+- **"Só esta / Esta e as futuras"** (padrão Google Calendar) — ao EDITAR uma ocorrência que tem futuras, aparece
+  o seletor de escopo no topo da caixa de Repetir (`window._reunEscopo`). "futuras" → `_recRegenerarFuturas(m)`:
+  manda as futuras não encerradas p/ a **Lixeira** e re-materializa a partir desta com a regra/dia/hora novos.
+  Caso real do Diego: reunião sempre na quarta → mudou p/ quinta de vez, mas às vezes faz noutro dia (= "só esta").
+  ⚠️ `Object.assign(m,obj)` no saveReuniao preservaria `serieId` sobrescrito → guardei e restaurei explicitamente.
+- Helper `_recNovaOcorrencia(base,iso,rec,anteriorId,idx)` extraído — usado por `_recMaterializar`, `_serieTopUp`
+  e `_serieContinuar` (evita 3 cópias do objeto de reunião).
+- **Verificado no browser:** "sem fim" nasce com 9 (1+8) e ao encerrar repõe mantendo 8 à frente (todas na
+  quarta, sem duplicata); série finita de 2 → encerrou as 2 → ofereceu "Última da série" → Continuar gerou +8
+  (total 10); editar quarta 09:00 → quinta 11:00 com escopo "futuras" regenerou as 5 p/ quinta 11:00 sem
+  duplicar. 19/19 testes do motor seguem passando. 0 erros de sintaxe/console.
+
 ### 2026-07-15 (5) — Mac de casa — RECORRÊNCIA etapa 2: encerrar sugere a próxima + "Nova reunião" na Agenda
 - **Encerrar → sugestão automática da próxima** (pedido explícito do Diego). `_encerrarReuniaoFinal` agora chama
   `_reunProximaDaSerie(m)` (era `_gerarProximaRecorrente`): pega a próxima JÁ materializada via `continuacaoDe`
