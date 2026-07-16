@@ -30650,6 +30650,7 @@ function openReuniaoView(id){
         <button class="reun-rail-btn" onclick="_exitReunFocus()" title="Sair da tela cheia (Esc)"><i class="ti ti-arrows-minimize"></i><span>Sair</span></button>
         ${m.status!=='encerrada'?(()=>{const running=m.status==='andamento'&&!m.pausadoReuniao;const lbl=running?'Pausar':(m.pausadoReuniao?'Retomar':'Iniciar');return `<button class="reun-rail-btn" onclick="_toggleReunTimer('${m.id}')" style="color:${running?'var(--amber)':'var(--blue-mid)'}" title="${lbl} reunião"><i class="ti ti-player-${running?'pause':'play'}-filled"></i><span>${lbl}</span></button>`;})():''}
         <button class="reun-rail-btn" onclick="abrirPresencaReuniao('${m.id}')" title="Participantes"><i class="ti ti-users"></i><span>Pessoas</span></button>
+        <button class="reun-rail-btn" onclick="abrirInfoReuniao('${m.id}')" title="Informações da reunião"><i class="ti ti-info-circle"></i><span>Info</span></button>
         <button class="reun-rail-btn" onclick="abrirAtaReuniao('${m.id}')" title="ATA"><i class="ti ti-notes"></i><span>ATA</span></button>
         <button class="reun-rail-btn" onclick="abrirAnexosReuniao('${m.id}')" title="Anexos"><i class="ti ti-paperclip"></i><span>Anexos</span></button>
         <button class="reun-rail-btn" onclick="editReuniao('${m.id}')" title="Editar"><i class="ti ti-pencil"></i><span>Editar</span></button>
@@ -30693,6 +30694,7 @@ function openReuniaoView(id){
           ${m.status==='andamento'?`<span id="reun-cronometro-${m.id}" style="padding:0 12px;height:34px;font-size:13px;color:${m.pausadoReuniao?'var(--amber)':'var(--success)'};font-weight:700;background:${m.pausadoReuniao?'var(--amber-bg)':'var(--success-bg)'};border-radius:8px;border:1px solid ${m.pausadoReuniao?'var(--amber)':'var(--success)'};display:inline-flex;align-items:center;gap:5px"><i class="ti ti-${m.pausadoReuniao?'player-pause':'clock-play'}"></i> <span data-inicio="${m.inicioReal||''}" data-acumulado="${m.tempoAcumulado||0}">${_fmtDur(_reunElapsedSec(m))}</span></span>`:''}
           <button class="reun-ico" onclick="_toggleReunFocus()" title="Abrir em tela cheia (foco)"><i class="ti ti-arrows-maximize"></i></button>
           <button class="reun-ico" onclick="abrirPresencaReuniao('${m.id}')" title="Participantes (${presentesCount}/${totalParts})"><i class="ti ti-users"></i></button>
+          <button class="reun-ico" onclick="abrirInfoReuniao('${m.id}')" title="Informações da reunião"><i class="ti ti-info-circle"></i></button>
           <button class="reun-ico" onclick="abrirAtaReuniao('${m.id}')" title="ATA"><i class="ti ti-notes"></i></button>
           <button class="reun-ico" onclick="abrirAnexosReuniao('${m.id}')" title="Anexos"><i class="ti ti-paperclip"></i></button>
           <button class="reun-ico" onclick="editReuniao('${m.id}')" title="Editar"><i class="ti ti-pencil"></i></button>
@@ -31164,11 +31166,80 @@ function toggleHistDec(blocoId){
   }
 }
 
-// Toggle presença real de um participante
-// Modal de Participantes (presença + detalhes da reunião) — mantém a tela limpa
+// Frequência de participação (quantas OUTRAS reuniões cada pessoa participou) —
+// usado p/ destacar quem provavelmente participa de novo.
+function _reunFreqMap(excludeId){
+  const map={};
+  (meetings||[]).forEach(mt=>{ if(mt.id===excludeId) return; (mt.participantes||[]).forEach(pid=>{ map[pid]=(map[pid]||0)+1; }); });
+  return map;
+}
+// Modal de PARTICIPANTES — seletor RÁPIDO: todas as pessoas com checkbox (marca quem participa).
+// Frequentes destacados (⭐). Pill só p/ Organizador/Editor (Leitor = nada). Detalhes/papéis
+// completos ficam no ícone "Info".
 function abrirPresencaReuniao(id){
   const m=meetings.find(x=>x.id===id); if(!m) return;
   document.getElementById('presenca-modal-ov')?.remove();
+  const parts=new Set(m.participantes||[]);
+  const papeis=m.papeis||{};
+  const freq=_reunFreqMap(id);
+  const _pill=(pid)=>{
+    if(m.organizador===pid||m.facilitador===pid) return `<span style="font-size:9.5px;font-weight:700;color:#fff;background:var(--blue-mid);padding:1px 7px;border-radius:99px;white-space:nowrap;flex-shrink:0">Organizador</span>`;
+    if(papeis[pid]==='editor') return `<span style="font-size:9.5px;font-weight:700;color:#fff;background:var(--amber);padding:1px 7px;border-radius:99px;white-space:nowrap;flex-shrink:0">Editor</span>`;
+    return ''; // Leitor não mostra pill
+  };
+  const _ppl=[...people].sort((a,b)=>{
+    const pa=parts.has(a.id)?0:1, pb=parts.has(b.id)?0:1; if(pa!==pb) return pa-pb; // participantes primeiro
+    const fa=freq[a.id]||0, fb=freq[b.id]||0; if(fa!==fb) return fb-fa;                // depois os frequentes
+    return a.name.localeCompare(b.name,'pt-BR');
+  });
+  const rows=_ppl.map(p=>{
+    const on=parts.has(p.id); const freqOn=(freq[p.id]||0)>=2;
+    return `<div onclick="_toggleParticipanteReuniao('${m.id}','${p.id}')" style="display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;cursor:pointer;border:1px solid ${on?'var(--blue-mid)':'var(--border)'};background:${on?'color-mix(in srgb,var(--blue-mid) 10%,transparent)':'var(--card)'};transition:all .12s">
+      <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${on?'var(--blue-mid)':'var(--border)'};background:${on?'var(--blue-mid)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${on?'<i class="ti ti-check" style="font-size:10px;color:#fff"></i>':''}</div>
+      <span style="flex:1;min-width:0;font-size:12.5px;font-weight:${on?'700':'500'};color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(p.name)}${freqOn?' <i class="ti ti-star-filled" style="font-size:10px;color:var(--amber)" title="Participa com frequência"></i>':''}</span>
+      ${_pill(p.id)}
+    </div>`;
+  }).join('') || '<div style="grid-column:1/-1;font-size:13px;color:var(--text3);font-style:italic;padding:10px">Nenhuma pessoa cadastrada.</div>';
+  const ov=document.createElement('div');
+  ov.id='presenca-modal-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9300;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s';
+  ov.onclick=e=>{ if(e.target===ov) fecharPresencaReuniao(); };
+  ov.innerHTML=`<div style="background:var(--card);border-radius:14px;width:100%;max-width:640px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:scaleIn .25s cubic-bezier(.34,1.3,.64,1)">
+    <div style="padding:15px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+      <h3 style="margin:0;font-size:15px;color:var(--text)"><i class="ti ti-users" style="color:var(--blue-mid)"></i> Participantes <span style="font-size:12px;font-weight:500;color:var(--text3)">· ${parts.size} selecionado${parts.size!==1?'s':''}</span></h3>
+      <button onclick="fecharPresencaReuniao()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px"><i class="ti ti-x"></i></button>
+    </div>
+    <div style="padding:8px 20px 4px;font-size:11.5px;color:var(--text3);flex-shrink:0">Marque quem participa · <i class="ti ti-star-filled" style="font-size:10px;color:var(--amber)"></i> = participa com frequência</div>
+    <div style="padding:8px 20px 18px;overflow-y:auto"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px">${rows}</div></div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+function fecharPresencaReuniao(){
+  const mid=window._activeReuniaoId;
+  document.getElementById('presenca-modal-ov')?.remove();
+  document.getElementById('info-modal-ov')?.remove();
+  if(mid) openReuniaoView(mid);
+}
+function togglePresencaModal(mid,pid){
+  const m=meetings.find(x=>x.id===mid); if(!m) return;
+  if(!m.presencas) m.presencas={};
+  m.presencas[pid]=!m.presencas[pid];
+  saveMeeting_db(m);
+  abrirInfoReuniao(mid); // presença agora vive no painel Info
+}
+// Marca/desmarca participante (checkbox do seletor rápido)
+function _toggleParticipanteReuniao(mid,pid){
+  const m=meetings.find(x=>x.id===mid); if(!m) return;
+  if(!Array.isArray(m.participantes)) m.participantes=[];
+  const i=m.participantes.indexOf(pid);
+  if(i>=0) m.participantes.splice(i,1); else m.participantes.push(pid);
+  saveMeeting_db(m);
+  abrirPresencaReuniao(mid); // re-render do seletor (mantém aberto)
+}
+// Painel de INFO da reunião — detalhes gerais + presença + papéis (o que saiu do seletor).
+function abrirInfoReuniao(id){
+  const m=meetings.find(x=>x.id===id); if(!m) return;
+  document.getElementById('info-modal-ov')?.remove();
   const presencas=m.presencas||{};
   const total=(m.participantes||[]).length;
   const presentes=(m.participantes||[]).filter(pid=>presencas[pid]===true).length;
@@ -31182,84 +31253,44 @@ function abrirPresencaReuniao(id){
     localTxt?`<i class="ti ti-map-pin"></i> ${escapeHTML(localTxt)}`:'',
     facil?`<i class="ti ti-microphone"></i> Conduz: ${escapeHTML(facil.name)}`:'',
     m.tipo?`<i class="ti ti-tag"></i> ${escapeHTML(m.tipo)}`:''
-  ].filter(Boolean).map(t=>`<div style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:7px;margin-bottom:5px"><span style="color:var(--text3)">${t.split('</i>')[0]}</i></span>${t.split('</i>')[1]}</div>`).join('');
+  ].filter(Boolean).map(t=>`<div style="font-size:12.5px;color:var(--text2);display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="color:var(--text3)">${t.split('</i>')[0]}</i></span>${t.split('</i>')[1]}</div>`).join('');
   const papeis=m.papeis||{};
   const chips=(m.participantes||[]).map(pid=>{
     const p=people.find(x=>x.id===pid); if(!p) return '';
     const presente=presencas[pid]===true;
     const isOrg=m.organizador===pid||m.facilitador===pid;
     const papel=isOrg?'organizador':(papeis[pid]||'leitor');
-    const papelLabel={organizador:'Organizador',editor:'Editor',leitor:'Leitor'};
-    const papelCor={organizador:'var(--blue-mid)',editor:'var(--amber,#c97a00)',leitor:'var(--text3)'};
     const roleEl=isOrg
-      ?`<span style="font-size:11px;font-weight:700;color:${papelCor.organizador};white-space:nowrap">${papelLabel.organizador}</span>`
-      :`<select onchange="event.stopPropagation();_setPapelReuniao('${m.id}','${pid}',this.value)" onclick="event.stopPropagation()" style="font-size:11px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:2px 6px;color:var(--text2);cursor:pointer;font-family:inherit;flex-shrink:0">
-          <option value="editor" ${papel==='editor'?'selected':''}>Editor</option>
-          <option value="leitor" ${papel==='leitor'?'selected':''}>Leitor</option>
-        </select>`;
-    return `<div onclick="togglePresencaModal('${m.id}','${pid}')" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:9px;background:${presente?'var(--success-bg)':'var(--bg2)'};border:1px solid ${presente?'var(--success)':'var(--border)'};font-size:13px;font-weight:600;color:${presente?'var(--success)':'var(--text2)'};cursor:pointer;transition:all .15s">
+      ?`<span style="font-size:11px;font-weight:700;color:var(--blue-mid);white-space:nowrap">Organizador</span>`
+      :`<select onchange="event.stopPropagation();_setPapelReuniao('${m.id}','${pid}',this.value)" onclick="event.stopPropagation()" style="font-size:11px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:2px 6px;color:var(--text2);cursor:pointer;font-family:inherit;flex-shrink:0"><option value="editor" ${papel==='editor'?'selected':''}>Editor</option><option value="leitor" ${papel==='leitor'?'selected':''}>Leitor</option></select>`;
+    return `<div onclick="togglePresencaModal('${m.id}','${pid}')" style="display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:9px;background:${presente?'var(--success-bg)':'var(--bg2)'};border:1px solid ${presente?'var(--success)':'var(--border)'};font-size:13px;font-weight:600;color:${presente?'var(--success)':'var(--text2)'};cursor:pointer;transition:all .15s">
       <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${presente?'var(--success)':'var(--border)'};background:${presente?'var(--success)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${presente?'<i class="ti ti-check" style="font-size:10px;color:#fff"></i>':''}</div>
       <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(p.name)}${isOrg?' <i class="ti ti-microphone" style="font-size:12px;color:var(--blue-mid)" title="Conduz"></i>':''}</span>
       ${roleEl}
     </div>`;
-  }).join('')||'<div style="font-size:13px;color:var(--text3);font-style:italic">Nenhum participante nesta reunião.</div>';
+  }).join('')||'<div style="font-size:12.5px;color:var(--text3);font-style:italic">Nenhum participante ainda — use o ícone <b>Pessoas</b> para adicionar.</div>';
   const ov=document.createElement('div');
-  ov.id='presenca-modal-ov';
+  ov.id='info-modal-ov';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9300;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s';
   ov.onclick=e=>{ if(e.target===ov) fecharPresencaReuniao(); };
-  ov.innerHTML=`<div style="background:var(--card);border-radius:14px;width:100%;max-width:440px;max-height:85vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:scaleIn .25s cubic-bezier(.34,1.3,.64,1)">
-    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-      <h3 style="margin:0;font-size:15px;color:var(--text)"><i class="ti ti-users" style="color:var(--blue-mid)"></i> Participantes</h3>
+  ov.innerHTML=`<div style="background:var(--card);border-radius:14px;width:100%;max-width:460px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:scaleIn .25s cubic-bezier(.34,1.3,.64,1)">
+    <div style="padding:15px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+      <h3 style="margin:0;font-size:15px;color:var(--text)"><i class="ti ti-info-circle" style="color:var(--blue-mid)"></i> Informações da reunião</h3>
       <button onclick="fecharPresencaReuniao()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px"><i class="ti ti-x"></i></button>
     </div>
-    <div style="padding:16px 20px">
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:11px 12px;margin-bottom:14px">${info||'<span style="font-size:12px;color:var(--text3)">Sem detalhes</span>'}</div>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:10px">${presentes} de ${total} presentes · clique no nome para marcar presença</div>
+    <div style="padding:16px 20px;overflow-y:auto">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:12px 14px;margin-bottom:14px">${info||'<span style="font-size:12px;color:var(--text3)">Sem detalhes</span>'}</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:600"><i class="ti ti-user-check"></i> Presença — ${presentes} de ${total} · clique no nome</div>
       <div style="display:flex;flex-direction:column;gap:7px">${chips}</div>
-      ${(()=>{
-        const _naoPart=[...people].filter(p=>!(m.participantes||[]).includes(p.id)).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
-        if(!_naoPart.length) return `<div style="margin-top:12px;font-size:11.5px;color:var(--text3);font-style:italic">Todas as pessoas já estão nesta reunião.</div>`;
-        return `<div style="display:flex;gap:6px;margin-top:12px">
-          <select id="reun-add-part-sel" style="flex:1;min-width:0;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text);font-family:inherit;cursor:pointer" onkeydown="if(event.key==='Enter')_addParticipanteReuniao('${m.id}')">
-            <option value="">+ Adicionar participante…</option>
-            ${_naoPart.map(p=>`<option value="${p.id}">${escapeHTML(p.name)}${p.setor?' — '+escapeHTML(p.setor):''}</option>`).join('')}
-          </select>
-          <button onclick="_addParticipanteReuniao('${m.id}')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0"><i class="ti ti-plus"></i> Adicionar</button>
-        </div>`;
-      })()}
       <div style="margin-top:14px;padding:10px 12px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text3);line-height:1.7">
         <b style="color:var(--text2)">Papéis:</b>
         <span style="margin-left:6px"><b style="color:var(--blue-mid)">Organizador</b> — vê, edita e encerra</span>
-        <span style="margin:0 6px">·</span>
-        <b style="color:var(--amber,#c97a00)">Editor</b> — vê e edita a pauta
-        <span style="margin:0 6px">·</span>
-        <b>Leitor</b> — só visualiza
+        <span style="margin:0 6px">·</span><b style="color:var(--amber)">Editor</b> — vê e edita a pauta
+        <span style="margin:0 6px">·</span><b>Leitor</b> — só visualiza
       </div>
     </div>
   </div>`;
   document.body.appendChild(ov);
-}
-function fecharPresencaReuniao(){
-  const ov=document.getElementById('presenca-modal-ov');
-  const mid=window._activeReuniaoId;
-  ov?.remove();
-  if(mid) openReuniaoView(mid);
-}
-function togglePresencaModal(mid,pid){
-  const m=meetings.find(x=>x.id===mid); if(!m) return;
-  if(!m.presencas) m.presencas={};
-  m.presencas[pid]=!m.presencas[pid];
-  saveMeeting_db(m);
-  abrirPresencaReuniao(mid);
-}
-// Adiciona um participante direto do modal de Participantes (sem precisar editar a reunião)
-function _addParticipanteReuniao(mid){
-  const m=meetings.find(x=>x.id===mid); if(!m) return;
-  const sel=document.getElementById('reun-add-part-sel'); const pid=sel&&sel.value;
-  if(!pid) return;
-  if(!Array.isArray(m.participantes)) m.participantes=[];
-  if(!m.participantes.includes(pid)){ m.participantes.push(pid); saveMeeting_db(m); if(typeof toast==='function') toast('👤 Participante adicionado'); }
-  abrirPresencaReuniao(mid); // re-renderiza o modal com a pessoa já na lista
 }
 
 // Modal: ATA
@@ -32948,8 +32979,8 @@ function _setPapelReuniao(mid, pid, papel){
   var nome=(typeof people!=='undefined')&&(people.find(function(x){return x.id===pid;})||{}).name||'';
   var labels={organizador:'Organizador',editor:'Editor',leitor:'Leitor'};
   if(typeof toast==='function') toast((nome?escapeHTML(nome)+': ':'')+'papel → '+( labels[papel]||papel));
-  // Re-renderiza o modal mantendo aberto
-  if(typeof abrirPresencaReuniao==='function') abrirPresencaReuniao(mid);
+  // Re-renderiza o painel Info mantendo aberto (papéis vivem lá agora)
+  if(typeof abrirInfoReuniao==='function') abrirInfoReuniao(mid);
 }
 
 /* ── Modal informativo simples (um botão OK) ─────────────────────────── */
