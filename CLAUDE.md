@@ -92,6 +92,36 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-15 (7) — Mac de casa — Modal de reunião ENXUTO: pauta e modelos foram p/ o Painel
+- Pedido do Diego: o modal de criar/editar reunião deve ter só o **essencial** (título, data, hora, tipo, status,
+  sala, **recorrência**, quem conduz, participantes). **Pauta principal, Itens da pauta e "Começar de um modelo"
+  saíram do modal** e agora são feitos **dentro do Painel**. (Criar e editar usam o MESMO form, então os dois
+  ficaram enxutos de uma vez.)
+- ⚠️ **Bloqueador que existia** (mapeado antes de mexer): o Painel só EXIBIA a pauta principal (checkbox de done);
+  não havia como criar/editar o texto. Tirar do modal a deixaria **inalcançável**. Por isso o editor veio ANTES.
+- **Novo no Painel** (em `reunPautaHTML`): quando não há pauta principal → botão tracejado **"Definir pauta
+  principal"**; quando há → **lápis** p/ editar inline. Funções `_pautaPrincEditar/_pautaPrincSalvar/
+  _pautaPrincCancelar` + `_pautaRefresh(mId)` (re-renderiza só `#pauta-view-<id>`, padrão do `pautaConfirmarAdd`).
+  Estado de edição em `window._pautaPrincEd`.
+- **Modelos no Painel**: chips aparecem só quando a pauta está TOTALMENTE vazia. `_pautaAplicarModelo(mId,modId)`
+  é uma variante nova que escreve direto em `m.pautaPrincipal`/`m.pauta` + `saveMeeting_db` — o antigo
+  `_reunAplicarModelo` escrevia em inputs do DOM e mexia em título/tipo (não faz sentido pós-criação).
+- ⚠️ **RISCO DE PERDA DE DADOS corrigido**: `saveReuniao` lia `#reun-pauta-principal` e `#pauta-list .pauta-inp`.
+  Sem esses inputs, **toda edição zeraria a pauta salva**. Agora usa `_reunAnt` (a reunião existente) e
+  **preserva** `pautaPrincipal`/`pauta`/`pautaDone` ao editar; nasce vazia ao criar.
+- Removida a obrigatoriedade "⚠️ Defina a pauta principal" do save. Modal virou **coluna única** (o grid 2col e um
+  `<style>` com CSS morto — `.reun-form-2col` nunca era aplicada — saíram junto).
+- Código morto remanescente (NÃO removido, sem uso): `_reunAplicarModelo`, `_reunRebuildPautaList`, `pautaAddItem`,
+  `pautaUpdate`, `pautaRemove`. `_reuniaoSemPauta` agora alerta "Sem pauta" com mais frequência — é um nudge
+  correto (a pauta se define no painel), mas se incomodar, revisar.
+- **Verificado no browser:** modal sem pauta/modelos; criar sem pauta passa; painel oferece "Definir" + modelos;
+  modelo aplicou principal + 5 itens; editar a principal no painel funciona; **editar a reunião preservou a pauta**
+  (5 itens + principal intactos). 0 erros de sintaxe/console.
+- **Pendente (pedido do Diego, não feito ainda):** sub-navbar por período na aba Reuniões (Hoje/Amanhã/Essa
+  semana/Próxima semana/Mais adiante), **remover** a sub-nav de tipo (`reunFiltroTipo` — "Todas|Reuniões|
+  Compromissos"), sub-navbar **centralizada** onde hoje fica a lista, e **respiro** (afastar a lista do título)
+  — também dentro do Painel de reuniões.
+
 ### 2026-07-15 (6) — Mac de casa — RECORRÊNCIA etapa 3: "sem fim" (janela rolante), continuar série, regenerar futuras
 - **"Termina: nunca"** (`rec.fimTipo='nunca'`) — p/ reunião fixa (ex.: sensorial toda quinta) não precisar
   escolher número. Materializa `REC_ROLL=8` à frente e **repõe sozinha**: `_serieTopUp(m)` (chamado por

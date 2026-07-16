@@ -30083,15 +30083,7 @@ function renderNovaReuniaoForm(container, subNav){
   // Recorrência: inicia 1x por abertura do form (igual _reunPauta) — não resetar em re-render.
   if(!window._reunRec) window._reunRec = (m&&m.rec) ? JSON.parse(JSON.stringify(m.rec)) : (_recFromLegacy(m) || _recDefault(m?m.date:(window._preReunData||today)));
 
-  // Pauta existente — usa window._reunPauta se disponível (ao re-renderizar via pautaAddItem)
-  const pautaItems=window._reunPauta||(m?m.pauta||[]:['']);
-  if(!window._reunPauta) window._reunPauta=[...pautaItems];
-  const pautaHTML=pautaItems.map((txt,i)=>`
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px" id="pauta-row-${i}">
-      <i class="ti ti-grip-vertical" style="color:var(--text3);font-size:14px"></i>
-      <input class="modal-input pauta-inp" data-idx="${i}" style="flex:1" placeholder="Assunto ${i+1}..." value="${escapeAttr(txt)}" oninput="pautaUpdate(${i},this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();pautaAddItem()}">
-      <button onclick="pautaRemove(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;font-size:14px" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-x"></i></button>
-    </div>`).join('');
+  // (jul/2026) A pauta saiu do modal — é editada no Painel. Nada de pautaHTML aqui.
 
   // Participantes
   const selParts=m?[...(m.participantes||[])]:[];
@@ -30123,10 +30115,12 @@ function renderNovaReuniaoForm(container, subNav){
           ${editingReuniaoId?'Editar Reunião':'Nova Reunião'}
         </div>
 
-        <!-- 2 COLUNAS -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
-
-          <!-- COLUNA ESQUERDA: Dados -->
+        <!-- COLUNA ÚNICA — só o essencial da reunião (jul/2026).
+             Modelos, Pauta principal e Itens da pauta saíram daqui e agora são
+             feitos DENTRO do Painel da reunião (reunPautaHTML/_pautaPrincEditar/
+             _pautaAplicarModelo). Motivo: o modal de criar/editar deve ter só o
+             essencial (quando/quem/recorrência); conteúdo é trabalho do painel. -->
+        <div>
           <div style="display:flex;flex-direction:column;gap:14px">
 
             <!-- Título -->
@@ -30222,49 +30216,11 @@ function renderNovaReuniaoForm(container, subNav){
             </div>
           </div>
 
-          <!-- COLUNA DIREITA: Conteúdo da reunião -->
-          <div style="display:flex;flex-direction:column;gap:14px">
-
-            ${editingReuniaoId ? '' : `<!-- Modelos de reunião -->
-            <div>
-              <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-layout-grid"></i> Começar de um modelo <span style="font-size:10px;color:var(--text3);font-weight:400">— preenche a pauta</span></div>
-              <div style="display:flex;flex-wrap:wrap;gap:6px">
-                ${REUNIAO_MODELOS.map(mm=>`<button type="button" data-reunmod="${mm.id}" onclick="_reunAplicarModelo('${mm.id}')" style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;background:var(--bg2);color:var(--text2);border:1px solid var(--border);font-family:inherit;transition:all .15s" onmouseover="if(!this.classList.contains('sel')){this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'}" onmouseout="if(!this.classList.contains('sel')){this.style.borderColor='var(--border)';this.style.color='var(--text2)'}"><i class="ti ${mm.icon}" style="font-size:13px"></i>${mm.nome}</button>`).join('')}
-              </div>
-            </div>`}
-
-            <!-- Pauta principal -->
-            <div>
-              <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-star"></i> Pauta principal <span style="color:var(--danger);font-weight:700">*</span> <span style="font-size:10px;color:var(--text3);font-weight:400">— o assunto mais importante</span></div>
-              <input id="reun-pauta-principal" class="modal-input" type="text" placeholder="Ex: Definir lançamento do novo produto..." value="${m?escapeAttr(m.pautaPrincipal||''):''}">
-            </div>
-
-            <!-- Itens da pauta -->
-            <div style="flex:1;display:flex;flex-direction:column">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                <div class="modal-label"><i class="ti ti-list"></i> Itens da pauta</div>
-                <button type="button" onclick="pautaAddItem()" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .2s" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-plus" style="font-size:12px"></i> Adicionar</button>
-              </div>
-              <div id="pauta-list" style="display:flex;flex-direction:column;gap:0;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8px;min-height:120px;flex:1">
-                ${pautaHTML||'<div data-pauta-empty style="padding:20px;text-align:center;color:var(--text3);font-size:12px;font-style:italic">Sem itens na pauta ainda.<br>Clique em "+ Adicionar".</div>'}
-              </div>
-              <div style="font-size:11px;color:var(--text3);margin-top:6px">
-                <i class="ti ti-keyboard" style="font-size:11px"></i> Enter no campo adiciona próximo item
-              </div>
-            </div>
-
-          </div>
-        </div><!-- fim 2 colunas -->
+        </div><!-- fim coluna única -->
 
       </div>
     </div>
-  </div>
-
-  <style>
-    @media(max-width:760px){
-      .reun-form-2col{grid-template-columns:1fr!important}
-    }
-  </style>`;
+  </div>`;
 
   window._reunSelParts=selParts; window._reunSelProjs=selProjs;
 }
@@ -30359,33 +30315,14 @@ function saveReuniao(){
   if(horaToMin(_rFim)<=horaToMin(_rIni)){ try{toast('⚠️ A hora de fim deve ser depois do início');}catch{} return; }
   const _rCond=document.getElementById('reun-facilitador')?.value||'';
   if(!_rCond){ try{toast('⚠️ Escolha quem conduz');document.getElementById('reun-facilitador')?.focus();}catch{} return; }
-  const _rPauta=document.getElementById('reun-pauta-principal')?.value.trim()||'';
-  if(!_rPauta){ try{toast('⚠️ Defina a pauta principal');document.getElementById('reun-pauta-principal')?.focus();}catch{} return; }
+  // (jul/2026) Pauta principal deixou de ser obrigatória aqui: ela é definida
+  // DENTRO do Painel da reunião. O modal só cuida do essencial.
 
-  // Itens da pauta: tenta primeiro window._reunPauta (estado em memória),
-  // mas SE estiver vazio, lê DIRETO dos inputs do DOM como fallback de segurança.
-  // Isso protege contra qualquer caso em que o oninput não tenha disparado.
-  let pautaItens=(window._reunPauta||[])
-    .map(s=>(s||'').trim())
-    .filter(Boolean);
-  if(!pautaItens.length){
-    // Fallback: lê todos os inputs visíveis no #pauta-list
-    const inputsDOM=document.querySelectorAll('#pauta-list .pauta-inp');
-    pautaItens=Array.from(inputsDOM)
-      .map(inp=>(inp.value||'').trim())
-      .filter(Boolean);
-  } else {
-    // Mesmo se _reunPauta tem coisas, vamos sincronizar com o DOM
-    // (cobre o caso de o usuário ter digitado num input mas o estado estar desatualizado)
-    const inputsDOM=document.querySelectorAll('#pauta-list .pauta-inp');
-    const fromDOM=Array.from(inputsDOM)
-      .map(inp=>(inp.value||'').trim())
-      .filter(Boolean);
-    // Usa o mais completo dos dois
-    if(fromDOM.length>pautaItens.length){
-      pautaItens=fromDOM;
-    }
-  }
+  // Itens da pauta: NÃO vêm mais do modal (são editados no Painel). Ao EDITAR,
+  // preserva o que já está salvo — antes isso era lido de inputs que não existem
+  // mais e ZERARIA a pauta da reunião a cada edição. Ao criar, nasce vazia.
+  const _reunAnt = editingReuniaoId ? meetings.find(x=>x.id===editingReuniaoId) : null;
+  const pautaItens = _reunAnt ? [...(_reunAnt.pauta||[])] : [];
 
   const obj={
     title,
@@ -30402,20 +30339,16 @@ function saveReuniao(){
     // fica só por compatibilidade com registros/telas antigas.
     rec: (window._reunRec && window._reunRec.ativo) ? JSON.parse(JSON.stringify(window._reunRec)) : null,
     frequencia: (window._reunRec && window._reunRec.ativo) ? 'custom' : 'unica',
-    pautaPrincipal:document.getElementById('reun-pauta-principal')?.value.trim()||'',
+    // Pauta principal: definida no Painel. Ao editar, PRESERVA o valor salvo
+    // (ler de um input inexistente apagaria a pauta a cada edição).
+    pautaPrincipal: _reunAnt ? (_reunAnt.pautaPrincipal||'') : '',
     // Quem conduz entra automaticamente como participante (senão fica fora da presença/agenda da própria reunião).
     participantes:(function(){ const p=[...(window._reunSelParts||[])]; const f=document.getElementById('reun-facilitador')?.value||''; if(f && p.indexOf(f)<0) p.push(f); return p; })(),
     projetos:[...(window._reunSelProjs||[])],
     createdAt:today,
-    // Pauta: usa o que foi digitado no form (window._reunPauta).
-    // Se editando, preserva o pautaDone existente alinhado ao novo array.
+    // Pauta (itens): preservada da reunião ao editar; vazia ao criar (Painel cuida).
     pauta:pautaItens,
-    pautaDone:editingReuniaoId
-      ? pautaItens.map((_,i)=>{
-          const antigo=meetings.find(x=>x.id===editingReuniaoId);
-          return antigo?(antigo.pautaDone||[])[i]||false:false;
-        })
-      : pautaItens.map(()=>false),
+    pautaDone: _reunAnt ? pautaItens.map((_,i)=>(_reunAnt.pautaDone||[])[i]||false) : [],
     // Demais campos editáveis dentro da reunião aberta (preservar se edição)
     ata:editingReuniaoId?(meetings.find(x=>x.id===editingReuniaoId)?.ata||''):'',
     decisoes:editingReuniaoId?(meetings.find(x=>x.id===editingReuniaoId)?.decisoes||''):'',
@@ -30836,10 +30769,44 @@ function openReuniaoView(id){
 /* ── Funções de acção na vista de reunião ── */
 
 // HTML da pauta (reutilizado em render e toggle)
+// ── Pauta principal: editar/definir DENTRO do Painel ──────────────
+// (jul/2026: a pauta saiu do modal de criar/editar reunião — o modal ficou só
+//  com o essencial. Sem este editor a pauta principal ficaria inalcançável.)
+function _pautaRefresh(mId){
+  const m=meetings.find(x=>x.id===mId); const wrap=document.getElementById('pauta-view-'+mId);
+  if(m&&wrap) wrap.innerHTML=reunPautaHTML(m);
+}
+function _pautaPrincEditar(mId){ window._pautaPrincEd=mId; _pautaRefresh(mId); setTimeout(()=>{const i=document.getElementById('pauta-princ-inp-'+mId); if(i){i.focus(); i.select();}},50); }
+function _pautaPrincCancelar(mId){ window._pautaPrincEd=null; _pautaRefresh(mId); }
+function _pautaPrincSalvar(mId){
+  const m=meetings.find(x=>x.id===mId); if(!m) return;
+  const txt=(document.getElementById('pauta-princ-inp-'+mId)?.value||'').trim();
+  m.pautaPrincipal=txt; if(!txt) m.pautaPrincipalDone=false;
+  saveMeeting_db(m); window._pautaPrincEd=null; _pautaRefresh(mId);
+}
+// Modelo aplicado no Painel: só preenche PAUTA (título/tipo já foram definidos na criação).
+function _pautaAplicarModelo(mId, modId){
+  const m=meetings.find(x=>x.id===mId); if(!m) return;
+  const mod=(typeof REUNIAO_MODELOS!=='undefined'?REUNIAO_MODELOS:[]).find(x=>x.id===modId); if(!mod) return;
+  m.pautaPrincipal=mod.pautaPrincipal||''; m.pautaPrincipalDone=false;
+  m.pauta=[...(mod.pauta||[])]; m.pautaDone=(mod.pauta||[]).map(()=>false);
+  saveMeeting_db(m); window._pautaPrincEd=null; _pautaRefresh(mId);
+  if(typeof toast==='function') toast('📋 Modelo aplicado: '+mod.nome);
+}
+
 function reunPautaHTML(m){
+  const encerrada=m.status==='encerrada';
+  const editando=window._pautaPrincEd===m.id;
   // Pauta principal — sempre primeiro, destacada em azul, com checkbox próprio
   let principalHTML='';
-  if(m.pautaPrincipal && m.pautaPrincipal.trim()){
+  if(editando){
+    principalHTML=`<div style="display:flex;align-items:center;gap:7px;padding:9px 11px;margin-bottom:8px;background:color-mix(in srgb, var(--blue-mid) 7%, transparent);border-left:3px solid var(--blue-mid);border-radius:6px">
+      <i class="ti ti-star-filled" style="font-size:12px;color:var(--blue-mid);flex-shrink:0"></i>
+      <input id="pauta-princ-inp-${m.id}" value="${escapeAttr(m.pautaPrincipal||'')}" placeholder="O assunto mais importante desta reunião..." onkeydown="if(event.key==='Enter'){event.preventDefault();_pautaPrincSalvar('${m.id}');}if(event.key==='Escape')_pautaPrincCancelar('${m.id}')" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 9px;font-size:13px;color:var(--text);font-family:inherit">
+      <button onclick="_pautaPrincSalvar('${m.id}')" title="Salvar" style="background:var(--blue-mid);border:none;color:#fff;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px"><i class="ti ti-check"></i></button>
+      <button onclick="_pautaPrincCancelar('${m.id}')" title="Cancelar" style="background:none;border:1px solid var(--border);color:var(--text3);border-radius:6px;padding:6px 9px;cursor:pointer;font-size:12px"><i class="ti ti-x"></i></button>
+    </div>`;
+  } else if(m.pautaPrincipal && m.pautaPrincipal.trim()){
     const doneP=!!m.pautaPrincipalDone;
     principalHTML=`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:8px;background:linear-gradient(90deg,color-mix(in srgb, var(--blue-mid) 7%, transparent),transparent);border-left:3px solid var(--blue-mid);border-radius:6px">
       <div role="checkbox" tabindex="0" aria-checked="${doneP?'true':'false'}" aria-label="Concluir pauta principal" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click();}" onclick="togglePautaPrincipal('${m.id}')" style="width:18px;height:18px;border-radius:4px;border:2px solid ${doneP?'var(--blue-mid)':'var(--blue-mid)'};background:${doneP?'var(--blue-mid)':'transparent'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s">
@@ -30847,7 +30814,14 @@ function reunPautaHTML(m){
       </div>
       <i class="ti ti-star-filled" style="font-size:12px;color:var(--blue-mid);flex-shrink:0"></i>
       <span style="flex:1;font-size:13px;color:var(--blue-mid);font-weight:700;${doneP?'text-decoration:line-through;opacity:.6':''}">${escapeHTML(m.pautaPrincipal)}</span>
+      ${encerrada?'':`<button onclick="_pautaPrincEditar('${m.id}')" title="Editar pauta principal" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 2px" onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-pencil"></i></button>`}
     </div>`;
+  } else if(!encerrada){
+    principalHTML=`<button onclick="_pautaPrincEditar('${m.id}')" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:9px 12px;margin-bottom:8px;background:none;border:1px dashed var(--blue-mid);border-radius:6px;cursor:pointer;font-family:inherit" onmouseover="this.style.background='color-mix(in srgb, var(--blue-mid) 6%, transparent)'" onmouseout="this.style.background='none'">
+      <i class="ti ti-star" style="font-size:12px;color:var(--blue-mid)"></i>
+      <span style="flex:1;font-size:12.5px;color:var(--blue-mid);font-weight:600">Definir pauta principal</span>
+      <span style="font-size:11px;color:var(--text3)">o assunto mais importante</span>
+    </button>`;
   }
   // Demais itens da pauta
   let restHTML='';
@@ -30863,11 +30837,22 @@ function reunPautaHTML(m){
       </div>`;
     }).join('');
   }
-  // Se não tem nada (nem principal nem itens), mensagem vazia
-  if(!principalHTML && !restHTML){
+  // Modelos: só quando a pauta está totalmente vazia (preenchem pauta principal + itens).
+  // Saíram do modal de criação — aqui é o lugar certo, já com a reunião existindo.
+  let modelosHTML='';
+  const vazia=!(m.pautaPrincipal&&m.pautaPrincipal.trim()) && !(m.pauta||[]).length;
+  if(vazia && !encerrada && !editando && typeof REUNIAO_MODELOS!=='undefined'){
+    modelosHTML=`<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:7px"><i class="ti ti-layout-grid"></i> Começar de um modelo — preenche a pauta</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${REUNIAO_MODELOS.map(mm=>`<button onclick="_pautaAplicarModelo('${m.id}','${mm.id}')" style="display:inline-flex;align-items:center;gap:5px;background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:20px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">${mm.icon?`<i class="ti ${mm.icon}"></i>`:''}${escapeHTML(mm.nome)}</button>`).join('')}
+      </div>
+    </div>`;
+  }
+  if(!principalHTML && !restHTML && !modelosHTML){
     return '<div style="font-size:13px;color:var(--text3);font-style:italic;padding:4px 0">Sem pauta. Adiciona um assunto abaixo.</div>';
   }
-  return principalHTML + restHTML;
+  return principalHTML + restHTML + modelosHTML;
 }
 
 // HTML da lista de decisões (reutilizado no render e no add/remove p/ update pontual sem perder scroll)
