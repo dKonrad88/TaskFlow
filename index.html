@@ -1474,6 +1474,22 @@
   .reun-grid4{display:grid;grid-template-columns:1fr 2fr;gap:14px;align-items:start}
   .reun-col{display:flex;flex-direction:column;gap:14px;min-width:0}
   @media(max-width:760px){.reun-grid4{grid-template-columns:1fr}}
+  /* ── Modo FOCO / tela cheia do Painel de Reunião ── */
+  .reun-focus-bar{display:none}
+  .reun-col-rz{display:none}
+  body.reun-focus .hdr,body.reun-focus .sidebar,body.reun-focus #sidebar-resizer,body.reun-focus .sidebar-resizer,body.reun-focus .topbar{display:none!important}
+  body.reun-focus #task-container{position:fixed;inset:0;z-index:500;overflow-y:auto;overflow-x:hidden;background:var(--bg);padding:0}
+  body.reun-focus .reun-panel-wrap{max-width:none!important;padding:0 26px 40px!important}
+  body.reun-focus .reun-voltar-btn,body.reun-focus .reun-normal-header{display:none!important}
+  body.reun-focus .reun-focus-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:60;background:var(--card);border-bottom:1px solid var(--border);padding:11px 26px;margin:0 -26px 16px}
+  body.reun-focus .reun-grid4{display:flex;gap:0;align-items:stretch;grid-template-columns:none}
+  body.reun-focus .reun-grid4>.reun-col:first-child{flex:0 0 var(--reun-col1-w,340px);min-width:0}
+  body.reun-focus .reun-grid4>.reun-col:last-child{flex:1 1 0;min-width:0}
+  body.reun-focus .reun-col-rz{display:block;flex:0 0 16px;align-self:stretch;cursor:col-resize;position:relative;touch-action:none}
+  body.reun-focus .reun-col-rz::before{content:"";position:absolute;top:10px;bottom:10px;left:50%;transform:translateX(-50%);width:3px;border-radius:99px;background:var(--border);opacity:0;transition:opacity .15s}
+  body.reun-focus .reun-col-rz:hover::before,body.reun-focus .reun-col-rz.dragging::before{opacity:1;background:var(--blue-mid)}
+  body.reun-resizing{cursor:col-resize;user-select:none}
+  body.reun-resizing .reun-grid4>.reun-col{transition:none}
   .reun-card4{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;min-height:130px}
   .reun-card4-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:6px}
   /* Botões-ícone do topo */
@@ -15131,6 +15147,7 @@ function setTab(tab,el){
   activeProjectId=null; // limpa projecto aberto
   activeProjectProId=null; activeFaseId=null; // V3: ao navegar por aba, sai do projeto aberto (volta à lista)
   window._activeReuniaoId=null; // ao navegar por aba, fecha o Painel de Reunião aberto (volta à lista)
+  window._reunFocus=false; document.body.classList.remove('reun-focus'); // sai do modo foco ao trocar de aba
   // GUILHERME V3 (mai/2026): limpar todos os chips/filtros do header ao trocar de aba
   const _chipEl=document.getElementById('tab-proj-chips');
   if(_chipEl){_chipEl.innerHTML='';_chipEl.style.display='none';}
@@ -16211,6 +16228,10 @@ function _projectById(id){ if(id==null) return undefined; if(_idxProjects&&_idxP
 function _projectProById(id){ if(id==null) return undefined; if(_idxProjectsPro&&_idxProjectsPro.has(id)) return _idxProjectsPro.get(id); return (projectsPro||[]).find(p=>p.id===id); }
 function render(){
   _rebuildIndexes();
+  // Salvaguarda do modo foco: se saiu do Painel de Reunião por qualquer caminho, desliga o fullscreen.
+  if(window._reunFocus && (typeof hubView==='undefined' || hubView!=='taskflow' || currentTab!=='reunioes' || !window._activeReuniaoId)){
+    window._reunFocus=false; document.body.classList.remove('reun-focus');
+  }
   // MODO HUB: renderizar Meu dia! quando hubView === 'meudia'
   if(hubView === 'meudia'){
     renderMeuDia();
@@ -30518,6 +30539,46 @@ function deleteReuniao(id){
 
 // ── Vista interna da reunião (clique no card)
 // Abrir a vista interna de uma reunião (pauta, tarefas, ATA)
+// ── Modo FOCO (tela cheia) do Painel de Reunião ──────────────────────────────
+window._reunFocus = window._reunFocus || false;
+function _toggleReunFocus(){
+  window._reunFocus = !window._reunFocus;
+  document.body.classList.toggle('reun-focus', window._reunFocus);
+  if(window._activeReuniaoId) openReuniaoView(window._activeReuniaoId);
+}
+function _exitReunFocus(){
+  window._reunFocus = false;
+  document.body.classList.remove('reun-focus');
+  if(window._activeReuniaoId) openReuniaoView(window._activeReuniaoId);
+}
+// duração planejada (min) a partir de horaInicio/horaFim; default 60
+function _reunPlannedMin(m){
+  try{
+    if(m && m.horaInicio && m.horaFim){
+      const a=m.horaInicio.split(':').map(Number), b=m.horaFim.split(':').map(Number);
+      const d=(b[0]*60+b[1])-(a[0]*60+a[1]);
+      if(d>0 && d<=24*60) return d;
+    }
+  }catch(e){}
+  return 60;
+}
+// Regulador de largura das colunas no modo foco (separador arrastável)
+const LS_REUN_COL1_W='taskflow_reun_col1_w';
+const REUN_COL1_MIN=240, REUN_COL1_MAX=680, REUN_COL1_DEFAULT=340;
+function _applyReunColW(px){ const w=Math.round(Math.min(REUN_COL1_MAX,Math.max(REUN_COL1_MIN,px||REUN_COL1_DEFAULT))); document.documentElement.style.setProperty('--reun-col1-w', w+'px'); return w; }
+function _loadReunColW(){ let w=REUN_COL1_DEFAULT; try{ const s=safeLSGet(LS_REUN_COL1_W); if(s){ const n=parseInt(s,10); if(!isNaN(n)) w=n; } }catch(e){} _applyReunColW(w); }
+function _initReunColResizer(){
+  const rez=document.getElementById('reun-col-rz'); if(!rez || rez._wired) return;
+  const col1=rez.previousElementSibling; if(!col1) return;
+  rez._wired=true;
+  let sx=0, sw=0, drag=false;
+  const mv=(e)=>{ if(!drag) return; const x=(e.touches?e.touches[0].clientX:e.clientX); _applyReunColW(sw+(x-sx)); e.preventDefault(); };
+  const up=()=>{ if(!drag) return; drag=false; rez.classList.remove('dragging'); document.body.classList.remove('reun-resizing'); document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); document.removeEventListener('touchmove',mv); document.removeEventListener('touchend',up); const cur=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--reun-col1-w'),10)||REUN_COL1_DEFAULT; try{ safeSetItem(LS_REUN_COL1_W,String(cur)); }catch(e){} };
+  const dn=(e)=>{ drag=true; sx=(e.touches?e.touches[0].clientX:e.clientX); sw=col1.getBoundingClientRect().width; rez.classList.add('dragging'); document.body.classList.add('reun-resizing'); document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up); document.addEventListener('touchmove',mv,{passive:false}); document.addEventListener('touchend',up); e.preventDefault(); };
+  rez.addEventListener('mousedown',dn); rez.addEventListener('touchstart',dn,{passive:false});
+  rez.addEventListener('dblclick',()=>{ _applyReunColW(REUN_COL1_DEFAULT); try{ safeSetItem(LS_REUN_COL1_W,String(REUN_COL1_DEFAULT)); }catch(e){} });
+}
+
 function openReuniaoView(id){
   const m=meetings.find(x=>x.id===id);
   if(!m) return;
@@ -30566,14 +30627,31 @@ function openReuniaoView(id){
     </div>`:'';
   })():'';
 
-  document.getElementById('task-container').innerHTML=`<div style="padding-top:22px;padding-bottom:40px;max-width:1500px;margin:0 auto">
-    <button onclick="window._activeReuniaoId=null;renderReunioes()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;padding:0;margin-bottom:16px">
+  document.getElementById('task-container').innerHTML=`<div class="reun-panel-wrap" style="padding-top:22px;padding-bottom:40px;max-width:1500px;margin:0 auto">
+    <button class="reun-voltar-btn" onclick="document.body.classList.remove('reun-focus');window._reunFocus=false;window._activeReuniaoId=null;renderReunioes()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;padding:0;margin-bottom:16px">
       <i class="ti ti-arrow-left"></i> Voltar às reuniões
     </button>
     <div style="width:100%">
 
+      <!-- Barra do modo FOCO (só aparece em tela cheia) -->
+      <div class="reun-focus-bar">
+        <button onclick="_exitReunFocus()" class="reun-ico" title="Sair da tela cheia (Esc)"><i class="ti ti-arrows-minimize"></i></button>
+        <span style="font-size:15px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px">${escapeHTML(m.title)}</span>
+        <span class="reun-status ${st.cls}" style="font-size:10px">${st.label}</span>
+        <div id="reun-focus-timer-${m.id}" data-inicio="${m.status==='andamento'?(m.inicioReal||''):''}" data-planned="${_reunPlannedMin(m)}" style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:99px;padding:5px 14px;min-width:210px">
+          <i class="ti ti-clock-play" style="color:var(--success);font-size:15px"></i>
+          <span style="font-weight:800;font-size:15px;color:var(--text);white-space:nowrap"><span class="rft-elapsed">${m.status==='andamento'?'00:00':'—'}</span> <span style="font-size:11px;font-weight:600;color:var(--text3)">/ ${_reunPlannedMin(m)}min</span></span>
+          <div style="flex:1;min-width:50px;height:5px;background:var(--card);border-radius:99px;overflow:hidden"><div class="rft-fill" style="height:100%;width:0%;background:var(--success);transition:width .5s,background .5s"></div></div>
+        </div>
+        <div style="flex:1"></div>
+        <button onclick="abrirPresencaReuniao('${m.id}')" class="reun-ico" title="Participantes (${presentesCount}/${totalParts})"><i class="ti ti-users"></i></button>
+        <span style="font-size:12px;color:var(--text3);font-weight:600">${presentesCount}/${totalParts}</span>
+        ${m.status==='agendada'?`<button onclick="iniciarReuniao('${m.id}')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:7px 15px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ti-player-play-filled"></i> Iniciar</button>`:''}
+        ${m.status!=='encerrada'?`<button onclick="concluirReuniao('${m.id}')" style="background:var(--success-bg);border:1px solid var(--success);color:var(--success);border-radius:8px;padding:7px 15px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ti-flag-check"></i> Finalizar</button>`:''}
+      </div>
+
       <!-- Título (fora de card) + ações em ícones -->
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      <div class="reun-normal-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
         <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
           <div style="display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap">
             <span style="font-size:20px;font-weight:800;color:var(--text)">${escapeHTML(m.title)}</span>
@@ -30590,6 +30668,7 @@ function openReuniaoView(id){
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
           ${m.status==='agendada'?`<button class="reun-ico" onclick="iniciarReuniao('${m.id}')" title="Iniciar reunião" style="background:var(--blue-mid);border-color:var(--blue-mid);color:#fff"><i class="ti ti-player-play-filled"></i></button>`:''}
           ${m.status==='andamento'?`<span id="reun-cronometro-${m.id}" style="padding:0 12px;height:34px;font-size:13px;color:var(--success);font-weight:700;background:var(--success-bg);border-radius:8px;border:1px solid var(--success);display:inline-flex;align-items:center;gap:5px"><i class="ti ti-clock-play"></i> <span data-inicio="${m.inicioReal||''}">00:00</span></span>`:''}
+          <button class="reun-ico" onclick="_toggleReunFocus()" title="Abrir em tela cheia (foco)"><i class="ti ti-arrows-maximize"></i></button>
           <button class="reun-ico" onclick="abrirPresencaReuniao('${m.id}')" title="Participantes (${presentesCount}/${totalParts})"><i class="ti ti-users"></i></button>
           <button class="reun-ico" onclick="abrirAtaReuniao('${m.id}')" title="ATA"><i class="ti ti-notes"></i></button>
           <button class="reun-ico" onclick="abrirAnexosReuniao('${m.id}')" title="Anexos"><i class="ti ti-paperclip"></i></button>
@@ -30756,6 +30835,8 @@ function openReuniaoView(id){
 
         </div><!-- /COLUNA ESQUERDA -->
 
+        <div class="reun-col-rz" id="reun-col-rz" title="Arraste para ajustar as colunas" role="separator" aria-orientation="vertical"></div>
+
         <div class="reun-col"><!-- COLUNA DIREITA -->
 
         <!-- TAREFAS inline -->
@@ -30806,6 +30887,19 @@ function openReuniaoView(id){
   // Se está em andamento, iniciar cronômetro
   if(m.status==='andamento'&&m.inicioReal){
     iniciarCronometroReuniao(id);
+  }
+  // Modo foco: aplica classe, largura das colunas + separador arrastável
+  if(window._reunFocus){
+    document.body.classList.add('reun-focus');
+    if(typeof _loadReunColW==='function') _loadReunColW();
+    if(typeof _initReunColResizer==='function') _initReunColResizer();
+  } else {
+    document.body.classList.remove('reun-focus');
+  }
+  // Esc sai do modo foco (registra 1x)
+  if(!window._reunFocusEscWired){
+    window._reunFocusEscWired=true;
+    document.addEventListener('keydown',(e)=>{ if(e.key==='Escape' && window._reunFocus) _exitReunFocus(); });
   }
 }
 
@@ -31600,14 +31694,23 @@ function iniciarCronometroReuniao(meetingId){
   if(_cronometroInterval){clearInterval(_cronometroInterval);_cronometroInterval=null;}
   const tick=()=>{
     const el=document.querySelector('#reun-cronometro-'+meetingId+' [data-inicio]');
-    if(!el){clearInterval(_cronometroInterval);_cronometroInterval=null;return;}
-    const inicio=el.dataset.inicio;
+    const ft=document.getElementById('reun-focus-timer-'+meetingId);
+    if(!el && !ft){clearInterval(_cronometroInterval);_cronometroInterval=null;return;}
+    const inicio=(el&&el.dataset.inicio) || (ft&&ft.dataset.inicio) || '';
     if(!inicio) return;
     const diff=Math.floor((Date.now()-new Date(inicio).getTime())/1000);
     const h=Math.floor(diff/3600);
     const min=Math.floor((diff%3600)/60);
     const s=diff%60;
-    el.textContent=(h?String(h).padStart(2,'0')+':':'')+String(min).padStart(2,'0')+':'+String(s).padStart(2,'0');
+    const txt=(h?String(h).padStart(2,'0')+':':'')+String(min).padStart(2,'0')+':'+String(s).padStart(2,'0');
+    if(el) el.textContent=txt;
+    // Modo foco: atualiza o timer + a barra de progresso (decorrido vs planejado)
+    if(ft){
+      const elapsedEl=ft.querySelector('.rft-elapsed'); if(elapsedEl) elapsedEl.textContent=String(Math.floor(diff/60)).padStart(2,'0')+':'+String(s).padStart(2,'0');
+      const planned=(parseInt(ft.dataset.planned,10)||60)*60;
+      const pct=Math.min(100,(diff/planned)*100);
+      const fill=ft.querySelector('.rft-fill'); if(fill){ fill.style.width=pct+'%'; fill.style.background=pct>=100?'var(--danger)':(pct>=85?'var(--amber)':'var(--success)'); }
+    }
   };
   tick();
   _cronometroInterval=setInterval(tick,1000);
