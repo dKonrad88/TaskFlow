@@ -2327,10 +2327,12 @@
     <div class="fab-menu-item" onclick="fabAction('captura')" style="font-weight:700;color:var(--blue-mid)"><i class="ti ti-bolt" style="color:var(--blue-mid)"></i> Captura rápida <span style="margin-left:auto;font-size:9px;font-weight:600;color:var(--text3);background:var(--bg2);padding:1px 6px;border-radius:5px">Ctrl I</span></div>
     <div class="fab-menu-divider"></div>
     <div class="fab-menu-item" onclick="fabAction('tarefa')"><i class="ti ti-check" style="color:var(--blue-mid)"></i> Nova tarefa</div>
+    <div class="fab-menu-item" onclick="fabAction('nota')"><i class="ti ti-notes" style="color:var(--purple)"></i> Nova nota</div>
+    <!-- Agenda/encontros numa seção própria (jul/2026): reunião, reunião rápida e compromisso -->
+    <div class="fab-menu-divider"></div>
     <div class="fab-menu-item" onclick="fabAction('reuniao')"><i class="ti ti-calendar-event" style="color:var(--blue-teal)"></i> Nova reunião</div>
     <div class="fab-menu-item" onclick="fabAction('reuniao-rapida')"><i class="ti ti-users" style="color:var(--purple)"></i> Reunião rápida</div>
     <div class="fab-menu-item" onclick="fabAction('compromisso')"><i class="ti ti-calendar-time" style="color:var(--orange-dark)"></i> Novo compromisso</div>
-    <div class="fab-menu-item" onclick="fabAction('nota')"><i class="ti ti-notes" style="color:var(--purple)"></i> Nova nota</div>
     <div class="fab-menu-divider"></div>
     <div class="fab-menu-item" onclick="fabAction('projeto')"><i class="ti ti-folders" style="color:var(--success)"></i> Novo projeto</div>
     <div class="fab-menu-item" onclick="fabAction('rotina')"><i class="ti ti-repeat" style="color:var(--orange-dark)"></i> Nova rotina</div>
@@ -3479,7 +3481,10 @@ let minhasPeriodosVisiveis = (function(){
   return MINHAS_PERIODOS.map(p=>p.id);
 })();
 let reuniaoTab='reunioes'; // sub-aba activa na aba Reuniões
-let reunView=safeLSGet('taskflow_reun_view')||'lista'; // 'lista' | 'mural'
+// FIXO: só Lista (Mural removido a pedido do Diego, jul/2026). NÃO ler do
+// localStorage — quem tivesse 'mural' salvo ficaria preso sem botão p/ sair
+// (foi exatamente o bug do Kanban em allView; ver handoff 15/07 (2)).
+let reunView='lista';
 let reunFiltroTipo=safeLSGet('taskflow_reun_filtro')||'todos'; // 'todos' | 'reuniao' | 'compromisso' | 'rapida'
 let ajudaTab='guia'; // sub-aba activa na aba Ajuda: 'guia' | 'sugestao'
 let _ajudaCat='inicio'; // categoria activa no menu lateral do Guia
@@ -15072,18 +15077,11 @@ function _atualizarTabHeaderActions(){
   const secHover=` onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"`;
   let html='';
   if(currentTab==='reunioes' && reuniaoTab!=='historico'){
-    // Unificado: 'rapida' virou estágio da reunião, não tipo. Normaliza valor antigo persistido.
-    if(reunFiltroTipo==='rapida'){ reunFiltroTipo='reuniao'; safeSetItem('taskflow_reun_filtro','reuniao'); }
-    // Filtro em 2 seções + Todas (cada uma com sua cor/ícone)
-    const _filtroOpts=[
-      {k:'todos',i:'ti-stack-2',l:'Todas',cor:'var(--text2)'},
-      {k:'reuniao',i:'ti-speakerphone',l:'Reuniões',cor:'var(--blue-mid)'},
-      {k:'compromisso',i:'ti-calendar-time',l:'Compromissos',cor:'var(--orange-dark)'},
-    ];
-    const _filtroSel=`<div style="display:flex;gap:3px;background:var(--bg2);padding:3px;border-radius:10px;margin-right:6px">${_filtroOpts.map(f=>{const on=reunFiltroTipo===f.k;return `<button onclick="setReuniaoFiltro('${f.k}')" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:7px 11px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;transition:all .12s;${on?`background:${f.cor};color:#fff`:'background:transparent;color:var(--text3)'}"><i class="ti ${f.i}" style="font-size:15px"></i>${f.l}</button>`;}).join('')}</div>`;
-    const _rvsel='';
-    html=`${_filtroSel}${_rvsel}<button id="reuniao-novo-btn" onclick="toggleReuniaoNovo(event)" style="${pri}"><i class="ti ti-plus"></i> Novo</button>
-          <button id="reuniao-config-btn" onclick="toggleReuniaoConfig(event)" title="Mais opções" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 11px;cursor:pointer;color:var(--text2);font-size:15px;line-height:1;display:inline-flex;align-items:center" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-dots-vertical"></i></button>`;
+    // (jul/2026) Saíram daqui, a pedido do Diego: o filtro de TIPO (Todas|Reuniões|
+    // Compromissos) e o menu ⋮ (Visualização Lista/Mural + Histórico). O recorte
+    // agora é a sub-navbar por PERÍODO dentro da lista, e o Histórico é a última
+    // aba dela. Sobra só o "+ Novo".
+    html=`<button id="reuniao-novo-btn" onclick="toggleReuniaoNovo(event)" style="${pri}"><i class="ti ti-plus"></i> Novo</button>`;
   } else if(currentTab==='anotacoes'){
     const _nvOpts=[{k:'lista',i:'ti-list',l:'Lista'},{k:'mural',i:'ti-layout-board',l:'Mural'}];
     const _nsel = notes.length ? `<div style="display:flex;gap:3px;background:var(--bg2);padding:3px;border-radius:10px;margin-right:6px">${_nvOpts.map(v=>`<button onclick="setNotasView('${v.k}')" title="Visualizar: ${v.l}" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:7px 11px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;${_notasView===v.k?'background:var(--blue-mid);color:#fff':'background:transparent;color:var(--text2)'}"><i class="ti ${v.i}"></i>${v.l}</button>`).join('')}</div>` : '';
@@ -28916,6 +28914,42 @@ function toggleReunGrupo(key){
 }
 
 // ── Render principal da aba
+// ════════════════════════════════════════════════════════════════════
+// SUB-NAVBAR POR PERÍODO na aba Reuniões (jul/2026, pedido do Diego).
+// Substitui o filtro de TIPO (Todas|Reuniões|Compromissos) e o menu ⋮.
+// "Histórico" virou a última aba daqui. Reaproveita os grupos já calculados
+// (cascata mutuamente exclusiva), mapeando cada período p/ os grupos que exibe.
+// Nota: "Essa semana" INCLUI hoje/amanhã (semântica de Minhas Tarefas); os
+// vencidos não encerrados ("Pendentes") entram em Hoje, porque pedem ação.
+// ════════════════════════════════════════════════════════════════════
+const REUN_PERIODOS=[
+  {id:'hoje',         label:'Hoje',           icon:'ti-sun',            keys:['emAndamento','pendentes','hoje']},
+  {id:'amanha',       label:'Amanhã',         icon:'ti-sunset',         keys:['amanha']},
+  {id:'semana',       label:'Essa semana',    icon:'ti-calendar-week',  keys:['emAndamento','pendentes','hoje','amanha','semana']},
+  {id:'prox-semana',  label:'Próxima semana', icon:'ti-calendar-plus',  keys:['proxSemana']},
+  {id:'mais-adiante', label:'Mais adiante',   icon:'ti-calendar-event', keys:['futuras']},
+  {id:'historico',    label:'Histórico',      icon:'ti-chart-bar',      keys:[]},
+];
+let reunPeriodo=safeLSGet('taskflow_reun_periodo')||'hoje';
+function setReunPeriodo(p){
+  reunPeriodo=p;
+  try{ safeSetItem('taskflow_reun_periodo',p); }catch(e){}
+  reuniaoTab = (p==='historico') ? 'historico' : 'reunioes';
+  renderReunioes();
+}
+// grupos=null → sem contadores (usado no Histórico, que não calcula os grupos)
+function _reunSubnavHTML(grupos){
+  return `<div style="display:flex;align-items:center;justify-content:center;gap:2px;border-bottom:1px solid var(--border);margin-bottom:20px;overflow-x:auto">
+    ${REUN_PERIODOS.map(p=>{
+      const active = (p.id==='historico') ? (reuniaoTab==='historico') : (reuniaoTab!=='historico' && reunPeriodo===p.id);
+      const n = (grupos && p.keys.length) ? p.keys.reduce((s,k)=>s+((grupos[k]&&grupos[k].reunioes.length)||0),0) : 0;
+      return `<button onclick="setReunPeriodo('${p.id}')" style="background:none;border:none;border-bottom:2px solid ${active?'var(--blue-mid)':'transparent'};color:${active?'var(--blue-mid)':'var(--text3)'};font-weight:${active?'700':'600'};font-size:12.5px;padding:9px 10px;cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;transition:all .15s">
+        <i class="ti ${p.icon}" style="font-size:14px"></i>${p.label}${n?`<span style="background:${active?'var(--blue-mid)':'var(--bg3)'};color:${active?'#fff':'var(--text3)'};font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px">${n}</span>`:''}
+      </button>`;
+    }).join('')}
+  </div>`;
+}
+
 function renderReunioes(){
   const container=document.getElementById('task-container');
   // Título do topo de volta ao normal
@@ -28933,7 +28967,8 @@ function renderReunioes(){
   const subNav = '';
 
   if(reuniaoTab==='historico'){
-    renderHistoricoReunioes(container, '');
+    // Histórico agora é a última aba da sub-navbar de período (sem contador).
+    renderHistoricoReunioes(container, _reunSubnavHTML(null));
     return;
   }
 
@@ -29110,8 +29145,25 @@ function renderReunioes(){
     </div>`;
   }
 
+  // Sub-navbar por período: define QUAIS grupos aparecem.
+  // Guarda: se saiu do Histórico por outro caminho (setReuniaoTab('reunioes')),
+  // o período ficaria em 'historico' (keys vazias) e a lista viria vazia.
+  if(reunPeriodo==='historico') reunPeriodo='hoje';
+  const _per = REUN_PERIODOS.find(p=>p.id===reunPeriodo) || REUN_PERIODOS[0];
+  const _keysVisiveis = _per.keys;
+  // A sub-navbar vai FORA do wrapper de 720px (senão as 6 abas não cabem e as
+  // pontas ficam cortadas pelo center+overflow). Ver innerHTML mais abaixo.
+  const _subnavHTML=_reunSubnavHTML(grupos);
   let html='';
+  const _totalPeriodo = _keysVisiveis.reduce((s,k)=>s+((grupos[k]&&grupos[k].reunioes.length)||0),0);
+  if(!_totalPeriodo){
+    html+=`<div style="text-align:center;padding:48px 20px;color:var(--text3)">
+      <i class="ti ${_per.icon}" style="font-size:32px;opacity:.5"></i>
+      <div style="margin-top:10px;font-size:14px">Nada em <b>${_per.label.toLowerCase()}</b>.</div>
+    </div>`;
+  }
   ordemKeys.forEach(key=>{
+    if(_keysVisiveis.indexOf(key)<0) return; // fora do período selecionado
     const g=grupos[key];
     if(!g.reunioes.length) return;
     const colapsado=!!_reunGruposColapsados[key];
@@ -29182,9 +29234,11 @@ function renderReunioes(){
     html=`<div class="empty"><i class="ti ti-calendar-event"></i><p>Nenhuma reunião nos próximos dias.</p></div>`;
   }
 
-  const maxW=reunView==='mural'?'1100px':'720px';
-  container.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding-bottom:40px">
-    <div style="width:100%;max-width:${maxW}">
+  // Respiro: afasta a lista do título (pedido do Diego). Mural removido → largura fixa.
+  // Sub-navbar centralizada e mais larga que a lista, p/ as 6 abas caberem inteiras.
+  container.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding-top:22px;padding-bottom:40px">
+    <div style="width:100%;max-width:940px">${_subnavHTML}</div>
+    <div style="width:100%;max-width:720px">
       ${subNav}
       ${html}
     </div>
@@ -29219,13 +29273,8 @@ function renderHistoricoReunioes(container, subNav){
   const lista=Object.values(grupos).sort((a,b)=>a.titulo.localeCompare(b.titulo,'pt-BR'));
 
   if(!lista.length){
-    const headerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;width:100%;max-width:900px">
-      <button onclick="setReuniaoTab('reunioes')" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;padding:6px 0">
-        <i class="ti ti-arrow-left"></i> Voltar para Reuniões
-      </button>
-    </div>`;
-    container.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding-bottom:40px">
-      ${headerHTML}
+    container.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding-top:22px;padding-bottom:40px">
+      <div style="width:100%;max-width:900px">${subNav||''}</div>
       <div class="empty"><i class="ti ti-chart-bar"></i><p>Nenhuma reunião registrada ainda.</p></div>
     </div>`;
     return;
@@ -29283,16 +29332,10 @@ function renderHistoricoReunioes(container, subNav){
   }).join('');
 
   // GUILHERME V3: header com botão Voltar substituindo a subnavbar antiga
-  const headerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;width:100%;max-width:900px">
-    <button onclick="setReuniaoTab('reunioes')" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;padding:6px 0">
-      <i class="ti ti-arrow-left"></i> Voltar para Reuniões
-    </button>
-    <div style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--text)">
-      <i class="ti ti-chart-bar" style="color:var(--blue-mid)"></i> Histórico de Reuniões
-    </div>
-  </div>`;
-  container.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding-bottom:40px">
-    ${headerHTML}
+  // Histórico virou aba da sub-navbar de período: usa o subNav recebido (senão o
+  // Diego cairia aqui sem a navegação p/ voltar). O botão "Voltar" antigo saiu.
+  container.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding-top:22px;padding-bottom:40px">
+    <div style="width:100%;max-width:900px">${subNav||''}</div>
     <div style="width:100%;max-width:900px;display:flex;flex-direction:column;gap:12px">${cardsHTML}</div>
   </div>`;
 }
@@ -30523,7 +30566,7 @@ function openReuniaoView(id){
     </div>`:'';
   })():'';
 
-  document.getElementById('task-container').innerHTML=`<div style="padding-bottom:40px;max-width:1500px;margin:0 auto">
+  document.getElementById('task-container').innerHTML=`<div style="padding-top:22px;padding-bottom:40px;max-width:1500px;margin:0 auto">
     <button onclick="window._activeReuniaoId=null;renderReunioes()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;padding:0;margin-bottom:16px">
       <i class="ti ti-arrow-left"></i> Voltar às reuniões
     </button>

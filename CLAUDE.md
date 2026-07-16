@@ -92,6 +92,33 @@ servidor da Empresa**.
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
 ## Log de handoff (mais recente no topo)
+### 2026-07-15 (8) — Mac de casa — Aba Reuniões: sub-navbar por PERÍODO; saem filtro de tipo, ⋮ e Mural
+- **Sub-navbar por período** (centralizada, onde ficava a lista): **Hoje · Amanhã · Essa semana · Próxima semana ·
+  Mais adiante · Histórico**, com contadores. `REUN_PERIODOS` + `reunPeriodo` (LS `taskflow_reun_periodo`) +
+  `setReunPeriodo` + `_reunSubnavHTML(grupos)`. Reaproveita os **grupos que já existiam** (cascata exclusiva):
+  cada período declara `keys` dos grupos que exibe — mudança contida, sem reescrever a normalização das 3 fontes
+  (meetings / _reunioesRapidas / compromissos).
+  - Semântica: **"Essa semana" INCLUI hoje/amanhã** (como em Minhas Tarefas); **"Pendentes"** (vencidas não
+    encerradas) entram em **Hoje**, porque pedem ação; "antigas/encerradas" só no Histórico.
+- **Removidos** do header (`_atualizarTabHeaderActions`): o filtro de TIPO (`Todas|Reuniões|Compromissos`) e o
+  botão **⋮**. Sobrou só "+ Novo". `setReuniaoFiltro`/`reunFiltroTipo` e `toggleReuniaoConfig` viraram código morto.
+- **Mural removido** (só Lista): `reunView` agora é `let reunView='lista'` **sem ler do localStorage** — quem
+  tivesse 'mural' salvo ficaria preso sem botão p/ sair (é EXATAMENTE o bug do Kanban/allView, ver handoff (2)).
+- ⚠️ **2 bugs meus, achados no teste antes de subir:** (1) `renderHistoricoReunioes` **ignorava** o `subNav` →
+  ao entrar no Histórico a sub-navbar sumia e o Diego ficava sem navegação (o botão "Voltar" antigo foi removido
+  e substituído pela sub-navbar). (2) Ao sair do Histórico por `setReuniaoTab('reunioes')`, `reunPeriodo` ficava
+  em `'historico'` (keys vazias) → lista vazia "Nada em histórico"; adicionada guarda que reseta p/ 'hoje'.
+- **Layout:** sub-navbar vai FORA do wrapper de 720px (num container de 940px) — dentro dele as 6 abas não cabiam
+  e `justify-content:center` + `overflow-x` **cortava as pontas** ("je…" / "His…"). Padding/fonte das abas
+  reduzidos (12.5px / 9px 10px).
+- **Respiro** (pedido do Diego): `padding-top:22px` na lista de Reuniões, no Histórico e **dentro do Painel**
+  (`openReuniaoView`), afastando do título.
+- **FAB:** reunião / reunião rápida / compromisso agora ficam numa **seção própria** (divisor antes e depois);
+  tarefa e nota subiram p/ o primeiro grupo.
+- **Verificado no browser:** 6 abas com contadores (Hoje 1 · Amanhã 2 · Essa semana 3 · Próxima 5 · Mais adiante
+  29 · Histórico), header sem filtro/⋮, `reunView==='lista'`, ida e volta do Histórico com sub-navbar, guarda
+  funcionando, FAB na ordem nova. 0 erros de sintaxe/console.
+
 ### 2026-07-15 (7) — Mac de casa — Modal de reunião ENXUTO: pauta e modelos foram p/ o Painel
 - Pedido do Diego: o modal de criar/editar reunião deve ter só o **essencial** (título, data, hora, tipo, status,
   sala, **recorrência**, quem conduz, participantes). **Pauta principal, Itens da pauta e "Começar de um modelo"
