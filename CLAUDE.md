@@ -102,6 +102,21 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-16 (f) — PC da Empresa — Painel de Reunião: polimentos pós-teste (commits `e685518`, `61c2acb`, PUSHADOS)
+- Lote de ajustes finos que o Diego pediu testando no Pages:
+- **Pauta principal sem destaque azul** (`e685518`): o item da pauta principal tinha fundo azul + borda-esquerda azul + texto azul/negrito;
+  virou item comum (`padding:8px 0;border-bottom`, checkbox borda cinza quando não-feito, texto padrão). Estrela mantida como marcador **cinza** (`var(--text3)`).
+- **Timer vermelho ao ESTOURAR** (`61c2acb`, `iniciarCronometroReuniao`): quando `diff > _reunPlannedMin*60`, o cronômetro fica vermelho + chamativo
+  (pulsa): pill normal com fundo/borda/texto `--danger` + ícone `alert-triangle` + sufixo `+Xmin`; no foco, `.rft-elapsed` vermelho/negrito + barra e
+  ícone vermelhos. Classe **`.reun-timer-over`** + `@keyframes reunTimerPulse`. Só aplica quando estoura (tempo é monotônico; não reseta).
+- **Tarefa ATRASADA** (`reunTarefasHTML`/`tarefaRow`): linha mostra **"⚠ atrasada · \<data>"** em vermelho quando `!done && t.date < today`.
+- **Pill "criada"** (📅 hoje/Nd atrás) **removida** da linha da tarefa (grid 6→5 colunas).
+- **BUG Data corrigido**: `input[type=date]` da nova tarefa tinha `width:130px` numa coluna de `120px` → vazava do fundo bege. Agora
+  `width:100%;box-sizing:border-box;min-width:0` + coluna `132px` (nos 2 grids: header de labels e inputs).
+- **Botão "Próxima" REMOVIDO** da trilha e do cabeçalho: o modal de Finalizar já tem "Agendar próxima e levar assuntos" (linha ~32185) → era
+  informação repetida (o Diego confirmou que essa era a confusão). `abrirProximaReuniaoModal` **continua existindo** (usado pelo modal de encerramento).
+- ⚠️ NÃO testado em navegador; balanço do arquivo idêntico ao HEAD (parênteses/chaves/divs). **Diego confere no Pages (Ctrl+Shift+R).**
+
 ### 2026-07-16 (e) — PC da Empresa — Painel de Reunião: visão padrão em 3 COLUNAS (commit `0fc5a9f`, PUSHADO)
 - Pedido do Diego: dividir o Painel (visão padrão) em **3 colunas: Pauta | Tarefas (maior, no meio) | Decisões**.
 - A coluna esquerda antiga (Pauta+Decisões empilhadas) foi **dividida em 2 colunas** (`.reun-col-pauta` + `.reun-col-dec`); Tarefas
