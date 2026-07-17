@@ -1529,6 +1529,10 @@
   .proj-rail-btn i{font-size:19px}
   .proj-rail-btn span{font-size:8.5px;font-weight:600;text-align:center;line-height:1.1}
   .proj-rail-sep{height:1px;background:var(--border);width:42px;margin:5px 0;flex-shrink:0}
+  .proj-focus-bar{display:none}
+  body.proj-focus .proj-normal-header{display:none!important}
+  body.proj-focus .proj-body{max-width:none!important}
+  body.proj-focus .proj-focus-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:60;background:var(--card);border-bottom:1px solid var(--border);padding:11px 30px;margin:0 -30px 18px}
   .reun-card4{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;min-height:130px}
   .reun-card4-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:6px}
   /* Botões-ícone do topo */
@@ -25655,14 +25659,26 @@ function renderProjectProView(id){
     }
   }
 
-  // Header do projeto — estilo clean (igual Painel de Reunião)
+  // Barra do modo FOCO (só aparece em tela cheia) — espelha a .reun-focus-bar: título + status + progresso.
+  const focusBarHTML = `<div class="proj-focus-bar">
+    <i class="ti ${tipo.icon}" style="font-size:16px;color:${p.cor}"></i>
+    <span style="font-size:15px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:460px">Projeto — ${escapeHTML(p.nome)}</span>
+    <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:${status.color};background:color-mix(in srgb,${status.color} 14%,transparent);padding:3px 10px;border-radius:99px"><i class="ti ${status.icon}" style="font-size:12px"></i> ${status.label}</span>
+    <div style="flex:1"></div>
+    <div style="display:flex;align-items:center;gap:10px;min-width:180px;max-width:280px">
+      <div style="flex:1;height:6px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:${p.cor};width:${prog.pct}%"></div></div>
+      <span style="font-size:13px;font-weight:800;color:${p.cor};white-space:nowrap">${prog.pct}% <span style="font-size:11px;font-weight:600;color:var(--text3)">· ${prog.feitas}/${prog.total}</span></span>
+    </div>
+  </div>`;
+  // Header do projeto — estilo clean (igual Painel de Reunião). No modo FOCO some (a barra + a trilha assumem).
   const headerHTML = `
+    <div class="proj-normal-header">
     ${encerramentoBanner}
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap">
       <div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:6px">
         <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
           <i class="ti ${tipo.icon}" style="font-size:20px;color:${p.cor}"></i>
-          <span style="font-size:21px;font-weight:800;color:var(--text)">${escapeHTML(p.nome)}</span>
+          <span style="font-size:21px;font-weight:800;color:var(--text)">Projeto — ${escapeHTML(p.nome)}</span>
         </div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
@@ -25672,6 +25688,7 @@ function renderProjectProView(id){
         <button class="reun-ico" onclick="salvarProjetoComoTemplate('${p.id}')" title="Salvar como template"><i class="ti ti-template"></i></button>
         <button class="reun-ico" onclick="editarProjectPro('${p.id}')" title="Editar projeto"><i class="ti ti-pencil"></i></button>
       </div>
+    </div>
     </div>`;
 
   // Sub-abas
@@ -25701,9 +25718,9 @@ function renderProjectProView(id){
 
   // Shell (cabeçalho + subnavbar) tem largura FIXA p/ a subnavbar não "pular" entre abas.
   // Só o corpo varia: Tarefas usa planilha larga (1320px); demais abas mantêm 1040px.
-  const _bodyMax = activeProjectProTab==='tarefas' ? 1320 : 1040;
+  const _bodyMax = (activeProjectProTab==='tarefas'||activeProjectProTab==='visao') ? 1320 : 1040;
   const railHTML = _projFocusRailHTML(p);
-  container.innerHTML = `<div class="proj-panel-wrap" style="max-width:1320px;margin:0 auto">${railHTML + headerHTML + tabsHTML + `<div style="max-width:${_bodyMax}px;padding-bottom:60px">${bodyHTML}</div>`}</div>`;
+  container.innerHTML = `<div class="proj-panel-wrap" style="max-width:1320px;margin:0 auto">${railHTML + focusBarHTML + headerHTML + tabsHTML + `<div class="proj-body" style="max-width:${_bodyMax}px;padding-bottom:60px">${bodyHTML}</div>`}</div>`;
   // Dentro do projeto: a topbar mostra o BREADCRUMB (isolado no topo); o título do projeto
   // fica no corpo. Só innerHTML (span auto-dimensionado) — não mexo no font-size do #tab-title
   // pra não vazar pras outras telas (elas voltam a usar textContent = título grande).
@@ -25922,12 +25939,11 @@ function renderProjectProVisao(p, prog){
         const listaProx=proximas.map(t=>`<div style="display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 11px"><i class="ti ti-lock" style="font-size:14px;color:var(--text3);flex-shrink:0"></i><div style="min-width:0;flex:1"><div style="font-size:12.5px;color:var(--text)">${escapeHTML(t.title)}</div><div style="font-size:11px;color:var(--text3)">${_exec(t)}${_setor(t)?' · '+_setor(t):''}</div></div></div>`).join('');
         const coms=(getProComments(p.id)||[]).slice().sort((a,b)=>String(b.criadoEm||'').localeCompare(String(a.criadoEm||''))).slice(0,2);
         const listaComs=coms.map(c=>{ const a=c.autorId?_personById(c.autorId):null; const ini=a?escapeHTML((a.name||'?').trim().slice(0,2).toUpperCase()):'?'; return `<div style="display:flex;gap:9px"><div style="width:26px;height:26px;border-radius:50%;background:color-mix(in srgb,var(--blue-mid) 14%,transparent);color:var(--blue-mid);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${ini}</div><div style="min-width:0"><div style="font-size:12px;color:var(--text)"><b style="font-weight:700">${a?escapeHTML(a.name):'Alguém'}</b> <span style="color:var(--text3);font-size:11px">· ${_ts(c.criadoEm)}</span></div><div style="font-size:12px;color:var(--text2);line-height:1.4">${escapeHTML(c.texto||'')}</div></div></div>`; }).join('');
-        const faixaInf=(proximas.length||listaComs)?`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:14px">${proximas.length?`<div><div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="ti ti-arrow-bar-to-down" style="font-size:14px"></i>Próximas a liberar</div><div style="display:flex;flex-direction:column;gap:7px">${listaProx}</div></div>`:''}${listaComs?`<div><div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="ti ti-message-circle" style="font-size:14px"></i>Últimos comentários</div><div style="display:flex;flex-direction:column;gap:10px">${listaComs}</div></div>`:''}</div>`:'';
-        comandoBloco=`<div style="margin-bottom:16px">
-          <div style="background:color-mix(in srgb,var(--orange) 8%,var(--card));border:1px solid color-mix(in srgb,var(--orange) 30%,var(--border));border-radius:12px;padding:14px 16px">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap"><i class="ti ti-player-play-filled" style="font-size:17px;color:var(--orange)"></i><span style="font-size:13.5px;font-weight:800;color:var(--text)">Acontecendo agora</span><span style="font-size:11.5px;color:var(--text3)">Etapa ${etAtual} de ${totalEt}${faseAtualNome?' · '+faseAtualNome:''}</span></div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">${cardsAgora}</div>
-          </div>${faixaInf}
+        const faixaInf=proximas.length?`<div style="margin-top:16px"><div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="ti ti-arrow-bar-to-down" style="font-size:14px"></i>Próximas a liberar</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px">${listaProx}</div></div>`:'';
+        comandoBloco=`<div style="margin-bottom:22px">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:11px;flex-wrap:wrap"><i class="ti ti-player-play-filled" style="font-size:14px;color:var(--orange)"></i><span style="font-size:12.5px;font-weight:700;color:var(--text2)">Acontecendo agora</span><span style="font-size:11px;color:var(--text3)">· Etapa ${etAtual} de ${totalEt}${faseAtualNome?' · '+faseAtualNome:''}</span></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">${cardsAgora}</div>
+          ${faixaInf}
         </div>`;
       } else if(ord.length){
         comandoBloco=`<div style="margin-bottom:16px;background:color-mix(in srgb,var(--success) 8%,var(--card));border:1px solid color-mix(in srgb,var(--success) 30%,var(--border));border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:11px"><i class="ti ti-circle-check" style="font-size:22px;color:var(--success)"></i><div><div style="font-size:13.5px;font-weight:800;color:var(--text)">Todas as tarefas concluídas</div><div style="font-size:12px;color:var(--text3)">O projeto está pronto para ser encerrado.</div></div></div>`;
@@ -26001,11 +26017,15 @@ function renderProjectProVisao(p, prog){
     </div>
     ${estruturaCorpo}
   </div>`;
-  const resumoBloco=`<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;margin-bottom:18px">${col1}<div style="flex:1 1 320px;min-width:0">${progressoCard}</div></div>`;
+  const resumoBloco=`<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-bottom:22px">${col1}<div style="flex:1 1 320px;min-width:0">${progressoCard}</div></div>`;
   let comentariosBloco='';
-  try{ comentariosBloco=`<div style="margin-top:6px;border-top:1px solid var(--border);padding-top:16px">${renderProjectProAnotacoes(p)}</div>`; }catch(e){ comentariosBloco=''; }
+  try{ comentariosBloco=renderProjectProAnotacoes(p); }catch(e){ comentariosBloco=''; }
 
-  return `${comandoBloco}${resumoBloco}${estruturaBloco}${comentariosBloco}`;
+  // Layout: coluna PRINCIPAL (comando + resumo + estrutura) + COMENTÁRIOS fixos à direita (acompanhamento em tempo real).
+  return `<div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
+    <div style="flex:1 1 540px;min-width:0">${comandoBloco}${resumoBloco}${estruturaBloco}</div>
+    <div style="flex:1 1 300px;min-width:280px"><div style="position:sticky;top:8px"><div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:11px;display:flex;align-items:center;gap:7px"><i class="ti ti-message-circle" style="color:var(--blue-mid)"></i> Comentários</div>${comentariosBloco}</div></div>
+  </div>`;
 }
 
 // ─── ABA: FASES (gerenciar) ──────────────────────────────────────
@@ -26933,50 +26953,94 @@ function renderProjectProTarefas(p){
 
 }
 
-function renderProjectProPessoas(p){
-  const _papel = (id) => {
-    if(id === p.dono)        return {label:'Dono',           cor:p.cor,     icon:'ti-crown'};
-    if(id === p.coordenador) return {label:'1º Coordenador', cor:'#6B46C1', icon:'ti-clipboard-check'};
-    if(id === p.coordenador2)return {label:'2º Coordenador', cor:'#9333ea', icon:'ti-clipboard-list'};
-    return {label:'Membro', cor:'var(--text3)', icon:'ti-user'};
-  };
-  const todos = (p.pessoas||[]).map(id=>people.find(x=>x.id===id)).filter(Boolean);
-  // Ordena: dono > 1º coord > 2º coord > membros
-  todos.sort((a,b)=>{
-    const ord = id => id===p.dono?0 : id===p.coordenador?1 : id===p.coordenador2?2 : 3;
-    return ord(a.id) - ord(b.id);
-  });
-
-  if(!todos.length){
-    return `<div class="empty" style="padding:40px 20px">
-      <i class="ti ti-users" style="font-size:40px;color:var(--text3);opacity:.5"></i>
-      <p>Nenhuma pessoa na equipe ainda</p>
-      <button onclick="abrirModalEquipe('${p.id}')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;margin-top:12px"><i class="ti ti-users-plus"></i> Gerenciar equipe</button>
-    </div>`;
+// Aba Pessoas do PROJETO — mesmo formato do card de papel da Reunião (chip que cicla + card colorido pelo papel),
+// mas os papéis são Dono / Coordenador / Leitor. Sem "presença" (não se aplica a projeto).
+const PROJ_PAPEL={
+  dono:{c:'var(--amber)',    i:'ti-crown',     l:'Dono',        tint:'14%'},
+  coordenador:{c:'var(--blue-mid)', i:'ti-user-star', l:'Coordenador', tint:'12%'},
+  leitor:{c:'var(--text3)',  i:'ti-eye',       l:'Leitor',      tint:'10%'}
+};
+function _papelDaPessoaProjeto(p, pid){
+  if(p.dono===pid) return 'dono';
+  if(p.coordenador===pid || p.coordenador2===pid) return 'coordenador';
+  return 'leitor';
+}
+function _papelOrdProjeto(p, pid){ return p.dono===pid?0:(p.coordenador===pid?1:(p.coordenador2===pid?2:3)); }
+// Um clique no chip cicla o papel: Leitor → Coordenador → Dono → Leitor.
+function _ciclarPapelProjeto(projectId, pid){
+  const p=projectsPro.find(x=>x.id===projectId); if(!p) return;
+  const cur=_papelDaPessoaProjeto(p,pid);
+  const next={leitor:'coordenador',coordenador:'dono',dono:'leitor'}[cur]||'leitor';
+  _setPapelProjeto(projectId,pid,next);
+}
+function _setPapelProjeto(projectId, pid, papel){
+  const p=projectsPro.find(x=>x.id===projectId); if(!p) return;
+  if(!_ppPodeGerenciar(p)){ toast('🔒 Só o dono e os coordenadores podem mudar papéis'); return; }
+  const eraDono=p.dono===pid;
+  // tira o pid dos slots de coordenador (será recolocado conforme o novo papel)
+  if(p.coordenador===pid) p.coordenador=null;
+  if(p.coordenador2===pid) p.coordenador2=null;
+  if(papel==='dono'){
+    p.dono=pid; // dono é único: o anterior deixa de ser dono (vira leitor)
+  } else if(papel==='coordenador'){
+    if(eraDono) p.dono=null;
+    if(!p.coordenador) p.coordenador=pid;
+    else if(!p.coordenador2) p.coordenador2=pid;
+    else p.coordenador2=pid; // já há 2 coordenadores → assume o 2º slot
+  } else { // leitor
+    if(eraDono) p.dono=null;
   }
-
-  const pessoasHTML = todos.map(pe=>{
-    const papel = _papel(pe.id);
-    const _projTasks = tasks.filter(t=>t.projectProId===p.id && t.executor===pe.id);
-    const contTarefas = _projTasks.length;
-    const contFeitas  = _projTasks.filter(t=>t.done).length;
-    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px">
-      <div style="width:40px;height:40px;border-radius:50%;background:${papel.cor};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0">${pe.name.charAt(0).toUpperCase()}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:700;color:var(--text)">${escapeHTML(pe.name)}</div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
-          <span style="font-size:10px;font-weight:700;color:${papel.cor};background:${papel.cor}18;padding:2px 7px;border-radius:99px;text-transform:uppercase;letter-spacing:.3px"><i class="ti ${papel.icon}" style="font-size:10px"></i> ${papel.label}</span>
-          ${contTarefas>0?`<span style="font-size:11px;color:var(--text3)">${contFeitas}/${contTarefas} tarefas</span>`:''}
-        </div>
-        ${pe.role?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${escapeHTML(pe.role)}</div>`:''}
-      </div>
-      ${pe.id !== p.dono ? `<button onclick="removerPessoaProjPro('${p.id}','${pe.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:6px;border-radius:6px;transition:all .15s" title="Remover" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-x" style="font-size:15px"></i></button>` : '<div style="width:28px"></div>'}
+  if(!(p.pessoas||[]).includes(pid)) (p.pessoas=p.pessoas||[]).push(pid);
+  saveProjectPro_db(p); render();
+}
+function _toggleParticipanteProjeto(projectId, pid){
+  const p=projectsPro.find(x=>x.id===projectId); if(!p) return;
+  if(!_ppPodeGerenciar(p)){ toast('🔒 Só o dono e os coordenadores podem mexer na equipe'); return; }
+  p.pessoas=p.pessoas||[];
+  if(p.pessoas.includes(pid)){
+    p.pessoas=p.pessoas.filter(x=>x!==pid);
+    if(p.dono===pid) p.dono=null;
+    if(p.coordenador===pid) p.coordenador=null;
+    if(p.coordenador2===pid) p.coordenador2=null;
+  } else { p.pessoas.push(pid); }
+  saveProjectPro_db(p); render();
+}
+function renderProjectProPessoas(p){
+  const parts=new Set(p.pessoas||[]);
+  const _ppl=[...people].sort((a,b)=>{
+    const pa=parts.has(a.id)?0:1, pb=parts.has(b.id)?0:1; if(pa!==pb) return pa-pb;
+    const oa=_papelOrdProjeto(p,a.id), ob=_papelOrdProjeto(p,b.id); if(oa!==ob) return oa-ob;
+    return a.name.localeCompare(b.name,'pt-BR');
+  });
+  const gridRows=_ppl.map(pe=>{
+    const on=parts.has(pe.id);
+    if(!on){
+      return `<div onclick="_toggleParticipanteProjeto('${p.id}','${pe.id}')" style="display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;cursor:pointer;border:1px solid var(--border);background:var(--card);transition:all .12s" title="Adicionar à equipe">
+        <div style="width:16px;height:16px;border-radius:4px;border:2px solid var(--border);flex-shrink:0"></div>
+        <span style="flex:1;min-width:0;font-size:12.5px;font-weight:500;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(pe.name)}</span>
+      </div>`;
+    }
+    const role=_papelDaPessoaProjeto(p,pe.id);
+    const rc=PROJ_PAPEL[role]||PROJ_PAPEL.leitor;
+    return `<div onclick="_toggleParticipanteProjeto('${p.id}','${pe.id}')" style="display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:8px;cursor:pointer;border:1px solid ${rc.c};background:color-mix(in srgb,${rc.c} ${rc.tint},transparent);transition:all .12s" title="Clique p/ tirar da equipe">
+      <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${rc.c};background:${rc.c};display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="font-size:10px;color:#fff"></i></div>
+      <span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(pe.name)}</span>
+      <button onclick="event.stopPropagation();_ciclarPapelProjeto('${p.id}','${pe.id}')" title="Papel: ${rc.l} — clique p/ trocar" style="display:inline-flex;align-items:center;gap:4px;background:color-mix(in srgb,${rc.c} 16%,transparent);border:1px solid ${rc.c};color:${rc.c};border-radius:7px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0"><i class="ti ${rc.i}" style="font-size:13px"></i> ${rc.l}</button>
     </div>`;
-  }).join('');
-
-  return `
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin-bottom:14px">${pessoasHTML}</div>
-    <button onclick="abrirModalEquipe('${p.id}')" style="background:var(--bg2);border:1px dashed var(--border);border-radius:10px;padding:10px 16px;cursor:pointer;color:var(--text2);font-size:12px;font-weight:600;font-family:inherit;width:100%;transition:all .15s" onmouseover="this.style.borderColor='${p.cor}';this.style.color='${p.cor}'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-users-plus"></i> Gerenciar equipe</button>`;
+  }).join('') || '<div style="grid-column:1/-1;font-size:13px;color:var(--text3);font-style:italic;padding:10px">Nenhuma pessoa cadastrada.</div>';
+  return `<div style="max-width:900px;margin:0 auto">
+    <div class="reun-card4">
+      <div class="reun-card4-title"><span><i class="ti ti-users" style="color:var(--blue-mid)"></i> Equipe do projeto <span style="font-size:11px;font-weight:500;color:var(--text3)">· ${parts.size} pessoa${parts.size!==1?'s':''}</span></span></div>
+      <div style="font-size:11.5px;color:var(--text3);margin:-4px 0 12px">Clique no nome p/ (des)marcar quem participa · o chip de <b>papel</b> cicla Leitor → Coordenador → Dono.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:6px">${gridRows}</div>
+      <div style="margin-top:14px;padding:10px 12px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text3);line-height:1.8">
+        <b style="color:var(--text2)">Papéis:</b>
+        <span style="margin-left:6px;color:var(--amber);font-weight:700"><i class="ti ti-crown"></i> Dono</span> — responsável, vê tudo e encerra
+        <span style="margin:0 6px">·</span><span style="color:var(--blue-mid);font-weight:700"><i class="ti ti-user-star"></i> Coordenador</span> — gerencia fases, setores e tarefas
+        <span style="margin:0 6px">·</span><span style="font-weight:700"><i class="ti ti-eye"></i> Leitor</span> — só acompanha
+      </div>
+    </div>
+  </div>`;
 }
 
 // ─── MODAL DE EQUIPE (adicionar/remover pessoas + definir papéis) ──
@@ -29377,6 +29441,8 @@ function renderReunioes(){
   const _subnavHTML=_reunSubnavHTML(grupos);
   let html='';
   const _totalPeriodo = _keysVisiveis.reduce((s,k)=>s+((grupos[k]&&grupos[k].reunioes.length)||0),0);
+  // Se o período selecionado tem só UM grupo com reuniões, o cabeçalho do grupo apenas repetiria a sub-navbar → esconde.
+  const _umGrupoSo = _keysVisiveis.filter(k=>grupos[k]&&grupos[k].reunioes.length).length<=1;
   if(!_totalPeriodo){
     html+=`<div style="text-align:center;padding:48px 20px;color:var(--text3)">
       <i class="ti ${_per.icon}" style="font-size:32px;opacity:.5"></i>
@@ -29389,14 +29455,15 @@ function renderReunioes(){
     if(!g.reunioes.length) return;
     const colapsado=!!_reunGruposColapsados[key];
     const chevronIcon=colapsado?'ti-chevron-right':'ti-chevron-down';
+    const _colap = !_umGrupoSo && colapsado;
     html+=`<div style="margin-bottom:16px">
-      <div onclick="toggleReunGrupo('${key}')" style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:6px 2px 7px;border-bottom:1px solid var(--border);margin-bottom:${colapsado?'0':'10px'};user-select:none">
+      ${_umGrupoSo?'':`<div onclick="toggleReunGrupo('${key}')" style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:6px 2px 7px;border-bottom:1px solid var(--border);margin-bottom:${colapsado?'0':'10px'};user-select:none">
         <i class="ti ${chevronIcon}" style="font-size:13px;color:var(--text3);transition:transform .2s"></i>
         <i class="ti ${g.icon}" style="font-size:13px;color:${g.cor}"></i>
         <span style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">${g.label}</span>
         <span style="font-size:10px;font-weight:600;color:var(--text3);background:var(--bg2);padding:1px 7px;border-radius:99px">${g.reunioes.length}</span>
-      </div>
-      ${colapsado?'':(()=>{
+      </div>`}
+      ${_colap?'':(()=>{
         // Separa rápidas e compromissos das formais — só reuniões formais formam séries
         const _formais=g.reunioes.filter(m=>!m._rapida && !m._compromisso);
         const _rapidas=g.reunioes.filter(m=>m._rapida);
@@ -30933,7 +31000,7 @@ function openReuniaoView(id, _opts){
 
       <!-- Barra superior do modo foco (só título + status + timer + presença) -->
       <div class="reun-focus-bar">
-        <span style="font-size:15px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px">${escapeHTML(m.title)}</span>
+        <span style="font-size:15px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:360px">${/^\s*reuni/i.test(m.title||'')?escapeHTML(m.title):'Reunião — '+escapeHTML(m.title)}</span>
         <span class="reun-status ${st.cls}" style="font-size:10px">${st.label}</span>
         <div id="reun-focus-timer-${m.id}" data-inicio="${m.inicioReal||''}" data-acumulado="${m.tempoAcumulado||0}" data-planned="${_reunPlannedMin(m)}" style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:99px;padding:5px 14px;min-width:210px">
           <i class="ti ti-${m.pausadoReuniao?'player-pause':'clock-play'}" style="color:${m.pausadoReuniao?'var(--amber)':'var(--success)'};font-size:15px"></i>
@@ -30948,7 +31015,7 @@ function openReuniaoView(id, _opts){
       <div class="reun-normal-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
         <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
           <div style="display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap">
-            <span style="font-size:20px;font-weight:800;color:var(--text)">${escapeHTML(m.title)}</span>
+            <span style="font-size:20px;font-weight:800;color:var(--text)">${/^\s*reuni/i.test(m.title||'')?escapeHTML(m.title):'Reunião — '+escapeHTML(m.title)}</span>
             <span class="reun-status ${st.cls}" style="font-size:10px">${st.label}</span>
             ${m.nivel==='rapida'?`<span style="font-size:10px;font-weight:800;color:var(--purple);background:color-mix(in srgb,var(--purple) 14%,transparent);padding:2px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-bolt" style="font-size:11px"></i> rápida</span>`:''}
           </div>

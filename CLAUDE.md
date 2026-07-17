@@ -102,6 +102,30 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-16 (9) — Mac de casa — Projetos: leva de refinamentos do Diego (pós-teste no Pages)
+- 8 ajustes pedidos pelo Diego depois de testar o Painel completo:
+- **Aba Pessoas do projeto = card de papel igual ao da Reunião** (`renderProjectProPessoas` reescrita espelhando
+  `_reunPessoasInlineHTML`): grid de cards, card colorido pelo papel, chip que **cicla Leitor → Coordenador → Dono**.
+  Novos: `PROJ_PAPEL` (Dono=coroa âmbar · Coordenador=user-star azul · Leitor=olho cinza), `_ciclarPapelProjeto`,
+  `_setPapelProjeto` (Dono é único; Coordenador ocupa `coordenador`→`coordenador2`), `_toggleParticipanteProjeto`,
+  `_papelDaPessoaProjeto`. SEM "presença" (não se aplica a projeto). Legenda no rodapé.
+- **Modo foco do projeto ganhou a MESMA barra-header da Reunião:** `.proj-focus-bar` (sticky, título + status +
+  progresso) espelha `.reun-focus-bar`. No foco, o header normal (ícones + "Marcar como concluído") some
+  (`body.proj-focus .proj-normal-header{display:none}`) — a trilha assume; no modo normal ele volta.
+- **Título com prefixo:** projeto → "Projeto — <nome>" (header + barra de foco). Reunião → "Reunião — <nome>" com
+  GUARDA `/^\s*reuni/i` p/ não duplicar em reuniões já nomeadas com "Reuni..." (barra de foco + normal-header).
+- **"Acontecendo agora" mais discreto:** removido o container âmbar; virou só um título pequeno cinza + ícone laranja
+  + os cards. **Largura total + respiro:** `_bodyMax` da 'visao' subiu p/ 1320; no foco `.proj-body{max-width:none}`;
+  gaps maiores.
+- **Comentários na COLUNA DIREITA** (acompanhamento em tempo real): `renderProjectProVisao` virou 2 colunas —
+  principal (comando + resumo + estrutura) | comentários (`renderProjectProAnotacoes`) fixos (`position:sticky`).
+  Removido o "Últimos comentários" duplicado do bloco de comando.
+- **Reuniões — repetição de período:** quando o período selecionado (sub-navbar) tem só UM grupo com reuniões, o
+  cabeçalho do grupo repetia o nome → agora escondido (`_umGrupoSo` em `renderReunioes`). Vários grupos = mantém.
+- **VERIFICADO no navegador:** modo foco (barra "Projeto —", header sumido, 2 colunas, acontecendo discreto),
+  aba Pessoas (cards coloridos + ciclo Leitor→Coord→Dono, coord2 ok), modo normal (header volta), Reuniões período
+  Amanhã sem cabeçalho repetido. 0 erros de console. Sintaxe 0 erros (jsc). Commit: o deste push.
+
 ### 2026-07-16 (8) — Mac de casa — Projetos: PAINEL COMPLETO (ver + fazer tudo numa tela)
 - Correção de CONCEITO do Diego (testando no Pages): o **Painel NÃO é um resumo** — é a tela onde se **VÊ e FAZ tudo**
   (criar fase, criar setor, criar tarefa, concluir, ler/escrever comentários) sem trocar de aba. Os ícones da trilha
