@@ -24986,10 +24986,10 @@ function _projFocusRailHTML(p){
     <button class="proj-rail-btn" onclick="setProjectProTab('visao')" style="${A('visao')}" title="Painel — visão geral do projeto"><i class="ti ti-layout-dashboard"></i><span>Painel</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('fases')" style="${A('fases')}" title="Fases"><i class="ti ti-layout-rows"></i><span>Fases</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('tarefas')" style="${A('tarefas')}" title="Tarefas"><i class="ti ti-checklist"></i><span>Tarefas</span></button>
-    <button class="proj-rail-btn" onclick="setProjectProTab('anotacoes')" style="${A('anotacoes')}" title="Comentários"><i class="ti ti-message-circle"></i><span>Comentários</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('pessoas')" style="${A('pessoas')}" title="Pessoas — equipe do projeto"><i class="ti ti-users"></i><span>Pessoas</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('info')" style="${A('info')}" title="Info — detalhes do projeto"><i class="ti ti-info-circle"></i><span>Info</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('analise')" style="${A('analise')}" title="Análise"><i class="ti ti-chart-arcs"></i><span>Análise</span></button>
+    <button class="proj-rail-btn" onclick="setProjectProTab('anotacoes')" style="${A('anotacoes')}" title="Comentários"><i class="ti ti-message-circle"></i><span>Comentários</span></button>
     <button class="proj-rail-btn" onclick="editarProjectPro('${p.id}')" title="Editar projeto (nome, prazo, cor)"><i class="ti ti-pencil"></i><span>Editar</span></button>
     <div style="flex:1"></div>
     <button class="proj-rail-btn" onclick="_selecionarStatusProjeto('${p.id}','concluido')" style="color:var(--success)" title="Finalizar projeto"><i class="ti ti-flag"></i><span>Finalizar</span></button>
@@ -25680,6 +25680,7 @@ function renderProjectProView(id){
     </div>`;
 
   // Sub-abas — mesma lógica do Painel de Reunião: "Painel" = trabalho; Pessoas/Info = referência.
+  const _nComs=(typeof getProComments==='function'?(getProComments(p.id)||[]).length:0);
   const subTabs = [
     {id:'visao',     label:'Painel',      icon:'ti-layout-dashboard'},
     {id:'fases',     label:'Fases',       icon:'ti-layout-rows'},
@@ -25687,7 +25688,7 @@ function renderProjectProView(id){
     {id:'pessoas',   label:'Pessoas',     icon:'ti-users'},
     {id:'info',      label:'Info',        icon:'ti-info-circle'},
     {id:'analise',   label:'Análise',     icon:'ti-chart-arcs'},
-    {id:'anotacoes', label:'Comentários', icon:'ti-message-circle'},
+    {id:'anotacoes', label:'Comentários'+(_nComs?` (${_nComs})`:''), icon:'ti-message-circle'},
   ];
   const tabsHTML = `
     <div class="proj-subtabs" style="display:flex;gap:4px;margin:14px 0 18px;border-bottom:1px solid var(--border);overflow-x:auto;overflow-y:hidden">
