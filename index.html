@@ -24975,8 +24975,7 @@ function _toggleProjFocus(){
 function _exitProjFocus(){
   window._projFocus = false;
   document.body.classList.remove('proj-focus');
-  if(activeProjectProTab==='pessoas') activeProjectProTab='visao'; // 'pessoas' só existe na trilha, não nas abas horizontais
-  render();
+  render(); // Pessoas/Info agora existem também nas abas horizontais — nada a resetar
 }
 function _projRailActive(v){ return activeProjectProTab===v ? 'background:color-mix(in srgb,var(--blue-mid) 12%,transparent);color:var(--blue-mid)' : ''; }
 function _projFocusRailHTML(p){
@@ -24989,6 +24988,7 @@ function _projFocusRailHTML(p){
     <button class="proj-rail-btn" onclick="setProjectProTab('tarefas')" style="${A('tarefas')}" title="Tarefas"><i class="ti ti-checklist"></i><span>Tarefas</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('anotacoes')" style="${A('anotacoes')}" title="Comentários"><i class="ti ti-message-circle"></i><span>Comentários</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('pessoas')" style="${A('pessoas')}" title="Pessoas — equipe do projeto"><i class="ti ti-users"></i><span>Pessoas</span></button>
+    <button class="proj-rail-btn" onclick="setProjectProTab('info')" style="${A('info')}" title="Info — detalhes do projeto"><i class="ti ti-info-circle"></i><span>Info</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('analise')" style="${A('analise')}" title="Análise"><i class="ti ti-chart-arcs"></i><span>Análise</span></button>
     <button class="proj-rail-btn" onclick="editarProjectPro('${p.id}')" title="Editar projeto (nome, prazo, cor)"><i class="ti ti-pencil"></i><span>Editar</span></button>
     <div style="flex:1"></div>
@@ -25572,25 +25572,13 @@ function renderProjectProView(id){
     .map(id=>people.find(x=>x.id===id)).filter(Boolean);
 
 
-  // Linha de pessoas no header — só nomes, discreto
-  const _pessoaTxt=(pp,role)=>pp?`<span><b style="color:var(--text2);font-weight:600">${escapeHTML(pp.name)}</b> <span style="color:var(--text3)">· ${role}</span></span>`:'';
-  const _linhaPessoas=[_pessoaTxt(dono,'Dono'),_pessoaTxt(coord,'1º Coord.'),_pessoaTxt(coord2,'2º Coord.')].filter(Boolean).join('');
-  const pessoasHeader = _linhaPessoas
-    ? `<div style="font-size:12px;color:var(--text3);margin-top:8px;display:flex;gap:14px;flex-wrap:wrap">${_linhaPessoas}</div>`
-    : '';
-
-  // Bloco de progresso (vai no espaço do meio)
-  const progressoBloco = `
-    <div style="flex:1;min-width:200px;max-width:340px;display:flex;flex-direction:column;justify-content:center;gap:8px">
-      <div style="display:flex;align-items:baseline;gap:8px">
-        <span style="font-size:28px;font-weight:800;color:${p.cor};line-height:1">${prog.pct}%</span>
-        <span style="font-size:12px;color:var(--text3)">${prog.feitas}/${prog.total} concluídas</span>
-        ${prog.atrasadas>0?`<span style="font-size:11px;color:var(--danger);font-weight:700;margin-left:4px"><i class="ti ti-alert-triangle"></i> ${prog.atrasadas} atrasada${prog.atrasadas>1?'s':''}</span>`:''}
-      </div>
-      <div style="height:8px;background:var(--bg2);border-radius:99px;overflow:hidden">
-        <div style="height:100%;background:linear-gradient(90deg,${p.cor},${p.cor}cc);width:${prog.pct}%;transition:width .4s cubic-bezier(.4,0,.2,1)"></div>
-      </div>
-    </div>`;
+  // Progresso COMPACTO no header (mesma pill da barra de foco): vivo, 1 linha, sem card no corpo.
+  const headerProgressoHTML = prog.total>0 ? `
+    <div style="display:flex;align-items:center;gap:10px;min-width:170px;max-width:280px;flex:0 1 auto">
+      <div style="flex:1;height:6px;background:var(--bg2);border-radius:99px;overflow:hidden;min-width:80px"><div style="height:100%;background:${p.cor};width:${prog.pct}%;transition:width .3s"></div></div>
+      <span style="font-size:13px;font-weight:800;color:${p.cor};white-space:nowrap">${prog.pct}% <span style="font-size:11px;font-weight:600;color:var(--text3)">· ${prog.feitas}/${prog.total}</span></span>
+      ${prog.atrasadas>0?`<span style="font-size:11px;color:var(--danger);font-weight:700;white-space:nowrap"><i class="ti ti-alert-triangle"></i> ${prog.atrasadas}</span>`:''}
+    </div>` : '';
 
   // Banner de pré-fechamento (se coordenador já pré-fechou)
   let encerramentoBanner = '';
@@ -25681,21 +25669,23 @@ function renderProjectProView(id){
           <span style="font-size:21px;font-weight:800;color:var(--text)">Projeto — ${escapeHTML(p.nome)}</span>
         </div>
       </div>
+      ${headerProgressoHTML}
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
         <button class="reun-ico" onclick="_toggleProjFocus()" title="Abrir em tela cheia (modo foco)"><i class="ti ti-arrows-maximize"></i></button>
         ${ajudaIconHTML}
-        <button class="reun-ico" onclick="abrirModalEquipe('${p.id}')" title="Participantes"><i class="ti ti-users"></i></button>
         <button class="reun-ico" onclick="salvarProjetoComoTemplate('${p.id}')" title="Salvar como template"><i class="ti ti-template"></i></button>
         <button class="reun-ico" onclick="editarProjectPro('${p.id}')" title="Editar projeto"><i class="ti ti-pencil"></i></button>
       </div>
     </div>
     </div>`;
 
-  // Sub-abas
+  // Sub-abas — mesma lógica do Painel de Reunião: "Painel" = trabalho; Pessoas/Info = referência.
   const subTabs = [
-    {id:'visao',     label:'Visão geral', icon:'ti-layout-dashboard'},
+    {id:'visao',     label:'Painel',      icon:'ti-layout-dashboard'},
     {id:'fases',     label:'Fases',       icon:'ti-layout-rows'},
     {id:'tarefas',   label:'Tarefas',     icon:'ti-checklist'},
+    {id:'pessoas',   label:'Pessoas',     icon:'ti-users'},
+    {id:'info',      label:'Info',        icon:'ti-info-circle'},
     {id:'analise',   label:'Análise',     icon:'ti-chart-arcs'},
     {id:'anotacoes', label:'Comentários', icon:'ti-message-circle'},
   ];
@@ -25713,6 +25703,7 @@ function renderProjectProView(id){
   else if(activeProjectProTab === 'fases') bodyHTML = renderProjectProFases(p);
   else if(activeProjectProTab === 'tarefas') bodyHTML = renderProjectProTarefas(p);
   else if(activeProjectProTab === 'pessoas') bodyHTML = renderProjectProPessoas(p);
+  else if(activeProjectProTab === 'info')    bodyHTML = renderProjectProInfo(p, prog);
   else if(activeProjectProTab === 'analise') bodyHTML = renderProjectProAnalise(p);
   else if(activeProjectProTab === 'anotacoes') bodyHTML = renderProjectProAnotacoes(p);
 
@@ -25727,8 +25718,7 @@ function renderProjectProView(id){
   const _tt=document.getElementById('tab-title'); if(_tt){ _tt.style.display=''; _tt.innerHTML=breadcrumbHTML; }
   const _ts=document.getElementById('tab-sub'); if(_ts) _ts.style.display='none';
   const _ppa=document.getElementById('pp-header-actions'); if(_ppa) _ppa.style.display='none';
-  // Visão geral: largura personalizada das colunas + separador arrastável
-  if(activeProjectProTab==='visao'){ if(typeof _loadPpColW==='function') _loadPpColW(); if(typeof _initPpColResizer==='function') _initPpColResizer(); }
+  // (jul/2026) O Painel não tem mais colunas redimensionáveis — resizer/colW ficaram inertes.
   // Modo foco: reflete a classe na montagem + registra o Esc uma única vez (espelha o Painel de Reunião).
   document.body.classList.toggle('proj-focus', !!window._projFocus);
   if(!window._projFocusEscWired){
@@ -25781,129 +25771,10 @@ function _initPpColResizer(){
 
 // ─── ABA: VISÃO GERAL ────────────────────────────────────────────
 function renderProjectProVisao(p, prog){
-  const nFases = (p.fases||[]).length;
-  const nPessoas = (p.pessoas||[]).length;
-
-  // Próxima fase (primeira não concluída)
-  let proximaFase = null;
-  (p.fases||[]).forEach(f=>{
-    if(proximaFase) return;
-    const fp = _calcularProgressoFase(f);
-    if(fp.pct < 100) proximaFase = {f, fp};
-  });
-
-  // Cards de resumo — o card de conclusão usa a MESMA fonte da aba Análise (_ppAnalise),
-  // para Visão geral e Análise nunca se contradizerem (concluído real vs previsão do cronograma).
-  const _an = _ppAnalise(p);
-  let _conclCard = null;
-  if(_an.baseFimUsada){
-    const _s = _an.saldoDias; // null se o projeto não tem prazo final
-    const _estoura = _s!=null && _s>0;
-    const _sub = _s==null ? '' :
-      _s===0 ? 'no prazo' :
-      _an.concluido ? (_s>0 ? `${_s}d de atraso` : `${-_s}d adiantado`) :
-                      (_s>0 ? `${_s}d de atraso` : `${-_s}d de folga`);
-    _conclCard = {
-      icon: _estoura ? 'ti-alert-triangle' : 'ti-flag-check',
-      label: _an.concluido ? 'Concluído em' : (_an.previsto ? 'Conclusão prevista' : 'Conclusão'),
-      valor: `<span style="display:inline-block;vertical-align:middle;line-height:1.2">${formatDate(_an.baseFimUsada)}${_sub?`<br><span style="font-size:12px;font-weight:600">${_sub}</span>`:''}</span>`,
-      cor: _estoura ? 'var(--danger)' : (_s!=null ? 'var(--success)' : 'var(--text2)'),
-    };
-  }
-  const temFase=nFases>0;
+  // ── PAINEL = área de TRABALHO: "Acontecendo agora" + Estrutura (fases→setores→tarefas) + Comentários. ──
+  // As infos estáticas (tipo/datas/dono/status/stats/progresso) moravam aqui em cards; saíram para a
+  // aba "Info" (renderProjectProInfo) — poluíam a área de trabalho sem mudar nunca (Diego, jul/2026).
   const temTarefa=prog.total>0;
-
-  const tipo = (typeof PP_TIPOS!=='undefined' && (PP_TIPOS[p.tipo]||PP_TIPOS.outro)) || {icon:'ti-folder',label:''};
-  const dono   = p.dono         ? people.find(x=>x.id===p.dono)         : null;
-  const coord  = p.coordenador  ? people.find(x=>x.id===p.coordenador)  : null;
-  const coord2 = p.coordenador2 ? people.find(x=>x.id===p.coordenador2) : null;
-  // Linha de pessoa do card de infos (convenção do HUB: Dono = coroa âmbar; coordenador = estrela azul)
-  const _ppLinha=(pp,role,icon,cor)=>pp?`<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2);min-width:0"><i class="ti ${icon}" style="font-size:15px;color:${cor};flex-shrink:0"></i><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(pp.name)}</span><span style="color:var(--text3);white-space:nowrap;flex-shrink:0"> · ${role}</span></div>`:'';
-  const _blocoPessoas=[
-    _ppLinha(dono,'Dono','ti-crown','var(--amber)'),
-    _ppLinha(coord,'1º Coord.','ti-user-star','var(--blue-mid)'),
-    _ppLinha(coord2,'2º Coord.','ti-user-star','var(--blue-mid)'),
-  ].filter(Boolean).join('');
-
-  // ── COLUNA 1: infos do projeto (tipo/início/prazo + dono/coordenadores) + indicadores empilhados ──
-  const infoCard = `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:9px">
-    <div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2)"><i class="ti ${tipo.icon}" style="font-size:15px;color:var(--text3)"></i>${escapeHTML(tipo.label||'Projeto')}</div>
-    ${p.prazoInicio?`<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2)"><i class="ti ti-calendar-event" style="font-size:15px;color:var(--text3)"></i>Início: ${formatDate(p.prazoInicio)}</div>`:''}
-    ${p.prazoFim?`<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2)"><i class="ti ti-calendar-due" style="font-size:15px;color:var(--text3)"></i>Prazo: ${formatDate(p.prazoFim)}</div>`:''}
-    ${_blocoPessoas?`<div style="border-top:1px solid var(--border);padding-top:9px;display:flex;flex-direction:column;gap:9px">${_blocoPessoas}</div>`:''}
-  </div>`;
-  const statCard=(icon,label,valor,cor)=>`<div style="display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 14px">
-    <i class="ti ${icon}" style="font-size:18px;color:${cor}"></i>
-    <div style="flex:1;min-width:0"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600">${label}</div></div>
-    <div style="font-size:19px;font-weight:800;color:${cor}">${valor}</div>
-  </div>`;
-  // Card de STATUS — clicável (abre o menu de troca). Leva o id pp-status-badge, que ancora abrirMenuStatusProjeto.
-  const _st = (typeof PP_STATUS!=='undefined' && (PP_STATUS[p.status]||PP_STATUS.planejamento)) || {label:'—',color:'var(--text3)',icon:'ti-circle'};
-  // Fundo/borda com um tom BEM fraco da cor do status (color-mix funciona com hex e var(), e acompanha o tema).
-  const _stBg = `color-mix(in srgb, ${_st.color} 9%, var(--card))`;
-  const _stBd = `color-mix(in srgb, ${_st.color} 22%, var(--border))`;
-  const statusCard = `<div id="pp-status-badge" onclick="event.stopPropagation();abrirMenuStatusProjeto('${p.id}',event)" title="Mudar status" style="display:flex;align-items:center;gap:11px;background:${_stBg};border:1px solid ${_stBd};border-radius:10px;padding:11px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='${_st.color}'" onmouseout="this.style.borderColor='${_stBd}'">
-    <i class="ti ${_st.icon}" style="font-size:18px;color:${_st.color}"></i>
-    <div style="flex:1;min-width:0"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600">Status</div></div>
-    <span style="font-size:12.5px;font-weight:800;color:${_st.color};text-transform:uppercase;letter-spacing:.3px;white-space:nowrap">${_st.label}</span>
-    <i class="ti ti-chevron-down" style="font-size:13px;color:var(--text3);flex-shrink:0"></i>
-  </div>`;
-  const col1 = `<div class="pp-col1" style="flex:0 0 var(--pp-col1-w,300px);min-width:0;display:flex;flex-direction:column;gap:12px">
-    ${infoCard}
-    ${statusCard}
-    ${statCard('ti-checklist','Tarefas',`${prog.feitas}/${prog.total}`,'var(--blue-mid)')}
-    ${statCard('ti-alert-triangle','Atrasadas',prog.atrasadas,prog.atrasadas>0?'var(--danger)':'var(--text3)')}
-    ${statCard('ti-users','Pessoas',nPessoas,'var(--orange)')}
-  </div>`;
-
-  // ── COLUNA 2: progresso (% + barra) + fases do projeto ──
-  const conclLine = _conclCard
-    ? `<div style="display:flex;align-items:center;gap:6px;margin-top:11px;font-size:12px;font-weight:600;color:${_conclCard.cor}"><i class="ti ${_conclCard.icon}" style="font-size:14px"></i>${_conclCard.label}: ${formatDate(_an.baseFimUsada)}</div>`
-    : '';
-  const progressoCard = `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-      <span style="font-size:13px;font-weight:700;color:var(--text)">Progresso do projeto</span>
-      <span style="font-size:15px;font-weight:800;color:${p.cor}">${prog.pct}% <span style="font-size:11px;font-weight:600;color:var(--text3)">· ${prog.feitas}/${prog.total}</span></span>
-    </div>
-    <div style="height:9px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:${p.cor};width:${prog.pct}%;transition:width .3s"></div></div>
-    ${conclLine}
-  </div>`;
-
-  let fasesBloco='';
-  if(temFase){
-    const linhas=(p.fases||[]).map(f=>{
-      const fp = _calcularProgressoFase(f);
-      const corFase = fp.pct===100 ? 'var(--success)' : fp.pct>0 ? p.cor : 'var(--text3)';
-      let prazoHTML='';
-      if(f.prazoFase){
-        const dr = Math.round((new Date(f.prazoFase+'T00:00:00') - new Date(today+'T00:00:00')) / 86400000);
-        let dCor='var(--text3)', dIcon='ti-calendar-due';
-        const dText = dr < 0 ? `${Math.abs(dr)}d atrasada` : dr === 0 ? 'Vence hoje' : `${dr}d`;
-        if(dr < 0 || dr === 0){ dCor='var(--danger)'; dIcon='ti-alarm'; }
-        else if(dr <= 3){ dCor='var(--amber)'; dIcon='ti-clock-exclamation'; }
-        prazoHTML=`<span style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;color:${dCor};white-space:nowrap"><i class="ti ${dIcon}" style="font-size:11px"></i>${dText}</span>`;
-      }
-      return `<div onclick="abrirFaseEspecifica('${f.id}')" style="display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-left:3px solid ${corFase};border-radius:0 10px 10px 0;padding:11px 14px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='var(--card)'">
-        <span style="font-size:13px;font-weight:700;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(f.nome)}</span>
-        ${prazoHTML}
-        <span style="font-size:11px;color:var(--text3);white-space:nowrap">${fp.feitas}/${fp.total} tarefas</span>
-        <div style="width:90px;height:5px;background:var(--bg2);border-radius:99px;overflow:hidden;flex-shrink:0"><div style="height:100%;background:${corFase};width:${fp.pct}%"></div></div>
-        <span style="font-size:11px;font-weight:700;color:${corFase};width:32px;text-align:right">${fp.pct}%</span>
-      </div>`;
-    }).join('');
-    fasesBloco=`<div>
-      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="ti ti-layout-rows" style="font-size:14px"></i> Fases do projeto</div>
-      <div style="display:flex;flex-direction:column;gap:7px">${linhas}</div>
-    </div>`;
-  } else {
-    fasesBloco=`<div style="background:var(--card);border:1px dashed var(--border);border-radius:12px;padding:28px 20px;text-align:center">
-      <i class="ti ti-layout-rows" style="font-size:32px;color:var(--text3);opacity:.5"></i>
-      <p style="margin:8px 0 4px;font-size:13.5px;color:var(--text2);font-weight:600">Nenhuma fase ainda</p>
-      <p style="margin:0 0 6px;font-size:12px;color:var(--text3)">Organize o projeto em fases (ex.: Planejamento, Execução, Entrega).</p>
-      <button onclick="setProjectProTab('fases')" style="margin-top:6px;background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer"><i class="ti ti-plus"></i> Adicionar fase</button>
-    </div>`;
-  }
-  const col2 = `<div class="pp-col2" style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:16px">${progressoCard}${fasesBloco}</div>`;
 
   // ── VISÃO DE COMANDO: "Acontecendo agora" (etapa atual) + próximas a liberar + últimos comentários ──
   // Reusa o motor de etapas (mesma lógica de _ppNotificarLiberacao): a etapa atual são as pendentes de menor etapa.
@@ -25916,7 +25787,6 @@ function renderProjectProVisao(p, prog){
       const pend=ord.filter(t=>!t.done);
       const _exec=(t)=>{ const e=t.executor?_personById(t.executor):null; return e?escapeHTML(e.name):'Sem responsável'; };
       const _setor=(t)=>{ const g=(p.fases||[]).reduce((a,f)=>a.concat(f.grupos||[]),[]).find(x=>x.id===t.projectProGrupoId); const s=g?g.setor:(((p.fases||[]).find(f=>f.id===t.projectProFaseId)||{}).nome||''); return s?escapeHTML(s):''; };
-      const _ts=(iso)=>{ try{ return (typeof _fmtTs==='function')?_fmtTs(iso):formatDate((iso||'').slice(0,10)); }catch(e){ return ''; } };
       if(pend.length){
         const etAtual=Math.min.apply(null,pend.map(t=>et.get(t.id)));
         const agora=pend.filter(t=>et.get(t.id)===etAtual);
@@ -25937,8 +25807,6 @@ function renderProjectProVisao(p, prog){
         }).join('');
         const faseAtualNome=(()=>{ const t0=agora[0]; if(!t0)return ''; const f=(p.fases||[]).find(f=>f.id===t0.projectProFaseId); return f?escapeHTML(f.nome):''; })();
         const listaProx=proximas.map(t=>`<div style="display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 11px"><i class="ti ti-lock" style="font-size:14px;color:var(--text3);flex-shrink:0"></i><div style="min-width:0;flex:1"><div style="font-size:12.5px;color:var(--text)">${escapeHTML(t.title)}</div><div style="font-size:11px;color:var(--text3)">${_exec(t)}${_setor(t)?' · '+_setor(t):''}</div></div></div>`).join('');
-        const coms=(getProComments(p.id)||[]).slice().sort((a,b)=>String(b.criadoEm||'').localeCompare(String(a.criadoEm||''))).slice(0,2);
-        const listaComs=coms.map(c=>{ const a=c.autorId?_personById(c.autorId):null; const ini=a?escapeHTML((a.name||'?').trim().slice(0,2).toUpperCase()):'?'; return `<div style="display:flex;gap:9px"><div style="width:26px;height:26px;border-radius:50%;background:color-mix(in srgb,var(--blue-mid) 14%,transparent);color:var(--blue-mid);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${ini}</div><div style="min-width:0"><div style="font-size:12px;color:var(--text)"><b style="font-weight:700">${a?escapeHTML(a.name):'Alguém'}</b> <span style="color:var(--text3);font-size:11px">· ${_ts(c.criadoEm)}</span></div><div style="font-size:12px;color:var(--text2);line-height:1.4">${escapeHTML(c.texto||'')}</div></div></div>`; }).join('');
         const faixaInf=proximas.length?`<div style="margin-top:16px"><div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="ti ti-arrow-bar-to-down" style="font-size:14px"></i>Próximas a liberar</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px">${listaProx}</div></div>`:'';
         comandoBloco=`<div style="margin-bottom:22px">
           <div style="display:flex;align-items:center;gap:7px;margin-bottom:11px;flex-wrap:wrap"><i class="ti ti-player-play-filled" style="font-size:14px;color:var(--orange)"></i><span style="font-size:12.5px;font-weight:700;color:var(--text2)">Acontecendo agora</span><span style="font-size:11px;color:var(--text3)">· Etapa ${etAtual} de ${totalEt}${faseAtualNome?' · '+faseAtualNome:''}</span></div>
@@ -26017,14 +25885,78 @@ function renderProjectProVisao(p, prog){
     </div>
     ${estruturaCorpo}
   </div>`;
-  const resumoBloco=`<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-bottom:22px">${col1}<div style="flex:1 1 320px;min-width:0">${progressoCard}</div></div>`;
   let comentariosBloco='';
   try{ comentariosBloco=renderProjectProAnotacoes(p); }catch(e){ comentariosBloco=''; }
 
-  // Layout: coluna PRINCIPAL (comando + resumo + estrutura) + COMENTÁRIOS fixos à direita (acompanhamento em tempo real).
-  return `<div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
-    <div style="flex:1 1 540px;min-width:0">${comandoBloco}${resumoBloco}${estruturaBloco}</div>
-    <div style="flex:1 1 300px;min-width:280px"><div style="position:sticky;top:8px"><div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:11px;display:flex;align-items:center;gap:7px"><i class="ti ti-message-circle" style="color:var(--blue-mid)"></i> Comentários</div>${comentariosBloco}</div></div>
+  // Layout: coluna PRINCIPAL (comando + estrutura) + COMENTÁRIOS numa coluna FINA fixa à direita.
+  return `<div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+    <div style="flex:1 1 540px;min-width:0">${comandoBloco}${estruturaBloco}</div>
+    <div style="flex:0 0 300px;min-width:0;max-width:100%"><div style="position:sticky;top:8px"><div style="font-size:12.5px;font-weight:800;color:var(--text);margin-bottom:9px;display:flex;align-items:center;gap:7px"><i class="ti ti-message-circle" style="color:var(--blue-mid);font-size:14px"></i> Comentários</div>${comentariosBloco}</div></div>
+  </div>`;
+}
+
+// ─── ABA: INFO — detalhes estáticos do projeto (mesma lógica do "Info" da Reunião). ──
+// Tudo que NÃO é trabalho do dia a dia mora aqui: tipo/datas/dono/coordenadores, status,
+// indicadores (tarefas/atrasadas/pessoas), progresso e conclusão prevista.
+function renderProjectProInfo(p, prog){
+  const nPessoas=(p.pessoas||[]).length;
+  const tipo=(typeof PP_TIPOS!=='undefined' && (PP_TIPOS[p.tipo]||PP_TIPOS.outro)) || {icon:'ti-folder',label:''};
+  const dono   = p.dono         ? people.find(x=>x.id===p.dono)         : null;
+  const coord  = p.coordenador  ? people.find(x=>x.id===p.coordenador)  : null;
+  const coord2 = p.coordenador2 ? people.find(x=>x.id===p.coordenador2) : null;
+  const _ppLinha=(pp,role,icon,cor)=>pp?`<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2);min-width:0"><i class="ti ${icon}" style="font-size:15px;color:${cor};flex-shrink:0"></i><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(pp.name)}</span><span style="color:var(--text3);white-space:nowrap;flex-shrink:0"> · ${role}</span></div>`:'';
+  const _blocoPessoas=[
+    _ppLinha(dono,'Dono','ti-crown','var(--amber)'),
+    _ppLinha(coord,'1º Coord.','ti-user-star','var(--blue-mid)'),
+    _ppLinha(coord2,'2º Coord.','ti-user-star','var(--blue-mid)'),
+  ].filter(Boolean).join('');
+  const infoCard=`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:9px">
+    <div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2)"><i class="ti ${tipo.icon}" style="font-size:15px;color:var(--text3)"></i>${escapeHTML(tipo.label||'Projeto')}</div>
+    ${p.prazoInicio?`<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2)"><i class="ti ti-calendar-event" style="font-size:15px;color:var(--text3)"></i>Início: ${formatDate(p.prazoInicio)}</div>`:''}
+    ${p.prazoFim?`<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2)"><i class="ti ti-calendar-due" style="font-size:15px;color:var(--text3)"></i>Prazo: ${formatDate(p.prazoFim)}</div>`:''}
+    ${_blocoPessoas?`<div style="border-top:1px solid var(--border);padding-top:9px;display:flex;flex-direction:column;gap:9px">${_blocoPessoas}</div>`:''}
+  </div>`;
+  const statCard=(icon,label,valor,cor)=>`<div style="display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 14px">
+    <i class="ti ${icon}" style="font-size:18px;color:${cor}"></i>
+    <div style="flex:1;min-width:0"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600">${label}</div></div>
+    <div style="font-size:19px;font-weight:800;color:${cor}">${valor}</div>
+  </div>`;
+  // Card de STATUS — clicável (abre o menu de troca). Leva o id pp-status-badge, que ancora abrirMenuStatusProjeto.
+  const _st=(typeof PP_STATUS!=='undefined' && (PP_STATUS[p.status]||PP_STATUS.planejamento)) || {label:'—',color:'var(--text3)',icon:'ti-circle'};
+  const _stBg=`color-mix(in srgb, ${_st.color} 9%, var(--card))`;
+  const _stBd=`color-mix(in srgb, ${_st.color} 22%, var(--border))`;
+  const statusCard=`<div id="pp-status-badge" onclick="event.stopPropagation();abrirMenuStatusProjeto('${p.id}',event)" title="Mudar status" style="display:flex;align-items:center;gap:11px;background:${_stBg};border:1px solid ${_stBd};border-radius:10px;padding:11px 14px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='${_st.color}'" onmouseout="this.style.borderColor='${_stBd}'">
+    <i class="ti ${_st.icon}" style="font-size:18px;color:${_st.color}"></i>
+    <div style="flex:1;min-width:0"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600">Status</div></div>
+    <span style="font-size:12.5px;font-weight:800;color:${_st.color};text-transform:uppercase;letter-spacing:.3px;white-space:nowrap">${_st.label}</span>
+    <i class="ti ti-chevron-down" style="font-size:13px;color:var(--text3);flex-shrink:0"></i>
+  </div>`;
+  // Conclusão prevista — MESMA fonte da aba Análise (_ppAnalise), pra nunca se contradizerem.
+  const _an=_ppAnalise(p);
+  let conclLine='';
+  if(_an.baseFimUsada){
+    const _s=_an.saldoDias;
+    const _estoura=_s!=null && _s>0;
+    const _lab=_an.concluido?'Concluído em':(_an.previsto?'Conclusão prevista':'Conclusão');
+    const _cor=_estoura?'var(--danger)':(_s!=null?'var(--success)':'var(--text2)');
+    conclLine=`<div style="display:flex;align-items:center;gap:6px;margin-top:11px;font-size:12px;font-weight:600;color:${_cor}"><i class="ti ${_estoura?'ti-alert-triangle':'ti-flag-check'}" style="font-size:14px"></i>${_lab}: ${formatDate(_an.baseFimUsada)}</div>`;
+  }
+  const progressoCard=`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:700;color:var(--text)">Progresso do projeto</span>
+      <span style="font-size:15px;font-weight:800;color:${p.cor}">${prog.pct}% <span style="font-size:11px;font-weight:600;color:var(--text3)">· ${prog.feitas}/${prog.total}</span></span>
+    </div>
+    <div style="height:9px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:${p.cor};width:${prog.pct}%;transition:width .3s"></div></div>
+    ${conclLine}
+  </div>`;
+  return `<div style="max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:11.5px;color:var(--text3)">Detalhes do projeto. Para mudar nome, prazo ou cor use <b>Editar</b>; papéis da equipe ficam em <b>Pessoas</b>.</div>
+    ${infoCard}
+    ${statusCard}
+    ${statCard('ti-checklist','Tarefas',`${prog.feitas}/${prog.total}`,'var(--blue-mid)')}
+    ${statCard('ti-alert-triangle','Atrasadas',prog.atrasadas,prog.atrasadas>0?'var(--danger)':'var(--text3)')}
+    ${statCard('ti-users','Pessoas',nPessoas,'var(--orange)')}
+    ${progressoCard}
   </div>`;
 }
 
@@ -27044,6 +26976,8 @@ function renderProjectProPessoas(p){
 }
 
 // ─── MODAL DE EQUIPE (adicionar/remover pessoas + definir papéis) ──
+// [SUPERSEDED jul/2026] O header do projeto agora navega pra sub-aba Pessoas (renderProjectProPessoas).
+// Este modal ficou sem caller externo (só auto-refs internas) — mantido por segurança.
 function abrirModalEquipe(projectId){
   const p = projectsPro.find(x=>x.id===projectId);
   if(!p) return;
@@ -27610,34 +27544,23 @@ function renderProjectProAnotacoes(p){
         <p style="font-size:12px;margin:4px 0 0;opacity:.7">Seja o primeiro a deixar um registro sobre este projeto</p>
       </div>`;
 
-  const me = people.find(pe=>pe.id===CURRENT_USER_ID);
-  const meIni = me ? me.name.charAt(0).toUpperCase() : 'D';
-
   return `<div style="display:flex;flex-direction:column;gap:0">
     <!-- Feed de comentários -->
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:12px;max-height:420px;overflow-y:auto" id="pp-comments-feed-${p.id}">
       ${commentsHTML}
     </div>
 
-    <!-- Input de novo comentário -->
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 18px">
-      <div style="display:flex;gap:10px;align-items:flex-start">
-        <div style="width:32px;height:32px;border-radius:50%;background:${p.cor};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;margin-top:2px">${meIni}</div>
-        <div style="flex:1;position:relative">
-          <textarea id="pp-comment-input-${p.id}" rows="2"
-            placeholder="Escreva um comentário… use @nome para mencionar alguém"
-            onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();enviarProComment('${p.id}');}"
-            oninput="_ppCheckMencao(this,'${p.id}')"
-            style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);font-family:inherit;resize:none;line-height:1.5;box-sizing:border-box;transition:border-color .15s"
-            onfocus="this.style.borderColor='${p.cor}'" onblur="this.style.borderColor='var(--border)'"></textarea>
-          <!-- Dropdown @menção -->
-          <div id="pp-at-menu-${p.id}" style="display:none;position:absolute;bottom:100%;left:0;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:200;min-width:220px;max-height:180px;overflow-y:auto;margin-bottom:4px"></div>
-        </div>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;margin-left:42px">
-        <span style="font-size:11px;color:var(--text3)"><kbd style="background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-size:10px">Ctrl</kbd>+<kbd style="background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-size:10px">Enter</kbd> para enviar</span>
-        <button onclick="enviarProComment('${p.id}')" style="background:${p.cor};color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-send"></i> Enviar</button>
-      </div>
+    <!-- Input de novo comentário — DISCRETO: 1 linha, Enter envia, @nome menciona -->
+    <div style="display:flex;gap:6px;align-items:center;position:relative">
+      <input id="pp-comment-input-${p.id}" type="text"
+        placeholder="Comentar… (@nome menciona · Enter envia)"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();enviarProComment('${p.id}');}"
+        oninput="_ppCheckMencao(this,'${p.id}')"
+        style="flex:1;min-width:0;padding:9px 13px;border:1px solid var(--border);border-radius:99px;font-size:12.5px;background:var(--bg2);color:var(--text);font-family:inherit;box-sizing:border-box;transition:border-color .15s;outline:none"
+        onfocus="this.style.borderColor='${p.cor}'" onblur="this.style.borderColor='var(--border)'">
+      <button onclick="enviarProComment('${p.id}')" title="Enviar comentário" style="width:34px;height:34px;flex-shrink:0;background:${p.cor};color:#fff;border:none;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:14px"><i class="ti ti-send"></i></button>
+      <!-- Dropdown @menção -->
+      <div id="pp-at-menu-${p.id}" style="display:none;position:absolute;bottom:100%;left:0;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:200;min-width:220px;max-height:180px;overflow-y:auto;margin-bottom:4px"></div>
     </div>
   </div>`;
 }
