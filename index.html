@@ -1503,7 +1503,7 @@
   body.reun-focus .hdr,body.reun-focus .sidebar,body.reun-focus #sidebar-resizer,body.reun-focus .sidebar-resizer,body.reun-focus .topbar,body.reun-focus .fab-create,body.reun-focus .fab-menu{display:none!important}
   body.reun-focus #task-container{position:fixed;inset:0;z-index:500;overflow-y:auto;overflow-x:hidden;background:var(--bg);padding:0}
   body.reun-focus .reun-panel-wrap{max-width:none!important;padding:0 30px 40px!important;margin-left:74px!important;margin-right:0!important}
-  body.reun-focus .reun-voltar-btn,body.reun-focus .reun-normal-header{display:none!important}
+  body.reun-focus .reun-voltar-btn,body.reun-focus .reun-normal-header,body.reun-focus .reun-subtabs{display:none!important}
   /* Trilha lateral de ícones (estilo Fellow) — só na tela cheia */
   body.reun-focus .reun-focus-rail{display:flex;flex-direction:column;align-items:center;gap:3px;position:fixed;left:0;top:0;bottom:0;width:74px;background:var(--card);border-right:1px solid var(--border);padding:12px 0;z-index:70;overflow-y:auto;scrollbar-width:none}
   body.reun-focus .reun-focus-rail::-webkit-scrollbar{display:none}
@@ -31007,8 +31007,8 @@ function openReuniaoView(id, _opts){
         <span style="font-size:12px;color:var(--text3);font-weight:600"><i class="ti ti-users" style="font-size:13px"></i> ${presentesCount}/${totalParts} presentes</span>
       </div>
 
-      <!-- Título (fora de card) + ações em ícones -->
-      <div class="reun-normal-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      <!-- Cabeçalho: título + meta · AÇÕES à direita (play/timer/foco/finalizar). As VIEWS estão na sub-navbar abaixo. -->
+      <div class="reun-normal-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px">
         <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
           <div style="display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap">
             <span style="font-size:20px;font-weight:800;color:var(--text)">${/^\s*reuni/i.test(m.title||'')?escapeHTML(m.title):'Reunião — '+escapeHTML(m.title)}</span>
@@ -31026,18 +31026,23 @@ function openReuniaoView(id, _opts){
           ${m.status!=='encerrada'?(()=>{const running=m.status==='andamento'&&!m.pausadoReuniao;const lbl=running?'Pausar':(m.pausadoReuniao?'Retomar':'Iniciar');return `<button class="reun-ico" onclick="_toggleReunTimer('${m.id}')" title="${lbl} reunião" style="background:${running?'var(--amber)':'var(--blue-mid)'};border-color:${running?'var(--amber)':'var(--blue-mid)'};color:#fff"><i class="ti ti-player-${running?'pause':'play'}-filled"></i></button>`;})():''}
           ${m.status==='andamento'?(()=>{const _ov=_reunElapsedSec(m)>_reunPlannedMin(m)*60;const _c=_ov?'var(--danger)':(m.pausadoReuniao?'var(--amber)':'var(--success)');const _bg=_ov?'color-mix(in srgb,var(--danger) 14%,transparent)':(m.pausadoReuniao?'var(--amber-bg)':'var(--success-bg)');return `<span id="reun-cronometro-${m.id}" class="${_ov?'reun-timer-over':''}" style="padding:0 12px;height:34px;font-size:13px;color:${_c};font-weight:700;background:${_bg};border-radius:8px;border:1px solid ${_c};display:inline-flex;align-items:center;gap:5px"><i class="ti ti-${_ov?'alert-triangle':(m.pausadoReuniao?'player-pause':'clock-play')}"></i> <span data-inicio="${m.inicioReal||''}" data-acumulado="${m.tempoAcumulado||0}" data-planned="${_reunPlannedMin(m)}">${_fmtDur(_reunElapsedSec(m))}</span></span>`;})():''}
           <button class="reun-ico" onclick="_toggleReunFocus()" title="Abrir em tela cheia (foco)"><i class="ti ti-arrows-maximize"></i></button>
-          <button class="reun-ico" onclick="_reunSetSubView('${m.id}','painel')" title="Painel — pauta, decisões e tarefas" style="${_icoActive('painel')}"><i class="ti ti-layout-dashboard"></i></button>
-          <button class="reun-ico" onclick="_reunSetSubView('${m.id}','pessoas')" title="Participantes (${presentesCount}/${totalParts})" style="${_icoActive('pessoas')}"><i class="ti ti-users"></i></button>
-          <button class="reun-ico" onclick="_reunSetSubView('${m.id}','info')" title="Informações da reunião" style="${_icoActive('info')}"><i class="ti ti-info-circle"></i></button>
-          <button class="reun-ico" onclick="_reunSetSubView('${m.id}','ata')" title="ATA / Resumo" style="${_icoActive('ata')}"><i class="ti ti-notes"></i></button>
-          <button class="reun-ico" onclick="_reunSetSubView('${m.id}','anexos')" title="Anexos" style="${_icoActive('anexos')}"><i class="ti ti-paperclip"></i></button>
-          <button class="reun-ico" onclick="_reunSetSubView('${m.id}','historico')" title="Histórico — todas as reuniões desta série" style="${_icoActive('historico')}"><i class="ti ti-history"></i></button>
-          <button class="reun-ico" onclick="_reunSetSubView('${m.id}','decisoes')" title="Decisões — todas as decisões da série" style="${_icoActive('decisoes')}"><i class="ti ti-gavel"></i></button>
-          <button class="reun-ico" onclick="_reunSetSubView('${m.id}','editar')" title="Editar reunião (data, hora, sala, recorrência)" style="${_icoActive('editar')}"><i class="ti ti-pencil"></i></button>
           ${m.status==='encerrada'?`<button class="reun-ico" onclick="gerarPDFReuniao('${m.id}')" title="Gerar PDF da ATA" style="color:var(--danger)" onmouseover="this.style.background='var(--danger)';this.style.color='#fff';this.style.borderColor='var(--danger)'" onmouseout="this.style.background='var(--card)';this.style.color='var(--danger)';this.style.borderColor='var(--border)'"><i class="ti ti-file-download"></i></button>`:''}
-          ${m.status!=='encerrada'?`<button class="reun-ico" onclick="concluirReuniao('${m.id}')" title="Finalizar reunião" style="background:var(--success-bg);border-color:var(--success);color:var(--success)"><i class="ti ti-flag-check"></i></button>`:'<span style="height:34px;padding:0 12px;font-size:12px;color:var(--success);font-weight:700;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-circle-check"></i> Encerrada</span>'}
+          ${m.status!=='encerrada'?`<button class="reun-ico" onclick="concluirReuniao('${m.id}')" title="Finalizar reunião" style="background:var(--success-bg);border-color:var(--success);color:var(--success);width:auto;padding:0 12px;gap:5px"><i class="ti ti-flag-check"></i> <span style="font-size:12.5px;font-weight:700">Finalizar</span></button>`:'<span style="height:34px;padding:0 12px;font-size:12px;color:var(--success);font-weight:700;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-circle-check"></i> Encerrada</span>'}
         </div>
       </div>
+      <!-- Sub-navbar (estilo Projetos): as VIEWS como abas horizontais com título -->
+      ${(()=>{ const _subtab=(v,label,icon)=>{const at=_sv===v;return `<button onclick="_reunSetSubView('${m.id}','${v}')" style="background:transparent;border:none;border-bottom:2px solid ${at?'var(--blue-mid)':'transparent'};color:${at?'var(--text)':'var(--text3)'};padding:8px 13px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s;display:inline-flex;align-items:center;gap:6px"><i class="ti ${icon}" style="font-size:14px"></i>${label}</button>`;};
+        return `<div class="reun-subtabs" style="display:flex;gap:2px;margin:2px 0 18px;border-bottom:1px solid var(--border);overflow-x:auto;overflow-y:hidden">
+          ${_subtab('painel','Painel','ti-layout-dashboard')}
+          ${_subtab('pessoas','Pessoas','ti-users')}
+          ${_subtab('info','Info','ti-info-circle')}
+          ${_subtab('ata','ATA','ti-notes')}
+          ${_subtab('anexos','Anexos','ti-paperclip')}
+          ${_subtab('historico','Histórico','ti-history')}
+          ${_subtab('decisoes','Decisões','ti-gavel')}
+          ${_subtab('editar','Editar','ti-pencil')}
+        </div>`;
+      })()}
       <div id="reun-main-${m.id}">
       ${_sv!=='painel' ? _reunSubViewHTML(m) : `
       ${(()=>{ // ── Reunião recorrente em aberto com data vencida → oferecer atualização ──
