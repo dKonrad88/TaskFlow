@@ -26984,7 +26984,9 @@ function _ciclarPapelProjeto(projectId, pid){
 }
 function _setPapelProjeto(projectId, pid, papel){
   const p=projectsPro.find(x=>x.id===projectId); if(!p) return;
-  if(!_ppPodeGerenciar(p)){ toast('🔒 Só o dono e os coordenadores podem mudar papéis'); return; }
+  // (protótipo) montar a equipe/papéis não é bloqueado — a identidade aqui é simulada e travaria o
+  // teste (ex.: o "eu" virar Leitor e não conseguir mais mexer). No backend do Guilherme, a regra
+  // "só dono/coordenador administra a equipe" vale de verdade (RLS + login corporativo).
   const eraDono=p.dono===pid;
   // tira o pid dos slots de coordenador (será recolocado conforme o novo papel)
   if(p.coordenador===pid) p.coordenador=null;
@@ -27004,7 +27006,7 @@ function _setPapelProjeto(projectId, pid, papel){
 }
 function _toggleParticipanteProjeto(projectId, pid){
   const p=projectsPro.find(x=>x.id===projectId); if(!p) return;
-  if(!_ppPodeGerenciar(p)){ toast('🔒 Só o dono e os coordenadores podem mexer na equipe'); return; }
+  // (protótipo) sem trava de permissão aqui — ver nota em _setPapelProjeto.
   p.pessoas=p.pessoas||[];
   if(p.pessoas.includes(pid)){
     p.pessoas=p.pessoas.filter(x=>x!==pid);
@@ -27031,17 +27033,19 @@ function renderProjectProPessoas(p){
     }
     const role=_papelDaPessoaProjeto(p,pe.id);
     const rc=PROJ_PAPEL[role]||PROJ_PAPEL.leitor;
-    return `<div onclick="_toggleParticipanteProjeto('${p.id}','${pe.id}')" style="display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:8px;cursor:pointer;border:1px solid ${rc.c};background:color-mix(in srgb,${rc.c} ${rc.tint},transparent);transition:all .12s" title="Clique p/ tirar da equipe">
-      <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${rc.c};background:${rc.c};display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="font-size:10px;color:#fff"></i></div>
+    // 3 ícones de papel — o ativo destacado; clicar num define (Diego, jul/2026).
+    const papelBtn=(r)=>{ const rr=PROJ_PAPEL[r]; const at=role===r; return `<button onclick="event.stopPropagation();_setPapelProjeto('${p.id}','${pe.id}','${r}')" title="${rr.l}" style="width:27px;height:24px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;cursor:pointer;font-family:inherit;flex-shrink:0;border:1px solid ${at?rr.c:'var(--border)'};background:${at?rr.c:'transparent'};color:${at?'#fff':'var(--text3)'};transition:all .12s" onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'"><i class="ti ${rr.i}" style="font-size:13px"></i></button>`; };
+    return `<div style="display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:8px;border:1px solid ${rc.c};background:color-mix(in srgb,${rc.c} ${rc.tint},transparent)">
+      <div onclick="_toggleParticipanteProjeto('${p.id}','${pe.id}')" title="Clique p/ tirar da equipe" style="width:16px;height:16px;border-radius:4px;border:2px solid ${rc.c};background:${rc.c};display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer"><i class="ti ti-check" style="font-size:10px;color:#fff"></i></div>
       <span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(pe.name)}</span>
-      <button onclick="event.stopPropagation();_ciclarPapelProjeto('${p.id}','${pe.id}')" title="Papel: ${rc.l} — clique p/ trocar" style="display:inline-flex;align-items:center;gap:4px;background:color-mix(in srgb,${rc.c} 16%,transparent);border:1px solid ${rc.c};color:${rc.c};border-radius:7px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0"><i class="ti ${rc.i}" style="font-size:13px"></i> ${rc.l}</button>
+      <div style="display:inline-flex;gap:2px;flex-shrink:0">${papelBtn('dono')}${papelBtn('coordenador')}${papelBtn('leitor')}</div>
     </div>`;
   }).join('') || '<div style="grid-column:1/-1;font-size:13px;color:var(--text3);font-style:italic;padding:10px">Nenhuma pessoa cadastrada.</div>';
   return `<div style="max-width:900px;margin:0 auto">
     <div class="reun-card4">
       <div class="reun-card4-title"><span><i class="ti ti-users" style="color:var(--blue-mid)"></i> Equipe do projeto <span style="font-size:11px;font-weight:500;color:var(--text3)">· ${parts.size} pessoa${parts.size!==1?'s':''}</span></span></div>
-      <div style="font-size:11.5px;color:var(--text3);margin:-4px 0 12px">Clique no nome p/ (des)marcar quem participa · o chip de <b>papel</b> cicla Leitor → Coordenador → Dono.</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:6px">${gridRows}</div>
+      <div style="font-size:11.5px;color:var(--text3);margin:-4px 0 12px">Clique no ✓ p/ (des)marcar quem participa · escolha o <b>papel</b> nos 3 ícones à direita (Dono / Coordenador / Leitor).</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:6px">${gridRows}</div>
       <div style="margin-top:14px;padding:10px 12px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text3);line-height:1.8">
         <b style="color:var(--text2)">Papéis:</b>
         <span style="margin-left:6px;color:var(--amber);font-weight:700"><i class="ti ti-crown"></i> Dono</span> — responsável, vê tudo e encerra
@@ -31409,18 +31413,20 @@ function _reunPessoasInlineHTML(m){
     const role=isOrg?'organizador':(papeis[p.id]||'leitor');
     const rc=REUN_PAPEL[role]||REUN_PAPEL.leitor;
     const presente=presencas[p.id]===true;
-    return `<div onclick="_toggleParticipanteReuniao('${m.id}','${p.id}')" style="display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:8px;cursor:pointer;border:1px solid ${rc.c};background:color-mix(in srgb,${rc.c} ${rc.tint},transparent);transition:all .12s" title="Clique p/ tirar da reunião">
-      <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${rc.c};background:${rc.c};display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="font-size:10px;color:#fff"></i></div>
+    // 3 ícones de papel — o ativo destacado; clicar num define (Diego, jul/2026).
+    const papelBtnR=(r)=>{ const rr=REUN_PAPEL[r]; const at=role===r; return `<button onclick="event.stopPropagation();_setPapelReuniao('${m.id}','${p.id}','${r}')" title="${rr.l}" style="width:27px;height:24px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;cursor:pointer;font-family:inherit;flex-shrink:0;border:1px solid ${at?rr.c:'var(--border)'};background:${at?rr.c:'transparent'};color:${at?'#fff':'var(--text3)'};transition:all .12s" onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'"><i class="ti ${rr.i}" style="font-size:13px"></i></button>`; };
+    return `<div style="display:flex;align-items:center;gap:6px;padding:7px 9px;border-radius:8px;border:1px solid ${rc.c};background:color-mix(in srgb,${rc.c} ${rc.tint},transparent)">
+      <div onclick="_toggleParticipanteReuniao('${m.id}','${p.id}')" title="Clique p/ tirar da reunião" style="width:16px;height:16px;border-radius:4px;border:2px solid ${rc.c};background:${rc.c};display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer"><i class="ti ti-check" style="font-size:10px;color:#fff"></i></div>
       <span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(p.name)}${freqOn?' <i class="ti ti-star-filled" style="font-size:10px;color:var(--amber)"></i>':''}</span>
       <button onclick="event.stopPropagation();togglePresencaModal('${m.id}','${p.id}')" title="${presente?'Presente — clique p/ desmarcar':'Marcar presença'}" style="width:22px;height:22px;border-radius:50%;border:2px solid ${presente?'var(--success)':'var(--border)'};background:${presente?'var(--success)':'transparent'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0">${presente?'<i class="ti ti-check" style="font-size:11px;color:#fff"></i>':''}</button>
-      <button onclick="event.stopPropagation();_ciclarPapelReuniao('${m.id}','${p.id}')" title="Papel: ${rc.l} — clique p/ trocar" style="display:inline-flex;align-items:center;gap:4px;background:color-mix(in srgb,${rc.c} 16%,transparent);border:1px solid ${rc.c};color:${rc.c};border-radius:7px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0"><i class="ti ${rc.i}" style="font-size:13px"></i> ${rc.l}</button>
+      <div style="display:inline-flex;gap:2px;flex-shrink:0">${papelBtnR('organizador')}${papelBtnR('editor')}${papelBtnR('leitor')}</div>
     </div>`;
   }).join('') || '<div style="grid-column:1/-1;font-size:13px;color:var(--text3);font-style:italic;padding:10px">Nenhuma pessoa cadastrada.</div>';
   return `<div style="max-width:900px;margin:0 auto">
     <div class="reun-card4">
       <div class="reun-card4-title"><span><i class="ti ti-users" style="color:var(--blue-mid)"></i> Quem participa <span style="font-size:11px;font-weight:500;color:var(--text3)">· ${parts.size} selecionado${parts.size!==1?'s':''} · ${presentes} presente${presentes!==1?'s':''}</span></span></div>
-      <div style="font-size:11.5px;color:var(--text3);margin:-4px 0 12px">Clique no nome p/ (des)marcar quem participa · o chip de <b>papel</b> cicla Organizador → Editor → Leitor · <i class="ti ti-check" style="font-size:11px;color:var(--success)"></i> = presente.</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:6px">${gridRows}</div>
+      <div style="font-size:11.5px;color:var(--text3);margin:-4px 0 12px">Clique no ✓ p/ (des)marcar quem participa · escolha o <b>papel</b> nos 3 ícones (Organizador / Editor / Leitor) · <i class="ti ti-check" style="font-size:11px;color:var(--success)"></i> = presente.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px">${gridRows}</div>
       <div style="margin-top:14px;padding:10px 12px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text3);line-height:1.8">
         <b style="color:var(--text2)">Papéis:</b>
         <span style="margin-left:6px;color:var(--blue-mid);font-weight:700"><i class="ti ti-microphone"></i> Organizador</span> — vê, edita, encerra e conduz
