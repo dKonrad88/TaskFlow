@@ -102,6 +102,28 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-16 (8) — Mac de casa — Projetos: PAINEL COMPLETO (ver + fazer tudo numa tela)
+- Correção de CONCEITO do Diego (testando no Pages): o **Painel NÃO é um resumo** — é a tela onde se **VÊ e FAZ tudo**
+  (criar fase, criar setor, criar tarefa, concluir, ler/escrever comentários) sem trocar de aba. Os ícones da trilha
+  são só pra **FOCAR numa coisa só**. (Na (7) eu tinha feito o Painel = Visão geral só-leitura; faltava o operacional.)
+- **`renderProjectProVisao` (o "Painel") reescrito** como tela VERTICAL completa, na ordem:
+  1. **Acontecendo agora** (comando, da (7)) · 2. **Resumo** (infos/dono/prazo + status clicável + progresso) ·
+  3. ⭐ **Estrutura do projeto** (novo) · 4. **Comentários** (feed + campo — reusa `renderProjectProAnotacoes`).
+- **Estrutura = ACORDEÃO INLINE** (decisão do Diego: acordeão + lista simples de tarefas): **"+ Nova fase"**
+  (`adicionarFase`); cada fase é um acordeão via `_ppTogglePainelFase` + estado `window._ppPainelFaseAberta`
+  (INDEPENDENTE do `activeFaseId`, que é o zoom da aba Fases). Fase aberta mostra os **setores**, cada um com
+  **"+ Tarefa"** (`window._ppQuickCtx={projectId,faseId,grupoId};toggleForm()` → modal pré-vinculado) e as **tarefas
+  em lista simples** (checkbox `toggle(id)` + título + executor + status `_ppStatus`: Em andamento/Atrasada/Aguardando/
+  Concluída); **"+ Adicionar setor"** (`adicionarGrupo`); tarefas da fase sem setor caem num bloco "Sem setor". Reuso
+  TOTAL dos CRUDs existentes — nenhuma lógica de dados nova.
+- **VERIFICADO no navegador** (foco e normal): estrutura com 3 fases (acordeão), setores Suprimentos/Engenharia com
+  tarefas nos 3 estados, comentários (feed+campo). Testado: expandir fase ✓, concluir tarefa (checkbox→toggle) ✓,
+  "+ Tarefa" abre modal vinculado a proj+fase+setor ✓, "+ Nova fase" (pm-overlay) ✓, "+ Adicionar setor"
+  (pp-modal-grupo) ✓. 0 erros de console. Sintaxe 0 erros (jsc). Commit: o deste push.
+- Painel agora é VERTICAL: saíram as 2 colunas redimensionáveis (`.pp-visao-2col`/resizer). As consts `col2`/
+  `fasesBloco` seguem computadas mas SEM uso (código morto inócuo — limpeza dedicada depois); `_initPpColResizer`
+  fica inerte (não acha o elemento). ⚠️ NOTA "Atrasadas" (da (7)) segue em aberto p/ o Diego decidir.
+
 ### 2026-07-16 (7) — Mac de casa — Projetos: MODO FOCO / tela cheia + trilha lateral + VISÃO DE COMANDO (2 commits)
 - Pedido do Diego (gostou do modo foco do Painel de Reunião): trazer o mesmo padrão p/ a aba Projetos — trilha
   lateral de ícones, tudo inline, EXCETO "Finalizar projeto" que abre em modal. Aprovou via MOCKUP antes de codar.

@@ -25935,17 +25935,77 @@ function renderProjectProVisao(p, prog){
     }catch(e){ comandoBloco=''; }
   }
 
-  return `<style>
-    .pp-visao-2col{display:flex;align-items:stretch;padding-bottom:10px}
-    body.pp-col-resizing .pp-col1{transition:none}
-    .pp-col-resizer{flex:0 0 22px;align-self:stretch;cursor:col-resize;position:relative;touch-action:none;min-height:60px}
-    .pp-col-resizer::before{content:"";position:absolute;top:2px;bottom:2px;left:50%;transform:translateX(-50%);width:3px;border-radius:99px;background:var(--border);opacity:0;transition:opacity .15s}
-    .pp-col-resizer:hover::before,.pp-col-resizer.dragging::before{opacity:1;background:var(--blue-mid)}
-    body.pp-col-resizing{cursor:col-resize;user-select:none}
-    @media(max-width:720px){.pp-visao-2col{flex-direction:column}.pp-col1{flex:0 0 auto!important;width:auto}.pp-col-resizer{display:none}}
-  </style>
-    ${comandoBloco}
-    <div class="pp-visao-2col">${col1}<div class="pp-col-resizer" id="pp-col-resizer" title="Arraste para ajustar as colunas (duplo-clique reseta)" role="separator" aria-orientation="vertical" aria-label="Ajustar largura das colunas" tabindex="0"></div>${col2}</div>`;
+  // ── PAINEL COMPLETO: o Painel é a tela onde se VÊ e FAZ tudo (o Diego, jul/2026). ──
+  // Resumo + "Acontecendo agora" + ESTRUTURA operável (fases→setores→tarefas, acordeão inline) + comentários.
+  // Os ícones da trilha são pra FOCAR numa coisa só; aqui é o "tudo junto".
+  const _ordE=_ppTarefasOrdenadas(p), _etE=_ppEtapas(_ordE);
+  const _tarefaLinha=(t)=>{
+    const done=!!t.done; let stTxt='', stCor='var(--text3)';
+    if(done){ stTxt='Concluída'; stCor='var(--success)'; }
+    else { const s=_ppStatus(t,_ordE,_etE); if(s.estado==='atrasada'){stTxt='Atrasada';stCor='var(--danger)';} else if(s.estado==='hoje'){stTxt='Em andamento';stCor='var(--orange)';} else {stTxt='Aguardando';stCor='var(--text3)';} }
+    const ex=t.executor?_personById(t.executor):null;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 11px;border-top:1px solid var(--border)">
+      <i class="ti ${done?'ti-square-check-filled':'ti-square'}" onclick="event.stopPropagation();toggle('${t.id}')" style="font-size:18px;color:${done?'var(--success)':'var(--text3)'};cursor:pointer;flex-shrink:0" title="${done?'Concluída':'Marcar como concluída'}"></i>
+      <span style="flex:1;min-width:0;font-size:12.5px;color:${done?'var(--text3)':'var(--text)'};${done?'text-decoration:line-through;':''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(t.title)}</span>
+      ${ex?`<span style="font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0">${escapeHTML(ex.name)}</span>`:''}
+      ${!done?`<span style="font-size:10.5px;font-weight:700;color:${stCor};white-space:nowrap;flex-shrink:0">${stTxt}</span>`:''}
+    </div>`;
+  };
+  const _setorBloco=(g,faseId)=>{
+    const ts=tasks.filter(t=>t.projectProGrupoId===g.id);
+    const linhas=ts.length?ts.map(_tarefaLinha).join(''):`<div style="padding:9px 11px;border-top:1px solid var(--border);font-size:11.5px;color:var(--text3)">Nenhuma tarefa neste setor ainda.</div>`;
+    return `<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-top:8px">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 11px;background:var(--bg2)">
+        <i class="ti ti-building" style="font-size:14px;color:${p.cor}"></i>
+        <span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--text)">${escapeHTML(g.setor)}</span>
+        <button onclick="event.stopPropagation();window._ppQuickCtx={projectId:'${p.id}',faseId:'${faseId}',grupoId:'${g.id}'};toggleForm()" style="background:none;border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:3px 9px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap"><i class="ti ti-plus"></i> Tarefa</button>
+      </div>${linhas}
+    </div>`;
+  };
+  let estruturaCorpo;
+  if(!(p.fases||[]).length){
+    estruturaCorpo=`<div style="background:var(--card);border:1px dashed var(--border);border-radius:12px;padding:30px 20px;text-align:center">
+      <i class="ti ti-layout-rows" style="font-size:34px;color:var(--text3);opacity:.5"></i>
+      <p style="margin:10px 0 4px;font-size:14px;color:var(--text2);font-weight:600">Nenhuma fase ainda</p>
+      <p style="margin:0 0 14px;font-size:12px;color:var(--text3)">Divida o projeto em fases; dentro de cada uma você cria os setores e as tarefas.</p>
+      <button onclick="adicionarFase('${p.id}')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer"><i class="ti ti-plus"></i> Criar primeira fase</button>
+    </div>`;
+  } else {
+    estruturaCorpo=(p.fases||[]).map((f,idx)=>{
+      const fp=_calcularProgressoFase(f);
+      const aberta=!!(window._ppPainelFaseAberta||{})[f.id];
+      const setores=f.grupos||[];
+      const semSetor=tasks.filter(t=>t.projectProFaseId===f.id && !t.projectProGrupoId);
+      const cFase=fp.pct===100?'var(--success)':p.cor;
+      const corpo=aberta?`<div style="padding:8px 12px 12px;background:color-mix(in srgb,var(--bg2) 45%,var(--card))">
+        ${setores.map(g=>_setorBloco(g,f.id)).join('')}
+        ${semSetor.length?`<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-top:8px"><div style="padding:8px 11px;background:var(--bg2);font-size:12px;font-weight:700;color:var(--text3)">Sem setor</div>${semSetor.map(_tarefaLinha).join('')}</div>`:''}
+        <button onclick="adicionarGrupo('${p.id}','${f.id}')" style="margin-top:10px;background:none;border:1px dashed var(--border);color:var(--text2);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;width:100%"><i class="ti ti-plus"></i> Adicionar setor</button>
+      </div>`:'';
+      return `<div style="border:1px solid var(--border);border-left:3px solid ${cFase};border-radius:10px;overflow:hidden;margin-bottom:8px">
+        <div onclick="_ppTogglePainelFase('${f.id}')" style="display:flex;align-items:center;gap:11px;padding:11px 13px;cursor:pointer;background:var(--card)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='var(--card)'">
+          <i class="ti ${aberta?'ti-chevron-down':'ti-chevron-right'}" style="font-size:15px;color:var(--text3);flex-shrink:0"></i>
+          <span style="font-size:12px;font-weight:800;color:var(--text3);flex-shrink:0">${String(idx+1).padStart(2,'0')}</span>
+          <span style="flex:1;min-width:0;font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(f.nome)}</span>
+          <span style="font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0"><i class="ti ti-checklist" style="font-size:12px"></i> ${fp.feitas}/${fp.total}</span>
+          <div style="width:76px;height:5px;background:var(--bg2);border-radius:99px;overflow:hidden;flex-shrink:0"><div style="height:100%;background:${cFase};width:${fp.pct}%"></div></div>
+          <span style="font-size:12px;font-weight:800;color:${cFase};min-width:38px;text-align:right;flex-shrink:0">${fp.pct}%</span>
+        </div>${corpo}
+      </div>`;
+    }).join('');
+  }
+  const estruturaBloco=`<div style="margin-bottom:18px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+      <span style="font-size:14px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:7px"><i class="ti ti-sitemap" style="color:var(--text2)"></i>Estrutura do projeto</span>
+      <button onclick="adicionarFase('${p.id}')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap"><i class="ti ti-plus"></i> Nova fase</button>
+    </div>
+    ${estruturaCorpo}
+  </div>`;
+  const resumoBloco=`<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;margin-bottom:18px">${col1}<div style="flex:1 1 320px;min-width:0">${progressoCard}</div></div>`;
+  let comentariosBloco='';
+  try{ comentariosBloco=`<div style="margin-top:6px;border-top:1px solid var(--border);padding-top:16px">${renderProjectProAnotacoes(p)}</div>`; }catch(e){ comentariosBloco=''; }
+
+  return `${comandoBloco}${resumoBloco}${estruturaBloco}${comentariosBloco}`;
 }
 
 // ─── ABA: FASES (gerenciar) ──────────────────────────────────────
@@ -26102,6 +26162,12 @@ function renderFaseExpandida(p, f){
 function abrirFaseEspecifica(faseId){
   activeFaseId = faseId;
   activeProjectProTab = 'fases';
+  render();
+}
+// Acordeão de fases DENTRO do Painel completo (independente de activeFaseId, que é o "zoom" da aba Fases).
+window._ppPainelFaseAberta = window._ppPainelFaseAberta || {};
+function _ppTogglePainelFase(faseId){
+  window._ppPainelFaseAberta[faseId] = !window._ppPainelFaseAberta[faseId];
   render();
 }
 
