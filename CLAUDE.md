@@ -102,6 +102,21 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+> ▶ **RETOMAR AMANHÃ (PC da Empresa) — deixado 16/07 à noite pelo Mac.** Hoje o foco foi a aba **Projetos**
+> (Projetos Pro): entreguei o **modo foco / tela cheia espelhando o Painel de Reunião** (trilha lateral de ícones,
+> barra-header no topo), o **Painel COMPLETO** (a Visão geral virou a tela onde se vê E faz tudo: criar fase/setor/
+> tarefa em acordeão inline, concluir no checkbox, comentar), a **visão de comando** ("Acontecendo agora" = tarefas
+> da etapa atual) e uma **leva de 8 refinamentos** (aba Pessoas com card de papel Dono/Coordenador/Leitor igual à
+> Reunião, comentários fixos à direita, título "Projeto —"/"Reunião —", etc.). **Tudo no Pages, último commit `4e6be74`
+> — working tree limpo.**
+> **Pra retomar / decisões abertas:** (1) conferir no Pages com um projeto REAL (Ctrl+Shift+R); (2) **DECIDIR:** o card
+> lateral "Atrasadas" conta por `t.date`, mas o "Acontecendo agora" usa o deadline do cronograma de etapas
+> (`ppLiberadaEm`+`ppDias`) — podem divergir; unificar? (mexe em `_calcularProgressoProjeto`); (3) agora o sistema põe
+> "Projeto —"/"Reunião —" sozinho no título — **não precisa mais digitar** o prefixo ao criar; (4) sobrou código morto
+> inócuo no Painel (`col2`/`fasesBloco`, `_initPpColResizer`) p/ a limpeza dedicada. Detalhe técnico nas entradas
+> **(9)(8)(7)** logo abaixo. Estado do modelo: papéis do projeto = `p.dono`/`p.coordenador`/`p.coordenador2`; acordeão
+> do Painel usa `window._ppPainelFaseAberta` (≠ `activeFaseId`, que é o zoom da aba Fases).
+
 ### 2026-07-16 (9) — Mac de casa — Projetos: leva de refinamentos do Diego (pós-teste no Pages)
 - 8 ajustes pedidos pelo Diego depois de testar o Painel completo:
 - **Aba Pessoas do projeto = card de papel igual ao da Reunião** (`renderProjectProPessoas` reescrita espelhando
