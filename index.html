@@ -30934,7 +30934,7 @@ function openReuniaoView(id, _opts){
             </div>`;
           }).join('');
 
-          return `<div class="reun-card4" style="border-left:3px solid var(--text3)">
+          return `<div class="reun-card4">
             <div class="reun-card4-title">
               <span><i class="ti ti-history" style="color:var(--text2)"></i> Decisões anteriores</span>
               <span style="font-size:10px;color:var(--text3);font-weight:500;background:var(--bg2);padding:1px 7px;border-radius:99px">últimas ${reunioesComDecisoes.length}</span>
@@ -32977,7 +32977,7 @@ function reunTarefasHTML(m){
   if(tarefasAnteriores.length){
     html+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;margin-top:4px">📋 Da reunião anterior</div>`;
     html+=tarefasAnteriores.map(t=>tarefaRow(t)).join('');
-    if(tarefasNovas.length) html+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 6px">🆕 Novas tarefas</div>`;
+    if(tarefasNovas.length) html+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:24px 0 6px;padding-top:14px;border-top:1px solid var(--border)">🆕 Novas tarefas</div>`;
   }
 
   if(tarefasNovas.length){
