@@ -102,7 +102,7 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
-### 2026-07-16 (7) — Mac de casa — Projetos: MODO FOCO / tela cheia + trilha lateral (espelha o de Reunião) — commit 1/2
+### 2026-07-16 (7) — Mac de casa — Projetos: MODO FOCO / tela cheia + trilha lateral + VISÃO DE COMANDO (2 commits)
 - Pedido do Diego (gostou do modo foco do Painel de Reunião): trazer o mesmo padrão p/ a aba Projetos — trilha
   lateral de ícones, tudo inline, EXCETO "Finalizar projeto" que abre em modal. Aprovou via MOCKUP antes de codar.
 - ⭐ ACHADO: a tela de projeto (`renderProjectProView`) JÁ é inline com 5 sub-abas (Visão/Fases/Tarefas/Análise/
@@ -122,8 +122,18 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
   fixed, subtabs none, task-container fixed z500, wrap margin-left 74px, header/sidebar none); trilha com os 9 botões;
   navegar Pessoas/Tarefas mantém foco e destaca só o ativo; modal Finalizar por cima (z 9100>500) sem sair do foco;
   Esc sai. 0 erros (jsc new Function).
-- FALTA (commit 2/2, em seguida): a "visão de comando" — "Acontecendo agora" (tarefas da etapa atual) + próximas a
-  liberar + últimos comentários na Visão geral. Este commit é SÓ a casca do modo foco.
+- **COMMIT 2/2 — VISÃO DE COMANDO** (no TOPO da Visão geral; vale no foco E no modo normal): bloco **"Acontecendo
+  agora"** = tarefas da ETAPA ATUAL da esteira (pendentes de menor etapa — mesma lógica de `_ppNotificarLiberacao`),
+  cada uma com numeração hierárquica (`_ppNumHier`), executor, setor e status via `_ppStatus` (laranja "Em andamento ·
+  até <data>" / vermelho "Atrasada · venceu <data>", card com borda vermelha). Abaixo: **"Próximas a liberar"** (etapa
+  seguinte, cadeado) + **"Últimos comentários"** (2 últimos via `getProComments`). Aditivo — as 2 colunas existentes
+  (infos/status/stats | progresso/fases) seguem abaixo. Cards de "agora" são clicáveis → aba Tarefas.
+- **VERIFICADO no navegador** (preview HTTP): etapa atual = 2 tarefas paralelas (3 "até 20 jul" no prazo, 3.1 "venceu
+  02 jul" atrasada c/ borda vermelha), 2 próximas com cadeado, 2 comentários; idêntico no foco e no normal; 0 erros de
+  console. Sintaxe 0 erros (jsc). Commits: `05d353b` (foco) + o deste push.
+- ⚠️ NOTA (decisão do Diego): o stat "Atrasadas" (card da col1) conta por `t.date`; já o "Acontecendo agora" usa o
+  DEADLINE do cronograma de etapas (`ppLiberadaEm`+`ppDias`). Podem DIVERGIR (no teste: card "Atrasada" mas stat
+  Atrasadas=0). São 2 definições distintas e PRÉ-EXISTENTES; unificar mexe em `_calcularProgressoProjeto` — não fiz.
 
 ### 2026-07-16 (6) — Mac de casa — Painel: ícones Histórico + Decisões da série (inline)
 - 2 ícones novos na barra/trilha do painel: **Histórico** (ti-history) lista TODAS as reuniões da série
