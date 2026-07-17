@@ -30750,6 +30750,8 @@ function openReuniaoView(id, _opts){
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','info')" style="${_railActive('info')}" title="Informações da reunião"><i class="ti ti-info-circle"></i><span>Info</span></button>
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','ata')" style="${_railActive('ata')}" title="ATA / Resumo"><i class="ti ti-notes"></i><span>ATA</span></button>
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','anexos')" style="${_railActive('anexos')}" title="Anexos"><i class="ti ti-paperclip"></i><span>Anexos</span></button>
+        <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','historico')" style="${_railActive('historico')}" title="Histórico — todas as reuniões desta série"><i class="ti ti-history"></i><span>Histórico</span></button>
+        <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','decisoes')" style="${_railActive('decisoes')}" title="Decisões — todas as decisões da série"><i class="ti ti-gavel"></i><span>Decisões</span></button>
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','editar')" style="${_railActive('editar')}" title="Editar reunião (data, hora, sala, recorrência)"><i class="ti ti-pencil"></i><span>Editar</span></button>
         <div style="flex:1"></div>
         ${m.status==='encerrada'
@@ -30794,6 +30796,8 @@ function openReuniaoView(id, _opts){
           <button class="reun-ico" onclick="_reunSetSubView('${m.id}','info')" title="Informações da reunião" style="${_icoActive('info')}"><i class="ti ti-info-circle"></i></button>
           <button class="reun-ico" onclick="_reunSetSubView('${m.id}','ata')" title="ATA / Resumo" style="${_icoActive('ata')}"><i class="ti ti-notes"></i></button>
           <button class="reun-ico" onclick="_reunSetSubView('${m.id}','anexos')" title="Anexos" style="${_icoActive('anexos')}"><i class="ti ti-paperclip"></i></button>
+          <button class="reun-ico" onclick="_reunSetSubView('${m.id}','historico')" title="Histórico — todas as reuniões desta série" style="${_icoActive('historico')}"><i class="ti ti-history"></i></button>
+          <button class="reun-ico" onclick="_reunSetSubView('${m.id}','decisoes')" title="Decisões — todas as decisões da série" style="${_icoActive('decisoes')}"><i class="ti ti-gavel"></i></button>
           <button class="reun-ico" onclick="_reunSetSubView('${m.id}','editar')" title="Editar reunião (data, hora, sala, recorrência)" style="${_icoActive('editar')}"><i class="ti ti-pencil"></i></button>
           ${m.status==='encerrada'?`<button class="reun-ico" onclick="gerarPDFReuniao('${m.id}')" title="Gerar PDF da ATA" style="color:var(--danger)" onmouseover="this.style.background='var(--danger)';this.style.color='#fff';this.style.borderColor='var(--danger)'" onmouseout="this.style.background='var(--card)';this.style.color='var(--danger)';this.style.borderColor='var(--border)'"><i class="ti ti-file-download"></i></button>`:''}
           ${m.status!=='encerrada'?`<button class="reun-ico" onclick="concluirReuniao('${m.id}')" title="Finalizar reunião" style="background:var(--success-bg);border-color:var(--success);color:var(--success)"><i class="ti ti-flag-check"></i></button>`:'<span style="height:34px;padding:0 12px;font-size:12px;color:var(--success);font-weight:700;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-circle-check"></i> Encerrada</span>'}
@@ -31042,8 +31046,84 @@ function _reunSubViewHTML(m){
   if(v==='info')    return _reunInfoInlineHTML(m);
   if(v==='ata')     return _reunAtaInlineHTML(m);
   if(v==='anexos')  return _reunAnexosInlineHTML(m);
+  if(v==='historico') return _reunHistoricoInlineHTML(m);
+  if(v==='decisoes')  return _reunDecisoesSerieInlineHTML(m);
   if(v==='editar')  return _reunEditarInlineHTML(m);
   return '';
+}
+// Série COMPLETA (não só ancestrais): cadeia continuacaoDe p/ trás E p/ frente + mesmo serieId.
+// Ordenada por data. Usada pelos ícones Histórico e Decisões.
+function _reunSerieCompleta(m){
+  if(!m) return [];
+  const set=new Set([m.id]);
+  (_reunAncestraisIds(m)||[]).forEach(id=>set.add(id));
+  let changed=true, guard=0;
+  while(changed && guard<60){
+    changed=false; guard++;
+    (meetings||[]).forEach(x=>{
+      if(set.has(x.id)) return;
+      if((x.continuacaoDe && set.has(x.continuacaoDe)) || (m.serieId && x.serieId===m.serieId)){ set.add(x.id); changed=true; }
+    });
+  }
+  return [...set].map(id=>meetings.find(x=>x.id===id)).filter(Boolean)
+    .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+}
+// ÍCONE HISTÓRICO — todas as reuniões da série, clicáveis (abre com botão de voltar).
+function _reunHistoricoInlineHTML(m){
+  const serie=_reunSerieCompleta(m);
+  const fmt=d=>d?new Date(d+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}):'sem data';
+  const rows=serie.map((r,i)=>{
+    const atual=r.id===m.id;
+    const st=REUN_STATUS[r.status]||REUN_STATUS.agendada;
+    const ndec=(r.decisoesItens||[]).length;
+    const ntar=(tasks||[]).filter(t=>t.meetingId===r.id).length;
+    const pautaTot=(r.pauta||[]).length, pautaFeita=(r.pautaDone||[]).filter(Boolean).length;
+    const meta=[`<span style="color:${st.c||'var(--text3)'};font-weight:700">${st.l||r.status}</span>`];
+    if(pautaTot) meta.push(`<span><i class="ti ti-list-check" style="font-size:12px"></i> ${pautaFeita}/${pautaTot}</span>`);
+    if(ndec) meta.push(`<span><i class="ti ti-gavel" style="font-size:12px"></i> ${ndec}</span>`);
+    if(ntar) meta.push(`<span><i class="ti ti-checkbox" style="font-size:12px"></i> ${ntar}</span>`);
+    return `<div style="display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:10px;border:1px solid ${atual?'var(--blue-mid)':'var(--border)'};background:${atual?'color-mix(in srgb,var(--blue-mid) 8%,transparent)':'var(--card)'};margin-bottom:7px">
+      <div style="width:30px;height:30px;border-radius:8px;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--text3);flex-shrink:0">${i+1}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13.5px;font-weight:700;color:var(--text)">${escapeHTML(r.title||'Reunião')}${atual?' <span style="font-size:10px;color:var(--blue-mid);font-weight:700">· esta</span>':''}</div>
+        <div style="font-size:11.5px;color:var(--text3);display:flex;gap:10px;flex-wrap:wrap;margin-top:2px"><span>${fmt(r.date)}${r.horaInicio?' · '+r.horaInicio:''}</span>${meta.join('')}</div>
+      </div>
+      ${atual?'':`<button onclick="_reunAbrirDaSerie('${m.id}','${r.id}')" style="background:none;border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-external-link" style="font-size:12px"></i> Abrir</button>`}
+    </div>`;
+  }).join('');
+  return `<div style="max-width:760px;margin:0 auto"><div class="reun-card4">
+    <div class="reun-card4-title"><span><i class="ti ti-history" style="color:var(--blue-mid)"></i> Histórico da série <span style="font-size:11px;font-weight:500;color:var(--text3)">· ${serie.length} reuni${serie.length===1?'ão':'ões'}</span></span></div>
+    <div style="font-size:11.5px;color:var(--text3);margin:-4px 0 12px">Todas as reuniões desta continuação, da mais antiga à mais nova. Abra uma e use "Voltar" p/ retornar.</div>
+    ${rows||'<div style="font-size:13px;color:var(--text3);font-style:italic">Só esta reunião — sem continuação.</div>'}
+  </div></div>`;
+}
+// ÍCONE DECISÕES — TODAS as decisões da série (a pauta mostra só as últimas 3; aqui é tudo).
+function _reunDecisoesSerieInlineHTML(m){
+  const serie=_reunSerieCompleta(m).filter(r=>(r.decisoesItens||[]).length>0)
+    .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))); // mais recente primeiro
+  const fmt=d=>d?new Date(d+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}):'sem data';
+  const total=serie.reduce((s,r)=>s+(r.decisoesItens||[]).length,0);
+  const blocos=serie.map(r=>{
+    const atual=r.id===m.id;
+    const decs=(r.decisoesItens||[]).map((d,i)=>`<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0">
+      <span style="font-size:11px;font-weight:800;color:var(--text3);flex-shrink:0;margin-top:1px">${i+1}.</span>
+      <span style="flex:1;font-size:13px;color:var(--text);line-height:1.5">${escapeHTML(d.texto||'')}</span>
+    </div>`).join('');
+    return `<div style="border-left:3px solid ${atual?'var(--blue-mid)':'var(--border)'};padding:2px 0 2px 12px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:700;color:var(--text)">${escapeHTML(r.title||'Reunião')}</span>
+        <span style="font-size:11px;color:var(--text3)">${fmt(r.date)}</span>
+        <span style="font-size:10px;color:var(--text3);background:var(--bg2);padding:1px 7px;border-radius:99px;font-weight:600">${(r.decisoesItens||[]).length} decis${(r.decisoesItens||[]).length===1?'ão':'ões'}</span>
+        ${atual?'<span style="font-size:10px;color:var(--blue-mid);font-weight:700">· esta</span>':`<button onclick="_reunAbrirDaSerie('${m.id}','${r.id}')" style="background:none;border:none;color:var(--blue-mid);font-size:11px;font-weight:600;cursor:pointer;padding:0"><i class="ti ti-external-link" style="font-size:11px"></i> abrir</button>`}
+      </div>
+      ${decs}
+    </div>`;
+  }).join('');
+  return `<div style="max-width:760px;margin:0 auto"><div class="reun-card4">
+    <div class="reun-card4-title"><span><i class="ti ti-gavel" style="color:var(--blue-mid)"></i> Decisões da série <span style="font-size:11px;font-weight:500;color:var(--text3)">· ${total} no total</span></span></div>
+    <div style="font-size:11.5px;color:var(--text3);margin:-4px 0 12px">Todas as decisões de todas as reuniões desta continuação (mais recentes primeiro).</div>
+    ${blocos||'<div style="font-size:13px;color:var(--text3);font-style:italic">Nenhuma decisão registrada na série ainda.</div>'}
+  </div></div>`;
 }
 // Editar — o MESMO form do modal (renderNovaReuniaoForm), renderizado INLINE no painel.
 // Espelha o truque do openReuniaoModal: renderiza num container detached e captura o HTML.

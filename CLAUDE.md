@@ -102,6 +102,13 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-16 (6) — Mac de casa — Painel: ícones Histórico + Decisões da série (inline)
+- 2 ícones novos na barra/trilha do painel: **Histórico** (ti-history) lista TODAS as reuniões da série
+  (`_reunSerieCompleta` = cadeia continuacaoDe p/ os 2 lados + mesmo serieId, ordenada por data; clicáveis via
+  `_reunAbrirDaSerie` c/ botão Voltar) e **Decisões** (ti-gavel) mostra TODAS as decisões da série agrupadas por
+  reunião (mais recentes 1º). Despacho em `_reunSubViewHTML` (views "historico"/"decisoes"). A pauta segue só as
+  últimas 3; estes ícones mostram tudo. Verificado: série de 3 → Histórico lista 3, Decisões soma 6. 0 erros.
+
 ### 2026-07-16 (5) — Mac de casa — Painel de Reunião: aba Pessoas (papel por chip+cor), voltar da série, tarefas concluídas riscadas
 - **Aba Pessoas unificada** (`_reunPessoasInlineHTML`): removida a seção duplicada "Papéis e presença" de baixo.
   Agora cada PARTICIPANTE no grid "Quem participa" tem: card **colorido pelo papel**, um **chip de papel** que
