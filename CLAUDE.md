@@ -102,6 +102,17 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-17 (b) — PC da Empresa — Projetos: Painel em 3 COLUNAS master-detail (commit `562e4ae`, PUSHADO)
+- Pedido do Diego: a fase não deve abrir em **acordeão pra baixo**; clicar na fase abre setores+tarefas na **coluna do lado** (a do meio,
+  que estava vazia). E dividir o Painel em **3 colunas**.
+- `renderProjectProVisao` reescrita: **col 1** = "Acontecendo agora" + **lista de fases clicáveis** (Estrutura, master); **col 2** =
+  **detalhe da fase selecionada** (setores+tarefas, "+ Tarefa"/"+ Setor" — reusa `_setorBloco`/`_tarefaLinha`); **col 3** = Comentários (fina).
+- Estado `window._ppFaseSelId` (fase ativa; persiste, auto-seleciona a 1ª se a atual não é deste projeto). `_ppTogglePainelFase`→
+  **`_ppSelecionarFase`** (alias antigo mantido); `window._ppPainelFaseAberta` (acordeão) **aposentado** (0 usos). Grids do comando viraram
+  `1fr` (col estreita — cards empilham sem vazar). Placeholder no detalhe quando nada selecionado.
+- ⚠️ NÃO testado em navegador; balanço idêntico ao HEAD. **Diego confere no Pages (Ctrl+Shift+R):** clicar fase à esquerda → setores/tarefas
+  aparecem no meio (não mais embaixo); 3 colunas; em tela estreita empilha.
+
 ### 2026-07-17 — PC da Empresa — REVISÃO GERAL Reuniões+Projetos (pedido do Diego): redesign do Painel do projeto + 30 fixes (commits `981cd06`,`c929214`,`32767ac`, PUSHADOS)
 - **Pedido do Diego (autônomo, ele longe do PC):** revisar as abas Reuniões e Projetos inteiras (bugs/regra de negócio/duplicação/layout),
   painéis com a MESMA lógica, tela leve; no Painel do projeto: infos estáticas saem da área de trabalho, comentários em coluna FINA com input discreto.
