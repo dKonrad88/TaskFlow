@@ -102,6 +102,17 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-17 (c) — PC da Empresa — Projetos: Painel vira ferramenta de PLANEJAMENTO (dependência+dias+previsão+projeção) + respiro (commit `15e8119`, PUSHADO)
+- Pedido do Diego (vai usar o Painel pra planejar): ver a dependência entre tarefas, definir dias, e a projeção de conclusão.
+- **Largura/respiro:** coluna do detalhe (tarefas) com **max-width 660** (não estica ponta-a-ponta); `gap` 16→**26**; comentários com
+  `margin-left:auto` (empurra p/ a direita → espaço vazio de respiro no meio). Col de fases mais estreita (244).
+- **Dependência visível na linha da tarefa** (`_tarefaLinha` enriquecida): badge da **ETAPA** (`_ppNumHier`: "1","2","2.1"…) — a próxima só
+  começa quando a anterior conclui; **cadeado** quando bloqueada. Legenda no topo do detalhe. Ordem/paralelas seguem na aba Tarefas (tem drag).
+- **Dias editáveis** na própria linha (input→`_ppSetDias`) + **conclusão prevista por tarefa** (`_ppProjecao` — cascata etapa×dias úteis).
+- **Projeção do PROJETO:** faixa no topo do detalhe ("Conclusão prevista: DD/MM · Xd de folga/após o prazo", compara `p.prazoFim`), atualiza
+  conforme muda os dias. `_projE=_ppProjecao(_ordE,_etE,_anchorE)` computado no topo do `renderProjectProVisao`.
+- ⚠️ NÃO testado em navegador; balanço idêntico ao HEAD. **Diego confere no Pages.**
+
 ### 2026-07-17 (b) — PC da Empresa — Projetos: Painel em 3 COLUNAS master-detail (commit `562e4ae`, PUSHADO)
 - Pedido do Diego: a fase não deve abrir em **acordeão pra baixo**; clicar na fase abre setores+tarefas na **coluna do lado** (a do meio,
   que estava vazia). E dividir o Painel em **3 colunas**.
