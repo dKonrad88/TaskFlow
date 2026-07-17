@@ -102,6 +102,29 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-16 (7) — Mac de casa — Projetos: MODO FOCO / tela cheia + trilha lateral (espelha o de Reunião) — commit 1/2
+- Pedido do Diego (gostou do modo foco do Painel de Reunião): trazer o mesmo padrão p/ a aba Projetos — trilha
+  lateral de ícones, tudo inline, EXCETO "Finalizar projeto" que abre em modal. Aprovou via MOCKUP antes de codar.
+- ⭐ ACHADO: a tela de projeto (`renderProjectProView`) JÁ é inline com 5 sub-abas (Visão/Fases/Tarefas/Análise/
+  Comentários) + ícones `.reun-ico` no header + Finalizar já em modal. O trabalho foi VESTIR essa tela com o modo
+  foco, reusando `activeProjectProTab` como estado (sem inventar variável de sub-view).
+- **Como ficou (espelha 1:1 o Reunião):** `body.proj-focus` (cópia do `body.reun-focus`) esconde header/sidebar/
+  topbar/FAB, põe `#task-container` fullscreen (fixed, z-500) e desloca `.proj-panel-wrap` em `margin-left:74px`.
+  Trilha `.proj-focus-rail` (74px fixa) por `_projFocusRailHTML(p)`, só visível no foco; abas horizontais
+  (`.proj-subtabs`) somem no foco. Botão ⛶ (`_toggleProjFocus`) no header.
+- **Trilha:** Sair · | · Painel · Fases · Tarefas · Comentários · Pessoas · Análise · Editar · (espaço) · **Finalizar**
+  (rodapé, verde). Abas chamam `setProjectProTab`; ativo destacado por `_projRailActive`. **Pessoas** REVIVIDA
+  (`renderProjectProPessoas` já existia, só estava fora do menu). **Editar**=`editarProjectPro` (modal).
+  **Finalizar**=`_selecionarStatusProjeto(id,'concluido')` (reusa permissão: dono→modal `pp-modal-fechar`; coord→pré-fecha).
+- **Salvaguardas (espelham reun):** guard no `render()` desliga o foco se saiu de projetos; reset no `setTab` e no
+  `voltarParaProjetosPro`; `Esc` sai (handler 1x); `_exitProjFocus` volta a aba p/ 'visao' se estava em 'pessoas'.
+- **VERIFICADO no navegador** (preview HTTP + projeto de teste 3 fases/6 tarefas): ⛶ liga o foco (rail flex 74px
+  fixed, subtabs none, task-container fixed z500, wrap margin-left 74px, header/sidebar none); trilha com os 9 botões;
+  navegar Pessoas/Tarefas mantém foco e destaca só o ativo; modal Finalizar por cima (z 9100>500) sem sair do foco;
+  Esc sai. 0 erros (jsc new Function).
+- FALTA (commit 2/2, em seguida): a "visão de comando" — "Acontecendo agora" (tarefas da etapa atual) + próximas a
+  liberar + últimos comentários na Visão geral. Este commit é SÓ a casca do modo foco.
+
 ### 2026-07-16 (6) — Mac de casa — Painel: ícones Histórico + Decisões da série (inline)
 - 2 ícones novos na barra/trilha do painel: **Histórico** (ti-history) lista TODAS as reuniões da série
   (`_reunSerieCompleta` = cadeia continuacaoDe p/ os 2 lados + mesmo serieId, ordenada por data; clicáveis via

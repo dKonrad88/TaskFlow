@@ -1516,6 +1516,19 @@
   .reun-timer-over{animation:reunTimerPulse 1s ease-in-out infinite}
   body.reun-focus .reun-focus-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:60;background:var(--card);border-bottom:1px solid var(--border);padding:11px 30px;margin:0 -30px 16px}
   body.reun-focus .reun-grid4{grid-template-columns:minmax(0,320px) minmax(0,1fr) minmax(0,340px);max-width:1400px;margin-left:auto;margin-right:auto}
+  /* ── Modo FOCO / tela cheia do Painel de PROJETO (espelha o de Reunião) ── */
+  .proj-focus-rail{display:none}
+  body.proj-focus .hdr,body.proj-focus .sidebar,body.proj-focus #sidebar-resizer,body.proj-focus .sidebar-resizer,body.proj-focus .topbar,body.proj-focus .fab-create,body.proj-focus .fab-menu{display:none!important}
+  body.proj-focus #task-container{position:fixed;inset:0;z-index:500;overflow-y:auto;overflow-x:hidden;background:var(--bg);padding:0}
+  body.proj-focus .proj-panel-wrap{max-width:none!important;margin-left:74px!important;margin-right:0!important;padding:0 30px 40px!important}
+  body.proj-focus .proj-subtabs{display:none!important}
+  body.proj-focus .proj-focus-rail{display:flex;flex-direction:column;align-items:center;gap:3px;position:fixed;left:0;top:0;bottom:0;width:74px;background:var(--card);border-right:1px solid var(--border);padding:12px 0;z-index:70;overflow-y:auto;scrollbar-width:none}
+  body.proj-focus .proj-focus-rail::-webkit-scrollbar{display:none}
+  .proj-rail-btn{display:flex;flex-direction:column;align-items:center;gap:3px;width:60px;padding:8px 0;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s;flex-shrink:0}
+  .proj-rail-btn:hover{background:var(--bg2);color:var(--blue-mid)}
+  .proj-rail-btn i{font-size:19px}
+  .proj-rail-btn span{font-size:8.5px;font-weight:600;text-align:center;line-height:1.1}
+  .proj-rail-sep{height:1px;background:var(--border);width:42px;margin:5px 0;flex-shrink:0}
   .reun-card4{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;min-height:130px}
   .reun-card4-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:6px}
   /* Botões-ícone do topo */
@@ -15179,6 +15192,7 @@ function setTab(tab,el){
   activeProjectProId=null; activeFaseId=null; // V3: ao navegar por aba, sai do projeto aberto (volta à lista)
   window._activeReuniaoId=null; // ao navegar por aba, fecha o Painel de Reunião aberto (volta à lista)
   window._reunFocus=false; document.body.classList.remove('reun-focus'); // sai do modo foco ao trocar de aba
+  window._projFocus=false; document.body.classList.remove('proj-focus'); // idem: sai do foco de projeto ao trocar de aba
   // GUILHERME V3 (mai/2026): limpar todos os chips/filtros do header ao trocar de aba
   const _chipEl=document.getElementById('tab-proj-chips');
   if(_chipEl){_chipEl.innerHTML='';_chipEl.style.display='none';}
@@ -16262,6 +16276,10 @@ function render(){
   // Salvaguarda do modo foco: se saiu do Painel de Reunião por qualquer caminho, desliga o fullscreen.
   if(window._reunFocus && (typeof hubView==='undefined' || hubView!=='taskflow' || currentTab!=='reunioes' || !window._activeReuniaoId)){
     window._reunFocus=false; document.body.classList.remove('reun-focus');
+  }
+  // Idem para o Painel de Projeto (aceita 'projetos'/'projetos-pro' — o redirect ocorre mais abaixo).
+  if(window._projFocus && (typeof hubView==='undefined' || hubView!=='taskflow' || (currentTab!=='projetos-pro'&&currentTab!=='projetos') || !activeProjectProId)){
+    window._projFocus=false; document.body.classList.remove('proj-focus');
   }
   // MODO HUB: renderizar Meu dia! quando hubView === 'meudia'
   if(hubView === 'meudia'){
@@ -24939,7 +24957,39 @@ function voltarParaProjetosPro(){
   activeProjectProId = null;
   activeProjectProTab = 'visao';
   activeFaseId = null;
+  window._projFocus=false; document.body.classList.remove('proj-focus'); // sai do modo foco ao voltar à lista
   render();
+}
+
+// ── Modo FOCO (tela cheia) do Painel de Projeto — espelha o de Reunião ──────────
+window._projFocus = window._projFocus || false;
+function _toggleProjFocus(){
+  window._projFocus = !window._projFocus;
+  document.body.classList.toggle('proj-focus', window._projFocus);
+  render();
+}
+function _exitProjFocus(){
+  window._projFocus = false;
+  document.body.classList.remove('proj-focus');
+  if(activeProjectProTab==='pessoas') activeProjectProTab='visao'; // 'pessoas' só existe na trilha, não nas abas horizontais
+  render();
+}
+function _projRailActive(v){ return activeProjectProTab===v ? 'background:color-mix(in srgb,var(--blue-mid) 12%,transparent);color:var(--blue-mid)' : ''; }
+function _projFocusRailHTML(p){
+  const A=_projRailActive;
+  return `<div class="proj-focus-rail">
+    <button class="proj-rail-btn" onclick="_exitProjFocus()" title="Sair da tela cheia (Esc)"><i class="ti ti-arrows-minimize"></i><span>Sair</span></button>
+    <div class="proj-rail-sep"></div>
+    <button class="proj-rail-btn" onclick="setProjectProTab('visao')" style="${A('visao')}" title="Painel — visão geral do projeto"><i class="ti ti-layout-dashboard"></i><span>Painel</span></button>
+    <button class="proj-rail-btn" onclick="setProjectProTab('fases')" style="${A('fases')}" title="Fases"><i class="ti ti-layout-rows"></i><span>Fases</span></button>
+    <button class="proj-rail-btn" onclick="setProjectProTab('tarefas')" style="${A('tarefas')}" title="Tarefas"><i class="ti ti-checklist"></i><span>Tarefas</span></button>
+    <button class="proj-rail-btn" onclick="setProjectProTab('anotacoes')" style="${A('anotacoes')}" title="Comentários"><i class="ti ti-message-circle"></i><span>Comentários</span></button>
+    <button class="proj-rail-btn" onclick="setProjectProTab('pessoas')" style="${A('pessoas')}" title="Pessoas — equipe do projeto"><i class="ti ti-users"></i><span>Pessoas</span></button>
+    <button class="proj-rail-btn" onclick="setProjectProTab('analise')" style="${A('analise')}" title="Análise"><i class="ti ti-chart-arcs"></i><span>Análise</span></button>
+    <button class="proj-rail-btn" onclick="editarProjectPro('${p.id}')" title="Editar projeto (nome, prazo, cor)"><i class="ti ti-pencil"></i><span>Editar</span></button>
+    <div style="flex:1"></div>
+    <button class="proj-rail-btn" onclick="_selecionarStatusProjeto('${p.id}','concluido')" style="color:var(--success)" title="Finalizar projeto"><i class="ti ti-flag"></i><span>Finalizar</span></button>
+  </div>`;
 }
 
 // ─── MODAL: NOVO PROJETO ─────────────────────────────────────────
@@ -25616,6 +25666,7 @@ function renderProjectProView(id){
         </div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+        <button class="reun-ico" onclick="_toggleProjFocus()" title="Abrir em tela cheia (modo foco)"><i class="ti ti-arrows-maximize"></i></button>
         ${ajudaIconHTML}
         <button class="reun-ico" onclick="abrirModalEquipe('${p.id}')" title="Participantes"><i class="ti ti-users"></i></button>
         <button class="reun-ico" onclick="salvarProjetoComoTemplate('${p.id}')" title="Salvar como template"><i class="ti ti-template"></i></button>
@@ -25632,7 +25683,7 @@ function renderProjectProView(id){
     {id:'anotacoes', label:'Comentários', icon:'ti-message-circle'},
   ];
   const tabsHTML = `
-    <div style="display:flex;gap:4px;margin:14px 0 18px;border-bottom:1px solid var(--border);overflow-x:auto;overflow-y:hidden">
+    <div class="proj-subtabs" style="display:flex;gap:4px;margin:14px 0 18px;border-bottom:1px solid var(--border);overflow-x:auto;overflow-y:hidden">
       ${subTabs.map(t=>`
         <button onclick="setProjectProTab('${t.id}')" style="background:transparent;border:none;border-bottom:2px solid ${activeProjectProTab===t.id?p.cor:'transparent'};color:${activeProjectProTab===t.id?'var(--text)':'var(--text3)'};padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s">
           <i class="ti ${t.icon}"></i> ${t.label}
@@ -25651,7 +25702,8 @@ function renderProjectProView(id){
   // Shell (cabeçalho + subnavbar) tem largura FIXA p/ a subnavbar não "pular" entre abas.
   // Só o corpo varia: Tarefas usa planilha larga (1320px); demais abas mantêm 1040px.
   const _bodyMax = activeProjectProTab==='tarefas' ? 1320 : 1040;
-  container.innerHTML = `<div style="max-width:1320px;margin:0 auto">${headerHTML + tabsHTML + `<div style="max-width:${_bodyMax}px;padding-bottom:60px">${bodyHTML}</div>`}</div>`;
+  const railHTML = _projFocusRailHTML(p);
+  container.innerHTML = `<div class="proj-panel-wrap" style="max-width:1320px;margin:0 auto">${railHTML + headerHTML + tabsHTML + `<div style="max-width:${_bodyMax}px;padding-bottom:60px">${bodyHTML}</div>`}</div>`;
   // Dentro do projeto: a topbar mostra o BREADCRUMB (isolado no topo); o título do projeto
   // fica no corpo. Só innerHTML (span auto-dimensionado) — não mexo no font-size do #tab-title
   // pra não vazar pras outras telas (elas voltam a usar textContent = título grande).
@@ -25660,6 +25712,12 @@ function renderProjectProView(id){
   const _ppa=document.getElementById('pp-header-actions'); if(_ppa) _ppa.style.display='none';
   // Visão geral: largura personalizada das colunas + separador arrastável
   if(activeProjectProTab==='visao'){ if(typeof _loadPpColW==='function') _loadPpColW(); if(typeof _initPpColResizer==='function') _initPpColResizer(); }
+  // Modo foco: reflete a classe na montagem + registra o Esc uma única vez (espelha o Painel de Reunião).
+  document.body.classList.toggle('proj-focus', !!window._projFocus);
+  if(!window._projFocusEscWired){
+    window._projFocusEscWired=true;
+    document.addEventListener('keydown',(e)=>{ if(e.key==='Escape' && window._projFocus) _exitProjFocus(); });
+  }
 }
 
 function setProjectProTab(tab){
