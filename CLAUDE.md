@@ -102,6 +102,47 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-17 — PC da Empresa — REVISÃO GERAL Reuniões+Projetos (pedido do Diego): redesign do Painel do projeto + 30 fixes (commits `981cd06`,`c929214`,`32767ac`, PUSHADOS)
+- **Pedido do Diego (autônomo, ele longe do PC):** revisar as abas Reuniões e Projetos inteiras (bugs/regra de negócio/duplicação/layout),
+  painéis com a MESMA lógica, tela leve; no Painel do projeto: infos estáticas saem da área de trabalho, comentários em coluna FINA com input discreto.
+- **REDESIGN DO PAINEL DO PROJETO (`981cd06`+`c929214`):** Painel = SÓ trabalho ("Acontecendo agora" + Estrutura + Comentários). O bloco "Resumo"
+  (tipo/datas/dono + status + stats + progresso) virou a **nova aba "Info"** (`renderProjectProInfo`, mesma lógica do Info da Reunião; status
+  clicável mantido — `pp-status-badge`/`abrirMenuStatusProjeto`). **Comentários**: coluna direita agora `flex:0 0 300px` (era 1fr, crescia demais)
+  e o **input virou 1 linha discreta** (pill + botão-ícone; **Enter envia**; @menção mantida — `enviarProComment`/`_ppCheckMencao` leem
+  `.value`/`.selectionStart`, compatível com `<input>`; ⚠️ perdeu multi-linha — trade-off aceito pelo pedido "discreto"). **Progresso** virou pill
+  compacta no header (substitui o `progressoBloco` morto). **Sub-abas** ganharam Pessoas+Info e "Visão geral"→**"Painel"** (mesmo nome da trilha);
+  trilha na MESMA ordem das abas; ícone "Participantes" (modal `abrirModalEquipe`) saiu do header → `[SUPERSEDED]`; `_exitProjFocus` não reseta
+  mais 'pessoas'. Limpou morto: `pessoasHeader`/`progressoBloco`/`proximaFase`/`col1/col2/fasesBloco`/`coms/listaComs`(rodavam getProComments
+  por render)/`_ts`/`me/meIni`; resizer do painel inerte (chamada removida). Sub-aba "Comentários (N)" com contador discreto.
+- **REVISÃO: 2 subagentes (Reuniões 30 achados / Projetos 24), cada fix re-verificado no código antes de aplicar. LOTE de ~30 fixes (`32767ac`):**
+  - 🔴 **BUG #6 DO DIEGO RESOLVIDO**: era `_reunAtualizarDataVencida` (banner "reunião recorrente vencida → Atualizar") — avançava a data da
+    MESMA reunião sem resetar nada → abria "continuação" com **pautas já feitas e data de hoje**. Agora zera pautaDone/principalDone/presenças/
+    timer (ATA/decisões ficam — são registro). Gatilho: `frequencia` legada ≠ 'unica' (registros antigos).
+  - 🔴 Painel do projeto: **checkbox de concluir tarefa não fazia NADA** (`toggle('${t.id}')` string × id numérico, `===` nunca achava) →
+    `toggle(${t.id})`; linha da tarefa agora abre `openEdit` (como no resto do HUB).
+  - 🟠 Reuniões: "Agendar próxima e levar assuntos" em série MATERIALIZADA não encerrava nem levava nada → merge de pendências na próxima + encerra;
+    `editingReuniaoId` órfão (sair do painel pela aba Editar → "+ Nova reunião" abria EDITANDO a anterior; salvar SOBRESCREVIA) → resets;
+    editar reunião e ligar "Repetir" agora **materializa** a série; `toggleReunSerie` quebrava com apóstrofo no título (XSS latente) → escapado.
+  - 🟠 Projetos: "Excluir projeto" do modal Editar pulava confirmação+permissão → `confirmExcluirProjectPro`; quick-add "+ Tarefa": "— Nenhum —"
+    não desvinculava e trocar de projeto herdava fase/setor do ANTERIOR (dataset) → select manda, dataset só no mesmo projeto/fase; drag entre
+    fases não limpava `grupo.tarefaIds` (tarefa fantasma no setor velho); `preFecharProjetoPro` tinha aviso de pendências NUNCA exibido → confirmModal.
+  - 🟡 Médios/baixos: continuações herdam sala 3-modos + papéis; timer com `data-planned` no pill normal (estouro usava 60min fixos) e nasce
+    vermelho se estourado; "Acontecendo agora" inclui status 'andamento' (era excluído!); `deleteReuniao` religa a cadeia `continuacaoDe`;
+    `_reunProximaDaSerie` não sugere encerrada; histórico usa `duracaoSeg` (3 pontos); sala/tipo legados viram option (edição não apaga);
+    `salvarAta` só grava se mudou; `createdAt` preservado; status fantasma 'continuacao' fora do select; executor como fallback na linha;
+    `_pautaPrincEd` zerado ao trocar; PDF usa `_reunLocalLabel`; subtarefa de modelo `{text}`→`title` (renderizava "undefined"); notif de
+    @menção grava `paraId`; `_ppSincronizarLiberacao` grava 1× (era N×120KB); filtros do Painel com `projectProId`; `_ppExcluirComment` valida
+    autor; @menção só destaca pessoa existente; cor de import validada; consts mortas removidas (`partsHTML/projHTML/proxDataTxt/contLabel` etc.).
+- **NÃO FEITO (anotado, decisão/reescrita):** dupla definição de "Atrasada" (t.date × esteira — decisão já aberta do Mac); dupla fonte
+  `g.tarefaIds`×`t.projectPro*` viva em `renderFaseExpandida`/`salvarProjetoComoTemplate` (perde tarefas sem setor); permissões pela metade
+  (adicionarFase/editarFase/_ppSetDias/salvarEdicaoProjectPro sem `_ppPodeGerenciar` — e coordenador pode se auto-promover a Dono via chip);
+  aba Editar inline da reunião perde texto digitado se re-render no meio (play/pausa/tema); ~15 toasts com `escapeHTML` (dupla escapagem
+  cosmética: "P&amp;D"); comentários órfãos em `taskflow_pro_comments` após purge da lixeira; write-on-render de datas na aba Tarefas
+  (by-design da esteira, mas só naquela aba); memoização de `_ppTarefasOrdenadas` na lista (o `_ppOrdCache` existe e não é usado lá);
+  "Histórico" = 2 telas diferentes com o mesmo nome (aba do painel × sub-navbar da lista); `_sugEncerrarSerie` não encerra passadas.
+- ⚠️ **NÃO testado em navegador** (máquina sem preview). Balanço do arquivo **idêntico ao HEAD do Mac** (parênteses/chaves/divs/backticks) após
+  cada lote. **Diego confere no Pages (Ctrl+Shift+R)** — roteiro no chat da sessão.
+
 > ▶ **RETOMAR AMANHÃ (PC da Empresa) — deixado 16/07 à noite pelo Mac.** Hoje o foco foi a aba **Projetos**
 > (Projetos Pro): entreguei o **modo foco / tela cheia espelhando o Painel de Reunião** (trilha lateral de ícones,
 > barra-header no topo), o **Painel COMPLETO** (a Visão geral virou a tela onde se vê E faz tudo: criar fase/setor/
