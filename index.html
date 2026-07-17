@@ -18181,7 +18181,7 @@ function renderDash(){
             <div style="display:flex;gap:4px">
               <button onclick="toggleForm()" class="dash-quick-icon" title="Nova tarefa"><i class="ti ti-square-plus"></i></button>
               <button onclick="openNoteModalDraft()" class="dash-quick-icon" title="Nova nota"><i class="ti ti-note"></i></button>
-              <button onclick="openReuniaoModal()" class="dash-quick-icon" title="Nova reunião"><i class="ti ti-speakerphone"></i></button>
+              <button onclick="editingReuniaoId=null;openReuniaoModal()" class="dash-quick-icon" title="Nova reunião"><i class="ti ti-speakerphone"></i></button>
               <button onclick="setTab('agenda',document.getElementById('menu-agenda'))" class="dash-quick-icon" title="Agenda"><i class="ti ti-calendar-event"></i></button>
             </div>
           </div>
@@ -22211,9 +22211,14 @@ function saveTask(){
   const _sv_executor=document.getElementById('sel-executor')?.value||null;
   const _sv_solicitante=document.getElementById('sel-solicitante')?.value||null;
   // GUILHERME V3 (mai/2026): agora usa projectsPro (com fase opcional) em vez do projects antigo.
-  const _sv_prj=document.getElementById('sel-proj')?.value||modal.dataset.projectProId||null;
-  const _sv_fase=document.getElementById('sel-fase')?.value||modal.dataset.projectProFaseId||null;
-  const _sv_grupo=modal.dataset.projectProGrupoId||null;
+  // Quando o select EXISTE, ele manda (o toggleForm já o pré-seleciona com o dataset): value vazio =
+  // "Nenhum" de verdade. O dataset só entra sem select — e fase/grupo do dataset só valem se o
+  // projeto/fase finais forem os MESMOS do contexto (senão tarefa nasce com fase de outro projeto).
+  const _selProjEl=document.getElementById('sel-proj');
+  const _sv_prj=_selProjEl ? (_selProjEl.value||null) : (modal.dataset.projectProId||null);
+  const _selFaseEl=document.getElementById('sel-fase');
+  const _sv_fase=_selFaseEl ? (_selFaseEl.value||null) : ((modal.dataset.projectProFaseId&&_sv_prj===(modal.dataset.projectProId||null))?modal.dataset.projectProFaseId:null);
+  const _sv_grupo=(modal.dataset.projectProGrupoId && _sv_prj===(modal.dataset.projectProId||null) && _sv_fase===(modal.dataset.projectProFaseId||null)) ? modal.dataset.projectProGrupoId : null;
   const _sv_mtg=document.getElementById('sel-meeting')?.value||modal.dataset.meetingId||null;
   // Compatibilidade: people[] = [executor] para não quebrar filtros existentes
   const _people=_sv_executor?[_sv_executor]:[];
@@ -23021,12 +23026,13 @@ function saveNotifs(){ const s=JSON.stringify(_notifs); if(s===_lastNotifsJSON) 
 
 // GUILHERME V3 (mai/2026): cria notificação imediata de menção em comentário de projeto.
 // Chamado em enviarProComment quando tem @mencoes.
-function _criarNotifMencao(projectProId, projectNome, autorId, texto){
+function _criarNotifMencao(projectProId, projectNome, autorId, texto, paraId){
   const agora = new Date().toISOString();
   const autor = people.find(p=>p.id===autorId);
   const notif = {
     id: 'n'+Date.now()+Math.random().toString(36).slice(2,6),
     tipo: 'mencao_projeto',
+    paraId: paraId||null, // destinatário (regra p/ o backend: só ele vê; protótipo grava o alvo)
     ref: projectProId,
     texto: `@${escapeHTML(autor?autor.name:'Alguém')} mencionou você no projeto "${escapeHTML(projectNome||'')}": "${escapeHTML(texto.slice(0,60))}${texto.length>60?'…':''}"`,
     ts: agora,
@@ -24830,7 +24836,7 @@ function _ppImportarSalvar(){
     const p=_novoProjectPro({
       nome:String(o.nome),
       tipo:o.tipo||'outro',
-      cor:o.cor||'#185FA5',
+      cor:(/^#[0-9a-fA-F]{3,8}$/.test(o.cor||'')?o.cor:'#185FA5'),
       dono:o.dono||CURRENT_USER_ID,
       prazoInicio:o.prazoInicio||null,
       prazoFim:o.prazoFim||null,
@@ -25196,7 +25202,7 @@ function criarProjetoDeTemplate(tplId){
           projectProGrupoId:grupo.id,    // <- setor (agrupamento no detalhe)
           setorManual:true,             // não deixa a derivação por executor sobrescrever
           _persisted:true,
-          subtasks:(tt.subtasks||[]).map((s,si)=>({id:'sub_'+_base+'_'+si+'_'+(_seq++), text:s.text||'', done:false}))
+          subtasks:(tt.subtasks||[]).map((s,si)=>({id:'sub_'+_base+'_'+si+'_'+(_seq++), title:s.text||s.title||'', done:false}))
         };
         tasks.push(nt);
         saveTask_db(nt);
@@ -25817,7 +25823,7 @@ function renderProjectProVisao(p, prog){
       } else if(ord.length){
         comandoBloco=`<div style="margin-bottom:16px;background:color-mix(in srgb,var(--success) 8%,var(--card));border:1px solid color-mix(in srgb,var(--success) 30%,var(--border));border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:11px"><i class="ti ti-circle-check" style="font-size:22px;color:var(--success)"></i><div><div style="font-size:13.5px;font-weight:800;color:var(--text)">Todas as tarefas concluídas</div><div style="font-size:12px;color:var(--text3)">O projeto está pronto para ser encerrado.</div></div></div>`;
       }
-    }catch(e){ comandoBloco=''; }
+    }catch(e){ comandoBloco=''; console.warn('[pp] comandoBloco falhou', e); }
   }
 
   // ── PAINEL COMPLETO: o Painel é a tela onde se VÊ e FAZ tudo (o Diego, jul/2026). ──
@@ -25829,15 +25835,15 @@ function renderProjectProVisao(p, prog){
     if(done){ stTxt='Concluída'; stCor='var(--success)'; }
     else { const s=_ppStatus(t,_ordE,_etE); if(s.estado==='atrasada'){stTxt='Atrasada';stCor='var(--danger)';} else if(s.estado==='hoje'){stTxt='Em andamento';stCor='var(--orange)';} else {stTxt='Aguardando';stCor='var(--text3)';} }
     const ex=t.executor?_personById(t.executor):null;
-    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 11px;border-top:1px solid var(--border)">
-      <i class="ti ${done?'ti-square-check-filled':'ti-square'}" onclick="event.stopPropagation();toggle('${t.id}')" style="font-size:18px;color:${done?'var(--success)':'var(--text3)'};cursor:pointer;flex-shrink:0" title="${done?'Concluída':'Marcar como concluída'}"></i>
+    return `<div onclick="openEdit(${t.id})" style="display:flex;align-items:center;gap:10px;padding:8px 11px;border-top:1px solid var(--border);cursor:pointer" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'" title="Abrir tarefa">
+      <i class="ti ${done?'ti-square-check-filled':'ti-square'}" onclick="event.stopPropagation();toggle(${t.id})" style="font-size:18px;color:${done?'var(--success)':'var(--text3)'};cursor:pointer;flex-shrink:0" title="${done?'Concluída':'Marcar como concluída'}"></i>
       <span style="flex:1;min-width:0;font-size:12.5px;color:${done?'var(--text3)':'var(--text)'};${done?'text-decoration:line-through;':''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(t.title)}</span>
       ${ex?`<span style="font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0">${escapeHTML(ex.name)}</span>`:''}
       ${!done?`<span style="font-size:10.5px;font-weight:700;color:${stCor};white-space:nowrap;flex-shrink:0">${stTxt}</span>`:''}
     </div>`;
   };
   const _setorBloco=(g,faseId)=>{
-    const ts=tasks.filter(t=>t.projectProGrupoId===g.id);
+    const ts=tasks.filter(t=>t.projectProGrupoId===g.id && t.projectProId===p.id);
     const linhas=ts.length?ts.map(_tarefaLinha).join(''):`<div style="padding:9px 11px;border-top:1px solid var(--border);font-size:11.5px;color:var(--text3)">Nenhuma tarefa neste setor ainda.</div>`;
     return `<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-top:8px">
       <div style="display:flex;align-items:center;gap:8px;padding:8px 11px;background:var(--bg2)">
@@ -25860,7 +25866,7 @@ function renderProjectProVisao(p, prog){
       const fp=_calcularProgressoFase(f);
       const aberta=!!(window._ppPainelFaseAberta||{})[f.id];
       const setores=f.grupos||[];
-      const semSetor=tasks.filter(t=>t.projectProFaseId===f.id && !t.projectProGrupoId);
+      const semSetor=tasks.filter(t=>t.projectProFaseId===f.id && !t.projectProGrupoId && t.projectProId===p.id);
       const cFase=fp.pct===100?'var(--success)':p.cor;
       const corpo=aberta?`<div style="padding:8px 12px 12px;background:color-mix(in srgb,var(--bg2) 45%,var(--card))">
         ${setores.map(g=>_setorBloco(g,f.id)).join('')}
@@ -26447,9 +26453,11 @@ function _ppStatus(t, ord, et){
 }
 // Inicia o relógio (ppLiberadaEm=hoje) nas tarefas recém-liberadas e não concluídas.
 function _ppSincronizarLiberacao(p){
-  const ord=_ppTarefasOrdenadas(p); const et=_ppEtapas(ord); let mudou=false;
-  ord.forEach(t=>{ if(!t.done && _ppLiberada(t,ord,et) && !t.ppLiberadaEm){ t.ppLiberadaEm=today; mudou=true; } });
-  if(mudou) ord.forEach(t=>saveTask_db(t));
+  const ord=_ppTarefasOrdenadas(p); const et=_ppEtapas(ord); let primeira=null;
+  ord.forEach(t=>{ if(!t.done && _ppLiberada(t,ord,et) && !t.ppLiberadaEm){ t.ppLiberadaEm=today; if(!primeira) primeira=t; } });
+  // saveTask_db serializa o array `tasks` INTEIRO — as outras mutações já estão nele; 1 gravação basta
+  // (antes regravava TODAS as tarefas do projeto: N x ~120KB por render).
+  if(primeira) saveTask_db(primeira);
   return {ord, et};
 }
 // Cache por render para detectar tarefa de projeto AINDA bloqueada (etapa anterior não concluída).
@@ -26554,6 +26562,9 @@ function _ppDrop(ev, targetId, projectId, scopeFaseId){
       // arrastou para outro bloco → reclassifica a fase (setor sai junto)
       if(scopeFase){ dragged.projectProFaseId = scopeFase; } else { delete dragged.projectProFaseId; }
       delete dragged.projectProGrupoId; delete dragged.setorManual;
+      // Tira o id de qualquer grupo.tarefaIds antigo (senão a aba Fases/zoom ainda mostra a tarefa no setor velho)
+      (p.fases||[]).forEach(f=>(f.grupos||[]).forEach(g=>{ g.tarefaIds=(g.tarefaIds||[]).filter(id=>id!==dragged.id); }));
+      saveProjectPro_db(p);
       saveTask_db(dragged); _ppDragId=null;
       toast(scopeFase ? '✓ Fase atualizada' : '↩︎ Voltou para "A classificar"');
       render(); return;
@@ -27130,11 +27141,17 @@ function preFecharProjetoPro(projectId){
   const aviso = pendentes > 0
     ? `Este projeto ainda tem ${pendentes} tarefa${pendentes>1?'s':''} pendente${pendentes>1?'s':''}.\n\nMarcar mesmo assim como pronto para encerrar?`
     : 'Marcar este projeto como pronto para encerrar?\n\nO dono do projeto precisará confirmar.';
-  p.preFecharEm = new Date().toISOString();
-  p.preFecharPor = CURRENT_USER_ID;
-  saveProjectPro_db(p);
-  toast('🏁 Projeto marcado como pronto para encerrar. Aguardando confirmação do dono.');
-  render();
+  // O aviso era montado e nunca exibido — pré-fechava sem confirmação.
+  confirmModal({
+    title:'Pronto para encerrar', message:aviso, confirmLabel:'Marcar', icon:'ti-flag',
+    onConfirm:()=>{
+      p.preFecharEm = new Date().toISOString();
+      p.preFecharPor = CURRENT_USER_ID;
+      saveProjectPro_db(p);
+      toast('🏁 Projeto marcado como pronto para encerrar. Aguardando confirmação do dono.');
+      render();
+    }
+  });
 }
 
 function _ppCancelarPreFechar(projectId){
@@ -27508,10 +27525,11 @@ function renderProjectProAnotacoes(p){
     return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
   };
 
-  // Renderiza texto com @menções destacadas
+  // Renderiza texto com @menções destacadas (só quando a pessoa EXISTE — @qualquercoisa fica texto normal)
   const _fmtTexto = texto => {
-    return escapeHTML(texto).replace(/@([^\s@<]+)/g, (_, nome)=>{
+    return escapeHTML(texto).replace(/@([^\s@<]+)/g, (orig, nome)=>{
       const match = people.find(pe=>pe.name.toLowerCase().startsWith(nome.toLowerCase()));
+      if(!match) return orig;
       return `<span style="color:var(--blue-mid);font-weight:700;background:color-mix(in srgb, var(--blue-mid) 8%, transparent);padding:0 3px;border-radius:3px">@${escapeHTML(nome)}</span>`;
     });
   };
@@ -27587,6 +27605,10 @@ function _ppToggleCommentMenu(commentId){
 
 // Excluir comentário (só o autor pode)
 function _ppExcluirComment(projectProId, commentId){
+  // Regra: só o AUTOR exclui o próprio comentário (a UI só mostra o menu p/ ele,
+  // mas a função valida também — regra explícita p/ o backend do Guilherme).
+  const c=(getProComments(projectProId)||[]).find(x=>x.id===commentId);
+  if(c && c.autorId && c.autorId!==CURRENT_USER_ID){ toast('🔒 Só o autor pode excluir o comentário'); return; }
   deleteProComment_db(projectProId, commentId);
   const p = projectsPro.find(x=>x.id===projectProId);
   if(p) render();
@@ -27623,7 +27645,7 @@ function enviarProComment(projectProId){
 
   // Notificações de menção (para pessoas mencionadas que não são o autor)
   mencoes.filter(id=>id!==CURRENT_USER_ID).forEach(pessoaId=>{
-    _criarNotifMencao(projectProId, p.nome, CURRENT_USER_ID, texto);
+    _criarNotifMencao(projectProId, p.nome, CURRENT_USER_ID, texto, pessoaId);
   });
 
   inp.value = '';
@@ -27770,7 +27792,7 @@ function editarProjectPro(id){
         </div>
       </div>
       <div style="padding:12px 22px;border-top:1px solid var(--border);display:flex;justify-content:space-between;gap:8px">
-        <button onclick="excluirProjectPro('${p.id}')" style="background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer"><i class="ti ti-trash"></i> Excluir projeto</button>
+        <button onclick="confirmExcluirProjectPro('${p.id}')" style="background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer"><i class="ti ti-trash"></i> Excluir projeto</button>
         <div style="display:flex;gap:8px">
           <button onclick="document.getElementById('pp-modal-edit').remove()" style="background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer">Cancelar</button>
           <button onclick="salvarEdicaoProjectPro('${p.id}')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer"><i class="ti ti-check"></i> Salvar</button>
@@ -27815,7 +27837,6 @@ function confirmExcluirProjectPro(id){
 function excluirProjectPro(id){
   const p = projectsPro.find(x=>x.id===id);
   if(!p) return;
-  const prog = _calcularProgressoProjeto(p);
   // Guarda os vínculos das tarefas p/ religar na restauração (senão o projeto voltava VAZIO
   // e as tarefas ficavam órfãs). Fonte de verdade: t.projectProId.
   const _linkedTasks = tasks.filter(t=>t.projectProId===id).map(t=>({id:t.id, faseId:t.projectProFaseId||null, grupoId:t.projectProGrupoId||null}));
@@ -28369,7 +28390,7 @@ function toggleReuniaoNovo(ev){
   pop.onclick=(e)=>e.stopPropagation();
   const item=(acao,icon,cor,label)=>`<div onclick="_fecharReuniaoNovo();${acao}" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'"><i class="ti ${icon}" style="font-size:16px;color:${cor}"></i> ${label}</div>`;
   pop.innerHTML=
-    item("openReuniaoModal()",'ti-speakerphone','var(--blue-mid)','Nova reunião')+
+    item("editingReuniaoId=null;openReuniaoModal()",'ti-speakerphone','var(--blue-mid)','Nova reunião')+
     item("editingReuniaoRapidaId=null;openReuniaoRapidaModal()",'ti-users','var(--purple)','Reunião rápida')+
     item("editingCompromissoId=null;openCompromissoModal()",'ti-calendar-time','var(--orange-dark)','Novo compromisso');
   document.body.appendChild(pop);
@@ -29497,7 +29518,7 @@ function renderHistoricoReunioes(container, subNav){
     const encerradas=g.reunioes.filter(m=>m.status==='encerrada');
     const agendadas=g.reunioes.filter(m=>m.status==='agendada'||m.status==='andamento');
     // Duração média (só das encerradas com inicioReal e fimReal)
-    const duracoes=encerradas.filter(m=>m.inicioReal&&m.fimReal).map(m=>(new Date(m.fimReal)-new Date(m.inicioReal))/60000);
+    const duracoes=encerradas.filter(m=>m.duracaoSeg||(m.inicioReal&&m.fimReal)).map(m=>m.duracaoSeg?m.duracaoSeg/60:(new Date(m.fimReal)-new Date(m.inicioReal))/60000);
     const durMedia=duracoes.length?Math.round(duracoes.reduce((a,b)=>a+b,0)/duracoes.length):null;
     // Última data
     const datas=g.reunioes.map(m=>m.date).filter(Boolean).sort();
@@ -29575,7 +29596,7 @@ function abrirHistoricoDetalhe(chaveCodificada){
   // Duração de cada reunião encerrada
   const encerradas=grupo.filter(m=>m.status==='encerrada');
   const duracoes=encerradas.filter(m=>m.inicioReal&&m.fimReal).map(m=>({
-    m,min:Math.round((new Date(m.fimReal)-new Date(m.inicioReal))/60000)
+    m,min:Math.round(m.duracaoSeg?m.duracaoSeg/60:(new Date(m.fimReal)-new Date(m.inicioReal))/60000)
   }));
   const durTotal=duracoes.reduce((a,b)=>a+b.min,0);
   const durMedia=duracoes.length?Math.round(durTotal/duracoes.length):null;
@@ -29584,7 +29605,7 @@ function abrirHistoricoDetalhe(chaveCodificada){
   const timelineHTML=grupo.map(m=>{
     const st=REUN_STATUS[m.status]||REUN_STATUS.agendada;
     const dl=m.date?new Date(m.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}):'';
-    const dur=m.inicioReal&&m.fimReal?Math.round((new Date(m.fimReal)-new Date(m.inicioReal))/60000):null;
+    const dur=m.duracaoSeg?Math.round(m.duracaoSeg/60):(m.inicioReal&&m.fimReal?Math.round((new Date(m.fimReal)-new Date(m.inicioReal))/60000):null);
     const totalP=(m.participantes||[]).length;
     const presentP=totalP?(m.participantes||[]).filter(pid=>m.presencas&&m.presencas[pid]===true).length:0;
     const horaTxt=m.horaInicio&&m.horaFim?`${m.horaInicio}–${m.horaFim}`:(m.horaInicio||'');
@@ -29753,7 +29774,9 @@ function agruparReunioesPorSerie(reunioes){
 // ──────────────────────────────────────────────────────────────
 // GUILHERME V3: helpers de status temporal e qualidade da reunião
 function _reuniaoEmAndamento(m){
-  // Reunião está rolando agora? agendada + data hoje + entre horaInicio e horaFim
+  // Reunião está rolando agora? INICIADA (timer rodando) sempre conta; senão,
+  // agendada + data hoje + entre horaInicio e horaFim.
+  if(m.status === 'andamento') return true;
   if(m.status !== 'agendada') return false;
   if(m.date !== today) return false;
   if(!m.horaInicio) return false;
@@ -30025,7 +30048,10 @@ function reunSerieHeaderHTML(grupo){
 
   const dataMaisRecente=reunMaisRecente.date?new Date(reunMaisRecente.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}):'';
 
-  return `<div onclick="toggleReunSerie('${grupo.chave}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(to right,${st.color}08,transparent);border:1px solid var(--border);border-left:3px solid ${st.color};border-radius:10px;cursor:pointer;transition:background .15s;user-select:none" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='linear-gradient(to right,${st.color}08,transparent)'">
+  // A chave vai dentro de string JS num atributo: escapa \ e ' p/ o JS, e depois o atributo.
+  const _kJs=escapeAttr(String(grupo.chave).replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
+  const _gBg=`linear-gradient(to right,color-mix(in srgb, ${st.color} 3%, transparent),transparent)`;
+  return `<div onclick="toggleReunSerie('${_kJs}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:${_gBg};border:1px solid var(--border);border-left:3px solid ${st.color};border-radius:10px;cursor:pointer;transition:background .15s;user-select:none" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='${escapeAttr(_gBg)}'">
     <i class="ti ${chevron}" style="font-size:14px;color:var(--text3);transition:transform .2s"></i>
     <span style="font-size:13px;font-weight:700;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(grupo.titulo)}</span>
     ${tipoBadge}
@@ -30418,11 +30444,11 @@ function renderNovaReuniaoForm(container, subNav){
             ${editingReuniaoId ? `<div style="display:grid;grid-template-columns:1fr 1fr 1.15fr;gap:8px">
               <div>
                 <div class="modal-label" style="margin-bottom:4px"><i class="ti ti-tag"></i> Tipo</div>
-                <select id="reun-tipo" class="modal-input">${REUN_TIPOS.map(t=>`<option value="${t}" ${m&&m.tipo===t?'selected':''}>${t}</option>`).join('')}</select>
+                <select id="reun-tipo" class="modal-input">${REUN_TIPOS.map(t=>`<option value="${t}" ${m&&m.tipo===t?'selected':''}>${t}</option>`).join('')}${m&&m.tipo&&!REUN_TIPOS.includes(m.tipo)?`<option value="${escapeAttr(m.tipo)}" selected>${escapeHTML(m.tipo)}</option>`:''}</select>
               </div>
               <div>
                 <div class="modal-label" style="margin-bottom:4px"><i class="ti ti-activity"></i> Status</div>
-                <select id="reun-status" class="modal-input">${Object.entries(REUN_STATUS).map(([k,v])=>`<option value="${k}" ${m&&m.status===k?'selected':''}>${v.label}</option>`).join('')}</select>
+                <select id="reun-status" class="modal-input">${Object.entries(REUN_STATUS).filter(([k])=>k!=='continuacao'||(m&&m.status==='continuacao')).map(([k,v])=>`<option value="${k}" ${m&&m.status===k?'selected':''}>${v.label}</option>`).join('')}</select>
               </div>
               <div>
                 <div class="modal-label" style="margin-bottom:4px"><i class="ti ti-microphone"></i> Quem conduz</div>
@@ -30446,6 +30472,7 @@ function renderNovaReuniaoForm(container, subNav){
                 <select id="reun-sala" class="modal-input" style="flex:1">
                   <option value="">— Selecione a sala —</option>
                   ${salas.map(s=>`<option value="${escapeAttr(s)}" ${m&&m.sala===s?'selected':''}>${escapeHTML(s)}</option>`).join('')}
+                  ${m&&m.sala&&!salas.includes(m.sala)?`<option value="${escapeAttr(m.sala)}" selected>${escapeHTML(m.sala)}</option>`:''}
                 </select>
                 <button type="button" onclick="abrirNovaSalaInline()" title="Nova sala de reunião" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:15px;flex-shrink:0;transition:all .2s" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-plus"></i></button>
                 <button type="button" onclick="excluirSalaSelecionada()" title="Excluir sala selecionada" style="background:var(--bg2);border:1px solid var(--border);color:var(--text3);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:15px;flex-shrink:0;transition:all .2s" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'"><i class="ti ti-trash"></i></button>
@@ -30621,7 +30648,7 @@ function saveReuniao(){
     // Quem conduz entra automaticamente como participante (senão fica fora da presença/agenda da própria reunião).
     participantes:(function(){ const p=[...(window._reunSelParts||[])]; const f=document.getElementById('reun-facilitador')?.value||''; if(f && p.indexOf(f)<0) p.push(f); return p; })(),
     projetos:[...(window._reunSelProjs||[])],
-    createdAt:today,
+    createdAt: _reunAnt ? (_reunAnt.createdAt||today) : today, // edição não reescreve a data de criação
     // Pauta (itens): preservada da reunião ao editar; vazia ao criar (Painel cuida).
     pauta:pautaItens,
     pautaDone: _reunAnt ? pautaItens.map((_,i)=>(_reunAnt.pautaDone||[])[i]||false) : [],
@@ -30646,6 +30673,9 @@ function saveReuniao(){
       saveMeeting_db(m);
       // "Esta e as futuras": regenera a partir desta com a regra/dia/hora novos.
       if(window._reunEscopo==='futuras' && m.serieId) window._recCriadas=_recRegenerarFuturas(m);
+      // Ligou "Repetir" numa reunião que ainda NÃO tem série → materializa as ocorrências agora
+      // (antes só gravava a regra e nada nascia na Agenda até encerrar).
+      else if(obj.rec && obj.rec.ativo && !m.serieId) window._recCriadas=_recMaterializar(m);
     } else {
       saveMeeting_db({...obj,id:editingReuniaoId,tarefas:[]});
     }
@@ -30774,6 +30804,9 @@ function deleteReuniao(id){
   // GUILHERME V3 (mai/2026): animação amassar antes de excluir
   _animarDelecao(`[data-meeting-id="${id}"]`, ()=>{
     moveToTrash('meeting',{...item});
+    // Religa a cadeia: quem continuava DESTA passa a continuar da anterior dela
+    // (senão o carry-over de tarefas/decisões quebra no elo excluído).
+    meetings.filter(x=>x.continuacaoDe===id).forEach(x=>{ x.continuacaoDe=item.continuacaoDe||null; saveMeeting_db(x); });
     meetings=meetings.filter(x=>x.id!==id);
     deleteMeeting_db(id);
     renderReunioes();
@@ -30834,7 +30867,7 @@ function openReuniaoView(id, _opts){
   // Sub-aba INLINE do painel (Painel/Pessoas/Info/ATA/Anexos). Antes cada ícone abria
   // um modal (fechar um p/ abrir outro); agora o conteúdo vem na área principal, alternando.
   // Reset p/ 'painel' ao trocar de reunião (mas persiste em re-renders da mesma reunião).
-  if(window._activeReuniaoId!==id) window._reunSubView='painel';
+  if(window._activeReuniaoId!==id){ window._reunSubView='painel'; window._pautaPrincEd=null; }
   if(!window._reunSubView) window._reunSubView='painel';
   const _sv=window._reunSubView;
   const _railActive=(v)=>_sv===v?'background:color-mix(in srgb,var(--blue-mid) 12%,transparent);color:var(--blue-mid)':'';
@@ -30843,23 +30876,9 @@ function openReuniaoView(id, _opts){
   const st=REUN_STATUS[m.status]||REUN_STATUS.agendada;
   const dateLabel=m.date?new Date(m.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}):'';
 
-  // Participantes com presença real (checkbox)
+  // Presenças (usadas no placar X/Y do cabeçalho e da barra de foco)
   const presencas=m.presencas||{};
-  const partsHTML=(m.participantes||[]).map(pid=>{
-    const p=people.find(x=>x.id===pid);
-    if(!p) return '';
-    const presente=presencas[pid]===true;
-    const isFac=m.facilitador===pid;
-    return `<div onclick="togglePresenca('${m.id}','${pid}')" style="display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:99px;background:${presente?'var(--success-bg, var(--success-bg))':'var(--bg2)'};border:1px solid ${presente?'var(--success, var(--success))':'var(--border)'};font-size:12px;font-weight:600;color:${presente?'var(--success, var(--success))':'var(--text2)'};cursor:pointer;transition:all .2s" title="${presente?'Presente — clique para marcar como ausente':'Ausente — clique para marcar como presente'}">
-      <div style="width:14px;height:14px;border-radius:3px;border:2px solid ${presente?'var(--success, var(--success))':'var(--border)'};background:${presente?'var(--success, var(--success))':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        ${presente?'<i class="ti ti-check" style="font-size:9px;color:#fff"></i>':''}
-      </div>
-      ${escapeHTML(p.name)}${isFac?' <i class="ti ti-microphone" style="font-size:11px;color:var(--blue-mid)" title="Conduz"></i>':''}
-    </div>`;
-  }).join('');
-
-  // Projetos
-  const projHTML=(m.projetos||[]).map(id=>{const p=projects.find(x=>x.id===id);return p?`<span style="padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;background:${p.color};color:#fff">${escapeHTML(p.name)}</span>`:''}).join('');
+  // (jul/2026) partsHTML/projHTML/proxDataTxt/contLabel eram computados aqui sem uso — removidos.
 
   // Hora / Local / Facilitador
   const horaTxt=(m.horaInicio&&m.horaFim)?`${m.horaInicio} – ${m.horaFim}`:(m.horaInicio||'');
@@ -30867,22 +30886,6 @@ function openReuniaoView(id, _opts){
   const facilitadorObj=m.facilitador?people.find(x=>x.id===m.facilitador):null;
   const presentesCount=(m.participantes||[]).filter(pid=>presencas[pid]===true).length;
   const totalParts=(m.participantes||[]).length;
-
-  // Próxima reunião sugerida
-  const proxDataTxt=(m.frequencia&&m.frequencia!=='unica')?(()=>{
-    const prox=proximaDataReuniao(m.date,m.frequencia);
-    if(!prox) return '';
-    const d=new Date(prox+'T12:00');
-    return `<span><i class="ti ti-refresh" style="font-size:12px"></i> ${REUN_FREQ[m.frequencia]?.label||''} · Próx: ${d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}</span>`;
-  })():'';
-
-  // Continuação
-  const contLabel=m.continuacaoDe?(()=>{
-    const orig=meetings.find(x=>x.id===m.continuacaoDe);
-    return orig?`<div style="margin-bottom:10px;padding:7px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text3)">
-      <i class="ti ti-arrows-right"></i> Continuação de: <b style="color:var(--text)">${escapeHTML(orig.title)}</b>
-    </div>`:'';
-  })():'';
 
   // Se cheguei aqui abrindo uma reunião ANTERIOR da série (pelo card "Decisões anteriores"),
   // mostro o caminho de volta pra reunião de onde vim (não só "voltar à lista").
@@ -30895,7 +30898,7 @@ function openReuniaoView(id, _opts){
   })();
   document.getElementById('task-container').innerHTML=`<div class="reun-panel-wrap" style="padding-top:22px;padding-bottom:40px;max-width:1500px;margin:0 auto">
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
-    <button class="reun-voltar-btn" onclick="window._reunNavStack=[];document.body.classList.remove('reun-focus');window._reunFocus=false;window._activeReuniaoId=null;renderReunioes()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;padding:0">
+    <button class="reun-voltar-btn" onclick="window._reunNavStack=[];document.body.classList.remove('reun-focus');window._reunFocus=false;window._activeReuniaoId=null;editingReuniaoId=null;window._reunSubView='painel';renderReunioes()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;padding:0">
       <i class="ti ti-arrow-left"></i> Voltar às reuniões
     </button>
     ${_voltarSerie}
@@ -30952,7 +30955,7 @@ function openReuniaoView(id, _opts){
         </div>
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
           ${m.status!=='encerrada'?(()=>{const running=m.status==='andamento'&&!m.pausadoReuniao;const lbl=running?'Pausar':(m.pausadoReuniao?'Retomar':'Iniciar');return `<button class="reun-ico" onclick="_toggleReunTimer('${m.id}')" title="${lbl} reunião" style="background:${running?'var(--amber)':'var(--blue-mid)'};border-color:${running?'var(--amber)':'var(--blue-mid)'};color:#fff"><i class="ti ti-player-${running?'pause':'play'}-filled"></i></button>`;})():''}
-          ${m.status==='andamento'?`<span id="reun-cronometro-${m.id}" style="padding:0 12px;height:34px;font-size:13px;color:${m.pausadoReuniao?'var(--amber)':'var(--success)'};font-weight:700;background:${m.pausadoReuniao?'var(--amber-bg)':'var(--success-bg)'};border-radius:8px;border:1px solid ${m.pausadoReuniao?'var(--amber)':'var(--success)'};display:inline-flex;align-items:center;gap:5px"><i class="ti ti-${m.pausadoReuniao?'player-pause':'clock-play'}"></i> <span data-inicio="${m.inicioReal||''}" data-acumulado="${m.tempoAcumulado||0}">${_fmtDur(_reunElapsedSec(m))}</span></span>`:''}
+          ${m.status==='andamento'?(()=>{const _ov=_reunElapsedSec(m)>_reunPlannedMin(m)*60;const _c=_ov?'var(--danger)':(m.pausadoReuniao?'var(--amber)':'var(--success)');const _bg=_ov?'color-mix(in srgb,var(--danger) 14%,transparent)':(m.pausadoReuniao?'var(--amber-bg)':'var(--success-bg)');return `<span id="reun-cronometro-${m.id}" class="${_ov?'reun-timer-over':''}" style="padding:0 12px;height:34px;font-size:13px;color:${_c};font-weight:700;background:${_bg};border-radius:8px;border:1px solid ${_c};display:inline-flex;align-items:center;gap:5px"><i class="ti ti-${_ov?'alert-triangle':(m.pausadoReuniao?'player-pause':'clock-play')}"></i> <span data-inicio="${m.inicioReal||''}" data-acumulado="${m.tempoAcumulado||0}" data-planned="${_reunPlannedMin(m)}">${_fmtDur(_reunElapsedSec(m))}</span></span>`;})():''}
           <button class="reun-ico" onclick="_toggleReunFocus()" title="Abrir em tela cheia (foco)"><i class="ti ti-arrows-maximize"></i></button>
           <button class="reun-ico" onclick="_reunSetSubView('${m.id}','painel')" title="Painel — pauta, decisões e tarefas" style="${_icoActive('painel')}"><i class="ti ti-layout-dashboard"></i></button>
           <button class="reun-ico" onclick="_reunSetSubView('${m.id}','pessoas')" title="Participantes (${presentesCount}/${totalParts})" style="${_icoActive('pessoas')}"><i class="ti ti-users"></i></button>
@@ -31241,7 +31244,7 @@ function _reunHistoricoInlineHTML(m){
     const ndec=(r.decisoesItens||[]).length;
     const ntar=(tasks||[]).filter(t=>t.meetingId===r.id).length;
     const pautaTot=(r.pauta||[]).length, pautaFeita=(r.pautaDone||[]).filter(Boolean).length;
-    const meta=[`<span style="color:${st.c||'var(--text3)'};font-weight:700">${st.l||r.status}</span>`];
+    const meta=[`<span style="color:${st.color||'var(--text3)'};font-weight:700">${st.label||r.status}</span>`];
     if(pautaTot) meta.push(`<span><i class="ti ti-list-check" style="font-size:12px"></i> ${pautaFeita}/${pautaTot}</span>`);
     if(ndec) meta.push(`<span><i class="ti ti-gavel" style="font-size:12px"></i> ${ndec}</span>`);
     if(ntar) meta.push(`<span><i class="ti ti-checkbox" style="font-size:12px"></i> ${ntar}</span>`);
@@ -31583,11 +31586,13 @@ function removerPautaItem(meetingId,idx){
   if(wrap) wrap.innerHTML=reunPautaHTML(m);
 }
 
-// Salvar ATA ao sair do campo
+// Salvar ATA ao sair do campo (só grava/avisa se o texto MUDOU — blur sem mudança era toast à toa)
 function salvarAta(meetingId,val){
   const m=meetings.find(x=>x.id===meetingId);
   if(!m) return;
-  m.ata=val.trim();
+  const v=(val||'').trim();
+  if((m.ata||'')===v) return;
+  m.ata=v;
   saveMeeting_db(m);
   toast('📝 ATA guardada');
 }
@@ -32044,8 +32049,11 @@ function _serieInfo(m){
 function _reunProximaDaSerie(m){
   if(!m) return null;
   try{ _serieTopUp(m); }catch(e){ console.warn('[rec] topUp',e); } // séries sem fim: repõe a janela
-  const enc=(meetings||[]).find(x=>x.continuacaoDe===m.id);
-  return enc || _gerarProximaRecorrente(m);
+  const viva=(meetings||[]).find(x=>x.continuacaoDe===m.id && x.status!=='encerrada');
+  if(viva) return viva;
+  // Só existe continuação ENCERRADA → não sugerir editar reunião encerrada; nada a propor.
+  if((meetings||[]).some(x=>x.continuacaoDe===m.id)) return null;
+  return _gerarProximaRecorrente(m);
 }
 function _abrirSugestaoProxima(proxId){
   const p=(meetings||[]).find(x=>x.id===proxId); if(!p) return;
@@ -32176,7 +32184,9 @@ function _gerarProximaRecorrente(m, opts){
     id:'reun'+Date.now()+Math.floor(Math.random()*1000),
     title:m.title, date:novaData,
     horaInicio:m.horaInicio||'', horaFim:m.horaFim||'',
-    tipo:m.tipo||'', status:'agendada', sala:m.sala||'', facilitador:m.facilitador||'',
+    tipo:m.tipo||'', status:'agendada', facilitador:m.facilitador||'',
+    sala:m.sala||'', salaTipo:m.salaTipo||'', salaPessoaId:m.salaPessoaId||'', localExterno:m.localExterno||'',
+    papeis:{...(m.papeis||{})},
     frequencia:m.frequencia||'unica',
     rec:_rec?JSON.parse(JSON.stringify(_rec)):null,
     serieId:m.serieId||null, serieIdx:(Number(m.serieIdx)||1)+1,
@@ -32194,23 +32204,48 @@ function _reunAtualizarDataVencida(id){
   const m=meetings.find(x=>x.id===id); if(!m) return;
   if(!m.frequencia || m.frequencia==='unica' || m.status==='encerrada') return;
   const prox=proximaDataReuniao(m.date, m.frequencia); if(!prox) return;
-  m.date=prox; saveMeeting_db(m); openReuniaoView(id);
+  m.date=prox;
+  // Nova ocorrência = folha limpa: zera checks da pauta, presenças e timer. (BUG do Diego:
+  // "continuação abrindo com pautas já feitas e data de hoje" — a data avançava e os checks
+  // da ocorrência anterior viajavam juntos. ATA/decisões ficam — são registro, têm data própria.)
+  m.pautaPrincipalDone=false;
+  m.pautaDone=(m.pauta||[]).map(()=>false);
+  m.presencas={};
+  m.inicioReal=null; m.tempoAcumulado=0; m.pausadoReuniao=false;
+  if(m.status==='andamento') m.status='agendada';
+  saveMeeting_db(m); openReuniaoView(id);
   const dl=new Date(prox+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long'});
-  toast('📅 Data atualizada para '+dl);
+  toast('📅 Data atualizada para '+dl+' — pauta e presenças zeradas para a nova ocorrência');
 }
 function reagendarProxima(meetingId, novaData, horaIni, horaFim){
   if(!novaData) return;
   const m=meetings.find(x=>x.id===meetingId);
   if(!m) return;
-  const _jaTem=(meetings||[]).find(x=>x.continuacaoDe===m.id);
-  if(_jaTem){ openReuniaoView(_jaTem.id); toast('📅 Esta reunião já tem uma próxima ocorrência'); return; }
+  const _jaTem=(meetings||[]).find(x=>x.continuacaoDe===m.id && x.status!=='encerrada')||(meetings||[]).find(x=>x.continuacaoDe===m.id);
+  if(_jaTem){
+    // Série materializada: a próxima JÁ existe. Antes este ramo só ABRIA a próxima sem encerrar
+    // a atual (ela ficava "pendente de encerramento" e os assuntos não iam junto — o usuário
+    // achava que tinha finalizado). Agora: leva os assuntos pendentes e encerra a atual de verdade.
+    const _pend=[]; (m.pauta||[]).forEach((txt,i)=>{ if(!(m.pautaDone||[])[i]) _pend.push(txt); });
+    if(!Array.isArray(_jaTem.pauta)) _jaTem.pauta=[];
+    if(!Array.isArray(_jaTem.pautaDone)) _jaTem.pautaDone=_jaTem.pauta.map(()=>false);
+    _pend.forEach(txt=>{ if(_jaTem.pauta.indexOf(txt)<0){ _jaTem.pauta.push(txt); _jaTem.pautaDone.push(false); } });
+    if(m.pautaPrincipal && !m.pautaPrincipalDone && !(_jaTem.pautaPrincipal&&_jaTem.pautaPrincipal.trim())){ _jaTem.pautaPrincipal=m.pautaPrincipal; _jaTem.pautaPrincipalDone=false; }
+    saveMeeting_db(_jaTem);
+    if(m.status!=='encerrada'){ m.duracaoSeg=_reunElapsedSec(m); m.pausadoReuniao=false; m.status='encerrada'; if(!m.fimReal) m.fimReal=new Date().toISOString(); saveMeeting_db(m); }
+    openReuniaoView(_jaTem.id);
+    toast('🏁 Reunião encerrada — assuntos pendentes levados para a próxima');
+    return;
+  }
   const pautaItensMigrar=[];
   (m.pauta||[]).forEach((txt,i)=>{ if(!(m.pautaDone||[])[i]) pautaItensMigrar.push(txt); });
   const nova={
     id:'reun'+Date.now(),
     title:m.title, date:novaData,
     horaInicio:horaIni!==undefined?horaIni:(m.horaInicio||''), horaFim:horaFim!==undefined?horaFim:(m.horaFim||''),
-    tipo:m.tipo||'', status:'agendada', sala:m.sala||'', facilitador:m.facilitador||'',
+    tipo:m.tipo||'', status:'agendada', facilitador:m.facilitador||'',
+    sala:m.sala||'', salaTipo:m.salaTipo||'', salaPessoaId:m.salaPessoaId||'', localExterno:m.localExterno||'',
+    papeis:{...(m.papeis||{})},
     frequencia:m.frequencia||'unica',
     participantes:[...(m.participantes||[])], projetos:[...(m.projetos||[])],
     pautaPrincipal:(!m.pautaPrincipalDone&&m.pautaPrincipal)?m.pautaPrincipal:'', pautaPrincipalDone:false,
@@ -32219,7 +32254,7 @@ function reagendarProxima(meetingId, novaData, horaIni, horaFim){
     continuacaoDe:m.id, createdAt:today
   };
   meetings.push(nova); saveMeeting_db(nova);
-  if(m.status!=='encerrada'){ m.status='encerrada'; if(!m.fimReal) m.fimReal=new Date().toISOString(); saveMeeting_db(m); }
+  if(m.status!=='encerrada'){ m.duracaoSeg=_reunElapsedSec(m); m.pausadoReuniao=false; m.status='encerrada'; if(!m.fimReal) m.fimReal=new Date().toISOString(); saveMeeting_db(m); }
   openReuniaoView(nova.id);
   const dl=new Date(novaData+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long'});
   toast(`📅 Próxima reunião agendada para ${dl}`);
@@ -32269,7 +32304,7 @@ function togglePresenca(meetingId,personId){
   openReuniaoView(meetingId);
 }
 
-// Iniciar reunião (muda status para "andamento" e marca timestamp)
+// [SUPERSEDED jul/2026] Iniciar agora é _toggleReunTimer (play/pausa). Sem callers — mantida por segurança.
 function iniciarReuniao(meetingId){
   const m=meetings.find(x=>x.id===meetingId);
   if(!m) return;
@@ -32548,7 +32583,7 @@ async function gerarPDFReuniao(meetingId){
   const horaTxt=m.horaInicio?(m.horaFim?`${m.horaInicio} – ${m.horaFim}`:m.horaInicio):'—';
   const facilitObj=people.find(p=>p.id===m.facilitador);
   const facilit=facilitObj?facilitObj.name:'—';
-  const local=m.sala||m.localExterno||'—';
+  const local=(typeof _reunLocalLabel==='function'?_reunLocalLabel(m):'')||m.sala||m.localExterno||'—';
 
   // ─── Participantes ───
   const totalParts=(m.participantes||[]).length;
@@ -33113,7 +33148,9 @@ function reunTarefasHTML(m){
     : [];
 
   const tarefaRow=(t)=>{
-    const resp=(t.people||[]).map(pid=>{const p=people.find(x=>x.id===pid);return p?escapeHTML(p.name):'';}).filter(Boolean);
+    // Responsável: people[] com fallback pro executor (tarefa criada pelo modal completo pode ter só executor)
+    const _pids=(t.people&&t.people.length)?t.people:(t.executor?[t.executor]:[]);
+    const resp=_pids.map(pid=>{const p=people.find(x=>x.id===pid);return p?escapeHTML(p.name):'';}).filter(Boolean);
     const dateStr=t.date?new Date(t.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}):'';
     const respHTML=resp.map(nome=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;background:var(--bg2);border:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text2)">${nome}</span>`).join('');
     // Atrasada: vencida e não concluída → destaque em vermelho na própria linha
