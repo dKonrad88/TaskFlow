@@ -102,6 +102,23 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-16 (5) — Mac de casa — Painel de Reunião: aba Pessoas (papel por chip+cor), voltar da série, tarefas concluídas riscadas
+- **Aba Pessoas unificada** (`_reunPessoasInlineHTML`): removida a seção duplicada "Papéis e presença" de baixo.
+  Agora cada PARTICIPANTE no grid "Quem participa" tem: card **colorido pelo papel**, um **chip de papel** que
+  **cicla** Organizador→Editor→Leitor (`_ciclarPapelReuniao` → `_setPapelReuniao`), e um **check de presença** discreto
+  (`togglePresencaModal`). Cores: `REUN_PAPEL` = Organizador azul (ti-microphone) · Editor âmbar (ti-pencil) ·
+  Leitor cinza/neutro (ti-eye). Não-participantes ficam com card simples (clique adiciona). Legenda no rodapé.
+- **Voltar da reunião anterior** (pedido do Diego): abrir uma reunião passada pelo card "Decisões anteriores" agora
+  usa `_reunAbrirDaSerie(fromId,toId)` (empilha em `window._reunNavStack`) e o painel mostra
+  **"← Voltar para <reunião>"** (`_reunVoltarSerie`). `openReuniaoView(id,_opts)` só zera a pilha ao abrir OUTRA
+  reunião por fora (não em re-render nem em navegação `_opts.serie`). "Voltar às reuniões" limpa a pilha.
+- **Tarefas concluídas na reunião** aparecem **riscadas** num grupo "✓ Concluídas nesta reunião" no fim da coluna
+  (`reunTarefasHTML`: antes filtrava `!t.done` e sumiam; agora `tarefasFeitas` renderiza com o line-through que a
+  linha já tinha). Só as concluídas DESTA reunião (as anteriores da série seguem só pendentes).
+- **Verificado no browser:** Pessoas com Débora=Editor(âmbar)/Diego=Organizador(azul)/Mauro=Leitor(cinza), presença
+  ok, sem lista duplicada; abrir R_ANT pela série → botão "Voltar para R_ATUAL" → volta (pilha certa); T_feita
+  riscada no grupo Concluídas. 0 erros de sintaxe/console.
+
 ### 2026-07-16 (4) — Mac de casa — .nojekyll (Pages travado) + Sala em modo-primeiro (3 opções)
 - ⚠️ **BUG DE INFRA resolvido:** o GitHub Pages vinha **falhando o build de forma intermitente** ("Page build
   failed") porque **faltava `.nojekyll`** → o Pages processava o index.html de 33k linhas pelo Jekyll. O site

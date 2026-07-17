@@ -30661,9 +30661,13 @@ function _initReunColResizer(){
   rez.addEventListener('dblclick',()=>{ _applyReunColW(REUN_COL1_DEFAULT); try{ safeSetItem(LS_REUN_COL1_W,String(REUN_COL1_DEFAULT)); }catch(e){} });
 }
 
-function openReuniaoView(id){
+// _opts.serie=true → navegação dentro da série (não zera a pilha de "voltar").
+function openReuniaoView(id, _opts){
   const m=meetings.find(x=>x.id===id);
   if(!m) return;
+  // Pilha de navegação p/ o "Voltar para a reunião X": só zera ao ABRIR outra reunião
+  // por fora (lista/agenda/busca) — não em re-renders da mesma nem na navegação da série.
+  if(id!==window._activeReuniaoId && !(_opts&&_opts.serie)) window._reunNavStack=[];
   // Sub-aba INLINE do painel (Painel/Pessoas/Info/ATA/Anexos). Antes cada ícone abria
   // um modal (fechar um p/ abrir outro); agora o conteúdo vem na área principal, alternando.
   // Reset p/ 'painel' ao trocar de reunião (mas persiste em re-renders da mesma reunião).
@@ -30717,10 +30721,22 @@ function openReuniaoView(id){
     </div>`:'';
   })():'';
 
+  // Se cheguei aqui abrindo uma reunião ANTERIOR da série (pelo card "Decisões anteriores"),
+  // mostro o caminho de volta pra reunião de onde vim (não só "voltar à lista").
+  const _voltarSerie=(()=>{
+    const st=window._reunNavStack||[];
+    if(!st.length) return '';
+    const prevM=meetings.find(x=>x.id===st[st.length-1]);
+    const nome=prevM?(prevM.title||'reunião'):'reunião';
+    return `<button onclick="_reunVoltarSerie()" style="background:color-mix(in srgb,var(--blue-mid) 10%,transparent);border:1px solid var(--blue-mid);color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;margin-bottom:12px"><i class="ti ti-arrow-back-up"></i> Voltar para ${escapeHTML(nome)}</button>`;
+  })();
   document.getElementById('task-container').innerHTML=`<div class="reun-panel-wrap" style="padding-top:22px;padding-bottom:40px;max-width:1500px;margin:0 auto">
-    <button class="reun-voltar-btn" onclick="document.body.classList.remove('reun-focus');window._reunFocus=false;window._activeReuniaoId=null;renderReunioes()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;padding:0;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+    <button class="reun-voltar-btn" onclick="window._reunNavStack=[];document.body.classList.remove('reun-focus');window._reunFocus=false;window._activeReuniaoId=null;renderReunioes()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;padding:0">
       <i class="ti ti-arrow-left"></i> Voltar às reuniões
     </button>
+    ${_voltarSerie}
+    </div>
     <div style="width:100%">
 
       <!-- Barra do modo FOCO (só aparece em tela cheia) -->
@@ -30903,7 +30919,7 @@ function openReuniaoView(id){
                 </button>
                 <span style="font-size:10px;color:var(--text3);background:var(--bg2);padding:1px 7px;border-radius:99px;font-weight:600">${decisoes.length} decis${decisoes.length===1?'ão':'ões'}</span>
                 <div style="flex:1"></div>
-                <button onclick="openReuniaoView('${r.id}')" style="background:none;border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-external-link" style="font-size:11px"></i> Abrir reunião</button>
+                <button onclick="_reunAbrirDaSerie('${m.id}','${r.id}')" style="background:none;border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-external-link" style="font-size:11px"></i> Abrir reunião</button>
               </div>
               <div id="${blocoId}-list" style="display:${expandedDefault?'block':'none'};padding-left:24px;margin-top:6px">
                 ${decisoes.map(d=>`<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0">
@@ -31040,6 +31056,24 @@ function _reunEditarInlineHTML(m){
 }
 // Pessoas — TUDO de gente num lugar só: (1) quem participa (grid de checkbox) e
 // (2) papéis (Organizador/Editor/Leitor) + presença dos participantes.
+// Navegação dentro da série (abrir uma reunião anterior a partir do painel e VOLTAR).
+function _reunAbrirDaSerie(fromId,toId){ (window._reunNavStack=window._reunNavStack||[]).push(fromId); openReuniaoView(toId,{serie:true}); }
+function _reunVoltarSerie(){ const st=window._reunNavStack||[]; const prev=st.pop(); if(prev) openReuniaoView(prev,{serie:true}); }
+
+// Papéis com cor+ícone. Leitor = neutro (cinza); Organizador azul; Editor âmbar.
+const REUN_PAPEL={
+  organizador:{c:'var(--blue-mid)', i:'ti-microphone', l:'Organizador', tint:'12%'},
+  editor:{c:'var(--amber)',        i:'ti-pencil',     l:'Editor',      tint:'14%'},
+  leitor:{c:'var(--text3)',        i:'ti-eye',        l:'Leitor',      tint:'10%'}
+};
+// Um clique no chip cicla o papel: Leitor → Editor → Organizador → Leitor.
+function _ciclarPapelReuniao(mid,pid){
+  const m=meetings.find(x=>x.id===mid); if(!m) return;
+  const isOrg=m.organizador===pid||m.facilitador===pid;
+  const cur=isOrg?'organizador':((m.papeis||{})[pid]||'leitor');
+  const next={leitor:'editor',editor:'organizador',organizador:'leitor'}[cur]||'leitor';
+  _setPapelReuniao(mid,pid,next); // já salva + re-render inline
+}
 function _reunPessoasInlineHTML(m){
   const parts=new Set(m.participantes||[]);
   const papeis=m.papeis||{};
@@ -31050,46 +31084,39 @@ function _reunPessoasInlineHTML(m){
     const fa=freq[a.id]||0, fb=freq[b.id]||0; if(fa!==fb) return fb-fa;
     return a.name.localeCompare(b.name,'pt-BR');
   });
-  // Seção 1 — quem participa (grid de checkbox)
+  const presentes=(m.participantes||[]).filter(pid=>presencas[pid]===true).length;
+  // Grid único: participar (clique no card) + papel (chip que cicla, colore o card) + presença (check discreto).
   const gridRows=_ppl.map(p=>{
     const on=parts.has(p.id); const freqOn=(freq[p.id]||0)>=2;
-    return `<div onclick="_toggleParticipanteReuniao('${m.id}','${p.id}')" style="display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;cursor:pointer;border:1px solid ${on?'var(--blue-mid)':'var(--border)'};background:${on?'color-mix(in srgb,var(--blue-mid) 10%,transparent)':'var(--card)'};transition:all .12s">
-      <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${on?'var(--blue-mid)':'var(--border)'};background:${on?'var(--blue-mid)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${on?'<i class="ti ti-check" style="font-size:10px;color:#fff"></i>':''}</div>
-      <span style="flex:1;min-width:0;font-size:12.5px;font-weight:${on?'700':'500'};color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(p.name)}${freqOn?' <i class="ti ti-star-filled" style="font-size:10px;color:var(--amber)" title="Participa com frequência"></i>':''}</span>
+    if(!on){
+      return `<div onclick="_toggleParticipanteReuniao('${m.id}','${p.id}')" style="display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;cursor:pointer;border:1px solid var(--border);background:var(--card);transition:all .12s" title="Adicionar à reunião">
+        <div style="width:16px;height:16px;border-radius:4px;border:2px solid var(--border);flex-shrink:0"></div>
+        <span style="flex:1;min-width:0;font-size:12.5px;font-weight:500;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(p.name)}${freqOn?' <i class="ti ti-star-filled" style="font-size:10px;color:var(--amber)" title="Participa com frequência"></i>':''}</span>
+      </div>`;
+    }
+    const isOrg=m.organizador===p.id||m.facilitador===p.id;
+    const role=isOrg?'organizador':(papeis[p.id]||'leitor');
+    const rc=REUN_PAPEL[role]||REUN_PAPEL.leitor;
+    const presente=presencas[p.id]===true;
+    return `<div onclick="_toggleParticipanteReuniao('${m.id}','${p.id}')" style="display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:8px;cursor:pointer;border:1px solid ${rc.c};background:color-mix(in srgb,${rc.c} ${rc.tint},transparent);transition:all .12s" title="Clique p/ tirar da reunião">
+      <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${rc.c};background:${rc.c};display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="font-size:10px;color:#fff"></i></div>
+      <span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(p.name)}${freqOn?' <i class="ti ti-star-filled" style="font-size:10px;color:var(--amber)"></i>':''}</span>
+      <button onclick="event.stopPropagation();togglePresencaModal('${m.id}','${p.id}')" title="${presente?'Presente — clique p/ desmarcar':'Marcar presença'}" style="width:22px;height:22px;border-radius:50%;border:2px solid ${presente?'var(--success)':'var(--border)'};background:${presente?'var(--success)':'transparent'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0">${presente?'<i class="ti ti-check" style="font-size:11px;color:#fff"></i>':''}</button>
+      <button onclick="event.stopPropagation();_ciclarPapelReuniao('${m.id}','${p.id}')" title="Papel: ${rc.l} — clique p/ trocar" style="display:inline-flex;align-items:center;gap:4px;background:color-mix(in srgb,${rc.c} 16%,transparent);border:1px solid ${rc.c};color:${rc.c};border-radius:7px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0"><i class="ti ${rc.i}" style="font-size:13px"></i> ${rc.l}</button>
     </div>`;
   }).join('') || '<div style="grid-column:1/-1;font-size:13px;color:var(--text3);font-style:italic;padding:10px">Nenhuma pessoa cadastrada.</div>';
-  // Seção 2 — papéis + presença (só participantes). "Organizador" = quem conduz (m.facilitador).
-  const total=(m.participantes||[]).length;
-  const presentes=(m.participantes||[]).filter(pid=>presencas[pid]===true).length;
-  const chips=(m.participantes||[]).map(pid=>{
-    const p=people.find(x=>x.id===pid); if(!p) return '';
-    const presente=presencas[pid]===true;
-    const isOrg=m.organizador===pid||m.facilitador===pid;
-    const curRole=isOrg?'organizador':(papeis[pid]||'leitor');
-    const roleSel=`<select onchange="event.stopPropagation();_setPapelReuniao('${m.id}','${pid}',this.value)" onclick="event.stopPropagation()" style="font-size:11px;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:3px 6px;color:var(--text2);cursor:pointer;font-family:inherit;flex-shrink:0"><option value="organizador" ${curRole==='organizador'?'selected':''}>Organizador</option><option value="editor" ${curRole==='editor'?'selected':''}>Editor</option><option value="leitor" ${curRole==='leitor'?'selected':''}>Leitor</option></select>`;
-    return `<div onclick="togglePresencaModal('${m.id}','${pid}')" style="display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:9px;background:${presente?'var(--success-bg)':'var(--bg2)'};border:1px solid ${presente?'var(--success)':'var(--border)'};font-size:13px;font-weight:600;color:${presente?'var(--success)':'var(--text2)'};cursor:pointer;transition:all .15s" title="Clique para marcar presença">
-      <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${presente?'var(--success)':'var(--border)'};background:${presente?'var(--success)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${presente?'<i class="ti ti-check" style="font-size:10px;color:#fff"></i>':''}</div>
-      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(p.name)}${isOrg?' <i class="ti ti-microphone" style="font-size:12px;color:var(--blue-mid)" title="Conduz"></i>':''}</span>
-      ${roleSel}
-    </div>`;
-  }).join('');
   return `<div style="max-width:900px;margin:0 auto">
-    <div class="reun-card4" style="margin-bottom:14px">
-      <div class="reun-card4-title"><span><i class="ti ti-users" style="color:var(--blue-mid)"></i> Quem participa <span style="font-size:11px;font-weight:500;color:var(--text3)">· ${parts.size} selecionado${parts.size!==1?'s':''}</span></span></div>
-      <div style="font-size:11.5px;color:var(--text3);margin:-4px 0 12px">Marque quem participa · <i class="ti ti-star-filled" style="font-size:10px;color:var(--amber)"></i> = participa com frequência.</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px">${gridRows}</div>
-    </div>
-    ${parts.size?`<div class="reun-card4">
-      <div class="reun-card4-title"><span><i class="ti ti-user-check" style="color:var(--blue-mid)"></i> Papéis e presença</span></div>
-      <div style="font-size:12px;color:var(--text2);margin:-2px 0 10px;font-weight:600"><i class="ti ti-user-check"></i> Presença — ${presentes} de ${total} · clique no nome · defina o papel à direita</div>
-      <div style="display:flex;flex-direction:column;gap:7px">${chips}</div>
-      <div style="margin-top:14px;padding:10px 12px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text3);line-height:1.7">
+    <div class="reun-card4">
+      <div class="reun-card4-title"><span><i class="ti ti-users" style="color:var(--blue-mid)"></i> Quem participa <span style="font-size:11px;font-weight:500;color:var(--text3)">· ${parts.size} selecionado${parts.size!==1?'s':''} · ${presentes} presente${presentes!==1?'s':''}</span></span></div>
+      <div style="font-size:11.5px;color:var(--text3);margin:-4px 0 12px">Clique no nome p/ (des)marcar quem participa · o chip de <b>papel</b> cicla Organizador → Editor → Leitor · <i class="ti ti-check" style="font-size:11px;color:var(--success)"></i> = presente.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:6px">${gridRows}</div>
+      <div style="margin-top:14px;padding:10px 12px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text3);line-height:1.8">
         <b style="color:var(--text2)">Papéis:</b>
-        <span style="margin-left:6px"><b style="color:var(--blue-mid)">Organizador</b> — vê, edita, encerra e conduz</span>
-        <span style="margin:0 6px">·</span><b style="color:var(--amber)">Editor</b> — vê e edita a pauta
-        <span style="margin:0 6px">·</span><b>Leitor</b> — só visualiza
+        <span style="margin-left:6px;color:var(--blue-mid);font-weight:700"><i class="ti ti-microphone"></i> Organizador</span> — vê, edita, encerra e conduz
+        <span style="margin:0 6px">·</span><span style="color:var(--amber);font-weight:700"><i class="ti ti-pencil"></i> Editor</span> — vê e edita a pauta
+        <span style="margin:0 6px">·</span><span style="font-weight:700"><i class="ti ti-eye"></i> Leitor</span> — só visualiza
       </div>
-    </div>`:''}
+    </div>
   </div>`;
 }
 // Info — SÓ os detalhes gerais da reunião (data/hora/sala/conduz/tipo).
@@ -32832,8 +32859,9 @@ function _reunAncestraisIds(m){
   return ids;
 }
 function reunTarefasHTML(m){
-  // Tarefas desta reunião
+  // Tarefas desta reunião — pendentes e, no fim, as concluídas (riscadas).
   const tarefasNovas=tasks.filter(t=>t.meetingId===m.id&&!t.done);
+  const tarefasFeitas=tasks.filter(t=>t.meetingId===m.id&&t.done);
   // Pendentes de TODA a cadeia anterior (não só o pai direto): uma tarefa que atravessa
   // 2+ reuniões continua com o meetingId da reunião de origem — se olhasse só o pai, sumiria.
   const _anc=_reunAncestraisIds(m);
@@ -32876,7 +32904,13 @@ function reunTarefasHTML(m){
     html+=tarefasNovas.map(t=>tarefaRow(t)).join('');
   }
 
-  if(!tarefasAnteriores.length&&!tarefasNovas.length){
+  // Concluídas NESTA reunião — aparecem riscadas (como a pauta), num grupo no fim.
+  if(tarefasFeitas.length){
+    html+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px"><i class="ti ti-circle-check" style="font-size:11px;color:var(--success)"></i> Concluídas nesta reunião</div>`;
+    html+=tarefasFeitas.map(t=>tarefaRow(t)).join('');
+  }
+
+  if(!tarefasAnteriores.length&&!tarefasNovas.length&&!tarefasFeitas.length){
     html='<div style="font-size:13px;color:var(--text3);font-style:italic">Nenhuma tarefa ainda.</div>';
   }
 
