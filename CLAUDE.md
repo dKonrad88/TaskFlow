@@ -102,6 +102,19 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-17 (d) — PC da Empresa — Equipe destravada + papel por 3 ícones + sub-navbar na Reunião (commits `07d8e49`,`67e26cd`, PUSHADOS)
+- **BUG (Diego não conseguia adicionar pessoas):** `_toggleParticipanteProjeto`/`_setPapelProjeto` checavam `_ppPodeGerenciar` — o Diego
+  (identidade SIMULADA) virou **Leitor** ao ciclar papéis e perdeu a permissão → travou. Removidas as checagens dessas 2 (protótipo; a regra
+  dono/coordenador vale no backend do Guilherme). Documentado no código.
+- **PAPEL por 3 ÍCONES** (em vez do chip que ciclava): card da pessoa participante agora = **✓** (tira da equipe) + nome + [presença, só reunião] +
+  **3 botões de papel** sempre visíveis, o ativo destacado; clicar num define. Projeto: Dono/Coordenador/Leitor (`_setPapelProjeto`). Reunião:
+  Organizador/Editor/Leitor (`_setPapelReuniao`). Grid alargado (proj 270 / reun 300). `_ciclarPapelProjeto`/`_ciclarPapelReuniao` ficaram órfãos (inócuos).
+- **SUB-NAVBAR horizontal no Painel de Reunião** (Diego gostou da dos Projetos): os ícones de VIEW viraram abas horizontais `.reun-subtabs`
+  (Painel · Pessoas · Info · ATA · Anexos · Histórico · Decisões · Editar — ícone+texto, sublinhado azul na ativa, chamam `_reunSetSubView`).
+  O cabeçalho normal ficou só com as **AÇÕES** à direita (play/pausar · cronômetro · foco · Finalizar/PDF). No modo foco a sub-navbar some
+  (CSS `body.reun-focus .reun-subtabs{display:none}`) e a trilha lateral assume. Projetos já tinham esse padrão — mantidos.
+- ⚠️ NÃO testado em navegador; balanço idêntico ao HEAD. **Diego confere no Pages.**
+
 ### 2026-07-17 (c) — PC da Empresa — Projetos: Painel vira ferramenta de PLANEJAMENTO (dependência+dias+previsão+projeção) + respiro (commit `15e8119`, PUSHADO)
 - Pedido do Diego (vai usar o Painel pra planejar): ver a dependência entre tarefas, definir dias, e a projeção de conclusão.
 - **Largura/respiro:** coluna do detalhe (tarefas) com **max-width 660** (não estica ponta-a-ponta); `gap` 16→**26**; comentários com
