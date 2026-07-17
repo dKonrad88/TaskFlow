@@ -102,6 +102,23 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-16 (4) — Mac de casa — .nojekyll (Pages travado) + Sala em modo-primeiro (3 opções)
+- ⚠️ **BUG DE INFRA resolvido:** o GitHub Pages vinha **falhando o build de forma intermitente** ("Page build
+  failed") porque **faltava `.nojekyll`** → o Pages processava o index.html de 33k linhas pelo Jekyll. O site
+  ficou preso no último build bom (`379091c`), sem as mudanças de hoje ("tá tudo lá ainda"). **Fix:** adicionado
+  `.nojekyll` (commit `2588c5c`) → Pages copia o arquivo cru. Build passou e confirmei via `curl` o conteúdo
+  servido. **LIÇÃO (já na memória): depois de push no Pages, verificar o site servido (curl/gh api pages/builds),
+  não só o push.** `gh api repos/dKonrad88/TaskFlow/pages/builds/latest --jq .status`.
+- **Sala virou "modo primeiro, valor depois"** (o dropdown único tinha virado uma lista gigante de 25+ itens).
+  Agora: select `#reun-sala-modo` com 3 opções (Sala de reunião / Sala de uma pessoa / Outro lugar). Cada modo
+  revela seu sub-controle: `#reun-sala` (salas, +/excluir voltaram a valor simples, sem prefixo), `#reun-sala-pessoa`
+  (pessoas, "Minha sala"↔"Sala de <Nome>", com nota explicando a regra p/ o Guilherme), `#reun-sala-livre` (texto).
+  `_reunSalaModo(v)` troca o sub-controle; `_reunColetaSala()` lê pelo modo. Modelo de dados `salaTipo`/`salaPessoaId`/
+  `sala`/`localExterno` inalterado; `_reunLocalLabel` idem.
+- **Verificado:** 3 opções no topo; salvar em cada modo → "Sala Reunião" / "Sala de Débora" / texto livre; 0 erros.
+- ⚠️ Nota: aparece "Sala de Minhas Tarefas" na lista de pessoas → há um registro-fantasma chamado "Minhas Tarefas"
+  em `people`. Não filtrei (é dado, não código). Vale o Diego checar/limpar em Pessoas.
+
 ### 2026-07-16 (2) — Mac de casa — Modal de reunião: tira Tipo/Status/Quem-conduz da criação + Sala em 3 modos
 - **Tipo, Status, Quem conduz** saíram da **criação** (modal fica só Título/Data/Hora/Sala/Repetir). Continuam no
   **Editar** (o form é o mesmo — envolvi o grid em `${editingReuniaoId ? ... : ''}`). Removida a obrigatoriedade

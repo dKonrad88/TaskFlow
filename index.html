@@ -30185,7 +30185,7 @@ function renderNovaReuniaoForm(container, subNav){
   if(!window._reunRec) window._reunRec = (m&&m.rec) ? JSON.parse(JSON.stringify(m.rec)) : (_recFromLegacy(m) || _recDefault(m?m.date:(window._preReunData||today)));
   // Sala: valor pré-selecionado (compat com registros antigos que só tinham m.sala/m.localExterno).
   const _meId = (typeof CURRENT_USER_ID!=='undefined') ? CURRENT_USER_ID : '';
-  const _salaVal = m ? (m.salaPessoaId ? 'pessoa:'+m.salaPessoaId : (m.sala ? 'sala:'+m.sala : (m.localExterno ? 'livre' : ''))) : '';
+  const _salaModo = m ? (m.salaPessoaId ? 'pessoa' : (m.sala ? 'sala' : (m.localExterno ? 'livre' : ''))) : '';
 
   // (jul/2026) A pauta saiu do modal — é editada no Painel. Nada de pautaHTML aqui.
 
@@ -30267,26 +30267,36 @@ function renderNovaReuniaoForm(container, subNav){
               </div>
             </div>` : ''}
 
-            <!-- Sala / local: 3 modos — sala de reunião · sala de uma pessoa · outro lugar (livre).
-                 "Sala de uma pessoa" guarda o id: quem é a própria pessoa vê "Minha sala",
-                 todos os outros veem "Sala de <Nome>" (regra p/ o Guilherme; aqui o "eu" é fixo). -->
+            <!-- Sala / local: 3 MODOS (pedido do Diego) — escolhe o modo primeiro,
+                 depois o valor. "Sala de uma pessoa" é só p/ o Guilherme entender a
+                 regra (Minha sala ↔ Sala de <Nome>); a implementação real é no HUB dele. -->
             <div>
               <div class="modal-label" style="margin-bottom:5px"><i class="ti ti-map-pin"></i> Sala / local <span style="font-size:10px;color:var(--text3);font-weight:400">(opcional)</span></div>
-              <div style="display:flex;gap:6px;align-items:center">
-                <select id="reun-sala" class="modal-input" style="flex:1" onchange="_reunSalaSelChange()">
-                  <option value="" ${_salaVal===''?'selected':''}>— Nenhuma —</option>
-                  <optgroup label="Salas de reunião">
-                    ${salas.map(s=>`<option value="sala:${escapeAttr(s)}" ${_salaVal==='sala:'+s?'selected':''}>${escapeHTML(s)}</option>`).join('')}
-                  </optgroup>
-                  <optgroup label="Sala de uma pessoa">
-                    ${[...people].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>`<option value="pessoa:${p.id}" ${_salaVal==='pessoa:'+p.id?'selected':''}>${p.id===_meId?'Minha sala':'Sala de '+escapeHTML(p.name)}</option>`).join('')}
-                  </optgroup>
-                  <option value="livre" ${_salaVal==='livre'?'selected':''}>📍 Outro lugar (digitar)…</option>
+              <select id="reun-sala-modo" class="modal-input" onchange="_reunSalaModo(this.value)">
+                <option value="" ${_salaModo===''?'selected':''}>— Nenhuma —</option>
+                <option value="sala" ${_salaModo==='sala'?'selected':''}>Sala de reunião</option>
+                <option value="pessoa" ${_salaModo==='pessoa'?'selected':''}>Sala de uma pessoa</option>
+                <option value="livre" ${_salaModo==='livre'?'selected':''}>Outro lugar (digitar)</option>
+              </select>
+              <!-- sub: sala de reunião -->
+              <div id="reun-sala-sub-sala" style="display:${_salaModo==='sala'?'flex':'none'};gap:6px;align-items:center;margin-top:6px">
+                <select id="reun-sala" class="modal-input" style="flex:1">
+                  <option value="">— Selecione a sala —</option>
+                  ${salas.map(s=>`<option value="${escapeAttr(s)}" ${m&&m.sala===s?'selected':''}>${escapeHTML(s)}</option>`).join('')}
                 </select>
                 <button type="button" onclick="abrirNovaSalaInline()" title="Nova sala de reunião" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:15px;flex-shrink:0;transition:all .2s" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-plus"></i></button>
-                <button type="button" onclick="excluirSalaSelecionada()" title="Excluir sala de reunião selecionada" style="background:var(--bg2);border:1px solid var(--border);color:var(--text3);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:15px;flex-shrink:0;transition:all .2s" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'"><i class="ti ti-trash"></i></button>
+                <button type="button" onclick="excluirSalaSelecionada()" title="Excluir sala selecionada" style="background:var(--bg2);border:1px solid var(--border);color:var(--text3);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:15px;flex-shrink:0;transition:all .2s" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'"><i class="ti ti-trash"></i></button>
               </div>
-              <input id="reun-sala-livre" class="modal-input" placeholder="Ex.: Máquina 3 do setor de Salgados, perto da expedição" value="${m?escapeAttr(m.localExterno||''):''}" style="margin-top:6px;display:${_salaVal==='livre'?'block':'none'}">
+              <!-- sub: sala de uma pessoa (protótipo da regra p/ o Guilherme) -->
+              <div id="reun-sala-sub-pessoa" style="display:${_salaModo==='pessoa'?'block':'none'};margin-top:6px">
+                <select id="reun-sala-pessoa" class="modal-input">
+                  <option value="">— Selecione a pessoa —</option>
+                  ${[...people].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>`<option value="${p.id}" ${m&&m.salaPessoaId===p.id?'selected':''}>${p.id===_meId?'Minha sala':'Sala de '+escapeHTML(p.name)}</option>`).join('')}
+                </select>
+                <div style="font-size:10.5px;color:var(--text3);margin-top:4px"><i class="ti ti-info-circle" style="font-size:11px"></i> Quem for a própria pessoa vê <b>"Minha sala"</b>; os outros veem <b>"Sala de &lt;Nome&gt;"</b>. No HUB real isso vem do login (parte do Guilherme).</div>
+              </div>
+              <!-- sub: outro lugar (texto livre) -->
+              <input id="reun-sala-livre" class="modal-input" placeholder="Ex.: Máquina 3 do setor de Salgados, perto da expedição" value="${m?escapeAttr(m.localExterno||''):''}" style="margin-top:6px;display:${_salaModo==='livre'?'block':'none'}">
               <div id="nova-sala-inline" style="display:none;gap:6px;align-items:center;margin-top:6px">
                 <input id="nova-sala-inp" class="modal-input" placeholder="Nome da sala..." style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarNovaSala();}if(event.key==='Escape')cancelarNovaSala()">
                 <button type="button" onclick="confirmarNovaSala()" class="btn-modal-save" style="padding:7px 12px;font-size:13px;flex-shrink:0"><i class="ti ti-check"></i></button>
@@ -30531,11 +30541,8 @@ function confirmarNovaSala(){
   const sel=document.getElementById('reun-sala');
   if(sel){
     const opt=document.createElement('option');
-    opt.value='sala:'+txt; opt.textContent=txt;
-    const grp=sel.querySelector('optgroup'); // 1º optgroup = "Salas de reunião"
-    if(grp) grp.appendChild(opt); else sel.appendChild(opt);
-    sel.value='sala:'+txt;
-    if(typeof _reunSalaSelChange==='function') _reunSalaSelChange();
+    opt.value=txt; opt.textContent=txt; opt.selected=true;
+    sel.appendChild(opt);
   }
   cancelarNovaSala();
   toast('✅ Sala criada: '+txt);
@@ -30543,31 +30550,29 @@ function confirmarNovaSala(){
 function excluirSalaSelecionada(){
   const sel=document.getElementById('reun-sala');
   if(!sel||!sel.value) return;
-  if(sel.value.indexOf('sala:')!==0){ toast('Só dá p/ excluir salas de reunião'); return; }
-  const nome=sel.value.slice(5);
+  const nome=sel.value;
   salas=salas.filter(s=>s!==nome);
   saveSalas();
-  [...sel.options].forEach(o=>{ if(o.value==='sala:'+nome) o.remove(); });
+  [...sel.options].forEach(o=>{ if(o.value===nome) o.remove(); });
   sel.value='';
-  if(typeof _reunSalaSelChange==='function') _reunSalaSelChange();
   toast('🗑️ Sala removida: '+nome);
 }
-// Mostra/esconde o campo de texto livre conforme a opção "Outro lugar".
-function _reunSalaSelChange(){
-  const sel=document.getElementById('reun-sala');
-  const livre=document.getElementById('reun-sala-livre');
-  if(!livre) return;
-  const on = sel && sel.value==='livre';
-  livre.style.display = on ? 'block' : 'none';
-  if(on) setTimeout(()=>livre.focus(),50);
+// Troca o MODO da sala (sala de reunião / de uma pessoa / outro lugar) → mostra o
+// sub-controle certo. 3 opções no topo, o valor específico vem no 2º nível.
+function _reunSalaModo(v){
+  const show=(id,on,disp)=>{const e=document.getElementById(id); if(e) e.style.display=on?(disp||'block'):'none';};
+  show('reun-sala-sub-sala', v==='sala', 'flex');
+  show('reun-sala-sub-pessoa', v==='pessoa', 'block');
+  show('reun-sala-livre', v==='livre', 'block');
+  const nsi=document.getElementById('nova-sala-inline'); if(nsi) nsi.style.display='none';
+  if(v==='livre') setTimeout(()=>document.getElementById('reun-sala-livre')?.focus(),50);
 }
 // Coleta a sala/local do modal → {salaTipo, salaPessoaId, sala, localExterno}.
 function _reunColetaSala(){
-  const v=document.getElementById('reun-sala')?.value||'';
-  const livre=(document.getElementById('reun-sala-livre')?.value||'').trim();
-  if(v.indexOf('pessoa:')===0) return {salaTipo:'pessoa', salaPessoaId:v.slice(7), sala:'', localExterno:''};
-  if(v==='livre')              return {salaTipo:'livre',  salaPessoaId:'', sala:'', localExterno:livre};
-  if(v.indexOf('sala:')===0)   return {salaTipo:'sala',   salaPessoaId:'', sala:v.slice(5), localExterno:''};
+  const modo=document.getElementById('reun-sala-modo')?.value||'';
+  if(modo==='sala'){   const s=document.getElementById('reun-sala')?.value||'';        return {salaTipo:s?'sala':'',   salaPessoaId:'', sala:s, localExterno:''}; }
+  if(modo==='pessoa'){ const p=document.getElementById('reun-sala-pessoa')?.value||''; return {salaTipo:p?'pessoa':'', salaPessoaId:p, sala:'', localExterno:''}; }
+  if(modo==='livre'){  const t=(document.getElementById('reun-sala-livre')?.value||'').trim(); return {salaTipo:t?'livre':'', salaPessoaId:'', sala:'', localExterno:t}; }
   return {salaTipo:'', salaPessoaId:'', sala:'', localExterno:''};
 }
 // Label do local exibido nos cards/painel — resolve "Minha sala" ↔ "Sala de <Nome>"
