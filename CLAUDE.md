@@ -137,6 +137,20 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (s) — PC da Empresa — `--surface-painel`: fundo dos cards levemente mais creme, derivado do tema (commit `5e9f02a`)
+- Diego: *"dos fundos gostei, poderia ser levemente mais escurinho, mas tipo quase nada, só pra não parecer branco, seria um cremezinho mais forte"*.
+- ⭐ **Nova var `--surface-painel`** = o `--card` puxado **30% na direção do `--bg2` do próprio tema**, via `color-mix`.
+  **Derivar em vez de fixar um hex por tema**: sai creme no areia/klain, cinza-claro no padrão e escuro no dark, sem manter 5 valores na mão
+  (e sem esquecer um quando surgir tema novo).
+- Aplicada nos cards dos **DOIS painéis**: `.reun-card4` (16 cards da Reunião), `_ppBloco`, card do setor, cards de fase, estados vazios do
+  detalhe e o `infoCard`. **MANTIDO `--card`** onde ele não é superfície e sim o "vazio" de uma **barra de progresso** (o trilho) — ali o que
+  importa é o contraste com o preenchimento.
+- 🐛 **ARMADILHA DE CSS resolvida ANTES de subir (vale lembrar):** a var estava em `:root`. **Custom property é resolvida no elemento onde é
+  DECLARADA** — o `color-mix` usaria o `--bg2`/`--card` do `:root` (tema padrão) e os filhos herdariam o valor **já resolvido**, ou seja,
+  o fundo **não mudaria em tema nenhum**. Movida p/ **`body`**, que é onde os temas (`body[data-theme=…]`/`body.dark`) redefinem `--bg2`.
+  📌 **Regra:** var de tema que dependa de outra var de tema **tem que ser declarada no mesmo nível em que os temas sobrescrevem** (body).
+- ⚠️ NÃO testado em navegador. Balanço idêntico ao HEAD.
+
 ### 2026-07-18 (r) — PC da Empresa — Blocos do Painel voltam a ter SUPERFÍCIE, na paleta do tema (commit `3b0265b`)
 - Diego: *"acontecendo agora / próximas a liberar não ficou legal, pode ter fundo, porém com a paleta do tema · o fundo dos comentários tbm ·
   o das tarefas tbm"*. Ou seja: tirar os cards deixou o conteúdo **solto direto no `--bg` da página**, sem acabamento.
