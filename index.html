@@ -1519,6 +1519,10 @@
   .anot-cor{width:19px;height:19px;border-radius:50%;border:2px solid var(--border);cursor:pointer;padding:0;flex-shrink:0;transition:transform .12s}
   .anot-cor:hover{transform:scale(1.18)}
   .anot-sep{width:1px;height:16px;background:var(--border);margin:0 3px;flex-shrink:0}
+  /* Ícone discreto na linha da pauta (autor / anotar). Cor inline setada por JS vence o :hover
+     — de propósito: quando o autor escolhido não é você, o ícone FICA azul. */
+  .pauta-ico-btn{background:none;border:none;cursor:pointer;color:var(--text3);padding:0 2px;line-height:1;flex-shrink:0;position:relative;display:inline-flex;font-size:14px;transition:color .12s}
+  .pauta-ico-btn:hover{color:var(--blue-mid)}
   /* Aba Pessoas: 2 cards lado a lado — Disponíveis (esquerda) → Participantes (direita). */
   .reun-pessoas-2col{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
   @media(max-width:860px){.reun-pessoas-2col{grid-template-columns:1fr}}
@@ -31184,14 +31188,11 @@ function openReuniaoView(id, _opts){
               <i class="ti ti-circle-dashed" style="font-size:15px;color:var(--text3);flex-shrink:0"></i>
               <input id="pauta-add-inp-${m.id}" class="modal-input" placeholder="Novo assunto..." style="flex:1;padding:6px 10px;font-size:13px"
                 onkeydown="if(event.key==='Enter'){event.preventDefault();pautaConfirmarAdd('${m.id}');}if(event.key==='Escape')pautaCancelarAdd('${m.id}')">
-            </div>
-            <!-- Quem TROUXE o assunto. Fica no valor escolhido entre um assunto e outro, p/ lançar
-                 vários da mesma pessoa em sequência. -->
-            <div style="display:flex;align-items:center;gap:6px;padding-left:23px">
-              <span style="font-size:11px;color:var(--text3);flex-shrink:0">Quem trouxe:</span>
-              <select id="pauta-add-autor-${m.id}" class="modal-input" style="padding:4px 8px;font-size:12px;flex:1;max-width:180px">
-                ${[...people].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>`<option value="${p.id}"${p.id===CURRENT_USER_ID?' selected':''}>${escapeHTML(p.name)}</option>`).join('')}
-              </select>
+              <!-- Quem TROUXE o assunto: só um ícone. O valor mora no hidden abaixo (mesmo id de
+                   antes → pautaConfirmarAdd segue lendo .value) e PERSISTE entre um assunto e
+                   outro, p/ lançar vários da mesma pessoa em sequência. -->
+              <button class="pauta-ico-btn" onclick="_pautaAddAutorEscolher('${m.id}',this)" title="Quem trouxe: ${escapeAttr((people.find(x=>x.id===CURRENT_USER_ID)||{}).name||'eu')}"><i class="ti ti-user"></i></button>
+              <input type="hidden" id="pauta-add-autor-${m.id}" value="${CURRENT_USER_ID}">
             </div>
             <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:4px">
               <button onclick="pautaCancelarAdd('${m.id}')" class="btn-modal-cancel" style="padding:4px 12px;font-size:12px">Cancelar</button>
@@ -31821,33 +31822,51 @@ function _pautaSetAutor(m, txt, pid){
   if(!m.pautaAutor || typeof m.pautaAutor!=='object') m.pautaAutor={};
   m.pautaAutor[txt]=pid||CURRENT_USER_ID;
 }
-// Trocar quem trouxe um assunto JÁ criado. Espelha o truque do abrirDatePickerTarefa: cria um
-// <select> invisível cobrindo o botão clicado e abre o dropdown nativo — sem menu customizado.
-function _pautaTrocarAutor(mid, idx, anchor){
-  const m=meetings.find(x=>x.id===mid); if(!m) return;
-  const txt=(m.pauta||[])[idx]; if(!txt) return;
-  const atual=(m.pautaAutor||{})[txt]||'';
+// Lista de pessoas num <select> INVISÍVEL sobre o botão clicado, abrindo o dropdown nativo —
+// mesmo truque do abrirDatePickerTarefa. Evita menu customizado e mantém a UI discreta:
+// na tela aparece só um ícone.
+function _pessoaPicker(anchor, atual, comVazio, onPick){
+  if(!anchor) return;
   const sel=document.createElement('select');
   sel.style.cssText='position:absolute;inset:0;width:100%;height:100%;opacity:0;border:none;padding:0;margin:0;cursor:pointer';
-  const o0=document.createElement('option'); o0.value=''; o0.textContent='— sem autor —'; sel.appendChild(o0);
+  if(comVazio){ const o0=document.createElement('option'); o0.value=''; o0.textContent='— sem autor —'; sel.appendChild(o0); }
   [...people].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).forEach(p=>{
     const o=document.createElement('option'); o.value=p.id; o.textContent=p.name;
     if(p.id===atual) o.selected=true;
     sel.appendChild(o);
   });
-  sel.onchange=()=>{
-    if(!m.pautaAutor || typeof m.pautaAutor!=='object') m.pautaAutor={};
-    if(sel.value) m.pautaAutor[txt]=sel.value; else delete m.pautaAutor[txt];
-    saveMeeting_db(m);
-    if(sel.parentNode) sel.remove();
-    _pautaRefresh(mid); // re-renderiza a pauta (reagrupa por autor)
-  };
+  sel.onchange=()=>{ const v=sel.value; if(sel.parentNode) sel.remove(); onPick(v); };
   sel.onblur=()=>setTimeout(()=>{ if(sel.parentNode) sel.remove(); },200);
   try{ if(getComputedStyle(anchor).position==='static') anchor.style.position='relative'; }catch(e){}
   anchor.appendChild(sel);
   sel.focus();
   try{ if(typeof sel.showPicker==='function') sel.showPicker(); else sel.click(); }
   catch(e){ try{ sel.click(); }catch(_){} }
+}
+// Trocar quem trouxe um assunto JÁ criado.
+function _pautaTrocarAutor(mid, idx, anchor){
+  const m=meetings.find(x=>x.id===mid); if(!m) return;
+  const txt=(m.pauta||[])[idx]; if(!txt) return;
+  _pessoaPicker(anchor, (m.pautaAutor||{})[txt]||'', true, (v)=>{
+    if(!m.pautaAutor || typeof m.pautaAutor!=='object') m.pautaAutor={};
+    if(v) m.pautaAutor[txt]=v; else delete m.pautaAutor[txt];
+    saveMeeting_db(m);
+    _pautaRefresh(mid); // re-renderiza a pauta (reagrupa por autor)
+  });
+}
+// Quem trouxe o assunto que está sendo DIGITADO. O valor mora num input hidden (o mesmo id de
+// antes, então pautaConfirmarAdd segue lendo .value); na tela é só o ícone. Ele fica azul quando
+// o autor escolhido NÃO é você — aviso silencioso de que os próximos assuntos vão pra outra
+// pessoa, sem precisar de rótulo nem dropdown à vista.
+function _pautaAddAutorEscolher(mid, anchor){
+  const hid=document.getElementById('pauta-add-autor-'+mid); if(!hid) return;
+  _pessoaPicker(anchor, hid.value||CURRENT_USER_ID, false, (v)=>{
+    if(!v) return;
+    hid.value=v;
+    const p=people.find(x=>x.id===v);
+    anchor.title='Quem trouxe: '+(p?p.name:'—');
+    anchor.style.color = (v===CURRENT_USER_ID) ? 'var(--text3)' : 'var(--blue-mid)';
+  });
 }
 function _pautaAutorNome(m, txt){
   const pid=(m.pautaAutor||{})[txt];
@@ -31909,8 +31928,8 @@ function reunPautaHTML(m){
           ${done?'<i class="ti ti-check" style="font-size:10px;color:#fff"></i>':''}
         </div>
         <span style="flex:1;font-size:13px;color:var(--text);${done?'text-decoration:line-through;opacity:.5':''}">${escapeHTML(txt)}</span>
-        <button onclick="_pautaTrocarAutor('${m.id}',${i},this)" title="Quem trouxe este assunto" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 2px;line-height:1;flex-shrink:0;position:relative" onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-user"></i></button>
-        <button onclick="_pautaItemParaAnotacao('${m.id}',${i})" title="Anotar sobre este assunto (vai p/ Anotações)" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 2px;line-height:1;flex-shrink:0" onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-note"></i></button>
+        <button class="pauta-ico-btn" onclick="_pautaTrocarAutor('${m.id}',${i},this)" title="Quem trouxe este assunto"><i class="ti ti-user"></i></button>
+        <button class="pauta-ico-btn" onclick="_pautaItemParaAnotacao('${m.id}',${i})" title="Anotar sobre este assunto (vai p/ Anotações)"><i class="ti ti-note"></i></button>
         <button onclick="removerPautaItem('${m.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 2px;line-height:1" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'">×</button>
       </div>`;
     }).join('');
