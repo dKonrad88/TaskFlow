@@ -102,6 +102,17 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (h) — PC da Empresa — "Quem trouxe" vira só um ÍCONE (commit `e93e55a`)
+- O Diego achou o bloco **"Quem trouxe: [dropdown]"** chamativo demais na linha de novo assunto. Virou **só um ícone de pessoa** ao lado do campo
+  (aperta → abre a lista). O valor foi p/ um **`<input type=hidden>` com o MESMO id** (`pauta-add-autor-<mid>`), então `pautaConfirmarAdd` segue
+  lendo `.value` sem alteração e o autor continua persistindo entre um assunto e outro.
+- **Feedback silencioso:** o ícone fica **azul quando o autor escolhido NÃO é você** (aviso de que os próximos assuntos vão pra outra pessoa);
+  cinza quando é você. Nome completo no tooltip.
+- Extraído **`_pessoaPicker(anchor, atual, comVazio, onPick)`** — a criação do `<select>` invisível estava duplicada entre trocar-autor-do-item e
+  escolher-autor-do-novo. Nova classe **`.pauta-ico-btn`** nos 3 ícones da pauta (tira o `onmouseover/onmouseout` inline repetido).
+  ⚠️ A cor inline setada por JS **vence o `:hover` de propósito** — senão o azul do "autor ≠ eu" se perderia ao passar o mouse.
+- ⚠️ NÃO testado em navegador. Balanço idêntico ao HEAD.
+
 ### 2026-07-18 (g) — PC da Empresa — Anotações: Enter continua a lista · pauta entra no CURSOR · AUTOR da pauta editável (commits `bb58992`,`695ba66`)
 - **Coluna reservada p/ INDICADORES** (`bb58992`): aviso **neutro e discreto** (sem card/borda/fundo/negrito, `--text3`) naquele vazio à esquerda dos
   cards — "Espaço reservado para os indicadores desta reunião". Grid do painel foi de **3 p/ 4 colunas** (`.reun-col-kpi`, `order:0`); o `max-width`
