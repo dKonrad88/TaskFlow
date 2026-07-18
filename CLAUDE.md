@@ -102,6 +102,18 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (i) — PC da Empresa — Barra das Anotações mais discreta (commit `172e64a`)
+- Diego: *"tá chamando atenção demais, as cores principalmente"* (2ª vez que ele pede menos peso visual — ver (h)).
+- **As 5 bolinhas coloridas saíram da barra** → **1 ícone de paleta** que abre um popover com as cores (`_anotCorMenu`).
+  Escolher aplica e fecha · clicar fora fecha · 2º clique no ícone fecha. Soltas na barra, 5 círculos saturados puxavam mais o olho que o texto.
+- **Botões da barra perderam a BORDA** (viravam ~10 caixinhas competindo com o conteúdo): agora são só texto/ícone em `--text3` com fundo sutil no hover.
+- ⚠️ O popover usa `onmousedown+preventDefault` (no box, herdado pelos filhos) p/ **não roubar a seleção do editor** — sem isso o `foreColor`
+  não teria em que aplicar. Mesma razão do `preventDefault` nos botões da barra.
+- Helper `cor` do template removido (órfão); a classe `.anot-cor` segue viva, agora aplicada por JS dentro do popover.
+- 📌 **Padrão que o Diego prefere (vale p/ o resto do HUB):** controle discreto = **1 ícone que abre a lista**, não o controle aberto na tela.
+  Já aplicado em: papel na pauta (h), cores das anotações (i), autor do assunto.
+- ⚠️ NÃO testado em navegador. Balanço idêntico ao HEAD.
+
 ### 2026-07-18 (h) — PC da Empresa — "Quem trouxe" vira só um ÍCONE (commit `e93e55a`)
 - O Diego achou o bloco **"Quem trouxe: [dropdown]"** chamativo demais na linha de novo assunto. Virou **só um ícone de pessoa** ao lado do campo
   (aperta → abre a lista). O valor foi p/ um **`<input type=hidden>` com o MESMO id** (`pauta-add-autor-<mid>`), então `pautaConfirmarAdd` segue
