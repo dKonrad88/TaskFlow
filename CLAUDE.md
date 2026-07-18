@@ -102,6 +102,17 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (f) — PC da Empresa — Ícone na pauta que joga o assunto p/ as Anotações (commit `f3a0607`)
+- Pedido do Diego: **sem poluir o card da Pauta** com campo de texto — um **ícone discreto por assunto** (`ti-note`, cinza, azul no hover) que
+  "pula" pro bloco de Anotações. Clicar acrescenta no fim: **`☐ Assunto: `** com o **cursor já no fim**, pronto p/ sair digitando.
+  Está na linha de cada assunto **e na pauta principal** (`_pautaParaAnotacao` + wrappers `_pautaItemParaAnotacao`/`_pautaPrincParaAnotacao`).
+- ⚠️ **3 detalhes que não são óbvios** (se mexer aqui, preservar): (1) monta via **DOM, não `innerHTML+=`** — recriar o innerHTML apagaria o estado
+  dos checks já marcados e o cursor de quem estivesse digitando; (2) o `<b>` leva **só o título** e o espaço vem **depois dele num nó de texto solto**,
+  senão o que a pessoa digitar sai em negrito; (3) o HTML passa o **ÍNDICE**, nunca o texto — assunto com apóstrofo ("Análise d'água") quebraria o
+  `onclick` inline.
+- Salva por `_anotSalvar` → `saveMeeting_db`, que **só persiste** (não re-renderiza) → foco e cursor sobrevivem.
+- ⚠️ NÃO testado em navegador. Balanço idêntico ao HEAD.
+
 ### 2026-07-18 (e) — PC da Empresa — Pauta com AUTOR (quem trouxe o assunto) + card de ANOTAÇÕES no painel (commit `e9028f9`)
 - **AUTOR DO ASSUNTO DA PAUTA:** cada item registra quem o trouxe; a lista fica **ordenada por nome**, com uma **cabecinha por pessoa** (não repete
   o nome em toda linha). Itens antigos (sem autor) caem num grupo **"sem autor"** no fim.
