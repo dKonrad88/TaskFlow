@@ -1570,9 +1570,10 @@
   /* Painel do projeto em 4 COLUNAS: [Conclusão + Acontecendo agora] · [Estrutura] · [Planejamento]
      · [Comentários + Anexos]. max-width + margin auto = CENTRALIZADO também no modo foco (era o
      que o Painel de Reunião já fazia e este não). */
-  .pp-visao-4col{display:grid;grid-template-columns:minmax(0,250px) minmax(0,244px) minmax(0,1fr) minmax(0,300px);gap:34px;align-items:start;max-width:1600px;margin:0 auto}
-  @media(max-width:1400px){.pp-visao-4col{grid-template-columns:minmax(0,240px) minmax(0,1fr) minmax(0,290px)}}
-  @media(max-width:1040px){.pp-visao-4col{grid-template-columns:1fr}}
+  /* 3 colunas em 25% / 50% / 25% — as frações (1fr 2fr 1fr) fazem isso sozinhas e, ao contrário
+     de porcentagens, já descontam o gap. */
+  .pp-visao-3col{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr) minmax(0,1fr);gap:34px;align-items:start;max-width:1600px;margin:0 auto}
+  @media(max-width:1040px){.pp-visao-3col{grid-template-columns:1fr}}
   body.proj-focus .proj-focus-rail{display:flex;flex-direction:column;align-items:center;gap:3px;position:fixed;left:0;top:0;bottom:0;width:74px;background:var(--card);border-right:1px solid var(--border);padding:12px 0;z-index:70;overflow-y:auto;scrollbar-width:none}
   body.proj-focus .proj-focus-rail::-webkit-scrollbar{display:none}
   .proj-rail-btn{display:flex;flex-direction:column;align-items:center;gap:3px;width:60px;padding:8px 0;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s;flex-shrink:0}
@@ -1591,7 +1592,7 @@
      separar o título do conteúdo. As margens negativas puxam o título até as bordas do card (que
      tem padding:14px) e o padding interno recompõe o espaçamento; o border-radius próprio evita
      precisar de overflow:hidden no card — que cortaria o popover de cores das Anotações. */
-  .reun-card4-title{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:space-between;gap:6px;margin:-14px -14px 12px;padding:9px 14px;background:color-mix(in srgb,var(--blue-mid) 6%,var(--card));border-bottom:1px solid var(--border);border-radius:11px 11px 0 0}
+  .reun-card4-title{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:space-between;gap:6px;margin:-14px -14px 12px;padding:9px 14px;background:var(--bg2);border-bottom:1px solid var(--border);border-radius:11px 11px 0 0}
   /* Botões-ícone do topo */
   .reun-ico{width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:15px;transition:all .15s;flex-shrink:0}
   .reun-ico:hover{border-color:var(--blue-mid);color:var(--blue-mid)}
@@ -25822,7 +25823,7 @@ function renderProjectProView(id){
   // Shell (cabeçalho + subnavbar) tem largura FIXA p/ a subnavbar não "pular" entre abas.
   // Só o corpo varia: Tarefas usa planilha larga (1320px); demais abas mantêm 1040px.
   // 'visao' precisa de mais largura desde que virou 4 colunas (o próprio grid se centraliza).
-  // 1600 acompanha o max-width do .pp-visao-4col — o gap de 34px entre colunas precisa caber.
+  // 1600 acompanha o max-width do .pp-visao-3col — o gap de 34px entre colunas precisa caber.
   const _bodyMax = activeProjectProTab==='visao' ? 1600 : (activeProjectProTab==='tarefas' ? 1320 : 1040);
   const railHTML = _projFocusRailHTML(p);
   container.innerHTML = `<div class="proj-panel-wrap" style="max-width:1600px;margin:0 auto">${railHTML + focusBarHTML + headerHTML + tabsHTML + `<div class="proj-body" style="max-width:${_bodyMax}px;margin:0 auto;padding-bottom:60px">${bodyHTML}</div>`}</div>`;
@@ -26003,7 +26004,7 @@ function renderProjectProVisao(p, prog){
     // botão "+ Tarefa" saiu — no lugar, um campo inline no FIM da lista: digita, Enter, e o
     // quickAddTaskPro já reabre focado p/ a próxima (ele mesmo faz render + refoco).
     return `<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-top:8px;background:var(--card)">
-      <div style="display:flex;align-items:center;gap:8px;padding:8px 11px;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--blue-mid) 6%,var(--card))">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 11px;border-bottom:1px solid var(--border);background:var(--bg2)">
         <i class="ti ti-building" style="font-size:14px;color:var(--blue-mid)"></i>
         <span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--text)">${escapeHTML(g.setor)}</span>
       </div>${linhas}
@@ -26044,7 +26045,7 @@ function renderProjectProVisao(p, prog){
   }
   // (jul/2026) O "+" do cabeçalho virou um botão tracejado ABAIXO da lista, igual ao
   // "+ Adicionar setor" do detalhe — mesma gramática de "criar o próximo item da lista".
-  const estruturaBloco=`<div style="margin-top:2px">
+  const estruturaBloco=`<div style="margin-top:20px">
     ${_ppTituloCol('ti-sitemap','Estrutura')}
     ${fasesLista}
     <button onclick="adicionarFase('${p.id}')" style="margin-top:8px;background:none;border:1px dashed var(--border);color:var(--text2);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;width:100%" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-plus"></i> Adicionar fase</button>
@@ -26097,9 +26098,8 @@ function renderProjectProVisao(p, prog){
   //   1. Conclusão prevista + Acontecendo agora   2. Estrutura (fases)
   //   3. Planejamento (detalhe da fase)           4. Comentários + Anexos
   // A projeção subiu do topo do detalhe (col 3) p/ o topo da col 1, acima do "Acontecendo agora".
-  return `<div class="pp-visao-4col">
-    <div style="min-width:0;display:flex;flex-direction:column;gap:2px">${projecaoBloco}${comandoBloco}</div>
-    <div style="min-width:0">${estruturaBloco}</div>
+  return `<div class="pp-visao-3col">
+    <div style="min-width:0;display:flex;flex-direction:column;gap:2px">${projecaoBloco}${comandoBloco}${estruturaBloco}</div>
     <div style="min-width:0">${detalheBloco}</div>
     <div style="min-width:0"><div style="position:sticky;top:8px">
       ${_ppTituloCol('ti-message-circle','Comentários')}
