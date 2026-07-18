@@ -137,6 +137,19 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (q) — PC da Empresa — Headers na paleta do tema + PROJETO em 3 colunas 25/50/25 (commit `8e5fd2e`)
+- ⭐ **HEADERS NA PALETA DO TEMA — achado importante:** o cabeçalho dos cards (Reunião) e do setor (Projeto) usava
+  `color-mix(var(--blue-mid) 6%,…)`. Só que **`--blue-mid` só é redefinido nos temas "brasil" (verde) e "klain" (caramelo)** — nos temas
+  **claro e AREIA ele continua AZUL**, então sobre o fundo bege o header saía azulado, fora da paleta. Trocado por **`var(--bg2)`**, que é a
+  superfície secundária do tema e acompanha **qualquer** um deles.
+  📌 **Regra p/ o futuro:** para "cor que segue o tema", `--bg2`/`--bg3`/`--card` são seguros; **`--blue-mid` NÃO é** (fixo no claro/areia).
+- **PAINEL DO PROJETO EM 3 COLUNAS** (era 4): a **Estrutura saiu da coluna própria** e foi p/ BAIXO de "Próximas a liberar", na coluna 1
+  (`margin-top` 2→20 p/ separar). Ficou: **[Conclusão + Acontecendo agora + Estrutura] · [Planejamento] · [Comentários + Anexos]**.
+- **Proporção 25% / 50% / 25%** via **frações (`1fr 2fr 1fr`)** e não porcentagem — fração já desconta o `gap:34px` sozinha; com % o total
+  passaria de 100 e a última coluna vazaria. Classe renomeada **`.pp-visao-4col` → `.pp-visao-3col`**; o breakpoint de 1400px caiu (não há
+  mais 4ª coluna p/ esconder).
+- ⚠️ NÃO testado em navegador. Balanço idêntico ao HEAD; conferido que o grid tem exatamente 3 filhos diretos.
+
 ### 2026-07-18 (p) — PC da Empresa — PROJETO: conclusão no header · "acontecendo agora" sem cards · CORES DO TEMA (commit `7b7d6ef`)
 - **CONCLUSÃO PREVISTA subiu p/ o CABEÇALHO**, ao lado do % (nos dois: barra de foco e linha das abas). Novo **`_ppConclusaoHeader(p,prog)`** —
   formato curto "24 de jul. · 24d de folga", com o saldo tingido. Na coluna 1 sobrou só o call-to-action **"todas as tarefas concluídas —
