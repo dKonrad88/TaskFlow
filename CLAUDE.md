@@ -137,6 +137,18 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (o) — PC da Empresa — Header colorido nos cards da REUNIÃO + respiro entre colunas do PROJETO (commit `29be3d2`)
+- **REUNIÃO — cada card ganhou CABEÇALHO COM COR** (Pauta · Anotações · Tarefas · Decisões tomadas · Decisões anteriores...).
+  Tom baixo de propósito (**6% de azul sobre o card** + `border-bottom`), só p/ separar título de conteúdo — o Diego pediu "nada grotesco".
+  - ⚠️ Feito **100% no CSS de `.reun-card4-title`**, sem tocar no HTML dos 16 cards: **margens NEGATIVAS (-14px)** puxam o título até as bordas
+    do card (que tem `padding:14px`) e o padding interno recompõe o espaçamento. **Conferido antes: 16 cards × 16 títulos** — o título é sempre o
+    primeiro filho; se algum estivesse solto, a margem negativa vazaria.
+  - ⚠️ **`border-radius` próprio no título em vez de `overflow:hidden` no card** — o overflow cortaria o **popover de cores das Anotações**,
+    que abre dentro do card.
+- **PROJETO — gap entre as 4 colunas 22→34px.** Como o gap maior comeria a largura útil, o **teto subiu junto** (grid, `.proj-panel-wrap` e
+  `_bodyMax` da 'visao': **1560→1600**) — senão o respiro sairia do bolso da coluna Planejamento. 📌 Se mexer no gap de novo, mexer no teto também.
+- ⚠️ NÃO testado em navegador. Balanço idêntico ao HEAD.
+
 ### 2026-07-18 (n) — PC da Empresa — PROJETO: títulos padronizados + cor de volta no setor (commit `4fb9616`)
 - Feedback do Diego à leva (m): *"agora ficou branco demais · setor pode ter cor · conclusão prevista não precisa ser card ·
   vários títulos, tamanhos diferentes, faz tudo igual"*. Ou seja: na (m) eu **passei do ponto** ao aliviar.
