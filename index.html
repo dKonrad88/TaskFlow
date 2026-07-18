@@ -25675,10 +25675,11 @@ function renderProjectProView(id){
   // Progresso COMPACTO no header (mesma pill da barra de foco): vivo, 1 linha, sem card no corpo.
   const headerProgressoHTML = prog.total>0 ? `
     <div style="display:flex;align-items:center;gap:10px;min-width:170px;max-width:280px;flex:0 1 auto">
-      <div style="flex:1;height:6px;background:var(--bg2);border-radius:99px;overflow:hidden;min-width:80px"><div style="height:100%;background:${p.cor};width:${prog.pct}%;transition:width .3s"></div></div>
-      <span style="font-size:13px;font-weight:800;color:${p.cor};white-space:nowrap">${prog.pct}% <span style="font-size:11px;font-weight:600;color:var(--text3)">· ${prog.feitas}/${prog.total}</span></span>
+      <div style="flex:1;height:6px;background:var(--bg2);border-radius:99px;overflow:hidden;min-width:80px"><div style="height:100%;background:var(--blue-mid);width:${prog.pct}%;transition:width .3s"></div></div>
+      <span style="font-size:13px;font-weight:800;color:var(--blue-mid);white-space:nowrap">${prog.pct}% <span style="font-size:11px;font-weight:600;color:var(--text3)">· ${prog.feitas}/${prog.total}</span></span>
       ${prog.atrasadas>0?`<span style="font-size:11px;color:var(--danger);font-weight:700;white-space:nowrap"><i class="ti ti-alert-triangle"></i> ${prog.atrasadas}</span>`:''}
-    </div>` : '';
+    </div>
+    ${_ppConclusaoHeader(p,prog)}` : '';
 
   // Banner de pré-fechamento (se coordenador já pré-fechou)
   let encerramentoBanner = '';
@@ -25749,13 +25750,14 @@ function renderProjectProView(id){
 
   // Barra do modo FOCO (só aparece em tela cheia) — espelha a .reun-focus-bar: título + status + progresso.
   const focusBarHTML = `<div class="proj-focus-bar">
-    <i class="ti ${tipo.icon}" style="font-size:16px;color:${p.cor}"></i>
+    <i class="ti ${tipo.icon}" style="font-size:16px;color:var(--blue-mid)"></i>
     <span style="font-size:15px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:460px">Projeto — ${escapeHTML(p.nome)}</span>
     ${_projStatusBtnHTML(p,true)}
     <div style="flex:1"></div>
+    ${_ppConclusaoHeader(p,prog)}
     <div style="display:flex;align-items:center;gap:10px;min-width:180px;max-width:280px">
-      <div style="flex:1;height:6px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:${p.cor};width:${prog.pct}%"></div></div>
-      <span style="font-size:13px;font-weight:800;color:${p.cor};white-space:nowrap">${prog.pct}% <span style="font-size:11px;font-weight:600;color:var(--text3)">· ${prog.feitas}/${prog.total}</span></span>
+      <div style="flex:1;height:6px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:var(--blue-mid);width:${prog.pct}%"></div></div>
+      <span style="font-size:13px;font-weight:800;color:var(--blue-mid);white-space:nowrap">${prog.pct}% <span style="font-size:11px;font-weight:600;color:var(--text3)">· ${prog.feitas}/${prog.total}</span></span>
     </div>
   </div>`;
   // Header do projeto — estilo clean (igual Painel de Reunião). No modo FOCO some (a barra + a trilha assumem).
@@ -25763,7 +25765,7 @@ function renderProjectProView(id){
     <div class="proj-normal-header">
     ${encerramentoBanner}
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0">
-      <i class="ti ${tipo.icon}" style="font-size:20px;color:${p.cor}"></i>
+      <i class="ti ${tipo.icon}" style="font-size:20px;color:var(--blue-mid)"></i>
       <span style="font-size:21px;font-weight:800;color:var(--text)">Projeto — ${escapeHTML(p.nome)}</span>
       ${_projStatusBtnHTML(p,false)}
     </div>
@@ -25792,7 +25794,7 @@ function renderProjectProView(id){
     <div class="proj-subtabs-wrap" style="display:flex;align-items:flex-end;gap:10px;margin:14px 0 18px;border-bottom:1px solid var(--border)">
       <div class="proj-subtabs" style="display:flex;gap:4px;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden">
       ${subTabs.map(t=>`
-        <button onclick="setProjectProTab('${t.id}')" style="background:transparent;border:none;border-bottom:2px solid ${activeProjectProTab===t.id?p.cor:'transparent'};color:${activeProjectProTab===t.id?'var(--text)':'var(--text3)'};padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s">
+        <button onclick="setProjectProTab('${t.id}')" style="background:transparent;border:none;border-bottom:2px solid ${activeProjectProTab===t.id?"var(--blue-mid)":'transparent'};color:${activeProjectProTab===t.id?'var(--text)':'var(--text3)'};padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s">
           <i class="ti ${t.icon}"></i> ${t.label}
         </button>`).join('')}
       </div>
@@ -25882,6 +25884,24 @@ function _initPpColResizer(){
 }
 
 // ─── ABA: VISÃO GERAL ────────────────────────────────────────────
+// Conclusão prevista RESUMIDA, p/ o cabeçalho (ao lado do %) — antes era um bloco no topo da
+// coluna 1. Recalcula a projeção porque o cabeçalho é montado ANTES do corpo do painel; é O(n)
+// nas tarefas do projeto (barato no tamanho real), mas se um dia pesar, o caminho é calcular
+// uma vez em renderProjectProView e passar adiante.
+function _ppConclusaoHeader(p, prog){
+  if(!prog || !prog.total) return '';
+  try{
+    const ord=_ppTarefasOrdenadas(p), et=_ppEtapas(ord);
+    const anchor=(p.prazoInicio && p.prazoInicio>today)?p.prazoInicio:today;
+    const fim=(_ppProjecao(ord,et,anchor)||{})._fimProjeto;
+    if(!fim) return '';
+    let diff=null;
+    if(p.prazoFim) diff=Math.round((new Date(fim+'T00:00:00')-new Date(p.prazoFim+'T00:00:00'))/86400000);
+    const cor=(diff!=null&&diff>0)?'var(--danger)':(diff!=null?'var(--success)':'var(--text3)');
+    const sub=diff==null?'':(diff===0?'no prazo':(diff>0?`${diff}d após o prazo`:`${-diff}d de folga`));
+    return `<span style="font-size:11.5px;color:var(--text3);white-space:nowrap" title="Conclusão prevista do projeto"><i class="ti ti-flag-check" style="font-size:12px"></i> ${formatDate(fim)}${sub?` <span style="color:${cor};font-weight:700">· ${sub}</span>`:''}</span>`;
+  }catch(e){ return ''; }
+}
 // Título padrão das colunas/seções do Painel do Projeto. Antes cada uma tinha o seu
 // (12.5px/700, 13px/800, 16px/800 — umas com ícone, outras sem), e o desalinhamento saltava
 // à vista. `sufixo` é o complemento discreto à direita (ex.: "Etapa 2 de 6").
@@ -25923,19 +25943,23 @@ function renderProjectProVisao(p, prog){
           const pill=atr
             ? `<span style="font-size:10.5px;font-weight:700;color:var(--danger);background:color-mix(in srgb,var(--danger) 14%,transparent);padding:3px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ti-alarm" style="font-size:12px"></i>Atrasada${st.deadline?' · venceu '+formatDate(st.deadline):''}</span>`
             : `<span style="font-size:10.5px;font-weight:700;color:var(--orange);background:color-mix(in srgb,var(--orange) 14%,transparent);padding:3px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ti-player-play-filled" style="font-size:11px"></i>Em andamento${st.deadline?' · até '+formatDate(st.deadline):''}</span>`;
-          return `<div onclick="setProjectProTab('tarefas')" style="background:var(--card);border:1px solid ${atr?'var(--danger)':'var(--border)'};border-radius:10px;padding:12px 13px;display:flex;flex-direction:column;gap:9px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='${atr?'var(--danger)':'var(--orange)'}'" onmouseout="this.style.borderColor='${atr?'var(--danger)':'var(--border)'}'">
-            <div style="display:flex;gap:9px;align-items:flex-start">
-              <span style="font-size:11px;font-weight:800;color:var(--text3);flex-shrink:0;margin-top:1px">${num.get(t.id)||''}</span>
-              <div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3">${escapeHTML(t.title)}</div><div style="font-size:11.5px;color:var(--text3);margin-top:2px">${_exec(t)}${setor?' · '+setor:''}</div></div>
-            </div>${pill}
+          // (jul/2026) Sem CARD: eram caixas com borda por tarefa, pesando a coluna. Agora é só
+          // texto — número da etapa, título, executor/setor e o pill de estado.
+          return `<div onclick="setProjectProTab('tarefas')" style="display:flex;gap:9px;align-items:flex-start;padding:7px 0;cursor:pointer">
+            <span style="font-size:11px;font-weight:800;color:var(--text3);flex-shrink:0;margin-top:2px">${num.get(t.id)||''}</span>
+            <div style="min-width:0;flex:1">
+              <div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3">${escapeHTML(t.title)}</div>
+              <div style="font-size:11.5px;color:var(--text3);margin-top:2px">${_exec(t)}${setor?' · '+setor:''}</div>
+              <div style="margin-top:5px">${pill}</div>
+            </div>
           </div>`;
         }).join('');
         const faseAtualNome=(()=>{ const t0=agora[0]; if(!t0)return ''; const f=(p.fases||[]).find(f=>f.id===t0.projectProFaseId); return f?escapeHTML(f.nome):''; })();
-        const listaProx=proximas.map(t=>`<div style="display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 11px"><i class="ti ti-lock" style="font-size:14px;color:var(--text3);flex-shrink:0"></i><div style="min-width:0;flex:1"><div style="font-size:12.5px;color:var(--text)">${escapeHTML(t.title)}</div><div style="font-size:11px;color:var(--text3)">${_exec(t)}${_setor(t)?' · '+_setor(t):''}</div></div></div>`).join('');
+        const listaProx=proximas.map(t=>`<div style="display:flex;align-items:center;gap:9px;padding:6px 0"><i class="ti ti-lock" style="font-size:13px;color:var(--text3);flex-shrink:0"></i><div style="min-width:0;flex:1"><div style="font-size:12.5px;color:var(--text)">${escapeHTML(t.title)}</div><div style="font-size:11px;color:var(--text3)">${_exec(t)}${_setor(t)?' · '+_setor(t):''}</div></div></div>`).join('');
         const faixaInf=proximas.length?`<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="ti ti-arrow-bar-to-down" style="font-size:14px"></i>Próximas a liberar</div><div style="display:grid;grid-template-columns:1fr;gap:8px">${listaProx}</div></div>`:'';
         comandoBloco=`<div style="margin-bottom:16px">
           ${_ppTituloCol('ti-player-play-filled','Acontecendo agora',`Etapa ${etAtual} de ${totalEt}${faseAtualNome?' · '+faseAtualNome:''}`)}
-          <div style="display:grid;grid-template-columns:1fr;gap:10px">${cardsAgora}</div>
+          <div style="display:flex;flex-direction:column;gap:2px">${cardsAgora}</div>
           ${faixaInf}
         </div>`;
       } else if(ord.length){
@@ -25979,8 +26003,8 @@ function renderProjectProVisao(p, prog){
     // botão "+ Tarefa" saiu — no lugar, um campo inline no FIM da lista: digita, Enter, e o
     // quickAddTaskPro já reabre focado p/ a próxima (ele mesmo faz render + refoco).
     return `<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-top:8px;background:var(--card)">
-      <div style="display:flex;align-items:center;gap:8px;padding:8px 11px;border-bottom:1px solid var(--border);background:color-mix(in srgb,${p.cor} 7%,var(--card))">
-        <i class="ti ti-building" style="font-size:14px;color:${p.cor}"></i>
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 11px;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--blue-mid) 6%,var(--card))">
+        <i class="ti ti-building" style="font-size:14px;color:var(--blue-mid)"></i>
         <span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--text)">${escapeHTML(g.setor)}</span>
       </div>${linhas}
       <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;${ts.length?'border-top:1px solid var(--border)':''}">
@@ -26009,8 +26033,8 @@ function renderProjectProVisao(p, prog){
     fasesLista=_fasesP.map((f,idx)=>{
       const fp=_calcularProgressoFase(f);
       const sel=f.id===_faseSelId;
-      const cFase=fp.pct===100?'var(--success)':p.cor;
-      return `<div onclick="_ppSelecionarFase('${f.id}')" style="display:flex;align-items:center;gap:9px;padding:10px 11px;border:1px solid ${sel?p.cor:'var(--border)'};border-left:3px solid ${cFase};border-radius:9px;margin-bottom:7px;cursor:pointer;background:${sel?`color-mix(in srgb,${p.cor} 9%,var(--card))`:'var(--card)'};transition:background .12s">
+      const cFase=fp.pct===100?'var(--success)':'var(--blue-mid)';
+      return `<div onclick="_ppSelecionarFase('${f.id}')" style="display:flex;align-items:center;gap:9px;padding:10px 11px;border:1px solid ${sel?"var(--blue-mid)":'var(--border)'};border-left:3px solid ${cFase};border-radius:9px;margin-bottom:7px;cursor:pointer;background:${sel?`color-mix(in srgb,var(--blue-mid) 9%,var(--card))`:'var(--card)'};transition:background .12s">
         <span style="font-size:11px;font-weight:800;color:var(--text3);flex-shrink:0">${String(idx+1).padStart(2,'0')}</span>
         <span style="flex:1;min-width:0;font-size:13px;font-weight:${sel?'800':'700'};color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(f.nome)}</span>
         <span style="font-size:10.5px;color:var(--text3);white-space:nowrap;flex-shrink:0">${fp.feitas}/${fp.total}</span>
@@ -26042,7 +26066,7 @@ function renderProjectProVisao(p, prog){
     const f=_faseSel, fp=_calcularProgressoFase(f);
     const setores=f.grupos||[];
     const semSetor=tasks.filter(t=>t.projectProFaseId===f.id && !t.projectProGrupoId && t.projectProId===p.id);
-    const cFase=fp.pct===100?'var(--success)':p.cor;
+    const cFase=fp.pct===100?'var(--success)':'var(--blue-mid)';
     detalheBloco=`<div>
       <div style="display:flex;align-items:center;gap:11px;margin-bottom:14px;flex-wrap:wrap">
         <div style="flex:1;min-width:120px">${_ppTituloCol('ti-layout-rows',escapeHTML(f.nome),'',0)}</div>
@@ -26050,7 +26074,7 @@ function renderProjectProVisao(p, prog){
         <div style="width:90px;height:6px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:${cFase};width:${fp.pct}%"></div></div>
         <span style="font-size:12px;font-weight:800;color:${cFase};min-width:34px;text-align:right">${fp.pct}%</span>
       </div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:9.5px;font-weight:800;color:${p.cor};background:color-mix(in srgb,${p.cor} 13%,transparent);border-radius:4px;padding:1px 5px">1</span> = etapa (a próxima só começa quando a anterior conclui) · <i class="ti ti-lock" style="font-size:11px"></i> bloqueada · ordem/paralelas na aba <b>Tarefas</b>.</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:9.5px;font-weight:800;color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 13%,transparent);border-radius:4px;padding:1px 5px">1</span> = etapa (a próxima só começa quando a anterior conclui) · <i class="ti ti-lock" style="font-size:11px"></i> bloqueada · ordem/paralelas na aba <b>Tarefas</b>.</div>
       ${setores.map(g=>_setorBloco(g,f.id)).join('')}
       ${semSetor.length?`<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-top:8px;background:var(--card)"><div style="padding:8px 11px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text3)">Sem setor</div>${semSetor.map(_tarefaLinha).join('')}</div>`:''}
       ${(!setores.length&&!semSetor.length)?`<div style="padding:4px 2px 8px;font-size:12px;color:var(--text3);font-style:italic">Nenhum setor nesta fase ainda — adicione o primeiro abaixo.</div>`:''}
@@ -26061,25 +26085,12 @@ function renderProjectProVisao(p, prog){
   let comentariosBloco='';
   try{ comentariosBloco=renderProjectProAnotacoes(p); }catch(e){ comentariosBloco=''; }
 
-  // PROJEÇÃO do projeto (atualiza conforme os dias das tarefas) — faixa no topo do detalhe.
+  // (jul/2026) A CONCLUSÃO PREVISTA subiu p/ o cabeçalho, ao lado do % (_ppConclusaoHeader) —
+  // aqui sobra só o call-to-action de "tudo concluído", que é AÇÃO, não métrica.
+  // Sem data prevista + com tarefas na esteira = nada pendente, ou seja, tudo concluído.
   let projecaoBloco='';
-  if(prog.total>0){
-    const _fimPrev=_projE._fimProjeto;
-    if(_fimPrev){
-      let _diff=null; if(p.prazoFim) _diff=Math.round((new Date(_fimPrev+'T00:00:00')-new Date(p.prazoFim+'T00:00:00'))/86400000);
-      const _est=_diff!=null && _diff>0;
-      const _cor=_est?'var(--danger)':(_diff!=null?'var(--success)':'var(--text3)');
-      const _sub=_diff==null?'defina um prazo final em Editar p/ comparar':(_diff===0?'exatamente no prazo':(_diff>0?`${_diff}d após o prazo`:`${-_diff}d de folga`));
-      // (jul/2026) Sem card: era uma caixa colorida com borda no topo da coluna. Agora é só a
-      // frase, com o ícone e o "· folga/atraso" tingidos — a informação continua, o peso sai.
-      projecaoBloco=`<div style="display:flex;align-items:center;gap:7px;margin-bottom:16px;flex-wrap:wrap;min-width:0">
-        <i class="ti ${_est?'ti-alert-triangle':'ti-flag-check'}" style="font-size:14px;color:${_cor};flex-shrink:0"></i>
-        <span style="font-size:12.5px;font-weight:700;color:var(--text)">Conclusão prevista: ${formatDate(_fimPrev)}</span>
-        <span style="font-size:11.5px;color:${_cor};font-weight:600">· ${_sub}</span>
-      </div>`;
-    } else if(_ordE.length){
-      projecaoBloco=`<div style="display:flex;align-items:center;gap:7px;margin-bottom:16px;min-width:0"><i class="ti ti-circle-check" style="font-size:14px;color:var(--success);flex-shrink:0"></i><span style="font-size:12.5px;font-weight:700;color:var(--text)">Todas as tarefas concluídas — pronto para encerrar.</span></div>`;
-    }
+  if(prog.total>0 && !_projE._fimProjeto && _ordE.length){
+    projecaoBloco=`<div style="display:flex;align-items:center;gap:7px;margin-bottom:16px;min-width:0"><i class="ti ti-circle-check" style="font-size:14px;color:var(--success);flex-shrink:0"></i><span style="font-size:12.5px;font-weight:700;color:var(--text)">Todas as tarefas concluídas — pronto para encerrar.</span></div>`;
   }
 
   // Layout 4 COLUNAS (jul/2026, pedido do Diego):
