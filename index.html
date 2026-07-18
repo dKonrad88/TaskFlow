@@ -1504,6 +1504,14 @@
   body.reun-focus #task-container{position:fixed;inset:0;z-index:500;overflow-y:auto;overflow-x:hidden;background:var(--bg);padding:0}
   body.reun-focus .reun-panel-wrap{max-width:none!important;padding:0 30px 40px!important;margin-left:74px!important;margin-right:0!important}
   body.reun-focus .reun-voltar-btn,body.reun-focus .reun-normal-header,body.reun-focus .reun-subtabs,body.reun-focus .reun-subtabs-wrap{display:none!important}
+  /* Aba Pessoas: 2 cards lado a lado — Disponíveis (esquerda) → Participantes (direita). */
+  .reun-pessoas-2col{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  @media(max-width:860px){.reun-pessoas-2col{grid-template-columns:1fr}}
+  .reun-pessoa-linha{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;transition:all .12s}
+  .reun-pessoa-disp{cursor:pointer;border:1px solid var(--border);background:var(--card)}
+  .reun-pessoa-disp:hover{border-color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 6%,transparent)}
+  .reun-pessoa-disp .reun-add-seta{opacity:0;transition:opacity .12s}
+  .reun-pessoa-disp:hover .reun-add-seta{opacity:1}
   /* Alternar tela cheia: ação de VISUALIZAÇÃO → mora na ponta da sub-navbar (junto das abas de view),
      discreto (ícone fantasma), em vez de disputar espaço com Iniciar/cronômetro/Finalizar. */
   .reun-focus-toggle{background:none;border:none;color:var(--text3);cursor:pointer;width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;margin-bottom:4px}
@@ -31443,50 +31451,69 @@ function _ciclarPapelReuniao(mid,pid){
   const next={leitor:'editor',editor:'organizador',organizador:'leitor'}[cur]||'leitor';
   _setPapelReuniao(mid,pid,next); // já salva + re-render inline
 }
+// Aba Pessoas (jul/2026, redesenho pedido pelo Diego): DUAS colunas, cada uma um card —
+// esquerda "Disponíveis" (todo mundo que ainda não participa) → direita "Participantes".
+// Clicar numa pessoa da esquerda a MANDA pra direita (sem checkbox: o clique já é a ação).
+// Na direita os participantes ficam agrupados por PAPEL, com título, e o check da FRENTE é
+// a PRESENÇA (compareceu no dia) — não é mais "seleção".
 function _reunPessoasInlineHTML(m){
   const parts=new Set(m.participantes||[]);
   const papeis=m.papeis||{};
   const presencas=m.presencas||{};
   const freq=_reunFreqMap(m.id);
-  const _ppl=[...people].sort((a,b)=>{
-    const pa=parts.has(a.id)?0:1, pb=parts.has(b.id)?0:1; if(pa!==pb) return pa-pb;
+  const presentes=(m.participantes||[]).filter(pid=>presencas[pid]===true).length;
+  // Organizador = quem CONDUZ (m.facilitador/m.organizador); os demais papéis vêm de m.papeis.
+  const _papelDe=p=>(m.organizador===p.id||m.facilitador===p.id)?'organizador':(papeis[p.id]||'leitor');
+  const _estrela=p=>(freq[p.id]||0)>=2?' <i class="ti ti-star-filled" style="font-size:10px;color:var(--amber)" title="Participa com frequência"></i>':'';
+
+  // ── COLUNA 1 — DISPONÍVEIS (quem frequenta mais aparece primeiro) ──
+  const disponiveis=[...people].filter(p=>!parts.has(p.id)).sort((a,b)=>{
     const fa=freq[a.id]||0, fb=freq[b.id]||0; if(fa!==fb) return fb-fa;
     return a.name.localeCompare(b.name,'pt-BR');
   });
-  const presentes=(m.participantes||[]).filter(pid=>presencas[pid]===true).length;
-  // Grid único: participar (clique no card) + papel (chip que cicla, colore o card) + presença (check discreto).
-  const gridRows=_ppl.map(p=>{
-    const on=parts.has(p.id); const freqOn=(freq[p.id]||0)>=2;
-    if(!on){
-      return `<div onclick="_toggleParticipanteReuniao('${m.id}','${p.id}')" style="display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;cursor:pointer;border:1px solid var(--border);background:var(--card);transition:all .12s" title="Adicionar à reunião">
-        <div style="width:16px;height:16px;border-radius:4px;border:2px solid var(--border);flex-shrink:0"></div>
-        <span style="flex:1;min-width:0;font-size:12.5px;font-weight:500;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(p.name)}${freqOn?' <i class="ti ti-star-filled" style="font-size:10px;color:var(--amber)" title="Participa com frequência"></i>':''}</span>
-      </div>`;
-    }
-    const isOrg=m.organizador===p.id||m.facilitador===p.id;
-    const role=isOrg?'organizador':(papeis[p.id]||'leitor');
-    const rc=REUN_PAPEL[role]||REUN_PAPEL.leitor;
+  const dispHTML=disponiveis.map(p=>`<div class="reun-pessoa-linha reun-pessoa-disp" onclick="_toggleParticipanteReuniao('${m.id}','${p.id}')" title="Clique p/ colocar na reunião">
+    <span style="flex:1;min-width:0;font-size:12.5px;font-weight:500;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(p.name)}${_estrela(p)}</span>
+    <i class="ti ti-arrow-right reun-add-seta" style="font-size:15px;color:var(--blue-mid);flex-shrink:0"></i>
+  </div>`).join('') || '<div style="font-size:12.5px;color:var(--text3);font-style:italic;padding:8px 2px">Todo mundo já está na reunião.</div>';
+
+  // ── COLUNA 2 — PARTICIPANTES, agrupados por papel ──
+  const papelBtnR=(p,role,r)=>{ const rr=REUN_PAPEL[r]; const at=role===r; return `<button onclick="event.stopPropagation();_setPapelReuniao('${m.id}','${p.id}','${r}')" title="${rr.l}" style="width:26px;height:23px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;cursor:pointer;font-family:inherit;flex-shrink:0;border:1px solid ${at?rr.c:'var(--border)'};background:${at?rr.c:'transparent'};color:${at?'#fff':'var(--text3)'};transition:all .12s" onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'"><i class="ti ${rr.i}" style="font-size:12.5px"></i></button>`; };
+  const linhaPart=p=>{
+    const role=_papelDe(p); const rc=REUN_PAPEL[role]||REUN_PAPEL.leitor;
     const presente=presencas[p.id]===true;
-    // 3 ícones de papel — o ativo destacado; clicar num define (Diego, jul/2026).
-    const papelBtnR=(r)=>{ const rr=REUN_PAPEL[r]; const at=role===r; return `<button onclick="event.stopPropagation();_setPapelReuniao('${m.id}','${p.id}','${r}')" title="${rr.l}" style="width:27px;height:24px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;cursor:pointer;font-family:inherit;flex-shrink:0;border:1px solid ${at?rr.c:'var(--border)'};background:${at?rr.c:'transparent'};color:${at?'#fff':'var(--text3)'};transition:all .12s" onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'"><i class="ti ${rr.i}" style="font-size:13px"></i></button>`; };
-    return `<div style="display:flex;align-items:center;gap:6px;padding:7px 9px;border-radius:8px;border:1px solid ${rc.c};background:color-mix(in srgb,${rc.c} ${rc.tint},transparent)">
-      <div onclick="_toggleParticipanteReuniao('${m.id}','${p.id}')" title="Clique p/ tirar da reunião" style="width:16px;height:16px;border-radius:4px;border:2px solid ${rc.c};background:${rc.c};display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer"><i class="ti ti-check" style="font-size:10px;color:#fff"></i></div>
-      <span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(p.name)}${freqOn?' <i class="ti ti-star-filled" style="font-size:10px;color:var(--amber)"></i>':''}</span>
-      <button onclick="event.stopPropagation();togglePresencaModal('${m.id}','${p.id}')" title="${presente?'Presente — clique p/ desmarcar':'Marcar presença'}" style="width:22px;height:22px;border-radius:50%;border:2px solid ${presente?'var(--success)':'var(--border)'};background:${presente?'var(--success)':'transparent'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0">${presente?'<i class="ti ti-check" style="font-size:11px;color:#fff"></i>':''}</button>
-      <div style="display:inline-flex;gap:2px;flex-shrink:0">${papelBtnR('organizador')}${papelBtnR('editor')}${papelBtnR('leitor')}</div>
+    return `<div class="reun-pessoa-linha" style="gap:7px;border:1px solid ${rc.c};background:color-mix(in srgb,${rc.c} ${rc.tint},transparent)">
+      <button onclick="event.stopPropagation();togglePresencaModal('${m.id}','${p.id}')" title="${presente?'Compareceu — clique p/ desmarcar':'Marcar que compareceu'}" style="width:21px;height:21px;border-radius:50%;border:2px solid ${presente?'var(--success)':'var(--border)'};background:${presente?'var(--success)':'transparent'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0">${presente?'<i class="ti ti-check" style="font-size:11px;color:#fff"></i>':''}</button>
+      <span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(p.name)}${_estrela(p)}</span>
+      <div style="display:inline-flex;gap:2px;flex-shrink:0">${papelBtnR(p,role,'organizador')}${papelBtnR(p,role,'editor')}${papelBtnR(p,role,'leitor')}</div>
+      <button onclick="event.stopPropagation();_toggleParticipanteReuniao('${m.id}','${p.id}')" title="Tirar da reunião" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;border-radius:4px;flex-shrink:0;display:inline-flex" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-x" style="font-size:14px"></i></button>
     </div>`;
-  }).join('') || '<div style="grid-column:1/-1;font-size:13px;color:var(--text3);font-style:italic;padding:10px">Nenhuma pessoa cadastrada.</div>';
-  return `<div style="max-width:900px;margin:0 auto">
-    <div class="reun-card4">
-      <div class="reun-card4-title"><span><i class="ti ti-users" style="color:var(--blue-mid)"></i> Quem participa <span style="font-size:11px;font-weight:500;color:var(--text3)">· ${parts.size} selecionado${parts.size!==1?'s':''} · ${presentes} presente${presentes!==1?'s':''}</span></span></div>
-      <div style="font-size:11.5px;color:var(--text3);margin:-4px 0 12px">Clique no ✓ p/ (des)marcar quem participa · escolha o <b>papel</b> nos 3 ícones (Organizador / Editor / Leitor) · <i class="ti ti-check" style="font-size:11px;color:var(--success)"></i> = presente.</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px">${gridRows}</div>
-      <div style="margin-top:14px;padding:10px 12px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text3);line-height:1.8">
-        <b style="color:var(--text2)">Papéis:</b>
-        <span style="margin-left:6px;color:var(--blue-mid);font-weight:700"><i class="ti ti-microphone"></i> Organizador</span> — vê, edita, encerra e conduz
-        <span style="margin:0 6px">·</span><span style="color:var(--amber);font-weight:700"><i class="ti ti-pencil"></i> Editor</span> — vê e edita a pauta
-        <span style="margin:0 6px">·</span><span style="font-weight:700"><i class="ti ti-eye"></i> Leitor</span> — só visualiza
+  };
+  const gruposHTML=['organizador','editor','leitor'].map(r=>{
+    const doGrupo=[...people].filter(p=>parts.has(p.id)&&_papelDe(p)===r).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+    if(!doGrupo.length) return '';
+    const rr=REUN_PAPEL[r];
+    return `<div style="display:flex;align-items:center;gap:6px;margin:14px 0 6px;font-size:10.5px;font-weight:800;color:${rr.c};text-transform:uppercase;letter-spacing:.5px"><i class="ti ${rr.i}" style="font-size:12px"></i> ${rr.l} <span style="color:var(--text3);font-weight:600">· ${doGrupo.length}</span></div>
+      <div style="display:flex;flex-direction:column;gap:5px">${doGrupo.map(linhaPart).join('')}</div>`;
+  }).join('') || '<div style="font-size:12.5px;color:var(--text3);font-style:italic;padding:8px 2px">Ninguém na reunião ainda — clique nas pessoas ao lado.</div>';
+
+  return `<div style="max-width:1040px;margin:0 auto">
+    <div class="reun-pessoas-2col">
+      <div class="reun-card4">
+        <div class="reun-card4-title"><span><i class="ti ti-user-plus" style="color:var(--text2)"></i> Disponíveis <span style="font-size:11px;font-weight:500;color:var(--text3)">· ${disponiveis.length}</span></span></div>
+        <div style="font-size:11.5px;color:var(--text3);margin:-4px 0 12px">Clique numa pessoa p/ colocá-la na reunião →</div>
+        <div style="display:flex;flex-direction:column;gap:5px">${dispHTML}</div>
       </div>
+      <div class="reun-card4">
+        <div class="reun-card4-title"><span><i class="ti ti-users" style="color:var(--blue-mid)"></i> Participantes <span style="font-size:11px;font-weight:500;color:var(--text3)">· ${parts.size} · ${presentes} presente${presentes!==1?'s':''}</span></span></div>
+        <div style="font-size:11.5px;color:var(--text3);margin:-4px 0 2px">O <b>papel</b> se define nos 3 ícones · o <i class="ti ti-check" style="font-size:11px;color:var(--success)"></i> da frente marca quem <b>compareceu</b> no dia.</div>
+        ${gruposHTML}
+      </div>
+    </div>
+    <div style="margin-top:14px;padding:10px 12px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text3);line-height:1.8">
+      <b style="color:var(--text2)">Papéis:</b>
+      <span style="margin-left:6px;color:var(--blue-mid);font-weight:700"><i class="ti ti-microphone"></i> Organizador</span> — vê, edita, encerra e conduz
+      <span style="margin:0 6px">·</span><span style="color:var(--amber);font-weight:700"><i class="ti ti-pencil"></i> Editor</span> — vê e edita a pauta
+      <span style="margin:0 6px">·</span><span style="font-weight:700"><i class="ti ti-eye"></i> Leitor</span> — só visualiza
     </div>
   </div>`;
 }
@@ -31852,12 +31879,20 @@ function togglePresencaModal(mid,pid){
   saveMeeting_db(m);
   openReuniaoView(mid); // re-render inline (sub-aba Pessoas continua ativa — presença vive lá)
 }
-// Marca/desmarca participante (checkbox do seletor rápido)
+// Põe/tira a pessoa da reunião (aba Pessoas: clique na coluna "Disponíveis" põe; o × tira).
 function _toggleParticipanteReuniao(mid,pid){
   const m=meetings.find(x=>x.id===mid); if(!m) return;
   if(!Array.isArray(m.participantes)) m.participantes=[];
   const i=m.participantes.indexOf(pid);
-  if(i>=0) m.participantes.splice(i,1); else m.participantes.push(pid);
+  if(i>=0){
+    m.participantes.splice(i,1);
+    // (jul/2026) Saiu da reunião → não pode seguir CONDUZINDO nem constar como presente.
+    // Antes ficavam pendurados: a aba Info mostrava "Conduz: Fulano" com o Fulano fora da reunião.
+    if(m.facilitador===pid) m.facilitador='';
+    if(m.organizador===pid) m.organizador='';
+    if(m.papeis) delete m.papeis[pid];
+    if(m.presencas) delete m.presencas[pid];
+  } else m.participantes.push(pid);
   saveMeeting_db(m);
   openReuniaoView(mid); // re-render inline (sub-aba Pessoas continua ativa)
 }
@@ -33280,12 +33315,17 @@ function reunTarefasHTML(m){
     const respHTML=resp.map(nome=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;background:var(--bg2);border:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text2)">${nome}</span>`).join('');
     // Atrasada: vencida e não concluída → destaque em vermelho na própria linha
     const atrasada = !t.done && t.date && t.date < today;
-    // Se a tarefa é de outra reunião (carregada da anterior), mostra de qual, entre ()
+    // Tarefa vinda de outra reunião da série: mostra só a DATA de origem. (jul/2026) O TÍTULO saiu —
+    // é sempre a mesma série, então repetir o nome era ruído; a data é o que distingue a ocorrência.
     const fromMeeting = (t.meetingId && t.meetingId!==m.id) ? meetings.find(x=>x.id===t.meetingId) : null;
-    const fromStr = fromMeeting ? ` <span style="font-size:10.5px;color:var(--text3);font-weight:500;white-space:nowrap">· de ${escapeHTML(fromMeeting.title||'reunião')}${fromMeeting.date?` (${new Date(fromMeeting.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})})`:''}</span>` : '';
-    const dataHTML = atrasada
-      ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--danger);font-weight:700;white-space:nowrap;text-align:right" title="Tarefa atrasada"><i class="ti ti-alert-triangle" style="font-size:11px"></i> atrasada${dateStr?` · ${dateStr}`:''}</span>`
-      : `<span style="font-size:11px;color:var(--text3);white-space:nowrap;text-align:right">${dateStr}</span>`;
+    const fromStr = (fromMeeting && fromMeeting.date) ? ` <span style="font-size:10.5px;color:var(--text3);font-weight:500;white-space:nowrap">· de ${new Date(fromMeeting.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}</span>` : '';
+    // Data EDITÁVEL (jul/2026): clicar abre o date picker nativo (mesmo caminho do resto do HUB —
+    // abrirDatePickerTarefa → changeDate → refreshUI, que reabre o painel). Vale p/ tarefas novas E
+    // p/ as herdadas da reunião anterior, porque prazo muda no meio do caminho.
+    const _dataTxt = atrasada
+      ? `<i class="ti ti-alert-triangle" style="font-size:11px"></i> atrasada${dateStr?` · ${dateStr}`:''}`
+      : (dateStr || '<i class="ti ti-calendar-plus" style="font-size:12.5px"></i>');
+    const dataHTML = `<span onclick="event.stopPropagation();abrirDatePickerTarefa(${t.id}, this)" title="Clique para mudar a data" style="position:relative;display:inline-flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap;text-align:right;cursor:pointer;padding:3px 7px;border-radius:6px;transition:background .15s;${atrasada?'color:var(--danger);font-weight:700':'color:var(--text3)'}" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'">${_dataTxt}</span>`;
     return `<div style="display:grid;grid-template-columns:18px 1fr auto auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
       <div role="checkbox" tabindex="0" aria-checked="${t.done?'true':'false'}" aria-label="Concluir tarefa" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click();}" onclick="toggle(${t.id})" style="width:18px;height:18px;border-radius:50%;border:2px solid ${t.done?'var(--blue-mid)':'var(--border)'};background:${t.done?'var(--blue-mid)':'transparent'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s">
         ${t.done?'<i class="ti ti-check" style="font-size:10px;color:#fff"></i>':''}
