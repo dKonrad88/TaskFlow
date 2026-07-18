@@ -1489,7 +1489,9 @@
   .reun-top-grid{display:grid;grid-template-columns:1fr 1fr 246px;gap:14px;margin-bottom:14px;align-items:start}
   @media(max-width:900px){.reun-top-grid{grid-template-columns:1fr}}
   /* 4 cards iguais (2x2), sem esticar um pelo outro */
-  .reun-grid4{display:grid;grid-template-columns:minmax(0,158px) minmax(0,300px) minmax(0,1fr) minmax(0,320px);gap:20px;align-items:start}
+  /* Pauta/Anotações e Tarefas dividem o espaço IGUALMENTE (1fr cada) — antes a Pauta era fixa em
+     300px e Tarefas levava todo o resto. Decisões segue com largura própria. */
+  .reun-grid4{display:grid;grid-template-columns:minmax(0,158px) minmax(0,1fr) minmax(0,1fr) minmax(0,320px);gap:20px;align-items:start}
   .reun-col{display:flex;flex-direction:column;gap:14px;min-width:0}
   /* Painel em 3 colunas: Pauta (order 1) · Tarefas maior no meio (order 2) · Decisões (order 3) */
   .reun-col-pauta{order:1}
@@ -1549,14 +1551,14 @@
   @keyframes reunTimerPulse{0%,100%{opacity:1}50%{opacity:.5}}
   .reun-timer-over{animation:reunTimerPulse 1s ease-in-out infinite}
   body.reun-focus .reun-focus-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:60;background:var(--card);border-bottom:1px solid var(--border);padding:11px 30px;margin:0 -30px 26px}
-  body.reun-focus .reun-grid4{grid-template-columns:minmax(0,170px) minmax(0,320px) minmax(0,1fr) minmax(0,340px);max-width:1580px;margin-left:auto;margin-right:auto}
+  body.reun-focus .reun-grid4{grid-template-columns:minmax(0,170px) minmax(0,1fr) minmax(0,1fr) minmax(0,340px);max-width:1580px;margin-left:auto;margin-right:auto}
   /* Coluna 0 — espaço reservado p/ os futuros indicadores da reunião. Some em tela média/estreita
      (não vale gastar largura útil com um aviso); aí o grid volta a ser de 3 colunas. */
   .reun-col-kpi{order:0}
   @media(max-width:1280px){
     .reun-col-kpi{display:none}
-    .reun-grid4{grid-template-columns:minmax(0,300px) minmax(0,1fr) minmax(0,320px)}
-    body.reun-focus .reun-grid4{grid-template-columns:minmax(0,320px) minmax(0,1fr) minmax(0,340px)}
+    .reun-grid4{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,320px)}
+    body.reun-focus .reun-grid4{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,340px)}
   }
   @media(max-width:1040px){.reun-grid4,body.reun-focus .reun-grid4{grid-template-columns:1fr}}
   /* ── Modo FOCO / tela cheia do Painel de PROJETO (espelha o de Reunião) ── */
