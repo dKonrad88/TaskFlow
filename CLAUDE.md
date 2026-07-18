@@ -137,6 +137,20 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (r) — PC da Empresa — Blocos do Painel voltam a ter SUPERFÍCIE, na paleta do tema (commit `3b0265b`)
+- Diego: *"acontecendo agora / próximas a liberar não ficou legal, pode ter fundo, porém com a paleta do tema · o fundo dos comentários tbm ·
+  o das tarefas tbm"*. Ou seja: tirar os cards deixou o conteúdo **solto direto no `--bg` da página**, sem acabamento.
+- ⭐ **Novo `_ppBloco(conteudo, extra)`** — superfície padrão do painel: **`var(--card)` + `var(--border)` + radius**.
+  📌 **Por que isso JÁ é "a paleta do tema":** `--card` é **creme** nos temas bege (`#fffdf8` no areia, `#fbf6ec` no klain), **branco** no claro
+  e **escuro** no dark. Não existe hex fixo — a superfície acompanha o tema sozinha.
+- **"Acontecendo agora" + "Próximas a liberar" = UM bloco só.** Histórico útil: (1) uma caixa por tarefa → pesado; (2) texto solto → sem
+  acabamento; (3) **bloco único com as linhas dentro** → o meio-termo que ficou.
+- **Comentários e Anexos** ganharam o mesmo bloco, com `gap:14px` na coluna 3. ⚠️ O `margin-top:18px` do card de anexos foi **zerado** — o gap
+  do flex já espaça; somados, abriam um vão.
+- 🔎 **VARREDURA nos 2 painéis** atrás de cor fixa que ignore o tema: sobraram só **6 `color:#fff`**, todas texto sobre botão colorido
+  (verde/azul) — legítimo em qualquer tema. **Nenhum `background:#hex`.**
+- ⚠️ NÃO testado em navegador. Balanço idêntico ao HEAD.
+
 ### 2026-07-18 (q) — PC da Empresa — Headers na paleta do tema + PROJETO em 3 colunas 25/50/25 (commit `8e5fd2e`)
 - ⭐ **HEADERS NA PALETA DO TEMA — achado importante:** o cabeçalho dos cards (Reunião) e do setor (Projeto) usava
   `color-mix(var(--blue-mid) 6%,…)`. Só que **`--blue-mid` só é redefinido nos temas "brasil" (verde) e "klain" (caramelo)** — nos temas
