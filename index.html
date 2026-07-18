@@ -1566,7 +1566,7 @@
   body.proj-focus .hdr,body.proj-focus .sidebar,body.proj-focus #sidebar-resizer,body.proj-focus .sidebar-resizer,body.proj-focus .topbar,body.proj-focus .fab-create,body.proj-focus .fab-menu{display:none!important}
   body.proj-focus #task-container{position:fixed;inset:0;z-index:500;overflow-y:auto;overflow-x:hidden;background:var(--bg);padding:0}
   body.proj-focus .proj-panel-wrap{max-width:none!important;margin-left:74px!important;margin-right:0!important;padding:0 30px 40px!important}
-  body.proj-focus .proj-subtabs{display:none!important}
+  body.proj-focus .proj-subtabs,body.proj-focus .proj-subtabs-wrap{display:none!important}
   body.proj-focus .proj-focus-rail{display:flex;flex-direction:column;align-items:center;gap:3px;position:fixed;left:0;top:0;bottom:0;width:74px;background:var(--card);border-right:1px solid var(--border);padding:12px 0;z-index:70;overflow-y:auto;scrollbar-width:none}
   body.proj-focus .proj-focus-rail::-webkit-scrollbar{display:none}
   .proj-rail-btn{display:flex;flex-direction:column;align-items:center;gap:3px;width:60px;padding:8px 0;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s;flex-shrink:0}
@@ -25721,20 +25721,9 @@ function renderProjectProView(id){
   const headerHTML = `
     <div class="proj-normal-header">
     ${encerramentoBanner}
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap">
-      <div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:6px">
-        <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
-          <i class="ti ${tipo.icon}" style="font-size:20px;color:${p.cor}"></i>
-          <span style="font-size:21px;font-weight:800;color:var(--text)">Projeto — ${escapeHTML(p.nome)}</span>
-        </div>
-      </div>
-      ${headerProgressoHTML}
-      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
-        <button class="reun-ico" onclick="_toggleProjFocus()" title="Abrir em tela cheia (modo foco)"><i class="ti ti-arrows-maximize"></i></button>
-        ${ajudaIconHTML}
-        <button class="reun-ico" onclick="salvarProjetoComoTemplate('${p.id}')" title="Salvar como template"><i class="ti ti-template"></i></button>
-        <button class="reun-ico" onclick="editarProjectPro('${p.id}')" title="Editar projeto"><i class="ti ti-pencil"></i></button>
-      </div>
+    <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;min-width:0">
+      <i class="ti ${tipo.icon}" style="font-size:20px;color:${p.cor}"></i>
+      <span style="font-size:21px;font-weight:800;color:var(--text)">Projeto — ${escapeHTML(p.nome)}</span>
     </div>
     </div>`;
 
@@ -25749,12 +25738,24 @@ function renderProjectProView(id){
     {id:'analise',   label:'Análise',     icon:'ti-chart-arcs'},
     {id:'anotacoes', label:'Comentários'+(_nComs?` (${_nComs})`:''), icon:'ti-message-circle'},
   ];
+  // (jul/2026) Progresso + ícones desceram do canto do header p/ ESTA linha, à direita das abas —
+  // mesmo arranjo do Painel de Reunião. O wrapper .proj-subtabs-wrap também some no modo foco
+  // (ver CSS), senão a borda e os botões ficariam órfãos com as abas escondidas.
   const tabsHTML = `
-    <div class="proj-subtabs" style="display:flex;gap:4px;margin:14px 0 18px;border-bottom:1px solid var(--border);overflow-x:auto;overflow-y:hidden">
+    <div class="proj-subtabs-wrap" style="display:flex;align-items:flex-end;gap:10px;margin:14px 0 18px;border-bottom:1px solid var(--border)">
+      <div class="proj-subtabs" style="display:flex;gap:4px;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden">
       ${subTabs.map(t=>`
         <button onclick="setProjectProTab('${t.id}')" style="background:transparent;border:none;border-bottom:2px solid ${activeProjectProTab===t.id?p.cor:'transparent'};color:${activeProjectProTab===t.id?'var(--text)':'var(--text3)'};padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s">
           <i class="ti ${t.icon}"></i> ${t.label}
         </button>`).join('')}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;margin-bottom:6px">
+        ${headerProgressoHTML}
+        <button class="reun-ico" onclick="_toggleProjFocus()" title="Abrir em tela cheia (modo foco)"><i class="ti ti-arrows-maximize"></i></button>
+        ${ajudaIconHTML}
+        <button class="reun-ico" onclick="salvarProjetoComoTemplate('${p.id}')" title="Salvar como template"><i class="ti ti-template"></i></button>
+        <button class="reun-ico" onclick="editarProjectPro('${p.id}')" title="Editar projeto"><i class="ti ti-pencil"></i></button>
+      </div>
     </div>`;
 
   // Conteúdo da sub-aba
