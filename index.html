@@ -1489,7 +1489,7 @@
   .reun-top-grid{display:grid;grid-template-columns:1fr 1fr 246px;gap:14px;margin-bottom:14px;align-items:start}
   @media(max-width:900px){.reun-top-grid{grid-template-columns:1fr}}
   /* 4 cards iguais (2x2), sem esticar um pelo outro */
-  .reun-grid4{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr) minmax(0,320px);gap:14px;align-items:start}
+  .reun-grid4{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr) minmax(0,320px);gap:20px;align-items:start}
   .reun-col{display:flex;flex-direction:column;gap:14px;min-width:0}
   /* Painel em 3 colunas: Pauta (order 1) · Tarefas maior no meio (order 2) · Decisões (order 3) */
   .reun-col-pauta{order:1}
@@ -1519,7 +1519,7 @@
   /* Cronômetro da reunião quando ESTOURA o tempo planejado */
   @keyframes reunTimerPulse{0%,100%{opacity:1}50%{opacity:.5}}
   .reun-timer-over{animation:reunTimerPulse 1s ease-in-out infinite}
-  body.reun-focus .reun-focus-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:60;background:var(--card);border-bottom:1px solid var(--border);padding:11px 30px;margin:0 -30px 16px}
+  body.reun-focus .reun-focus-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:60;background:var(--card);border-bottom:1px solid var(--border);padding:11px 30px;margin:0 -30px 26px}
   body.reun-focus .reun-grid4{grid-template-columns:minmax(0,320px) minmax(0,1fr) minmax(0,340px);max-width:1400px;margin-left:auto;margin-right:auto}
   /* ── Modo FOCO / tela cheia do Painel de PROJETO (espelha o de Reunião) ── */
   .proj-focus-rail{display:none}
@@ -30948,7 +30948,13 @@ function _tabBackSet(html){
   const el=document.getElementById('tab-back');
   if(!el) return;
   if(html){ el.innerHTML=html; el.style.display='flex'; }
-  else { el.innerHTML=''; el.style.display='none'; }
+  else {
+    el.innerHTML=''; el.style.display='none';
+    // Saiu do painel → devolve o subtítulo da topbar (o Painel de Reunião o esconde, pois lá o
+    // "Pauta, tarefas, decisões..." era só explicativo e ocupava espaço). Quem esconde de propósito
+    // (ex.: renderProjetosPro) roda DEPOIS desta função e volta a esconder.
+    const _ts=document.getElementById('tab-sub'); if(_ts && _ts.style.display==='none') _ts.style.display='';
+  }
 }
 
 // _opts.serie=true → navegação dentro da série (não zera a pilha de "voltar").
@@ -30989,7 +30995,7 @@ function openReuniaoView(id, _opts){
   // (jul/2026) A navegação de volta saiu de dentro do painel e subiu p/ a topbar, ACIMA do título
   // "Painel de Reunião" (injetada por _tabBackSet mais abaixo, junto com o título).
   const _voltarListaBtn=`<button class="reun-voltar-btn" onclick="window._reunNavStack=[];document.body.classList.remove('reun-focus');window._reunFocus=false;window._activeReuniaoId=null;editingReuniaoId=null;window._reunSubView='painel';renderReunioes()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;padding:0"><i class="ti ti-arrow-left"></i> Voltar às reuniões</button>`;
-  document.getElementById('task-container').innerHTML=`<div class="reun-panel-wrap" style="padding-top:22px;padding-bottom:40px;max-width:1500px;margin:0 auto">
+  document.getElementById('task-container').innerHTML=`<div class="reun-panel-wrap" style="padding-top:6px;padding-bottom:40px;max-width:1500px;margin:0 auto">
     <div style="width:100%">
 
       <!-- Barra do modo FOCO (só aparece em tela cheia) -->
@@ -30998,13 +31004,17 @@ function openReuniaoView(id, _opts){
         <button class="reun-rail-btn" onclick="_exitReunFocus()" title="Sair da tela cheia (Esc)"><i class="ti ti-arrows-minimize"></i><span>Sair</span></button>
         ${m.status!=='encerrada'?(()=>{const running=m.status==='andamento'&&!m.pausadoReuniao;const lbl=running?'Pausar':(m.pausadoReuniao?'Retomar':'Iniciar');return `<button class="reun-rail-btn" onclick="_toggleReunTimer('${m.id}')" style="color:${running?'var(--amber)':'var(--blue-mid)'}" title="${lbl} reunião"><i class="ti ti-player-${running?'pause':'play'}-filled"></i><span>${lbl}</span></button>`;})():''}
         <div style="height:1px;background:var(--border);width:42px;margin:5px 0;flex-shrink:0"></div>
+        <!-- ORDEM (jul/2026): por MOMENTO DE USO, não alfabética/aleatória.
+             TRABALHO (Painel · Pessoas) → REGISTRO (ATA · Anexos) → CONSULTA da série (Decisões ·
+             Histórico) → REFERÊNCIA/CONFIG (Info · Editar). Info desceu: é dado fixo, consultado
+             raramente, e estava ocupando a 3ª posição. Manter IDÊNTICA à sub-navbar abaixo. -->
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','painel')" style="${_railActive('painel')}" title="Painel — pauta, decisões e tarefas"><i class="ti ti-layout-dashboard"></i><span>Painel</span></button>
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','pessoas')" style="${_railActive('pessoas')}" title="Participantes"><i class="ti ti-users"></i><span>Pessoas</span></button>
-        <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','info')" style="${_railActive('info')}" title="Informações da reunião"><i class="ti ti-info-circle"></i><span>Info</span></button>
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','ata')" style="${_railActive('ata')}" title="ATA / Resumo"><i class="ti ti-notes"></i><span>ATA</span></button>
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','anexos')" style="${_railActive('anexos')}" title="Anexos"><i class="ti ti-paperclip"></i><span>Anexos</span></button>
-        <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','historico')" style="${_railActive('historico')}" title="Histórico — todas as reuniões desta série"><i class="ti ti-history"></i><span>Histórico</span></button>
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','decisoes')" style="${_railActive('decisoes')}" title="Decisões — todas as decisões da série"><i class="ti ti-gavel"></i><span>Decisões</span></button>
+        <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','historico')" style="${_railActive('historico')}" title="Histórico — todas as reuniões desta série"><i class="ti ti-history"></i><span>Histórico</span></button>
+        <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','info')" style="${_railActive('info')}" title="Informações da reunião"><i class="ti ti-info-circle"></i><span>Info</span></button>
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','editar')" style="${_railActive('editar')}" title="Editar reunião (data, hora, sala, recorrência)"><i class="ti ti-pencil"></i><span>Editar</span></button>
         <div style="flex:1"></div>
         ${m.status==='encerrada'
@@ -31061,15 +31071,16 @@ function openReuniaoView(id, _opts){
       <!-- Sub-navbar (estilo Projetos): as VIEWS como abas horizontais com título -->
       ${(()=>{ const _subtab=(v,label,icon)=>{const at=_sv===v;return `<button onclick="_reunSetSubView('${m.id}','${v}')" style="background:transparent;border:none;border-bottom:2px solid ${at?'var(--blue-mid)':'transparent'};color:${at?'var(--text)':'var(--text3)'};padding:8px 13px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s;display:inline-flex;align-items:center;gap:6px"><i class="ti ${icon}" style="font-size:14px"></i>${label}</button>`;};
         // Wrapper: abas à esquerda (rolam se não couberem) + ⛶ tela cheia discreto na ponta direita.
-        return `<div class="reun-subtabs-wrap" style="display:flex;align-items:flex-end;gap:8px;margin:2px 0 18px;border-bottom:1px solid var(--border)">
+        return `<div class="reun-subtabs-wrap" style="display:flex;align-items:flex-end;gap:8px;margin:2px 0 28px;border-bottom:1px solid var(--border)">
           <div class="reun-subtabs" style="display:flex;gap:2px;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden">
+          ${/* Mesma ordem da trilha do foco (ver comentário lá): trabalho → registro → consulta → config. */''}
           ${_subtab('painel','Painel','ti-layout-dashboard')}
           ${_subtab('pessoas','Pessoas','ti-users')}
-          ${_subtab('info','Info','ti-info-circle')}
           ${_subtab('ata','ATA','ti-notes')}
           ${_subtab('anexos','Anexos','ti-paperclip')}
-          ${_subtab('historico','Histórico','ti-history')}
           ${_subtab('decisoes','Decisões','ti-gavel')}
+          ${_subtab('historico','Histórico','ti-history')}
+          ${_subtab('info','Info','ti-info-circle')}
           ${_subtab('editar','Editar','ti-pencil')}
           </div>
           <button class="reun-focus-toggle" onclick="_toggleReunFocus()" title="Abrir em tela cheia (foco)"><i class="ti ti-arrows-maximize"></i></button>
@@ -31181,7 +31192,8 @@ function openReuniaoView(id, _opts){
           if(!reunioesComDecisoes.length) return '';
 
           const itensHTML=reunioesComDecisoes.map((r,idx)=>{
-            const data=r.date?new Date(r.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}):'';
+            // Data COMPACTA (dd/mm/aaaa): a coluna é estreita e "16 de jul. de 2026" quebrava em 2 linhas.
+            const data=r.date?new Date(r.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}):'';
             const decisoes=r.decisoesItens||[];
             // Idx 0 (mais recente) expandido; demais colapsados por padrão
             const expandedDefault=idx===0;
@@ -31190,8 +31202,7 @@ function openReuniaoView(id, _opts){
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 <button onclick="toggleHistDec('${blocoId}')" id="${blocoId}-toggle" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:13px;padding:2px;display:flex;align-items:center;gap:6px">
                   <i class="ti ti-chevron-${expandedDefault?'down':'right'}" style="font-size:14px;transition:transform .2s"></i>
-                  <span style="font-weight:600;color:var(--text);font-size:13px">${data || 'Sem data'}</span>
-                  <span style="font-size:11px;color:var(--text3);font-weight:400">— ${escapeHTML(r.title||'')}</span>
+                  <span style="font-weight:600;color:var(--text);font-size:13px;white-space:nowrap">${data || 'Sem data'}</span>
                 </button>
                 <span style="font-size:10px;color:var(--text3);background:var(--bg2);padding:1px 7px;border-radius:99px;font-weight:600">${decisoes.length} decis${decisoes.length===1?'ão':'ões'}</span>
                 <div style="flex:1"></div>
@@ -31266,7 +31277,9 @@ function openReuniaoView(id, _opts){
   window._activeReuniaoId=id;
   // Título do topo: "Painel de Reunião"
   const _tt=document.getElementById('tab-title'); if(_tt) _tt.textContent='📋 Painel de Reunião';
-  const _ts=document.getElementById('tab-sub'); if(_ts) _ts.textContent='Pauta, tarefas, decisões e registro do encontro';
+  // (jul/2026) Sem subtítulo aqui: "Pauta, tarefas, decisões e registro do encontro" era explicativo
+  // e só empurrava o conteúdo pra baixo. _tabBackSet('') devolve o subtítulo ao sair do painel.
+  const _ts=document.getElementById('tab-sub'); if(_ts){ _ts.textContent=''; _ts.style.display='none'; }
   // "← Voltar às reuniões" (+ o voltar da série, quando veio de outra reunião) ACIMA do título.
   _tabBackSet(_voltarListaBtn+_voltarSerie);
   // Se está em andamento, iniciar cronômetro
@@ -31364,10 +31377,12 @@ function _reunHistoricoInlineHTML(m){
       </div>
       ${atual?'':`<button onclick="_reunAbrirDaSerie('${m.id}','${r.id}')" style="background:none;border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-external-link" style="font-size:12px"></i> Abrir</button>`}
     </div>`;
-  }).join('');
+  // .reverse() só na EXIBIÇÃO (mais recente primeiro). O número do círculo continua sendo o i+1
+  // ORIGINAL, ou seja, a posição cronológica na série (1 = a primeira reunião).
+  }).reverse().join('');
   return `<div style="max-width:760px;margin:0 auto"><div class="reun-card4">
     <div class="reun-card4-title"><span><i class="ti ti-history" style="color:var(--blue-mid)"></i> Histórico da série <span style="font-size:11px;font-weight:500;color:var(--text3)">· ${serie.length} reuni${serie.length===1?'ão':'ões'}</span></span></div>
-    <div style="font-size:11.5px;color:var(--text3);margin:-4px 0 12px">Todas as reuniões desta continuação, da mais antiga à mais nova. Abra uma e use "Voltar" p/ retornar.</div>
+    <div style="font-size:11.5px;color:var(--text3);margin:-4px 0 12px">Todas as reuniões desta continuação, da mais nova à mais antiga. Abra uma e use "Voltar" p/ retornar.</div>
     ${rows||'<div style="font-size:13px;color:var(--text3);font-style:italic">Só esta reunião — sem continuação.</div>'}
   </div></div>`;
 }
@@ -33287,7 +33302,7 @@ function reunTarefasHTML(m){
   if(tarefasAnteriores.length){
     html+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;margin-top:4px">📋 Da reunião anterior</div>`;
     html+=tarefasAnteriores.map(t=>tarefaRow(t)).join('');
-    if(tarefasNovas.length) html+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:26px 0 6px">🆕 Novas tarefas</div>`;
+    if(tarefasNovas.length) html+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:40px 0 6px">🆕 Novas tarefas</div>`;
   }
 
   if(tarefasNovas.length){
