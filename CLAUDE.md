@@ -102,6 +102,26 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (g) — PC da Empresa — Anotações: Enter continua a lista · pauta entra no CURSOR · AUTOR da pauta editável (commits `bb58992`,`695ba66`)
+- **Coluna reservada p/ INDICADORES** (`bb58992`): aviso **neutro e discreto** (sem card/borda/fundo/negrito, `--text3`) naquele vazio à esquerda dos
+  cards — "Espaço reservado para os indicadores desta reunião". Grid do painel foi de **3 p/ 4 colunas** (`.reun-col-kpi`, `order:0`); o `max-width`
+  do modo foco subiu **1400→1580** p/ as 3 colunas existentes NÃO encolherem; abaixo de **1280px** a coluna some e o grid volta a 3.
+  - 🐛 **FIX de brinde:** o `@media(max-width:1040px)` estava **ANTES** de `body.reun-focus .reun-grid4` — mesma especificidade, regra posterior vence
+    → **no modo foco o painel não colapsava** em tela estreita. Movido p/ depois das regras do foco (duplicata removida, motivo comentado no lugar).
+- **ENTER numa linha com check → cria OUTRO check** (continua a lista). Linha do check **vazia** → Enter **SAI** da lista (senão fica preso criando
+  checks vazios). ⚠️ O "vazio" **troca `&nbsp;` por espaço antes do `trim()`** — `trim()` NÃO remove nbsp e a linha do check sempre tem um; sem isso a
+  saída da lista nunca dispararia. (O regex tem o nbsp **literal**; há comentário no código explicando — se um editor normalizar o caractere, quebra.)
+- **Assunto da pauta entra ONDE O CURSOR ESTIVER** nas Anotações (antes ia sempre pro fim). Como clicar no ícone tira o foco do editor, o último range
+  válido é guardado em `keyup`/`mouseup` (**`_anotSaveRange`**, mesma ideia do `nmoSaveRange` das Notas) e usado quando a seleção ao vivo não serve;
+  sem cursor prévio, cai no fim como antes. O scroll agora vai até a **linha inserida**, não até o fim do editor.
+- ⭐ **AUTOR DA PAUTA agora é ESCOLHÍVEL** (era sempre `CURRENT_USER_ID`, sem UI — o Diego perguntou "como faço para colocar um autor?"):
+  - **Na criação:** select **"Quem trouxe:"** na linha de novo assunto (default = eu). **Mantém o valor entre um assunto e outro** — a linha de add
+    vive **FORA** do `#pauta-view`, então o re-render não a recria → dá p/ lançar vários da mesma pessoa em sequência.
+  - **Em item existente:** **ícone de pessoa** na linha abre um `<select>` invisível sobre o botão e dispara o dropdown nativo (mesmo truque do
+    `abrirDatePickerTarefa`), com opção **"— sem autor —"**. Ao escolher, salva e `_pautaRefresh` reagrupa.
+- Refatorado: `_anotNovoCheckEl`/`_anotCursorNoFim`/`_anotBlocoDoCursor` extraídos (posicionar cursor estava duplicado).
+- ⚠️ NÃO testado em navegador. Balanço idêntico ao HEAD.
+
 ### 2026-07-18 (f) — PC da Empresa — Ícone na pauta que joga o assunto p/ as Anotações (commit `f3a0607`)
 - Pedido do Diego: **sem poluir o card da Pauta** com campo de texto — um **ícone discreto por assunto** (`ti-note`, cinza, azul no hover) que
   "pula" pro bloco de Anotações. Clicar acrescenta no fim: **`☐ Assunto: `** com o **cursor já no fim**, pronto p/ sair digitando.
