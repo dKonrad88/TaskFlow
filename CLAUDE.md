@@ -102,6 +102,34 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 — PC da Empresa — Painel de Reunião: cabeçalho enxuto (infos só na aba Info, Voltar na topbar, ações reagrupadas) (commit `5ea40b8`)
+- 3 ajustes que o Diego pediu olhando o print do Painel:
+- **1) Linha de data/hora/sala/conduz sob o título REMOVIDA** — "não precisa, pois tem na aba Info já". Saíram junto as consts que só serviam a ela
+  (`dateLabel`/`horaTxt`/`localTxt`/`facilitadorObj`) — conferido por varredura no range da função: nenhum outro uso dentro de `openReuniaoView`
+  (os hits que sobram no arquivo são de OUTRAS funções, que declaram as suas).
+- **2) "Voltar às reuniões" subiu p/ a TOPBAR, ACIMA do título "Painel de Reunião"** (antes ficava dentro do painel, abaixo do título).
+  Novo **`<div id="tab-back">`** na `.topbar-left` (antes do `<h2 id="tab-title">`) + helper **`_tabBackSet(html)`** (html vazio ESCONDE).
+  Injetado em `openReuniaoView` junto do título; **limpo** no `render()` (cobre navegação por aba/área), no `renderReunioes()` (o próprio botão
+  chama essa função direto, sem passar pelo render) e em **Ajuda/Configurações** (as 2 telas que trocam o header sem passar pelo render).
+  O "Voltar para \<reunião\>" da série sobe junto, na mesma linha. ⚠️ Se criar outra tela que troque o header por fora do `render()`, chamar `_tabBackSet('')` lá.
+- **3) Ações da direita reagrupadas** ("tá meio jogado ali, e o expandir tá perdido no meio dos 3"):
+  - **Iniciar/Pausar + cronômetro viraram UM bloco** (moldura única com divisor no meio). Quando a reunião **não começou** não há cronômetro →
+    o botão "▶ Iniciar" **é** o bloco (sem moldura em volta, senão sobrava uma borda cinza inútil no botão azul).
+  - **⛶ tela cheia desceu p/ a ponta direita da SUB-NAVBAR**, discreto (ícone fantasma, classe `.reun-focus-toggle`) — é ação de **VISUALIZAÇÃO**,
+    então mora junto das abas de view, não disputando espaço com Iniciar/Finalizar. Sub-navbar ganhou wrapper **`.reun-subtabs-wrap`**
+    (abas com `flex:1` rolam; o botão fica fixo na ponta) — **adicionado à regra CSS que esconde no modo foco**.
+  - Cabeçalho agora tem só **2 blocos à direita: controle de tempo | Finalizar**.
+- ⚠️ **Contrato do cronômetro preservado** (o `tick` de `iniciarCronometroReuniao` depende disso): `#reun-cronometro-<id>` continua contendo o
+  `[data-inicio]` e tendo o **ícone do relógio como primeiro `<i class="ti">`** (o tick troca por `alert-triangle` ao estourar) — **por isso o play
+  ficou FORA desse id**, só compartilhando a moldura. Se um dia mexer aqui, manter essa separação.
+- **Limpeza:** `_icoActive` removido (órfão desde que os ícones do cabeçalho viraram sub-navbar no `67e26cd`).
+- ⚠️ **NÃO testado em navegador.** Tentei o Browser pane desta vez (o arquivo chegou a aparecer no painel), mas `file://` abre só como **snapshot
+  estático** — o JS não roda, então não dá pra validar comportamento. Verificação estática: balanço de **parênteses/chaves/divs idêntico ao HEAD**
+  e delta de backticks **−6**, exatamente os 3 ternários da linha de infos removida (conferido no diff: 17 removidos × 11 adicionados).
+- **Diego confere no Pages (Ctrl+Shift+R):** abrir uma reunião → "Voltar às reuniões" aparece ACIMA de "Painel de Reunião" e **some** ao sair
+  (testar sair pela aba e pelo próprio botão); sem a linha de data/hora sob o título; Iniciar+cronômetro como bloco único; ⛶ na ponta direita da
+  sub-navbar; entrar/sair do modo foco (⛶ some no foco, trilha lateral assume); cronômetro **estourado** ainda fica vermelho e pulsando.
+
 ### 2026-07-17 (d) — PC da Empresa — Equipe destravada + papel por 3 ícones + sub-navbar na Reunião (commits `07d8e49`,`67e26cd`, PUSHADOS)
 - **BUG (Diego não conseguia adicionar pessoas):** `_toggleParticipanteProjeto`/`_setPapelProjeto` checavam `_ppPodeGerenciar` — o Diego
   (identidade SIMULADA) virou **Leitor** ao ciclar papéis e perdeu a permissão → travou. Removidas as checagens dessas 2 (protótipo; a regra
