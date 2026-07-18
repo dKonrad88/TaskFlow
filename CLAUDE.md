@@ -137,6 +137,53 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-07-18 — RESUMO DA SESSÃO (PC da Empresa) — LEIA ISTO PRIMEIRO, é o estado atual
+Sessão inteira em **Painel de Reunião + Painel de Projeto** (UX e identidade visual). **45 commits**, todos
+pushados, working tree limpo, `main` == `origin/main`. **Último commit: `a99046fc`.** As 20 entradas
+**(a)…(t)** abaixo têm o detalhe técnico — este resumo é o mapa.
+⚠️ **NADA foi testado em navegador** (esta máquina não roda preview; `file://` abre só como snapshot estático).
+Verificação usada em todos os commits: balanço de `( ) { } <div>` + paridade de backticks **idêntico ao HEAD**,
+mais greps de referências órfãs. **Quem valida comportamento é o Diego no Pages (Ctrl+Shift+R).**
+
+**O que mudou, por tema:**
+| Tema | O quê |
+|---|---|
+| **Reunião — cabeçalho** | Infos (data/hora/sala/conduz) saíram do topo → vivem na aba Info · "Voltar" subiu p/ a **topbar** (novo `#tab-back` + `_tabBackSet`) · Iniciar+cronômetro viraram **1 bloco** · Iniciar/Finalizar/⛶ desceram p/ a **linha das abas** |
+| **Reunião — pauta** | **Autor por assunto** (`m.pautaAutor`, mapa por TEXTO) + agrupamento por pessoa · ícone que joga o assunto p/ as **Anotações** · seletor de autor discreto (1 ícone) |
+| **Reunião — anotações** | **Card novo** com editor (negrito, 3 fontes, lista, check, 5 cores) · Enter continua a lista de checks · texto entra no **cursor** |
+| **Reunião — pessoas** | **2 colunas**: Disponíveis → Participantes agrupados por papel; check da frente virou **presença** |
+| **Projeto — estrutura** | Painel **3 colunas 25/50/25** (Conclusão+Agora+Estrutura · Planejamento · Comentários+Anexos) · centralizado · conclusão prevista foi p/ o **header** |
+| **Projeto — novo** | **Anexos** (não existiam) · **Editar virou aba inline** · status virou **botão play/pausa** · nova tarefa **inline com Enter** |
+| **Ambos — visual** | Ordem das abas por **momento de uso** (idêntica trilha × sub-navbar) · header colorido nos cards · **`--surface-painel`** (fundo derivado do tema) · linhas de tarefa em **grid de colunas alinhadas** |
+
+**ROTEIRO DE TESTE NO MAC** (o que mais provavelmente quebrou, em ordem):
+1. **Cronômetro da reunião** — iniciar e ver se conta. Movi o bloco de lugar 2× e ele depende de uma estrutura
+   específica (`#reun-cronometro-<id>` com o `[data-inicio]` e o ícone do relógio como 1º `<i>`).
+2. **Anotações** — digitar e, sem clicar fora, marcar um item da pauta: o texto tem que sobreviver (salva com
+   debounce de 500ms). Marcar um check, sair e voltar: tem que continuar marcado.
+3. **Trocar de TEMA** (Configurações → Tema) — o fundo dos cards deve mudar junto (creme no areia, tostado no
+   klain, escuro no dark). Se ficar igual nos 3, a cascata do `--surface-painel` não pegou.
+4. **Anexo do projeto** — anexar pelo card da coluna 3 e conferir se aparece **também** na aba Anexos sem recarregar.
+5. **Dependência no Painel do projeto** — clicar no ícone de dependência de uma tarefa do meio e ver se as datas
+   previstas seguintes se recalculam.
+6. **"Voltar às reuniões"** — tem que aparecer ACIMA do título e **sumir** ao sair (testar pelos 2 caminhos: o
+   botão e a aba lateral). No **modo foco**, abrir uma reunião anterior e conferir o "Voltar" na barra do topo.
+
+**DECISÕES ABERTAS (nada quebrado, esperando o Diego):**
+- **Dependência explícita** entre tarefas ("A depende da C", pulando as do meio) — hoje é só pela ORDEM da esteira.
+  É mudança de MODELO de dados, não de UI. Ver (t).
+- As 3 sugestões de mercado p/ Projetos: **Gantt/linha do tempo**, **carga por pessoa**, **caminho crítico**
+  (nessa ordem de retorno pelo esforço).
+- **Recap pós-reunião** e **1:1 focado** — ver a seção **📌 BACKLOG ACORDADO** acima (o 1:1 já está aprovado e adiado).
+- Herdadas: dupla definição de "Atrasada" (`t.date` × esteira) · `g.tarefaIds` × `t.projectPro*` · `<title>` da aba.
+
+**⚠️ Antes de editar DADOS no Mac:** abrir o app → ☁️ → **Baixar da nuvem** (regra de ouro do projeto; o
+localStorage é por máquina e o auto-push pode subir estado velho por cima).
+
+**Nota de infra (inofensiva):** todo `git push` daqui termina com `could not write multi-pack-index: Permission
+denied` — é a manutenção automática do git local esbarrando em permissão nesta máquina. **Os pushes passaram
+normalmente** (conferido no remoto a cada vez). Se incomodar: `git config maintenance.auto false`.
+
 ### 2026-07-18 (t) — PC da Empresa — Linhas de tarefa em COLUNAS alinhadas + dependência acionável do Painel (commit `561e33b`)
 - **COLUNAS ALINHADAS (projeto + reunião):** as 2 linhas de tarefa passaram de **flex p/ GRID de colunas fixas**. Com flex cada linha se
   ajustava ao próprio conteúdo e **executor/dias/data não casavam entre si**; com grid, alinham verticalmente.
