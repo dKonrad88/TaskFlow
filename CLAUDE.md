@@ -100,6 +100,41 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
    `Co-Authored-By: Claude <noreply@anthropic.com>`
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
+## 📌 BACKLOG ACORDADO (aprovado pelo Diego, adiado — NÃO é ideia solta)
+> Diferente das "pendências" espalhadas no log: aqui só entra o que o Diego **viu e aprovou**, mas
+> decidiu fazer **mais adiante**. Não começar sem ele pedir; ao pedir, o contexto p/ retomar está aqui.
+
+### ⭐ 1:1 focado — variação do Painel de Reunião p/ encontro de 2 pessoas
+**Status:** conceito **aprovado em 18/07/2026** ("achei bem legal, porém ainda não irei fazer"). Mockup foi
+mostrado no chat (⚠️ chat NÃO persiste entre máquinas — a descrição abaixo é a fonte).
+**Por que faz sentido na Klain:** a pauta principal da reunião de teste do Diego chama-se
+"Acompanhamento individual" → 1:1 parece ser rotina, não caso raro.
+
+**Os 3 blocos que diferem do painel normal:**
+1. **Check-in** (topo, faixa curta): estado da pessoa — carga de trabalho, clima, o que está travando.
+   Chips rápidos, não texto livre longo.
+2. **Pauta em 2 COLUNAS** — "O que \<pessoa\> trouxe" | "O que eu trouxe", cada lado com seu "+ assunto".
+   É o que muda o comportamento: o liderado passa a **trazer** pauta, em vez de só receber.
+   (O campo de autor da pauta — `m.pautaAutor`, ver entradas (e)/(g)/(h) — já dá a base p/ separar os lados.)
+3. ⭐ **"Combinados com \<pessoa\>"** (rodapé): consolida as tarefas/combinados dos encontros **ANTERIORES**
+   da série, com status (feito · atrasado · a fazer) e data. **É o maior valor da tela**: hoje, p/ lembrar o
+   que foi combinado com o Carlos em junho, tem que abrir reunião por reunião.
+
+**Esboço de implementação (não decidido, só p/ não começar do zero):** provavelmente um tipo/nível novo
+na reunião que troca o LAYOUT do painel (espelhando o que `m.nivel==='rapida'` já faz), reusando pauta/
+tarefas/decisões existentes. O bloco "Combinados" pode reusar **`_reunSerieCompleta`** (já usado pelo
+Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHTML` faz com `_reunAncestraisIds`.
+
+### Outros mockups mostrados e AINDA sem decisão
+- **Recap pós-reunião (E)** — recomendado por mim; ao Finalizar, monta o resumo e **avisa cada participante**.
+  Onde ficaria (já respondido ao Diego em 18/07): **sub-aba "Recap"** no painel (o registro/PDF) + **sino de
+  notificações**, que **já existe** no HUB (`LS_NOTIFS='taskflow_notifs'`, `_notifItemHTML`, hoje usado p/
+  @menções) → é estender, não criar canal novo. Opcional: card no Meu Dia.
+- **Modo TV / Apresentação (A)** — mockup mostrado; o diferencial não é a fonte grande, é o **assunto ATUAL
+  destacado com o tempo gasto nele**. Diego não priorizou.
+- **Kanban de ações (B)** e **Timeline da série (C)** — nunca detalhados além do mockup original de 16/07.
+- **Indicadores do painel de reunião** — a **coluna 0 já existe** reservada com aviso discreto (ver entrada (g)).
+
 ## Log de handoff (mais recente no topo)
 
 ### 2026-07-18 (i) — PC da Empresa — Barra das Anotações mais discreta (commit `172e64a`)
