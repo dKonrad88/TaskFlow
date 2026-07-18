@@ -137,6 +137,20 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (p) — PC da Empresa — PROJETO: conclusão no header · "acontecendo agora" sem cards · CORES DO TEMA (commit `7b7d6ef`)
+- **CONCLUSÃO PREVISTA subiu p/ o CABEÇALHO**, ao lado do % (nos dois: barra de foco e linha das abas). Novo **`_ppConclusaoHeader(p,prog)`** —
+  formato curto "24 de jul. · 24d de folga", com o saldo tingido. Na coluna 1 sobrou só o call-to-action **"todas as tarefas concluídas —
+  pronto para encerrar"** (é ação, não métrica).
+  ⚠️ O helper **RECALCULA a projeção** porque o cabeçalho é montado ANTES do corpo do painel. É O(n) nas tarefas (barato no tamanho real);
+  se um dia pesar, calcular 1× em `renderProjectProView` e passar adiante.
+- **"ACONTECENDO AGORA" SEM CARDS:** cada tarefa era uma caixa com borda (e "Próximas a liberar" idem) → viraram **linhas de texto**
+  (nº da etapa · título · executor/setor · pill de estado). A coluna 1 era a mais "encaixotada" do painel.
+- ⭐ **CORES DO TEMA:** no painel, **`p.cor`** (cor livre por projeto) foi trocada por **`var(--blue-mid)`** em TODOS os usos decorativos —
+  % de progresso, ícone do tipo, ícone e fundo do setor, barra/borda da fase, sublinhado da aba ativa e badge.
+  **Conferido: 0 ocorrências de `p.cor` no range do painel.** 📌 A cor própria do projeto **segue valendo na LISTA de projetos**, onde serve
+  p/ distinguir um do outro — a troca foi só DENTRO do painel, que é onde o excesso de cor incomodava.
+- ⚠️ NÃO testado em navegador. Balanço idêntico ao HEAD; conferido que `_projE` não ficou órfão ao remover o bloco de projeção.
+
 ### 2026-07-18 (o) — PC da Empresa — Header colorido nos cards da REUNIÃO + respiro entre colunas do PROJETO (commit `29be3d2`)
 - **REUNIÃO — cada card ganhou CABEÇALHO COM COR** (Pauta · Anotações · Tarefas · Decisões tomadas · Decisões anteriores...).
   Tom baixo de propósito (**6% de azul sobre o card** + `border-bottom`), só p/ separar título de conteúdo — o Diego pediu "nada grotesco".
