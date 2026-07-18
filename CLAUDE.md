@@ -102,6 +102,30 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (e) — PC da Empresa — Pauta com AUTOR (quem trouxe o assunto) + card de ANOTAÇÕES no painel (commit `e9028f9`)
+- **AUTOR DO ASSUNTO DA PAUTA:** cada item registra quem o trouxe; a lista fica **ordenada por nome**, com uma **cabecinha por pessoa** (não repete
+  o nome em toda linha). Itens antigos (sem autor) caem num grupo **"sem autor"** no fim.
+  - ⚠️ **DECISÃO DE MODELO (importante):** guardado como **MAPA POR TEXTO** — `m.pautaAutor={texto:pessoaId}` — e **NÃO como array paralelo**.
+    Motivo: `m.pauta`/`m.pautaDone` já são 2 arrays alinhados por índice e são mexidos em **~9 pontos** do código (add, splice, modelo, PLAUD,
+    tarefa→pauta, 2 caminhos de carry-over, import, nova ocorrência); um terceiro array desalinharia **em silêncio** — o autor apareceria no assunto
+    errado. Por texto, o vínculo é imune a splice/reordenação. Custo aceito: 2 assuntos com texto idêntico na mesma reunião compartilham autor.
+  - ⚠️ A **ordenação é só da EXIBIÇÃO**: o **índice ORIGINAL** continua indo nos handlers (`togglePautaItem`/`removerPautaItem`), senão marcar/remover
+    atingiria o assunto errado. Mesmo padrão do `.reverse()` do Histórico.
+  - Autor gravado em **todos os caminhos que criam item**: add manual (`pautaConfirmarAdd`), modelo (`_pautaAplicarModelo` — refaz o mapa, autor = quem
+    aplicou), PLAUD (`_plaudLinhaPara`) e tarefa→pauta. **Preservado nos 2 caminhos de carry-over** (série materializada + `_recNovaOcorrencia`),
+    e **só copia quando havia autor** — sem essa guarda, item antigo seria atribuído a quem encerrou a reunião.
+- **CARD "ANOTAÇÕES"** no painel, **abaixo da Pauta** (coluna esquerda): bloco de notas `contenteditable` + `execCommand` (mesmo padrão do editor de
+  Notas do HUB). Barra: **negrito · Título/Subtítulo/Texto · lista numerada · item com check · 5 cores · limpar formatação**. Guarda HTML em
+  **`m.anotacoes`**; não aparece na reunião "rápida". Funções: `_reunAnotacoesHTML`/`_anotSalvar`/`_anotSalvarDeb`/`_anotCmd`/`_anotCheck` + CSS `.anot-*`.
+  - O **check** usa `toggleAttribute('checked')` — sem isso o estado marcado não sobreviveria ao salvamento (o clique não altera o atributo no HTML).
+  - ⚠️ **O painel re-renderiza inteiro** em várias ações (marcar pauta, concluir tarefa, add decisão) → o que não estiver salvo se perde. Por isso:
+    **debounce curto (500ms)** no `oninput` + **flush no blur** + **flush ao trocar de sub-aba** (`_reunSetSubView`, junto do flush da ATA que já existia).
+    **NUNCA chamar `openReuniaoView` no save** — re-render a cada tecla mataria foco e cursor. Se ainda assim perder os últimos caracteres em algum
+    caso, reduzir o debounce.
+  - Os botões da barra usam `onmousedown="event.preventDefault()"` p/ não roubar o foco/seleção do editor (senão o `execCommand` não tem onde aplicar).
+- `Object.assign(m,obj)` do `saveReuniao` **preserva** `pautaAutor` e `anotacoes` ao editar a reunião (conferido).
+- ⚠️ NÃO testado em navegador. Balanço idêntico ao HEAD (backticks +6 = os 3 templates novos).
+
 ### 2026-07-18 (d) — PC da Empresa — FIX de REGRESSÃO: voltar da série sumia no modo foco + botões de Decisões padronizados (commit `caae671`)
 - 🔴 **REGRESSÃO MINHA (do `5ea40b8`, entrada (a) de hoje):** ao mover o "Voltar" p/ a topbar, o **voltar da SÉRIE foi junto** — e no modo foco
   **a topbar inteira é escondida por CSS** (`body.reun-focus .topbar{display:none}`). Resultado: o Diego abriu uma reunião anterior pelo card
