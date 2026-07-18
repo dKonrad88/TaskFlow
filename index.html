@@ -31666,6 +31666,44 @@ function _anotCheck(mid){
   try{ document.execCommand('insertHTML',false,chk); }catch(e){}
   _anotSalvarDeb(mid);
 }
+// Manda um ASSUNTO DA PAUTA pro bloco de Anotações já formatado, pronto p/ digitar:
+//   ☐ **Assunto:** |cursor
+// Monta via DOM (não innerHTML+=) p/ não recriar os nós existentes — recriar apagaria o estado
+// dos checks já marcados e o cursor de quem estivesse digitando. O <b> leva só o título e o
+// espaço vem DEPOIS dele, num nó de texto solto: assim o que a pessoa digitar não sai em negrito.
+function _pautaParaAnotacao(mid, txt){
+  const el=document.getElementById('anot-body-'+mid);
+  if(!el || !txt) return;
+  const linha=document.createElement('div');
+  const chk=document.createElement('input');
+  chk.type='checkbox';
+  chk.setAttribute('onclick',"this.toggleAttribute('checked')");
+  const b=document.createElement('b');
+  b.textContent=txt+':';
+  linha.appendChild(chk);
+  linha.appendChild(b);
+  linha.appendChild(document.createTextNode(' '));
+  el.appendChild(linha);
+  _anotSalvar(mid); // só persiste (saveMeeting_db não re-renderiza) → foco/cursor sobrevivem
+  // Cursor no fim da linha nova, já dentro do editor, e rola até ele.
+  try{
+    el.focus();
+    const r=document.createRange(), s=window.getSelection();
+    r.selectNodeContents(linha); r.collapse(false);
+    s.removeAllRanges(); s.addRange(r);
+  }catch(e){}
+  el.scrollTop=el.scrollHeight;
+}
+// Wrappers: o HTML passa ÍNDICE (ou nada), nunca o texto — assunto com apóstrofo
+// ("Análise d'água") quebraria o onclick inline.
+function _pautaItemParaAnotacao(mid, idx){
+  const m=meetings.find(x=>x.id===mid); if(!m) return;
+  _pautaParaAnotacao(mid, (m.pauta||[])[idx]);
+}
+function _pautaPrincParaAnotacao(mid){
+  const m=meetings.find(x=>x.id===mid); if(!m) return;
+  _pautaParaAnotacao(mid, m.pautaPrincipal||'');
+}
 // Barra + área de digitação. Cores em hex (foreColor não aceita var(--x)); os 5 tons escolhidos
 // têm contraste suficiente no tema claro e no escuro.
 function _reunAnotacoesHTML(m){
@@ -31726,6 +31764,7 @@ function reunPautaHTML(m){
       </div>
       <i class="ti ti-star-filled" style="font-size:12px;color:var(--blue-mid);flex-shrink:0"></i>
       <span style="flex:1;font-size:13px;color:var(--blue-mid);font-weight:700;${doneP?'text-decoration:line-through;opacity:.6':''}">${escapeHTML(m.pautaPrincipal)}</span>
+      <button onclick="_pautaPrincParaAnotacao('${m.id}')" title="Anotar sobre este assunto (vai p/ Anotações)" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 2px;flex-shrink:0" onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-note"></i></button>
       ${encerrada?'':`<button onclick="_pautaPrincEditar('${m.id}')" title="Editar pauta principal" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 2px" onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-pencil"></i></button>`}
     </div>`;
   } else if(!encerrada){
@@ -31759,6 +31798,7 @@ function reunPautaHTML(m){
           ${done?'<i class="ti ti-check" style="font-size:10px;color:#fff"></i>':''}
         </div>
         <span style="flex:1;font-size:13px;color:var(--text);${done?'text-decoration:line-through;opacity:.5':''}">${escapeHTML(txt)}</span>
+        <button onclick="_pautaItemParaAnotacao('${m.id}',${i})" title="Anotar sobre este assunto (vai p/ Anotações)" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 2px;line-height:1;flex-shrink:0" onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-note"></i></button>
         <button onclick="removerPautaItem('${m.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 2px;line-height:1" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'">×</button>
       </div>`;
     }).join('');
