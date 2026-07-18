@@ -137,6 +137,23 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (l) — PC da Empresa — PROJETO: Painel em 4 COLUNAS + ANEXOS + Pessoas espelhando a Reunião (commit `625cabc`)
+- **PAINEL EM 4 COLUNAS** (era 3): **1.** Conclusão prevista + Acontecendo agora · **2.** Estrutura (fases) · **3.** Planejamento (detalhe da fase) ·
+  **4.** Comentários + Anexos. A faixa de **conclusão prevista SUBIU** do topo do detalhe (col 3) p/ o topo da col 1.
+- **CENTRALIZADO** como o Painel de Reunião: nova classe **`.pp-visao-4col`** (`max-width:1560px;margin:0 auto`) — vale **inclusive no modo foco**,
+  onde antes o conteúdo espalhava pela tela toda. `.proj-panel-wrap` **1320→1560** e `_bodyMax` da 'visao' **1320→1560** (senão o grid não caberia).
+- ⭐ **ANEXOS DO PROJETO** (não existiam — só a reunião tinha): `_projAnexosLista`/`_projAddAnexos`/`_projDelAnexo`/`_projRefreshAnexos`.
+  ⚠️ **Não dá p/ reusar as da reunião** (`adicionarAnexos`/`renderAnexos`/`removerAnexo`): elas buscam em `meetings` e gravam com `saveMeeting_db`.
+  ⚠️ A lista aparece em **DOIS lugares ao mesmo tempo** (card da col 4 + aba dedicada) → o refresh usa **`[data-proj-anexos]`**, não id; com id só o
+  primeiro atualizaria. Nova **aba/ícone "Anexos"** na sub-navbar e na trilha, com contador. Mesmo limite de 5MB/arquivo (base64 no localStorage).
+- **ORDEM das abas por momento de uso, IDÊNTICA na sub-navbar e na trilha:** TRABALHO (Painel·Fases·Tarefas) → EQUIPE (Pessoas) →
+  REGISTRO (Comentários·Anexos) → CONSULTA (Análise) → REFERÊNCIA (Info). **Info desceu da 5ª p/ a última.** Espelha o que foi feito na Reunião.
+- **ABA PESSOAS = mesmo desenho da Reunião:** 2 cards, "Disponíveis" (clique manda pra equipe) → "Equipe" **agrupada por PAPEL** com título
+  (Dono/Coordenador/Leitor) e × p/ tirar. **Sem check de presença** — ninguém "comparece" a um projeto. Reusa as classes `.reun-pessoas-2col`/
+  `.reun-pessoa-linha`/`.reun-pessoa-disp`. `_papelOrdProjeto` removido (só servia à lista única antiga).
+  ✅ Isso zera a pendência anotada na entrada (c) ("se o Diego gostar deste, vale espelhar lá").
+- ⚠️ NÃO testado em navegador. Balanço idêntico ao HEAD; ordem das abas conferida batendo nos 2 lugares.
+
 ### 2026-07-18 (k) — PC da Empresa — PROJETO: progresso e ícones descem p/ a linha da sub-navbar (commit `0a4b30a`)
 - Diego: o bloco de progresso + ícones ficava **"jogado num canto"** no alto à direita do Painel de Projeto.
 - `headerHTML` ficou **só com o ícone do tipo + "Projeto — \<nome\>"** (+ banner de encerramento). Saíram de lá a barra de progresso/%/atrasadas
