@@ -26003,15 +26003,22 @@ function renderProjectProVisao(p, prog){
     const numHier=_numE.get(t.id)||''; const etapa=_etE.get(t.id); const paralela=!!t.ppParalela;
     const dias=(typeof t.ppDias==='number'&&t.ppDias>0)?t.ppDias:1;
     const prev=_projE.get(t.id); const prevTxt=(!done&&prev&&prev.fim)?formatDate(prev.fim):'';
-    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-top:1px solid var(--border)">
-      <span title="Etapa ${etapa}${paralela?' · paralela à anterior (roda junto)':' · só começa quando a etapa anterior conclui'}" style="font-size:10px;font-weight:800;color:var(--text3);background:var(--bg2);border-radius:5px;padding:2px 0;flex-shrink:0;min-width:22px;text-align:center">${numHier}</span>
+    // GRID de colunas fixas (não flex): é o que alinha executor/dias/data VERTICALMENTE entre as
+    // linhas. Com flex, cada linha se ajustava ao próprio conteúdo e nada casava (Diego, jul/2026).
+    // Colunas: etapa · dependência · check · título · executor · dias · previsão.
+    const _primeira=(_ordE[0]&&_ordE[0].id===t.id);
+    return `<div style="display:grid;grid-template-columns:24px 22px 18px minmax(0,1fr) 104px 46px 84px;gap:9px;align-items:center;padding:7px 10px;border-top:1px solid var(--border)">
+      <span title="Etapa ${etapa}${paralela?' · paralela à anterior (roda junto)':' · só começa quando a etapa anterior conclui'}" style="font-size:10px;font-weight:800;color:var(--text3);background:var(--bg2);border-radius:5px;padding:2px 0;text-align:center">${numHier}</span>
+      ${_primeira
+        ? '<span></span>'
+        : `<button onclick="event.stopPropagation();_ppToggleParalela('${p.id}',${t.id})" title="${paralela?'Roda JUNTO com a tarefa anterior — clique p/ torná-la dependente (só começa depois)':'DEPENDE da anterior (só começa quando ela conclui) — clique p/ rodar junto'}" style="background:none;border:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;color:${paralela?'var(--text3)':'var(--blue-mid)'}"><i class="ti ${paralela?'ti-arrows-split-2':'ti-arrow-down-right'}" style="font-size:14px"></i></button>`}
       ${bloq
-        ? `<span title="Bloqueada — aguarda a etapa anterior concluir" style="width:18px;height:18px;border-radius:50%;border:1.5px dashed var(--border);color:var(--text3);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-lock" style="font-size:10px"></i></span>`
-        : `<i class="ti ${done?'ti-square-check-filled':'ti-square'}" onclick="toggle(${t.id})" style="font-size:18px;color:${done?'var(--success)':'var(--text3)'};cursor:pointer;flex-shrink:0" title="${done?'Concluída':'Marcar como concluída'}"></i>`}
-      <span onclick="openEdit(${t.id})" style="flex:1;min-width:0;font-size:12.5px;color:${done?'var(--text3)':'var(--text)'};${done?'text-decoration:line-through;':''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" title="Abrir tarefa">${escapeHTML(t.title)}</span>
-      ${ex?`<span title="${escapeAttr(ex.name)}" style="font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0;max-width:74px;overflow:hidden;text-overflow:ellipsis">${escapeHTML(ex.name.split(' ')[0])}</span>`:''}
-      <span title="Dias úteis para executar" style="display:inline-flex;align-items:center;gap:2px;flex-shrink:0"><input type="number" min="1" max="999" value="${dias}" onchange="_ppSetDias('${p.id}',${t.id},this.value)" style="width:36px;height:22px;text-align:center;font-size:11px;padding:1px 2px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);font-family:inherit;box-sizing:border-box"><span style="font-size:10px;color:var(--text3)">d</span></span>
-      ${!done?`<span title="Conclusão prevista desta tarefa" style="font-size:10.5px;color:${stCor};font-weight:600;white-space:nowrap;flex-shrink:0;min-width:54px;text-align:right">${prevTxt?`<i class="ti ti-calendar" style="font-size:10px"></i> ${prevTxt}`:''}</span>`:''}
+        ? `<span title="Bloqueada — aguarda a etapa anterior concluir" style="width:18px;height:18px;border-radius:50%;border:1.5px dashed var(--border);color:var(--text3);display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-lock" style="font-size:10px"></i></span>`
+        : `<i class="ti ${done?'ti-square-check-filled':'ti-square'}" onclick="toggle(${t.id})" style="font-size:18px;color:${done?'var(--success)':'var(--text3)'};cursor:pointer" title="${done?'Concluída':'Marcar como concluída'}"></i>`}
+      <span onclick="openEdit(${t.id})" style="min-width:0;font-size:12.5px;color:${done?'var(--text3)':'var(--text)'};${done?'text-decoration:line-through;':''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" title="Abrir tarefa">${escapeHTML(t.title)}</span>
+      <span style="display:flex;justify-content:center;min-width:0">${ex?`<span title="${escapeAttr(ex.name)}" style="display:inline-block;max-width:100%;padding:2px 8px;border-radius:99px;background:var(--bg2);border:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(ex.name.split(' ')[0])}</span>`:''}</span>
+      <input type="number" min="1" max="999" value="${dias}" title="Dias úteis para executar" onchange="_ppSetDias('${p.id}',${t.id},this.value)" style="width:100%;height:23px;text-align:center;font-size:11px;padding:1px 2px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);font-family:inherit;box-sizing:border-box">
+      <span title="Conclusão prevista desta tarefa" style="font-size:10.5px;color:${stCor};font-weight:600;white-space:nowrap;text-align:center">${(!done&&prevTxt)?`<i class="ti ti-calendar" style="font-size:10px"></i> ${prevTxt}`:''}</span>
     </div>`;
   };
   const _setorBloco=(g,faseId)=>{
@@ -33881,13 +33888,13 @@ function reunTarefasHTML(m){
       ? `<i class="ti ti-alert-triangle" style="font-size:11px"></i> atrasada${dateStr?` · ${dateStr}`:''}`
       : (dateStr || '<i class="ti ti-calendar-plus" style="font-size:12.5px"></i>');
     const dataHTML = `<span onclick="event.stopPropagation();abrirDatePickerTarefa(${t.id}, this)" title="Clique para mudar a data" style="position:relative;display:inline-flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap;text-align:right;cursor:pointer;padding:3px 7px;border-radius:6px;transition:background .15s;${atrasada?'color:var(--danger);font-weight:700':'color:var(--text3)'}" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'">${_dataTxt}</span>`;
-    return `<div style="display:grid;grid-template-columns:18px 1fr auto auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+    return `<div style="display:grid;grid-template-columns:18px minmax(0,1fr) 112px 96px 26px;gap:9px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
       <div role="checkbox" tabindex="0" aria-checked="${t.done?'true':'false'}" aria-label="Concluir tarefa" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click();}" onclick="toggle(${t.id})" style="width:18px;height:18px;border-radius:50%;border:2px solid ${t.done?'var(--blue-mid)':'var(--border)'};background:${t.done?'var(--blue-mid)':'transparent'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s">
         ${t.done?'<i class="ti ti-check" style="font-size:10px;color:#fff"></i>':''}
       </div>
-      <span style="font-size:13px;color:var(--text);${t.done?'text-decoration:line-through;opacity:.5':''}">${escapeHTML(t.title)}${fromStr}</span>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">${respHTML||'<span style="font-size:11px;color:var(--text3)">—</span>'}</div>
-      ${dataHTML}
+      <span style="min-width:0;font-size:13px;color:var(--text);${t.done?'text-decoration:line-through;opacity:.5':''}">${escapeHTML(t.title)}${fromStr}</span>
+      <div style="display:flex;gap:4px;justify-content:center;min-width:0">${respHTML||'<span style="font-size:11px;color:var(--text3)">—</span>'}</div>
+      <div style="display:flex;justify-content:center;min-width:0">${dataHTML}</div>
       <button onclick="delTarefaReuniao(${t.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px 4px;border-radius:4px;font-size:14px;flex-shrink:0;transition:color .15s" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'" title="Excluir tarefa"><i class="ti ti-trash"></i></button>
     </div>`;
   };
