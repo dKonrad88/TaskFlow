@@ -137,6 +137,17 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (k) — PC da Empresa — PROJETO: progresso e ícones descem p/ a linha da sub-navbar (commit `0a4b30a`)
+- Diego: o bloco de progresso + ícones ficava **"jogado num canto"** no alto à direita do Painel de Projeto.
+- `headerHTML` ficou **só com o ícone do tipo + "Projeto — \<nome\>"** (+ banner de encerramento). Saíram de lá a barra de progresso/%/atrasadas
+  e os 4 ícones (foco · ajuda · template · editar).
+- `tabsHTML` virou wrapper **`.proj-subtabs-wrap`**: abas à esquerda (`flex:1`+`overflow-x`, rolam em tela estreita) e, à direita alinhado embaixo,
+  **[progresso] [⛶] [ajuda] [template] [editar]**.
+- ⚠️ CSS: **`.proj-subtabs-wrap` também some no modo foco** — sem isso a borda inferior e os botões ficariam órfãos na tela com as abas
+  escondidas (a trilha lateral já cobre essas ações). Mesmo cuidado do `.reun-subtabs-wrap`.
+- 📐 **Os 2 painéis agora têm a MESMA anatomia:** título em cima · abas + ações na linha de baixo. Se mexer em um, espelhar no outro.
+- ⚠️ NÃO testado em navegador. Balanço idêntico ao HEAD; conferido por grep que progresso/ícones não ficaram duplicados.
+
 ### 2026-07-18 (j) — PC da Empresa — Colunas iguais + ações descem p/ a linha das abas (commits `1775705`,`a97e467`)
 - **Pauta/Anotações e Tarefas com a MESMA largura** (`1775705`): as 2 colunas passaram a dividir o espaço igualmente (`minmax(0,1fr)` cada).
   Antes a Pauta era FIXA em 300/320px e Tarefas ficava com todo o resto. No foco: Pauta **320→~505px**, Tarefas **690→~505px**.
