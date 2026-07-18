@@ -31185,6 +31185,14 @@ function openReuniaoView(id, _opts){
               <input id="pauta-add-inp-${m.id}" class="modal-input" placeholder="Novo assunto..." style="flex:1;padding:6px 10px;font-size:13px"
                 onkeydown="if(event.key==='Enter'){event.preventDefault();pautaConfirmarAdd('${m.id}');}if(event.key==='Escape')pautaCancelarAdd('${m.id}')">
             </div>
+            <!-- Quem TROUXE o assunto. Fica no valor escolhido entre um assunto e outro, p/ lançar
+                 vários da mesma pessoa em sequência. -->
+            <div style="display:flex;align-items:center;gap:6px;padding-left:23px">
+              <span style="font-size:11px;color:var(--text3);flex-shrink:0">Quem trouxe:</span>
+              <select id="pauta-add-autor-${m.id}" class="modal-input" style="padding:4px 8px;font-size:12px;flex:1;max-width:180px">
+                ${[...people].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>`<option value="${p.id}"${p.id===CURRENT_USER_ID?' selected':''}>${escapeHTML(p.name)}</option>`).join('')}
+              </select>
+            </div>
             <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:4px">
               <button onclick="pautaCancelarAdd('${m.id}')" class="btn-modal-cancel" style="padding:4px 12px;font-size:12px">Cancelar</button>
               <button onclick="pautaConfirmarAdd('${m.id}')" class="btn-modal-save" style="padding:4px 12px;font-size:12px"><i class="ti ti-plus"></i> Adicionar</button>
@@ -31675,6 +31683,68 @@ function _anotCmd(mid,cmd,val){
   try{ document.execCommand(cmd,false,val||null); }catch(e){}
   _anotSalvarDeb(mid);
 }
+// ── Posição do cursor dentro das Anotações ──────────────────────────────────────
+// Clicar num botão FORA do editor tira o foco dele, e aí a seleção deixa de ser confiável.
+// Por isso guardamos o último range válido enquanto a pessoa digita/clica DENTRO do editor
+// (mesma ideia do nmoSaveRange do editor de Notas do HUB).
+let _anotRange=null;
+function _anotSaveRange(mid){
+  const el=document.getElementById('anot-body-'+mid); if(!el) return;
+  const s=window.getSelection();
+  if(s && s.rangeCount && el.contains(s.getRangeAt(0).startContainer)) _anotRange=s.getRangeAt(0).cloneRange();
+}
+// Devolve o BLOCO (filho direto do editor) onde está o cursor — ou null se o cursor nunca
+// esteve lá dentro.
+function _anotBlocoDoCursor(el){
+  let node=null;
+  const s=window.getSelection();
+  if(s && s.rangeCount && el.contains(s.getRangeAt(0).startContainer)) node=s.getRangeAt(0).startContainer;
+  else if(_anotRange && el.contains(_anotRange.startContainer)) node=_anotRange.startContainer;
+  if(!node) return null;
+  if(node.nodeType===3) node=node.parentNode;
+  let b=node;
+  while(b && b.parentNode && b.parentNode!==el) b=b.parentNode;
+  return (b && b.parentNode===el) ? b : null;
+}
+function _anotCursorNoFim(bloco, el){
+  try{
+    el.focus();
+    const r=document.createRange(), s=window.getSelection();
+    r.selectNodeContents(bloco); r.collapse(false);
+    s.removeAllRanges(); s.addRange(r);
+    _anotRange=r.cloneRange();
+  }catch(e){}
+}
+function _anotNovoCheckEl(){
+  const c=document.createElement('input');
+  c.type='checkbox';
+  c.setAttribute('onclick',"this.toggleAttribute('checked')");
+  return c;
+}
+// ENTER numa linha com check → continua a lista (cria outro check). Se a linha do check
+// estiver VAZIA, o Enter SAI da lista — senão a pessoa fica presa criando checks vazios.
+function _anotKeydown(ev, mid){
+  if(ev.key!=='Enter' || ev.shiftKey) return;
+  const el=document.getElementById('anot-body-'+mid); if(!el) return;
+  const bloco=_anotBlocoDoCursor(el);
+  if(!bloco || !bloco.querySelector) return;
+  if(!bloco.querySelector('input[type=checkbox]')) return; // linha comum → Enter padrão
+  ev.preventDefault();
+  //   = nbsp: o &nbsp; da linha do check NÃO é removido por trim(), então sem trocá-lo
+  // por espaço a linha "vazia" nunca seria detectada e o Enter ficaria preso na lista.
+  const vazio=!((bloco.textContent||'').replace(/ /g,' ').trim());
+  const novo=document.createElement('div');
+  if(vazio){
+    novo.appendChild(document.createElement('br')); // sai da lista
+    bloco.replaceWith(novo);
+  } else {
+    novo.appendChild(_anotNovoCheckEl());
+    novo.appendChild(document.createTextNode(' '));
+    bloco.after(novo);
+  }
+  _anotCursorNoFim(novo, el);
+  _anotSalvarDeb(mid);
+}
 function _anotCheck(mid){
   const el=document.getElementById('anot-body-'+mid); if(!el) return;
   el.focus();
@@ -31692,24 +31762,20 @@ function _pautaParaAnotacao(mid, txt){
   const el=document.getElementById('anot-body-'+mid);
   if(!el || !txt) return;
   const linha=document.createElement('div');
-  const chk=document.createElement('input');
-  chk.type='checkbox';
-  chk.setAttribute('onclick',"this.toggleAttribute('checked')");
   const b=document.createElement('b');
   b.textContent=txt+':';
-  linha.appendChild(chk);
+  linha.appendChild(_anotNovoCheckEl());
   linha.appendChild(b);
   linha.appendChild(document.createTextNode(' '));
-  el.appendChild(linha);
+  // Entra ONDE O CURSOR ESTIVER (logo abaixo do bloco atual). Só cai no fim quando o cursor
+  // nunca esteve dentro do editor.
+  const atual=_anotBlocoDoCursor(el);
+  if(atual) atual.after(linha); else el.appendChild(linha);
   _anotSalvar(mid); // só persiste (saveMeeting_db não re-renderiza) → foco/cursor sobrevivem
-  // Cursor no fim da linha nova, já dentro do editor, e rola até ele.
-  try{
-    el.focus();
-    const r=document.createRange(), s=window.getSelection();
-    r.selectNodeContents(linha); r.collapse(false);
-    s.removeAllRanges(); s.addRange(r);
-  }catch(e){}
-  el.scrollTop=el.scrollHeight;
+  // Cursor no fim da linha nova. Rola até ELA (não mais até o fim do editor: agora a linha
+  // pode entrar no meio do texto).
+  _anotCursorNoFim(linha, el);
+  try{ linha.scrollIntoView({block:'nearest'}); }catch(e){}
 }
 // Wrappers: o HTML passa ÍNDICE (ou nada), nunca o texto — assunto com apóstrofo
 // ("Análise d'água") quebraria o onclick inline.
@@ -31740,7 +31806,7 @@ function _reunAnotacoesHTML(m){
       ${cor('#2563eb','Azul')}${cor('#16a34a','Verde')}${cor('#d97706','Laranja')}${cor('#dc2626','Vermelho')}${cor('#7c3aed','Roxo')}
       <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCmd('${m.id}','removeFormat')" title="Limpar formatação"><i class="ti ti-clear-formatting" style="font-size:14px"></i></button>
     </div>
-    <div id="anot-body-${m.id}" class="anot-body" contenteditable="true" placeholder="Anote aqui o que precisar durante a reunião..." oninput="_anotSalvarDeb('${m.id}')" onblur="_anotSalvar('${m.id}')">${m.anotacoes||''}</div>
+    <div id="anot-body-${m.id}" class="anot-body" contenteditable="true" placeholder="Anote aqui o que precisar durante a reunião..." oninput="_anotSalvarDeb('${m.id}')" onblur="_anotSalvar('${m.id}')" onkeydown="_anotKeydown(event,'${m.id}')" onkeyup="_anotSaveRange('${m.id}')" onmouseup="_anotSaveRange('${m.id}')">${m.anotacoes||''}</div>
   </div>`;
 }
 
@@ -31754,6 +31820,34 @@ function _pautaSetAutor(m, txt, pid){
   if(!m || !txt) return;
   if(!m.pautaAutor || typeof m.pautaAutor!=='object') m.pautaAutor={};
   m.pautaAutor[txt]=pid||CURRENT_USER_ID;
+}
+// Trocar quem trouxe um assunto JÁ criado. Espelha o truque do abrirDatePickerTarefa: cria um
+// <select> invisível cobrindo o botão clicado e abre o dropdown nativo — sem menu customizado.
+function _pautaTrocarAutor(mid, idx, anchor){
+  const m=meetings.find(x=>x.id===mid); if(!m) return;
+  const txt=(m.pauta||[])[idx]; if(!txt) return;
+  const atual=(m.pautaAutor||{})[txt]||'';
+  const sel=document.createElement('select');
+  sel.style.cssText='position:absolute;inset:0;width:100%;height:100%;opacity:0;border:none;padding:0;margin:0;cursor:pointer';
+  const o0=document.createElement('option'); o0.value=''; o0.textContent='— sem autor —'; sel.appendChild(o0);
+  [...people].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).forEach(p=>{
+    const o=document.createElement('option'); o.value=p.id; o.textContent=p.name;
+    if(p.id===atual) o.selected=true;
+    sel.appendChild(o);
+  });
+  sel.onchange=()=>{
+    if(!m.pautaAutor || typeof m.pautaAutor!=='object') m.pautaAutor={};
+    if(sel.value) m.pautaAutor[txt]=sel.value; else delete m.pautaAutor[txt];
+    saveMeeting_db(m);
+    if(sel.parentNode) sel.remove();
+    _pautaRefresh(mid); // re-renderiza a pauta (reagrupa por autor)
+  };
+  sel.onblur=()=>setTimeout(()=>{ if(sel.parentNode) sel.remove(); },200);
+  try{ if(getComputedStyle(anchor).position==='static') anchor.style.position='relative'; }catch(e){}
+  anchor.appendChild(sel);
+  sel.focus();
+  try{ if(typeof sel.showPicker==='function') sel.showPicker(); else sel.click(); }
+  catch(e){ try{ sel.click(); }catch(_){} }
 }
 function _pautaAutorNome(m, txt){
   const pid=(m.pautaAutor||{})[txt];
@@ -31815,6 +31909,7 @@ function reunPautaHTML(m){
           ${done?'<i class="ti ti-check" style="font-size:10px;color:#fff"></i>':''}
         </div>
         <span style="flex:1;font-size:13px;color:var(--text);${done?'text-decoration:line-through;opacity:.5':''}">${escapeHTML(txt)}</span>
+        <button onclick="_pautaTrocarAutor('${m.id}',${i},this)" title="Quem trouxe este assunto" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 2px;line-height:1;flex-shrink:0;position:relative" onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-user"></i></button>
         <button onclick="_pautaItemParaAnotacao('${m.id}',${i})" title="Anotar sobre este assunto (vai p/ Anotações)" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 2px;line-height:1;flex-shrink:0" onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-note"></i></button>
         <button onclick="removerPautaItem('${m.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 2px;line-height:1" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'">×</button>
       </div>`;
@@ -31891,7 +31986,8 @@ function pautaConfirmarAdd(meetingId){
   if(!m) return;
   if(!m.pauta) m.pauta=[];
   m.pauta.push(txt);
-  _pautaSetAutor(m, txt, CURRENT_USER_ID); // quem trouxe o assunto
+  const _selA=document.getElementById('pauta-add-autor-'+meetingId);
+  _pautaSetAutor(m, txt, (_selA&&_selA.value)||CURRENT_USER_ID); // quem trouxe o assunto
   saveMeeting_db(m);
   const wrap=document.getElementById('pauta-view-'+meetingId);
   if(wrap) wrap.innerHTML=reunPautaHTML(m);
