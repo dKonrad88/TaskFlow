@@ -137,6 +137,22 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (t) — PC da Empresa — Linhas de tarefa em COLUNAS alinhadas + dependência acionável do Painel (commit `561e33b`)
+- **COLUNAS ALINHADAS (projeto + reunião):** as 2 linhas de tarefa passaram de **flex p/ GRID de colunas fixas**. Com flex cada linha se
+  ajustava ao próprio conteúdo e **executor/dias/data não casavam entre si**; com grid, alinham verticalmente.
+  - Projeto: `[etapa 24][dependência 22][check 18][título 1fr][executor 104][dias 46][previsão 84]`
+  - Reunião: `[check 18][título 1fr][executor 112][data 96][lixeira 26]`
+  - Executor e data **centralizados** na coluna, gap 8→9.
+- **EXECUTOR COM FUNDO no projeto** (chip pill `--bg2` + borda), copiando a Reunião, que já fazia isso. Antes era texto solto.
+- O **"d" solto** depois do campo de dias saiu (Diego achou feio) — a unidade vive no `title` do campo.
+- ⭐ **DEPENDÊNCIA ACIONÁVEL DO PAINEL** (antes só na aba Tarefas, via drag): nova coluna com ícone que alterna a tarefa entre
+  **DEPENDENTE da anterior** (`ti-arrow-down-right`, azul) e **PARALELA/roda junto** (`ti-arrows-split-2`, cinza). Reusa **`_ppToggleParalela`**.
+  A 1ª tarefa não tem botão (não há anterior), mas **a COLUNA continua lá** p/ não desalinhar a grade.
+  ⚠️ **LIMITE DO MODELO (importante):** a dependência é **pela ORDEM da esteira** — "esta tarefa espera a anterior". **NÃO existe** "tarefa A
+  depende da tarefa C específica" (finish-to-start arbitrário). Se o Diego pedir isso, é mudança de MODELO de dados, não de UI — ver a
+  sugestão "dependência explícita entre tarefas" na análise de mercado (entrada de 18/07 sobre o que falta no Painel).
+- ⚠️ NÃO testado em navegador. Balanço idêntico ao HEAD.
+
 ### 2026-07-18 (s) — PC da Empresa — `--surface-painel`: fundo dos cards levemente mais creme, derivado do tema (commit `5e9f02a`)
 - Diego: *"dos fundos gostei, poderia ser levemente mais escurinho, mas tipo quase nada, só pra não parecer branco, seria um cremezinho mais forte"*.
 - ⭐ **Nova var `--surface-painel`** = o `--card` puxado **30% na direção do `--bg2` do próprio tema**, via `color-mix`.
