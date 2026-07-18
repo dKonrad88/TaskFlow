@@ -137,6 +137,20 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (n) — PC da Empresa — PROJETO: títulos padronizados + cor de volta no setor (commit `4fb9616`)
+- Feedback do Diego à leva (m): *"agora ficou branco demais · setor pode ter cor · conclusão prevista não precisa ser card ·
+  vários títulos, tamanhos diferentes, faz tudo igual"*. Ou seja: na (m) eu **passei do ponto** ao aliviar.
+- ⭐ **TÍTULOS PADRONIZADOS:** novo **`_ppTituloCol(icone, texto, sufixo, mb)`** — as **5 seções** do Painel agora saem dele
+  (Acontecendo agora · Estrutura · nome da fase · Comentários · Anexos). Antes cada uma tinha o seu (**12,5px/700 · 13px/800 · 16px/800**,
+  umas com ícone e outras sem) e as 4 colunas ficavam visivelmente desalinhadas.
+  ⚠️ O parâmetro **`mb`** existe porque 2 deles entram DENTRO de uma linha flex que já tem espaçamento — sem zerar a margem, empurravam os irmãos.
+  📌 **Se criar seção nova no Painel do Projeto, use `_ppTituloCol`** em vez de escrever outro título à mão.
+- **SETOR COM COR de novo, mas outra:** em vez do bege (`--bg2`) que pesava, um tom da **COR DO PROJETO diluído a 7%** no cabeçalho +
+  ícone na cor cheia. Identidade sem peso.
+- **CONCLUSÃO PREVISTA deixou de ser card** — era caixa colorida com borda no topo da col 1; virou **só a frase**, com ícone e o
+  "· folga/atraso" tingidos. Vale também p/ a variante "todas as tarefas concluídas".
+- ⚠️ NÃO testado em navegador. Balanço idêntico ao HEAD.
+
 ### 2026-07-18 (m) — PC da Empresa — PROJETO: centralizado · status vira ação · Editar INLINE · painel mais leve (commits `b3bde25`,`9a486c8`,`91f170e`)
 - **TELAS CENTRALIZADAS** (`b3bde25`): a regra `body.proj-focus .proj-body{max-width:none}` **anulava** o limite de cada aba → Tarefas/Fases/Análise/
   Comentários esticavam de ponta a ponta no modo foco. Removida; agora vale o `_bodyMax` de cada aba + **`margin:0 auto`** no corpo.
