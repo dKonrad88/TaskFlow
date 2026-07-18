@@ -1570,7 +1570,7 @@
   /* Painel do projeto em 4 COLUNAS: [Conclusão + Acontecendo agora] · [Estrutura] · [Planejamento]
      · [Comentários + Anexos]. max-width + margin auto = CENTRALIZADO também no modo foco (era o
      que o Painel de Reunião já fazia e este não). */
-  .pp-visao-4col{display:grid;grid-template-columns:minmax(0,250px) minmax(0,244px) minmax(0,1fr) minmax(0,300px);gap:22px;align-items:start;max-width:1560px;margin:0 auto}
+  .pp-visao-4col{display:grid;grid-template-columns:minmax(0,250px) minmax(0,244px) minmax(0,1fr) minmax(0,300px);gap:34px;align-items:start;max-width:1600px;margin:0 auto}
   @media(max-width:1400px){.pp-visao-4col{grid-template-columns:minmax(0,240px) minmax(0,1fr) minmax(0,290px)}}
   @media(max-width:1040px){.pp-visao-4col{grid-template-columns:1fr}}
   body.proj-focus .proj-focus-rail{display:flex;flex-direction:column;align-items:center;gap:3px;position:fixed;left:0;top:0;bottom:0;width:74px;background:var(--card);border-right:1px solid var(--border);padding:12px 0;z-index:70;overflow-y:auto;scrollbar-width:none}
@@ -1587,7 +1587,11 @@
      aba já define sua largura em _bodyMax; o `margin:0 auto` (inline) centraliza dentro do wrap. */
   body.proj-focus .proj-focus-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:60;background:var(--card);border-bottom:1px solid var(--border);padding:11px 30px;margin:0 -30px 18px}
   .reun-card4{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;min-height:130px}
-  .reun-card4-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:6px}
+  /* (jul/2026) Cabeçalho COLORIDO em cada card — tom bem baixo (6% de azul sobre o card), só p/
+     separar o título do conteúdo. As margens negativas puxam o título até as bordas do card (que
+     tem padding:14px) e o padding interno recompõe o espaçamento; o border-radius próprio evita
+     precisar de overflow:hidden no card — que cortaria o popover de cores das Anotações. */
+  .reun-card4-title{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:space-between;gap:6px;margin:-14px -14px 12px;padding:9px 14px;background:color-mix(in srgb,var(--blue-mid) 6%,var(--card));border-bottom:1px solid var(--border);border-radius:11px 11px 0 0}
   /* Botões-ícone do topo */
   .reun-ico{width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:15px;transition:all .15s;flex-shrink:0}
   .reun-ico:hover{border-color:var(--blue-mid);color:var(--blue-mid)}
@@ -25816,9 +25820,10 @@ function renderProjectProView(id){
   // Shell (cabeçalho + subnavbar) tem largura FIXA p/ a subnavbar não "pular" entre abas.
   // Só o corpo varia: Tarefas usa planilha larga (1320px); demais abas mantêm 1040px.
   // 'visao' precisa de mais largura desde que virou 4 colunas (o próprio grid se centraliza).
-  const _bodyMax = activeProjectProTab==='visao' ? 1560 : (activeProjectProTab==='tarefas' ? 1320 : 1040);
+  // 1600 acompanha o max-width do .pp-visao-4col — o gap de 34px entre colunas precisa caber.
+  const _bodyMax = activeProjectProTab==='visao' ? 1600 : (activeProjectProTab==='tarefas' ? 1320 : 1040);
   const railHTML = _projFocusRailHTML(p);
-  container.innerHTML = `<div class="proj-panel-wrap" style="max-width:1560px;margin:0 auto">${railHTML + focusBarHTML + headerHTML + tabsHTML + `<div class="proj-body" style="max-width:${_bodyMax}px;margin:0 auto;padding-bottom:60px">${bodyHTML}</div>`}</div>`;
+  container.innerHTML = `<div class="proj-panel-wrap" style="max-width:1600px;margin:0 auto">${railHTML + focusBarHTML + headerHTML + tabsHTML + `<div class="proj-body" style="max-width:${_bodyMax}px;margin:0 auto;padding-bottom:60px">${bodyHTML}</div>`}</div>`;
   // Dentro do projeto: a topbar mostra o BREADCRUMB (isolado no topo); o título do projeto
   // fica no corpo. Só innerHTML (span auto-dimensionado) — não mexo no font-size do #tab-title
   // pra não vazar pras outras telas (elas voltam a usar textContent = título grande).
