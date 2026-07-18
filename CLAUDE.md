@@ -137,6 +137,26 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (m) — PC da Empresa — PROJETO: centralizado · status vira ação · Editar INLINE · painel mais leve (commits `b3bde25`,`9a486c8`,`91f170e`)
+- **TELAS CENTRALIZADAS** (`b3bde25`): a regra `body.proj-focus .proj-body{max-width:none}` **anulava** o limite de cada aba → Tarefas/Fases/Análise/
+  Comentários esticavam de ponta a ponta no modo foco. Removida; agora vale o `_bodyMax` de cada aba + **`margin:0 auto`** no corpo.
+- **STATUS VIRA AÇÃO** (`b3bde25`): "Em andamento" era só rótulo; virou **botão que alterna** (planejamento/pausado ↔ ativo), espelhando o
+  Iniciar/Pausar da Reunião. `_projToggleStatus` + `_projStatusBtnHTML` (usado na barra de foco **e** no cabeçalho normal, que antes nem mostrava status).
+  Concluído/arquivado **não** entram no toggle — sair desses estados é decisão, segue no menu completo da aba Info. **Sem checagem de permissão**
+  de propósito (identidade simulada; trava já emperrou o Diego antes). `const status` do render removida (órfã).
+- **EDITAR VIROU ABA INLINE** (`9a486c8`): campos extraídos p/ **`_projEditarCamposHTML(p)`** — em vez de duplicar o form entre modal e inline.
+  Ids `ppe-*` seguem únicos no DOM (conferido). `salvarEdicaoProjectPro` volta p/ 'visao' quando veio da aba. Ícone do lápis e botão da trilha
+  chamam `setProjectProTab('editar')`. ⚠️ **`editarProjectPro` (modal) ficou SEM CALLER** — a lista de projetos não tem botão de editar; marcado
+  **[SUPERSEDED]** e mantido (ainda compartilha os campos, é só chamar se a lista precisar).
+- **PAINEL MAIS LEVE** (`91f170e`) — Diego: *"o painel de reuniões é mais leve de visualizar, já o projeto parece pesado demais, colorido demais…
+  quero que a plataforma seja parecida"*:
+  - Cabeçalho do **setor** perdeu o **fundo bege** (`--bg2`) → só `border-bottom`, como os cards da Reunião; card do setor com fundo `--card`. "Sem setor" idem.
+  - **Badge da etapa** deixou de ser tingido com a cor do projeto (`color-mix 13%`) → neutro. Era o que mais coloria a lista: um chip colorido por linha.
+  - **Nova tarefa INLINE**: o "+ Tarefa" saiu do cabeçalho do setor; agora há um **campo no fim da lista** — digita, Enter, segue pra próxima.
+    ⭐ Reusa **`quickAddTaskPro`**, que já existia e faz exatamente isso (cria + re-render + refoca); antes só a aba Tarefas a usava.
+  - **"+ Adicionar fase"** desceu do cabeçalho (ícone "+" solto) p/ botão tracejado **abaixo da lista**, mesma gramática do "+ Adicionar setor".
+- ⚠️ NÃO testado em navegador. Balanço idêntico ao HEAD em todos os commits.
+
 ### 2026-07-18 (l) — PC da Empresa — PROJETO: Painel em 4 COLUNAS + ANEXOS + Pessoas espelhando a Reunião (commit `625cabc`)
 - **PAINEL EM 4 COLUNAS** (era 3): **1.** Conclusão prevista + Acontecendo agora · **2.** Estrutura (fases) · **3.** Planejamento (detalhe da fase) ·
   **4.** Comentários + Anexos. A faixa de **conclusão prevista SUBIU** do topo do detalhe (col 3) p/ o topo da col 1.
