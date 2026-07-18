@@ -25903,6 +25903,13 @@ function _ppConclusaoHeader(p, prog){
     return `<span style="font-size:11.5px;color:var(--text3);white-space:nowrap" title="Conclusão prevista do projeto"><i class="ti ti-flag-check" style="font-size:12px"></i> ${formatDate(fim)}${sub?` <span style="color:${cor};font-weight:700">· ${sub}</span>`:''}</span>`;
   }catch(e){ return ''; }
 }
+// Bloco padrão do Painel do Projeto: superfície do TEMA (--card é creme no areia/klain, branco
+// no claro, escuro no dark) sobre o fundo da página (--bg). Sem isso o conteúdo fica "solto"
+// direto no fundo — foi o que aconteceu quando tirei os cards a pedido do Diego.
+// ⚠️ Só usar variáveis de tema aqui: nada de hex fixo, senão quebra nos 5 temas.
+function _ppBloco(conteudo, extra){
+  return `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;${extra||''}">${conteudo}</div>`;
+}
 // Título padrão das colunas/seções do Painel do Projeto. Antes cada uma tinha o seu
 // (12.5px/700, 13px/800, 16px/800 — umas com ícone, outras sem), e o desalinhamento saltava
 // à vista. `sufixo` é o complemento discreto à direita (ex.: "Etapa 2 de 6").
@@ -25958,11 +25965,12 @@ function renderProjectProVisao(p, prog){
         const faseAtualNome=(()=>{ const t0=agora[0]; if(!t0)return ''; const f=(p.fases||[]).find(f=>f.id===t0.projectProFaseId); return f?escapeHTML(f.nome):''; })();
         const listaProx=proximas.map(t=>`<div style="display:flex;align-items:center;gap:9px;padding:6px 0"><i class="ti ti-lock" style="font-size:13px;color:var(--text3);flex-shrink:0"></i><div style="min-width:0;flex:1"><div style="font-size:12.5px;color:var(--text)">${escapeHTML(t.title)}</div><div style="font-size:11px;color:var(--text3)">${_exec(t)}${_setor(t)?' · '+_setor(t):''}</div></div></div>`).join('');
         const faixaInf=proximas.length?`<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="ti ti-arrow-bar-to-down" style="font-size:14px"></i>Próximas a liberar</div><div style="display:grid;grid-template-columns:1fr;gap:8px">${listaProx}</div></div>`:'';
-        comandoBloco=`<div style="margin-bottom:16px">
+        // Um bloco só (superfície do tema) com título + tarefas de agora + próximas a liberar —
+        // em vez de uma caixa por tarefa (pesado) ou texto solto no fundo da página (sem acabamento).
+        comandoBloco=_ppBloco(`
           ${_ppTituloCol('ti-player-play-filled','Acontecendo agora',`Etapa ${etAtual} de ${totalEt}${faseAtualNome?' · '+faseAtualNome:''}`)}
           <div style="display:flex;flex-direction:column;gap:2px">${cardsAgora}</div>
-          ${faixaInf}
-        </div>`;
+          ${faixaInf}`);
       } else if(ord.length){
         comandoBloco=`<div style="margin-bottom:16px;background:color-mix(in srgb,var(--success) 8%,var(--card));border:1px solid color-mix(in srgb,var(--success) 30%,var(--border));border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:11px"><i class="ti ti-circle-check" style="font-size:22px;color:var(--success)"></i><div><div style="font-size:13.5px;font-weight:800;color:var(--text)">Todas as tarefas concluídas</div><div style="font-size:12px;color:var(--text3)">O projeto está pronto para ser encerrado.</div></div></div>`;
       }
@@ -26101,10 +26109,9 @@ function renderProjectProVisao(p, prog){
   return `<div class="pp-visao-3col">
     <div style="min-width:0;display:flex;flex-direction:column;gap:2px">${projecaoBloco}${comandoBloco}${estruturaBloco}</div>
     <div style="min-width:0">${detalheBloco}</div>
-    <div style="min-width:0"><div style="position:sticky;top:8px">
-      ${_ppTituloCol('ti-message-circle','Comentários')}
-      ${comentariosBloco}
-      ${_projAnexosCardHTML(p)}
+    <div style="min-width:0"><div style="position:sticky;top:8px;display:flex;flex-direction:column;gap:14px">
+      ${_ppBloco(_ppTituloCol('ti-message-circle','Comentários')+comentariosBloco)}
+      ${_ppBloco(_projAnexosCardHTML(p))}
     </div></div>
   </div>`;
 }
@@ -33158,7 +33165,7 @@ function renderProjectProAnexos(p){
 // Card compacto — vai na coluna 4 do Painel, abaixo dos Comentários.
 function _projAnexosCardHTML(p){
   const n=(p.anexos||[]).length;
-  return `<div style="margin-top:18px">
+  return `<div>
     <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;min-width:0">
       <div style="flex:1;min-width:0">${_ppTituloCol('ti-paperclip','Anexos',n?String(n):'',0)}</div>
       <button onclick="document.getElementById('proj-anexo-inp-c-${p.id}').click()" title="Adicionar arquivo" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;display:inline-flex;flex-shrink:0" onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-plus" style="font-size:15px"></i></button>
