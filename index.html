@@ -1514,10 +1514,12 @@
   .anot-body p,.anot-body div{margin:2px 0}
   .anot-body ol,.anot-body ul{margin:4px 0;padding-left:22px}
   .anot-body input[type=checkbox]{margin-right:6px;vertical-align:middle;cursor:pointer;accent-color:var(--blue-mid);width:14px;height:14px}
-  .anot-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--text2);padding:3px 8px;cursor:pointer;font-size:11.5px;font-family:inherit;transition:all .12s;display:inline-flex;align-items:center;gap:4px;line-height:1.4}
-  .anot-btn:hover{border-color:var(--blue-mid);color:var(--blue-mid)}
-  .anot-cor{width:19px;height:19px;border-radius:50%;border:2px solid var(--border);cursor:pointer;padding:0;flex-shrink:0;transition:transform .12s}
-  .anot-cor:hover{transform:scale(1.18)}
+  /* Barra das Anotações: botões SEM borda (só texto/ícone cinza). Com borda viravam 10 caixinhas
+     e a barra competia com o conteúdo. As cores ficam escondidas atrás de 1 ícone (_anotCorMenu). */
+  .anot-btn{background:none;border:none;border-radius:6px;color:var(--text3);padding:3px 7px;cursor:pointer;font-size:11.5px;font-family:inherit;transition:all .12s;display:inline-flex;align-items:center;gap:4px;line-height:1.4}
+  .anot-btn:hover{background:var(--bg2);color:var(--text)}
+  .anot-cor{width:17px;height:17px;border-radius:50%;border:1px solid var(--border);cursor:pointer;padding:0;flex-shrink:0;transition:transform .12s}
+  .anot-cor:hover{transform:scale(1.15)}
   .anot-sep{width:1px;height:16px;background:var(--border);margin:0 3px;flex-shrink:0}
   /* Ícone discreto na linha da pauta (autor / anotar). Cor inline setada por JS vence o :hover
      — de propósito: quando o autor escolhido não é você, o ícone FICA azul. */
@@ -31746,6 +31748,32 @@ function _anotKeydown(ev, mid){
   _anotCursorNoFim(novo, el);
   _anotSalvarDeb(mid);
 }
+// As 5 cores ficam ESCONDIDAS atrás de um ícone: soltas na barra viravam 5 bolinhas coloridas
+// puxando o olho mais que o próprio texto. Abre num popover e some ao escolher / clicar fora.
+// Os botões usam onmousedown+preventDefault p/ não roubar a seleção do editor (senão o
+// foreColor não teria em que aplicar).
+function _anotCorMenu(mid, anchor){
+  const aberto=document.getElementById('anot-cor-menu');
+  if(aberto){ aberto.remove(); return; } // 2º clique fecha
+  const cores=[['#2563eb','Azul'],['#16a34a','Verde'],['#d97706','Laranja'],['#dc2626','Vermelho'],['#7c3aed','Roxo']];
+  const box=document.createElement('div');
+  box.id='anot-cor-menu';
+  box.style.cssText='position:absolute;top:100%;left:0;margin-top:5px;display:flex;gap:7px;padding:7px 9px;background:var(--card);border:1px solid var(--border);border-radius:9px;z-index:60;box-shadow:0 4px 14px rgba(0,0,0,.13)';
+  box.onmousedown=(e)=>e.preventDefault();
+  cores.forEach(([hex,nome])=>{
+    const b=document.createElement('button');
+    b.className='anot-cor'; b.title=nome; b.style.background=hex;
+    b.onclick=()=>{ _anotCmd(mid,'foreColor',hex); box.remove(); };
+    box.appendChild(b);
+  });
+  try{ if(getComputedStyle(anchor).position==='static') anchor.style.position='relative'; }catch(e){}
+  anchor.appendChild(box);
+  // Fecha ao clicar fora (listener de uma tacada só, removido no próprio disparo).
+  setTimeout(()=>{
+    const fora=(ev)=>{ if(!box.contains(ev.target) && ev.target!==anchor){ box.remove(); document.removeEventListener('mousedown',fora,true); } };
+    document.addEventListener('mousedown',fora,true);
+  },0);
+}
 function _anotCheck(mid){
   const el=document.getElementById('anot-body-'+mid); if(!el) return;
   el.focus();
@@ -31791,7 +31819,6 @@ function _pautaPrincParaAnotacao(mid){
 // Barra + área de digitação. Cores em hex (foreColor não aceita var(--x)); os 5 tons escolhidos
 // têm contraste suficiente no tema claro e no escuro.
 function _reunAnotacoesHTML(m){
-  const cor=(hex,nome)=>`<button class="anot-cor" onmousedown="event.preventDefault()" onclick="_anotCmd('${m.id}','foreColor','${hex}')" title="${nome}" style="background:${hex}"></button>`;
   return `<div class="reun-card4" style="margin-top:14px">
     <div class="reun-card4-title"><span><i class="ti ti-notes" style="color:var(--text2)"></i> Anotações</span></div>
     <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:-2px 0 8px">
@@ -31804,7 +31831,7 @@ function _reunAnotacoesHTML(m){
       <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCmd('${m.id}','insertOrderedList')" title="Lista numerada"><i class="ti ti-list-numbers" style="font-size:14px"></i></button>
       <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCheck('${m.id}')" title="Item com check"><i class="ti ti-checkbox" style="font-size:14px"></i></button>
       <div class="anot-sep"></div>
-      ${cor('#2563eb','Azul')}${cor('#16a34a','Verde')}${cor('#d97706','Laranja')}${cor('#dc2626','Vermelho')}${cor('#7c3aed','Roxo')}
+      <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCorMenu('${m.id}',this)" title="Cor do texto" style="position:relative"><i class="ti ti-palette" style="font-size:14px"></i></button>
       <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCmd('${m.id}','removeFormat')" title="Limpar formatação"><i class="ti ti-clear-formatting" style="font-size:14px"></i></button>
     </div>
     <div id="anot-body-${m.id}" class="anot-body" contenteditable="true" placeholder="Anote aqui o que precisar durante a reunião..." oninput="_anotSalvarDeb('${m.id}')" onblur="_anotSalvar('${m.id}')" onkeydown="_anotKeydown(event,'${m.id}')" onkeyup="_anotSaveRange('${m.id}')" onmouseup="_anotSaveRange('${m.id}')">${m.anotacoes||''}</div>
