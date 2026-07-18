@@ -137,6 +137,12 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (v) — Mac de casa — Tema Klain: removida a textura de biscoitos do fundo (fica liso)
+- Diego pediu p/ tirar o padrão SVG de biscoitos (círculos) do fundo do tema Klain. Removido o `background-image`
+  (data-URI SVG) do `body[data-theme="klain"]` e o bloco `body[data-theme="klain"] .sidebar` que repetia a textura.
+  Mantido o fundo creme (`background-color:var(--bg)`) + os acentos caramelo. Verificado no navegador: tema Klain com
+  fundo LISO (`bodyBgImage`/`sidebarBgImage` = `none`). Só CSS; jsc SYNTAX_OK.
+
 ### ✅ 2026-07-18 (u) — Mac de casa — VALIDAÇÃO no navegador do redesenho (a)…(t): 6/6 pontos OK, 0 bugs
 - O RESUMO abaixo (sessão do PC da Empresa) pediu que o **Mac validasse no navegador** os 6 pontos que "mais
   provavelmente quebraram". Rodei **todos** no preview (cópia servida via HTTP + dados de teste injetados).
