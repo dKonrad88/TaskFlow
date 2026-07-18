@@ -25085,7 +25085,7 @@ function _projFocusRailHTML(p){
     <button class="proj-rail-btn" onclick="setProjectProTab('anexos')" style="${A('anexos')}" title="Anexos do projeto"><i class="ti ti-paperclip"></i><span>Anexos</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('analise')" style="${A('analise')}" title="Análise"><i class="ti ti-chart-arcs"></i><span>Análise</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('info')" style="${A('info')}" title="Info — detalhes do projeto"><i class="ti ti-info-circle"></i><span>Info</span></button>
-    <button class="proj-rail-btn" onclick="editarProjectPro('${p.id}')" title="Editar projeto (nome, prazo, cor)"><i class="ti ti-pencil"></i><span>Editar</span></button>
+    <button class="proj-rail-btn" onclick="setProjectProTab('editar')" style="${A('editar')}" title="Editar projeto (nome, prazo, cor)"><i class="ti ti-pencil"></i><span>Editar</span></button>
     <div style="flex:1"></div>
     <button class="proj-rail-btn" onclick="_selecionarStatusProjeto('${p.id}','concluido')" style="color:var(--success)" title="Finalizar projeto"><i class="ti ti-flag"></i><span>Finalizar</span></button>
   </div>`;
@@ -25797,7 +25797,7 @@ function renderProjectProView(id){
         <button class="reun-ico" onclick="_toggleProjFocus()" title="Abrir em tela cheia (modo foco)"><i class="ti ti-arrows-maximize"></i></button>
         ${ajudaIconHTML}
         <button class="reun-ico" onclick="salvarProjetoComoTemplate('${p.id}')" title="Salvar como template"><i class="ti ti-template"></i></button>
-        <button class="reun-ico" onclick="editarProjectPro('${p.id}')" title="Editar projeto"><i class="ti ti-pencil"></i></button>
+        <button class="reun-ico" onclick="setProjectProTab('editar')" title="Editar projeto" style="${activeProjectProTab==='editar'?'border-color:var(--blue-mid);color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 10%,transparent)':''}"><i class="ti ti-pencil"></i></button>
       </div>
     </div>`;
 
@@ -25811,6 +25811,7 @@ function renderProjectProView(id){
   else if(activeProjectProTab === 'analise') bodyHTML = renderProjectProAnalise(p);
   else if(activeProjectProTab === 'anotacoes') bodyHTML = renderProjectProAnotacoes(p);
   else if(activeProjectProTab === 'anexos')  bodyHTML = renderProjectProAnexos(p);
+  else if(activeProjectProTab === 'editar')  bodyHTML = renderProjectProEditar(p);
 
   // Shell (cabeçalho + subnavbar) tem largura FIXA p/ a subnavbar não "pular" entre abas.
   // Só o corpo varia: Tarefas usa planilha larga (1320px); demais abas mantêm 1040px.
@@ -27912,29 +27913,35 @@ function _ppInserirMencao(btn, projectProId, nome){
 }
 
 // ─── EDITAR PROJETO ──────────────────────────────────────────────
-function editarProjectPro(id){
-  const p = projectsPro.find(x=>x.id===id);
-  if(!p){ toast('Projeto não encontrado'); return; }
-
-  const overlay = document.createElement('div');
-  overlay.id = 'pp-modal-edit';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9100;display:flex;align-items:center;justify-content:center;padding:20px';
-  overlay.onclick = e=>{ if(e.target===overlay) overlay.remove(); };
-
+// Aba "Editar" INLINE (jul/2026 — Diego: "o ícone editar está em modal, deixe inline"). Mesmos
+// campos do modal, dentro do painel. O MODAL continua existindo para a LISTA de projetos, onde
+// não há painel aberto — mesma coexistência da Reunião (editar inline no painel × modal na lista).
+function renderProjectProEditar(p){
+  return `<div style="max-width:620px;margin:0 auto">
+    <div class="reun-card4">
+      <div class="reun-card4-title"><span><i class="ti ti-pencil" style="color:var(--blue-mid)"></i> Editar projeto</span></div>
+      ${_projEditarCamposHTML(p)}
+      <div style="display:flex;justify-content:space-between;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+        <button onclick="confirmExcluirProjectPro('${p.id}')" style="background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer"><i class="ti ti-trash"></i> Excluir projeto</button>
+        <div style="display:flex;gap:8px">
+          <button onclick="setProjectProTab('visao')" class="btn-modal-cancel" style="padding:8px 14px;font-size:12px">Cancelar</button>
+          <button onclick="salvarEdicaoProjectPro('${p.id}')" class="btn-modal-save" style="padding:8px 16px;font-size:12px"><i class="ti ti-check"></i> Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+// Campos do formulário de projeto. Hoje o consumidor VIVO é a aba "Editar" inline
+// (renderProjectProEditar); o modal editarProjectPro abaixo também os usa, mas ficou
+// [SUPERSEDED] — ver nota lá. Os ids ppe-* são o que salvarEdicaoProjectPro lê.
+function _projEditarCamposHTML(p){
   const statusOpcoes = Object.entries(PP_STATUS).map(([k,v])=>
     `<option value="${k}" ${p.status===k?'selected':''}>${v.label}</option>`
   ).join('');
   const pessoaOpcoes = people.map(pe=>
     `<option value="${pe.id}" ${pe.id===p.dono?'selected':''}>${escapeHTML(pe.name)}</option>`
   ).join('');
-
-  overlay.innerHTML = `
-    <div style="background:var(--card);border-radius:14px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.3)">
-      <div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-        <h3 style="margin:0;font-size:16px"><i class="ti ti-pencil" style="color:var(--blue-mid)"></i> Editar projeto</h3>
-        <button onclick="document.getElementById('pp-modal-edit').remove()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px"><i class="ti ti-x"></i></button>
-      </div>
-      <div style="padding:18px 22px">
+  return `
         <div style="margin-bottom:12px">
           <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Nome</label>
           <input id="ppe-nome" type="text" value="${escapeAttr(p.nome)}" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);box-sizing:border-box" />
@@ -27981,6 +27988,32 @@ function editarProjectPro(id){
           <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Descrição</label>
           <textarea id="ppe-desc" rows="3" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);font-family:inherit;resize:vertical;box-sizing:border-box">${escapeHTML(p.descricao||'')}</textarea>
         </div>
+`;
+}
+
+// [SUPERSEDED jul/2026] Editar virou ABA INLINE (renderProjectProEditar) — o ícone do painel e o
+// botão da trilha agora chamam setProjectProTab('editar'). Conferido por grep: esta função ficou
+// SEM CALLER (a lista de projetos não tem botão de editar; só o painel editava). Mantida por
+// segurança, e ainda compartilha os campos via _projEditarCamposHTML — se um dia a lista precisar
+// de um editar rápido, é só chamá-la.
+function editarProjectPro(id){
+  const p = projectsPro.find(x=>x.id===id);
+  if(!p){ toast('Projeto não encontrado'); return; }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'pp-modal-edit';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9100;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.onclick = e=>{ if(e.target===overlay) overlay.remove(); };
+
+
+  overlay.innerHTML = `
+    <div style="background:var(--card);border-radius:14px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.3)">
+      <div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <h3 style="margin:0;font-size:16px"><i class="ti ti-pencil" style="color:var(--blue-mid)"></i> Editar projeto</h3>
+        <button onclick="document.getElementById('pp-modal-edit').remove()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px"><i class="ti ti-x"></i></button>
+      </div>
+      <div style="padding:18px 22px">
+        ${_projEditarCamposHTML(p)}
       </div>
       <div style="padding:12px 22px;border-top:1px solid var(--border);display:flex;justify-content:space-between;gap:8px">
         <button onclick="confirmExcluirProjectPro('${p.id}')" style="background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer"><i class="ti ti-trash"></i> Excluir projeto</button>
@@ -28009,7 +28042,9 @@ function salvarEdicaoProjectPro(id){
   if(p.dono && !p.pessoas.includes(p.dono)) p.pessoas.push(p.dono);
   // Coordenador permanece inalterado aqui — é gerenciado pela aba Pessoas
   saveProjectPro_db(p);
-  document.getElementById('pp-modal-edit')?.remove();
+  document.getElementById('pp-modal-edit')?.remove(); // só existe quando veio do modal (lista)
+  // Veio da ABA inline → volta pro Painel; senão o usuário ficaria parado no formulário.
+  if(typeof activeProjectProTab!=='undefined' && activeProjectProTab==='editar') activeProjectProTab='visao';
   toast('✓ Projeto atualizado');
   render();
 }
