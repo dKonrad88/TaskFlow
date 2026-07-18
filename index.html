@@ -1489,13 +1489,15 @@
   .reun-top-grid{display:grid;grid-template-columns:1fr 1fr 246px;gap:14px;margin-bottom:14px;align-items:start}
   @media(max-width:900px){.reun-top-grid{grid-template-columns:1fr}}
   /* 4 cards iguais (2x2), sem esticar um pelo outro */
-  .reun-grid4{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr) minmax(0,320px);gap:20px;align-items:start}
+  .reun-grid4{display:grid;grid-template-columns:minmax(0,158px) minmax(0,300px) minmax(0,1fr) minmax(0,320px);gap:20px;align-items:start}
   .reun-col{display:flex;flex-direction:column;gap:14px;min-width:0}
   /* Painel em 3 colunas: Pauta (order 1) · Tarefas maior no meio (order 2) · Decisões (order 3) */
   .reun-col-pauta{order:1}
   .reun-col-tarefas{order:2}
   .reun-col-dec{order:3}
-  @media(max-width:1040px){.reun-grid4,body.reun-focus .reun-grid4{grid-template-columns:1fr}}
+  /* (jul/2026) O @media de 1040px foi p/ DEPOIS da regra do modo foco (lá embaixo): aqui em cima
+     ele era sobrescrito por "body.reun-focus .reun-grid4", que vem depois e tem a mesma
+     especificidade — ou seja, no modo foco o painel NÃO colapsava em tela estreita. */
   /* ── Modo FOCO / tela cheia do Painel de Reunião ── */
   .reun-focus-bar{display:none}
   .reun-focus-rail{display:none}
@@ -1541,7 +1543,16 @@
   @keyframes reunTimerPulse{0%,100%{opacity:1}50%{opacity:.5}}
   .reun-timer-over{animation:reunTimerPulse 1s ease-in-out infinite}
   body.reun-focus .reun-focus-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:60;background:var(--card);border-bottom:1px solid var(--border);padding:11px 30px;margin:0 -30px 26px}
-  body.reun-focus .reun-grid4{grid-template-columns:minmax(0,320px) minmax(0,1fr) minmax(0,340px);max-width:1400px;margin-left:auto;margin-right:auto}
+  body.reun-focus .reun-grid4{grid-template-columns:minmax(0,170px) minmax(0,320px) minmax(0,1fr) minmax(0,340px);max-width:1580px;margin-left:auto;margin-right:auto}
+  /* Coluna 0 — espaço reservado p/ os futuros indicadores da reunião. Some em tela média/estreita
+     (não vale gastar largura útil com um aviso); aí o grid volta a ser de 3 colunas. */
+  .reun-col-kpi{order:0}
+  @media(max-width:1280px){
+    .reun-col-kpi{display:none}
+    .reun-grid4{grid-template-columns:minmax(0,300px) minmax(0,1fr) minmax(0,320px)}
+    body.reun-focus .reun-grid4{grid-template-columns:minmax(0,320px) minmax(0,1fr) minmax(0,340px)}
+  }
+  @media(max-width:1040px){.reun-grid4,body.reun-focus .reun-grid4{grid-template-columns:1fr}}
   /* ── Modo FOCO / tela cheia do Painel de PROJETO (espelha o de Reunião) ── */
   .proj-focus-rail{display:none}
   body.proj-focus .hdr,body.proj-focus .sidebar,body.proj-focus #sidebar-resizer,body.proj-focus .sidebar-resizer,body.proj-focus .topbar,body.proj-focus .fab-create,body.proj-focus .fab-menu{display:none!important}
@@ -31150,6 +31161,12 @@ function openReuniaoView(id, _opts){
 
       <!-- 3 colunas (via CSS order): Pauta (1) · Tarefas maior no meio (2) · Decisões (3). Rápida esconde Pauta+Decisões e deixa Tarefas full-width -->
       <div class="reun-grid4" style="${m.nivel==='rapida'?'grid-template-columns:1fr':''}">
+
+        <div class="reun-col reun-col-kpi" style="${m.nivel==='rapida'?'display:none':''}"><!-- COL 0: reservada p/ indicadores -->
+          <div style="font-size:11.5px;color:var(--text3);line-height:1.65;padding:2px 2px 0">
+            Espaço reservado para os indicadores desta reunião.
+          </div>
+        </div>
 
         <div class="reun-col reun-col-pauta" style="${m.nivel==='rapida'?'display:none':''}"><!-- COL PAUTA (order 1) -->
 
