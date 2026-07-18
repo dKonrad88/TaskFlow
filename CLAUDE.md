@@ -102,6 +102,24 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (b) — PC da Empresa — Painel de Reunião: respiros, decisões sem duplicar, histórico invertido, ORDEM DOS ÍCONES (commit `b84ab7b`)
+- Leva de 8 ajustes do Diego testando o Painel no Pages (continuação da entrada (a) abaixo):
+- **Subtítulo removido**: "Pauta, tarefas, decisões e registro do encontro" era só explicativo. ⚠️ O `#tab-sub` é **compartilhado** por todas as telas —
+  quem **devolve** o subtítulo ao sair é o próprio **`_tabBackSet('')`** (já chamado em toda saída do painel). Quem esconde de propósito
+  (`renderProjetosPro`) roda DEPOIS e volta a esconder. Se criar tela nova que esconda o subtítulo, lembrar dessa interação.
+- **ESPAÇOS** (4 ajustes): vão **acima** do header reduzido (`.reun-panel-wrap` padding-top **22→6** — sobrava desde que o "Voltar" subiu p/ a topbar);
+  respiro **header→cards** aumentado (sub-navbar margin-bottom **18→28** no normal; `.reun-focus-bar` margin-bottom **16→26** no foco, que não tem
+  sub-navbar); **gap entre as 3 colunas 14→20** ("levemente"); separação **"Da reunião anterior" × "Novas tarefas" 26→40**.
+- **Card "Decisões anteriores"**: tirado o **nome da reunião** (redundante — já estamos no painel dela) e a data virou **dd/mm/aaaa + nowrap**
+  (a longa "16 de jul. de 2026" quebrava em 2 linhas na coluna de 320px).
+- **Histórico da série INVERTIDO** (mais recente primeiro): `.reverse()` **só na exibição** — o número do círculo continua sendo o `i+1` original,
+  ou seja, a **posição cronológica** (1 = a primeira reunião da série). Subtítulo do card ajustado p/ "da mais nova à mais antiga".
+- ⭐ **ORDEM DOS ÍCONES redesenhada** (o Diego perguntou se a sequência fazia sentido) — agora por **momento de uso**, e **idêntica** na trilha do
+  foco e na sub-navbar: **TRABALHO** (Painel · Pessoas) → **REGISTRO** (ATA · Anexos) → **CONSULTA da série** (Decisões · Histórico) →
+  **REFERÊNCIA/CONFIG** (Info · Editar). **Info desceu da 3ª p/ a 7ª** (é dado fixo, consultado raramente, e ocupava lugar nobre); ATA/Anexos subiram;
+  Decisões antes de Histórico (decisão é mais acionável que a lista de reuniões). **Se mexer numa lista, mexer na outra** (conferi por grep que batem).
+- ⚠️ **NÃO testado em navegador.** Balanço de parênteses/chaves/backticks/divs **idêntico ao HEAD**; ordem das abas conferida batendo nos 2 lugares.
+
 ### 2026-07-18 — PC da Empresa — Painel de Reunião: cabeçalho enxuto (infos só na aba Info, Voltar na topbar, ações reagrupadas) (commit `5ea40b8`)
 - 3 ajustes que o Diego pediu olhando o print do Painel:
 - **1) Linha de data/hora/sala/conduz sob o título REMOVIDA** — "não precisa, pois tem na aba Info já". Saíram junto as consts que só serviam a ela
