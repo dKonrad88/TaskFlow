@@ -1504,6 +1504,19 @@
   body.reun-focus #task-container{position:fixed;inset:0;z-index:500;overflow-y:auto;overflow-x:hidden;background:var(--bg);padding:0}
   body.reun-focus .reun-panel-wrap{max-width:none!important;padding:0 30px 40px!important;margin-left:74px!important;margin-right:0!important}
   body.reun-focus .reun-voltar-btn,body.reun-focus .reun-normal-header,body.reun-focus .reun-subtabs,body.reun-focus .reun-subtabs-wrap{display:none!important}
+  /* Bloco de Anotações do painel (contenteditable simples) */
+  .anot-body{min-height:150px;max-height:430px;overflow-y:auto;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);font-size:13px;line-height:1.65;color:var(--text);outline:none;font-family:inherit}
+  .anot-body:focus{border-color:var(--blue-mid)}
+  .anot-body h3{font-size:16.5px;font-weight:800;margin:10px 0 4px;color:var(--text)}
+  .anot-body h4{font-size:14px;font-weight:700;margin:8px 0 3px;color:var(--text)}
+  .anot-body p,.anot-body div{margin:2px 0}
+  .anot-body ol,.anot-body ul{margin:4px 0;padding-left:22px}
+  .anot-body input[type=checkbox]{margin-right:6px;vertical-align:middle;cursor:pointer;accent-color:var(--blue-mid);width:14px;height:14px}
+  .anot-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--text2);padding:3px 8px;cursor:pointer;font-size:11.5px;font-family:inherit;transition:all .12s;display:inline-flex;align-items:center;gap:4px;line-height:1.4}
+  .anot-btn:hover{border-color:var(--blue-mid);color:var(--blue-mid)}
+  .anot-cor{width:19px;height:19px;border-radius:50%;border:2px solid var(--border);cursor:pointer;padding:0;flex-shrink:0;transition:transform .12s}
+  .anot-cor:hover{transform:scale(1.18)}
+  .anot-sep{width:1px;height:16px;background:var(--border);margin:0 3px;flex-shrink:0}
   /* Aba Pessoas: 2 cards lado a lado — Disponíveis (esquerda) → Participantes (direita). */
   .reun-pessoas-2col{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
   @media(max-width:860px){.reun-pessoas-2col{grid-template-columns:1fr}}
@@ -31164,6 +31177,7 @@ function openReuniaoView(id, _opts){
             <i class="ti ti-plus"></i> Adicionar assunto
           </button>
         </div>
+        ${m.nivel==='rapida'?'':_reunAnotacoesHTML(m)}
         </div><!-- /COL PAUTA -->
 
         <div class="reun-col reun-col-dec" style="${m.nivel==='rapida'?'display:none':''}"><!-- COL DECISÕES (order 3) -->
@@ -31323,6 +31337,8 @@ function openReuniaoView(id, _opts){
 // SEM abrir modal. Chamado pela trilha do foco e pelos ícones do cabeçalho normal.
 function _reunSetSubView(id, view){
   const prev=window._reunSubView;
+  // Flush das ANOTAÇÕES ao sair do Painel (elas vivem lá e só salvam com debounce de 500ms).
+  if(prev==='painel' && typeof _anotSalvar==='function') _anotSalvar(id);
   // Flush da ATA ao sair dela (evita perder texto digitado e não salvo por blur)
   if(prev==='ata'){
     const m=meetings.find(x=>x.id===id);
@@ -31610,10 +31626,86 @@ function _pautaAplicarModelo(mId, modId){
   const mod=(typeof REUNIAO_MODELOS!=='undefined'?REUNIAO_MODELOS:[]).find(x=>x.id===modId); if(!mod) return;
   m.pautaPrincipal=mod.pautaPrincipal||''; m.pautaPrincipalDone=false;
   m.pauta=[...(mod.pauta||[])]; m.pautaDone=(mod.pauta||[]).map(()=>false);
+  // Modelo troca a pauta INTEIRA → refaz o mapa de autores: quem aplicou "trouxe" esses assuntos.
+  m.pautaAutor={}; (m.pauta||[]).forEach(txt=>_pautaSetAutor(m, txt, CURRENT_USER_ID));
   saveMeeting_db(m); window._pautaPrincEd=null; _pautaRefresh(mId);
   if(typeof toast==='function') toast('📋 Modelo aplicado: '+mod.nome);
 }
 
+// ── ANOTAÇÕES da reunião (bloco de notas do painel) ─────────────────────────────
+// contenteditable + execCommand (mesmo padrão do editor de Notas do HUB). Guarda HTML em
+// m.anotacoes.
+// ⚠️ O PAINEL re-renderiza inteiro em várias ações (marcar pauta, concluir tarefa, add decisão) —
+// o que não estiver salvo nesse instante se perde. Por isso: debounce CURTO (500ms) no oninput,
+// + flush no blur e ao trocar de sub-aba (_reunSetSubView), como já se faz com a ATA.
+// NUNCA chamar openReuniaoView aqui: re-render a cada tecla mataria foco e cursor.
+let _anotTimer=null;
+function _anotSalvarDeb(mid){ if(_anotTimer) clearTimeout(_anotTimer); _anotTimer=setTimeout(()=>_anotSalvar(mid),500); }
+function _anotSalvar(mid){
+  if(_anotTimer){ clearTimeout(_anotTimer); _anotTimer=null; }
+  const el=document.getElementById('anot-body-'+mid); if(!el) return;
+  const m=meetings.find(x=>x.id===mid); if(!m) return;
+  const html=el.innerHTML;
+  if((m.anotacoes||'')===html) return; // nada mudou → não grava à toa
+  m.anotacoes=html;
+  saveMeeting_db(m);
+}
+// onmousedown="event.preventDefault()" nos botões da barra impede que o clique roube o foco
+// do editor — sem isso a seleção some e o execCommand não tem em que aplicar.
+function _anotCmd(mid,cmd,val){
+  const el=document.getElementById('anot-body-'+mid); if(!el) return;
+  el.focus();
+  try{ document.execCommand(cmd,false,val||null); }catch(e){}
+  _anotSalvarDeb(mid);
+}
+function _anotCheck(mid){
+  const el=document.getElementById('anot-body-'+mid); if(!el) return;
+  el.focus();
+  // toggleAttribute grava o estado NO HTML: sem isso, marcar o check não sobreviveria ao salvar.
+  const chk='<div><input type="checkbox" onclick="this.toggleAttribute(\'checked\')">&nbsp;</div>';
+  try{ document.execCommand('insertHTML',false,chk); }catch(e){}
+  _anotSalvarDeb(mid);
+}
+// Barra + área de digitação. Cores em hex (foreColor não aceita var(--x)); os 5 tons escolhidos
+// têm contraste suficiente no tema claro e no escuro.
+function _reunAnotacoesHTML(m){
+  const cor=(hex,nome)=>`<button class="anot-cor" onmousedown="event.preventDefault()" onclick="_anotCmd('${m.id}','foreColor','${hex}')" title="${nome}" style="background:${hex}"></button>`;
+  return `<div class="reun-card4" style="margin-top:14px">
+    <div class="reun-card4-title"><span><i class="ti ti-notes" style="color:var(--text2)"></i> Anotações</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:-2px 0 8px">
+      <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCmd('${m.id}','bold')" title="Negrito" style="font-weight:800;min-width:26px;justify-content:center">B</button>
+      <div class="anot-sep"></div>
+      <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCmd('${m.id}','formatBlock','H3')" title="Título" style="font-weight:800">Título</button>
+      <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCmd('${m.id}','formatBlock','H4')" title="Subtítulo" style="font-weight:700;font-size:11px">Subtítulo</button>
+      <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCmd('${m.id}','formatBlock','P')" title="Texto normal" style="font-size:11px">Texto</button>
+      <div class="anot-sep"></div>
+      <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCmd('${m.id}','insertOrderedList')" title="Lista numerada"><i class="ti ti-list-numbers" style="font-size:14px"></i></button>
+      <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCheck('${m.id}')" title="Item com check"><i class="ti ti-checkbox" style="font-size:14px"></i></button>
+      <div class="anot-sep"></div>
+      ${cor('#2563eb','Azul')}${cor('#16a34a','Verde')}${cor('#d97706','Laranja')}${cor('#dc2626','Vermelho')}${cor('#7c3aed','Roxo')}
+      <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCmd('${m.id}','removeFormat')" title="Limpar formatação"><i class="ti ti-clear-formatting" style="font-size:14px"></i></button>
+    </div>
+    <div id="anot-body-${m.id}" class="anot-body" contenteditable="true" placeholder="Anote aqui o que precisar durante a reunião..." oninput="_anotSalvarDeb('${m.id}')" onblur="_anotSalvar('${m.id}')">${m.anotacoes||''}</div>
+  </div>`;
+}
+
+// AUTOR do assunto da pauta — quem TROUXE o assunto pra reunião.
+// ⚠️ Guardado como MAPA POR TEXTO (m.pautaAutor={texto:pessoaId}), NÃO como array paralelo:
+// m.pauta/m.pautaDone já são 2 arrays alinhados por índice e são mexidos em ~9 lugares; um
+// terceiro array desalinharia em silêncio (o autor apareceria no assunto errado). Por texto o
+// vínculo é imune a splice/reordenação e ainda sobrevive de graça ao carry-over p/ a próxima
+// reunião (que copia os TEXTOS pendentes). Item antigo, sem entrada no mapa, fica sem autor.
+function _pautaSetAutor(m, txt, pid){
+  if(!m || !txt) return;
+  if(!m.pautaAutor || typeof m.pautaAutor!=='object') m.pautaAutor={};
+  m.pautaAutor[txt]=pid||CURRENT_USER_ID;
+}
+function _pautaAutorNome(m, txt){
+  const pid=(m.pautaAutor||{})[txt];
+  if(!pid) return '';
+  const p=people.find(x=>x.id===pid);
+  return p?(p.name||''):'';
+}
 function reunPautaHTML(m){
   const encerrada=m.status==='encerrada';
   const editando=window._pautaPrincEd===m.id;
@@ -31643,12 +31735,26 @@ function reunPautaHTML(m){
       <span style="font-size:11px;color:var(--text3)">o assunto mais importante</span>
     </button>`;
   }
-  // Demais itens da pauta
+  // Demais itens da pauta — agrupados/ordenados por QUEM TROUXE o assunto.
   let restHTML='';
   if((m.pauta||[]).length){
-    restHTML=(m.pauta||[]).map((txt,i)=>{
+    // ⚠️ Ordena só a EXIBIÇÃO: o índice ORIGINAL (i) continua indo nos handlers, senão
+    // marcar/remover atingiria o assunto errado (pauta/pautaDone são arrays por índice).
+    const _itens=(m.pauta||[]).map((txt,i)=>({txt,i,nome:_pautaAutorNome(m,txt)}));
+    _itens.sort((a,b)=>{
+      if(!a.nome && b.nome) return 1;   // sem autor (itens antigos) vão pro fim
+      if(a.nome && !b.nome) return -1;
+      const c=a.nome.localeCompare(b.nome,'pt-BR'); if(c) return c;
+      return a.txt.localeCompare(b.txt,'pt-BR');
+    });
+    let _ultimoNome=null;
+    restHTML=_itens.map(({txt,i,nome})=>{
       const done=(m.pautaDone||[])[i];
-      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      // Cabecinha do autor: só na 1ª linha de cada pessoa (não repete em todas).
+      const _sep=(nome!==_ultimoNome);
+      _ultimoNome=nome;
+      const _cab=_sep?`<div style="display:flex;align-items:center;gap:5px;margin:10px 0 3px;font-size:10.5px;font-weight:700;color:var(--text3)"><i class="ti ti-${nome?'user':'help-circle'}" style="font-size:12px"></i> ${nome?escapeHTML(nome):'sem autor'}</div>`:'';
+      return `${_cab}<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
         <div role="checkbox" tabindex="0" aria-checked="${done?'true':'false'}" aria-label="Concluir item da pauta" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click();}" onclick="togglePautaItem('${m.id}',${i})" style="width:18px;height:18px;border-radius:4px;border:2px solid ${done?'var(--blue-mid)':'var(--border)'};background:${done?'var(--blue-mid)':'transparent'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s">
           ${done?'<i class="ti ti-check" style="font-size:10px;color:#fff"></i>':''}
         </div>
@@ -31728,6 +31834,7 @@ function pautaConfirmarAdd(meetingId){
   if(!m) return;
   if(!m.pauta) m.pauta=[];
   m.pauta.push(txt);
+  _pautaSetAutor(m, txt, CURRENT_USER_ID); // quem trouxe o assunto
   saveMeeting_db(m);
   const wrap=document.getElementById('pauta-view-'+meetingId);
   if(wrap) wrap.innerHTML=reunPautaHTML(m);
@@ -32078,7 +32185,7 @@ function _plaudLinhaPara(id,tipo,idx){
   const m=meetings.find(x=>x.id===id); if(!m) return;
   const txt=(window._plaudLinhas||[])[idx]; if(!txt) return;
   if(tipo==='pauta'){
-    if(!m.pauta) m.pauta=[]; m.pauta.push(txt); saveMeeting_db(m);
+    if(!m.pauta) m.pauta=[]; m.pauta.push(txt); _pautaSetAutor(m, txt, CURRENT_USER_ID); saveMeeting_db(m);
     const w=document.getElementById('pauta-view-'+id); if(w) w.innerHTML=reunPautaHTML(m);
   } else if(tipo==='decisao'){
     if(!m.decisoesItens) m.decisoesItens=[]; m.decisoesItens.push({texto:txt,data:today,autorId:CURRENT_USER_ID}); saveMeeting_db(m);
@@ -32343,11 +32450,13 @@ function _gerarProximaRecorrente(m, opts){
   }
   const novaData=(_recGerarDatas(m.date,_rec)||[])[0];
   if(!novaData) return null;
-  let pauta=[], pautaDone=[], pautaPrincipal='';
+  let pauta=[], pautaDone=[], pautaPrincipal='', pautaAutor={};
   if(opts.migrarPauta){
     (m.pauta||[]).forEach((txt,i)=>{ if(!(m.pautaDone||[])[i]) pauta.push(txt); });
     pautaDone=pauta.map(()=>false);
     pautaPrincipal=(!m.pautaPrincipalDone&&m.pautaPrincipal)?m.pautaPrincipal:'';
+    // Assunto migrado mantém QUEM o trouxe (só o que tinha autor registrado).
+    pauta.forEach(txt=>{ const a=(m.pautaAutor||{})[txt]; if(a) pautaAutor[txt]=a; });
   }
   const nova={
     id:'reun'+Date.now()+Math.floor(Math.random()*1000),
@@ -32360,7 +32469,7 @@ function _gerarProximaRecorrente(m, opts){
     rec:_rec?JSON.parse(JSON.stringify(_rec)):null,
     serieId:m.serieId||null, serieIdx:(Number(m.serieIdx)||1)+1,
     participantes:[...(m.participantes||[])], projetos:[...(m.projetos||[])],
-    pautaPrincipal, pautaPrincipalDone:false, pauta, pautaDone,
+    pautaPrincipal, pautaPrincipalDone:false, pauta, pautaDone, pautaAutor,
     ata:'', decisoes:'', decisoesItens:[], presencas:{}, inicioReal:null, fimReal:null, tarefas:[],
     continuacaoDe:m.id, createdAt:today
   };
@@ -32398,7 +32507,9 @@ function reagendarProxima(meetingId, novaData, horaIni, horaFim){
     const _pend=[]; (m.pauta||[]).forEach((txt,i)=>{ if(!(m.pautaDone||[])[i]) _pend.push(txt); });
     if(!Array.isArray(_jaTem.pauta)) _jaTem.pauta=[];
     if(!Array.isArray(_jaTem.pautaDone)) _jaTem.pautaDone=_jaTem.pauta.map(()=>false);
-    _pend.forEach(txt=>{ if(_jaTem.pauta.indexOf(txt)<0){ _jaTem.pauta.push(txt); _jaTem.pautaDone.push(false); } });
+    // Assunto que atravessa p/ a próxima mantém QUEM o trouxe (só copia se havia autor registrado —
+    // sem isso, item antigo sem autor seria atribuído a quem encerrou a reunião).
+    _pend.forEach(txt=>{ if(_jaTem.pauta.indexOf(txt)<0){ _jaTem.pauta.push(txt); _jaTem.pautaDone.push(false); const _a=(m.pautaAutor||{})[txt]; if(_a) _pautaSetAutor(_jaTem, txt, _a); } });
     if(m.pautaPrincipal && !m.pautaPrincipalDone && !(_jaTem.pautaPrincipal&&_jaTem.pautaPrincipal.trim())){ _jaTem.pautaPrincipal=m.pautaPrincipal; _jaTem.pautaPrincipalDone=false; }
     saveMeeting_db(_jaTem);
     if(m.status!=='encerrada'){ m.duracaoSeg=_reunElapsedSec(m); m.pausadoReuniao=false; m.status='encerrada'; if(!m.fimReal) m.fimReal=new Date().toISOString(); saveMeeting_db(m); }
@@ -33806,6 +33917,7 @@ function adicionarAPautaReuniao(taskId){
     if(!m){close();if(typeof toast==='function')toast('⚠️ Reunião não encontrada');return;}
     if(!m.pauta)m.pauta=[];
     m.pauta.push(t.title||'Tarefa');
+    if(typeof _pautaSetAutor==='function')_pautaSetAutor(m, t.title||'Tarefa', CURRENT_USER_ID);
     if(typeof saveMeeting_db==='function')saveMeeting_db(m);
     var mTitle=escapeHTML(m.title||m.titulo||'Reunião');
     close();
