@@ -102,6 +102,18 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (d) — PC da Empresa — FIX de REGRESSÃO: voltar da série sumia no modo foco + botões de Decisões padronizados (commit `caae671`)
+- 🔴 **REGRESSÃO MINHA (do `5ea40b8`, entrada (a) de hoje):** ao mover o "Voltar" p/ a topbar, o **voltar da SÉRIE foi junto** — e no modo foco
+  **a topbar inteira é escondida por CSS** (`body.reun-focus .topbar{display:none}`). Resultado: o Diego abriu uma reunião anterior pelo card
+  "Decisões anteriores" **dentro do modo foco** e ficou **SEM SAÍDA** (o botão "Sair" só desliga o foco, não desempilha a série).
+  - **Fix:** o nome da reunião anterior passa a ser calculado 1× (**`_serieAnteriorNome`**) e alimenta **2 botões**: o da topbar (modo normal,
+    como estava) e um **DISCRETO no canto superior esquerdo da `.reun-focus-bar`** (**`_voltarSerieFoco`** — ícone + "Voltar", nome completo no tooltip).
+- ⚠️ **LIÇÃO (vale p/ qualquer máquina):** **tudo que for movido p/ a topbar SOME no modo foco.** Antes de mover algo pra lá, conferir se precisa
+  de equivalente na `.reun-focus-bar` ou na trilha lateral. O mesmo vale p/ o Painel de Projeto (`body.proj-focus`).
+- **Botões de "Decisões tomadas" padronizados:** estavam `[Adicionar][Cancelar]` à esquerda, contra `[Cancelar][+ Adicionar]` à direita em Pauta e
+  Tarefas. Agora seguem o mesmo padrão dos outros 2 cards (`justify-content:flex-end`, `.btn-modal-cancel` + `.btn-modal-save` com ícone `+`).
+- ⚠️ NÃO testado em navegador. Balanço idêntico ao HEAD (backticks +2 = o template novo, paridade mantida).
+
 ### 2026-07-18 (c) — PC da Empresa — Reunião: aba PESSOAS em 2 colunas + data da tarefa EDITÁVEL (commit `b448628`)
 - ⭐ **ABA PESSOAS REDESENHADA** (`_reunPessoasInlineHTML` reescrita) — o layout antigo era **um grid só** onde o mesmo card misturava
   "está selecionado?" e "compareceu?", o que confundia. Agora são **2 CARDS lado a lado**:
