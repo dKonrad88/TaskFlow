@@ -102,6 +102,28 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (c) — PC da Empresa — Reunião: aba PESSOAS em 2 colunas + data da tarefa EDITÁVEL (commit `b448628`)
+- ⭐ **ABA PESSOAS REDESENHADA** (`_reunPessoasInlineHTML` reescrita) — o layout antigo era **um grid só** onde o mesmo card misturava
+  "está selecionado?" e "compareceu?", o que confundia. Agora são **2 CARDS lado a lado**:
+  - **Esquerda "Disponíveis"** — quem ainda não participa, **SEM checkbox**: o clique na pessoa **já é a ação**, ela pula pro card da direita
+    (seta → aparece no hover). Quem participa com frequência (2+ reuniões, via `_reunFreqMap`) sobe ao topo, com estrela.
+  - **Direita "Participantes"** — agrupados por **PAPEL, com título e contador** (Organizador → Editor → Leitor), alfabético dentro do grupo.
+    O **check da FRENTE agora é PRESENÇA** (compareceu no dia). Sair da reunião = **botão × no fim da linha**.
+  - CSS novo: **`.reun-pessoas-2col`** (colapsa em 1 coluna abaixo de 860px) + `.reun-pessoa-disp`/`.reun-add-seta`.
+  - ⚠️ A aba Pessoas do **PROJETO** (`renderProjectProPessoas`, ~27040) **NÃO foi mexida** — segue no layout antigo (grid único com check).
+    Se o Diego gostar deste, vale espelhar lá p/ ficarem iguais.
+- 🐛 **BUG LATENTE corrigido junto:** tirar alguém da reunião **não limpava** `facilitador`/`organizador`/`papeis`/`presencas` → a aba Info seguia
+  mostrando **"Conduz: Fulano" com o Fulano fora da reunião**. Era pré-existente, mas o × dedicado tornou fácil de alcançar → `_toggleParticipanteReuniao`
+  agora limpa os 4 campos ao remover.
+- **DATA DA TAREFA EDITÁVEL** (pedido: "algumas coisas podem mudar no meio do caminho"): clicar na data abre o **date picker nativo**, reusando o
+  caminho do resto do HUB (`abrirDatePickerTarefa(id, this)` → `changeDate` → `refreshUI`, que reabre o painel). Vale p/ tarefas **novas E herdadas**
+  da reunião anterior. Sem data, aparece um **ícone de calendário clicável** no lugar do vazio.
+- **Tarefas "da reunião anterior": título da reunião REMOVIDO** (é sempre a mesma série → ruído). **Mantida só a DATA** — é o que distingue de qual
+  ocorrência a tarefa veio (no teste do Diego havia tarefas de 16/jul e 17/jul juntas). ⚠️ Isso REVERTE em parte o `cabe0df` (16/07 g), que tinha
+  ADICIONADO o nome; a informação útil (a data) ficou.
+- ⚠️ **NÃO testado em navegador.** Balanço de delimitadores idêntico ao HEAD; conferido que as 7 funções referenciadas existem e que não sobrou
+  resquício das vars da função reescrita (os `_ppl`/`gridRows` que o grep acha são de `renderProjectProPessoas` e do modal `abrirPresencaReuniao` [SUPERSEDED]).
+
 ### 2026-07-18 (b) — PC da Empresa — Painel de Reunião: respiros, decisões sem duplicar, histórico invertido, ORDEM DOS ÍCONES (commit `b84ab7b`)
 - Leva de 8 ajustes do Diego testando o Painel no Pages (continuação da entrada (a) abaixo):
 - **Subtítulo removido**: "Pauta, tarefas, decisões e registro do encontro" era só explicativo. ⚠️ O `#tab-sub` é **compartilhado** por todas as telas —
