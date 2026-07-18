@@ -1503,7 +1503,12 @@
   body.reun-focus .hdr,body.reun-focus .sidebar,body.reun-focus #sidebar-resizer,body.reun-focus .sidebar-resizer,body.reun-focus .topbar,body.reun-focus .fab-create,body.reun-focus .fab-menu{display:none!important}
   body.reun-focus #task-container{position:fixed;inset:0;z-index:500;overflow-y:auto;overflow-x:hidden;background:var(--bg);padding:0}
   body.reun-focus .reun-panel-wrap{max-width:none!important;padding:0 30px 40px!important;margin-left:74px!important;margin-right:0!important}
-  body.reun-focus .reun-voltar-btn,body.reun-focus .reun-normal-header,body.reun-focus .reun-subtabs{display:none!important}
+  body.reun-focus .reun-voltar-btn,body.reun-focus .reun-normal-header,body.reun-focus .reun-subtabs,body.reun-focus .reun-subtabs-wrap{display:none!important}
+  /* Alternar tela cheia: ação de VISUALIZAÇÃO → mora na ponta da sub-navbar (junto das abas de view),
+     discreto (ícone fantasma), em vez de disputar espaço com Iniciar/cronômetro/Finalizar. */
+  .reun-focus-toggle{background:none;border:none;color:var(--text3);cursor:pointer;width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;margin-bottom:4px}
+  .reun-focus-toggle:hover{background:var(--bg2);color:var(--text)}
+  .reun-focus-toggle i{font-size:16px}
   /* Trilha lateral de ícones (estilo Fellow) — só na tela cheia */
   body.reun-focus .reun-focus-rail{display:flex;flex-direction:column;align-items:center;gap:3px;position:fixed;left:0;top:0;bottom:0;width:74px;background:var(--card);border-right:1px solid var(--border);padding:12px 0;z-index:70;overflow-y:auto;scrollbar-width:none}
   body.reun-focus .reun-focus-rail::-webkit-scrollbar{display:none}
@@ -2478,6 +2483,9 @@
   <div class="main">
     <div class="topbar">
       <div class="topbar-left">
+          <!-- Navegação de VOLTA (fica ACIMA do título da tela). Preenchido por _tabBackSet();
+               hoje usado pelo Painel de Reunião ("← Voltar às reuniões"). -->
+          <div id="tab-back" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:3px"></div>
           <h2 id="tab-title">📅 Tarefas de Hoje</h2>
           <p id="tab-sub">Preferências de uso do sistema</p>
           <!-- GUILHERME V3 (mai/2026): filtros unificados em UMA linha — projeto + relação juntos -->
@@ -12103,6 +12111,7 @@ function abrirAjuda(){
   const subEl=document.getElementById('tab-sub');
   if(titleEl) titleEl.textContent='❓ Ajuda';
   if(subEl) subEl.textContent='Tudo o que você precisa saber para usar o sistema';
+  _tabBackSet(''); // esta tela troca o header sem passar pelo render()
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -14316,6 +14325,7 @@ function abrirConfiguracoes(keepPrev){
   const subEl=document.getElementById('tab-sub');
   if(titleEl) titleEl.textContent='⚙️ Configurações';
   if(subEl) subEl.textContent='Preferências de uso do sistema';
+  _tabBackSet(''); // esta tela troca o header sem passar pelo render()
 }
 // GUILHERME V3 (mai/2026): "Voltar" das telas profundas (mesmo estilo do "Voltar aos projetos").
 function voltarDasConfiguracoes(){
@@ -16277,6 +16287,9 @@ function _projectById(id){ if(id==null) return undefined; if(_idxProjects&&_idxP
 function _projectProById(id){ if(id==null) return undefined; if(_idxProjectsPro&&_idxProjectsPro.has(id)) return _idxProjectsPro.get(id); return (projectsPro||[]).find(p=>p.id===id); }
 function render(){
   _rebuildIndexes();
+  // A navegação de volta da topbar é por-tela: esconde por padrão e quem precisa reexibe
+  // (hoje só o Painel de Reunião, reaberto logo abaixo no ramo 'reunioes').
+  _tabBackSet('');
   // Salvaguarda do modo foco: se saiu do Painel de Reunião por qualquer caminho, desliga o fullscreen.
   if(window._reunFocus && (typeof hubView==='undefined' || hubView!=='taskflow' || currentTab!=='reunioes' || !window._activeReuniaoId)){
     window._reunFocus=false; document.body.classList.remove('reun-focus');
@@ -29253,6 +29266,7 @@ function renderReunioes(){
   const container=document.getElementById('task-container');
   // Título do topo de volta ao normal
   const _tt=document.getElementById('tab-title'); if(_tt) _tt.textContent='📅 Reuniões';
+  _tabBackSet(''); // saiu do painel (o botão "Voltar" chama esta função direto, sem passar pelo render)
   const _ts=document.getElementById('tab-sub'); if(_ts && !sidebarPersonId) _ts.textContent='Hub de reuniões — histórico, pauta e ATA';
   // GUILHERME V3: removido botão "+ Nova Reunião" da subnavbar. Criação via FAB → openReuniaoModal().
   // Se cair em 'nova'/'editar' por compatibilidade legada, redireciona para o modal.
@@ -30926,6 +30940,17 @@ function _initReunColResizer(){
   rez.addEventListener('dblclick',()=>{ _applyReunColW(REUN_COL1_DEFAULT); try{ safeSetItem(LS_REUN_COL1_W,String(REUN_COL1_DEFAULT)); }catch(e){} });
 }
 
+// Navegação de VOLTA na topbar, ACIMA do título da tela (ex.: "← Voltar às reuniões" sobre
+// "Painel de Reunião"). Passar html vazio/omitido ESCONDE — quem sai da tela é responsável por
+// limpar (chamado no render(), no renderReunioes() e nas telas que trocam o header sem passar
+// pelo render(): Ajuda e Configurações).
+function _tabBackSet(html){
+  const el=document.getElementById('tab-back');
+  if(!el) return;
+  if(html){ el.innerHTML=html; el.style.display='flex'; }
+  else { el.innerHTML=''; el.style.display='none'; }
+}
+
 // _opts.serie=true → navegação dentro da série (não zera a pilha de "voltar").
 function openReuniaoView(id, _opts){
   const m=meetings.find(x=>x.id===id);
@@ -30940,19 +30965,15 @@ function openReuniaoView(id, _opts){
   if(!window._reunSubView) window._reunSubView='painel';
   const _sv=window._reunSubView;
   const _railActive=(v)=>_sv===v?'background:color-mix(in srgb,var(--blue-mid) 12%,transparent);color:var(--blue-mid)':'';
-  const _icoActive=(v)=>_sv===v?'background:color-mix(in srgb,var(--blue-mid) 12%,transparent);border-color:var(--blue-mid);color:var(--blue-mid)':'';
+  // (jul/2026) _icoActive removido: ficou órfão quando os ícones do cabeçalho viraram sub-navbar.
   const container=document.getElementById('task-container');
   const st=REUN_STATUS[m.status]||REUN_STATUS.agendada;
-  const dateLabel=m.date?new Date(m.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}):'';
 
-  // Presenças (usadas no placar X/Y do cabeçalho e da barra de foco)
+  // Presenças (usadas no placar X/Y da barra de foco)
   const presencas=m.presencas||{};
   // (jul/2026) partsHTML/projHTML/proxDataTxt/contLabel eram computados aqui sem uso — removidos.
-
-  // Hora / Local / Facilitador
-  const horaTxt=(m.horaInicio&&m.horaFim)?`${m.horaInicio} – ${m.horaFim}`:(m.horaInicio||'');
-  const localTxt=_reunLocalLabel(m);
-  const facilitadorObj=m.facilitador?people.find(x=>x.id===m.facilitador):null;
+  // (jul/2026) dateLabel/horaTxt/localTxt/facilitadorObj saíram junto com a linha de data/hora/sala/
+  // conduz que ficava sob o título — essas informações vivem na aba "Info" (não repetir no cabeçalho).
   const presentesCount=(m.participantes||[]).filter(pid=>presencas[pid]===true).length;
   const totalParts=(m.participantes||[]).length;
 
@@ -30963,15 +30984,12 @@ function openReuniaoView(id, _opts){
     if(!st.length) return '';
     const prevM=meetings.find(x=>x.id===st[st.length-1]);
     const nome=prevM?(prevM.title||'reunião'):'reunião';
-    return `<button onclick="_reunVoltarSerie()" style="background:color-mix(in srgb,var(--blue-mid) 10%,transparent);border:1px solid var(--blue-mid);color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;margin-bottom:12px"><i class="ti ti-arrow-back-up"></i> Voltar para ${escapeHTML(nome)}</button>`;
+    return `<button onclick="_reunVoltarSerie()" style="background:color-mix(in srgb,var(--blue-mid) 10%,transparent);border:1px solid var(--blue-mid);color:var(--blue-mid);cursor:pointer;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:8px"><i class="ti ti-arrow-back-up"></i> Voltar para ${escapeHTML(nome)}</button>`;
   })();
+  // (jul/2026) A navegação de volta saiu de dentro do painel e subiu p/ a topbar, ACIMA do título
+  // "Painel de Reunião" (injetada por _tabBackSet mais abaixo, junto com o título).
+  const _voltarListaBtn=`<button class="reun-voltar-btn" onclick="window._reunNavStack=[];document.body.classList.remove('reun-focus');window._reunFocus=false;window._activeReuniaoId=null;editingReuniaoId=null;window._reunSubView='painel';renderReunioes()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;padding:0"><i class="ti ti-arrow-left"></i> Voltar às reuniões</button>`;
   document.getElementById('task-container').innerHTML=`<div class="reun-panel-wrap" style="padding-top:22px;padding-bottom:40px;max-width:1500px;margin:0 auto">
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
-    <button class="reun-voltar-btn" onclick="window._reunNavStack=[];document.body.classList.remove('reun-focus');window._reunFocus=false;window._activeReuniaoId=null;editingReuniaoId=null;window._reunSubView='painel';renderReunioes()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;padding:0">
-      <i class="ti ti-arrow-left"></i> Voltar às reuniões
-    </button>
-    ${_voltarSerie}
-    </div>
     <div style="width:100%">
 
       <!-- Barra do modo FOCO (só aparece em tela cheia) -->
@@ -31007,32 +31025,44 @@ function openReuniaoView(id, _opts){
         <span style="font-size:12px;color:var(--text3);font-weight:600"><i class="ti ti-users" style="font-size:13px"></i> ${presentesCount}/${totalParts} presentes</span>
       </div>
 
-      <!-- Cabeçalho: título + meta · AÇÕES à direita (play/timer/foco/finalizar). As VIEWS estão na sub-navbar abaixo. -->
+      <!-- Cabeçalho: título + status · AÇÕES à direita. (jul/2026) Data/hora/sala/quem conduz saíram
+           daqui — vivem na aba "Info" (não repetir). Iniciar+cronômetro viraram UM bloco (antes eram
+           2 pills soltas, "jogadas"); alternar tela cheia (⛶) desceu p/ a ponta da sub-navbar, que é
+           onde moram as ações de VISUALIZAÇÃO. Sobram 2 blocos: controle de tempo | Finalizar. -->
       <div class="reun-normal-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px">
-        <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
-          <div style="display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap">
-            <span style="font-size:20px;font-weight:800;color:var(--text)">${/^\s*reuni/i.test(m.title||'')?escapeHTML(m.title):'Reunião — '+escapeHTML(m.title)}</span>
-            <span class="reun-status ${st.cls}" style="font-size:10px">${st.label}</span>
-            ${m.nivel==='rapida'?`<span style="font-size:10px;font-weight:800;color:var(--purple);background:color-mix(in srgb,var(--purple) 14%,transparent);padding:2px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-bolt" style="font-size:11px"></i> rápida</span>`:''}
-          </div>
-          <div style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-            <span><i class="ti ti-calendar" style="font-size:12px"></i> ${dateLabel||'Sem data'}</span>
-            ${horaTxt?`<span><i class="ti ti-clock" style="font-size:12px"></i> ${horaTxt}</span>`:''}
-            ${localTxt?`<span><i class="ti ti-map-pin" style="font-size:12px"></i> ${escapeHTML(localTxt)}</span>`:''}
-            ${facilitadorObj?`<span><i class="ti ti-microphone" style="font-size:12px"></i> ${escapeHTML(facilitadorObj.name)}</span>`:''}
-          </div>
+        <div style="display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap">
+          <span style="font-size:20px;font-weight:800;color:var(--text)">${/^\s*reuni/i.test(m.title||'')?escapeHTML(m.title):'Reunião — '+escapeHTML(m.title)}</span>
+          <span class="reun-status ${st.cls}" style="font-size:10px">${st.label}</span>
+          ${m.nivel==='rapida'?`<span style="font-size:10px;font-weight:800;color:var(--purple);background:color-mix(in srgb,var(--purple) 14%,transparent);padding:2px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-bolt" style="font-size:11px"></i> rápida</span>`:''}
         </div>
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-          ${m.status!=='encerrada'?(()=>{const running=m.status==='andamento'&&!m.pausadoReuniao;const lbl=running?'Pausar':(m.pausadoReuniao?'Retomar':'Iniciar');return `<button class="reun-ico" onclick="_toggleReunTimer('${m.id}')" title="${lbl} reunião" style="background:${running?'var(--amber)':'var(--blue-mid)'};border-color:${running?'var(--amber)':'var(--blue-mid)'};color:#fff"><i class="ti ti-player-${running?'pause':'play'}-filled"></i></button>`;})():''}
-          ${m.status==='andamento'?(()=>{const _ov=_reunElapsedSec(m)>_reunPlannedMin(m)*60;const _c=_ov?'var(--danger)':(m.pausadoReuniao?'var(--amber)':'var(--success)');const _bg=_ov?'color-mix(in srgb,var(--danger) 14%,transparent)':(m.pausadoReuniao?'var(--amber-bg)':'var(--success-bg)');return `<span id="reun-cronometro-${m.id}" class="${_ov?'reun-timer-over':''}" style="padding:0 12px;height:34px;font-size:13px;color:${_c};font-weight:700;background:${_bg};border-radius:8px;border:1px solid ${_c};display:inline-flex;align-items:center;gap:5px"><i class="ti ti-${_ov?'alert-triangle':(m.pausadoReuniao?'player-pause':'clock-play')}"></i> <span data-inicio="${m.inicioReal||''}" data-acumulado="${m.tempoAcumulado||0}" data-planned="${_reunPlannedMin(m)}">${_fmtDur(_reunElapsedSec(m))}</span></span>`;})():''}
-          <button class="reun-ico" onclick="_toggleReunFocus()" title="Abrir em tela cheia (foco)"><i class="ti ti-arrows-maximize"></i></button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          ${m.status!=='encerrada'?(()=>{
+            const running=m.status==='andamento'&&!m.pausadoReuniao;
+            const emAnd=m.status==='andamento';
+            const lbl=running?'Pausar':(m.pausadoReuniao?'Retomar':'Iniciar');
+            const _ov=emAnd&&_reunElapsedSec(m)>_reunPlannedMin(m)*60;
+            const _c=_ov?'var(--danger)':(m.pausadoReuniao?'var(--amber)':'var(--success)');
+            const _bg=_ov?'color-mix(in srgb,var(--danger) 14%,transparent)':(m.pausadoReuniao?'var(--amber-bg)':'var(--success-bg)');
+            // ⚠️ O tick (iniciarCronometroReuniao) exige: #reun-cronometro-<id> contendo o [data-inicio]
+            // e tendo o ícone do RELÓGIO como primeiro <i class="ti"> (ele o troca por alert-triangle ao
+            // estourar). Por isso o play fica FORA desse id — só compartilham a moldura.
+            const _btn=`<button onclick="_toggleReunTimer('${m.id}')" title="${lbl} reunião" style="background:${running?'var(--amber)':'var(--blue-mid)'};border:none;color:#fff;cursor:pointer;font-family:inherit;height:34px;padding:0 ${emAnd?'11':'13'}px;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;${emAnd?'align-self:stretch':'border-radius:9px'}"><i class="ti ti-player-${running?'pause':'play'}-filled" style="font-size:14px"></i>${emAnd?'':lbl}</button>`;
+            // Sem cronômetro (ainda não iniciada) o botão JÁ é o bloco — moldura só quando há tempo a exibir.
+            if(!emAnd) return _btn;
+            return `<div style="display:inline-flex;align-items:center;height:34px;border:1px solid var(--border);border-radius:9px;background:var(--card);overflow:hidden">
+              ${_btn}
+              <span id="reun-cronometro-${m.id}" class="${_ov?'reun-timer-over':''}" style="padding:0 12px;align-self:stretch;font-size:13px;color:${_c};font-weight:700;background:${_bg};border-left:1px solid ${_c};display:inline-flex;align-items:center;gap:5px"><i class="ti ti-${_ov?'alert-triangle':(m.pausadoReuniao?'player-pause':'clock-play')}" style="font-size:14px"></i> <span data-inicio="${m.inicioReal||''}" data-acumulado="${m.tempoAcumulado||0}" data-planned="${_reunPlannedMin(m)}">${_fmtDur(_reunElapsedSec(m))}</span></span>
+            </div>`;
+          })():''}
           ${m.status==='encerrada'?`<button class="reun-ico" onclick="gerarPDFReuniao('${m.id}')" title="Gerar PDF da ATA" style="color:var(--danger)" onmouseover="this.style.background='var(--danger)';this.style.color='#fff';this.style.borderColor='var(--danger)'" onmouseout="this.style.background='var(--card)';this.style.color='var(--danger)';this.style.borderColor='var(--border)'"><i class="ti ti-file-download"></i></button>`:''}
           ${m.status!=='encerrada'?`<button class="reun-ico" onclick="concluirReuniao('${m.id}')" title="Finalizar reunião" style="background:var(--success-bg);border-color:var(--success);color:var(--success);width:auto;padding:0 12px;gap:5px"><i class="ti ti-flag-check"></i> <span style="font-size:12.5px;font-weight:700">Finalizar</span></button>`:'<span style="height:34px;padding:0 12px;font-size:12px;color:var(--success);font-weight:700;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-circle-check"></i> Encerrada</span>'}
         </div>
       </div>
       <!-- Sub-navbar (estilo Projetos): as VIEWS como abas horizontais com título -->
       ${(()=>{ const _subtab=(v,label,icon)=>{const at=_sv===v;return `<button onclick="_reunSetSubView('${m.id}','${v}')" style="background:transparent;border:none;border-bottom:2px solid ${at?'var(--blue-mid)':'transparent'};color:${at?'var(--text)':'var(--text3)'};padding:8px 13px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s;display:inline-flex;align-items:center;gap:6px"><i class="ti ${icon}" style="font-size:14px"></i>${label}</button>`;};
-        return `<div class="reun-subtabs" style="display:flex;gap:2px;margin:2px 0 18px;border-bottom:1px solid var(--border);overflow-x:auto;overflow-y:hidden">
+        // Wrapper: abas à esquerda (rolam se não couberem) + ⛶ tela cheia discreto na ponta direita.
+        return `<div class="reun-subtabs-wrap" style="display:flex;align-items:flex-end;gap:8px;margin:2px 0 18px;border-bottom:1px solid var(--border)">
+          <div class="reun-subtabs" style="display:flex;gap:2px;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden">
           ${_subtab('painel','Painel','ti-layout-dashboard')}
           ${_subtab('pessoas','Pessoas','ti-users')}
           ${_subtab('info','Info','ti-info-circle')}
@@ -31041,6 +31071,8 @@ function openReuniaoView(id, _opts){
           ${_subtab('historico','Histórico','ti-history')}
           ${_subtab('decisoes','Decisões','ti-gavel')}
           ${_subtab('editar','Editar','ti-pencil')}
+          </div>
+          <button class="reun-focus-toggle" onclick="_toggleReunFocus()" title="Abrir em tela cheia (foco)"><i class="ti ti-arrows-maximize"></i></button>
         </div>`;
       })()}
       <div id="reun-main-${m.id}">
@@ -31235,6 +31267,8 @@ function openReuniaoView(id, _opts){
   // Título do topo: "Painel de Reunião"
   const _tt=document.getElementById('tab-title'); if(_tt) _tt.textContent='📋 Painel de Reunião';
   const _ts=document.getElementById('tab-sub'); if(_ts) _ts.textContent='Pauta, tarefas, decisões e registro do encontro';
+  // "← Voltar às reuniões" (+ o voltar da série, quando veio de outra reunião) ACIMA do título.
+  _tabBackSet(_voltarListaBtn+_voltarSerie);
   // Se está em andamento, iniciar cronômetro
   if(m.status==='andamento'&&m.inicioReal){
     iniciarCronometroReuniao(id);
