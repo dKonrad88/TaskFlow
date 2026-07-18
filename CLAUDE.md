@@ -137,6 +137,20 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (j) — PC da Empresa — Colunas iguais + ações descem p/ a linha das abas (commits `1775705`,`a97e467`)
+- **Pauta/Anotações e Tarefas com a MESMA largura** (`1775705`): as 2 colunas passaram a dividir o espaço igualmente (`minmax(0,1fr)` cada).
+  Antes a Pauta era FIXA em 300/320px e Tarefas ficava com todo o resto. No foco: Pauta **320→~505px**, Tarefas **690→~505px**.
+  Aplicado nos **3 breakpoints** (base · foco · 1280px) — senão a proporção velha voltaria em tela média. Decisões intocada. Anotações
+  acompanham sozinhas (vivem na coluna da Pauta). ⚠️ A linha de **nova tarefa** (4 campos) é o ponto que mais sente o estreitamento —
+  sobra ~160px p/ a descrição; se apertar, empilhar executor+data numa 2ª linha do form.
+- **Iniciar/Finalizar desceram p/ a linha da SUB-NAVBAR** (`a97e467`), à direita das abas: **[⛶] [Iniciar/cronômetro] [Finalizar]**.
+  O cabeçalho ficou **só com título + status**. O **⛶ vem ANTES do Iniciar** — os 2 botões de ação juntos, sem o expandir "perdido no meio"
+  (a reclamação original de 18/07 (a)). Altura dos botões **34→32px** p/ casar com o ⛶; grupo com `margin-bottom:6px` e o
+  `margin-bottom` do `.reun-focus-toggle` **zerado** (senão somariam). Abas seguem `flex:1`+`overflow-x` e o grupo `flex-shrink:0` →
+  em tela estreita as abas rolam e as ações ficam visíveis.
+- ⚠️ Contrato do cronômetro preservado; conferido por grep que o bloco de ações **não ficou duplicado** (existe 1× na trilha do foco e 1× na sub-navbar).
+- ⚠️ NÃO testado em navegador. Balanço idêntico ao HEAD.
+
 ### 2026-07-18 (i) — PC da Empresa — Barra das Anotações mais discreta (commit `172e64a`)
 - Diego: *"tá chamando atenção demais, as cores principalmente"* (2ª vez que ele pede menos peso visual — ver (h)).
 - **As 5 bolinhas coloridas saíram da barra** → **1 ícone de paleta** que abre um popover com as cores (`_anotCorMenu`).
