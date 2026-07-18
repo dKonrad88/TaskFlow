@@ -30993,13 +30993,21 @@ function openReuniaoView(id, _opts){
 
   // Se cheguei aqui abrindo uma reunião ANTERIOR da série (pelo card "Decisões anteriores"),
   // mostro o caminho de volta pra reunião de onde vim (não só "voltar à lista").
-  const _voltarSerie=(()=>{
+  const _serieAnteriorNome=(()=>{
     const st=window._reunNavStack||[];
-    if(!st.length) return '';
+    if(!st.length) return null;
     const prevM=meetings.find(x=>x.id===st[st.length-1]);
-    const nome=prevM?(prevM.title||'reunião'):'reunião';
-    return `<button onclick="_reunVoltarSerie()" style="background:color-mix(in srgb,var(--blue-mid) 10%,transparent);border:1px solid var(--blue-mid);color:var(--blue-mid);cursor:pointer;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:8px"><i class="ti ti-arrow-back-up"></i> Voltar para ${escapeHTML(nome)}</button>`;
+    return prevM?(prevM.title||'reunião'):'reunião';
   })();
+  const _voltarSerie=_serieAnteriorNome
+    ? `<button onclick="_reunVoltarSerie()" style="background:color-mix(in srgb,var(--blue-mid) 10%,transparent);border:1px solid var(--blue-mid);color:var(--blue-mid);cursor:pointer;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:8px"><i class="ti ti-arrow-back-up"></i> Voltar para ${escapeHTML(_serieAnteriorNome)}</button>`
+    : '';
+  // ⚠️ No modo FOCO a topbar inteira some — sem isto, quem abre uma reunião anterior pelo card
+  // "Decisões anteriores" fica SEM saída (regressão de quando o voltar subiu p/ a topbar).
+  // Versão discreta, no canto superior esquerdo da barra de foco.
+  const _voltarSerieFoco=_serieAnteriorNome
+    ? `<button onclick="_reunVoltarSerie()" title="Voltar para ${escapeHTML(_serieAnteriorNome)}" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:7px;flex-shrink:0;transition:all .15s" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--blue-mid)'" onmouseout="this.style.background='transparent';this.style.color='var(--text3)'"><i class="ti ti-arrow-back-up" style="font-size:15px"></i> Voltar</button>`
+    : '';
   // (jul/2026) A navegação de volta saiu de dentro do painel e subiu p/ a topbar, ACIMA do título
   // "Painel de Reunião" (injetada por _tabBackSet mais abaixo, junto com o título).
   const _voltarListaBtn=`<button class="reun-voltar-btn" onclick="window._reunNavStack=[];document.body.classList.remove('reun-focus');window._reunFocus=false;window._activeReuniaoId=null;editingReuniaoId=null;window._reunSubView='painel';renderReunioes()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;padding:0"><i class="ti ti-arrow-left"></i> Voltar às reuniões</button>`;
@@ -31032,6 +31040,7 @@ function openReuniaoView(id, _opts){
 
       <!-- Barra superior do modo foco (só título + status + timer + presença) -->
       <div class="reun-focus-bar">
+        ${_voltarSerieFoco}
         <span style="font-size:15px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:360px">${/^\s*reuni/i.test(m.title||'')?escapeHTML(m.title):'Reunião — '+escapeHTML(m.title)}</span>
         <span class="reun-status ${st.cls}" style="font-size:10px">${st.label}</span>
         <div id="reun-focus-timer-${m.id}" data-inicio="${m.inicioReal||''}" data-acumulado="${m.tempoAcumulado||0}" data-planned="${_reunPlannedMin(m)}" style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:99px;padding:5px 14px;min-width:210px">
@@ -31164,9 +31173,9 @@ function openReuniaoView(id, _opts){
         const addRow=encerrada ? '' : `
           <div id="decisao-add-row-${m.id}" style="display:none;margin-top:8px">
             <input id="decisao-add-inp-${m.id}" type="text" placeholder="Escreva a decisão tomada..." class="modal-input" style="margin-bottom:6px" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarAddDecisao('${m.id}')}if(event.key==='Escape')cancelarAddDecisao('${m.id}')">
-            <div style="display:flex;gap:6px">
-              <button onclick="confirmarAddDecisao('${m.id}')" class="btn-modal-save" style="padding:5px 12px;font-size:12px">Adicionar</button>
-              <button onclick="cancelarAddDecisao('${m.id}')" style="background:none;border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer">Cancelar</button>
+            <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:4px">
+              <button onclick="cancelarAddDecisao('${m.id}')" class="btn-modal-cancel" style="padding:5px 12px;font-size:12px">Cancelar</button>
+              <button onclick="confirmarAddDecisao('${m.id}')" class="btn-modal-save" style="padding:5px 12px;font-size:12px"><i class="ti ti-plus"></i> Adicionar</button>
             </div>
           </div>
           <button id="decisao-add-btn-${m.id}" onclick="mostrarAddDecisao('${m.id}')" style="margin-top:8px;background:var(--bg2);border:1px dashed var(--border);color:var(--text2);border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;width:100%;justify-content:center" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">
