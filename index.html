@@ -1537,7 +1537,7 @@
   .reun-pessoa-disp:hover .reun-add-seta{opacity:1}
   /* Alternar tela cheia: ação de VISUALIZAÇÃO → mora na ponta da sub-navbar (junto das abas de view),
      discreto (ícone fantasma), em vez de disputar espaço com Iniciar/cronômetro/Finalizar. */
-  .reun-focus-toggle{background:none;border:none;color:var(--text3);cursor:pointer;width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;margin-bottom:4px}
+  .reun-focus-toggle{background:none;border:none;color:var(--text3);cursor:pointer;width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
   .reun-focus-toggle:hover{background:var(--bg2);color:var(--text)}
   .reun-focus-toggle i{font-size:16px}
   /* Trilha lateral de ícones (estilo Fellow) — só na tela cheia */
@@ -31084,38 +31084,12 @@ function openReuniaoView(id, _opts){
         <span style="font-size:12px;color:var(--text3);font-weight:600"><i class="ti ti-users" style="font-size:13px"></i> ${presentesCount}/${totalParts} presentes</span>
       </div>
 
-      <!-- Cabeçalho: título + status · AÇÕES à direita. (jul/2026) Data/hora/sala/quem conduz saíram
-           daqui — vivem na aba "Info" (não repetir). Iniciar+cronômetro viraram UM bloco (antes eram
-           2 pills soltas, "jogadas"); alternar tela cheia (⛶) desceu p/ a ponta da sub-navbar, que é
-           onde moram as ações de VISUALIZAÇÃO. Sobram 2 blocos: controle de tempo | Finalizar. -->
-      <div class="reun-normal-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px">
-        <div style="display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap">
-          <span style="font-size:20px;font-weight:800;color:var(--text)">${/^\s*reuni/i.test(m.title||'')?escapeHTML(m.title):'Reunião — '+escapeHTML(m.title)}</span>
-          <span class="reun-status ${st.cls}" style="font-size:10px">${st.label}</span>
-          ${m.nivel==='rapida'?`<span style="font-size:10px;font-weight:800;color:var(--purple);background:color-mix(in srgb,var(--purple) 14%,transparent);padding:2px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-bolt" style="font-size:11px"></i> rápida</span>`:''}
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          ${m.status!=='encerrada'?(()=>{
-            const running=m.status==='andamento'&&!m.pausadoReuniao;
-            const emAnd=m.status==='andamento';
-            const lbl=running?'Pausar':(m.pausadoReuniao?'Retomar':'Iniciar');
-            const _ov=emAnd&&_reunElapsedSec(m)>_reunPlannedMin(m)*60;
-            const _c=_ov?'var(--danger)':(m.pausadoReuniao?'var(--amber)':'var(--success)');
-            const _bg=_ov?'color-mix(in srgb,var(--danger) 14%,transparent)':(m.pausadoReuniao?'var(--amber-bg)':'var(--success-bg)');
-            // ⚠️ O tick (iniciarCronometroReuniao) exige: #reun-cronometro-<id> contendo o [data-inicio]
-            // e tendo o ícone do RELÓGIO como primeiro <i class="ti"> (ele o troca por alert-triangle ao
-            // estourar). Por isso o play fica FORA desse id — só compartilham a moldura.
-            const _btn=`<button onclick="_toggleReunTimer('${m.id}')" title="${lbl} reunião" style="background:${running?'var(--amber)':'var(--blue-mid)'};border:none;color:#fff;cursor:pointer;font-family:inherit;height:34px;padding:0 ${emAnd?'11':'13'}px;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;${emAnd?'align-self:stretch':'border-radius:9px'}"><i class="ti ti-player-${running?'pause':'play'}-filled" style="font-size:14px"></i>${emAnd?'':lbl}</button>`;
-            // Sem cronômetro (ainda não iniciada) o botão JÁ é o bloco — moldura só quando há tempo a exibir.
-            if(!emAnd) return _btn;
-            return `<div style="display:inline-flex;align-items:center;height:34px;border:1px solid var(--border);border-radius:9px;background:var(--card);overflow:hidden">
-              ${_btn}
-              <span id="reun-cronometro-${m.id}" class="${_ov?'reun-timer-over':''}" style="padding:0 12px;align-self:stretch;font-size:13px;color:${_c};font-weight:700;background:${_bg};border-left:1px solid ${_c};display:inline-flex;align-items:center;gap:5px"><i class="ti ti-${_ov?'alert-triangle':(m.pausadoReuniao?'player-pause':'clock-play')}" style="font-size:14px"></i> <span data-inicio="${m.inicioReal||''}" data-acumulado="${m.tempoAcumulado||0}" data-planned="${_reunPlannedMin(m)}">${_fmtDur(_reunElapsedSec(m))}</span></span>
-            </div>`;
-          })():''}
-          ${m.status==='encerrada'?`<button class="reun-ico" onclick="gerarPDFReuniao('${m.id}')" title="Gerar PDF da ATA" style="color:var(--danger)" onmouseover="this.style.background='var(--danger)';this.style.color='#fff';this.style.borderColor='var(--danger)'" onmouseout="this.style.background='var(--card)';this.style.color='var(--danger)';this.style.borderColor='var(--border)'"><i class="ti ti-file-download"></i></button>`:''}
-          ${m.status!=='encerrada'?`<button class="reun-ico" onclick="concluirReuniao('${m.id}')" title="Finalizar reunião" style="background:var(--success-bg);border-color:var(--success);color:var(--success);width:auto;padding:0 12px;gap:5px"><i class="ti ti-flag-check"></i> <span style="font-size:12.5px;font-weight:700">Finalizar</span></button>`:'<span style="height:34px;padding:0 12px;font-size:12px;color:var(--success);font-weight:700;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-circle-check"></i> Encerrada</span>'}
-        </div>
+      <!-- Cabeçalho: SÓ título + status. (jul/2026) Data/hora/sala/quem conduz vivem na aba "Info";
+           as AÇÕES (Iniciar/cronômetro, Finalizar) e o ⛶ desceram p/ a linha da sub-navbar. -->
+      <div class="reun-normal-header" style="display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap;margin-bottom:8px">
+        <span style="font-size:20px;font-weight:800;color:var(--text)">${/^\s*reuni/i.test(m.title||'')?escapeHTML(m.title):'Reunião — '+escapeHTML(m.title)}</span>
+        <span class="reun-status ${st.cls}" style="font-size:10px">${st.label}</span>
+        ${m.nivel==='rapida'?`<span style="font-size:10px;font-weight:800;color:var(--purple);background:color-mix(in srgb,var(--purple) 14%,transparent);padding:2px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-bolt" style="font-size:11px"></i> rápida</span>`:''}
       </div>
       <!-- Sub-navbar (estilo Projetos): as VIEWS como abas horizontais com título -->
       ${(()=>{ const _subtab=(v,label,icon)=>{const at=_sv===v;return `<button onclick="_reunSetSubView('${m.id}','${v}')" style="background:transparent;border:none;border-bottom:2px solid ${at?'var(--blue-mid)':'transparent'};color:${at?'var(--text)':'var(--text3)'};padding:8px 13px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s;display:inline-flex;align-items:center;gap:6px"><i class="ti ${icon}" style="font-size:14px"></i>${label}</button>`;};
@@ -31132,7 +31106,31 @@ function openReuniaoView(id, _opts){
           ${_subtab('info','Info','ti-info-circle')}
           ${_subtab('editar','Editar','ti-pencil')}
           </div>
-          <button class="reun-focus-toggle" onclick="_toggleReunFocus()" title="Abrir em tela cheia (foco)"><i class="ti ti-arrows-maximize"></i></button>
+          <!-- AÇÕES na mesma linha das abas (jul/2026, pedido do Diego): ⛶ · Iniciar/cronômetro · Finalizar.
+               O ⛶ vem ANTES do Iniciar — juntos, mas sem o expandir no meio dos dois botões de ação. -->
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-bottom:6px">
+            <button class="reun-focus-toggle" onclick="_toggleReunFocus()" title="Abrir em tela cheia (foco)"><i class="ti ti-arrows-maximize"></i></button>
+            ${m.status!=='encerrada'?(()=>{
+              const running=m.status==='andamento'&&!m.pausadoReuniao;
+              const emAnd=m.status==='andamento';
+              const lbl=running?'Pausar':(m.pausadoReuniao?'Retomar':'Iniciar');
+              const _ov=emAnd&&_reunElapsedSec(m)>_reunPlannedMin(m)*60;
+              const _c=_ov?'var(--danger)':(m.pausadoReuniao?'var(--amber)':'var(--success)');
+              const _bg=_ov?'color-mix(in srgb,var(--danger) 14%,transparent)':(m.pausadoReuniao?'var(--amber-bg)':'var(--success-bg)');
+              // ⚠️ O tick (iniciarCronometroReuniao) exige: #reun-cronometro-<id> contendo o [data-inicio]
+              // e tendo o ícone do RELÓGIO como primeiro <i class="ti"> (ele o troca por alert-triangle ao
+              // estourar). Por isso o play fica FORA desse id — só compartilham a moldura.
+              const _btn=`<button onclick="_toggleReunTimer('${m.id}')" title="${lbl} reunião" style="background:${running?'var(--amber)':'var(--blue-mid)'};border:none;color:#fff;cursor:pointer;font-family:inherit;height:32px;padding:0 ${emAnd?'11':'13'}px;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;${emAnd?'align-self:stretch':'border-radius:9px'}"><i class="ti ti-player-${running?'pause':'play'}-filled" style="font-size:14px"></i>${emAnd?'':lbl}</button>`;
+              // Sem cronômetro (ainda não iniciada) o botão JÁ é o bloco — moldura só quando há tempo a exibir.
+              if(!emAnd) return _btn;
+              return `<div style="display:inline-flex;align-items:center;height:32px;border:1px solid var(--border);border-radius:9px;background:var(--card);overflow:hidden">
+                ${_btn}
+                <span id="reun-cronometro-${m.id}" class="${_ov?'reun-timer-over':''}" style="padding:0 12px;align-self:stretch;font-size:13px;color:${_c};font-weight:700;background:${_bg};border-left:1px solid ${_c};display:inline-flex;align-items:center;gap:5px"><i class="ti ti-${_ov?'alert-triangle':(m.pausadoReuniao?'player-pause':'clock-play')}" style="font-size:14px"></i> <span data-inicio="${m.inicioReal||''}" data-acumulado="${m.tempoAcumulado||0}" data-planned="${_reunPlannedMin(m)}">${_fmtDur(_reunElapsedSec(m))}</span></span>
+              </div>`;
+            })():''}
+            ${m.status==='encerrada'?`<button class="reun-ico" onclick="gerarPDFReuniao('${m.id}')" title="Gerar PDF da ATA" style="height:32px;color:var(--danger)" onmouseover="this.style.background='var(--danger)';this.style.color='#fff';this.style.borderColor='var(--danger)'" onmouseout="this.style.background='var(--card)';this.style.color='var(--danger)';this.style.borderColor='var(--border)'"><i class="ti ti-file-download"></i></button>`:''}
+            ${m.status!=='encerrada'?`<button class="reun-ico" onclick="concluirReuniao('${m.id}')" title="Finalizar reunião" style="background:var(--success-bg);border-color:var(--success);color:var(--success);width:auto;height:32px;padding:0 12px;gap:5px"><i class="ti ti-flag-check"></i> <span style="font-size:12.5px;font-weight:700">Finalizar</span></button>`:'<span style="height:32px;padding:0 12px;font-size:12px;color:var(--success);font-weight:700;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-circle-check"></i> Encerrada</span>'}
+          </div>
         </div>`;
       })()}
       <div id="reun-main-${m.id}">
