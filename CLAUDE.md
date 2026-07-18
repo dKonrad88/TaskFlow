@@ -137,6 +137,24 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ✅ 2026-07-18 (u) — Mac de casa — VALIDAÇÃO no navegador do redesenho (a)…(t): 6/6 pontos OK, 0 bugs
+- O RESUMO abaixo (sessão do PC da Empresa) pediu que o **Mac validasse no navegador** os 6 pontos que "mais
+  provavelmente quebraram". Rodei **todos** no preview (cópia servida via HTTP + dados de teste injetados).
+  **TODOS passaram — nenhum bug, nada a corrigir.** `index.html` INTACTO (só testei; não editei código). jsc: SYNTAX_OK.
+  1. **Cronômetro** da reunião: iniciou e **conta** (00:00→00:11 em tempo real); pausa/retoma ok.
+  2. **Anotações**: digitar e, sem sair, marcar item da pauta (`togglePautaItem` → re-render) → o texto **sobrevive** e
+     salva em `m.anotacoes` (debounce); check da pauta persiste (`pautaDone`).
+  3. **Cascata do tema**: `--surface-painel` é definido no **`body`** (não no `:root` — por isso parecia vazio no
+     documentElement). Muda por tema: card cinza-claro no claro, **creme/tostado no klain**, escuro no dark. OK nos 3.
+  4. **Anexo do projeto** (`_projAddAnexos`→`_projRefreshAnexos`): anexei no card da coluna 3 → aparece no card **E** na
+     aba Anexos sem recarregar (ambos são `[data-proj-anexos="<id>"]`).
+  5. **Dependência no Painel** (`_ppToggleParalela`): ícone por tarefa (↘ dependente / ⤨ paralela); togglar **recalcula
+     a projeção** (Instalar→2.1 paralela, "Testar" adiantou 24→22 jul). ⚠️ os botões só aparecem na fase **SELECIONADA**
+     (master-detail) — por isso um teste inicial contou 0 até eu selecionar a fase certa.
+  6. **"Voltar às reuniões"** (`#tab-back` na topbar): aparece dentro da reunião e **some ao sair**.
+- 0 erros de console em toda a sessão de teste. Decisões abertas seguem as do RESUMO abaixo (dependência explícita
+  entre tarefas, Gantt/carga/caminho-crítico, "Atrasada" dupla). **Próximo:** aguardando o Diego escolher a frente.
+
 ### ⭐ 2026-07-18 — RESUMO DA SESSÃO (PC da Empresa) — LEIA ISTO PRIMEIRO, é o estado atual
 Sessão inteira em **Painel de Reunião + Painel de Projeto** (UX e identidade visual). **45 commits**, todos
 pushados, working tree limpo, `main` == `origin/main`. **Último commit: `a99046fc`.** As 20 entradas
