@@ -100,6 +100,73 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
    `Co-Authored-By: Claude <noreply@anthropic.com>`
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
+## 🚨 PENDÊNCIA ABERTA — projeto "Snack Proteico" (rodar no PC da EMPRESA e no da PRODUÇÃO)
+> **Instrução do Diego (18/07/2026):** "quando eu estiver no PC da Empresa ou da Produção, tentar
+> recuperar o projeto Snack Proteico". **Qualquer sessão que abrir numa dessas 2 máquinas: execute o
+> passo 1 abaixo ANTES de qualquer outra coisa** e reporte o resultado. Marcar aqui quando feito.
+>
+> | Máquina | Verificado? | Resultado |
+> |---|---|---|
+> | Mac de casa | — | (nuvem já verificada daqui, ver abaixo) |
+> | PC da Empresa | ❌ **PENDENTE** | |
+> | PC da Produção | ❌ **PENDENTE** | |
+
+### O que JÁ foi apurado (18/07, Mac — lendo a NUVEM via MCP do Supabase, sem tocar em nada)
+Consultei `public.app_state` do projeto `gigkrjetrtbtdmdnqoof`. Resultado:
+- **`taskflow_projects_pro` (atualizado 18/07 15:17) contém UM ÚNICO projeto: "Implantação do Hub Klain"**
+  (`pp_1784160092375_318`, status `ativo`, 3 fases). **Não existe "Snack Proteico" na nuvem.**
+- ❌ **Hipótese "está na Lixeira" — DESCARTADA.** A `taskflow_trash` da nuvem **não tem NENHUM item do tipo
+  `projectPro`** (só `meeting`, `task` e `compromisso`).
+- ❌ **Hipótese "chip Ativos escondeu (status Concluído)" — DESCARTADA.** A string "snack" não aparece em
+  lugar nenhum do JSON de `taskflow_projects_pro` — se estivesse só filtrado, apareceria.
+- ✅ **"Snack proteico" existe, mas como ASSUNTO de reunião, não como projeto:** item de pauta
+  *"Ver sobre sabores dos snack proteico"* na reunião **"Reuniao - Empacotamento Doces"** (`reun1784380128766`,
+  19/07). Há também uma reunião excluída na lixeira (`reun1784164330371`, 16/07).
+
+### Hipóteses que sobraram (em ordem de probabilidade)
+1. ⭐ **Está no HUB do GUILHERME, não neste protótipo.** É o cenário mais provável e o que explica tudo: o
+   CLAUDE.md já avisa que a build do Guilherme e este git são **sistemas diferentes**, e isso vale p/ DADOS
+   também. Se o Diego criou/viu o "Snack Proteico" no HUB da turma piloto, ele **nunca esteve aqui** — não há
+   o que "recuperar", e sim que confirmar lá.
+2. **Está no localStorage de uma máquina que nunca deu push.** A nuvem só tem o que foi enviado. Se foi criado
+   no PC da Empresa/Produção e aquela máquina não logou na nuvem, a nuvem não sabe. → é o que o passo 1 testa.
+3. Foi excluído há **mais de 30 dias** e já foi purgado (ver ⚠️ abaixo).
+
+### ⚠️ RISCO COM PRAZO — a Lixeira se auto-purga em 30 dias
+No boot do app (`~linha 4322`), `trash` é filtrado por `deletedAt > agora-30dias` e **regravado**. Ou seja:
+**item com mais de 30 dias some sozinho toda vez que o app abre.** Não dá p/ adiar indefinidamente. Hoje o
+item mais antigo da lixeira é de 16/07 — ainda dentro do prazo.
+
+### Passo 1 — script READ-ONLY p/ colar no Console (F12) do Chrome, com o Hub aberto
+Não altera nada, só lê e imprime. Rodar em CADA máquina e colar o resultado no chat.
+```js
+(()=>{const J=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}};
+ const hits=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i),v=localStorage.getItem(k)||'';
+   if(/snack/i.test(v))hits.push({chave:k,tam:v.length,ocorr:(v.match(/snack/gi)||[]).length});}
+ console.log('=== CHAVES COM "SNACK" ===');console.table(hits);
+ console.log('=== PROJETOS (TODOS, inclusive concluídos) ===');
+ console.table((J('taskflow_projects_pro')||[]).map(p=>({id:p.id,nome:p.nome||p.name,status:p.status})));
+ console.log('=== LIXEIRA ===');
+ console.table((J('taskflow_trash')||[]).map(t=>({tipo:t.type,excluido:t.deletedAt,
+   nome:(t.item&&(t.item.nome||t.item.name||t.item.title))||''})));
+ const bk=J('taskflow__backup_pre_pull');
+ if(bk&&bk.data){console.log('=== BACKUP PRE-PULL de',bk.ts,'===');
+   let bp=[];try{bp=JSON.parse(bk.data['taskflow_projects_pro']||'[]')}catch(e){}
+   console.table(bp.map(p=>({nome:p.nome||p.name,status:p.status})));
+   console.log('chaves do backup com snack:',Object.entries(bk.data).filter(([k,v])=>/snack/i.test(v||'')).map(([k])=>k));
+ }else console.log('(sem backup pre-pull nesta máquina)');})()
+```
+
+### Passo 2 — decidir conforme o resultado
+- **Achou em `taskflow_projects_pro` local** → o projeto existe SÓ nessa máquina. **NÃO clicar em "Baixar da
+  nuvem"** (a nuvem não tem e sobrescreveria). Clicar em **"Enviar deste aparelho → nuvem"** p/ propagar.
+- **Achou na Lixeira local** (`type:'projectPro'`) → restaurar pela tela da Lixeira; `_linkedTasks` religa as
+  tarefas automaticamente (ver `excluirProjectPro`, ~linha 28234).
+- **Achou só no `taskflow__backup_pre_pull`** → o pull sobrescreveu. Extrair dali (o backup guarda o JSON cru
+  de cada chave) e reinjetar — me chamar p/ montar o script de restauração com cuidado.
+- **Não achou em nenhuma das 3 máquinas** → é a hipótese 1: conferir no **HUB do Guilherme**. Encerrar a busca
+  aqui e marcar esta seção como resolvida.
+
 ## 📌 BACKLOG ACORDADO (aprovado pelo Diego, adiado — NÃO é ideia solta)
 > Diferente das "pendências" espalhadas no log: aqui só entra o que o Diego **viu e aprovou**, mas
 > decidiu fazer **mais adiante**. Não começar sem ele pedir; ao pedir, o contexto p/ retomar está aqui.
@@ -136,6 +203,22 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 - **Indicadores do painel de reunião** — a **coluna 0 já existe** reservada com aviso discreto (ver entrada (g)).
 
 ## Log de handoff (mais recente no topo)
+
+### 2026-07-18 (cc) — Mac de casa — Caça ao projeto "Snack Proteico": nuvem verificada, 2 hipóteses DESCARTADAS
+- Diego pediu p/ **lembrar de tentar recuperar o "Snack Proteico" quando ele estiver no PC da Empresa ou da
+  Produção**. Registrado na seção **🚨 PENDÊNCIA ABERTA** acima (é o único canal que viaja entre máquinas).
+- **Não esperei chegar nas outras máquinas:** consultei a NUVEM daqui, via **MCP do Supabase** (`execute_sql`
+  read-only em `public.app_state`) — não precisou do Chrome remoto nem tocar nos dados locais.
+- **Resultado:** a nuvem tem **1 projeto só, "Implantação do Hub Klain"**. Sem "Snack Proteico". Isso **descarta
+  as 2 hipóteses principais** da sessão anterior: não está na **Lixeira** (não há NENHUM item `projectPro` lá) e
+  não é o filtro do chip **"Ativos"** (a string "snack" não existe no JSON de `taskflow_projects_pro`).
+- **O que "snack" É, na verdade:** item de **pauta** da reunião "Reuniao - Empacotamento Doces" (19/07) —
+  *"Ver sobre sabores dos snack proteico"*. Ou seja, o assunto existe; o **projeto**, aqui, nunca existiu.
+- **Hipótese nº1 agora é que ele esteja no HUB do GUILHERME** (sistema diferente deste protótipo, como o próprio
+  CLAUDE.md avisa — vale p/ dados também), não que tenha sido perdido.
+- ⚠️ **Achado com prazo:** a Lixeira **se auto-purga aos 30 dias** no boot (`~4322`) — o que estiver lá some
+  sozinho. Não dá p/ adiar a verificação das outras 2 máquinas indefinidamente.
+- Só documentação — `index.html` **não foi tocado**.
 
 ### 2026-07-18 (bb) — Mac de casa — Painel: título "Estrutura" alinhado + vincular PESSOA direto na linha da tarefa
 - **Alinhamento:** o `estruturaBloco` ainda tinha `margin-top:20px` (herança de quando o "Acontecendo agora" vinha
