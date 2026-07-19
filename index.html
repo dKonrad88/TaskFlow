@@ -26002,7 +26002,7 @@ function renderProjectProVisao(p, prog){
 
   // ── VISÃO DE COMANDO: "Acontecendo agora" (etapa atual) + próximas a liberar + últimos comentários ──
   // Reusa o motor de etapas (mesma lógica de _ppNotificarLiberacao): a etapa atual são as pendentes de menor etapa.
-  let comandoBloco='';
+  let comandoBloco='', radarBloco='';
   if(temTarefa){
     try{
       _ppSincronizarLiberacao(p);
@@ -26038,10 +26038,68 @@ function renderProjectProVisao(p, prog){
         const faixaInf=proximas.length?`<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="ti ti-arrow-bar-to-down" style="font-size:14px"></i>Próximas a liberar</div><div style="display:grid;grid-template-columns:1fr;gap:8px">${listaProx}</div></div>`:'';
         // Um bloco só (superfície do tema) com título + tarefas de agora + próximas a liberar —
         // em vez de uma caixa por tarefa (pesado) ou texto solto no fundo da página (sem acabamento).
+        // Recolhível: fechado, o resumo do cabeçalho já diz a etapa e a tarefa da vez.
+        const _abAgora=_ppCardAberto(p.id,'agora');
+        const _resumoAgora=`Etapa ${etAtual} de ${totalEt}${agora.length===1?' · '+escapeHTML(agora[0].title):' · '+agora.length+' em curso'}`;
         comandoBloco=_ppBloco(`
-          ${_ppTituloCol('ti-player-play-filled','Acontecendo agora',`Etapa ${etAtual} de ${totalEt}${faseAtualNome?' · '+faseAtualNome:''}`)}
-          <div style="display:flex;flex-direction:column;gap:2px">${cardsAgora}</div>
-          ${faixaInf}`);
+          ${_ppCardHead(p.id,'agora','ti-player-play-filled','Acontecendo agora',_resumoAgora,_abAgora)}
+          ${_abAgora?`<div style="margin-top:10px">
+            ${faseAtualNome?`<div style="font-size:11px;color:var(--text3);margin-bottom:6px">${faseAtualNome}</div>`:''}
+            <div style="display:flex;flex-direction:column;gap:2px">${cardsAgora}</div>
+            ${faixaInf}
+          </div>`:''}`);
+
+        // ─── RADAR DE TRAVAMENTO ────────────────────────────────────────────────
+        // Responde "por que não anda?", que o "Acontecendo agora" (o que ESTÁ liberado) não responde.
+        // Tudo sai de dado que já existe: a esteira (quem espera quem), `ppLiberadaEm` (há quanto
+        // tempo está solta) e `executor`. Só aparece quando há algo a reportar.
+        const _diasDesde=(iso)=>{ if(!iso) return null; const d=Math.floor((new Date(today+'T00:00:00')-new Date(iso+'T00:00:00'))/86400000); return isNaN(d)?null:d; };
+        const _travadas=pend.filter(t=>et.get(t.id)>etAtual);
+        const _paradas=agora.map(t=>({t,dias:_diasDesde(t.ppLiberadaEm)})).filter(x=>x.dias!==null&&x.dias>=RADAR_DIAS_PARADA).sort((a,b)=>b.dias-a.dias);
+        const _semDono=pend.filter(t=>!t.executor);
+        if(_travadas.length||_paradas.length||_semDono.length){
+          const _abRadar=_ppCardAberto(p.id,'radar');
+          const _res=[];
+          if(_travadas.length) _res.push(`${_travadas.length} esperando`);
+          if(_paradas.length)  _res.push(`${_paradas.length} parada${_paradas.length>1?'s':''}`);
+          if(_semDono.length)  _res.push(`${_semDono.length} sem dono`);
+          // Destaque: quem está na etapa da vez segura TODAS as etapas seguintes.
+          const _nomes=agora.slice(0,2).map(t=>escapeHTML(t.title)).join(' · ')+(agora.length>2?` +${agora.length-2}`:'');
+          const _atras=_travadas.slice(0,3).map(t=>escapeHTML(t.title)).join(' · ')+(_travadas.length>3?` +${_travadas.length-3}`:'');
+          // "Há N dias parada" e "sem responsável" vão DENTRO do destaque, como qualificadores da
+          // própria tarefa. Como linha separada eles repetiam o mesmo nome logo abaixo — as paradas
+          // são, por definição, as tarefas da etapa da vez, que é o que o destaque já mostra.
+          const _qualif=[];
+          if(_paradas.length) _qualif.push(`parada há ${_paradas[0].dias} dia${_paradas[0].dias>1?'s':''}`);
+          const _semDonoNoTopo=agora.filter(t=>!t.executor).length;
+          if(_semDonoNoTopo) _qualif.push(_semDonoNoTopo===agora.length?'sem responsável':`${_semDonoNoTopo} sem responsável`);
+          const _destaque=_travadas.length?`
+            <div style="background:color-mix(in srgb,var(--danger) 9%,transparent);border-radius:8px;padding:10px 12px">
+              <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:3px">
+                <span style="font-size:21px;font-weight:800;color:var(--danger);line-height:1">${_travadas.length}</span>
+                <span style="font-size:12px;color:var(--danger);font-weight:600">tarefa${_travadas.length>1?'s':''} esperando ${agora.length>1?'estas '+agora.length:'esta'}</span>
+              </div>
+              <div style="font-size:12.5px;color:var(--text);line-height:1.35">${_nomes}</div>
+              ${_qualif.length?`<div style="font-size:11px;color:var(--text3);margin-top:3px">${_qualif.join(' · ')}</div>`:''}
+              ${_atras?`<div style="font-size:11px;color:var(--text3);margin-top:7px;padding-top:7px;border-top:1px solid color-mix(in srgb,var(--danger) 22%,transparent)">Segura: ${_atras}</div>`:''}
+            </div>`:'';
+          const _linha=(icone,cor,titulo,sub)=>`<div style="display:grid;grid-template-columns:16px minmax(0,1fr);gap:9px;align-items:start;padding:9px 2px;border-top:1px solid var(--border)">
+            <i class="ti ${icone}" style="font-size:15px;color:${cor};margin-top:1px"></i>
+            <div style="min-width:0"><div style="font-size:12.5px;color:var(--text)">${titulo}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${sub}</div></div>
+          </div>`;
+          // Sem dono é do PROJETO INTEIRO (não só da etapa da vez) — por isso continua como linha
+          // própria: responde "quantas tarefas não vão cobrar ninguém", que o destaque não responde.
+          const _lSemDono=_semDono.length?_linha('ti-user-question','var(--text3)',
+            `${_semDono.length} sem responsável no projeto`,
+            'não entram na aba Atrasadas de ninguém'):'';
+          // Sem travadas (última etapa), a parada vira a manchete — senão o card ficaria vazio.
+          const _soParada=(!_travadas.length&&_paradas.length)?_linha('ti-clock-pause','var(--amber)',
+            `${_paradas.length} parada há ${_paradas[0].dias} dias`,
+            _paradas.slice(0,2).map(x=>escapeHTML(x.t.title)).join(' · ')):'';
+          radarBloco=_ppBloco(`
+            ${_ppCardHead(p.id,'radar','ti-alert-triangle','Radar de travamento',_res.join(' · '),_abRadar)}
+            ${_abRadar?`<div style="margin-top:10px">${_destaque}${_soParada}${_lSemDono}</div>`:''}`);
+        }
       } else if(ord.length){
         comandoBloco=`<div style="margin-bottom:16px;background:color-mix(in srgb,var(--success) 8%,var(--card));border:1px solid color-mix(in srgb,var(--success) 30%,var(--border));border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:11px"><i class="ti ti-circle-check" style="font-size:22px;color:var(--success)"></i><div><div style="font-size:13.5px;font-weight:800;color:var(--text)">Todas as tarefas concluídas</div><div style="font-size:12px;color:var(--text3)">O projeto está pronto para ser encerrado.</div></div></div>`;
       }
@@ -26216,7 +26274,7 @@ function renderProjectProVisao(p, prog){
   // COMENTÁRIOS (col 3) perdeu o `_ppBloco`: sem card, sem fundo — só o título `_ppTituloCol`,
   // igual ao de "Estrutura" (col 1) e ao da fase (col 2), pra as 3 colunas alinharem no topo.
   return `<div class="pp-visao-3col">
-    <div style="min-width:0;display:flex;flex-direction:column;gap:2px">${projecaoBloco}${estruturaBloco}${comandoBloco?`<div style="margin-top:18px">${comandoBloco}</div>`:''}<div style="margin-top:18px">${_ppBloco(_projAnexosCardHTML(p))}</div></div>
+    <div style="min-width:0;display:flex;flex-direction:column;gap:2px">${projecaoBloco}${estruturaBloco}${comandoBloco?`<div style="margin-top:18px">${comandoBloco}</div>`:''}${radarBloco?`<div style="margin-top:10px">${radarBloco}</div>`:''}<div style="margin-top:10px">${_ppBloco(_projAnexosCardHTML(p))}</div></div>
     <div style="min-width:0">${detalheBloco}</div>
     <div style="min-width:0"><div style="position:sticky;top:8px;min-width:0">
       ${_ppTituloCol('ti-message-circle','Comentários')}${comentariosBloco}
@@ -26961,6 +27019,39 @@ function _ppDrop(ev, targetId, projectId, scopeFaseId){
   lista.forEach((t,i)=>{ const v=(i+1)*10; if(t.ppOrdem!==v){ t.ppOrdem=v; saveTask_db(t); } });
   _ppDragId=null; render();
 }
+// Dias que uma tarefa LIBERADA pode ficar sem conclusão antes de o Radar chamá-la de "parada".
+// 3 = pega o fim de semana sem acusar todo mundo na segunda-feira.
+const RADAR_DIAS_PARADA = 3;
+
+// ─── Cards RECOLHÍVEIS do Painel ("Acontecendo agora", "Radar de travamento") ──────────
+// (jul/2026, Diego) "só expandir quando alguém quiser de fato olhar". Nascem RECOLHIDOS —
+// por isso o cabeçalho leva um RESUMO: fechado ele ainda informa ("6 travadas · 5 sem dono"),
+// e abrir é só p/ ver o detalhe. Um radar que precisa ser aberto p/ avisar não avisa nada.
+// Estado por projeto+card, persistido igual ao das fases.
+let _ppCardCol = (function(){ try{ return JSON.parse(safeLSGet('taskflow_pp_card_col')||'{}'); }catch{ return {}; } })();
+function _ppCardAberto(projectId, card){ return !!_ppCardCol[projectId+'·'+card]; }
+function _ppToggleCard(projectId, card){
+  const k=projectId+'·'+card;
+  if(_ppCardCol[k]) delete _ppCardCol[k]; else _ppCardCol[k]=true;
+  safeSetItem('taskflow_pp_card_col', JSON.stringify(_ppCardCol));
+  render();
+}
+// Cabeçalho clicável: chevron + ícone + título + resumo (sempre visível, mesmo fechado).
+function _ppCardHead(projectId, card, icone, titulo, resumo, aberto){
+  // 2 LINHAS em grid: o título nunca disputa espaço com o resumo (a coluna 1 do Painel é
+  // estreita — lado a lado, os dois quebravam em cascata). O resumo fica recuado, alinhado
+  // ao título e não ao chevron, e só aparece quando o card está FECHADO: aberto, o conteúdo
+  // logo abaixo já diz tudo e o resumo viraria eco.
+  return `<div onclick="_ppToggleCard('${projectId}','${card}')" title="${aberto?'Recolher':'Expandir'}" style="display:grid;grid-template-columns:14px minmax(0,1fr);gap:7px;align-items:center;cursor:pointer;user-select:none">
+    <i class="ti ti-chevron-${aberto?'down':'right'}" style="font-size:14px;color:var(--text3)"></i>
+    <span style="min-width:0;display:flex;align-items:center;gap:6px">
+      <i class="ti ${icone}" style="font-size:14px;color:var(--text2);flex-shrink:0"></i>
+      <span style="font-size:13px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${titulo}</span>
+    </span>
+    ${(!aberto&&resumo)?`<span></span><span style="min-width:0;font-size:11px;color:var(--text3);font-weight:600;line-height:1.35;margin-top:1px">${resumo}</span>`:''}
+  </div>`;
+}
+
 // Estado de fases recolhidas — persiste entre recargas (mesmo padrão do Concluído do Kanban).
 let _ppFaseCollapsed = (function(){ try{ return JSON.parse(safeLSGet('taskflow_pp_fase_collapsed')||'{}'); }catch{ return {}; } })();
 function _ppFaseColKey(projectId, faseKey){ return projectId+'·'+faseKey; }

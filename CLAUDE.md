@@ -322,6 +322,34 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-19 (ll) — Mac de casa — Painel: RADAR DE TRAVAMENTO + cards recolhíveis
+- 1ª das 6 ideias de painel que levantei p/ o Diego (ele escolheu esta p/ testar).
+- **Radar de travamento** (`renderProjectProVisao`, junto do `comandoBloco`): responde "por que NÃO anda?",
+  que o "Acontecendo agora" (o que ESTÁ liberado) não responde. Três sinais, todos de dado que já existia:
+  1. ⭐ **Quantas tarefas esperam pela etapa da vez** — a esteira é sequencial, então tudo em etapa maior
+     está parado por causa das da etapa mínima. No projeto-semente: **18 esperando "Preparar acessos — Onda 1"**.
+     Mostra também as 3 primeiras que ela segura ("Segura: … +15").
+  2. **Há quantos dias está parada** — `hoje − ppLiberadaEm`, limiar em `RADAR_DIAS_PARADA=3` (3 dias engole
+     o fim de semana sem acusar todo mundo na segunda).
+  3. **Sem responsável no projeto inteiro** — com a nota de que **não entram na aba Atrasadas de ninguém**
+     (o `getAtrasadas` termina com `&& (!t.projectProId || t.executor)`, achado na varredura de 18/07).
+  O card **só aparece quando há algo a reportar** — projeto em dia não ganha caixa vazia (testado).
+- **Cards recolhíveis** (`_ppCardCol`/`_ppCardAberto`/`_ppToggleCard`/`_ppCardHead`, persistidos em
+  `taskflow_pp_card_col`): "Acontecendo agora" e "Radar" nascem **RECOLHIDOS**, a pedido do Diego.
+  ⚠️ **Por isso o cabeçalho leva um RESUMO** — fechado, ele ainda informa ("Etapa 3 de 21 · Preparar acessos"
+  / "18 esperando · 1 parada · 19 sem dono"). Um radar que precisa ser aberto p/ avisar não avisa nada.
+  O resumo some quando o card abre (vira eco do conteúdo logo abaixo).
+- **2 ajustes feitos DEPOIS de ver na tela** (nenhum apareceu na leitura do código):
+  - O cabeçalho em 1 linha quebrava em cascata na coluna 1, que é estreita → virou grid de 2 linhas, com o
+    resumo recuado e alinhado ao título, não ao chevron.
+  - "1 parada — Preparar acessos" repetia o nome que o destaque já mostrava. **Não era coincidência:** as
+    paradas são sempre as tarefas da etapa da vez, ou seja, sempre as do destaque. "Parada há N dias" e
+    "sem responsável" viraram QUALIFICADORES dentro do destaque. A linha própria de "parada" só sobrou p/ o
+    caso de não haver travadas (última etapa), senão o card ficaria vazio.
+- VERIFICADO: recolher/expandir persiste no localStorage; projeto 100% concluído não renderiza o radar;
+  com todas as tarefas atribuídas e recém-liberadas, somem os sinais 2 e 3 e fica só o travamento (os três
+  são independentes). 0 erros de console, jsc SYNTAX_OK.
+
 ### 2026-07-19 (kk) — Mac de casa — Paleta: Projetos e Reuniões passam a seguir o TEMA · FAB sempre azul
 - **A mecânica do problema** (vale entender antes de mexer): no tema Klain `--blue-mid` vira `#9a6a2e`
   (caramelo), mas **`p.cor` — a cor escolhida do projeto — tem default `#185FA5`, o azul do tema padrão, e
