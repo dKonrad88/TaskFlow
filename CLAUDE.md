@@ -137,6 +137,11 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (aa) — Mac de casa — Painel: "Acontecendo agora" desceu p/ o fim da coluna esquerda
+- Pedido do Diego: o bloco "Acontecendo agora" saiu do TOPO da coluna 1 (acima da Estrutura) p/ o FIM (abaixo da
+  Estrutura — canto inferior esquerdo). Só reordenação no `return` de `renderProjectProVisao` (col1 agora = projeção →
+  Estrutura → Acontecendo agora, com `margin-top:18px` quando o bloco existe). Verificado no navegador. Commit `41681d2`.
+
 ### 2026-07-18 (z) — Mac de casa — Painel: criar SETOR/ETAPA inline também (sem modal)
 - Diego: o "+ Adicionar etapa" (detalhe da fase, coluna do meio) ainda abria o modal `adicionarGrupo` — que tinha
   select de "setor cadastrado" + criar novo + nota Macrosetores, e o corpo dizia "setor" fixo (mesmo o título já sendo
