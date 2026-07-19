@@ -322,6 +322,23 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-19 (qq) — Mac de casa — Card "Editar reunião" ganha o header escuro (igual às outras abas) + 3 ideias do Painel de Reunião DESCARTADAS
+- Pedido do Diego (com screenshot): "todas as abas têm um fundo mais escuro no título do card, só o Editar
+  não; pode fazer igual". Correto — o card **Editar reunião** (`renderNovaReuniaoForm`, `~31044`) usava
+  estilo INLINE próprio (`background:var(--card)`, título como texto solto), enquanto Info/ATA/Pessoas/
+  Anexos usam a classe **`.reun-card4`** + **`.reun-card4-title`** (`1598`/`1603`), cujo título é uma faixa
+  `--bg2` de ponta a ponta (margem negativa + `border-bottom`).
+- **Correção:** troquei o `<div>` inline do card pela classe `.reun-card4` e o título por
+  `.reun-card4-title`. Ficou **idêntico** por construção (mesma classe), não só parecido — de quebra alinha
+  o fundo do corpo (`--surface-painel`) com as outras abas e remove estilo inline duplicado.
+- **Testado no navegador (tema Klain):** header do Editar = `rgb(225,213,188)` = `#e1d5bc` = **exatamente**
+  o `--bg2` do tema, borda inferior = `--border`. jsc SYNTAX_OK. Print conferido.
+- ⚠️ **DECISÃO DO DIEGO:** as 3 ideias do Painel de Reunião — (a) "Ficou de fazer"/combinados pendentes da
+  série, (b) assunto da pauta → tarefa/decisão em 1 clique, (c) foco no assunto + tempo gasto — foram
+  **DESCARTADAS** ("não irei fazer nenhum"). **NÃO reoferecer.** (As 3 de Projeto já tinham veredito:
+  radar reprovado, alerta preditivo aprovado/feito, carga foi p/ a Análise.) O Painel de Reunião está
+  fechado do ponto de vista de features novas — resta só a fila de BUGS da varredura.
+
 ### 2026-07-19 (pp) — Mac de casa — Análise virou DASHBOARD + carga por pessoa + 🐞 BUG do setAnaliseView
 - Pedido do Diego: "transforme a Análise em formato de painel/dashboard, com todos os indicadores
   relevantes ao longo da tela central".

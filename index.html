@@ -31042,11 +31042,8 @@ function renderNovaReuniaoForm(container, subNav){
   container.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding-bottom:40px">
     ${subNav}
     <div style="width:100%;max-width:600px">
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px">
-        <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px">
-          <i class="ti ti-calendar-event" style="color:var(--blue-mid)"></i>
-          ${editingReuniaoId?'Editar reunião':'Nova reunião'}
-        </div>
+      <div class="reun-card4">
+        <div class="reun-card4-title"><span><i class="ti ti-calendar-event" style="color:var(--blue-mid)"></i> ${editingReuniaoId?'Editar reunião':'Nova reunião'}</span></div>
 
         <!-- COLUNA ÚNICA — só o essencial da reunião (jul/2026).
              Modelos, Pauta principal e Itens da pauta saíram daqui e agora são
