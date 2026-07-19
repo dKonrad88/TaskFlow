@@ -26194,7 +26194,7 @@ function renderProjectProVisao(p, prog){
   //   3. Planejamento (detalhe da fase)           4. Comentários + Anexos
   // A projeção subiu do topo do detalhe (col 3) p/ o topo da col 1, acima do "Acontecendo agora".
   return `<div class="pp-visao-3col">
-    <div style="min-width:0;display:flex;flex-direction:column;gap:2px">${projecaoBloco}${comandoBloco}${estruturaBloco}</div>
+    <div style="min-width:0;display:flex;flex-direction:column;gap:2px">${projecaoBloco}${estruturaBloco}${comandoBloco?`<div style="margin-top:18px">${comandoBloco}</div>`:''}</div>
     <div style="min-width:0">${detalheBloco}</div>
     <div style="min-width:0"><div style="position:sticky;top:8px;display:flex;flex-direction:column;gap:14px">
       ${_ppBloco(_ppTituloCol('ti-message-circle','Comentários')+comentariosBloco)}
