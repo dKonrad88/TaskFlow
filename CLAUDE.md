@@ -137,6 +137,16 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (z) — Mac de casa — Painel: criar SETOR/ETAPA inline também (sem modal)
+- Diego: o "+ Adicionar etapa" (detalhe da fase, coluna do meio) ainda abria o modal `adicionarGrupo` — que tinha
+  select de "setor cadastrado" + criar novo + nota Macrosetores, e o corpo dizia "setor" fixo (mesmo o título já sendo
+  "etapa"). Trocado por CAMPO INLINE simples: **"Nova <etapa> — Enter para adicionar"** (`qa-setor-<faseId>` →
+  **`quickAddSetorPro`**), reabre focado. Sem select, sem modal, sem "setor" fixo.
+- Agora TODA criação no Painel é inline: **parte** (col. esquerda) · **etapa** (col. meio) · **tarefa** (dentro da
+  etapa). Placeholder com concordância de gênero via `_ppG` ("Nova etapa" / "Novo setor").
+- O modal `adicionarGrupo` CONTINUA existindo (a **aba Fases** ainda usa) — 2ª passada trocar os textos "setor" fixos
+  dele. VERIFICADO: criei 2 etapas inline num projeto "sistema"; modal não abre; 0 erros; jsc OK.
+
 ### 2026-07-18 (y) — Mac de casa — Estrutura do Painel: criar e renomear parte/fase INLINE (sem modal)
 - Diego pediu p/ renomear a parte direto no card e criar sem abrir modal — inline. Na coluna **Estrutura** do Painel
   (`renderProjectProVisao`):
