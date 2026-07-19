@@ -322,6 +322,24 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-19 (hh) — Mac de casa — Aba Partes/Fases: colunas alinhadas · sem chips de etapa · sem coluna Projeto duplicada
+- Diego pediu (1) tirar os chips de ETAPA da linha da parte, (2) alinhar as informações como COLUNAS em
+  toda a aba Projetos e toda a aba Reuniões, (3) tirar a coluna com o nome do PROJETO de dentro das etapas
+  (já se está dentro do projeto) e (4) revisar as 2 abas atrás de informação duplicada.
+- **Feito nesta entrada (itens 1 e 3 + a lista de fases do item 2):**
+  - `renderProjectProFases`: a linha era `display:flex;flex-wrap:wrap` → virou **grid de colunas fixas**
+    (`_ppFasesCols` = `minmax(0,1fr) 58px 118px 48px [132px]`). A célula do PRAZO é sempre emitida, vazia
+    quando a fase não tem prazo — antes ela sumia e empurrava `%` e ações p/ a esquerda só nessas linhas.
+    Os botões ↑/↓ ausentes na 1ª/última fase viraram um espaçador de 25px pelo mesmo motivo.
+  - Chips com o nome de cada etapa **removidos** da linha (eram de largura variável e empurravam tudo).
+  - **`renderTaskTable(taskList, opts)` ganhou `opts.ocultarProjeto`**, propagado p/ `tableRowHTML(t, opts)`.
+    `renderFaseExpandida` passa `{ocultarProjeto:true}` → dentro de uma etapa a coluna "Projeto" some.
+    Todas as outras chamadas seguem sem `opts` e inalteradas.
+- VERIFICADO no navegador: com `fieldPrefs.projeto=true`, a tabela genérica sai com **10 colunas e repete
+  "Implantação do Hub Klain"** em toda linha; dentro da etapa sai com **9 colunas e sem o nome**. Na aba
+  Fases, as 7 linhas alinham contagem/prazo/% mesmo com 3 fases SEM prazo. jsc SYNTAX_OK.
+- ⏳ **Falta**: o resto do item 2 (demais listas das 2 abas) e o item 4 (duplicações) — 2 varreduras rodando.
+
 ### 2026-07-19 (gg) — Mac de casa — Painel: destaque da tarefa atual · Comentários sem fundo · Anexos na col 1 · pauta sem modelos
 - 4 ajustes de UI pedidos pelo Diego:
   1. **Tarefa QUE ESTÁ SENDO FEITA fica destacada** no card do Painel (`_tarefaLinha`): fundo a 7% +

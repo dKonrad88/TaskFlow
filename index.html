@@ -20044,13 +20044,16 @@ function toggleSection(id){
 const _ttExpanded = new Set();
 let _ttDropdownOpen = null;
 
-function renderTaskTable(taskList){
+// `opts.ocultarProjeto` — esconde a coluna Projeto mesmo com fieldPrefs.projeto ligado. Serve p/
+// quem já está DENTRO de um projeto (ex.: as tarefas de uma etapa, em renderFaseExpandida): ali a
+// coluna repetiria o nome do projeto em toda linha, sem informar nada. (jul/2026, Diego)
+function renderTaskTable(taskList, opts){
   const sorted = sortTasks(taskList);
   if(!sorted.length) return '<div class="empty"><i class="ti ti-check-list"></i><p>Nenhuma tarefa aqui. Tudo limpo!</p></div>';
 
   // Cabeçalho: colunas dependem de fieldPrefs + ordem manual (arrastável)
   const showPrio = fieldPrefs.prio;
-  const showProj = fieldPrefs.projeto;
+  const showProj = fieldPrefs.projeto && !(opts&&opts.ocultarProjeto);
   const showPess = fieldPrefs.pessoa;
   const showData = fieldPrefs.data;
   const showDias = fieldPrefs.dias;
@@ -20087,14 +20090,14 @@ function renderTaskTable(taskList){
       </tr>
     </thead>`;
 
-  const bodyHTML = sorted.map(t => tableRowHTML(t)).join('');
+  const bodyHTML = sorted.map(t => tableRowHTML(t, opts)).join('');
 
   return `<table class="task-table">${headerHTML}<tbody>${bodyHTML}</tbody></table>`;
 }
 
-function tableRowHTML(t){
+function tableRowHTML(t, opts){
   const showPrio = fieldPrefs.prio;
-  const showProj = fieldPrefs.projeto;
+  const showProj = fieldPrefs.projeto && !(opts&&opts.ocultarProjeto);
   const showPess = fieldPrefs.pessoa;
   const showData = fieldPrefs.data;
   const showDias = fieldPrefs.dias;
@@ -26314,6 +26317,12 @@ function renderProjectProFases(p){
 
   // ─── Lista: cada linha É a barra de progresso da fase ────────────
   const corBase = p.cor || '#185FA5';
+  // (jul/2026, Diego) GRID de colunas fixas em vez de flex-wrap: é o que faz contagem, prazo e %
+  // ficarem NA MESMA COLUNA em todas as linhas, independente do tamanho do nome e de a fase ter ou
+  // não prazo definido. A célula do prazo é sempre emitida (vazia quando não há) — se ela sumisse,
+  // as colunas seguintes subiriam e o alinhamento quebraria justamente nas linhas sem prazo.
+  // A coluna de ações só entra quando o usuário PODE agir (senão sobraria uma faixa vazia).
+  const _ppFasesCols = `minmax(0,1fr) 58px 118px 48px${isCoordAtual?' 132px':''}`;
   const _faseAct = (oc,title,icon,danger)=>`<button onclick="event.stopPropagation();${oc}" style="background:transparent;border:none;color:var(--text3);cursor:pointer;padding:5px;border-radius:6px;line-height:1;transition:all .12s" title="${title}" onmouseover="this.style.color='${danger?'var(--danger)':'var(--blue-mid)'}';this.style.background='var(--bg2)'" onmouseout="this.style.color='var(--text3)';this.style.background='transparent'"><i class="ti ${icon}" style="font-size:15px"></i></button>`;
 
   const fasesHTML = `<div style="display:flex;flex-direction:column;gap:8px">
@@ -26324,11 +26333,8 @@ function renderProjectProFases(p){
       const atrasada = f.prazoFase && f.prazoFase < today && !concluida;
       const corBarra = concluida ? 'var(--success)' : atrasada ? 'var(--danger)' : corBase;
 
-      // Setores (os grupos da fase são setores)
-      const setores=[...new Set((f.grupos||[]).map(g=>g.setor))];
-      const setoresHTML = setores.length
-        ? setores.slice(0,4).map(s=>`<span style="font-size:10px;font-weight:600;color:var(--text2);background:var(--card);border:1px solid var(--border);padding:1px 8px;border-radius:99px;white-space:nowrap">${escapeHTML(s)}</span>`).join('')+(setores.length>4?`<span style="font-size:10px;color:var(--text3)">+${setores.length-4}</span>`:'')
-        : `<span style="font-size:10px;color:var(--text3);opacity:.7">sem ${_ppRot(p,2,true,true)}</span>`;
+      // (jul/2026, Diego) Os chips com o nome de cada ETAPA saíram da linha: eram de largura
+      // variável, empurravam as colunas seguintes e a informação já aparece ao abrir a fase.
 
       // Dias restantes
       let diasBadge = '';
@@ -26342,8 +26348,12 @@ function renderProjectProFases(p){
         diasBadge = `<span style="font-size:11px;font-weight:700;color:${dCor};display:inline-flex;align-items:center;gap:3px;white-space:nowrap"><i class="ti ${dIcon}" style="font-size:11px"></i>${dText}</span>`;
       }
 
+      // Os botões ↑/↓ não existem na 1ª/última fase. Em vez de sumirem (o que empurraria os
+      // outros ícones e desalinharia a coluna de ações entre as linhas), viram um espaço vazio
+      // do mesmo tamanho. (jul/2026, Diego: alinhar "independente de ter ou não a informação")
+      const _faseGap = '<span style="display:inline-block;width:25px"></span>';
       const actions = isCoordAtual
-        ? `${idx>0?_faseAct(`_moverFase('${p.id}','${f.id}',-1)`,'Mover para cima','ti-arrow-up'):''}${idx<(p.fases.length-1)?_faseAct(`_moverFase('${p.id}','${f.id}',1)`,'Mover para baixo','ti-arrow-down'):''}${_faseAct(`editarFasePrazo('${p.id}','${f.id}')`, f.prazoFase?'Editar prazo':'Definir prazo','ti-calendar-event')}${_faseAct(`editarFase('${p.id}','${f.id}')`,'Renomear','ti-pencil')}${_faseAct(`excluirFase('${p.id}','${f.id}')`,'Excluir','ti-trash',true)}`
+        ? `${idx>0?_faseAct(`_moverFase('${p.id}','${f.id}',-1)`,'Mover para cima','ti-arrow-up'):_faseGap}${idx<(p.fases.length-1)?_faseAct(`_moverFase('${p.id}','${f.id}',1)`,'Mover para baixo','ti-arrow-down'):_faseGap}${_faseAct(`editarFasePrazo('${p.id}','${f.id}')`, f.prazoFase?'Editar prazo':'Definir prazo','ti-calendar-event')}${_faseAct(`editarFase('${p.id}','${f.id}')`,'Renomear','ti-pencil')}${_faseAct(`excluirFase('${p.id}','${f.id}')`,'Excluir','ti-trash',true)}`
         : '';
 
       const estadoCor = concluida ? 'var(--success)' : atrasada ? 'var(--danger)' : null;
@@ -26352,17 +26362,16 @@ function renderProjectProFases(p){
       const accentCor = concluida ? 'var(--success)' : atrasada ? 'var(--danger)' : corBase;
       return `<div onclick="abrirFaseEspecifica('${f.id}')" style="position:relative;border:1px solid ${rowBorder};border-left:3px solid ${accentCor};border-radius:10px;overflow:hidden;cursor:pointer;background:${rowBg};transition:box-shadow .15s" onmouseover="this.style.boxShadow='0 3px 12px rgba(0,0,0,.07)'" onmouseout="this.style.boxShadow=''">
         ${!estadoCor ? `<div style="position:absolute;top:0;bottom:0;left:0;width:${pctInt}%;background:${corBase}1f;border-right:${pctInt>0?`2px solid ${corBase}66`:'none'};transition:width .4s cubic-bezier(.4,0,.2,1)"></div>` : ''}
-        <div style="position:relative;z-index:1;display:flex;align-items:center;gap:14px;padding:11px 14px;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:8px;min-width:150px;flex:1">
-            <span style="font-size:12px;font-weight:800;color:var(--text3);font-variant-numeric:tabular-nums">${String(idx+1).padStart(2,'0')}</span>
-            <span style="font-size:14px;font-weight:700;color:var(--text)">${escapeHTML(f.nome)}</span>
-            ${concluida?'<i class="ti ti-circle-check" style="color:var(--success);font-size:14px" title="Concluída"></i>':''}
+        <div style="position:relative;z-index:1;display:grid;grid-template-columns:${_ppFasesCols};gap:14px;align-items:center;padding:11px 14px">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            <span style="font-size:12px;font-weight:800;color:var(--text3);font-variant-numeric:tabular-nums;flex-shrink:0">${String(idx+1).padStart(2,'0')}</span>
+            <span style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(f.nome)}</span>
+            ${concluida?'<i class="ti ti-circle-check" style="color:var(--success);font-size:14px;flex-shrink:0" title="Concluída"></i>':''}
           </div>
-          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">${setoresHTML}</div>
           <span style="font-size:11px;color:var(--text3);display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ti-checklist" style="font-size:12px"></i>${fp.feitas}/${fp.total}</span>
-          ${diasBadge}
-          <span style="font-size:15px;font-weight:800;color:${accentCor};white-space:nowrap;font-variant-numeric:tabular-nums;min-width:42px;text-align:right">${pctInt}%</span>
-          ${actions?`<div style="display:flex;align-items:center;gap:1px">${actions}</div>`:''}
+          <span style="display:inline-flex;justify-content:flex-start">${diasBadge}</span>
+          <span style="font-size:15px;font-weight:800;color:${accentCor};white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right">${pctInt}%</span>
+          ${isCoordAtual?`<div style="display:flex;align-items:center;gap:1px;justify-content:flex-end">${actions}</div>`:''}
         </div>
       </div>`;
     }).join('')}
@@ -26400,7 +26409,7 @@ function renderFaseExpandida(p, f){
     const tarefas = (g.tarefaIds||[]).map(tid=>_taskById(tid)).filter(Boolean);
     // Lista no MESMO formato do Organizar: reusa renderTaskTable (colunas seguem fieldPrefs do usuário).
     const tarefasHTML = tarefas.length
-      ? renderTaskTable(tarefas)
+      ? renderTaskTable(tarefas, {ocultarProjeto:true})
       : `<div style="padding:14px;text-align:center;font-size:12px;color:var(--text3);border-top:1px solid var(--border)">Nenhuma tarefa ${_ppG(p,2,'nesta','neste')} ${_ppRot(p,2,false,true)}</div>`;
 
     return `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden">
