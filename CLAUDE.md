@@ -137,6 +137,22 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (w) — Mac de casa — Projetos: VOCABULÁRIO por projeto (Fase/Setor ↔ Parte/Etapa) — infra + textos [1/2]
+- Pedido do Diego: os 2 níveis de agrupamento às vezes são "Fase/Setor" (obra), às vezes "Parte/Etapa" (implantação
+  de sistema — o caso do Hub). A ESTRUTURA é a mesma; só os RÓTULOS mudam. (A ferramenta não tem sub-projeto, então
+  o Hub vira 1 projeto com as partes = nível 1 e as etapas = nível 2.)
+- **Infra (aditiva, baixo risco):** `PP_VOCAB` (presets `obra`/`sistema`/`dev`/`generico`, cada um com `n1/n1p/n2/n2p`
+  + gênero `g1/g2`), campo `p.rotulos` no `_novoProjectPro` (`{n1,n1p,n2,n2p}`; **null = padrão Fase/Setor**), helper
+  **`_ppRot(p,nivel,plural,lower)`** (fallback Fase/Setor) e **`_ppG(p,nivel,formaF,formaM)`** (concordância de gênero
+  — ex.: "Nenhuma etapa" vs "Nenhum setor", "nesta parte" vs "neste módulo").
+- **Textos trocados** pra usar `_ppRot`/`_ppG`: Painel (Estrutura + detalhe da fase: empty states, "Adicionar X",
+  "Sem X", "Selecione uma X") e aba Fases (`renderProjectProFases`/`renderFaseExpandida`: "X do projeto", "Voltar
+  para X", "Adicionar X", "Nenhuma tarefa nesta X") + modais `adicionarFase`/`adicionarGrupo`. **Projetos sem rótulos
+  seguem em Fase/Setor (fallback) — nada muda pra eles.** Sintaxe jsc OK.
+- FALTA [2/2]: o **SELETOR de vocabulário** no modal de criar/editar projeto (escolher o preset → grava `p.rotulos`).
+  Sem ele, todo projeto usa o padrão. Textos SECUNDÁRIOS ainda em "fase/setor" fixo (toasts, planilha da aba Tarefas,
+  Análise, excluir/renomear) — 2ª passada. ⚠️ Área MUITO editada pelo PC da Empresa — commits pequenos + fetch antes.
+
 ### 2026-07-18 (v) — Mac de casa — Tema Klain: removida a textura de biscoitos do fundo (fica liso)
 - Diego pediu p/ tirar o padrão SVG de biscoitos (círculos) do fundo do tema Klain. Removido o `background-image`
   (data-URI SVG) do `body[data-theme="klain"]` e o bloco `body[data-theme="klain"] .sidebar` que repetia a textura.

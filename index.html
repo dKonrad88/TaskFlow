@@ -5066,6 +5066,8 @@ function _novoProjectPro({nome, tipo='outro', cor='#185FA5', dono=null, prazoIni
     preFecharEm: null,
     preFecharPor: null,
     favorito: false,
+    // Rótulos dos 2 níveis de agrupamento (null = padrão Fase/Setor). Ver PP_VOCAB / _ppRot.
+    rotulos: null,           // {n1, n1p, n2, n2p} — ex.: {n1:'Parte',n1p:'Partes',n2:'Etapa',n2p:'Etapas'}
     criadoEm: new Date().toISOString(),
     concluidoEm: null,
   };
@@ -24578,6 +24580,28 @@ function _ppAtualizarSelectTipo(selectId, selecionarKey){
   sel.innerHTML = _ppTipoOpcoes(selecionarKey);
 }
 
+// Vocabulário dos 2 níveis de agrupamento — cada projeto escolhe como chamá-los.
+// n1 = nível "estrutura" (fase/parte/módulo); n2 = nível abaixo (setor/etapa/sprint). n1p/n2p = plural.
+const PP_VOCAB = {
+  obra:     {label:'Obra / industrial',      n1:'Fase',   n1p:'Fases',   g1:'f', n2:'Setor',  n2p:'Setores', g2:'m'},
+  sistema:  {label:'Implantação de sistema', n1:'Parte',  n1p:'Partes',  g1:'f', n2:'Etapa',  n2p:'Etapas',  g2:'f'},
+  dev:      {label:'Desenvolvimento',        n1:'Módulo', n1p:'Módulos', g1:'m', n2:'Sprint', n2p:'Sprints', g2:'f'},
+  generico: {label:'Genérico',               n1:'Fase',   n1p:'Fases',   g1:'f', n2:'Setor',  n2p:'Setores', g2:'m'},
+};
+// Rótulo do nível `nivel` (1 ou 2) de um projeto. plural→forma plural; lower→minúsculo (p/ meio de frase).
+// Fallback p/ Fase/Setor quando o projeto não define rótulos (compat com projetos antigos).
+function _ppRot(p, nivel, plural, lower){
+  const r=(p&&p.rotulos)||{};
+  let s = nivel===1 ? (plural?(r.n1p||'Fases'):(r.n1||'Fase')) : (plural?(r.n2p||'Setores'):(r.n2||'Setor'));
+  return lower ? s.toLowerCase() : s;
+}
+// Concordância de gênero: devolve a forma feminina ou masculina conforme o gênero do rótulo do nível.
+function _ppG(p, nivel, formaF, formaM){
+  const r=(p&&p.rotulos)||{};
+  const g = nivel===1 ? (r.g1||'f') : (r.g2||'m');
+  return g==='m' ? formaM : formaF;
+}
+
 const PP_STATUS = {
   planejamento: {label:'Planejamento', color:'#888',           icon:'ti-pencil'},
   ativo:        {label:'Em andamento', color:'var(--success)', icon:'ti-player-play'},
@@ -26046,8 +26070,8 @@ function renderProjectProVisao(p, prog){
   let fasesLista;
   if(!_fasesP.length){
     fasesLista=`<div style="background:var(--surface-painel);border:1px dashed var(--border);border-radius:10px;padding:20px 14px;text-align:center">
-      <p style="margin:0 0 11px;font-size:12px;color:var(--text3);line-height:1.5">Nenhuma fase ainda. Divida o projeto em fases; dentro de cada uma ficam os setores e as tarefas.</p>
-      <button onclick="adicionarFase('${p.id}')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer"><i class="ti ti-plus"></i> Criar primeira fase</button>
+      <p style="margin:0 0 11px;font-size:12px;color:var(--text3);line-height:1.5">Ainda não há ${_ppRot(p,1,true,true)}. Divida o projeto e, dentro de cada ${_ppRot(p,1,false,true)}, crie ${_ppRot(p,2,true,true)} e tarefas.</p>
+      <button onclick="adicionarFase('${p.id}')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer"><i class="ti ti-plus"></i> Criar ${_ppRot(p,1,false,true)}</button>
     </div>`;
   } else {
     fasesLista=_fasesP.map((f,idx)=>{
@@ -26067,7 +26091,7 @@ function renderProjectProVisao(p, prog){
   const estruturaBloco=`<div style="margin-top:20px">
     ${_ppTituloCol('ti-sitemap','Estrutura')}
     ${fasesLista}
-    <button onclick="adicionarFase('${p.id}')" style="margin-top:8px;background:none;border:1px dashed var(--border);color:var(--text2);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;width:100%" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-plus"></i> Adicionar fase</button>
+    <button onclick="adicionarFase('${p.id}')" style="margin-top:8px;background:none;border:1px dashed var(--border);color:var(--text2);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;width:100%" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-plus"></i> Adicionar ${_ppRot(p,1,false,true)}</button>
   </div>`;
 
   // DETAIL — setores + tarefas da fase selecionada (o conteúdo que antes abria no acordeão)
@@ -26075,12 +26099,12 @@ function renderProjectProVisao(p, prog){
   if(!_fasesP.length){
     detalheBloco=`<div style="background:var(--surface-painel);border:1px dashed var(--border);border-radius:12px;padding:44px 24px;text-align:center;color:var(--text3)">
       <i class="ti ti-layout-rows" style="font-size:30px;opacity:.4"></i>
-      <p style="margin:11px 0 0;font-size:13px">Crie a primeira fase para organizar os setores e as tarefas.</p>
+      <p style="margin:11px 0 0;font-size:13px">Crie ${_ppRot(p,1,false,true)} para organizar ${_ppRot(p,2,true,true)} e tarefas.</p>
     </div>`;
   } else if(!_faseSel){
     detalheBloco=`<div style="background:var(--surface-painel);border:1px dashed var(--border);border-radius:12px;padding:44px 24px;text-align:center;color:var(--text3)">
       <i class="ti ti-hand-click" style="font-size:30px;opacity:.4"></i>
-      <p style="margin:11px 0 0;font-size:13px">Selecione uma fase à esquerda para ver e editar seus setores e tarefas.</p>
+      <p style="margin:11px 0 0;font-size:13px">Selecione ${_ppG(p,1,'uma','um')} ${_ppRot(p,1,false,true)} à esquerda para ver e editar ${_ppRot(p,2,true,true)} e tarefas.</p>
     </div>`;
   } else {
     const f=_faseSel, fp=_calcularProgressoFase(f);
@@ -26096,9 +26120,9 @@ function renderProjectProVisao(p, prog){
       </div>
       <div style="font-size:11px;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:9.5px;font-weight:800;color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 13%,transparent);border-radius:4px;padding:1px 5px">1</span> = etapa (a próxima só começa quando a anterior conclui) · <i class="ti ti-lock" style="font-size:11px"></i> bloqueada · ordem/paralelas na aba <b>Tarefas</b>.</div>
       ${setores.map(g=>_setorBloco(g,f.id)).join('')}
-      ${semSetor.length?`<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-top:8px;background:var(--surface-painel)"><div style="padding:8px 11px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text3)">Sem setor</div>${semSetor.map(_tarefaLinha).join('')}</div>`:''}
-      ${(!setores.length&&!semSetor.length)?`<div style="padding:4px 2px 8px;font-size:12px;color:var(--text3);font-style:italic">Nenhum setor nesta fase ainda — adicione o primeiro abaixo.</div>`:''}
-      <button onclick="adicionarGrupo('${p.id}','${f.id}')" style="margin-top:10px;background:none;border:1px dashed var(--border);color:var(--text2);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;width:100%"><i class="ti ti-plus"></i> Adicionar setor</button>
+      ${semSetor.length?`<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-top:8px;background:var(--surface-painel)"><div style="padding:8px 11px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text3)">Sem ${_ppRot(p,2,false,true)}</div>${semSetor.map(_tarefaLinha).join('')}</div>`:''}
+      ${(!setores.length&&!semSetor.length)?`<div style="padding:4px 2px 8px;font-size:12px;color:var(--text3);font-style:italic">Ainda não há ${_ppRot(p,2,true,true)} aqui — adicione abaixo.</div>`:''}
+      <button onclick="adicionarGrupo('${p.id}','${f.id}')" style="margin-top:10px;background:none;border:1px dashed var(--border);color:var(--text2);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;width:100%"><i class="ti ti-plus"></i> Adicionar ${_ppRot(p,2,false,true)}</button>
     </div>`;
   }
 
@@ -26217,15 +26241,15 @@ function renderProjectProFases(p){
 
   // Cabeçalho da aba com ícone de nova fase
   const headerFases = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-    <span style="font-size:13px;font-weight:700;color:var(--text)"><i class="ti ti-layout-rows" style="color:var(--text2)"></i> Fases do projeto</span>
-    <button class="reun-ico" onclick="adicionarFase('${p.id}')" title="Nova fase"><i class="ti ti-plus"></i></button>
+    <span style="font-size:13px;font-weight:700;color:var(--text)"><i class="ti ti-layout-rows" style="color:var(--text2)"></i> ${_ppRot(p,1,true)} do projeto</span>
+    <button class="reun-ico" onclick="adicionarFase('${p.id}')" title="Adicionar ${_ppRot(p,1,false,true)}"><i class="ti ti-plus"></i></button>
   </div>`;
 
   if(!p.fases || !p.fases.length){
     return headerFases + `<div style="background:var(--card);border:1px dashed var(--border);border-radius:12px;padding:40px 20px;text-align:center">
       <i class="ti ti-layout-rows" style="font-size:40px;color:var(--text3);opacity:.5"></i>
-      <p style="margin:12px 0 4px;font-size:15px;color:var(--text2);font-weight:600">Crie a primeira fase</p>
-      <p style="margin:0 0 16px;font-size:12px;color:var(--text3);max-width:380px;margin-left:auto;margin-right:auto">As fases dividem o projeto em etapas. Dentro de cada fase você cria os setores e as tarefas.</p>
+      <p style="margin:12px 0 4px;font-size:15px;color:var(--text2);font-weight:600">Crie ${_ppG(p,1,'a','o')} primeir${_ppG(p,1,'a','o')} ${_ppRot(p,1,false,true)}</p>
+      <p style="margin:0 0 16px;font-size:12px;color:var(--text3);max-width:380px;margin-left:auto;margin-right:auto">${_ppG(p,1,'As','Os')} ${_ppRot(p,1,true,true)} dividem o projeto em blocos. Dentro de cada ${_ppRot(p,1,false,true)} você cria ${_ppRot(p,2,true,true)} e tarefas.</p>
       <button onclick="adicionarFase('${p.id}')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer"><i class="ti ti-plus"></i> Adicionar fase</button>
     </div>`;
   }
@@ -26301,7 +26325,7 @@ function renderFaseExpandida(p, f){
 
   const headerHTML = `
     <div style="margin-bottom:10px">
-      <button onclick="activeFaseId=null;render()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;padding:0;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-arrow-left"></i> Voltar para fases</button>
+      <button onclick="activeFaseId=null;render()" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;padding:0;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-arrow-left"></i> Voltar para ${_ppRot(p,1,true,true)}</button>
     </div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
       <span style="font-size:18px;font-weight:800;color:var(--text)">${escapeHTML(f.nome)}</span>
@@ -26310,7 +26334,7 @@ function renderFaseExpandida(p, f){
         <span style="font-size:13px;font-weight:800;color:${p.cor};white-space:nowrap">${fp.pct}%</span>
         <span style="font-size:11px;color:var(--text3);white-space:nowrap">${fp.feitas}/${fp.total}</span>
       </div>
-      <button class="reun-ico" onclick="adicionarGrupo('${p.id}','${f.id}')" title="Adicionar setor" style="margin-left:auto"><i class="ti ti-plus"></i></button>
+      <button class="reun-ico" onclick="adicionarGrupo('${p.id}','${f.id}')" title="Adicionar ${_ppRot(p,2,false,true)}" style="margin-left:auto"><i class="ti ti-plus"></i></button>
     </div>`;
 
   // Grupos de setor
@@ -26319,7 +26343,7 @@ function renderFaseExpandida(p, f){
     // Lista no MESMO formato do Organizar: reusa renderTaskTable (colunas seguem fieldPrefs do usuário).
     const tarefasHTML = tarefas.length
       ? renderTaskTable(tarefas)
-      : '<div style="padding:14px;text-align:center;font-size:12px;color:var(--text3);border-top:1px solid var(--border)">Nenhuma tarefa neste grupo</div>';
+      : `<div style="padding:14px;text-align:center;font-size:12px;color:var(--text3);border-top:1px solid var(--border)">Nenhuma tarefa ${_ppG(p,2,'nesta','neste')} ${_ppRot(p,2,false,true)}</div>`;
 
     return `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden">
       <div style="padding:12px 16px;background:var(--bg2);display:flex;justify-content:space-between;align-items:center">
@@ -26335,7 +26359,7 @@ function renderFaseExpandida(p, f){
   if(!f.grupos || !f.grupos.length){
     gruposHTML = `<div style="background:var(--card);border:1px dashed var(--border);border-radius:12px;padding:30px 20px;text-align:center">
       <i class="ti ti-building" style="font-size:36px;color:var(--text3);opacity:.5"></i>
-      <p style="margin:10px 0 4px;font-size:14px;color:var(--text2);font-weight:600">Crie o primeiro setor</p>
+      <p style="margin:10px 0 4px;font-size:14px;color:var(--text2);font-weight:600">Crie ${_ppG(p,2,'a','o')} primeir${_ppG(p,2,'a','o')} ${_ppRot(p,2,false,true)}</p>
       <p style="margin:0;font-size:12px;color:var(--text3)">Use o <i class="ti ti-plus"></i> acima pra agrupar tarefas por setor responsável</p>
     </div>`;
   }
@@ -26363,8 +26387,8 @@ function adicionarFase(projectId){
   const p = projectsPro.find(x=>x.id===projectId);
   if(!p) return;
   promptModal({
-    title:'Nova fase', label:'Nome da fase', icon:'ti-layers-subtract',
-    placeholder:'Ex: Planejamento', confirmText:'Criar fase',
+    title:'Criar '+_ppRot(p,1,false,true), label:'Nome', icon:'ti-layers-subtract',
+    placeholder:'Ex: Planejamento', confirmText:'Criar '+_ppRot(p,1,false,true),
     suggestions:['Planejamento','Execução','Validação','Entrega'],
     onConfirm:function(nome){
       const ordem = (p.fases||[]).length + 1;
@@ -26453,14 +26477,14 @@ function adicionarGrupo(projectId, faseId){
   const opcoesHTML = setores.length
     ? setores.map(s=>{
         const usado = setoresUsadosNaFase.has(s);
-        return `<option value="${escapeAttr(s)}" ${usado?'disabled':''}>${escapeHTML(s)}${usado?' (já está nesta fase)':''}</option>`;
+        return `<option value="${escapeAttr(s)}" ${usado?'disabled':''}>${escapeHTML(s)}${usado?` (já está ${_ppG(p,1,'nesta','neste')} ${_ppRot(p,1,false,true)})`:''}</option>`;
       }).join('')
-    : '<option value="" disabled>Nenhum setor cadastrado ainda</option>';
+    : `<option value="" disabled>${_ppG(p,2,'Nenhuma','Nenhum')} ${_ppRot(p,2,false,true)} cadastrad${_ppG(p,2,'a','o')} ainda</option>`;
 
   overlay.innerHTML = `
     <div style="background:var(--card);border-radius:14px;width:100%;max-width:460px;box-shadow:0 24px 60px rgba(0,0,0,.3)">
       <div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-        <h3 style="margin:0;font-size:16px"><i class="ti ti-building" style="color:${p.cor}"></i> Adicionar setor ${_hint('Setor = a área/time responsável por um conjunto de tarefas desta fase (ex.: Compras, Produção).')}</h3>
+        <h3 style="margin:0;font-size:16px"><i class="ti ti-building" style="color:${p.cor}"></i> Adicionar ${_ppRot(p,2,false,true)} ${_hint(`Um agrupamento de tarefas dentro d${_ppG(p,1,'a','o')} ${_ppRot(p,1,false,true)} (ex.: Compras/Produção, ou Planejamento/Desenvolvimento).`)}</h3>
         <button onclick="document.getElementById('pp-modal-grupo').remove()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px"><i class="ti ti-x"></i></button>
       </div>
       <div style="padding:18px 22px">
