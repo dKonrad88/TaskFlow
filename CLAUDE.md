@@ -342,10 +342,16 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
     voltou a ser automático; `overflow:hidden`/ellipsis ficaram condicionais ao modo agrupado.
 - VERIFICADO no navegador nos 2 modos: recolher/expandir pelo card OK, flecha alterna e volta OK, 7 cards,
   título editável/drag-drop/quick-add intactos, 0 erros de console, jsc SYNTAX_OK.
-- ⏳ **Pendente de decisão do Diego:** ele disse "de toda a aba PROJETOS pode tirar a PRIORIDADE, não iremos usar
-  prioridade no projeto". A **coluna** foi removida; mas `p.prioridade` (prioridade DO PROJETO) ainda existe em:
-  agrupamento da lista de projetos (`24707`), chip no card (`24789`), `_prioInfo` (`25029`), campo do modal de
-  Editar projeto (`28166-28168`) e `salvarEdicaoProjectPro` (`28240`). Remover isso é maior — perguntei antes.
+- ✅ **PRIORIDADE DO PROJETO removida também** (Diego confirmou "tirar tudo", 19/07). Saiu de: agrupamento da
+  lista por prioridade, opção "Prioridade" no menu Agrupar E no Ordenar, chip colorido no card, pill no cabeçalho
+  do projeto (`prioPill`/`_prioInfo`/`_prioMap`), campo do modal **Editar projeto** (`ppe-prio`) e a leitura em
+  `salvarEdicaoProjectPro`. **Padrão de ordenação da lista virou PRAZO** (era prioridade) — coerente com
+  "vamos trabalhar com data".
+  - ⚠️ **O campo `p.prioridade` CONTINUA no dado de propósito** — projetos existentes e o seed têm; só não é
+    mais lido nem escrito por tela nenhuma. Reverter = repor a UI, sem migração de dados.
+  - As guardas `if(!_grpDefs.some(...))` / `if(!_sortDefs.some(...))` **migram sozinhas** quem tinha
+    `taskflow_pp_sort`/`taskflow_pp_group` salvos como `'prioridade'` → viram `prazo`/`tipo`. TESTADO no navegador.
+  - Verificado: modal Editar abre e SALVA sem erro, e o `p.prioridade` do dado é preservado (não zera).
 
 ### 2026-07-19 (ee) — Mac de casa — ✅ P0 nº1 CORRIGIDO: o render não reescreve mais `t.date`
 - Corrigido o bug nº1 da varredura (entrada dd): `renderProjectProTarefas` (`~26989`) reescrevia `t.date`

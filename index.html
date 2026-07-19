@@ -24680,7 +24680,7 @@ let _ppView = 'lista';   // FIXO: Projetos só em Lista (Cartões removido)
 let _ppGroup = (function(){ try{ return safeLSGet('taskflow_pp_group')||'tipo'; }catch{ return 'tipo'; } })();        // tipo|status|prioridade|dono|prazo|nenhum
 function setPpView(v){ _ppView='lista'; render(); } // fixo em Lista
 function setPpGroup(g){ _ppGroup=g; safeSetItem('taskflow_pp_group',g); render(); }
-let _ppSort = (function(){ try{ return safeLSGet('taskflow_pp_sort')||'prioridade'; }catch{ return 'prioridade'; } })();  // prioridade|prazo|progresso|recentes
+let _ppSort = (function(){ try{ return safeLSGet('taskflow_pp_sort')||'prazo'; }catch{ return 'prazo'; } })();  // prazo|progresso|recentes
 let _ppQuery = '';                                  // busca textual (efêmera)
 let _ppChips = {atrasados:false, ativos:false, meus:false};
 let _ppMenuOpen = false; // popover ⋮ (Agrupar/Ordenar) aberto?
@@ -24701,11 +24701,6 @@ function _ppAgrupar(lista, modo){
   if(modo==='status'){
     lista.forEach(p=>{ const k=p.status||'planejamento'; const s=PP_STATUS[k]||PP_STATUS.planejamento; push(k,s.label,s.color,s.icon,p); });
     const ord=Object.keys(PP_STATUS); grupos.sort((a,b)=>ord.indexOf(a.key)-ord.indexOf(b.key)); return grupos;
-  }
-  if(modo==='prioridade'){
-    const meta={alta:{l:'Alta',c:'var(--danger)',i:'ti-arrow-up'},normal:{l:'Normal',c:'var(--text3)',i:'ti-minus'},baixa:{l:'Baixa',c:'var(--success)',i:'ti-arrow-down'}};
-    lista.forEach(p=>{ const k=(p.prioridade==='alta'||p.prioridade==='baixa')?p.prioridade:'normal'; const m=meta[k]; push(k,m.l,m.c,m.i,p); });
-    const ord=['alta','normal','baixa']; grupos.sort((a,b)=>ord.indexOf(a.key)-ord.indexOf(b.key)); return grupos;
   }
   if(modo==='dono'){
     lista.forEach(p=>{ const pe=people.find(x=>x.id===p.dono); push(p.dono||'__sem__', pe?pe.name:'Sem dono','var(--blue-mid)','ti-user',p); });
@@ -24735,11 +24730,10 @@ function _ppFiltrar(lista){
   return arr;
 }
 function _ppCmp(a,b){
-  if(_ppSort==='prazo'){ return String(a.prazoFim||'9999-99-99').localeCompare(String(b.prazoFim||'9999-99-99')) || (a.nome||'').localeCompare(b.nome||'','pt-BR'); }
   if(_ppSort==='progresso'){ return _calcularProgressoProjeto(a).pct-_calcularProgressoProjeto(b).pct || (a.nome||'').localeCompare(b.nome||'','pt-BR'); }
   if(_ppSort==='recentes'){ return String(b.criadoEm||'').localeCompare(String(a.criadoEm||'')); }
-  const op={alta:0,media:1,normal:1,baixa:2};
-  return (op[a.prioridade]??1)-(op[b.prioridade]??1) || (a.nome||'').localeCompare(b.nome||'','pt-BR');
+  // Padrão = PRAZO (era prioridade até jul/2026, quando a prioridade saiu do módulo).
+  return String(a.prazoFim||'9999-99-99').localeCompare(String(b.prazoFim||'9999-99-99')) || (a.nome||'').localeCompare(b.nome||'','pt-BR');
 }
 function _ppGruposHTML(){
   const lista=_ppFiltrar(projectsPro);
@@ -24786,13 +24780,11 @@ function projectProRowHTML(p){
   const prog=_calcularProgressoProjeto(p);
   const status=PP_STATUS[p.status]||PP_STATUS.planejamento;
   const tipo=PP_TIPOS[p.tipo]||PP_TIPOS.outro;
-  const _pr={alta:{l:'Alta',c:'var(--danger)',i:'ti-arrow-up'},baixa:{l:'Baixa',c:'var(--success)',i:'ti-arrow-down'}}[p.prioridade];
   return `<div data-project-pro-id="${p.id}" onclick="abrirProjectProView('${p.id}')" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-left:3px solid ${p.cor};border-radius:10px;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow='0 3px 12px rgba(0,0,0,.07)'" onmouseout="this.style.boxShadow=''">
     <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px">
       <button onclick="event.stopPropagation();_ppToggleFav('${p.id}')" title="${p.favorito?'Desafixar':'Fixar no topo'}" style="background:none;border:none;cursor:pointer;color:${p.favorito?'var(--amber)':'var(--text3)'};font-size:14px;padding:0;flex-shrink:0;line-height:1"><i class="ti ti-star${p.favorito?'-filled':''}"></i></button>
       <i class="ti ${tipo.icon}" style="color:${p.cor};font-size:15px;flex-shrink:0"></i>
       <span style="font-size:13.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(p.nome)}</span>
-      ${_pr?`<i class="ti ${_pr.i}" title="Prioridade ${_pr.l}" style="color:${_pr.c};font-size:13px;flex-shrink:0"></i>`:''}
       ${prog.atrasadas>0?`<span style="background:var(--danger-bg);color:var(--danger);font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;flex-shrink:0">${prog.atrasadas} atrasada${prog.atrasadas>1?'s':''}</span>`:''}
     </div>
     <span style="background:${status.color}22;color:${status.color};font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;white-space:nowrap;flex-shrink:0"><i class="ti ${status.icon}" style="font-size:10px"></i> ${status.label}</span>
@@ -24874,14 +24866,18 @@ function renderProjetosPro(){
 
   // Barra: agrupamento + alternador de visualização (cartões/lista). Estado persiste.
   _ppView='lista'; // fixo em Lista (Cartões removido)
-  const _grpDefs=[['tipo','Tipo'],['status','Status'],['prioridade','Prioridade'],['dono','Dono'],['prazo','Prazo'],['nenhum','Sem agrupar']];
+  // (jul/2026, Diego) PRIORIDADE saiu do módulo de projetos — "não vamos usar prioridade no
+  // projeto, vamos trabalhar com data". Quem tiver 'prioridade' salvo em taskflow_pp_group /
+  // taskflow_pp_sort cai sozinho no padrão pelas duas guardas abaixo. O campo `p.prioridade`
+  // CONTINUA nos dados (não quebra projeto existente) — só não aparece nem ordena mais.
+  const _grpDefs=[['tipo','Tipo'],['status','Status'],['dono','Dono'],['prazo','Prazo'],['nenhum','Sem agrupar']];
   if(!_grpDefs.some(g=>g[0]===_ppGroup)) _ppGroup='tipo';
-  const _sortDefs=[['prioridade','Prioridade'],['prazo','Prazo'],['progresso','Progresso'],['recentes','Recentes']];
-  if(!_sortDefs.some(s=>s[0]===_ppSort)) _ppSort='prioridade';
+  const _sortDefs=[['prazo','Prazo'],['progresso','Progresso'],['recentes','Recentes']];
+  if(!_sortDefs.some(s=>s[0]===_ppSort)) _ppSort='prazo';
   // Agrupar/Ordenar vivem dentro do ⋮ (menu no header, ao lado de "Importar").
   const _grpBtnsHTML=_grpDefs.map(([g,lb])=>{const at=_ppGroup===g;return `<button onclick="setPpGroup('${g}')" style="border:1px solid ${at?'var(--blue-mid)':'var(--border)'};border-radius:7px;padding:6px 11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;background:${at?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--bg2)'};color:${at?'var(--blue-mid)':'var(--text2)'};transition:all .15s">${lb}</button>`;}).join('');
   const _sortSelHTML=`<select onchange="setPpSort(this.value)" style="width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 9px;font-size:12px;font-weight:600;color:var(--text2);font-family:inherit;cursor:pointer">${_sortDefs.map(([s,l])=>`<option value="${s}" ${_ppSort===s?'selected':''}>${l}</option>`).join('')}</select>`;
-  const _menuAtivo = (_ppGroup!=='tipo' || _ppSort!=='prioridade'); // bolinha no ⋮ quando fugiu do padrão
+  const _menuAtivo = (_ppGroup!=='tipo' || _ppSort!=='prazo'); // bolinha no ⋮ quando fugiu do padrão
 
   // Toolbar = só a busca (os 3 filtros Atrasados/Ativos/Meus foram removidos).
   const toolbar = `
@@ -25025,9 +25021,6 @@ function projectProCardHTML(p){
   const prog = _calcularProgressoProjeto(p);
   const tipo = PP_TIPOS[p.tipo] || PP_TIPOS.outro;
   const status = PP_STATUS[p.status] || PP_STATUS.planejamento;
-  const _prioMap={alta:{l:'Alta',c:'var(--danger)',i:'ti-arrow-up'},baixa:{l:'Baixa',c:'var(--success)',i:'ti-arrow-down'}};
-  const _prioInfo=_prioMap[p.prioridade];
-  const prioPill=_prioInfo?`<span style="background:${_prioInfo.c}1a;color:${_prioInfo.c};font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px"><i class="ti ${_prioInfo.i}" style="font-size:10px"></i> ${_prioInfo.l}</span>`:'';
   const nFases = (p.fases||[]).length;
   const nPessoas = (p.pessoas||[]).length;
 
@@ -25052,7 +25045,7 @@ function projectProCardHTML(p){
           <button onclick="event.stopPropagation();_ppToggleFav('${p.id}')" title="${p.favorito?'Desafixar':'Fixar no topo'}" style="background:none;border:none;cursor:pointer;color:${p.favorito?'var(--amber)':'var(--text3)'};font-size:15px;padding:0;margin-top:1px;flex-shrink:0;line-height:1"><i class="ti ti-star${p.favorito?'-filled':''}"></i></button>
           <div style="font-size:15px;font-weight:700;color:var(--text);line-height:1.3">${escapeHTML(p.nome)}</div>
         </div>
-        <span style="background:${status.color}22;color:${status.color};font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;text-transform:uppercase;white-space:nowrap;letter-spacing:.3px"><i class="ti ${status.icon}" style="font-size:10px"></i> ${status.label}</span>${prioPill}
+        <span style="background:${status.color}22;color:${status.color};font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;text-transform:uppercase;white-space:nowrap;letter-spacing:.3px"><i class="ti ${status.icon}" style="font-size:10px"></i> ${status.label}</span>
       </div>
       ${p.descricao ? `<div style="font-size:12px;color:var(--text3);line-height:1.4;margin-bottom:10px;max-height:34px;overflow:hidden">${escapeHTML(p.descricao.slice(0,90))}${p.descricao.length>90?'…':''}</div>` : ''}
       <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
@@ -28165,14 +28158,6 @@ function _projEditarCamposHTML(p){
             <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Status</label>
             <select id="ppe-status" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);box-sizing:border-box">${statusOpcoes}</select>
           </div>
-          <div>
-            <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Prioridade</label>
-            <select id="ppe-prio" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);box-sizing:border-box">
-              <option value="alta" ${p.prioridade==='alta'?'selected':''}>↑ Alta</option>
-              <option value="media" ${!p.prioridade||p.prioridade==='media'?'selected':''}>— Média</option>
-              <option value="baixa" ${p.prioridade==='baixa'?'selected':''}>↓ Baixa</option>
-            </select>
-          </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
           <div>
@@ -28242,7 +28227,8 @@ function salvarEdicaoProjectPro(id){
   p.nome = document.getElementById('ppe-nome').value.trim() || p.nome;
   p.tipo = document.getElementById('ppe-tipo').value;
   p.status = document.getElementById('ppe-status').value;
-  p.prioridade = document.getElementById('ppe-prio')?.value || p.prioridade || 'media';
+  // (jul/2026) Prioridade saiu da UI do módulo de projetos — o campo `p.prioridade` continua
+  // no dado (projetos antigos e o seed têm), mas não é mais lido nem escrito por nenhuma tela.
   p.dono = document.getElementById('ppe-dono').value;
   p.cor = document.getElementById('ppe-cor').value;
   p.prazoInicio = document.getElementById('ppe-ini').value || null;
