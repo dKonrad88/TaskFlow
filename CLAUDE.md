@@ -319,6 +319,34 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-19 (ff) — Mac de casa — Aba TAREFAS do projeto: virou CARDS (modelo do Painel) e enxugou
+- 6 pedidos do Diego, todos na `renderProjectProTarefas`:
+  1. **Topo enxuto:** saíram os chips "N tarefas · M concluída", "Conclusão prevista", "No prazo (+Xd)" e
+     "Etapa X de Y" — **já estão no cabeçalho do projeto**, era a mesma info 2× na mesma tela. Sobrou só
+     Planilha/Foco. (`_insightsHTML` continua montado: o modo FOCO ainda usa.) O rodapé também perdeu a
+     "Conclusão prevista" duplicada; ficou só a legenda de arrastar.
+  2. **Flecha de dependência = mesma do Painel:** `ti-arrow-down-right` (depende) / `ti-arrows-split-2`
+     (paralela). Antes esta tela usava `ti-arrow-merge`/`-both`, um par diferente p/ a mesma ideia.
+  3. **Mini-Gantt removido** da coluna Previsão (a barrinha ao lado da data) — a info já está no "ini → fim".
+  4. **"Recolher/Expandir todas" saiu da barra** — agora cada CARD recolhe pelo próprio cabeçalho (chevron).
+     `_ppToggleTodasFases` continua existindo (a aba Fases usa).
+  5. **Coluna Prioridade removida** da planilha (+ o `const prioMap` que ficou órfão).
+  6. **Cards com respiro:** cada fase virou um card independente (borda + cantos + `margin-bottom:10px`),
+     no lugar da tabela contínua com header de fase dentro. É o modelo do Painel.
+- ⭐ **Regra do Diego p/ as colunas:** no modo **Por fase**, Fase e Setor SAEM da linha (o card já diz a fase,
+  o chip diz o setor). No modo **LISTA** elas VOLTAM — lá não há agrupamento que informe isso.
+- **2 bugs meus, achados no navegador e corrigidos antes de commitar:**
+  - As colunas **não alinhavam entre os cards** (cada `<table>` calculava a própria largura) → `table-layout:fixed`
+    + `<colgroup>` **só no modo agrupado**.
+  - No modo Lista o `fixed` **espremia a coluna Tarefa** e o texto se sobrepunha à coluna vizinha → lá o layout
+    voltou a ser automático; `overflow:hidden`/ellipsis ficaram condicionais ao modo agrupado.
+- VERIFICADO no navegador nos 2 modos: recolher/expandir pelo card OK, flecha alterna e volta OK, 7 cards,
+  título editável/drag-drop/quick-add intactos, 0 erros de console, jsc SYNTAX_OK.
+- ⏳ **Pendente de decisão do Diego:** ele disse "de toda a aba PROJETOS pode tirar a PRIORIDADE, não iremos usar
+  prioridade no projeto". A **coluna** foi removida; mas `p.prioridade` (prioridade DO PROJETO) ainda existe em:
+  agrupamento da lista de projetos (`24707`), chip no card (`24789`), `_prioInfo` (`25029`), campo do modal de
+  Editar projeto (`28166-28168`) e `salvarEdicaoProjectPro` (`28240`). Remover isso é maior — perguntei antes.
+
 ### 2026-07-19 (ee) — Mac de casa — ✅ P0 nº1 CORRIGIDO: o render não reescreve mais `t.date`
 - Corrigido o bug nº1 da varredura (entrada dd): `renderProjectProTarefas` (`~26989`) reescrevia `t.date`
   de toda tarefa sem `dateManual` a cada render e persistia via `saveTask_db`.

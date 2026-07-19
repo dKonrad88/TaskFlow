@@ -27045,10 +27045,12 @@ function renderProjectProTarefas(p){
       _insightsHTML += `<span title="${nasEtapa} tarefa${nasEtapa!==1?'s':''} liberada${nasEtapa!==1?'s':''} agora" style="font-size:11px;font-weight:600;color:var(--text2);background:var(--bg2);padding:3px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-player-play-filled" style="font-size:11px;color:var(--orange)"></i>Etapa <b>${etapaAtual}</b> de ${totalEtapas}</span>`;
     }
   }
+  // (jul/2026, Diego) Barra do topo ENXUTA: só o seletor Planilha/Foco. Os chips de total,
+  // concluídas, "Conclusão prevista", "No prazo" e "Etapa X de Y" saíram porque JÁ aparecem
+  // no cabeçalho do projeto — era a mesma informação duas vezes na mesma tela.
+  // `_insightsHTML` continua montado acima porque o modo FOCO ainda o usa.
   const filtrosHTML = `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0 14px">
     ${_modoSel}
-    <span style="font-size:12px;color:var(--text3);display:inline-flex;align-items:center;gap:5px"><i class="ti ti-list-check" style="font-size:13px"></i> ${_totalProjeto} ${_totalProjeto===1?'tarefa':'tarefas'} · ${_concluidas} concluída${_concluidas!==1?'s':''}</span>
-    ${_insightsHTML}
   </div>`;
 
 
@@ -27061,6 +27063,11 @@ function renderProjectProTarefas(p){
   // ─── MODO PLANILHA: tabela com colunas editáveis inline ──────────
   const _planilhaHTML = () => {
     const podeGerir = _ppPodeGerenciar(p);
+    // Declarado AQUI (antes de `linha`) porque as colunas dependem do modo: agrupado por
+    // fase, o card já diz a fase e o subtítulo diz o setor → as 2 colunas são redundantes.
+    // No modo LISTA não há agrupamento nenhum, então elas VOLTAM (Diego, jul/2026).
+    const _agrupar = sessionStorage.getItem('pp-agrupar-'+p.id)==='1';
+    const _nCols = _agrupar ? 6 : 8;   // p/ os colspan das linhas vazias
     const _rangeIni = _proj._fimProjeto ? _ppProximoDiaUtil(_anchor) : null;
     const _diaDiff=(a,b)=>Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);
     const _totalDias = (_rangeIni && _proj._fimProjeto) ? Math.max(1, _diaDiff(_rangeIni, _proj._fimProjeto)+1) : 1;
@@ -27071,28 +27078,26 @@ function renderProjectProTarefas(p){
       const bg = atual?'color-mix(in srgb,var(--orange) 14%,transparent)':'var(--bg2)';
       const icon = atual?'ti-player-play-filled':'ti-calendar';
       const txt = prj ? `${formatDate(prj.ini)} → ${formatDate(prj.fim)}` : '—';
-      // Mini-Gantt: barra posicionada no intervalo do projeto
-      let gantt='';
-      if(prj && _rangeIni){
-        const off=Math.max(0,_diaDiff(_rangeIni, prj.ini));
-        const dur=Math.max(1,_diaDiff(prj.ini, prj.fim)+1);
-        const left=Math.min(100,(off/_totalDias)*100);
-        const width=Math.max(5,Math.min(100-left,(dur/_totalDias)*100));
-        const barCor = atual?'var(--orange)':p.cor;
-        // Barra INLINE (ao lado do chip): empilhada, ela dobrava a altura da linha e quebrava a réplica do Organizar.
-        gantt=`<div title="${dur} dia(s) úteis" style="height:5px;border-radius:3px;background:var(--bg2);position:relative;width:56px;flex-shrink:0"><div style="position:absolute;top:0;height:100%;left:${left}%;width:${width}%;background:${barCor};border-radius:3px;opacity:.85"></div></div>`;
-      }
-      return `<div style="display:inline-flex;flex-direction:row;align-items:center;gap:8px"><span title="${atual?'Em andamento agora':'Período previsto'}" style="font-size:10.5px;font-weight:600;color:${cor};background:${bg};padding:3px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ${icon}" style="font-size:11px"></i>${txt}</span>${gantt}</div>`;
+      // (jul/2026, Diego) O mini-Gantt (barrinha ao lado da data) saiu — poluía a coluna sem
+      // acrescentar leitura: a mesma informação já está no texto "início → fim".
+      return `<span title="${atual?'Em andamento agora':'Período previsto'}" style="font-size:10.5px;font-weight:600;color:${cor};background:${bg};padding:3px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ${icon}" style="font-size:11px"></i>${txt}</span>`;
     };
     const linha = (t, scopeFaseId) => {
       const exec = t.executor ? _personById(t.executor) : null;
-      const prioMap=PRIO_LABEL;
       // Visual (padding/bordas/altura/hover) vem da classe .pp-planilha — igual ao Organizar.
       // Aqui só sobram larguras/alinhamentos específicos de cada coluna.
-      const cell='';
+      // Só no modo agrupado (table-layout:fixed) a célula precisa conter o conteúdo: sem isso
+      // o texto vaza e se sobrepõe à coluna vizinha. No modo Lista o layout é automático — a
+      // coluna cresce sozinha e truncar ali só atrapalharia a leitura do título.
+      // Não corta o dropdown inline: ele é anexado ao document.body e posicionado por rect.
+      const cell = _agrupar ? 'overflow:hidden' : '';
+      const _tituloEllipsis = _agrupar ? 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' : 'min-width:60px;';
       const st=t._status;
+      // Flecha de dependência: MESMO modelo do Painel (_tarefaLinha) — ti-arrow-down-right
+      // = depende da anterior · ti-arrows-split-2 = roda em paralelo. Antes esta tela usava
+      // ti-arrow-merge/-both, um par diferente pra mesma ideia (Diego, jul/2026).
       const paralelaBtn = t._idx>0
-        ? `<button onclick="event.stopPropagation();_ppToggleParalela('${p.id}',${t.id})" ${podeGerir?'':'disabled'} title="${t.ppParalela?'Roda junto com a etapa anterior (clique p/ separar)':'Separada — clique p/ rodar junto com a anterior'}" style="background:none;border:none;cursor:${podeGerir?'pointer':'default'};color:${t.ppParalela?p.cor:'var(--text3)'};padding:0 2px;line-height:1;${podeGerir?'':'opacity:.4'}"><i class="ti ti-${t.ppParalela?'arrow-merge':'arrow-merge-both'}" style="font-size:13px"></i></button>`
+        ? `<button onclick="event.stopPropagation();_ppToggleParalela('${p.id}',${t.id})" ${podeGerir?'':'disabled'} title="${t.ppParalela?'Roda JUNTO com a tarefa anterior — clique p/ torná-la dependente (só começa depois)':'DEPENDE da anterior (só começa quando ela concluir) — clique p/ rodar em paralelo'}" style="background:none;border:none;cursor:${podeGerir?'pointer':'default'};color:${t.ppParalela?p.cor:'var(--text3)'};padding:0 2px;line-height:1;${podeGerir?'':'opacity:.4'}"><i class="ti ti-${t.ppParalela?'arrows-split-2':'arrow-down-right'}" style="font-size:13px"></i></button>`
         : '';
       return `<tr data-task-id="${t.id}" ondragover="_ppDragOver(event)" ondrop="_ppDrop(event,${t.id},'${p.id}'${scopeFaseId!==undefined?`,'${scopeFaseId}'`:''})" style="${t.done?'opacity:.6':''}">
         <td style="${cell};width:72px;white-space:nowrap;text-align:center">
@@ -27102,22 +27107,21 @@ function renderProjectProTarefas(p){
             ${paralelaBtn}
           </div>
         </td>
-        <td style="${cell};min-width:200px"><div style="display:flex;align-items:center;gap:8px">${t.done
+        <td style="${cell}"><div style="display:flex;align-items:center;gap:8px;min-width:0">${t.done
           ? `<span onclick="event.stopPropagation();toggle(${t.id})" title="Reabrir tarefa" style="width:17px;height:17px;border-radius:50%;background:var(--success);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer"><i class="ti ti-check" style="font-size:11px"></i></span>`
           : (st.estado==='bloqueada'
             ? `<span title="Bloqueada — aguarda a etapa anterior concluir" style="width:17px;height:17px;border-radius:50%;border:1.5px dashed var(--border);color:var(--text3);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-lock" style="font-size:9px"></i></span>`
-            : `<span onclick="event.stopPropagation();toggle(${t.id})" title="Concluir tarefa" style="width:17px;height:17px;border-radius:50%;border:2px solid var(--text3);flex-shrink:0;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--success)'" onmouseout="this.style.borderColor='var(--text3)'"></span>`)}<span contenteditable="true" spellcheck="false" onfocus="this.dataset.orig=this.textContent" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}else if(event.key==='Escape'){event.preventDefault();this.textContent=this.dataset.orig||'';this.blur();}" onblur="_ppSalvarTituloInline(${t.id},this)" style="font-size:12.5px;font-weight:500;color:${t.done?'var(--text3)':'var(--text)'};${t.done?'text-decoration:line-through':''};outline:none;cursor:text;display:inline-block;min-width:60px;border-radius:4px;padding:1px 4px" title="Clique para editar o nome">${escapeHTML(t.title)}</span></div></td>
+            : `<span onclick="event.stopPropagation();toggle(${t.id})" title="Concluir tarefa" style="width:17px;height:17px;border-radius:50%;border:2px solid var(--text3);flex-shrink:0;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--success)'" onmouseout="this.style.borderColor='var(--text3)'"></span>`)}<span contenteditable="true" spellcheck="false" onfocus="this.dataset.orig=this.textContent" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}else if(event.key==='Escape'){event.preventDefault();this.textContent=this.dataset.orig||'';this.blur();}" onblur="_ppSalvarTituloInline(${t.id},this)" style="font-size:12.5px;font-weight:500;color:${t.done?'var(--text3)':'var(--text)'};${t.done?'text-decoration:line-through':''};outline:none;cursor:text;display:${_agrupar?'block':'inline-block'};${_tituloEllipsis}border-radius:4px;padding:1px 4px" title="${escapeAttr(t.title)}">${escapeHTML(t.title)}</span></div></td>
         <td style="${cell}">${_statusCell(t)}</td>
-        <td style="${cell}"><span class="tt-prio-chip ${t.prio||'media'}" style="cursor:pointer;font-size:11px" onclick="event.stopPropagation();ttOpenInlineDropdown(${t.id},'prio',this)"><i class="ti ti-flag" style="font-size:11px"></i> ${prioMap[t.prio]||'Média'}</span></td>
         <td style="${cell}">${exec
           ? `<span data-exec-anchor="${t.id}" onclick="event.stopPropagation();ttOpenInlineDropdown(${t.id},'executor',this)" style="font-size:11px;color:var(--text2);background:var(--bg2);padding:3px 8px;border-radius:99px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ti-hammer" style="font-size:11px"></i>${escapeHTML(exec.name.split(' ')[0])}</span>`
           : `<span data-exec-anchor="${t.id}" onclick="event.stopPropagation();ttOpenInlineDropdown(${t.id},'executor',this)" style="font-size:11px;color:var(--text3);border:1px dashed var(--border);padding:3px 8px;border-radius:99px;cursor:pointer;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-hammer" style="font-size:11px;opacity:.6"></i> —</span>`}</td>
-        <td style="${cell}">${t._fase
+        ${_agrupar ? '' : `<td style="${cell}">${t._fase
           ? `<span onclick="event.stopPropagation();abrirSeletorFaseTarefa('${p.id}',${t.id},this)" style="font-size:11px;color:var(--text2);background:var(--bg2);padding:3px 8px;border-radius:99px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ti-layout-rows" style="font-size:11px"></i>${escapeHTML(t._fase)}</span>`
           : `<span onclick="event.stopPropagation();abrirSeletorFaseTarefa('${p.id}',${t.id},this)" style="font-size:11px;color:var(--text3);border:1px dashed var(--border);padding:3px 8px;border-radius:99px;cursor:pointer;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-layout-rows" style="font-size:11px;opacity:.6"></i> —</span>`}</td>
         <td style="${cell}">${t._setor
           ? `<span onclick="event.stopPropagation();abrirSeletorSetorTarefa('${p.id}',${t.id},this)" style="font-size:11px;color:var(--text2);background:var(--bg2);padding:3px 8px;border-radius:99px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ti-building" style="font-size:11px"></i>${escapeHTML(t._setor)}</span>`
-          : `<span onclick="event.stopPropagation();abrirSeletorSetorTarefa('${p.id}',${t.id},this)" style="font-size:11px;color:var(--text3);border:1px dashed var(--border);padding:3px 8px;border-radius:99px;cursor:pointer;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-building" style="font-size:11px;opacity:.6"></i> —</span>`}</td>
+          : `<span onclick="event.stopPropagation();abrirSeletorSetorTarefa('${p.id}',${t.id},this)" style="font-size:11px;color:var(--text3);border:1px dashed var(--border);padding:3px 8px;border-radius:99px;cursor:pointer;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-building" style="font-size:11px;opacity:.6"></i> —</span>`}</td>`}
         <td style="${cell};text-align:center;width:88px"><input type="number" min="1" max="999" value="${(typeof t.ppDias==='number'&&t.ppDias>0)?t.ppDias:1}" onchange="_ppSetDias('${p.id}',${t.id},this.value)" onclick="event.stopPropagation()" style="width:46px;height:24px;text-align:center;font-size:12px;padding:2px 5px;border:1px solid var(--border);border-radius:7px;background:var(--bg2);color:var(--text);font-family:inherit;vertical-align:middle;box-sizing:border-box" title="Dias para executar" /><span style="font-size:10px;color:var(--text3);margin-left:4px">d</span></td>
         <td style="${cell};border-right:none;text-align:center;width:64px;white-space:nowrap">
           <button onclick="event.stopPropagation();openEdit(${t.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:3px;border-radius:5px" title="Editar" onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-pencil" style="font-size:13px"></i></button>
@@ -27127,21 +27131,48 @@ function renderProjectProTarefas(p){
     };
     const th=''; // estilo do cabeçalho vem de .pp-planilha thead th (mesmo do Organizar)
     const linhas=todas; // já vem na ordem de execução
-    const _agrupar = sessionStorage.getItem('pp-agrupar-'+p.id)==='1';
     // Botões Lista / Por fase
     const _agBtn=(on,val,icon,label)=>`<button onclick="sessionStorage.setItem('pp-agrupar-${p.id}','${val}');render()" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:5px 11px;border-radius:7px;border:none;cursor:pointer;font-family:inherit;${on?'background:var(--card);color:var(--blue-mid);box-shadow:0 1px 2px rgba(0,0,0,.08)':'background:transparent;color:var(--text3)'}"><i class="ti ${icon}" style="font-size:14px"></i>${label}</button>`;
-    const _colCtl = _agrupar ? `<div style="display:inline-flex;gap:2px;background:var(--bg2);padding:3px;border-radius:9px"><button onclick="_ppToggleTodasFases('${p.id}',true)" title="Recolher todas as fases" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:5px 11px;border-radius:7px;border:none;cursor:pointer;font-family:inherit;background:transparent;color:var(--text3)"><i class="ti ti-chevrons-up" style="font-size:14px"></i>Recolher</button><button onclick="_ppToggleTodasFases('${p.id}',false)" title="Expandir todas as fases" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:5px 11px;border-radius:7px;border:none;cursor:pointer;font-family:inherit;background:transparent;color:var(--text3)"><i class="ti ti-chevrons-down" style="font-size:14px"></i>Expandir</button></div>` : '';
-    const _agToggle=`<div style="display:flex;justify-content:${(p.fases||[]).length?'space-between':'flex-end'};align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">${(p.fases||[]).length?`<button onclick="_ppOrdenarPorFase('${p.id}')" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;font-family:inherit" title="Coloca as tarefas na ordem das fases; depois você ajusta dentro de cada uma"><i class="ti ti-arrows-sort" style="font-size:14px"></i> Ordenar por fase</button>`:''}<div style="display:inline-flex;align-items:center;gap:8px">${_colCtl}<div style="display:inline-flex;gap:2px;background:var(--bg2);padding:3px;border-radius:9px">${_agBtn(!_agrupar,'0','ti-list','Lista')}${_agBtn(_agrupar,'1','ti-layout-rows','Por fase')}</div></div></div>`;
+    // (jul/2026, Diego) O par "Recolher/Expandir todas" saiu daqui — cada card agora recolhe
+    // pelo próprio cabeçalho (chevron), que é onde a ação faz sentido. `_ppToggleTodasFases`
+    // segue existindo e é usada pela aba Fases.
+    const _agToggle=`<div style="display:flex;justify-content:${(p.fases||[]).length?'space-between':'flex-end'};align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">${(p.fases||[]).length?`<button onclick="_ppOrdenarPorFase('${p.id}')" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;font-family:inherit" title="Coloca as tarefas na ordem d${_ppG(p,1,'as','os')} ${_ppRot(p,1,true,true)}; depois você ajusta dentro de cada uma"><i class="ti ti-arrows-sort" style="font-size:14px"></i> Ordenar por ${_ppRot(p,1,false,true)}</button>`:''}<div style="display:inline-flex;align-items:center;gap:8px"><div style="display:inline-flex;gap:2px;background:var(--bg2);padding:3px;border-radius:9px">${_agBtn(!_agrupar,'0','ti-list','Lista')}${_agBtn(_agrupar,'1','ti-layout-rows','Por '+_ppRot(p,1,false,true))}</div></div></div>`;
+    // ── Colunas: sem Prioridade; Fase/Setor só no modo Lista (no agrupado o card já diz a fase) ──
+    // `table-layout:fixed` + colgroup SÓ no modo agrupado: lá cada card é uma <table> separada
+    // e, sem largura fixa, cada uma se ajusta ao próprio conteúdo — as colunas não alinhavam de
+    // um card p/ o outro. No modo LISTA é uma tabela só (nada com que alinhar), e forçar `fixed`
+    // espremia a coluna Tarefa a ponto de truncar todo título: lá vale o layout automático.
+    const _colgroup = _agrupar ? `<colgroup>
+          <col style="width:78px"><col>
+          <col style="width:170px"><col style="width:112px">
+          <col style="width:92px"><col style="width:62px">
+        </colgroup>` : '';
+    // No modo agrupado NÃO há cabeçalho de colunas: repetido em cada card ele pesava a tela e
+    // fugia do modelo do Painel, que o Diego pediu p/ copiar (jul/2026).
+    const _thead = _agrupar ? '' : `<thead><tr>
+          <th style="${th};text-align:center;border-top:none" title="Arraste para reordenar; o número é a etapa">Ordem</th>
+          <th style="${th}">Tarefa</th><th style="${th}" title="Período previsto de cada tarefa">Previsão</th><th style="${th}">Executor</th>
+          <th style="${th}">${_ppRot(p,1)}</th><th style="${th}">${_ppRot(p,2)}</th>
+          <th style="${th};text-align:center">Dias</th>
+          <th style="${th};border-right:none"></th>
+        </tr></thead>`;
+    // Envolve um conjunto de linhas numa TABELA (o CSS .pp-planilha dá o visual das células).
+    const _tabela = (rows) => `<table class="pp-planilha" style="${_agrupar?'table-layout:fixed;':''}width:100%">${_colgroup}${_thead}<tbody>${rows}</tbody></table>`;
+    // CARD = a moldura do Painel (borda + cantos arredondados + fundo). No modo agrupado,
+    // cada fase vira UM card, separados por margem — é o "respiro" que o Diego pediu.
+    const _card = (inner, extraStyle='') => `<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface-painel);${extraStyle}">${inner}</div>`;
+
     // Monta o corpo: plano (por ppOrdem) ou agrupado por fase
-    let tbodyHTML;
+    let corpoHTML;
     if(!_agrupar){
-      tbodyHTML = linhas.map(t=>linha(t)).join('') || `<tr><td colspan="9" style="padding:30px;text-align:center;color:var(--text3);font-size:13px">Nenhuma tarefa ainda</td></tr>`;
+      const rows = linhas.map(t=>linha(t)).join('') || `<tr><td colspan="${_nCols}" style="padding:30px;text-align:center;color:var(--text3);font-size:13px">Nenhuma tarefa ainda</td></tr>`;
+      corpoHTML = _card(`<div style="overflow-x:auto">${_tabela(rows)}</div>`);
     } else {
       const grupos=[];
       const semFase = todas.filter(t=>!t.projectProFaseId);
       if(semFase.length) grupos.push({key:'__none__', label:'A classificar', semFase:true, tarefas:semFase});
       (p.fases||[]).forEach(f=>{ grupos.push({key:f.id, label:f.nome, semFase:false, tarefas: todas.filter(t=>t.projectProFaseId===f.id)}); });
-      tbodyHTML = grupos.map(g=>{
+      corpoHTML = grupos.map(g=>{
         const collapsed = _ppIsFaseCollapsed(p.id, g.key);
         const feitas = g.tarefas.filter(t=>t.done).length;
         // Conclusão prevista da fase = maior "fim" entre as tarefas pendentes com previsão (apenas fases reais)
@@ -27153,33 +27184,23 @@ function renderProjectProTarefas(p){
               : (g.tarefas.length
                   ? `<span title="Todas as tarefas desta fase concluídas" style="margin-left:auto;font-size:10.5px;font-weight:600;color:var(--success);background:color-mix(in srgb,var(--success) 14%,transparent);padding:3px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ti-circle-check" style="font-size:11px"></i>Concluída</span>`
                   : ''));
-        const head = `<tr><td colspan="9" style="padding:0;background:var(--bg2);border-top:2px solid var(--border)">
-          <div onclick="_ppToggleFaseCollapse('${p.id}','${g.key}')" style="display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;user-select:none">
+        // Cabeçalho DO CARD — é aqui que a fase recolhe/expande (o par global saiu da barra).
+        const head = `<div onclick="_ppToggleFaseCollapse('${p.id}','${g.key}')" style="display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;user-select:none;background:var(--bg2);${collapsed?'':'border-bottom:1px solid var(--border)'}" title="${collapsed?'Expandir':'Recolher'}">
             <i class="ti ti-chevron-${collapsed?'right':'down'}" style="font-size:14px;color:var(--text3)"></i>
             <span style="font-size:12px;font-weight:700;color:${g.semFase?'var(--text2)':p.cor};text-transform:uppercase;letter-spacing:.3px;display:inline-flex;align-items:center;gap:5px">${g.semFase?'<i class="ti ti-inbox" style="font-size:13px"></i>':'<i class="ti ti-layout-rows" style="font-size:13px"></i>'} ${escapeHTML(g.label)}</span>
             <span style="font-size:11px;color:var(--text3);font-weight:600;background:var(--card);padding:1px 8px;border-radius:99px">${feitas>0?feitas+'/':''}${g.tarefas.length}</span>${_faseDataChip}
-          </div>
-        </td></tr>`;
-        const rows = collapsed ? '' : (g.tarefas.length
+          </div>`;
+        const rows = g.tarefas.length
           ? g.tarefas.map(t=>linha(t, g.key)).join('')
-          : `<tr><td colspan="9" style="padding:11px 16px;color:var(--text3);font-size:12px;font-style:italic">Arraste tarefas para cá ou defina esta fase nelas</td></tr>`);
-        return head+rows;
-      }).join('') || `<tr><td colspan="9" style="padding:30px;text-align:center;color:var(--text3);font-size:13px">Nenhuma tarefa ainda</td></tr>`;
+          : `<tr><td colspan="${_nCols}" style="padding:11px 16px;color:var(--text3);font-size:12px;font-style:italic">Arraste tarefas para cá ou defin${_ppG(p,1,'a esta','a este')} ${_ppRot(p,1,false,true)} nelas</td></tr>`;
+        const corpo = collapsed ? '' : `<div style="overflow-x:auto">${_tabela(rows)}</div>`;
+        // margin-bottom = o "respiro" entre os cards (mesmo espaçamento do Painel)
+        return _card(head+corpo, 'margin-bottom:10px');
+      }).join('') || _card(`<div style="padding:30px;text-align:center;color:var(--text3);font-size:13px">Nenhuma tarefa ainda</div>`);
     }
-    return `${_agToggle}<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;overflow-x:auto">
-      <table class="pp-planilha">
-        <thead><tr>
-          <th style="${th};text-align:center;border-top:none" title="Arraste para reordenar; o número é a etapa">Ordem</th>
-          <th style="${th}">Tarefa</th><th style="${th}" title="Período previsto de cada tarefa">Previsão</th><th style="${th}">Prioridade</th><th style="${th}">Executor</th>
-          <th style="${th}">Fase</th><th style="${th}">Setor</th><th style="${th};text-align:center">Dias</th>
-          <th style="${th};border-right:none"></th>
-        </tr></thead>
-        <tbody>${tbodyHTML}</tbody>
-      </table>
-    </div>
+    return `${_agToggle}${corpoHTML}
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:8px">
-      <div style="font-size:12px;color:var(--text2);display:inline-flex;align-items:center;gap:6px"><i class="ti ti-flag-check" style="font-size:14px;color:${p.cor}"></i> ${_proj._fimProjeto ? `Conclusão prevista: <b>${formatDate(_proj._fimProjeto)}</b>` : '<b>Todas as tarefas concluídas</b>'}</div>
-      <div style="font-size:11px;color:var(--text3);display:inline-flex;align-items:center;gap:5px"><i class="ti ti-grip-vertical" style="font-size:12px"></i> arraste para reordenar${_agrupar?' (entre blocos = muda a fase)':''} · <i class="ti ti-arrow-merge-both" style="font-size:12px"></i> junta na etapa anterior</div>
+      <div style="font-size:11px;color:var(--text3);display:inline-flex;align-items:center;gap:5px"><i class="ti ti-grip-vertical" style="font-size:12px"></i> arraste para reordenar${_agrupar?` (entre cards = muda ${_ppG(p,1,'a','o')} ${_ppRot(p,1,false,true)})`:''} · <i class="ti ti-arrow-down-right" style="font-size:12px"></i> depende da anterior · <i class="ti ti-arrows-split-2" style="font-size:12px"></i> roda em paralelo</div>
     </div>`;
   };
 
