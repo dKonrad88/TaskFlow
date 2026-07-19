@@ -149,9 +149,15 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
   "Sem X", "Selecione uma X") e aba Fases (`renderProjectProFases`/`renderFaseExpandida`: "X do projeto", "Voltar
   para X", "Adicionar X", "Nenhuma tarefa nesta X") + modais `adicionarFase`/`adicionarGrupo`. **Projetos sem rótulos
   seguem em Fase/Setor (fallback) — nada muda pra eles.** Sintaxe jsc OK.
-- FALTA [2/2]: o **SELETOR de vocabulário** no modal de criar/editar projeto (escolher o preset → grava `p.rotulos`).
-  Sem ele, todo projeto usa o padrão. Textos SECUNDÁRIOS ainda em "fase/setor" fixo (toasts, planilha da aba Tarefas,
-  Análise, excluir/renomear) — 2ª passada. ⚠️ Área MUITO editada pelo PC da Empresa — commits pequenos + fetch antes.
+- **[2/2 FEITO] SELETOR de vocabulário** no modal de NOVO projeto: campo "Como chamar as divisões" (select `#pp-vocab`
+  com os presets, ex. "Implantação de sistema — Partes › Etapas"); `criarProjectPro` grava `novo.rotulos` do preset
+  (só se ≠ Fase, senão deixa null=padrão). **VERIFICADO no navegador:** projeto "sistema" → Painel e aba Fases dizem
+  "Partes/Etapas" ("Adicionar parte", "Adicionar etapa", "Etapa 2 de 3"); projeto sem rótulos segue "Fases/Setores"
+  (fallback); seletor com as 4 opções; 0 erros de console. jsc OK. Commits: `e9fceae` (infra+textos) + o deste push.
+- FALTA (2ª passada, quando a área esfriar): trocar os textos SECUNDÁRIOS ainda em "fase/setor" fixo — toasts
+  (`Fase criada`/`Setor adicionado`), planilha da aba **Tarefas** (colunas "Fase"/"Setor", seletor de fase da tarefa),
+  **Análise** (`porFase`), excluir/renomear fase/setor, e adicionar o seletor no **Editar projeto** (hoje só na criação).
+  ⚠️ Área MUITO editada pelo PC da Empresa — fazer com fetch antes e commits pequenos.
 
 ### 2026-07-18 (v) — Mac de casa — Tema Klain: removida a textura de biscoitos do fundo (fica liso)
 - Diego pediu p/ tirar o padrão SVG de biscoitos (círculos) do fundo do tema Klain. Removido o `background-image`

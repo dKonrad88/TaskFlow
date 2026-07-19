@@ -25169,6 +25169,13 @@ function abrirModalNovoProjectPro(){
           </div>
         </div>
 
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Como chamar as divisões ${_hint('Todo projeto se divide em 2 níveis. Escolha os nomes conforme o tipo de trabalho — muda só os rótulos na tela, não a lógica.')}</label>
+          <select id="pp-vocab" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg2);color:var(--text);box-sizing:border-box">
+            ${Object.keys(PP_VOCAB).map(k=>{const v=PP_VOCAB[k];return `<option value="${k}"${k==='obra'?' selected':''}>${v.label} — ${v.n1p} › ${v.n2p}</option>`;}).join('')}
+          </select>
+        </div>
+
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
           <div>
             <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Início</label>
@@ -25224,6 +25231,9 @@ function criarProjectPro(){
   const cor = corEl ? corEl.getAttribute('data-cor') : '#185FA5';
 
   const novo = _novoProjectPro({nome, tipo, cor, dono, prazoInicio, prazoFim, descricao});
+  // Vocabulário escolhido (Fase/Setor, Parte/Etapa…) → grava os rótulos do projeto.
+  const _voc = PP_VOCAB[(document.getElementById('pp-vocab')||{}).value||''];
+  if(_voc && _voc.n1!=='Fase') novo.rotulos = {n1:_voc.n1, n1p:_voc.n1p, g1:_voc.g1, n2:_voc.n2, n2p:_voc.n2p, g2:_voc.g2};
   novo.status = 'planejamento';
   novo.coordenador = dono; // nasce "governável" — o dono coordena por padrão (dá pra trocar em Editar)
   // Adiciona o dono automaticamente nas pessoas
