@@ -322,6 +322,31 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-19 (nn) — Mac de casa — ALERTA PREDITIVO DE PRAZO (2ª ideia de painel, esta APROVADA)
+- Depois do Radar reprovado (entrada mm), o Diego escolheu esta. **Lição aplicada: nada de bloco novo** —
+  o alerta vive DENTRO do chip que o cabeçalho já tem. Projeto em dia: a tela não muda em NADA.
+- **O que já existia:** `_ppConclusaoHeader` calcula a previsão (`_ppProjecao`), compara com `p.prazoFim` e
+  já pintava "4d de folga" (verde) ou "3d após o prazo" (vermelho). Faltava perceber a VIRADA e dizer a CAUSA.
+- **Implementado:**
+  - `_ppFimPrevisto(p)` / `_ppFolgaDias(p,fim)` / `_ppPrazoSnap(p)` — helpers de leitura.
+  - `_ppChecarVirada(p, antes, causa)` — grava `p.virada` **só quando a folga CRUZA a fronteira** (era ≥0,
+    virou <0). Oscilar dentro da folga não é notícia; avisar a cada ajuste faria virar ruído. E quando
+    volta p/ dentro do prazo, **apaga `p.virada` sozinho** (testado) — o aviso não fica grudado.
+  - Interceptado em `_ppSetDias` e `_ppToggleParalela` (tira uma foto do prazo ANTES, compara DEPOIS).
+  - `_ppPorQuePrazo(projectId)` — o modal do "por quê?".
+- ⚠️ **Registrado nas AÇÕES, nunca no render.** Render que escreve no banco foi exatamente o bug P0 nº1
+  desta base (`renderProjectProTarefas` reescrevendo `t.date`). Não repetir o padrão.
+- ⭐ **As DUAS causas são distinguidas** — é o ponto da feature:
+  - **(a) alguém mexeu** → `p.virada` tem tarefa, o que mudou, quem e quando.
+    Testado: "DECIDIR: estratégia para operadores · duração de 1 para 12 dias · por Diego Konrad".
+  - **(b) o tempo passou** → sem `p.virada`, calcula na hora (não persiste): "Ninguém mudou o cronograma.
+    'Preparar acessos — Onda 1' está liberada há 9 dias sem concluir — a data foi ficando para trás sozinha."
+    Sem essa distinção o aviso apontaria culpado errado, que é pior que não apontar nenhum.
+  - **(c) nasce estourado** → nem virada nem parada: "A soma das durações não cabe no prazo final."
+- VERIFICADO no navegador nos 3 caminhos + o ciclo completo (estourar → registra e mostra o chip;
+  desfazer → limpa a virada e o chip some). 0 erros de console, jsc SYNTAX_OK.
+- Campo novo no modelo: **`p.virada`** (um objeto por projeto, sobrescrito; NÃO é histórico).
+
 ### 2026-07-19 (mm) — Mac de casa — Radar de travamento REMOVIDO (testado e reprovado) · recolher fica
 - ❌ **O "Radar de travamento" da entrada (ll) foi REMOVIDO** — Diego testou no ar e disse "não gostei".
   **NÃO reimplementar** sem ele pedir. A ideia (mostrar o que trava o projeto: quantas tarefas esperam pela

@@ -25971,7 +25971,9 @@ function _ppConclusaoHeader(p, prog){
     if(p.prazoFim) diff=Math.round((new Date(fim+'T00:00:00')-new Date(p.prazoFim+'T00:00:00'))/86400000);
     const cor=(diff!=null&&diff>0)?'var(--danger)':(diff!=null?'var(--success)':'var(--text3)');
     const sub=diff==null?'':(diff===0?'no prazo':(diff>0?`${diff}d após o prazo`:`${-diff}d de folga`));
-    return `<span style="font-size:11.5px;color:var(--text3);white-space:nowrap" title="Conclusão prevista do projeto"><i class="ti ti-flag-check" style="font-size:12px"></i> ${formatDate(fim)}${sub?` <span style="color:${cor};font-weight:700">· ${sub}</span>`:''}</span>`;
+    // "por quê?" só quando a previsão passou do prazo — em dia, o cabeçalho não muda em nada.
+    const _pq=(diff!=null&&diff>0)?` <span onclick="event.stopPropagation();_ppPorQuePrazo('${p.id}')" title="O que empurrou a data" style="font-size:10.5px;font-weight:700;color:var(--danger);background:color-mix(in srgb,var(--danger) 12%,transparent);border-radius:99px;padding:2px 8px;cursor:pointer;margin-left:2px">por quê?</span>`:'';
+    return `<span style="font-size:11.5px;color:var(--text3);white-space:nowrap" title="Conclusão prevista do projeto"><i class="ti ti-flag-check" style="font-size:12px"></i> ${formatDate(fim)}${sub?` <span style="color:${cor};font-weight:700">· ${sub}</span>`:''}${_pq}</span>`;
   }catch(e){ return ''; }
 }
 // Bloco padrão do Painel do Projeto: superfície do TEMA (--card é creme no areia/klain, branco
@@ -26855,16 +26857,118 @@ function _ppEstaBloqueada(t){
   if(!c) return false;
   return !_ppLiberada(t, c.ord, c.et);
 }
+// ═══ ALERTA PREDITIVO DE PRAZO ═══════════════════════════════════════════════════════
+// O cabeçalho (_ppConclusaoHeader) JÁ mostra "13 de ago. · 4d de folga" em verde ou
+// "3d além do prazo" em vermelho. O que faltava era (a) perceber a VIRADA — o instante em que
+// a folga cruza de positiva p/ negativa — e (b) dizer O QUE causou.
+//
+// ⚠️ Registrado nas AÇÕES, nunca no render. Um render que escreve no banco foi exatamente o
+// bug P0 nº1 desta base (`renderProjectProTarefas` reescrevia t.date) — não repetir o padrão.
+function _ppFimPrevisto(p){
+  try{
+    const ord=_ppTarefasOrdenadas(p), et=_ppEtapas(ord);
+    const anchor=(p.prazoInicio && p.prazoInicio>today)?p.prazoInicio:today;
+    return (_ppProjecao(ord,et,anchor)||{})._fimProjeto||null;
+  }catch(e){ return null; }
+}
+function _ppFolgaDias(p, fim){
+  if(!p || !p.prazoFim || !fim) return null;
+  return Math.round((new Date(p.prazoFim+'T00:00:00')-new Date(fim+'T00:00:00'))/86400000);
+}
+// Fotografia do prazo ANTES de mexer em algo que afeta o cronograma.
+function _ppPrazoSnap(p){ const fim=_ppFimPrevisto(p); return {fim, folga:_ppFolgaDias(p,fim)}; }
+// Compara com o depois. Só grava quando CRUZA a fronteira do prazo — oscilar dentro da folga
+// não é notícia, e avisar a cada ajuste faria o alerta virar ruído (aí ninguém mais olha).
+function _ppChecarVirada(p, antes, causa){
+  if(!p || !antes) return;
+  const dep=_ppPrazoSnap(p);
+  if(antes.folga!=null && dep.folga!=null && antes.folga>=0 && dep.folga<0){
+    p.virada=Object.assign({}, causa, {
+      fimAntes:antes.fim, fimDepois:dep.fim, folgaAntes:antes.folga, folgaDepois:dep.folga,
+      quando:new Date().toISOString(), quem:CURRENT_USER_ID
+    });
+    saveProjectPro_db(p);
+  } else if(dep.folga!=null && dep.folga>=0 && p.virada){
+    delete p.virada; saveProjectPro_db(p);   // voltou p/ dentro do prazo → o aviso não vale mais
+  }
+}
+
+// Abre o "por quê?" do cabeçalho. Duas respostas possíveis, e distinguir as duas é o ponto:
+//  (a) ALGUÉM MEXEU  → há `p.virada` gravada pela ação que cruzou a fronteira do prazo.
+//  (b) O TEMPO PASSOU → ninguém mexeu; a data foi ficando para trás porque a tarefa liberada
+//      não andou. Calculado na hora (não persiste nada) a partir de `ppLiberadaEm`.
+// Sem essa distinção o aviso apontaria "fulano mudou X" mesmo quando a culpa é de ninguém ter
+// tocado na tarefa — culpado errado é pior que nenhum culpado.
+function _ppPorQuePrazo(projectId){
+  const p=projectsPro.find(x=>x.id===projectId); if(!p) return;
+  const fim=_ppFimPrevisto(p), folga=_ppFolgaDias(p,fim);
+  const _lin=(rot,val,cor)=>`<div style="display:contents"><span style="font-size:12px;color:var(--text3)">${rot}</span><span style="font-size:12.5px;color:${cor||'var(--text)'}">${val}</span></div>`;
+  let corpo='';
+  if(p.virada && p.virada.tipo==='mudanca'){
+    const pe=p.virada.quem?_personById(p.virada.quem):null;
+    const q=p.virada.quando?new Date(p.virada.quando):null;
+    const quando=q?`${formatDate(q.toISOString().slice(0,10))} ${String(q.getHours()).padStart(2,'0')}:${String(q.getMinutes()).padStart(2,'0')}`:'';
+    corpo=`<div style="display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px 12px;align-items:baseline">
+      ${_lin('Antes', `${formatDate(p.virada.fimAntes)} · ${p.virada.folgaAntes}d de folga`)}
+      ${_lin('Agora', `${formatDate(p.virada.fimDepois)} · ${Math.abs(p.virada.folgaDepois)}d além`,'var(--danger)')}
+      ${_lin('Mudou', `${escapeHTML(p.virada.tarefa||'')}<div style="font-size:11.5px;color:var(--text3);margin-top:2px">${escapeHTML(p.virada.oque||'')}${pe?' · por '+escapeHTML(pe.name):''}${quando?' · '+quando:''}</div>`)}
+    </div>`;
+  } else {
+    // Ninguém mexeu: procura a tarefa liberada que está parada há mais tempo.
+    let alvo=null, maisDias=-1;
+    try{
+      const ord=_ppTarefasOrdenadas(p), et=_ppEtapas(ord);
+      const pend=ord.filter(t=>!t.done);
+      if(pend.length){
+        const etA=Math.min.apply(null,pend.map(t=>et.get(t.id)));
+        pend.filter(t=>et.get(t.id)===etA).forEach(t=>{
+          if(!t.ppLiberadaEm) return;
+          const d=Math.floor((new Date(today+'T00:00:00')-new Date(t.ppLiberadaEm+'T00:00:00'))/86400000);
+          if(!isNaN(d)&&d>maisDias){ maisDias=d; alvo=t; }
+        });
+      }
+    }catch(e){}
+    corpo=`<div style="display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px 12px;align-items:baseline">
+      ${_lin('Previsão', `${formatDate(fim)} · ${Math.abs(folga||0)}d além do prazo`,'var(--danger)')}
+      ${_lin('Prazo', formatDate(p.prazoFim))}
+      ${_lin('Causa', alvo&&maisDias>0
+        ? `Ninguém mudou o cronograma.<div style="font-size:11.5px;color:var(--text3);margin-top:2px">"${escapeHTML(alvo.title)}" está liberada há ${maisDias} dia${maisDias>1?'s':''} sem concluir — a data foi ficando para trás sozinha.</div>`
+        : `O cronograma previsto já nasce depois do prazo.<div style="font-size:11.5px;color:var(--text3);margin-top:2px">A soma das durações não cabe no prazo final. Reveja os dias das tarefas ou o prazo do projeto.</div>`)}
+    </div>`;
+  }
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9500;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.onclick=e=>{ if(e.target===ov) ov.remove(); };
+  ov.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;width:100%;max-width:430px;padding:20px;box-shadow:0 24px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <i class="ti ti-alert-triangle" style="font-size:17px;color:var(--danger)"></i>
+      <span style="font-size:14px;font-weight:800;color:var(--text)">A previsão passou o prazo</span>
+    </div>
+    ${corpo}
+    <div style="display:flex;justify-content:flex-end;margin-top:18px"><button class="pq-ok" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Entendi</button></div>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('.pq-ok').onclick=()=>ov.remove();
+}
+
 function _ppToggleParalela(projectId, taskId){
   const p=projectsPro.find(x=>x.id===projectId); if(!p) return;
   if(!_ppPodeGerenciar(p)){ toast('🔒 Só o dono e os coordenadores podem mudar etapas'); return; }
   const t=tasks.find(x=>x.id===taskId); if(!t) return;
-  t.ppParalela=!t.ppParalela; saveTask_db(t); render();
+  const _snap=_ppPrazoSnap(p);
+  t.ppParalela=!t.ppParalela; saveTask_db(t);
+  _ppChecarVirada(p,_snap,{tipo:'mudanca', tarefa:t.title, oque:t.ppParalela?'passou a rodar em paralelo':'passou a depender da anterior'});
+  render();
 }
 function _ppSetDias(projectId, taskId, val){
   const t=tasks.find(x=>x.id===taskId); if(!t) return;
   let n=parseInt(val,10); if(isNaN(n)||n<1) n=1; if(n>999) n=999;
-  t.ppDias=n; saveTask_db(t); render();
+  const p=projectsPro.find(x=>x.id===projectId);
+  const _snap=p?_ppPrazoSnap(p):null;
+  const _de=(typeof t.ppDias==='number'&&t.ppDias>0)?t.ppDias:1;
+  t.ppDias=n; saveTask_db(t);
+  if(p && _de!==n) _ppChecarVirada(p,_snap,{tipo:'mudanca', tarefa:t.title, oque:`duração de ${_de} para ${n} dia${n>1?'s':''}`});
+  render();
 }
 function _ppSalvarTituloInline(taskId, el){
   const novo=(el.textContent||'').replace(/\s+/g,' ').trim();
