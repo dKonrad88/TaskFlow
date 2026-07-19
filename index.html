@@ -26983,10 +26983,28 @@ function renderProjectProTarefas(p){
   const _proj = _ppProjecao(_ord, _etapas, _anchor);
   const _numHier = _ppNumHier(_ord, _etapas);
   let todas = _ord.map((t,i)=>({...t, ..._ctx(t), _idx:i, _ehUltima:i===_ord.length-1, _status:_ppStatus(t,_ord,_etapas), _prj:_proj.get(t.id), _num:_numHier.get(t.id)}));
-  // Sincroniza t.date com a previsão do cronograma — MAS respeita data definida à mão
-  // (dateManual). Assim a projeção preenche/re-flui as automáticas e NÃO corrompe as
-  // datas manuais (ex.: as ondas do projeto-exemplo "Implantação do Hub Klain").
-  todas.forEach(row=>{ if(!row.done && row._prj && row._prj.ini){ const orig=tasks.find(x=>x.id===row.id); if(orig && !orig.dateManual && orig.date!==row._prj.ini){ orig.date=row._prj.ini; if(typeof saveTask_db==='function') saveTask_db(orig); } } });
+  // SEMEIA t.date com a previsão do cronograma APENAS quando a tarefa ainda não tem data
+  // nenhuma — serve p/ ela aparecer nas telas gerais (agenda, kanban, Meu Dia). NUNCA
+  // sobrescreve uma data já existente (manual OU semeada antes).
+  //
+  // ⚠️ NÃO voltar a "re-fluir" a data a cada render (era o comportamento até 18/07/2026):
+  // `_ppProjecao` ancora em `_anchor` = hoje (ou o início do projeto, se futuro), então a
+  // previsão é SEMPRE >= hoje. Reescrever t.date com ela empurrava a data pra frente a cada
+  // render e tornava MATEMATICAMENTE IMPOSSÍVEL uma tarefa de projeto ficar atrasada: a
+  // esteira pintava "Atrasada" (_ppStatus, que ancora em ppLiberadaEm) enquanto a aba
+  // Atrasadas, o kanban e o card da aba Info diziam "em dia" — e o saveTask_db congelava o
+  // prazoBase a partir dessa data inventada, corrompendo a baseline da aba Análise.
+  // Comprovado: tarefa 78 dias atrasada virou data futura só de abrir esta aba.
+  //
+  // O cronograma NÃO depende desta escrita: o Painel exibe a previsão direto de `_prj`
+  // (ver _statusCell e o mini-Gantt), que é recalculado a cada render e nunca persistido.
+  todas.forEach(row=>{
+    if(row.done || !row._prj || !row._prj.ini) return;
+    const orig=tasks.find(x=>x.id===row.id);
+    if(!orig || orig.dateManual || orig.date) return;   // já tem data → não toca
+    orig.date=row._prj.ini;
+    if(typeof saveTask_db==='function') saveTask_db(orig);
+  });
   const _totalProjeto = todas.length;
   const _concluidas = todas.filter(t=>t.done).length;
 

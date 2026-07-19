@@ -174,7 +174,7 @@ Não altera nada, só lê e imprime. Rodar em CADA máquina e colar o resultado 
 > Legenda: 🔬 = comprovado rodando no app · 📖 = comprovado lendo o código.
 
 ### P0 — corrompe dado ou mente para o usuário
-- [ ] **🔬 `renderProjectProTarefas` REESCREVE `t.date` a cada render** (`26989`). Só abrir a aba Tarefas
+- [x] ✅ **RESOLVIDO 19/07/2026** — **🔬 `renderProjectProTarefas` REESCREVE `t.date` a cada render** (`26989`). Só abrir a aba Tarefas
   do projeto muda a data das tarefas sem `dateManual` e **persiste** via `saveTask_db`. Teste real:
   tarefa com `date=2026-05-01` (78 dias atrasada) virou `2026-08-14` (futuro) sem nenhum clique.
   Pior: tarefa criada SEM data ganha `date` E tem o `prazoBase` congelado com a projeção da máquina
@@ -318,6 +318,28 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 - **Indicadores do painel de reunião** — a **coluna 0 já existe** reservada com aviso discreto (ver entrada (g)).
 
 ## Log de handoff (mais recente no topo)
+
+### 2026-07-19 (ee) — Mac de casa — ✅ P0 nº1 CORRIGIDO: o render não reescreve mais `t.date`
+- Corrigido o bug nº1 da varredura (entrada dd): `renderProjectProTarefas` (`~26989`) reescrevia `t.date`
+  de toda tarefa sem `dateManual` a cada render e persistia via `saveTask_db`.
+- **Descoberta que definiu a correção:** o cronograma **NÃO dependia dessa escrita**. O Painel exibe a
+  previsão direto de `_prj` (`_statusCell` ~`27055`: `${formatDate(prj.ini)} → ${formatDate(prj.fim)}`) e
+  o mini-Gantt idem — tudo recalculado a cada render e nunca persistido. A escrita só servia p/ SEMEAR data
+  nas telas gerais (agenda/kanban/Meu Dia). Medido no seed: das 21 tarefas do projeto, 14 tinham `dateManual`
+  e as 7 restantes eram exatamente as 7 **sem data nenhuma**.
+- **Correção:** semeia `t.date` **só quando está vazia**; **nunca sobrescreve** (manual OU semeada antes).
+  Sem campo novo, sem tocar em nenhum consumidor. Comentário longo no código explicando por que NÃO voltar
+  a "re-fluir" (`_ppProjecao` ancora em hoje ⇒ a previsão é sempre ≥ hoje ⇒ reescrever tornava
+  MATEMATICAMENTE IMPOSSÍVEL uma tarefa de projeto ficar atrasada).
+- **VERIFICADO no navegador** (preview 8891), 3 renders seguidos: tarefa com `date=2026-05-01` e sem
+  `dateManual` ficou em `2026-05-01` (antes virava futuro no 1º render); tarefa sem data foi semeada com
+  `2026-08-17` e permaneceu ESTÁVEL. Integração: aba Atrasadas passou a mostrar, card "Atrasadas" do projeto
+  passou a contar — as telas que usam `t.date` voltaram a concordar entre si. jsc SYNTAX_OK, 0 erros de console,
+  Painel renderiza igual (screenshot conferido).
+- ⚠️ **Não desfaz o passado:** tarefas cuja data já foi empurrada pro futuro continuam com essa data. Não há
+  dado perdido (elas nasceram sem prazo), mas se quiser re-semear é só limpar a data delas — o render preenche
+  de novo, agora uma vez só.
+- Restam os outros 20 bugs da varredura (3 P0, 6 P1, 6 P2, 6 P3) + código morto. Nada mais foi tocado.
 
 ### 2026-07-18 (dd) — Mac de casa — VARREDURA completa de Reuniões + Projetos (só diagnóstico, 0 correções)
 - Diego pediu auditoria "extremamente detalhada" dos 2 módulos após os 57 commits do PC da Empresa: bugs,
