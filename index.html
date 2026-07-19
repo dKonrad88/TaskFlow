@@ -26072,7 +26072,9 @@ function renderProjectProVisao(p, prog){
         ? `<span title="Bloqueada — aguarda a etapa anterior concluir" style="width:18px;height:18px;border-radius:50%;border:1.5px dashed var(--border);color:var(--text3);display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-lock" style="font-size:10px"></i></span>`
         : `<i class="ti ${done?'ti-square-check-filled':'ti-square'}" onclick="toggle(${t.id})" style="font-size:18px;color:${done?'var(--success)':'var(--text3)'};cursor:pointer" title="${done?'Concluída':'Marcar como concluída'}"></i>`}
       <span onclick="openEdit(${t.id})" style="min-width:0;font-size:12.5px;color:${done?'var(--text3)':'var(--text)'};${done?'text-decoration:line-through;':''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" title="Abrir tarefa">${escapeHTML(t.title)}</span>
-      <span style="display:flex;justify-content:center;min-width:0">${ex?`<span title="${escapeAttr(ex.name)}" style="display:inline-block;max-width:100%;padding:2px 8px;border-radius:99px;background:var(--bg2);border:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(ex.name.split(' ')[0])}</span>`:''}</span>
+      <span style="display:flex;justify-content:center;min-width:0">${ex
+        ? `<span data-exec-anchor="${t.id}" onclick="event.stopPropagation();ttOpenInlineDropdown(${t.id},'executor',this)" title="${escapeAttr(ex.name)} — clique p/ trocar" style="display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:2px 8px;border-radius:99px;background:var(--bg2);border:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text2);cursor:pointer;white-space:nowrap"><i class="ti ti-user" style="font-size:10px;flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis">${escapeHTML(ex.name.split(' ')[0])}</span></span>`
+        : `<span data-exec-anchor="${t.id}" onclick="event.stopPropagation();ttOpenInlineDropdown(${t.id},'executor',this)" title="Definir responsável" style="display:inline-flex;align-items:center;gap:3px;padding:2px 9px;border-radius:99px;border:1px dashed var(--border);color:var(--text3);font-size:11px;cursor:pointer"><i class="ti ti-user-plus" style="font-size:12px"></i></span>`}</span>
       <input type="number" min="1" max="999" value="${dias}" title="Dias úteis para executar" onchange="_ppSetDias('${p.id}',${t.id},this.value)" style="width:100%;height:23px;text-align:center;font-size:11px;padding:1px 2px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);font-family:inherit;box-sizing:border-box">
       <span title="Conclusão prevista desta tarefa" style="font-size:10.5px;color:${stCor};font-weight:600;white-space:nowrap;text-align:center">${(!done&&prevTxt)?`<i class="ti ti-calendar" style="font-size:10px"></i> ${prevTxt}`:''}</span>
     </div>`;
@@ -26133,7 +26135,7 @@ function renderProjectProVisao(p, prog){
   }
   // (jul/2026) O "+" do cabeçalho virou um botão tracejado ABAIXO da lista, igual ao
   // "+ Adicionar setor" do detalhe — mesma gramática de "criar o próximo item da lista".
-  const estruturaBloco=`<div style="margin-top:20px">
+  const estruturaBloco=`<div>
     <style>.pp-estr-pen{display:none}.pp-estr-row:hover .pp-estr-pen{display:inline-flex}</style>
     ${_ppTituloCol('ti-sitemap','Estrutura')}
     ${fasesLista}

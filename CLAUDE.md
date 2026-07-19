@@ -137,6 +137,20 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (bb) — Mac de casa — Painel: título "Estrutura" alinhado + vincular PESSOA direto na linha da tarefa
+- **Alinhamento:** o `estruturaBloco` ainda tinha `margin-top:20px` (herança de quando o "Acontecendo agora" vinha
+  acima dele) → removido. Agora "Estrutura" (col. 1) alinha com o título da fase (col. 2, ex. "Gerenciador de tarefas").
+- **Executor CLICÁVEL na linha da tarefa** (pedido do Diego: "fazer tudo do painel"): a célula do executor em
+  `_tarefaLinha` virou um chip que abre o seletor de pessoas JÁ EXISTENTE — **`ttOpenInlineDropdown(id,'executor',this)`**
+  (o mesmo da planilha da aba Tarefas). Quando NÃO há responsável, mostra um chip tracejado com `ti-user-plus` (antes
+  a célula ficava VAZIA, sem como atribuir). Reuso total, sem lógica nova.
+- VERIFICADO no navegador (fluxo real): tarefa criada pelo campo inline da etapa → clique no chip → dropdown lista as
+  pessoas do projeto → escolhi "Débora" → salvou, pill na linha, dropdown fechou.
+- ⚠️ Investigado e **NÃO é bug**: `_ppVincularTarefaPorExecutor` move a tarefa p/ um setor com o nome do CARGO do
+  executor — **mas só quando `t.setorManual` é falso**. Tarefas criadas pelo quick-add DENTRO de uma etapa nascem com
+  `setorManual:true` (ver `quickAddTaskPro`), então **permanecem na etapa** ao atribuir alguém (confirmado em teste).
+  Só tarefas criadas fora de um grupo é que seriam reclassificadas pelo cargo.
+
 ### 2026-07-18 (aa) — Mac de casa — Painel: "Acontecendo agora" desceu p/ o fim da coluna esquerda
 - Pedido do Diego: o bloco "Acontecendo agora" saiu do TOPO da coluna 1 (acima da Estrutura) p/ o FIM (abaixo da
   Estrutura — canto inferior esquerdo). Só reordenação no `return` de `renderProjectProVisao` (col1 agora = projeção →
