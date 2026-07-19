@@ -322,6 +322,28 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-19 (jj) — Mac de casa — Fecha o alinhamento + as 4 duplicações que dependiam de decisão
+- O Diego delegou as 4 decisões abertas do (ii) ("você decide o que fica melhor"). Critério de cada uma:
+  1. **Nome do projeto 2×** → tirei do **breadcrumb**, mantive o título do corpo. Motivo: o corpo tem ícone
+     do tipo, botão de status e peso visual; o breadcrumb vira navegação pura ("← Projetos"). E é o padrão
+     que o **Painel de Reunião já usava** (topbar = "📋 Painel de Reunião", nome só no corpo) — o Projeto era
+     a exceção. Agora as duas telas seguem a mesma regra.
+  2. **Aba Info** → saíram os cards **Tarefas** e **Atrasadas**. O "Tarefas" repetia o `feitas/total` do
+     `progressoCard` **da própria aba** (duplicação interna, a mais indefensável) e os dois já estão no
+     cabeçalho. Ficaram: infoCard, **statusCard**, Pessoas (não existe no cabeçalho) e progressoCard, que
+     consolida barra + % + feitas/total + conclusão numa leitura só.
+  3. **4 cards do topo da Análise** → **MANTIDOS**. Ali eles formam um conjunto comparativo (Prazo planejado
+     × Previsão × Saldo × Progresso); tirar 3 por "repetir o cabeçalho" quebraria a leitura do conjunto.
+  4. **Fase selecionada** → tirei `feitas/total` + barra do DETALHE, mantive o `%`. Na coluna Estrutura eles
+     ficam, porque lá servem p/ COMPARAR as fases entre si; no detalhe eram eco a 34px de distância.
+- **Listas restantes alinhadas:** "Acontecendo agora" + "Próximas a liberar" (mesmo grid `30px 1fr` — o
+  número hierárquico "1"/"3.2"/"10.1" e o cadeado tinham larguras diferentes e as 2 listas irmãs não casavam
+  entre si); as **3 da aba Análise** com o MESMO badge de 104px; `reunSerieHeaderHTML`; e
+  `_reunHistoricoInlineHTML` (o botão "Abrir" não existe na reunião atual → virou `<span></span>`).
+- VERIFICADO no navegador: topbar mostra só "Projetos" e o nome sai 1× (no corpo); aba Info sem os 2 cards,
+  **com o `pp-status-badge`** e — o teste que importava — **`abrirMenuStatusProjeto` ABRE o menu completo**
+  (Planejamento/Em andamento/Pausado/Concluído), que era o risco de mexer ali. 0 erros de console, jsc OK.
+
 ### 2026-07-19 (ii) — Mac de casa — Alinhamento em COLUNAS (Projetos + Reuniões) e 4 duplicações removidas
 - Continuação do (hh). Duas varreduras mapearam **17 listas desalinhadas** e **8 duplicações**. Aplicado:
 - **Alinhadas (grid de colunas fixas):**
