@@ -29810,8 +29810,8 @@ function _reunSubnavHTML(grupos){
 
 function renderReunioes(){
   const container=document.getElementById('task-container');
-  // Título do topo de volta ao normal
-  const _tt=document.getElementById('tab-title'); if(_tt) _tt.textContent='📅 Reuniões';
+  // Título do topo de volta ao normal (reexibe: o Painel de Reunião o esconde com display:none)
+  const _tt=document.getElementById('tab-title'); if(_tt){ _tt.textContent='📅 Reuniões'; _tt.style.display=''; }
   _tabBackSet(''); // saiu do painel (o botão "Voltar" chama esta função direto, sem passar pelo render)
   const _ts=document.getElementById('tab-sub'); if(_ts && !sidebarPersonId) _ts.textContent='Hub de reuniões — histórico, pauta e ATA';
   // GUILHERME V3: removido botão "+ Nova Reunião" da subnavbar. Criação via FAB → openReuniaoModal().
@@ -31849,8 +31849,10 @@ function openReuniaoView(id, _opts){
 
   // Guardar ID da reunião activa para re-render
   window._activeReuniaoId=id;
-  // Título do topo: "Painel de Reunião"
-  const _tt=document.getElementById('tab-title'); if(_tt) _tt.textContent='📋 Painel de Reunião';
+  // (jul/2026) Sem título "📋 Painel de Reunião" no topo: era redundante (o "← Voltar às reuniões"
+  // já dá o contexto e o próprio card do painel já mostra "Reunião — <nome>"). Escondido, não só vazio,
+  // pra o conteúdo subir. renderReunioes() reexibe (display='') ao voltar à lista.
+  const _tt=document.getElementById('tab-title'); if(_tt){ _tt.textContent=''; _tt.style.display='none'; }
   // (jul/2026) Sem subtítulo aqui: "Pauta, tarefas, decisões e registro do encontro" era explicativo
   // e só empurrava o conteúdo pra baixo. _tabBackSet('') devolve o subtítulo ao sair do painel.
   const _ts=document.getElementById('tab-sub'); if(_ts){ _ts.textContent=''; _ts.style.display='none'; }

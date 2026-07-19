@@ -322,6 +322,21 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-19 (rr) — Mac de casa — Removido o título "📋 Painel de Reunião" do topo
+- Pedido do Diego (screenshot): tirar o `<h2>` "📋 Painel de Reunião" que ficava no topo do painel,
+  abaixo do "← Voltar às reuniões". Redundante — o "Voltar às reuniões" já dá contexto e o próprio painel
+  já mostra "Reunião — <nome>" logo abaixo.
+- **Como:** o `#tab-title` é COMPARTILHADO por todas as telas. Em vez de esvaziar (deixaria um gap do h2),
+  escondi com `display:none` no `openReuniaoView` (`~31853`) e **reexibo** (`display=''`) no
+  `renderReunioes` (`~29814`), que é por onde o botão "Voltar" e o re-render passam. Sem o 2º passo o título
+  "📅 Reuniões" ficaria preso escondido ao voltar à lista — **testei os dois caminhos no navegador**:
+  no painel `tab-title` fica `display:none`/h=0 e `tab-back` visível; ao voltar, `tab-title` volta a
+  `block`/"📅 Reuniões". `changeTab` (troca de aba pelo menu) já reexibia sozinho (`15298`), não precisou tocar.
+- ⚠️ Armadilha do preview (anotar p/ não cair de novo): ao forçar `hubView='taskflow'` via console, o
+  `.topbar` fica com o `display:none` que o BOOT aplica no Meu Dia (`34474`) — o topbar todo some e parece
+  que o "Voltar" sumiu. No app real ele está visível. No teste, forçar `.main .topbar{display:''}` antes.
+- jsc SYNTAX_OK. 2 linhas trocadas em index.html.
+
 ### 2026-07-19 (qq) — Mac de casa — Card "Editar reunião" ganha o header escuro (igual às outras abas) + 3 ideias do Painel de Reunião DESCARTADAS
 - Pedido do Diego (com screenshot): "todas as abas têm um fundo mais escuro no título do card, só o Editar
   não; pode fazer igual". Correto — o card **Editar reunião** (`renderNovaReuniaoForm`, `~31044`) usava
