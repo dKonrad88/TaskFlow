@@ -348,8 +348,13 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
   mas agora **clareando a própria var** (`color-mix(var(--blue-mid) 45%, #fff)`) em vez dos hexes fixos que
   estavam lá — assim continua temático. Medido nos 5 temas: escuro **6.46**, meia-noite **7.47**, claro 6.52,
   Klain 4.36, Brasil 3.61 (os 2 últimos no limite de AA para bold).
-- VERIFICADO: no Klain os títulos de fase saem em `rgb(106,86,55)` = exatamente o `--text2` do tema (antes
-  `#185fa5`); o único azul da tela passa a ser o FAB. jsc SYNTAX_OK, 0 erros de console.
+- **2ª passada (mesmo dia):** o `#e8f1fa` (azul-bebê fixo) sobrevivia em **mais 7 componentes** que aparecem
+  nessas abas — hover das ações da lista de reuniões (`.kanban-edit-btn`), `.attach-chip`, `.task-due`,
+  `.quick-date-btn`, `.rec-opt.active`, `.task-act-btn.edit` e `.proj-status-planejamento` — todos trocados
+  pelo mesmo `color-mix`. Mais o pill de contagem do grupo (`${g.color}22`) e o override dark do status.
+- VERIFICADO por varredura do DOM renderizado no tema Klain: **sobraram exatamente 2 elementos azuis** no
+  conteúdo — o ícone do tipo do projeto e a barra de progresso, que são IDENTIDADE e devem ficar mesmo.
+  Títulos de fase saem em `rgb(106,86,55)` = o `--text2` do tema (antes `#185fa5`). jsc SYNTAX_OK, 0 erros.
 
 ### 2026-07-19 (jj) — Mac de casa — Fecha o alinhamento + as 4 duplicações que dependiam de decisão
 - O Diego delegou as 4 decisões abertas do (ii) ("você decide o que fica melhor"). Critério de cada uma:
