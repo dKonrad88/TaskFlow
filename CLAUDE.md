@@ -322,6 +322,20 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-19 (mm) — Mac de casa — Radar de travamento REMOVIDO (testado e reprovado) · recolher fica
+- ❌ **O "Radar de travamento" da entrada (ll) foi REMOVIDO** — Diego testou no ar e disse "não gostei".
+  **NÃO reimplementar** sem ele pedir. A ideia (mostrar o que trava o projeto: quantas tarefas esperam pela
+  etapa da vez, há quantos dias está parada, quantas sem responsável) está descrita na entrada (ll) e no
+  chat de 19/07 — se um dia voltar, o cálculo está lá; mas o veredito do dono, com a coisa funcionando na
+  tela dele, foi negativo. Removido por completo: 0 sobras de `radarBloco`, `RADAR_DIAS_PARADA`, `_travadas`,
+  `_semDono`, `_diasDesde` (conferido por grep).
+- ✅ **O que FICOU:** o "Acontecendo agora" segue **recolhível**, com o resumo no cabeçalho quando fechado
+  ("Etapa 3 de 21 · Preparar acessos — Onda 1"). A infra (`_ppCardCol`/`_ppCardAberto`/`_ppToggleCard`/
+  `_ppCardHead`, persistida em `taskflow_pp_card_col`) permanece e é **genérica** — dá p/ tornar qualquer
+  card do Painel recolhível chamando `_ppCardHead` com outra chave.
+- Lição registrada: a ideia foi validada em mockup, implementada, testada no navegador e **ainda assim
+  reprovada no uso real**. Mockup aprova conceito, não aprova utilidade — o teste no ar é que decide.
+
 ### 2026-07-19 (ll) — Mac de casa — Painel: RADAR DE TRAVAMENTO + cards recolhíveis
 - 1ª das 6 ideias de painel que levantei p/ o Diego (ele escolheu esta p/ testar).
 - **Radar de travamento** (`renderProjectProVisao`, junto do `comandoBloco`): responde "por que NÃO anda?",
