@@ -24783,20 +24783,20 @@ function projectProRowHTML(p){
   const prog=_calcularProgressoProjeto(p);
   const status=PP_STATUS[p.status]||PP_STATUS.planejamento;
   const tipo=PP_TIPOS[p.tipo]||PP_TIPOS.outro;
-  return `<div data-project-pro-id="${p.id}" onclick="abrirProjectProView('${p.id}')" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-left:3px solid ${p.cor};border-radius:10px;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow='0 3px 12px rgba(0,0,0,.07)'" onmouseout="this.style.boxShadow=''">
+  return `<div data-project-pro-id="${p.id}" onclick="abrirProjectProView('${p.id}')" style="display:grid;grid-template-columns:minmax(0,1fr) 104px 140px 58px 92px 26px;align-items:center;gap:12px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-left:3px solid ${p.cor};border-radius:10px;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow='0 3px 12px rgba(0,0,0,.07)'" onmouseout="this.style.boxShadow=''">
     <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px">
       <button onclick="event.stopPropagation();_ppToggleFav('${p.id}')" title="${p.favorito?'Desafixar':'Fixar no topo'}" style="background:none;border:none;cursor:pointer;color:${p.favorito?'var(--amber)':'var(--text3)'};font-size:14px;padding:0;flex-shrink:0;line-height:1"><i class="ti ti-star${p.favorito?'-filled':''}"></i></button>
       <i class="ti ${tipo.icon}" style="color:${p.cor};font-size:15px;flex-shrink:0"></i>
       <span style="font-size:13.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(p.nome)}</span>
       ${prog.atrasadas>0?`<span style="background:var(--danger-bg);color:var(--danger);font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;flex-shrink:0">${prog.atrasadas} atrasada${prog.atrasadas>1?'s':''}</span>`:''}
     </div>
-    <span style="background:${status.color}22;color:${status.color};font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;white-space:nowrap;flex-shrink:0"><i class="ti ${status.icon}" style="font-size:10px"></i> ${status.label}</span>
-    <div style="display:flex;align-items:center;gap:7px;width:140px;flex-shrink:0">
+    <span style="background:${status.color}22;color:${status.color};font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;white-space:nowrap;justify-self:start"><i class="ti ${status.icon}" style="font-size:10px"></i> ${status.label}</span>
+    <div style="display:flex;align-items:center;gap:7px;min-width:0">
       <div style="flex:1;height:6px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:${p.cor};width:${prog.pct}%"></div></div>
       <span style="font-size:11px;font-weight:700;color:var(--text2);min-width:30px;text-align:right">${prog.pct}%</span>
     </div>
-    <span style="font-size:11px;color:var(--text3);white-space:nowrap;width:58px;text-align:right;flex-shrink:0"><i class="ti ti-checklist" style="font-size:11px"></i> ${prog.feitas}/${prog.total}</span>
-    <span style="font-size:11px;white-space:nowrap;text-align:right;flex-shrink:0;min-width:80px">${_ppChipPrazo(p)}</span>
+    <span style="font-size:11px;color:var(--text3);white-space:nowrap;text-align:right"><i class="ti ti-checklist" style="font-size:11px"></i> ${prog.feitas}/${prog.total}</span>
+    <span style="font-size:11px;white-space:nowrap;text-align:right;overflow:hidden">${_ppChipPrazo(p)}</span>
     <button onclick="event.stopPropagation();confirmExcluirProjectPro('${p.id}')" title="Excluir projeto" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;flex-shrink:0;border-radius:6px" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-trash" style="font-size:14px"></i></button>
   </div>`;
 }
@@ -26188,13 +26188,13 @@ function renderProjectProVisao(p, prog){
   let comentariosBloco='';
   try{ comentariosBloco=renderProjectProAnotacoes(p); }catch(e){ comentariosBloco=''; }
 
-  // (jul/2026) A CONCLUSÃO PREVISTA subiu p/ o cabeçalho, ao lado do % (_ppConclusaoHeader) —
-  // aqui sobra só o call-to-action de "tudo concluído", que é AÇÃO, não métrica.
-  // Sem data prevista + com tarefas na esteira = nada pendente, ou seja, tudo concluído.
-  let projecaoBloco='';
-  if(prog.total>0 && !_projE._fimProjeto && _ordE.length){
-    projecaoBloco=`<div style="display:flex;align-items:center;gap:7px;margin-bottom:16px;min-width:0"><i class="ti ti-circle-check" style="font-size:14px;color:var(--success);flex-shrink:0"></i><span style="font-size:12.5px;font-weight:700;color:var(--text)">Todas as tarefas concluídas — pronto para encerrar.</span></div>`;
-  }
+  // (jul/2026) A CONCLUSÃO PREVISTA subiu p/ o cabeçalho, ao lado do % (_ppConclusaoHeader).
+  // O aviso "Todas as tarefas concluídas" que sobrava aqui TAMBÉM saiu: ele dispara na mesma
+  // condição do card verde grande do "Acontecendo agora" (_ppProjecao zera _fimProjeto quando
+  // não há pendentes), então a mesma frase aparecia 2× na MESMA coluna — 3× quando o projeto
+  // já tinha `preFecharEm` e o banner de encerramento estava no topo. Ficou o card, que tem
+  // ícone, cor e diz o próximo passo. (Diego, jul/2026)
+  const projecaoBloco='';
 
   // Layout 4 COLUNAS (jul/2026, pedido do Diego):
   //   1. Conclusão prevista + Acontecendo agora   2. Estrutura (fases)
@@ -26302,7 +26302,7 @@ function renderProjectProFases(p){
 
   // Cabeçalho da aba com ícone de nova fase
   const headerFases = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-    <span style="font-size:13px;font-weight:700;color:var(--text)"><i class="ti ti-layout-rows" style="color:var(--text2)"></i> ${_ppRot(p,1,true)} do projeto</span>
+    <span style="font-size:13px;font-weight:700;color:var(--text)"><i class="ti ti-layout-rows" style="color:var(--text2)"></i> ${_ppRot(p,1,true)}</span>
     <button class="reun-ico" onclick="adicionarFase('${p.id}')" title="Adicionar ${_ppRot(p,1,false,true)}"><i class="ti ti-plus"></i></button>
   </div>`;
 
@@ -27035,33 +27035,10 @@ function renderProjectProTarefas(p){
   const _modoBtn=(k,icon,label)=>{const on=_modo===k;return `<button onclick="sessionStorage.setItem('pp-modo-${p.id}','${k}');render()" title="${label}" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:5px 11px;border-radius:7px;border:none;cursor:pointer;font-family:inherit;transition:all .12s;${on?'background:var(--card);color:var(--blue-mid);box-shadow:0 1px 2px rgba(0,0,0,.08)':'background:transparent;color:var(--text3)'}"><i class="ti ${icon}" style="font-size:14px"></i>${label}</button>`;};
   const _modoSel=`<div style="display:inline-flex;gap:2px;background:var(--bg2);padding:3px;border-radius:9px">${_modoBtn('planilha','ti-list-numbers','Planilha')}${_modoBtn('foco','ti-focus-2','Foco')}</div>`;
 
-  // Insights de cronograma: conclusão prevista vs prazo + etapa atual
-  let _insightsHTML='';
-  {
-    const fimPrev=_proj._fimProjeto;
-    const _dd=(a,b)=>Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);
-    if(fimPrev){
-      let prazoChip='';
-      if(p.prazoFim){
-        const diff=_dd(p.prazoFim, fimPrev); // >0 = estoura
-        prazoChip = diff>0
-          ? `<span title="Conclusão prevista passa ${diff} dia${diff!==1?'s':''} do prazo (${formatDate(p.prazoFim)})" style="font-size:11px;font-weight:700;color:var(--danger);background:color-mix(in srgb,var(--danger) 12%,transparent);padding:3px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-alert-triangle" style="font-size:12px"></i>${diff}d além do prazo</span>`
-          : `<span title="Dentro do prazo (${formatDate(p.prazoFim)}) com ${-diff} dia${diff!==-1?'s':''} de folga" style="font-size:11px;font-weight:700;color:var(--success);background:color-mix(in srgb,var(--success) 12%,transparent);padding:3px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-shield-check" style="font-size:12px"></i>No prazo${diff<0?` (+${-diff}d)`:''}</span>`;
-      }
-      _insightsHTML += `<span title="Data calculada pelo cronograma (etapas × dias úteis)" style="font-size:11px;font-weight:600;color:var(--text2);background:var(--bg2);padding:3px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-flag-check" style="font-size:12px;color:${p.cor}"></i>Conclusão prevista: <b>${formatDate(fimPrev)}</b></span>${prazoChip}`;
-    }
-    const _pend=todas.filter(t=>!t.done);
-    if(_pend.length){
-      const etapaAtual=Math.min(..._pend.map(t=>t._status.etapa));
-      const totalEtapas=Math.max(...todas.map(t=>t._status.etapa));
-      const nasEtapa=_pend.filter(t=>t._status.etapa===etapaAtual && t._status.estado!=='bloqueada').length;
-      _insightsHTML += `<span title="${nasEtapa} tarefa${nasEtapa!==1?'s':''} liberada${nasEtapa!==1?'s':''} agora" style="font-size:11px;font-weight:600;color:var(--text2);background:var(--bg2);padding:3px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-player-play-filled" style="font-size:11px;color:var(--orange)"></i>Etapa <b>${etapaAtual}</b> de ${totalEtapas}</span>`;
-    }
-  }
   // (jul/2026, Diego) Barra do topo ENXUTA: só o seletor Planilha/Foco. Os chips de total,
   // concluídas, "Conclusão prevista", "No prazo" e "Etapa X de Y" saíram porque JÁ aparecem
   // no cabeçalho do projeto — era a mesma informação duas vezes na mesma tela.
-  // `_insightsHTML` continua montado acima porque o modo FOCO ainda o usa.
+  // O modo FOCO usa este mesmo `filtrosHTML`, então também fica só com o seletor.
   const filtrosHTML = `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0 14px">
     ${_modoSel}
   </div>`;
@@ -30368,6 +30345,14 @@ function reunRapidaMuralHTML(rr){
   </div>`;
 }
 
+// ⚠️ As 3 funções abaixo — reunRapidaItemHTML, reunCompromissoItemHTML e reunListItemHTML —
+// produzem linhas que se INTERCALAM na MESMA lista (ver o .map em renderReunioes). Por isso as
+// três usam o MESMO grid: `96px 64px minmax(0,1fr) 76px 92px` (hora · data · título · chip · ações).
+// Mexeu numa, mexa nas três, senão as colunas param de casar entre linhas vizinhas.
+// A 4ª coluna (chip "Agora"/"Rápida") só tem conteúdo em reunListItemHTML; nas outras duas vai um
+// <span></span> vazio — sem ele as ações subiriam para a coluna do chip. Pelo mesmo motivo
+// reunListItemHTML, que tem 2 botões contra os 3 das outras, emite um espaçador de 28px.
+// (jul/2026, Diego: alinhar tudo "independente se tem ou não a informação naquele momento")
 function reunRapidaItemHTML(rr, opts={}){
   const isHoje=rr.data===today;
   const isPast=rr.data<today;
@@ -30376,10 +30361,11 @@ function reunRapidaItemHTML(rr, opts={}){
   const dBbg=isHoje?'var(--success-bg)':'var(--bg2)';
   const horaLabel=rr.horaInicio?(rr.horaFim?`${rr.horaInicio}–${rr.horaFim}`:rr.horaInicio):'—';
   const indent=opts.indent?'margin-left:22px;':'';
-  return `<div class="reun-row" onclick="editarReuniaoRapida('${rr.id}')" style="${indent}position:relative;display:flex;align-items:center;gap:14px;padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color .15s,box-shadow .15s;opacity:${isPast?.7:1}">
-    <div style="font-size:13px;font-weight:550;color:var(--text2);min-width:96px;flex-shrink:0">${horaLabel}</div>
-    <div style="font-size:11px;font-weight:550;color:${dBcor};white-space:nowrap;flex-shrink:0;min-width:64px">${dataBadge}</div>
-    <div style="flex:1;min-width:0;font-size:13.5px;font-weight:550;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(rr.titulo)}</div>
+  return `<div class="reun-row" onclick="editarReuniaoRapida('${rr.id}')" style="${indent}position:relative;display:grid;grid-template-columns:96px 64px minmax(0,1fr) 76px 92px;align-items:center;gap:14px;padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color .15s,box-shadow .15s;opacity:${isPast?.7:1}">
+    <div style="font-size:13px;font-weight:550;color:var(--text2);min-width:0;overflow:hidden">${horaLabel}</div>
+    <div style="font-size:11px;font-weight:550;color:${dBcor};white-space:nowrap;min-width:0;overflow:hidden">${dataBadge}</div>
+    <div style="min-width:0;font-size:13.5px;font-weight:550;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(rr.titulo)}</div>
+    <span></span>
     <div class="reun-row-actions">
       <button class="kanban-edit-btn" onclick="event.stopPropagation();editarReuniaoRapida('${rr.id}')" title="Editar"><i class="ti ti-pencil"></i></button>
       <button class="kanban-edit-btn" onclick="event.stopPropagation();duplicarReuniaoRapida('${rr.id}')" title="Duplicar"><i class="ti ti-copy"></i></button>
@@ -30405,10 +30391,11 @@ function reunCompromissoItemHTML(c, opts={}){
   const dBbg=isHoje?'var(--success-bg)':'var(--bg2)';
   const horaLabel=c.horaInicio?(c.horaFim?`${c.horaInicio}–${c.horaFim}`:c.horaInicio):'—';
   const indent=opts.indent?'margin-left:22px;':'';
-  return `<div class="reun-row" onclick="editarCompromisso('${c.id}')" style="${indent}position:relative;display:flex;align-items:center;gap:14px;padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color .15s,box-shadow .15s;opacity:${isPast?.7:1}">
-    <div style="font-size:13px;font-weight:550;color:var(--text2);min-width:96px;flex-shrink:0">${horaLabel}</div>
-    <div style="font-size:11px;font-weight:550;color:${dBcor};white-space:nowrap;flex-shrink:0;min-width:64px">${dataBadge}</div>
-    <div style="flex:1;min-width:0;font-size:13.5px;font-weight:550;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(c.titulo)}</div>
+  return `<div class="reun-row" onclick="editarCompromisso('${c.id}')" style="${indent}position:relative;display:grid;grid-template-columns:96px 64px minmax(0,1fr) 76px 92px;align-items:center;gap:14px;padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color .15s,box-shadow .15s;opacity:${isPast?.7:1}">
+    <div style="font-size:13px;font-weight:550;color:var(--text2);min-width:0;overflow:hidden">${horaLabel}</div>
+    <div style="font-size:11px;font-weight:550;color:${dBcor};white-space:nowrap;min-width:0;overflow:hidden">${dataBadge}</div>
+    <div style="min-width:0;font-size:13.5px;font-weight:550;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(c.titulo)}</div>
+    <span></span>
     <div class="reun-row-actions">
       <button class="kanban-edit-btn" onclick="event.stopPropagation();editarCompromisso('${c.id}')" title="Editar"><i class="ti ti-pencil"></i></button>
       <button class="kanban-edit-btn" onclick="event.stopPropagation();duplicarCompromisso('${c.id}')" title="Duplicar"><i class="ti ti-copy"></i></button>
@@ -30465,13 +30452,14 @@ function reunListItemHTML(m,opts={}){
   const chip=_emAndamento?`<span style="${chipBase};background:var(--danger);color:#fff" title="Acontecendo agora"><i class="ti ti-broadcast" style="font-size:11px"></i> Agora</span>`:(m.nivel==='rapida'?`<span style="${chipBase};background:color-mix(in srgb,var(--purple) 14%,transparent);color:var(--purple)" title="Reunião rápida"><i class="ti ti-bolt" style="font-size:10px"></i> Rápida</span>`:'');
 
   const indent=opts.indent?'margin-left:22px;':'';
-  return `<div class="reun-row" onclick="openReuniaoView('${m.id}')" style="${indent}position:relative;display:flex;align-items:center;gap:14px;padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color .15s,box-shadow .15s">
-    <div style="font-size:13px;font-weight:550;color:${_emAndamento?'var(--danger)':'var(--text2)'};min-width:96px;flex-shrink:0">${horaLabel}</div>
-    <div style="font-size:11px;font-weight:550;color:${dBcor};white-space:nowrap;flex-shrink:0;min-width:64px">${dataBadge}</div>
-    <div style="flex:1;min-width:0;font-size:13.5px;font-weight:550;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(m.title)}</div>
+  return `<div class="reun-row" onclick="openReuniaoView('${m.id}')" style="${indent}position:relative;display:grid;grid-template-columns:96px 64px minmax(0,1fr) 76px 92px;align-items:center;gap:14px;padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color .15s,box-shadow .15s">
+    <div style="font-size:13px;font-weight:550;color:${_emAndamento?'var(--danger)':'var(--text2)'};min-width:0;overflow:hidden">${horaLabel}</div>
+    <div style="font-size:11px;font-weight:550;color:${dBcor};white-space:nowrap;min-width:0;overflow:hidden">${dataBadge}</div>
+    <div style="min-width:0;font-size:13.5px;font-weight:550;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(m.title)}</div>
     ${chip}
     <div class="reun-row-actions">
       <button class="kanban-edit-btn" onclick="event.stopPropagation();editReuniao('${m.id}')" title="Editar"><i class="ti ti-pencil"></i></button>
+      <span style="display:inline-block;width:28px"></span>
       <button class="kanban-edit-btn" onclick="event.stopPropagation();deleteReuniao('${m.id}')" title="Excluir" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color=''"><i class="ti ti-trash"></i></button>
     </div>
   </div>`;
@@ -31621,17 +31609,18 @@ function openReuniaoView(id, _opts){
           <!-- Linha de nova tarefa inline -->
           <div id="nova-tarefa-row-${m.id}" style="display:none;margin-top:10px">
             <div style="padding:8px;background:var(--bg2);border-radius:8px">
-              <div style="display:grid;grid-template-columns:18px 1fr 140px 132px;gap:8px;font-size:10px;font-weight:700;color:var(--text3);margin-bottom:5px">
-                <span></span><span>Descrição <span style="color:var(--danger)">*</span></span><span>Executor <span style="color:var(--danger)">*</span></span><span>Data <span style="color:var(--danger)">*</span></span>
+              <div style="display:grid;grid-template-columns:18px minmax(0,1fr) 112px 96px 26px;gap:9px;font-size:10px;font-weight:700;color:var(--text3);margin-bottom:5px">
+                <span></span><span>Descrição <span style="color:var(--danger)">*</span></span><span>Executor <span style="color:var(--danger)">*</span></span><span>Data <span style="color:var(--danger)">*</span></span><span></span>
               </div>
-              <div style="display:grid;grid-template-columns:18px 1fr 140px 132px;gap:8px;align-items:center">
+              <div style="display:grid;grid-template-columns:18px minmax(0,1fr) 112px 96px 26px;gap:9px;align-items:center">
                 <i class="ti ti-square" style="font-size:16px;color:var(--text3)"></i>
                 <input id="nt-desc-${m.id}" class="modal-input" placeholder="Descrição da tarefa..." style="padding:6px 10px;font-size:13px" onkeydown="if(event.key==='Enter')saveNovaTarefaInline('${m.id}');if(event.key==='Escape')cancelNovaTarefaInline('${m.id}')">
-                <select id="nt-quem-${m.id}" class="modal-input" style="padding:6px 10px;font-size:12px;min-width:110px">
+                <select id="nt-quem-${m.id}" class="modal-input" style="padding:6px 10px;font-size:12px;min-width:0">
                   <option value="">Quem?</option>
                   ${[...people].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>`<option value="${p.id}">${escapeHTML(p.name)}</option>`).join('')}
                 </select>
                 <input id="nt-data-${m.id}" class="modal-input" type="date" value="${m.date||today}" style="padding:6px 8px;font-size:12px;width:100%;box-sizing:border-box;min-width:0">
+                <span></span>
               </div>
             </div>
             <div style="display:flex;gap:6px;margin-top:6px;justify-content:flex-end">
@@ -32299,11 +32288,14 @@ function _reunDecisoesListHTML(m){
   return itens.map((d,i)=>{
     const data=d.data||'';
     const dataTxt=data?new Date(data+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}):'';
-    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)" id="decisao-row-${m.id}-${i}">
-      <i class="ti ti-point-filled" style="color:var(--blue-mid);font-size:14px;flex-shrink:0"></i>
-      <span style="flex:1;font-size:13px;color:var(--text);line-height:1.4">${escapeHTML(d.texto||'')}</span>
-      ${dataTxt?`<span style="font-size:10px;color:var(--text3);white-space:nowrap">${dataTxt}</span>`:''}
-      ${encerrada?'':`<button onclick="removerDecisao('${m.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 4px;line-height:1;flex-shrink:0" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'" title="Remover">×</button>`}
+    // GRID: a data só existe em algumas decisões e o × some quando a reunião está encerrada.
+    // Com flex, faltar um deles fazia o outro subir de coluna e a lista desalinhava linha a
+    // linha — por isso as duas células são SEMPRE emitidas, vazias quando não há conteúdo.
+    return `<div style="display:grid;grid-template-columns:14px minmax(0,1fr) 52px 20px;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)" id="decisao-row-${m.id}-${i}">
+      <i class="ti ti-point-filled" style="color:var(--blue-mid);font-size:14px"></i>
+      <span style="min-width:0;font-size:13px;color:var(--text);line-height:1.4">${escapeHTML(d.texto||'')}</span>
+      <span style="font-size:10px;color:var(--text3);white-space:nowrap;text-align:right">${dataTxt}</span>
+      ${encerrada?'<span></span>':`<button onclick="removerDecisao('${m.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 4px;line-height:1" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'" title="Remover">×</button>`}
     </div>`;
   }).join('');
 }
@@ -33206,10 +33198,10 @@ function estatisticasPresenca(personId){
 function renderAnexos(m){
   if(!(m.anexos||[]).length) return '<div style="font-size:13px;color:var(--text3);font-style:italic;padding:8px 0">Nenhum anexo. Clique em "Adicionar" para enviar arquivos.</div>';
   return `<div style="display:flex;flex-direction:column;gap:6px">${(m.anexos||[]).map((a,i)=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px">
+    <div style="display:grid;grid-template-columns:18px minmax(0,1fr) 62px 22px;align-items:center;gap:10px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px">
       <i class="ti ti-file" style="color:var(--blue-mid);font-size:18px;flex-shrink:0"></i>
-      <a href="${a.data}" download="${escapeAttr(a.name)}" style="flex:1;font-size:13px;color:var(--text);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeAttr(a.name)}">${escapeHTML(a.name)}</a>
-      <span style="font-size:11px;color:var(--text3);flex-shrink:0">${a.size?formatarTamanhoArquivo(a.size):''}</span>
+      <a href="${a.data}" download="${escapeAttr(a.name)}" style="min-width:0;font-size:13px;color:var(--text);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeAttr(a.name)}">${escapeHTML(a.name)}</a>
+      <span style="font-size:11px;color:var(--text3);text-align:right;overflow:hidden">${a.size?formatarTamanhoArquivo(a.size):''}</span>
       <button onclick="removerAnexo('${m.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px 4px;font-size:14px" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'" title="Remover"><i class="ti ti-trash"></i></button>
     </div>`).join('')}</div>`;
 }
@@ -33276,10 +33268,10 @@ function _projAnexosLista(p, compacto){
   const arr=p.anexos||[];
   if(!arr.length) return `<div style="font-size:${compacto?'12':'13'}px;color:var(--text3);font-style:italic;padding:6px 0">Nenhum anexo ainda.</div>`;
   return `<div style="display:flex;flex-direction:column;gap:6px">${arr.map((a,i)=>`
-    <div style="display:flex;align-items:center;gap:8px;padding:${compacto?'6px 9px':'8px 12px'};background:var(--bg2);border:1px solid var(--border);border-radius:8px">
+    <div style="display:grid;grid-template-columns:18px minmax(0,1fr) 62px 22px;align-items:center;gap:8px;padding:${compacto?'6px 9px':'8px 12px'};background:var(--bg2);border:1px solid var(--border);border-radius:8px">
       <i class="ti ti-file" style="color:var(--blue-mid);font-size:${compacto?'15':'18'}px;flex-shrink:0"></i>
-      <a href="${a.data}" download="${escapeAttr(a.name)}" style="flex:1;min-width:0;font-size:${compacto?'12':'13'}px;color:var(--text);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeAttr(a.name)}">${escapeHTML(a.name)}</a>
-      <span style="font-size:10.5px;color:var(--text3);flex-shrink:0">${a.size?formatarTamanhoArquivo(a.size):''}</span>
+      <a href="${a.data}" download="${escapeAttr(a.name)}" style="min-width:0;font-size:${compacto?'12':'13'}px;color:var(--text);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeAttr(a.name)}">${escapeHTML(a.name)}</a>
+      <span style="font-size:10.5px;color:var(--text3);text-align:right;overflow:hidden">${a.size?formatarTamanhoArquivo(a.size):''}</span>
       <button onclick="_projDelAnexo('${p.id}',${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;font-size:13px;flex-shrink:0" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'" title="Remover"><i class="ti ti-trash"></i></button>
     </div>`).join('')}</div>`;
 }
@@ -33330,7 +33322,7 @@ function _projAnexosCardHTML(p){
   const n=(p.anexos||[]).length;
   return `<div>
     <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;min-width:0">
-      <div style="flex:1;min-width:0">${_ppTituloCol('ti-paperclip','Anexos',n?String(n):'',0)}</div>
+      <div style="flex:1;min-width:0">${_ppTituloCol('ti-paperclip','Anexos','',0)}</div>
       <button onclick="document.getElementById('proj-anexo-inp-c-${p.id}').click()" title="Adicionar arquivo" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;display:inline-flex;flex-shrink:0" onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-plus" style="font-size:15px"></i></button>
     </div>
     <input type="file" id="proj-anexo-inp-c-${p.id}" style="display:none" multiple onchange="_projAddAnexos('${p.id}',this.files)">

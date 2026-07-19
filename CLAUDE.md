@@ -322,6 +322,46 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-19 (ii) — Mac de casa — Alinhamento em COLUNAS (Projetos + Reuniões) e 4 duplicações removidas
+- Continuação do (hh). Duas varreduras mapearam **17 listas desalinhadas** e **8 duplicações**. Aplicado:
+- **Alinhadas (grid de colunas fixas):**
+  - **Lista de PROJETOS** (`projectProRowHTML`): `minmax(0,1fr) 104px 140px 58px 92px 26px`. O chip de status
+    não tinha largura (Planejamento × Em andamento × Concluído empurravam a barra) e o chip de prazo some
+    quando o projeto não tem `prazoFim` — agora a célula segura a coluna sozinha.
+  - **Lista de REUNIÕES** — ⚠️ são **3 funções que se INTERCALAM na mesma lista**: `reunListItemHTML`,
+    `reunCompromissoItemHTML` e `reunRapidaItemHTML`. As 3 receberam o MESMO grid
+    `96px 64px minmax(0,1fr) 76px 92px`. O chip "Agora"/"Rápida" só existe na 1ª → nas outras 2 vai
+    `<span></span>`; e a 1ª tem 2 botões contra 3 das outras → ganhou espaçador de 28px. **Mexeu numa, mexa
+    nas três** (comentário no código).
+  - **Decisões tomadas** (`_reunDecisoesListHTML`): a data só existia em algumas e o × some quando encerrada
+    → as 2 células agora são sempre emitidas.
+  - **Anexos** (reunião `renderAnexos` + projeto `_projAnexosLista`): mesma linha nas duas telas, mesmo grid
+    `18px minmax(0,1fr) 62px 22px`. O tamanho vira `''` quando falta e a lixeira encostava no nome.
+  - **Form "nova tarefa" da reunião**: usava `18px 1fr 140px 132px` enquanto a lista logo ACIMA dele
+    (`tarefaRow`) usa `18px minmax(0,1fr) 112px 96px 26px` — o form ficava torto em relação às linhas que
+    ele mesmo cria. Igualado (+ célula da lixeira no header e no corpo).
+- **Duplicações removidas (as seguras):**
+  - `projecaoBloco` do Painel: "Todas as tarefas concluídas" aparecia **2× na mesma coluna** (o card verde do
+    "Acontecendo agora" dispara na mesma condição) — e 3× quando havia `preFecharEm`. Ficou o card.
+  - "Fases **do projeto**" → só "Fases" (a sub-aba e o cabeçalho já dizem onde se está).
+  - Contagem no card de Anexos do Painel (a sub-aba já mostra "Anexos (N)").
+  - ⭐ **`_insightsHTML` MORTO removido (23 linhas)** — erro MEU do commit `2f8e31f`: ao tirar os chips do topo
+    eu deixei o bloco sendo montado e escrevi um comentário dizendo que "o modo FOCO ainda usa". **Estava
+    errado** — o modo foco usa o mesmo `filtrosHTML`. Comentário corrigido.
+- 🚫 **NÃO removidas de propósito (risco real, documentado pela varredura):**
+  - **Card de Status da aba Info** — é o único `id="pp-status-badge"` do app e `abrirMenuStatusProjeto` faz
+    `if(!badge) return`. Sem ele, **fica impossível voltar o projeto p/ "Planejamento" ou "Arquivado"**.
+  - **Os 2 contadores de presença da Reunião** — só coincidem em *modo foco × aba Pessoas*; fora do foco o
+    cabeçalho não tem contador, e no foco a aba Pessoas é que não aparece. Cada um é único no seu contexto.
+  - **"Conclusão prevista" da Info** quando o projeto está concluído: vira "Concluído em: <data real>", que
+    não existe em nenhum outro lugar.
+- ⏳ **FALTA (mapeado, não aplicado):** listas de MÉDIA/BAIXA — "Acontecendo agora"/"Próximas a liberar"
+  (número hierárquico sem largura), as 3 listas da aba **Análise** (badge deve ter os mesmos 104px nas três),
+  `_ppLinha` e os statCards da **Info**, `reunSerieHeaderHTML`, `_reunHistoricoInlineHTML`, "Decisões
+  anteriores" e `_reunDecisoesSerieInlineHTML`. E as duplicações que **dependem de decisão do Diego**: nome do
+  projeto 2× (breadcrumb × título do corpo), quanto da aba Info enxugar, os 4 cards do topo da Análise, e o
+  `feitas/total`+barra repetidos entre a fase selecionada e o detalhe.
+
 ### 2026-07-19 (hh) — Mac de casa — Aba Partes/Fases: colunas alinhadas · sem chips de etapa · sem coluna Projeto duplicada
 - Diego pediu (1) tirar os chips de ETAPA da linha da parte, (2) alinhar as informações como COLUNAS em
   toda a aba Projetos e toda a aba Reuniões, (3) tirar a coluna com o nome do PROJETO de dentro das etapas
