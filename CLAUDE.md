@@ -137,6 +137,20 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (y) — Mac de casa — Estrutura do Painel: criar e renomear parte/fase INLINE (sem modal)
+- Diego pediu p/ renomear a parte direto no card e criar sem abrir modal — inline. Na coluna **Estrutura** do Painel
+  (`renderProjectProVisao`):
+  - **RENOMEAR inline:** duplo-clique no nome (ou o lápis, que aparece no hover) → o card vira input `ed-fase-<id>`;
+    **Enter salva, Esc cancela** (funções `_ppEditarNomeFase`/`_ppSalvarNomeFase`; estado `window._ppFaseEdit`; a
+    guarda `dataset.cancel` distingue Esc de blur). Clique simples segue **selecionando** a parte (master-detail).
+  - **CRIAR inline:** o botão "+ Adicionar parte" virou um campo **"Nova <parte> — Enter para adicionar"**
+    (`qa-fase-<id>` → **`quickAddFasePro`**), que reabre focado p/ adicionar várias seguidas (espelha o quick-add de
+    tarefa dos setores).
+  - Lápis só no hover (`.pp-estr-pen` / `.pp-estr-row:hover`) p/ não comprimir o nome. O modal `adicionarFase`
+    CONTINUA existindo (a aba Fases ainda usa), mas o **Painel não abre mais modal** p/ criar/renomear.
+- VERIFICADO no navegador: criei 2 partes pelo campo (Enter), renomeei a 1ª inline; nomes cabem melhor sem o lápis
+  fixo; 0 erros de console; jsc OK.
+
 ### 2026-07-18 (x) — Mac de casa — Vocabulário: seletor enxuto (3 opções) + PERSONALIZAR + consistência
 - Diego pediu o seletor com só 3 opções, SEM prefixo "Obra/Implantação": **Fases › Setores**, **Partes › Etapas** e
   **Personalizar…** (revela 2 campos: "Nível maior"/"Nível menor").
