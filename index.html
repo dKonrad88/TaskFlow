@@ -26056,7 +26056,16 @@ function renderProjectProVisao(p, prog){
     // linhas. Com flex, cada linha se ajustava ao próprio conteúdo e nada casava (Diego, jul/2026).
     // Colunas: etapa · dependência · check · título · executor · dias · previsão.
     const _primeira=(_ordE[0]&&_ordE[0].id===t.id);
-    return `<div style="display:grid;grid-template-columns:24px 22px 18px minmax(0,1fr) 104px 46px 84px;gap:9px;align-items:center;padding:7px 10px;border-top:1px solid var(--border)">
+    // (jul/2026, Diego) A tarefa QUE ESTÁ SENDO FEITA fica levemente destacada, p/ bater o olho e
+    // saber qual é. "Sendo feita" = liberada e não concluída (estado 'hoje' ou 'atrasada'); as
+    // bloqueadas e as concluídas ficam neutras. O destaque usa a COR DO PRÓPRIO PROJETO (p.cor),
+    // então acompanha o tema: fundo a 7% + faixa de 3px na borda esquerda. Nada fora da paleta.
+    const _emAndamento = !done && !bloq && (s.estado==='hoje' || s.estado==='atrasada');
+    const _hlCor = s.estado==='atrasada' ? 'var(--danger)' : p.cor;
+    const _hl = _emAndamento
+      ? `background:color-mix(in srgb,${_hlCor} 7%,transparent);box-shadow:inset 3px 0 0 ${_hlCor};`
+      : '';
+    return `<div style="display:grid;grid-template-columns:24px 22px 18px minmax(0,1fr) 104px 46px 84px;gap:9px;align-items:center;padding:7px 10px;border-top:1px solid var(--border);${_hl}">
       <span title="Etapa ${etapa}${paralela?' · paralela à anterior (roda junto)':' · só começa quando a etapa anterior conclui'}" style="font-size:10px;font-weight:800;color:var(--text3);background:var(--bg2);border-radius:5px;padding:2px 0;text-align:center">${numHier}</span>
       ${_primeira
         ? '<span></span>'
@@ -26188,12 +26197,14 @@ function renderProjectProVisao(p, prog){
   //   1. Conclusão prevista + Acontecendo agora   2. Estrutura (fases)
   //   3. Planejamento (detalhe da fase)           4. Comentários + Anexos
   // A projeção subiu do topo do detalhe (col 3) p/ o topo da col 1, acima do "Acontecendo agora".
+  // (jul/2026, Diego) ANEXOS desceu p/ a coluna 1, logo abaixo de "Acontecendo agora".
+  // COMENTÁRIOS (col 3) perdeu o `_ppBloco`: sem card, sem fundo — só o título `_ppTituloCol`,
+  // igual ao de "Estrutura" (col 1) e ao da fase (col 2), pra as 3 colunas alinharem no topo.
   return `<div class="pp-visao-3col">
-    <div style="min-width:0;display:flex;flex-direction:column;gap:2px">${projecaoBloco}${estruturaBloco}${comandoBloco?`<div style="margin-top:18px">${comandoBloco}</div>`:''}</div>
+    <div style="min-width:0;display:flex;flex-direction:column;gap:2px">${projecaoBloco}${estruturaBloco}${comandoBloco?`<div style="margin-top:18px">${comandoBloco}</div>`:''}<div style="margin-top:18px">${_ppBloco(_projAnexosCardHTML(p))}</div></div>
     <div style="min-width:0">${detalheBloco}</div>
-    <div style="min-width:0"><div style="position:sticky;top:8px;display:flex;flex-direction:column;gap:14px">
-      ${_ppBloco(_ppTituloCol('ti-message-circle','Comentários')+comentariosBloco)}
-      ${_ppBloco(_projAnexosCardHTML(p))}
+    <div style="min-width:0"><div style="position:sticky;top:8px;min-width:0">
+      ${_ppTituloCol('ti-message-circle','Comentários')}${comentariosBloco}
     </div></div>
   </div>`;
 }
@@ -27960,7 +27971,7 @@ function renderProjectProAnotacoes(p){
 
   return `<div style="display:flex;flex-direction:column;gap:0">
     <!-- Feed de comentários -->
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:12px;max-height:420px;overflow-y:auto" id="pp-comments-feed-${p.id}">
+    <div style="padding:0;margin-bottom:10px;max-height:420px;overflow-y:auto" id="pp-comments-feed-${p.id}">
       ${commentsHTML}
     </div>
 
@@ -27970,9 +27981,9 @@ function renderProjectProAnotacoes(p){
         placeholder="Comentar… (@nome menciona · Enter envia)"
         onkeydown="if(event.key==='Enter'){event.preventDefault();enviarProComment('${p.id}');}"
         oninput="_ppCheckMencao(this,'${p.id}')"
-        style="flex:1;min-width:0;padding:9px 13px;border:1px solid var(--border);border-radius:99px;font-size:12.5px;background:var(--bg2);color:var(--text);font-family:inherit;box-sizing:border-box;transition:border-color .15s;outline:none"
-        onfocus="this.style.borderColor='${p.cor}'" onblur="this.style.borderColor='var(--border)'">
-      <button onclick="enviarProComment('${p.id}')" title="Enviar comentário" style="width:34px;height:34px;flex-shrink:0;background:${p.cor};color:#fff;border:none;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:14px"><i class="ti ti-send"></i></button>
+        style="flex:1;min-width:0;padding:7px 2px;border:none;border-bottom:1px solid var(--border);border-radius:0;font-size:12.5px;background:transparent;color:var(--text);font-family:inherit;box-sizing:border-box;transition:border-color .15s;outline:none"
+        onfocus="this.style.borderBottomColor='${p.cor}'" onblur="this.style.borderBottomColor='var(--border)'">
+      <button onclick="enviarProComment('${p.id}')" title="Enviar comentário" style="width:28px;height:28px;flex-shrink:0;background:transparent;color:${p.cor};border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:15px;border-radius:6px" onmouseover="this.style.background='color-mix(in srgb,${p.cor} 12%,transparent)'" onmouseout="this.style.background='transparent'"><i class="ti ti-send"></i></button>
       <!-- Dropdown @menção -->
       <div id="pp-at-menu-${p.id}" style="display:none;position:absolute;bottom:100%;left:0;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:200;min-width:220px;max-height:180px;overflow-y:auto;margin-bottom:4px"></div>
     </div>
@@ -32261,22 +32272,14 @@ function reunPautaHTML(m){
       </div>`;
     }).join('');
   }
-  // Modelos: só quando a pauta está totalmente vazia (preenchem pauta principal + itens).
-  // Saíram do modal de criação — aqui é o lugar certo, já com a reunião existindo.
-  let modelosHTML='';
-  const vazia=!(m.pautaPrincipal&&m.pautaPrincipal.trim()) && !(m.pauta||[]).length;
-  if(vazia && !encerrada && !editando && !m.continuacaoDe && typeof REUNIAO_MODELOS!=='undefined'){
-    modelosHTML=`<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">
-      <div style="font-size:11px;color:var(--text3);margin-bottom:7px"><i class="ti ti-layout-grid"></i> Começar de um modelo — preenche a pauta</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px">
-        ${REUNIAO_MODELOS.map(mm=>`<button onclick="_pautaAplicarModelo('${m.id}','${mm.id}')" style="display:inline-flex;align-items:center;gap:5px;background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:20px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">${mm.icon?`<i class="ti ${mm.icon}"></i>`:''}${escapeHTML(mm.nome)}</button>`).join('')}
-      </div>
-    </div>`;
-  }
-  if(!principalHTML && !restHTML && !modelosHTML){
+  // (jul/2026, Diego) A sugestão de MODELOS de pauta saiu do painel — a pauta começa em branco.
+  // ⚠️ Com isso `REUNIAO_MODELOS`, `_pautaAplicarModelo` e `_reunAplicarModelo` ficaram SEM nenhum
+  // caminho vivo na UI (entram na lista de código morto da varredura — ver seção 🐞 do CLAUDE.md).
+  // Foram mantidos no arquivo de propósito: religar o recurso é só repor o bloco de botões aqui.
+  if(!principalHTML && !restHTML){
     return '<div style="font-size:13px;color:var(--text3);font-style:italic;padding:4px 0">Sem pauta. Adiciona um assunto abaixo.</div>';
   }
-  return principalHTML + restHTML + modelosHTML;
+  return principalHTML + restHTML;
 }
 
 // HTML da lista de decisões (reutilizado no render e no add/remove p/ update pontual sem perder scroll)

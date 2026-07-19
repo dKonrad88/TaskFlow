@@ -257,6 +257,9 @@ Não altera nada, só lê e imprime. Rodar em CADA máquina e colar o resultado 
   `reunCompromissoMuralHTML 30376`.
 - **Modais antigos de Reunião** (~160 ln): `abrirPresencaReuniao`+`fecharPresencaReuniao`, `abrirInfoReuniao`,
   `abrirAtaReuniao`, `abrirAnexosReuniao` → viraram `_reun*InlineHTML`.
+- **⚠️ NOVOS (19/07):** ao tirar a sugestão de modelos da pauta (pedido do Diego), `REUNIAO_MODELOS`,
+  `_pautaAplicarModelo` e `_reunAplicarModelo` ficaram **sem nenhum caminho vivo na UI**. Mantidos de
+  propósito — religar é repor o bloco de botões em `reunPautaHTML`.
 - **Avulsos:** `iniciarReuniao 33062`, `_reunAplicarModelo 29232`+`_reunRebuildPautaList 29220`,
   `_ciclarPapelReuniao 31775`, `setReuniaoFiltro 29886`, `removerTarefaDoGrupo 26668`, `_initPpColResizer 25935`,
   `_ppNewTaskId`, `_ppToggleChip`, `_ppTogglePainelFase`, `contOpts 30798`, ramo `'editar'` de `renderReunioes 29588`.
@@ -318,6 +321,32 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 - **Indicadores do painel de reunião** — a **coluna 0 já existe** reservada com aviso discreto (ver entrada (g)).
 
 ## Log de handoff (mais recente no topo)
+
+### 2026-07-19 (gg) — Mac de casa — Painel: destaque da tarefa atual · Comentários sem fundo · Anexos na col 1 · pauta sem modelos
+- 4 ajustes de UI pedidos pelo Diego:
+  1. **Tarefa QUE ESTÁ SENDO FEITA fica destacada** no card do Painel (`_tarefaLinha`): fundo a 7% +
+     faixa de 3px (`box-shadow:inset`) na borda esquerda. Usa a **cor do próprio projeto** (`p.cor`),
+     então acompanha o tema — nada fora da paleta. Vermelho (`--danger`) quando está atrasada.
+     "Sendo feita" = liberada e não concluída (`_ppStatus` = `hoje`/`atrasada`); bloqueada e concluída
+     ficam neutras.
+  2. **Comentários (col 3) sem card/fundo**: saiu o `_ppBloco` e o fundo do feed. Agora usa só
+     `_ppTituloCol`, igual a "Estrutura" (col 1) e ao título da fase (col 2) → as 3 colunas alinham no topo.
+  3. **Campo de novo comentário discreto**: era pill com fundo `--bg2` + botão redondo sólido; virou uma
+     linha só (`border-bottom`, fundo transparente) e o botão de enviar ficou fantasma (só o ícone, com
+     hover suave). A borda inferior acende com `p.cor` no foco.
+  4. **ANEXOS desceu p/ a coluna 1**, logo abaixo de "Acontecendo agora" (era o último bloco da col 3).
+  5. **Painel de Reunião: a pauta NÃO sugere mais modelos** — saíram o texto "Começar de um modelo" e os
+     chips (1:1, Daily, Semanal, Retrospectiva, Kickoff, Planejamento). A pauta começa em branco.
+- VERIFICADO no navegador: destaque aparece na tarefa certa ("Preparar acessos — Onda 1", estado `hoje`);
+  ordem no DOM da col 1 conferida por script (Estrutura → Acontecendo agora → Anexos); col 3 só com
+  Comentários; comentários criados pelo caminho REAL (`enviarProComment`), não injetados à mão; pauta da
+  reunião sem nenhum vestígio de modelo. 0 erros de console, jsc SYNTAX_OK.
+- ✅ **Regra de papéis CONFERIDA (nada a mudar):** `_setPapelProjeto` já garante **1 dono** (o anterior cai
+  para leitor), **2 coordenadores** (`coordenador` + `coordenador2`) e **leitores sem limite**.
+  ⚠️ Detalhe: ao promover um 3º coordenador, ele **substitui o 2º silenciosamente** (`else p.coordenador2=pid`),
+  sem avisar. A regra é respeitada, mas o usuário não entende o que aconteceu — candidato a um toast.
+  ⚠️ Os botões "1º Coord."/"2º Coord." que aparecem no código (~`27417`) estão dentro de `abrirModalEquipe`,
+  que é **função MORTA** — a tela viva é `renderProjectProPessoas`, que usa os 3 ícones de papel.
 
 ### 2026-07-19 (ff) — Mac de casa — Aba TAREFAS do projeto: virou CARDS (modelo do Painel) e enxugou
 - 6 pedidos do Diego, todos na `renderProjectProTarefas`:
