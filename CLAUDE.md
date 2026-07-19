@@ -167,6 +167,121 @@ Não altera nada, só lê e imprime. Rodar em CADA máquina e colar o resultado 
 - **Não achou em nenhuma das 3 máquinas** → é a hipótese 1: conferir no **HUB do Guilherme**. Encerrar a busca
   aqui e marcar esta seção como resolvida.
 
+## 🐞 VARREDURA 18/07/2026 (Mac) — bugs confirmados em Reuniões + Projetos
+> Auditoria pedida pelo Diego após os 57 commits do PC da Empresa. Método: inventário determinístico
+> (grafo de alcançabilidade + CSS morto) + 5 análises semânticas + **validação em navegador**.
+> **NADA foi corrigido ainda** — esta é a lista de trabalho. Marcar ✅ conforme for resolvendo.
+> Legenda: 🔬 = comprovado rodando no app · 📖 = comprovado lendo o código.
+
+### P0 — corrompe dado ou mente para o usuário
+- [ ] **🔬 `renderProjectProTarefas` REESCREVE `t.date` a cada render** (`26989`). Só abrir a aba Tarefas
+  do projeto muda a data das tarefas sem `dateManual` e **persiste** via `saveTask_db`. Teste real:
+  tarefa com `date=2026-05-01` (78 dias atrasada) virou `2026-08-14` (futuro) sem nenhum clique.
+  Pior: tarefa criada SEM data ganha `date` E tem o `prazoBase` congelado com a projeção da máquina
+  (`saveTask_db`, `4873`) — a "baseline" que a Análise usa (comentário `27590`) é inventada pelo próprio
+  renderizador. Efeito: a esteira pinta "Atrasada" enquanto aba Atrasadas/kanban/card Info dizem "em dia".
+  **Um render nunca deveria escrever no banco — a projeção tem que ser calculada e exibida, sem tocar em `t.date`.**
+- [ ] **📖 Perda SILENCIOSA por cota, com toast de sucesso** (`saveMeeting_db 4963`, `saveTask_db 4876` e
+  todos os `save*_db`). `safeSetItem` retorna `false` em `QuotaExceededError` (o comentário em `4516`
+  até documenta isso), mas **nenhum chamador olha o retorno**. Anexar 2 PDFs grandes → falha → aparece
+  `📎 2 anexos adicionados`; a partir daí ATA, pauta e presença "salvam" com toast e somem no F5.
+  `_quotaAvisado` (`4522`) ainda suprime o aviso por 30s.
+- [ ] **📖 `excluirGrupo` MENTE no diálogo** (`26648` × `26655`). Promete "voltam para a triagem do projeto
+  (sem setor)" mas executa `t.projectProFaseId=null` — ejeta a tarefa da **fase inteira**. O comentário
+  logo acima do código ("só perdem o setor") também está errado.
+- [ ] **📖 Encerrar reunião não zera `m.inicioReal`** (`_encerrarReuniaoFinal 33325`). Reabrir a reunião como
+  "Em andamento" religa o cronômetro a partir da data ORIGINAL → pílula nasce com ~24h, e Finalizar de novo
+  grava `duracaoSeg≈86000s`, contaminando as médias de duração (`29919`, `29997`, `30006`).
+
+### P1 — quebra os fluxos INLINE que acabamos de entregar (entradas y/z/bb)
+- [ ] **🔬 Tarefa criada inline numa fase inicial nasce na ÚLTIMA etapa, BLOQUEADA** (`quickAddTaskPro 22524`
+  + `_ppTarefasOrdenadas 26697`). Nasce sem `ppOrdem` → recebe `max+1` (fim da ordem GLOBAL), ignorando a
+  fase onde foi digitada. Teste real no projeto-semente: tarefa criada na **fase 1** recebeu **etapa 24 de 24**
+  e ficou **bloqueada por 21 tarefas** de fases posteriores — com cadeado, sem poder concluir pelo Painel.
+- [ ] **🔬 `quickAddSetorPro` não checa duplicata** (`26466`). Teste real: digitei "Compras" 3× → **3 setores
+  idênticos**. O caminho por modal checa (`26626`), o inline não. Agravante: `_ppVincularTarefaPorExecutor`
+  (`20674`) sempre acha o primeiro → os outros ficam vazios pra sempre, e o **Painel não tem botão de excluir
+  setor** (só a aba Fases, `26406`) — o usuário não consegue limpar de onde criou.
+- [ ] **📖 Esc para cancelar rename derruba o modo TELA CHEIA** (`25906` + `26124`). O `onkeydown` do input
+  cancela mas não chama `stopPropagation()`, então o mesmo Esc chega no listener global e roda `_exitProjFocus`.
+  Vale também p/ os 3 campos de criação inline (`qa-fase-* 26144`, `qa-setor-* 26178`, `qa-pp-* 26095`),
+  que sequer tratam Esc. (O atalho `N` em `29149` tem a guarda certa — dá pra copiar de lá.)
+- [ ] **📖 `_ppSalvarNomeFase` chama `render()` em TODO blur** (`26444`) — inclusive quando nada mudou. O
+  `render()` troca o `innerHTML` inteiro (`25894`), o nó que recebeu o `mousedown` é destruído e o `click`
+  nunca é despachado: **o primeiro clique fora do rename é engolido**. É o fluxo natural de sair da edição.
+- [ ] **📖 Setor chamado "Geral" criado inline é APAGADO silenciosamente** (`20672`) na próxima troca de
+  executor — a varredura remove todo grupo "geral" com `tarefaIds` vazio, sem toast, sem confirmação.
+
+### P2 — inconsistência de dados e contagem
+- [ ] **📖 DOIS índices concorrentes p/ "tarefa deste setor":** `t.projectProGrupoId` × `g.tarefaIds`. Na MESMA
+  tela, o cabeçalho da fase conta por um (`26372`/`26389`) e o corpo lista pelo outro (`26396`) → "o número
+  diz 8, eu conto 7". `_setorBloco` da Visão usa o 1º (`26083`), o da fase expandida usa o 2º. Nenhuma exclusão
+  de tarefa poda `tarefaIds` (`21020`, `33940`), e a poda de grupos "Geral" decide pelo índice legado, que o
+  próprio código declara 2× não ser fonte de verdade (`5161`, `5175`).
+- [ ] **📖 `limparOrfaos` é limpeza de TAREFAS disfarçada de limpeza geral** (`10524`: `if(!taskIdsExcluidas.length) return;`).
+  Projeto purgado aos 30 dias deixa `taskflow_pro_comments` (`21198`) no localStorage **para sempre**, sem rota
+  de leitura nem limpeza — vazamento que só cresce e empurra pro bug de cota acima.
+- [ ] **📖 Série de reuniões: `_recRegenerarFuturas` (`32763`) e `_sugEncerrarSerie` (`32900`) apagam ocorrências
+  sem religar `continuacaoDe`** (o `deleteReuniao 31207` religa; estas não). Um elo quebrado faz
+  `_reunAncestraisIds` dar `break` na 1ª volta → o bloco "Da reunião anterior" some e as tarefas herdadas
+  de TODAS as reuniões anteriores desaparecem do painel.
+- [ ] **📖 `_pautaAutor` é mapa por TEXTO** (`32122`/`32173`). Dois assuntos com o mesmo nome compartilham autor
+  (o 2º sobrescreve o 1º) e `removerPautaItem` (`32321`) nunca limpa a entrada → reusar o texto meses depois
+  já nasce atribuído a alguém que ninguém escolheu.
+- [ ] **📖 Subtarefas não entram em nenhum agregado** (`_calcularProgressoFase 5179` só conta `t.done`). Tarefa
+  com 9 de 10 subtarefas feitas conta 0% — o progresso do projeto subestima o avanço real por construção.
+- [ ] **📖 Restaurar projeto da lixeira pode DUPLICAR tarefa em 2 projetos** (`10462`). A guarda `!t.projectProId`
+  pula a tarefa realocada, mas o `g.tarefaIds` do projeto restaurado ainda tem o id dela → aparece nos dois.
+
+### P3 — menores (mas reais)
+- [ ] 📖 `REUN_FREQ` não tem `'custom'`, e a recorrência NOVA grava `frequencia:'custom'` (`31041`). Dois efeitos:
+  "Agendar próxima" sugere **a mesma data de hoje** (`33021`) e o aviso de "recorrente vencida" nunca aparece (`31416`).
+- [ ] 📖 `_reunFreqMap` (`32412`) conta ocorrências FUTURAS materializadas → a ⭐ "participa com frequência"
+  acende para todo mundo desde a 1ª reunião.
+- [ ] 📖 **Anotações da reunião gravam e reinjetam HTML CRU** (`_reunAnotacoesHTML 32112`, `_anotSalvar 31947`
+  usa `el.innerHTML`). É o ÚNICO ponto do módulo sem escape (todo o resto usa `escapeHTML`/`escapeAttr`) e não
+  há handler de `paste` no arquivo inteiro. Colar HTML de uma página web executa a cada re-render.
+- [ ] 📖 `openReuniaoModal` (`30493`) faz snapshot/restore de `innerHTML` → perde o que estava digitado em
+  textarea (ATA, nova tarefa, novo assunto) e mata os listeners do separador arrastável.
+- [ ] 📖 `toggle` (`20952`): concluir tarefa com o painel numa sub-aba ≠ "painel" não repinta nada (dado salva, tela fica velha).
+- [ ] 📖 Vocabulário custom entra sem escape no `placeholder` (`26144`/`26178`/`26112`/`26299`) — `_ppMkRotulo`
+  (`25226`) não sanitiza. Impacto cosmético, mas é o único ponto não escapado do bloco novo.
+
+### 🧟 Código morto (medido por grafo de alcançabilidade, não por grep)
+**40 funções mortas** no arquivo; **~296 linhas** nos 2 módulos. Morreram em CLUSTERS:
+- **Modal Equipe do Projeto** (~150 ln): `abrirModalEquipe 27356` (marcada `[SUPERSEDED]` em `27354`) levou junto
+  `_ppTogglePessoa 27434`, `_ppDefinirCoord 27451`, `_ppRemoverCoord 27469`; + `removerPessoaProjPro 27486` e
+  `_ciclarPapelProjeto 27258` com ZERO menções. Substituído pela sub-aba Pessoas.
+- **Config de Reuniões + Mural** (~90 ln): `toggleReuniaoConfig 28756` → `_fecharReuniaoConfig 28777` →
+  `setReuniaoView 29879` → e com ela ficaram inalcançáveis `reunMuralItemHTML 30237`, `reunRapidaMuralHTML 30293`,
+  `reunCompromissoMuralHTML 30376`.
+- **Modais antigos de Reunião** (~160 ln): `abrirPresencaReuniao`+`fecharPresencaReuniao`, `abrirInfoReuniao`,
+  `abrirAtaReuniao`, `abrirAnexosReuniao` → viraram `_reun*InlineHTML`.
+- **Avulsos:** `iniciarReuniao 33062`, `_reunAplicarModelo 29232`+`_reunRebuildPautaList 29220`,
+  `_ciclarPapelReuniao 31775`, `setReuniaoFiltro 29886`, `removerTarefaDoGrupo 26668`, `_initPpColResizer 25935`,
+  `_ppNewTaskId`, `_ppToggleChip`, `_ppTogglePainelFase`, `contOpts 30798`, ramo `'editar'` de `renderReunioes 29588`.
+- **`togglePresenca 33051`** = duplicata byte a byte de `togglePresencaModal 32465` (essa viva).
+- **CSS:** 15 classes mortas nos módulos (`.reun-side*`, `.reun-top-grid`, `.reun-grid`, `.reun-check`,
+  `.reun-pauta-item`, `.reun-badge-papel`, `.proj-view-*`, `.proj-color-*`); 192 no arquivo ≈ **567 linhas**.
+- ⚠️ **AO LIMPAR, NÃO REMOVER a linha `3616`** (`reunFiltroTipo='todos'` + grava no localStorage). `setReuniaoFiltro`
+  está morta, mas `reunFiltroTipo` ainda é LIDO em `29643`/`29666`/`29679`. Essa linha é a guarda que mata um bug
+  já vivido (um `'compromisso'` vindo da nuvem escondia TODAS as reuniões, sem UI pra reverter — ver `3612-3615`).
+
+### ✅ O que foi investigado e NÃO é problema (não gastar tempo de novo)
+- **Nenhuma regressão no redesign de Reuniões.** As 5 funções principais têm `[SUPERSEDED jul/2026] … mantido só
+  por segurança` escrito pela própria máquina que redesenhou. Foi limpeza consciente; todo recurso tem caminho vivo.
+- **`_reunPauta` (14003/18845/29237), `_activeReuniaoId`, `_reunFocus`, `_reunSubView`, `_reunSelParts` NÃO fazem
+  shadowing** — são todas `window.*`, não há `let/const/var` competindo. Suspeita levantada e REFUTADA.
+- **`_papelDe`/`linhaPart` em `27304`/`31794` NÃO é copy-paste** — são `const` locais de escopos e domínios
+  diferentes (papéis de PROJETO × papéis de REUNIÃO). Suspeita levantada e REFUTADA.
+- **Cronômetro NÃO vaza `setInterval`** — `_cronometroInterval` é única, sempre com `clearInterval` antes; o tick
+  se auto-encerra. O cálculo de pausar/retomar confere. (O problema está em ENCERRAR — ver P0.)
+- **`_reunAncestraisIds`/`_reunSerieCompleta` não têm recursão infinita** (guardas `guard<20`/`guard<60` + Set).
+- **Escape de HTML está correto** em título/pauta/ATA/decisões/anexos e nos pontos novos do Painel (`escapeHTML`/
+  `escapeAttr` em `19997`). Exceções: só as Anotações e o placeholder do vocabulário (ver P3).
+- **Sintaxe OK** (jsc, 31.295 linhas de JS) e **zero chamadas a função inexistente** em handlers.
+- Colisão de ids, persistência dos quick-adds e a ordem de `_moverFase` foram checadas e estão certas.
+
 ## 📌 BACKLOG ACORDADO (aprovado pelo Diego, adiado — NÃO é ideia solta)
 > Diferente das "pendências" espalhadas no log: aqui só entra o que o Diego **viu e aprovou**, mas
 > decidiu fazer **mais adiante**. Não começar sem ele pedir; ao pedir, o contexto p/ retomar está aqui.
@@ -203,6 +318,27 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 - **Indicadores do painel de reunião** — a **coluna 0 já existe** reservada com aviso discreto (ver entrada (g)).
 
 ## Log de handoff (mais recente no topo)
+
+### 2026-07-18 (dd) — Mac de casa — VARREDURA completa de Reuniões + Projetos (só diagnóstico, 0 correções)
+- Diego pediu auditoria "extremamente detalhada" dos 2 módulos após os 57 commits do PC da Empresa: bugs,
+  melhorias, código morto, "se tudo está amarrado". Resultado completo na seção **🐞 VARREDURA** acima.
+- **Método:** (1) inventário determinístico por script — grafo de alcançabilidade p/ código morto TRANSITIVO
+  (não só grep), CSS morto com tratamento de classe dinâmica, cruzamento def×uso; (2) 5 análises semânticas
+  em paralelo; (3) **validação em navegador** (preview em `/tmp/tf_preview`, porta 8891) dos achados graves.
+- **21 bugs confirmados** (4 P0, 6 P1, 6 P2, 6 P3) + **40 funções mortas** (~296 ln) + ~567 ln de CSS morto.
+- ⭐ **O achado principal — `renderProjectProTarefas` reescreve `t.date` a cada render (`26989`)** e o
+  `saveTask_db` congela o `prazoBase` a partir dessa escrita. **Comprovado rodando:** tarefa 78 dias atrasada
+  virou data futura só de abrir a aba, e persistiu no localStorage. Isso APAGA o atraso real de todas as telas
+  que usam `t.date` enquanto a esteira do projeto continua marcando vermelho — ou seja, a regra de negócio que
+  este protótipo passaria pro Guilherme está **errada**. É o P0 nº 1.
+- Também comprovado rodando: tarefa criada pelo quick-add inline na **fase 1** nasce na **etapa 24/24 bloqueada**
+  por 21 tarefas de fases posteriores; e `quickAddSetorPro` aceita 3 setores com o mesmo nome sem avisar.
+- **Honestidade metodológica:** 2 suspeitas minhas viraram FALSO POSITIVO ao serem checadas — o "shadowing" de
+  `_reunPauta`/`_activeReuniaoId` e o "copy-paste" de `_papelDe`/`linhaPart`. Ambas registradas como refutadas
+  na seção, p/ ninguém reinvestigar.
+- Nada foi corrigido e o `index.html` **não foi tocado** — a lista está em formato de checklist p/ marcar.
+- ⚠️ Recomendação registrada: a **2ª passada do vocabulário** (72 linhas / ~110 strings) tem custo/benefício
+  ruim perto dos P0 — a regra já está demonstrada nos ~30% feitos. Discutir antes de tocar nisso.
 
 ### 2026-07-18 (cc) — Mac de casa — Caça ao projeto "Snack Proteico": nuvem verificada, 2 hipóteses DESCARTADAS
 - Diego pediu p/ **lembrar de tentar recuperar o "Snack Proteico" quando ele estiver no PC da Empresa ou da
