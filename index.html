@@ -24583,10 +24583,8 @@ function _ppAtualizarSelectTipo(selectId, selecionarKey){
 // Vocabulário dos 2 níveis de agrupamento — cada projeto escolhe como chamá-los.
 // n1 = nível "estrutura" (fase/parte/módulo); n2 = nível abaixo (setor/etapa/sprint). n1p/n2p = plural.
 const PP_VOCAB = {
-  obra:     {label:'Obra / industrial',      n1:'Fase',   n1p:'Fases',   g1:'f', n2:'Setor',  n2p:'Setores', g2:'m'},
-  sistema:  {label:'Implantação de sistema', n1:'Parte',  n1p:'Partes',  g1:'f', n2:'Etapa',  n2p:'Etapas',  g2:'f'},
-  dev:      {label:'Desenvolvimento',        n1:'Módulo', n1p:'Módulos', g1:'m', n2:'Sprint', n2p:'Sprints', g2:'f'},
-  generico: {label:'Genérico',               n1:'Fase',   n1p:'Fases',   g1:'f', n2:'Setor',  n2p:'Setores', g2:'m'},
+  obra:    {n1:'Fase',  n1p:'Fases',  g1:'f', n2:'Setor', n2p:'Setores', g2:'m'},
+  sistema: {n1:'Parte', n1p:'Partes', g1:'f', n2:'Etapa', n2p:'Etapas',  g2:'f'},
 };
 // Rótulo do nível `nivel` (1 ou 2) de um projeto. plural→forma plural; lower→minúsculo (p/ meio de frase).
 // Fallback p/ Fase/Setor quando o projeto não define rótulos (compat com projetos antigos).
@@ -25111,7 +25109,7 @@ function _projFocusRailHTML(p){
     <button class="proj-rail-btn" onclick="_exitProjFocus()" title="Sair da tela cheia (Esc)"><i class="ti ti-arrows-minimize"></i><span>Sair</span></button>
     <div class="proj-rail-sep"></div>
     <button class="proj-rail-btn" onclick="setProjectProTab('visao')" style="${A('visao')}" title="Painel — visão geral do projeto"><i class="ti ti-layout-dashboard"></i><span>Painel</span></button>
-    <button class="proj-rail-btn" onclick="setProjectProTab('fases')" style="${A('fases')}" title="Fases"><i class="ti ti-layout-rows"></i><span>Fases</span></button>
+    <button class="proj-rail-btn" onclick="setProjectProTab('fases')" style="${A('fases')}" title="${_ppRot(p,1,true)}"><i class="ti ti-layout-rows"></i><span>${_ppRot(p,1,true)}</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('tarefas')" style="${A('tarefas')}" title="Tarefas"><i class="ti ti-checklist"></i><span>Tarefas</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('pessoas')" style="${A('pessoas')}" title="Pessoas — equipe do projeto"><i class="ti ti-users"></i><span>Pessoas</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('anotacoes')" style="${A('anotacoes')}" title="Comentários"><i class="ti ti-message-circle"></i><span>Comentários</span></button>
@@ -25171,9 +25169,15 @@ function abrirModalNovoProjectPro(){
 
         <div style="margin-bottom:14px">
           <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Como chamar as divisões ${_hint('Todo projeto se divide em 2 níveis. Escolha os nomes conforme o tipo de trabalho — muda só os rótulos na tela, não a lógica.')}</label>
-          <select id="pp-vocab" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg2);color:var(--text);box-sizing:border-box">
-            ${Object.keys(PP_VOCAB).map(k=>{const v=PP_VOCAB[k];return `<option value="${k}"${k==='obra'?' selected':''}>${v.label} — ${v.n1p} › ${v.n2p}</option>`;}).join('')}
+          <select id="pp-vocab" onchange="_ppVocabChange()" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg2);color:var(--text);box-sizing:border-box">
+            <option value="obra" selected>Fases › Setores</option>
+            <option value="sistema">Partes › Etapas</option>
+            <option value="custom">Personalizar…</option>
           </select>
+          <div id="pp-vocab-custom" style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+            <input id="pp-vocab-n1" type="text" placeholder="Nível maior (ex: Frente)" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg2);color:var(--text);box-sizing:border-box" />
+            <input id="pp-vocab-n2" type="text" placeholder="Nível menor (ex: Área)" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg2);color:var(--text);box-sizing:border-box" />
+          </div>
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
@@ -25213,6 +25217,24 @@ function abrirModalNovoProjectPro(){
 function fecharModalNovoProjectPro(){
   document.getElementById('pp-modal-novo')?.remove();
 }
+// Mostra/esconde os campos de vocabulário personalizado conforme o select.
+function _ppVocabChange(){
+  const sel=document.getElementById('pp-vocab'), box=document.getElementById('pp-vocab-custom');
+  if(box) box.style.display=(sel&&sel.value==='custom')?'grid':'none';
+}
+// Gera {n1,n1p,g1,n2,n2p,g2} a partir dos singulares digitados — plural e gênero por heurística PT-BR.
+function _ppMkRotulo(n1, n2){
+  const cap=s=>{ s=(s||'').trim(); return s?s.charAt(0).toUpperCase()+s.slice(1):s; };
+  const plural=s=>{ const l=(s||'').toLowerCase(); if(!l) return s;
+    if(/ão$/.test(l)) return s.slice(0,-2)+'ões';
+    if(/[mn]$/.test(l)) return s.slice(0,-1)+'ns';
+    if(/l$/.test(l)) return s.slice(0,-1)+'is';
+    if(/[rzs]$/.test(l)) return s+'es';
+    return s+'s'; };
+  const genero=s=>/[ae]$/i.test((s||'').trim())?'f':'m';
+  const N1=cap(n1), N2=cap(n2);
+  return {n1:N1, n1p:plural(N1), g1:genero(N1), n2:N2, n2p:plural(N2), g2:genero(N2)};
+}
 
 function criarProjectPro(){
   const nome = document.getElementById('pp-nome').value.trim();
@@ -25231,9 +25253,14 @@ function criarProjectPro(){
   const cor = corEl ? corEl.getAttribute('data-cor') : '#185FA5';
 
   const novo = _novoProjectPro({nome, tipo, cor, dono, prazoInicio, prazoFim, descricao});
-  // Vocabulário escolhido (Fase/Setor, Parte/Etapa…) → grava os rótulos do projeto.
-  const _voc = PP_VOCAB[(document.getElementById('pp-vocab')||{}).value||''];
-  if(_voc && _voc.n1!=='Fase') novo.rotulos = {n1:_voc.n1, n1p:_voc.n1p, g1:_voc.g1, n2:_voc.n2, n2p:_voc.n2p, g2:_voc.g2};
+  // Vocabulário: 'obra' = padrão (Fase/Setor, rótulos null); 'sistema' = Parte/Etapa; 'custom' = digitado.
+  const _vocSel=(document.getElementById('pp-vocab')||{}).value||'obra';
+  if(_vocSel==='sistema'){ const v=PP_VOCAB.sistema; novo.rotulos={n1:v.n1,n1p:v.n1p,g1:v.g1,n2:v.n2,n2p:v.n2p,g2:v.g2}; }
+  else if(_vocSel==='custom'){
+    const c1=((document.getElementById('pp-vocab-n1')||{}).value||'').trim();
+    const c2=((document.getElementById('pp-vocab-n2')||{}).value||'').trim();
+    if(c1 && c2) novo.rotulos=_ppMkRotulo(c1,c2);
+  }
   novo.status = 'planejamento';
   novo.coordenador = dono; // nasce "governável" — o dono coordena por padrão (dá pra trocar em Editar)
   // Adiciona o dono automaticamente nas pessoas
@@ -25768,8 +25795,8 @@ function renderProjectProView(id){
     if(!_temTarefa){
       const stepAtual=!_temFase?1:!_temSetor?2:3;
       const subs={1:'Comece dividindo o projeto em fases — as grandes etapas, na ordem.',2:'Você já tem as fases. Agora adicione os setores (as áreas responsáveis) em cada fase.',3:'Fases e setores prontos. Agora crie as primeiras tarefas, com responsável e prazo.'};
-      const btnLabel=stepAtual===1?'Adicionar fases':'Continuar nas Fases';
-      const passos=['Fases','Setores','Tarefas'].map((lb,i)=>{
+      const btnLabel=stepAtual===1?('Adicionar '+_ppRot(p,1,true,true)):('Continuar em '+_ppRot(p,1,true));
+      const passos=[_ppRot(p,1,true),_ppRot(p,2,true),'Tarefas'].map((lb,i)=>{
         const n=i+1, estado=n<stepAtual?'ok':n===stepAtual?'now':'todo';
         const circ=estado==='ok'?`<span style="width:18px;height:18px;border-radius:50%;background:var(--success);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0"><i class="ti ti-check"></i></span>`:`<span style="width:18px;height:18px;border-radius:50%;background:${estado==='now'?'var(--blue-mid)':'var(--bg2)'};color:${estado==='now'?'#fff':'var(--text3)'};display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${n}</span>`;
         const cor=estado==='now'?'var(--text)':estado==='ok'?'var(--text2)':'var(--text3)';
@@ -25818,7 +25845,7 @@ function renderProjectProView(id){
   const _nAnex=(p.anexos||[]).length;
   const subTabs = [
     {id:'visao',     label:'Painel',      icon:'ti-layout-dashboard'},
-    {id:'fases',     label:'Fases',       icon:'ti-layout-rows'},
+    {id:'fases',     label:_ppRot(p,1,true), icon:'ti-layout-rows'},
     {id:'tarefas',   label:'Tarefas',     icon:'ti-checklist'},
     {id:'pessoas',   label:'Pessoas',     icon:'ti-users'},
     {id:'anotacoes', label:'Comentários'+(_nComs?` (${_nComs})`:''), icon:'ti-message-circle'},
@@ -26280,7 +26307,7 @@ function renderProjectProFases(p){
       const setores=[...new Set((f.grupos||[]).map(g=>g.setor))];
       const setoresHTML = setores.length
         ? setores.slice(0,4).map(s=>`<span style="font-size:10px;font-weight:600;color:var(--text2);background:var(--card);border:1px solid var(--border);padding:1px 8px;border-radius:99px;white-space:nowrap">${escapeHTML(s)}</span>`).join('')+(setores.length>4?`<span style="font-size:10px;color:var(--text3)">+${setores.length-4}</span>`:'')
-        : '<span style="font-size:10px;color:var(--text3);opacity:.7">sem setores</span>';
+        : `<span style="font-size:10px;color:var(--text3);opacity:.7">sem ${_ppRot(p,2,true,true)}</span>`;
 
       // Dias restantes
       let diasBadge = '';

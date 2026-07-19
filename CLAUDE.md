@@ -137,6 +137,20 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-18 (x) — Mac de casa — Vocabulário: seletor enxuto (3 opções) + PERSONALIZAR + consistência
+- Diego pediu o seletor com só 3 opções, SEM prefixo "Obra/Implantação": **Fases › Setores**, **Partes › Etapas** e
+  **Personalizar…** (revela 2 campos: "Nível maior"/"Nível menor").
+- `PP_VOCAB` enxugado p/ obra+sistema (tirei dev/genérico e o `label`). Select fixo de 3 opções + `_ppVocabChange`
+  (mostra/esconde os campos custom) + **`_ppMkRotulo(n1,n2)`** que deriva plural e gênero por heurística PT-BR
+  (Frente→Frentes/f · Nível→Níveis/m · Setor→Setores/m; plural trata ão→ões, m/n→ns, l→is, r/z/s→es). `criarProjectPro`
+  trata os 3 casos.
+- **Consistência (achado ao testar o custom):** faltavam a ABA na sub-navbar (`label:'Fases'`→`_ppRot(p,1,true)`), a
+  **TRILHA do modo foco** (`proj-rail-btn` dizia "Fases"), o painel de ajuda "Como começar" (passos Fases/Setores +
+  botão) e o **"sem setores"** na linha da fase. Todos trocados. **VERIFICADO no navegador:** projeto "Frente/Área" →
+  aba + trilha + título + ajuda + "sem áreas" dizem Frentes/Áreas; plural/gênero certos; 0 erros; jsc OK.
+- 2ª passada (ainda "fase/setor" fixo): planilha da aba **Tarefas** (colunas Fase/Setor + seletor de fase da tarefa),
+  **Análise**, toasts, `~20780` "Nenhum setor…", e o seletor no **Editar projeto** (hoje só na criação).
+
 ### 2026-07-18 (w) — Mac de casa — Projetos: VOCABULÁRIO por projeto (Fase/Setor ↔ Parte/Etapa) — infra + textos [1/2]
 - Pedido do Diego: os 2 níveis de agrupamento às vezes são "Fase/Setor" (obra), às vezes "Parte/Etapa" (implantação
   de sistema — o caso do Hub). A ESTRUTURA é a mesma; só os RÓTULOS mudam. (A ferramenta não tem sub-projeto, então
