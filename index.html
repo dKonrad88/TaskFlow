@@ -25895,7 +25895,9 @@ function renderProjectProView(id){
   // Só o corpo varia: Tarefas usa planilha larga (1320px); demais abas mantêm 1040px.
   // 'visao' precisa de mais largura desde que virou 4 colunas (o próprio grid se centraliza).
   // 1600 acompanha o max-width do .pp-visao-3col — o gap de 34px entre colunas precisa caber.
-  const _bodyMax = activeProjectProTab==='visao' ? 1600 : (activeProjectProTab==='tarefas' ? 1320 : 1040);
+  // Análise usa a largura toda (1600) desde que virou DASHBOARD — com 3 colunas de indicadores
+  // lado a lado, 1040px espremia tudo em 1 coluna e a tela virava uma pilha. (jul/2026, Diego)
+  const _bodyMax = (activeProjectProTab==='visao'||activeProjectProTab==='analise') ? 1600 : (activeProjectProTab==='tarefas' ? 1320 : 1040);
   const railHTML = _projFocusRailHTML(p);
   container.innerHTML = `<div class="proj-panel-wrap" style="max-width:1600px;margin:0 auto">${railHTML + focusBarHTML + headerHTML + tabsHTML + `<div class="proj-body" style="max-width:${_bodyMax}px;margin:0 auto;padding-bottom:60px">${bodyHTML}</div>`}</div>`;
   // Dentro do projeto: a topbar mostra o BREADCRUMB (isolado no topo); o título do projeto
@@ -25919,11 +25921,6 @@ function setProjectProTab(tab){
 }
 
 // Sub-vista da aba Análise: 'geral' | 'dias' | 'areas' (evita uma página única muito longa).
-let activeAnaliseView = 'geral';
-function setAnaliseView(v){
-  activeAnaliseView = v;
-  render();
-}
 
 // ── Regulador de largura das 2 colunas da Visão geral (separador arrastável) ──
 const LS_PP_COL1_W='taskflow_pp_col1_w';
@@ -27972,14 +27969,45 @@ function renderProjectProAnalise(p){
     return {txt:'no prazo', cor:'var(--success)'};
   };
 
+  // CARGA AGORA — quantas tarefas cada um tem LIBERADAS neste momento (não é o histórico
+  // logo ao lado: aquilo é desempenho, isto é o que dá p/ acionar hoje). Fecha 2 cegueiras da
+  // tela: quem está LIVRE não aparecia (só entrava quem tem tarefa com prazo) e "sem dono" não
+  // existia em lugar nenhum — e essas não entram na aba Atrasadas de ninguém. (jul/2026, Diego)
+  const _cargaAgora=(()=>{
+    const m={};
+    try{
+      const ord=_ppTarefasOrdenadas(p), et=_ppEtapas(ord);
+      ord.filter(t=>!t.done).forEach(t=>{
+        if(_ppStatus(t,ord,et).estado==='bloqueada') return;
+        const k=t.executor||'__sem__'; m[k]=(m[k]||0)+1;
+      });
+    }catch(e){}
+    return m;
+  })();
+  const _cargaTxt=(k)=>{
+    const n=_cargaAgora[k==null?'__sem__':k]||0;
+    if(k!=null && n===0) return `<span style="font-size:12px;color:var(--success);white-space:nowrap;text-align:right">livre</span>`;
+    return `<span style="font-size:12px;color:${n>3?'var(--danger)':'var(--text2)'};white-space:nowrap;text-align:right">${n} liberada${n!==1?'s':''}</span>`;
+  };
+  // Pessoas da equipe que NÃO têm tarefa com prazo — invisíveis no agregado, mas são justamente
+  // as que estão livres. Entram no fim da lista.
+  const _jaListados=new Set(a.porExecutor.map(o=>o.key));
+  const _semTarefa=(p.pessoas||[]).filter(pid=>!_jaListados.has(pid));
+
   const execHTML = a.porExecutor.map(o=>{
     const b=badge(o); const nm=o.key==null?'Sem executor':nome(o.key);
-    return `<div style="display:grid;grid-template-columns:28px minmax(0,1fr) 104px;align-items:center;gap:10px;padding:9px 12px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:7px">
+    return `<div style="display:grid;grid-template-columns:26px minmax(0,1fr) 72px 92px;align-items:center;gap:10px;padding:9px 12px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:7px">
       <div style="width:28px;height:28px;border-radius:50%;background:var(--bg3);color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${o.key==null?'—':escapeHTML(inic(nm))}</div>
       <div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(nm)}</div><div style="font-size:11px;color:var(--text3)">${o.concluidas}/${o.total} concluídas · ${o.atrasadas} atrasada${o.atrasadas!==1?'s':''}</div></div>
+      ${_cargaTxt(o.key)}
       <span style="font-size:13px;font-weight:700;color:${b.cor};white-space:nowrap;text-align:right">${b.txt}</span>
     </div>`;
-  }).join('');
+  }).join('') + _semTarefa.map(pid=>`<div style="display:grid;grid-template-columns:26px minmax(0,1fr) 72px 92px;align-items:center;gap:10px;padding:9px 12px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:7px">
+      <div style="width:28px;height:28px;border-radius:50%;background:var(--bg3);color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${escapeHTML(inic(nome(pid)))}</div>
+      <div style="min-width:0"><div style="font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(nome(pid))}</div><div style="font-size:11px;color:var(--text3)">na equipe, sem tarefa com prazo</div></div>
+      ${_cargaTxt(pid)}
+      <span style="font-size:12px;color:var(--text3);text-align:right">—</span>
+    </div>`).join('');
 
   const linhaArea=(o,rotulo)=>{
     const b=badge(o);
@@ -27989,19 +28017,6 @@ function renderProjectProAnalise(p){
     </div>`;
   };
 
-  const porAreaHTML=`
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;margin-bottom:18px">
-      <div>
-        <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:6px"><i class="ti ti-users"></i> Por executor</div>
-        ${execHTML}
-      </div>
-      <div>
-        <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:6px"><i class="ti ti-building-factory-2"></i> Por setor</div>
-        ${a.porSetor.map(o=>linhaArea(o,'Geral')).join('')}
-        <div style="font-size:13px;font-weight:700;color:var(--text2);margin:14px 0 10px;display:flex;align-items:center;gap:6px"><i class="ti ti-layout-rows"></i> Por fase</div>
-        ${a.porFase.map(o=>linhaArea(o,'Fase')).join('')}
-      </div>
-    </div>`;
 
   // ── Tabela Planejado × Realizado — duração (dias) por tarefa concluída.
   //    realizado = ppDias + atraso  (atraso = doneAt − prazoBase, congelado no prazo-base).
@@ -28057,21 +28072,30 @@ function renderProjectProAnalise(p){
     <span>O <b>Saldo</b> do projeto é medido contra o <b>prazo-base</b> (o 1º prazo definido, congelado na criação — replanejar depois não esconde o atraso). Já <b>Onde ganhamos/travou</b> e a tabela comparam os <b>dias designados</b> de cada tarefa com os dias reais (o ganho é limitado pelos dias previstos).${a.semPrazo.length?` ${a.semPrazo.length} tarefa${a.semPrazo.length!==1?'s':''} sem prazo ${a.semPrazo.length!==1?'ficam':'fica'} fora da análise.`:''}</span>
   </div>`;
 
-  // Sub-navegação interna da Análise (KPIs ficam fixos no topo; nota fixa no rodapé).
-  const _av = ['geral','dias','areas'].includes(activeAnaliseView) ? activeAnaliseView : 'geral';
-  const _avTabs = [
-    {id:'geral', label:'Geral', icon:'ti-chart-arcs'},
-    {id:'dias',  label:'Planejado × Realizado', icon:'ti-clock-hour-4'},
-    {id:'areas', label:'Por executor / setor / fase', icon:'ti-users'},
-  ];
-  const subnav = `<div style="display:inline-flex;flex-wrap:wrap;gap:3px;background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:3px;margin-bottom:18px">
-    ${_avTabs.map(v=>{
-      const at=_av===v.id;
-      return `<button onclick="setAnaliseView('${v.id}')" style="display:inline-flex;align-items:center;gap:6px;border:none;border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s;background:${at?'var(--card)':'transparent'};color:${at?p.cor:'var(--text3)'};box-shadow:${at?'0 1px 2px rgba(0,0,0,.08)':'none'}"><i class="ti ${v.icon}" style="font-size:14px"></i>${v.label}</button>`;
-    }).join('')}
+  // ── DASHBOARD (jul/2026, Diego) ───────────────────────────────────────────────────────
+  // A Análise era 3 sub-abas (Geral · Planejado × Realizado · Por executor/setor/fase) e você
+  // via 1/3 da informação por vez. Virou painel: tudo na tela, em grid, na largura toda.
+  // ⚠️ Isso APAGOU a sub-navegação e, com ela, `setAnaliseView`+`activeAnaliseView` daqui —
+  // o que corrigiu um BUG REAL: existiam DUAS `setAnaliseView` no arquivo (esta e a de ~15873,
+  // da aba Análise geral do app). A segunda definição sobrescrevia a primeira, então clicar em
+  // Pessoal/Equipe/Reuniões na Análise geral setava `activeAnaliseView` em vez de `_analiseView`
+  // e a tela não trocava de view. Comprovado no navegador antes de remover.
+  const _sec=(icone,titulo,conteudo,extra)=>`<div style="${extra||''}">
+    <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:6px"><i class="ti ${icone}" style="font-size:15px"></i>${titulo}</div>
+    ${conteudo}
   </div>`;
-  const detalhe = _av==='dias' ? tabelaDias : _av==='areas' ? porAreaHTML : (timeline + blocos);
-  return cardsTopo + subnav + detalhe + nota;
+  const _porSetorHTML=a.porSetor.map(o=>linhaArea(o,'Geral')).join('');
+  const _porFaseHTML=a.porFase.map(o=>linhaArea(o,_ppRot(p,1))).join('');
+  return `${cardsTopo}
+    ${timeline}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(336px,1fr));gap:18px;align-items:start;margin-bottom:20px">
+      ${_sec('ti-users','Por executor',execHTML)}
+      ${_sec('ti-building-factory-2','Por '+_ppRot(p,2,false,true),_porSetorHTML||'<div style="font-size:12px;color:var(--text3);font-style:italic">Sem dados ainda</div>')}
+      ${_sec('ti-layout-rows','Por '+_ppRot(p,1,false,true),_porFaseHTML||'<div style="font-size:12px;color:var(--text3);font-style:italic">Sem dados ainda</div>')}
+    </div>
+    ${blocos}
+    ${tabelaDias}
+    ${nota}`;
 }
 
 // GUILHERME V3 (mai/2026): COMENTÁRIOS DE PROJETO — substitui Anotações.

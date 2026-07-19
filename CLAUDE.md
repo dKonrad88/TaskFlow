@@ -322,6 +322,32 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-19 (pp) — Mac de casa — Análise virou DASHBOARD + carga por pessoa + 🐞 BUG do setAnaliseView
+- Pedido do Diego: "transforme a Análise em formato de painel/dashboard, com todos os indicadores
+  relevantes ao longo da tela central".
+- **Antes:** 4 KPIs + **sub-navegação de 3 abas** (Geral · Planejado × Realizado · Por executor/setor/fase)
+  → via-se **1/3 da informação por vez**, numa largura de 1040px.
+- **Agora:** tudo na tela, sem sub-abas, em `_bodyMax` de **1600** (era 1040):
+  KPIs → linha do tempo → **3 colunas** (Por executor · Por etapa · Por parte) → Onde travou / Onde
+  ganhamos → Planejado × Realizado. Grid `repeat(auto-fit,minmax(336px,1fr))`.
+  ⚠️ O 336px foi **medido**, não chutado: a `.proj-body` tem ~1094px reais (a sidebar come o resto dos
+  1600), então (1094−2×18)/3 ≈ 352px. Com 370px o grid caía p/ 2 colunas.
+- ⭐ **CARGA POR PESSOA** (a 3ª ideia de painel, que o Diego pediu p/ ficar aqui e não no Painel):
+  o "Por executor" ganhou a coluna **"agora"** — quantas tarefas a pessoa tem LIBERADAS neste momento
+  (`_ppStatus` ≠ bloqueada), ao lado do histórico que já existia. Corrige 2 cegueiras: quem está **livre**
+  não aparecia (só entrava quem tem tarefa com prazo — agora as pessoas de `p.pessoas` sem tarefa entram
+  no fim da lista) e **"sem responsável"** não existia em lugar nenhum.
+- 🐞 **BUG REAL encontrado e corrigido de quebra:** existiam **DUAS `setAnaliseView`** no arquivo —
+  a de `~15873` (aba **Análise geral** do app: `_analiseView` = pessoal/equipe/reuniões) e a da Análise
+  do PROJETO (`activeAnaliseView` = geral/dias/areas). **A segunda sobrescrevia a primeira**, então clicar
+  em Pessoal/Equipe/Reuniões na Análise geral setava a variável errada e **a tela não trocava de view**.
+  Comprovado no navegador ANTES de mexer (`setAnaliseView('equipe')` deixava `_analiseView='pessoal'`).
+  Como o dashboard eliminou a sub-navegação do projeto, a função e a variável dela saíram — e a Análise
+  geral voltou a funcionar (testado depois: `_analiseView` passa a receber o valor).
+  ⚠️ Era um dos "defs duplicadas" que o inventário da varredura (18/07) tinha listado e eu havia
+  descartado como escopo local. **Não era.** Vale reolhar os outros nomes daquela lista.
+- Removido junto: `porAreaHTML` (ficou órfão com o novo layout). 0 sobras, jsc SYNTAX_OK, 0 erros.
+
 ### 2026-07-19 (oo) — Mac de casa — Painel: ETAPAS (setores) também recolhem
 - Pedido do Diego: poder recolher/expandir cada ETAPA na coluna do meio do Painel (com várias etapas
   a coluna fica longa). Feito em `_setorBloco` (dentro de `renderProjectProVisao`).
