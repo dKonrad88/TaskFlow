@@ -322,6 +322,21 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-19 (oo) — Mac de casa — Painel: ETAPAS (setores) também recolhem
+- Pedido do Diego: poder recolher/expandir cada ETAPA na coluna do meio do Painel (com várias etapas
+  a coluna fica longa). Feito em `_setorBloco` (dentro de `renderProjectProVisao`).
+- ⚠️ **Semântica INVERTIDA em relação aos cards da coluna 1, de propósito:**
+  - **Card** ("Acontecendo agora") nasce **FECHADO** → a chave presente em `_ppCardCol` significa ABERTO.
+  - **Etapa** nasce **ABERTA** → a chave presente significa RECOLHIDA.
+  É o comportamento certo p/ cada um: o card é resumo (só abre quem quer ver), a etapa é o conteúdo de
+  trabalho (fechar é a exceção). Mesmo storage `taskflow_pp_card_col`, com prefixo `etapa·` p/ não colidir
+  com as chaves `projeto·card`. Funções: `_ppEtapaRecolhida(gid)` / `_ppToggleEtapa(gid)`.
+- Recolhida, o cabeçalho mostra **"feitas/total"** (continua informando) e o **campo "Nova tarefa" some**
+  junto — digitar dentro de algo fechado não faz sentido.
+- VERIFICADO: nasce aberta; clique recolhe e persiste no localStorage; etapas são independentes entre si;
+  o `qa-pp-<gid>` da recolhida some do HTML e o da aberta permanece; o "Acontecendo agora" mantém a
+  semântica dele (segue nascendo fechado). 0 erros de console, jsc SYNTAX_OK.
+
 ### 2026-07-19 (nn) — Mac de casa — ALERTA PREDITIVO DE PRAZO (2ª ideia de painel, esta APROVADA)
 - Depois do Radar reprovado (entrada mm), o Diego escolheu esta. **Lição aplicada: nada de bloco novo** —
   o alerta vive DENTRO do chip que o cabeçalho já tem. Projeto em dia: a tela não muda em NADA.

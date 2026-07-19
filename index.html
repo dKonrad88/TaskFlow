@@ -26108,15 +26108,23 @@ function renderProjectProVisao(p, prog){
     // (jul/2026) Setor mais LEVE: cabeçalho sem fundo bege (era var(--bg2), pesava a tela) e o
     // botão "+ Tarefa" saiu — no lugar, um campo inline no FIM da lista: digita, Enter, e o
     // quickAddTaskPro já reabre focado p/ a próxima (ele mesmo faz render + refoco).
+    // (jul/2026, Diego) RECOLHÍVEL: com várias etapas a coluna do meio fica longa demais.
+    // ⚠️ Ao contrário do "Acontecendo agora", a etapa nasce ABERTA — ela é o conteúdo de
+    // trabalho da tela, não um resumo. Fechada, o cabeçalho mostra "feitas/total" p/ ainda
+    // informar, e o campo de nova tarefa some junto (digitar no que está fechado não faz sentido).
+    const _rec=_ppEtapaRecolhida(g.id);
+    const _feitas=ts.filter(t=>t.done).length;
     return `<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-top:8px;background:var(--surface-painel)">
-      <div style="display:flex;align-items:center;gap:8px;padding:8px 11px;border-bottom:1px solid var(--border);background:var(--bg2)">
+      <div onclick="_ppToggleEtapa('${g.id}')" title="${_rec?'Expandir':'Recolher'}" style="display:flex;align-items:center;gap:8px;padding:8px 11px;${_rec?'':'border-bottom:1px solid var(--border);'}background:var(--bg2);cursor:pointer;user-select:none">
+        <i class="ti ti-chevron-${_rec?'right':'down'}" style="font-size:13px;color:var(--text3);flex-shrink:0"></i>
         <i class="ti ti-building" style="font-size:14px;color:var(--blue-mid)"></i>
-        <span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--text)">${escapeHTML(g.setor)}</span>
-      </div>${linhas}
+        <span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(g.setor)}</span>
+        ${ts.length?`<span style="font-size:11px;color:var(--text3);font-weight:600;flex-shrink:0">${_feitas>0?_feitas+'/':''}${ts.length}</span>`:''}
+      </div>${_rec?'':`${linhas}
       <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;${ts.length?'border-top:1px solid var(--border)':''}">
         <i class="ti ti-plus" style="font-size:14px;color:var(--text3);flex-shrink:0"></i>
         <input id="qa-pp-${g.id}" autocomplete="off" placeholder="Nova tarefa — Enter para adicionar" onkeydown="if(event.key==='Enter'){event.preventDefault();quickAddTaskPro('qa-pp-${g.id}','${p.id}','${faseId}','${g.id}')}" style="flex:1;min-width:0;border:none;background:transparent;font-size:12.5px;color:var(--text);font-family:inherit;outline:none;padding:2px 0">
-      </div>
+      </div>`}
     </div>`;
   };
   // ── ESTRUTURA em MASTER-DETAIL: coluna de FASES (clicáveis) · DETALHE (setores+tarefas) ao lado. ──
@@ -27085,6 +27093,19 @@ function _ppToggleCard(projectId, card){
   safeSetItem('taskflow_pp_card_col', JSON.stringify(_ppCardCol));
   render();
 }
+// ETAPAS (os setores dentro da fase, na coluna do meio do Painel) também recolhem.
+// ⚠️ Semântica INVERTIDA de propósito em relação aos cards acima: card nasce FECHADO (a chave
+// presente = aberto), etapa nasce ABERTA (a chave presente = recolhida). É o comportamento certo
+// p/ cada um — o card é resumo, a etapa é o trabalho. Mesmo storage, prefixo `etapa·` p/ não
+// colidir com as chaves `projeto·card`.
+function _ppEtapaRecolhida(gid){ return !!_ppCardCol['etapa·'+gid]; }
+function _ppToggleEtapa(gid){
+  const k='etapa·'+gid;
+  if(_ppCardCol[k]) delete _ppCardCol[k]; else _ppCardCol[k]=true;
+  safeSetItem('taskflow_pp_card_col', JSON.stringify(_ppCardCol));
+  render();
+}
+
 // Cabeçalho clicável: chevron + ícone + título + resumo (sempre visível, mesmo fechado).
 function _ppCardHead(projectId, card, icone, titulo, resumo, aberto){
   // 2 LINHAS em grid: o título nunca disputa espaço com o resumo (a coluna 1 do Painel é
