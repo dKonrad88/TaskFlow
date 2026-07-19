@@ -537,7 +537,7 @@
   /* GUILHERME V3 (mai/2026): ações sempre visíveis (decisão Diego — preferiu sempre fixo). */
   .task-table .tt-act-btn{background:none;border:none;cursor:pointer;color:var(--text3);padding:4px 6px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;transition:background .12s,color .12s}
   .task-table .tt-act-btn:hover{background:var(--bg);color:var(--blue-mid)}
-  .task-table .tt-act-btn.del:hover{color:var(--danger);background:rgba(163,45,45,.1)}
+  .task-table .tt-act-btn.del:hover{color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,transparent)}
   .task-table .tt-subrow td{background:transparent;padding:8px 10px 8px 60px;font-size:12.5px}
   body.dark .task-table .tt-subrow td{background:transparent}
   .task-table .tt-subrow .tt-sub-list{display:flex;flex-direction:column;gap:4px}
@@ -1264,9 +1264,13 @@
   }
 
   /* FAB de criação (+) — sempre visível, canto inferior direito */
+  /* (jul/2026, Diego) O FAB é o ÚNICO elemento que NÃO acompanha o tema: fica SEMPRE no azul da
+     identidade principal, em qualquer tema escolhido. Por isso hex literal e não var(--blue-mid)
+     — essa variável vira VERDE no tema Brasil (#009C3B) e MARROM no tema Klain (#9a6a2e), e o
+     botão de criar deixava de ser reconhecível. O ramo `.open` (vermelho) continua temático. */
   .fab-create{
     position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;
-    background:linear-gradient(135deg,var(--blue-mid),var(--blue-teal));color:#fff;border:none;
+    background:linear-gradient(135deg,#185FA5,#1a7a8a);color:#fff;border:none;
     box-shadow:0 4px 16px rgba(24,95,165,.4),0 2px 6px rgba(0,0,0,.15);
     cursor:pointer;display:flex;align-items:center;justify-content:center;
     font-size:26px;transition:all .25s ease;z-index:998;
@@ -1924,7 +1928,7 @@
      e adiciona transição de cor para sinalizar ação destrutiva. */
   .pessoa-del{opacity:.4;transition:opacity .15s, color .15s, background .15s}
   div:hover > .pessoa-del, div:hover .pessoa-del{opacity:1}
-  .pessoa-del:hover{color:var(--danger,var(--danger))!important;background:rgba(163,45,45,.1)!important;opacity:1!important}
+  .pessoa-del:hover{color:var(--danger,var(--danger))!important;background:color-mix(in srgb,var(--danger) 10%,transparent)!important;opacity:1!important}
   /* ── Comentários de tarefa ── */
   .comments-section{border-top:1px solid var(--border);margin-top:16px;padding-top:14px}
   .comments-title{font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:6px}
@@ -2088,14 +2092,18 @@
   .reun-card-date{font-size:11px;color:var(--text3);margin-bottom:8px;display:flex;align-items:center;gap:4px}
   .reun-card-meta{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-top:8px}
   .reun-status{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700}
-  .reun-status-agendada{background:#e8f1fa;color:var(--blue-mid)}
+  .reun-status-agendada{background:color-mix(in srgb,var(--blue-mid) 12%,transparent);color:var(--blue-mid)}
   .reun-status-andamento{background:var(--success-bg);color:var(--success)}
-  .reun-status-encerrada{background:#f0f0f0;color:#666}
+  .reun-status-encerrada{background:var(--bg2);color:var(--text3)}
   .reun-status-continuacao{background:var(--amber-bg);color:var(--amber)}
-  body.dark .reun-status-agendada{background:#1a2535;color:#7db3dd}
-  body.dark .reun-status-andamento{background:#182818;color:#7dbf7d}
-  body.dark .reun-status-encerrada{background:#2a2a32;color:#7a7a8a}
-  body.dark .reun-status-continuacao{background:#2a1e0a;color:#c9953a}
+  /* Nos temas ESCUROS as vars de acento (--blue-mid, --success, --amber) são tons médios pensados
+     p/ fundo claro: sobre o card escuro dão ~3:1, abaixo do mínimo legível. Aqui elas são CLAREADAS
+     com branco — mantendo a tonalidade do tema (no Brasil segue verde, no Klain segue caramelo).
+     Antes existiam 4 overrides com hex FIXO aqui (#7db3dd, #7dbf7d…), que ignoravam o tema; medido
+     depois de trocá-los: contraste subiu de 3.11 para >4.5. (jul/2026) */
+  body.dark .reun-status-agendada{color:color-mix(in srgb,var(--blue-mid) 45%,#fff)}
+  body.dark .reun-status-andamento{color:color-mix(in srgb,var(--success) 45%,#fff)}
+  body.dark .reun-status-continuacao{color:color-mix(in srgb,var(--amber) 55%,#fff)}
   .reun-card-actions{position:absolute;top:10px;right:10px;display:flex;gap:4px;opacity:0;transition:opacity .2s}
   .reun-card:hover .reun-card-actions{opacity:1}
   .reun-pauta-item{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)}
@@ -2265,7 +2273,7 @@
     .rev-btn-prim{background:var(--blue-mid);color:#fff;border-color:var(--blue-mid)}
     .rev-btn-prim:hover{background:var(--blue-dark);color:#fff}
     .rev-btn-danger{color:var(--danger);border-color:rgba(163,45,45,.3)}
-    .rev-btn-danger:hover{background:rgba(163,45,45,.1);border-color:var(--danger);color:var(--danger)}
+    .rev-btn-danger:hover{background:color-mix(in srgb,var(--danger) 10%,transparent);border-color:var(--danger);color:var(--danger)}
   </style><style>
     #sininho-card { animation: sininho-in .4s cubic-bezier(.34,1.56,.64,1) both; }
     @keyframes sininho-slideup { from{transform:translateY(120px);opacity:0} to{transform:translateY(0);opacity:1} }
@@ -5138,7 +5146,7 @@ function editarFasePrazo(projectId, faseId){
           const f2=p2?.fases.find(x=>x.id==='${faseId}');
           if(p2&&f2){f2.prazoFase=val||null;saveProjectPro_db(p2);toast(val?'📅 Prazo definido: '+val:'📅 Prazo removido');render();}
           document.getElementById('pp-modal-prazo-fase')?.remove();
-        " style="background:${p.cor};color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ti-check"></i> Salvar</button>
+        " style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ti-check"></i> Salvar</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -13389,7 +13397,7 @@ function ttResume(){
 function _renderModalAcoes(t){
   const bar=document.getElementById('m-header-acoes'); if(!bar||!t) return;
   const running=(typeof _ttCurrentTaskId!=='undefined' && _ttCurrentTaskId===t.id);
-  let h=`<button class="m-hdr-acao" onclick="toggleTaskTimer(${t.id})" title="${running?'Pausar cronômetro':'Iniciar cronômetro'}" style="${running?'color:var(--danger);background:rgba(163,45,45,.1)':'color:var(--success)'}"><i class="ti ${running?'ti-player-pause':'ti-player-play'}" style="font-size:17px"></i></button>`;
+  let h=`<button class="m-hdr-acao" onclick="toggleTaskTimer(${t.id})" title="${running?'Pausar cronômetro':'Iniciar cronômetro'}" style="${running?'color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,transparent)':'color:var(--success)'}"><i class="ti ${running?'ti-player-pause':'ti-player-play'}" style="font-size:17px"></i></button>`;
   const alvo=(typeof cutucadaAlvo==='function')?cutucadaAlvo(t.id):null;
   if(alvo){
     const ja=(typeof jaCutucouHoje==='function')&&jaCutucouHoje(t.id);
@@ -15179,7 +15187,7 @@ function fecharRevAtrasadas(){
     .rev-btn-prim{background:var(--blue-mid);color:#fff;border-color:var(--blue-mid)}
     .rev-btn-prim:hover{background:var(--blue-dark);color:#fff}
     .rev-btn-danger{color:var(--danger);border-color:rgba(163,45,45,.3)}
-    .rev-btn-danger:hover{background:rgba(163,45,45,.1);border-color:var(--danger);color:var(--danger)}
+    .rev-btn-danger:hover{background:color-mix(in srgb,var(--danger) 10%,transparent);border-color:var(--danger);color:var(--danger)}
   `;
   document.head.appendChild(s);
 })();
@@ -16728,7 +16736,7 @@ function renderTempo(){
     const segs=modosStack.map(k=>{
       const ms=t[k]||0;if(!ms)return '';
       const h=(ms/maxDayMs*100).toFixed(1);
-      return `<div style="background:${MODOS_INFO[k]?MODOS_INFO[k].cor:'#888'};height:${h}%;width:100%"></div>`;
+      return `<div style="background:${MODOS_INFO[k]?MODOS_INFO[k].cor:'var(--text3)'};height:${h}%;width:100%"></div>`;
     }).join('');
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
       <div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:90px;${isHoje?'outline:2px solid var(--blue-mid);border-radius:2px':''}">
@@ -17748,7 +17756,7 @@ function abrirAguardandoModal(taskId, undoSnap){
   ov.innerHTML = `
     <div style="background:var(--card);border-radius:12px;padding:22px;min-width:380px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.25);border:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-        <div style="width:32px;height:32px;border-radius:8px;background:rgba(201,122,0,.15);display:flex;align-items:center;justify-content:center">
+        <div style="width:32px;height:32px;border-radius:8px;background:color-mix(in srgb,var(--amber) 15%,transparent);display:flex;align-items:center;justify-content:center">
           <i class="ti ti-clock-hour-7" style="font-size:18px;color:var(--orange)"></i>
         </div>
         <div>
@@ -18672,7 +18680,7 @@ const COMP_CATS_DEFAULT=[
   {id:'treino',    label:'Treinamento',      color:'var(--success)', icon:'ti-school'},
   {id:'ligacao',   label:'Ligação',          color:'var(--purple)', icon:'ti-phone'},
   {id:'almoco',    label:'Almoço Negócios',  color:'var(--orange-dark)', icon:'ti-tools-kitchen-2'},
-  {id:'outro',     label:'Outro',            color:'#555',    icon:'ti-dots'},
+  {id:'outro',     label:'Outro',            color:'var(--text3)', icon:'ti-dots'},
 ];
 let COMP_CATS=[...COMP_CATS_DEFAULT];
 function loadCompCats(){
@@ -20646,7 +20654,7 @@ function abrirSeletorFaseTarefa(projectId, taskId, anchor){
   let html='';
   (p.fases||[]).forEach(f=>{
     const on=t.projectProFaseId===f.id;
-    html+=`<div onclick="moverTarefaParaFase('${projectId}','${f.id}',null,${taskId})" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:${on?p.cor:'var(--text)'};font-weight:${on?700:500};background:${on?'var(--bg2)':'transparent'}" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='${on?'var(--bg2)':'transparent'}'"><i class="ti ti-layout-rows" style="font-size:14px;color:${p.cor}"></i><span style="flex:1">${escapeHTML(f.nome)}</span>${on?'<i class="ti ti-check" style="font-size:13px"></i>':''}</div>`;
+    html+=`<div onclick="moverTarefaParaFase('${projectId}','${f.id}',null,${taskId})" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:${on?'var(--blue-mid)':'var(--text)'};font-weight:${on?700:500};background:${on?'var(--bg2)':'transparent'}" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='${on?'var(--bg2)':'transparent'}'"><i class="ti ti-layout-rows" style="font-size:14px;color:${p.cor}"></i><span style="flex:1">${escapeHTML(f.nome)}</span>${on?'<i class="ti ti-check" style="font-size:13px"></i>':''}</div>`;
   });
   if(!html) html=`<div style="padding:12px;font-size:12px;color:var(--text3)">Este projeto ainda não tem fases.</div>`;
   html+=`<div style="height:1px;background:var(--border);margin:5px 4px"></div>
@@ -20778,7 +20786,7 @@ function abrirSeletorSetorTarefa(projectId, taskId, anchor){
   html+=`<div id="pp-setor-lista">`;
   (fase.grupos||[]).forEach(g=>{
     const on=t.projectProGrupoId===g.id;
-    html+=`<div onclick="moverTarefaParaFase('${projectId}','${fase.id}','${g.id}',${taskId})" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:${on?p.cor:'var(--text)'};font-weight:${on?700:500};background:${on?'var(--bg2)':'transparent'}" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='${on?'var(--bg2)':'transparent'}'"><i class="ti ti-building" style="font-size:14px;color:${p.cor}"></i><span style="flex:1">${escapeHTML(g.setor)}</span>${on?'<i class="ti ti-check" style="font-size:13px"></i>':''}</div>`;
+    html+=`<div onclick="moverTarefaParaFase('${projectId}','${fase.id}','${g.id}',${taskId})" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:${on?'var(--blue-mid)':'var(--text)'};font-weight:${on?700:500};background:${on?'var(--bg2)':'transparent'}" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='${on?'var(--bg2)':'transparent'}'"><i class="ti ti-building" style="font-size:14px;color:${p.cor}"></i><span style="flex:1">${escapeHTML(g.setor)}</span>${on?'<i class="ti ti-check" style="font-size:13px"></i>':''}</div>`;
   });
   if(!(fase.grupos||[]).length) html+=`<div style="padding:10px 12px;font-size:12px;color:var(--text3)">Nenhum setor nesta fase ainda — busque um existente ou crie abaixo, ou defina o executor que o setor entra sozinho.</div>`;
   html+=`</div>`;
@@ -24604,7 +24612,7 @@ function _ppG(p, nivel, formaF, formaM){
 }
 
 const PP_STATUS = {
-  planejamento: {label:'Planejamento', color:'#888',           icon:'ti-pencil'},
+  planejamento: {label:'Planejamento', color:'var(--text3)',    icon:'ti-pencil'},
   ativo:        {label:'Em andamento', color:'var(--success)', icon:'ti-player-play'},
   pausado:      {label:'Pausado',      color:'var(--amber)',   icon:'ti-player-pause'},
   concluido:    {label:'Concluído',    color:'var(--blue-mid)',icon:'ti-circle-check'},
@@ -24750,7 +24758,7 @@ function _ppGruposHTML(){
     const body = col ? '' : (_ppView==='lista'
       ? `<div style="display:flex;flex-direction:column;gap:7px">${g.items.map(projectProRowHTML).join('')}</div>`
       : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">${g.items.map(projectProCardHTML).join('')}</div>`);
-    const header = semHeader ? '' : `<div onclick="_ppToggleGrupo('${g.key}')" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;color:${g.color};font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;user-select:none"><i class="ti ti-chevron-${col?'right':'down'}" style="font-size:14px"></i><i class="ti ${g.icon}"></i> ${escapeHTML(g.label)} <span style="background:${g.color}22;color:${g.color};font-size:11px;padding:2px 8px;border-radius:99px">${g.items.length}</span></div>`;
+    const header = semHeader ? '' : `<div onclick="_ppToggleGrupo('${g.key}')" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;color:var(--text2);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;user-select:none"><i class="ti ti-chevron-${col?'right':'down'}" style="font-size:14px"></i><i class="ti ${g.icon}"></i> ${escapeHTML(g.label)} <span style="background:${g.color}22;color:${g.color};font-size:11px;padding:2px 8px;border-radius:99px">${g.items.length}</span></div>`;
     return `<div style="margin-bottom:${col?'14':'30'}px">${header}${body}</div>`;
   };
   let out='';
@@ -25137,7 +25145,7 @@ function abrirModalNovoProjectPro(){
         <button onclick="fecharModalNovoProjectPro()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px"><i class="ti ti-x"></i></button>
       </div>
       <div style="padding:20px 24px">
-        <div onclick="fecharModalNovoProjectPro();abrirGerenciadorTemplatesProj()" title="Escolher um modelo pronto (com fases e tarefas)" style="display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(24,95,165,.10),rgba(24,95,165,.04));border:1px solid var(--blue-mid);border-radius:10px;padding:11px 14px;margin-bottom:16px;cursor:pointer">
+        <div onclick="fecharModalNovoProjectPro();abrirGerenciadorTemplatesProj()" title="Escolher um modelo pronto (com fases e tarefas)" style="display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,color-mix(in srgb,var(--blue-mid) 10%,transparent),color-mix(in srgb,var(--blue-mid) 4%,transparent));border:1px solid var(--blue-mid);border-radius:10px;padding:11px 14px;margin-bottom:16px;cursor:pointer">
           <i class="ti ti-sparkles" style="color:var(--amber);font-size:18px;flex-shrink:0"></i>
           <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--text)">Começar de um modelo pronto</div><div style="font-size:11.5px;color:var(--text3)">Já vem com fases, setores e tarefas — bem mais rápido.</div></div>
           <i class="ti ti-chevron-right" style="color:var(--blue-mid);font-size:16px"></i>
@@ -26265,7 +26273,7 @@ function renderProjectProInfo(p, prog){
   const progressoCard=`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">
       <span style="font-size:13px;font-weight:700;color:var(--text)">Progresso do projeto</span>
-      <span style="font-size:15px;font-weight:800;color:${p.cor}">${prog.pct}% <span style="font-size:11px;font-weight:600;color:var(--text3)">· ${prog.feitas}/${prog.total}</span></span>
+      <span style="font-size:15px;font-weight:800;color:var(--text)">${prog.pct}% <span style="font-size:11px;font-weight:600;color:var(--text3)">· ${prog.feitas}/${prog.total}</span></span>
     </div>
     <div style="height:9px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:${p.cor};width:${prog.pct}%;transition:width .3s"></div></div>
     ${conclLine}
@@ -26379,7 +26387,7 @@ function renderProjectProFases(p){
           </div>
           <span style="font-size:11px;color:var(--text3);display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ti-checklist" style="font-size:12px"></i>${fp.feitas}/${fp.total}</span>
           <span style="display:inline-flex;justify-content:flex-start">${diasBadge}</span>
-          <span style="font-size:15px;font-weight:800;color:${accentCor};white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right">${pctInt}%</span>
+          <span style="font-size:15px;font-weight:800;color:var(--text);white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right">${pctInt}%</span>
           ${isCoordAtual?`<div style="display:flex;align-items:center;gap:1px;justify-content:flex-end">${actions}</div>`:''}
         </div>
       </div>`;
@@ -26407,7 +26415,7 @@ function renderFaseExpandida(p, f){
       <span style="font-size:18px;font-weight:800;color:var(--text)">${escapeHTML(f.nome)}</span>
       <div style="display:flex;align-items:center;gap:9px;flex:1;min-width:180px;max-width:360px">
         <div style="flex:1;height:7px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:${p.cor};width:${fp.pct}%;transition:width .3s"></div></div>
-        <span style="font-size:13px;font-weight:800;color:${p.cor};white-space:nowrap">${fp.pct}%</span>
+        <span style="font-size:13px;font-weight:800;color:var(--text);white-space:nowrap">${fp.pct}%</span>
         <span style="font-size:11px;color:var(--text3);white-space:nowrap">${fp.feitas}/${fp.total}</span>
       </div>
       <button class="reun-ico" onclick="adicionarGrupo('${p.id}','${f.id}')" title="Adicionar ${_ppRot(p,2,false,true)}" style="margin-left:auto"><i class="ti ti-plus"></i></button>
@@ -26627,7 +26635,7 @@ function adicionarGrupo(projectId, faseId){
       </div>
       <div style="padding:12px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">
         <button onclick="document.getElementById('pp-modal-grupo').remove()" style="background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer">Cancelar</button>
-        <button onclick="_ppConfirmarGrupo('${projectId}','${faseId}')" style="background:${p.cor};color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer"><i class="ti ti-check"></i> Adicionar</button>
+        <button onclick="_ppConfirmarGrupo('${projectId}','${faseId}')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer"><i class="ti ti-check"></i> Adicionar</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -27102,7 +27110,7 @@ function renderProjectProTarefas(p){
         <td style="${cell};width:72px;white-space:nowrap;text-align:center">
           <div style="display:inline-flex;align-items:center;gap:4px">
             ${podeGerir?`<span draggable="true" ondragstart="_ppDragStart(event,${t.id},'${p.id}')" ondragend="_ppDragEnd(event)" title="Arraste para reordenar" style="cursor:grab;color:var(--text3);font-size:15px;line-height:1;display:inline-flex"><i class="ti ti-grip-vertical"></i></span>`:''}
-            <span title="${t._num&&t._num.includes('.')?`Etapa ${st.etapa} — roda junto com a ${st.etapa}`:`Etapa ${st.etapa}`}" style="font-size:10px;font-weight:800;color:${p.cor};background:${p.cor}18;border-radius:6px;padding:2px 5px;min-width:16px;display:inline-block;white-space:nowrap">${t._num||st.etapa}</span>
+            <span title="${t._num&&t._num.includes('.')?`Etapa ${st.etapa} — roda junto com a ${st.etapa}`:`Etapa ${st.etapa}`}" style="font-size:10px;font-weight:800;color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 12%,transparent);border-radius:6px;padding:2px 5px;min-width:16px;display:inline-block;white-space:nowrap">${t._num||st.etapa}</span>
             ${paralelaBtn}
           </div>
         </td>
@@ -27179,14 +27187,14 @@ function renderProjectProTarefas(p){
         if(!g.semFase){ g.tarefas.forEach(t=>{ if(!t.done && t._prj && t._prj.fim && (!_faseFim || t._prj.fim>_faseFim)) _faseFim=t._prj.fim; }); }
         const _faseDataChip = g.semFase ? ''
           : (_faseFim
-              ? `<span title="Conclusão prevista desta fase" style="margin-left:auto;font-size:10.5px;font-weight:600;color:${p.cor};background:color-mix(in srgb,${p.cor} 12%,transparent);padding:3px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ti-flag-check" style="font-size:11px"></i>${formatDate(_faseFim)}</span>`
+              ? `<span title="Conclusão prevista desta fase" style="margin-left:auto;font-size:10.5px;font-weight:600;color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 12%,transparent);padding:3px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ti-flag-check" style="font-size:11px"></i>${formatDate(_faseFim)}</span>`
               : (g.tarefas.length
                   ? `<span title="Todas as tarefas desta fase concluídas" style="margin-left:auto;font-size:10.5px;font-weight:600;color:var(--success);background:color-mix(in srgb,var(--success) 14%,transparent);padding:3px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ti-circle-check" style="font-size:11px"></i>Concluída</span>`
                   : ''));
         // Cabeçalho DO CARD — é aqui que a fase recolhe/expande (o par global saiu da barra).
         const head = `<div onclick="_ppToggleFaseCollapse('${p.id}','${g.key}')" style="display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;user-select:none;background:var(--bg2);${collapsed?'':'border-bottom:1px solid var(--border)'}" title="${collapsed?'Expandir':'Recolher'}">
             <i class="ti ti-chevron-${collapsed?'right':'down'}" style="font-size:14px;color:var(--text3)"></i>
-            <span style="font-size:12px;font-weight:700;color:${g.semFase?'var(--text2)':p.cor};text-transform:uppercase;letter-spacing:.3px;display:inline-flex;align-items:center;gap:5px">${g.semFase?'<i class="ti ti-inbox" style="font-size:13px"></i>':'<i class="ti ti-layout-rows" style="font-size:13px"></i>'} ${escapeHTML(g.label)}</span>
+            <span style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.3px;display:inline-flex;align-items:center;gap:5px">${g.semFase?'<i class="ti ti-inbox" style="font-size:13px"></i>':'<i class="ti ti-layout-rows" style="font-size:13px"></i>'} ${escapeHTML(g.label)}</span>
             <span style="font-size:11px;color:var(--text3);font-weight:600;background:var(--card);padding:1px 8px;border-radius:99px">${feitas>0?feitas+'/':''}${g.tarefas.length}</span>${_faseDataChip}
           </div>`;
         const rows = g.tarefas.length
@@ -27240,7 +27248,7 @@ function renderProjectProTarefas(p){
 
         <div style="background:var(--card);border:0.5px solid var(--border);border-radius:14px;padding:20px 22px">
           <div style="display:flex;align-items:flex-start;gap:11px;margin-bottom:18px">
-            <span style="margin-top:4px;flex-shrink:0;font-size:10px;font-weight:800;color:${p.cor};background:${p.cor}18;border-radius:6px;padding:3px 7px" title="Etapa de execução">Etapa ${t._num||_etapas.get(t.id)}</span>
+            <span style="margin-top:4px;flex-shrink:0;font-size:10px;font-weight:800;color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 12%,transparent);border-radius:6px;padding:3px 7px" title="Etapa de execução">Etapa ${t._num||_etapas.get(t.id)}</span>
             <div contenteditable="true" spellcheck="false" onfocus="this.dataset.orig=this.textContent" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}else if(event.key==='Escape'){event.preventDefault();this.textContent=this.dataset.orig||'';this.blur();}" onblur="_ppSalvarTituloInline(${t.id},this)" style="flex:1;font-size:17px;font-weight:600;color:var(--text);outline:none;cursor:text;line-height:1.35;border-radius:6px;padding:2px 4px">${escapeHTML(t.title)}</div>
             <div style="display:flex;gap:2px;flex-shrink:0">
               <button onclick="event.stopPropagation();openEdit(${t.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:5px;border-radius:6px" title="Editar" onmouseover="this.style.color='var(--blue-mid)';this.style.background='var(--bg2)'" onmouseout="this.style.color='var(--text3)';this.style.background='none'"><i class="ti ti-pencil" style="font-size:15px"></i></button>
@@ -28172,7 +28180,14 @@ function _projEditarCamposHTML(p){
           </div>
           <div>
             <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Cor</label>
-            <input id="ppe-cor" type="color" value="${p.cor}" style="width:100%;height:38px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);cursor:pointer" />
+            <!-- (jul/2026, Diego) Era um bloco de cor de largura 100% × 38px: com a cor cheia
+                 dentro, virava a coisa mais chamativa do modal, competindo com os campos que
+                 realmente importam. Virou um disco de 34px (~20% da área) — a cor continua
+                 visível e clicável, mas como marcador de identidade, não como banner. -->
+            <div style="display:flex;align-items:center;gap:9px;height:38px">
+              <input id="ppe-cor" type="color" value="${p.cor}" title="Cor do projeto" style="width:34px;height:34px;border:1px solid var(--border);border-radius:50%;background:var(--bg2);padding:2px;cursor:pointer;flex-shrink:0" />
+              <span style="font-size:11.5px;color:var(--text3)">Identifica o projeto nas listas</span>
+            </div>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
@@ -29067,7 +29082,7 @@ function renderPersonView(personId, opts){
   if(stats.total>0 && !opts.hidePresenca){
     // Cor da % conforme aproveitamento
     const corPct=stats.pct>=80?'var(--success, var(--success))':(stats.pct>=50?'var(--amber, var(--orange-dark))':'var(--danger, #B42E2E)');
-    const bgPct=stats.pct>=80?'var(--success-bg, var(--success-bg))':(stats.pct>=50?'var(--amber-bg)':'#FAE3E3');
+    const bgPct=stats.pct>=80?'var(--success-bg, var(--success-bg))':(stats.pct>=50?'var(--amber-bg)':'var(--danger-bg)');
     const faltasHTML=stats.ultimasFaltas.length?stats.ultimasFaltas.map(f=>{
       const d=new Date(f.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
       return `<span onclick="openReuniaoView('${f.id}')" style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;background:var(--bg2);border:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text2);cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">${escapeHTML(f.title)} · ${d}</span>`;
@@ -29280,7 +29295,7 @@ function _reunAplicarModelo(id){
 const REUN_STATUS={
   agendada:{label:'Agendada',cls:'reun-status-agendada',color:'var(--blue-mid)'},
   andamento:{label:'Em andamento',cls:'reun-status-andamento',color:'var(--success)'},
-  encerrada:{label:'Encerrada',cls:'reun-status-encerrada',color:'#666'},
+  encerrada:{label:'Encerrada',cls:'reun-status-encerrada',color:'var(--text3)'},
   continuacao:{label:'Com continuação',cls:'reun-status-continuacao',color:'var(--amber)'},
 };
 
@@ -29667,7 +29682,7 @@ function renderReunioes(){
     proxSemana:{label:'Próxima semana',icon:'ti-calendar',cor:'var(--blue-teal)',reunioes:[]},
     futuras:{label:'Próximas (mais adiante)',icon:'ti-calendar-plus',cor:'var(--blue-teal)',reunioes:[]},
     pendentes:{label:'Pendentes de encerramento',icon:'ti-clock-exclamation',cor:'var(--orange)',reunioes:[]},
-    antigas:{label:'Antigas / Encerradas',icon:'ti-archive',cor:'#888',reunioes:[]}
+    antigas:{label:'Antigas / Encerradas',icon:'ti-archive',cor:'var(--text3)',reunioes:[]}
   };
 
   meetings.forEach(m=>{
@@ -29782,8 +29797,8 @@ function renderReunioes(){
     const _horaProxLabel = _proxReuniao.horaInicio ? (_proxReuniao.horaFim?`${_proxReuniao.horaInicio} – ${_proxReuniao.horaFim}`:_proxReuniao.horaInicio) : '';
     const _semPautaProx = _reuniaoSemPauta(_proxReuniao);
     const _corProx = _isAcontecendo ? 'var(--danger)' : 'var(--blue-mid)';
-    const _bgProx = _isAcontecendo ? 'rgba(163,45,45,.08)' : 'rgba(24,95,165,.05)';
-    proxReuniaoHTML = `<div style="background:${_bgProx};border:1px solid ${_isAcontecendo?'rgba(163,45,45,.3)':'var(--border)'};border-left:3px solid ${_corProx};border-radius:12px;padding:13px 16px;margin-bottom:16px;cursor:pointer" onclick="openReuniaoView('${_proxReuniao.id}')">
+    const _bgProx = _isAcontecendo ? 'color-mix(in srgb,var(--danger) 8%,transparent)' : 'color-mix(in srgb,var(--blue-mid) 5%,transparent)';
+    proxReuniaoHTML = `<div style="background:${_bgProx};border:1px solid ${_isAcontecendo?'color-mix(in srgb,var(--danger) 30%,transparent)':'var(--border)'};border-left:3px solid ${_corProx};border-radius:12px;padding:13px 16px;margin-bottom:16px;cursor:pointer" onclick="openReuniaoView('${_proxReuniao.id}')">
       <div style="display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;color:${_corProx};text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">
         <i class="ti ${_isAcontecendo?'ti-broadcast':'ti-calendar-clock'}"></i> ${_isAcontecendo?'Acontecendo agora':'Próxima reunião'}
       </div>
@@ -30052,7 +30067,7 @@ function abrirHistoricoDetalhe(chaveCodificada){
   // Card de presença por pessoa
   const presencaHTML=partStats.map(({p,totalEnc,presentes,pct})=>{
     const cor=pct===null?'var(--text3)':(pct>=80?'var(--success, var(--success))':(pct>=50?'var(--amber, var(--orange-dark))':'var(--danger, #B42E2E)'));
-    const bg=pct===null?'var(--bg2)':(pct>=80?'var(--success-bg, var(--success-bg))':(pct>=50?'var(--amber-bg)':'#FAE3E3'));
+    const bg=pct===null?'var(--bg2)':(pct>=80?'var(--success-bg, var(--success-bg))':(pct>=50?'var(--amber-bg)':'var(--danger-bg)'));
     const pctLabel=pct!==null?`${pct}%`:'—';
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg2);border-radius:8px">
       <div style="width:30px;height:30px;border-radius:50%;background:var(--blue-mid);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${p.name.charAt(0)}</div>
@@ -30284,15 +30299,15 @@ function reunMuralItemHTML(m){
   let barColor='var(--blue-mid)';
   if(_emAndamento) barColor='var(--danger)';
   else if(_pendEncerr) barColor='var(--orange)';
-  else if(m.status==='encerrada') barColor='#aaa';
+  else if(m.status==='encerrada') barColor='var(--text3)';
 
   // Chip de estado
   const chipBase='display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap';
   let chip;
   if(_emAndamento) chip=`<span style="${chipBase};background:var(--danger);color:#fff"><i class="ti ti-broadcast" style="font-size:9px"></i> Agora</span>`;
-  else if(_pendEncerr) chip=`<span style="${chipBase};background:rgba(201,122,0,.15);color:var(--amber)"><i class="ti ti-clock-exclamation" style="font-size:9px"></i> Encerrar</span>`;
+  else if(_pendEncerr) chip=`<span style="${chipBase};background:color-mix(in srgb,var(--amber) 15%,transparent);color:var(--amber)"><i class="ti ti-clock-exclamation" style="font-size:9px"></i> Encerrar</span>`;
   else if(m.nivel==='rapida') chip=`<span style="${chipBase};background:color-mix(in srgb,var(--purple) 14%,transparent);color:var(--purple)"><i class="ti ti-bolt" style="font-size:9px"></i> Rápida</span>`;
-  else if(_semPauta&&m.status==='agendada') chip=`<span style="${chipBase};background:rgba(163,45,45,.1);color:var(--danger)"><i class="ti ti-alert-triangle" style="font-size:9px"></i> Sem pauta</span>`;
+  else if(_semPauta&&m.status==='agendada') chip=`<span style="${chipBase};background:color-mix(in srgb,var(--danger) 10%,transparent);color:var(--danger)"><i class="ti ti-alert-triangle" style="font-size:9px"></i> Sem pauta</span>`;
   else chip=`<span class="reun-status ${st.cls}" style="font-size:10px;padding:2px 8px">${st.label}</span>`;
 
   return `<div class="reun-card${papel==='convidado'?' convidado':''}" onclick="openReuniaoView('${m.id}')" style="opacity:${isPast?.7:1}">

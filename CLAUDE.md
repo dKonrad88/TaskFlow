@@ -322,6 +322,35 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-19 (kk) — Mac de casa — Paleta: Projetos e Reuniões passam a seguir o TEMA · FAB sempre azul
+- **A mecânica do problema** (vale entender antes de mexer): no tema Klain `--blue-mid` vira `#9a6a2e`
+  (caramelo), mas **`p.cor` — a cor escolhida do projeto — tem default `#185FA5`, o azul do tema padrão, e
+  NÃO é variável**. Resultado: tudo desenhado com `var(--blue-mid)` ficava marrom e tudo com `p.cor` seguia
+  azul, lado a lado na mesma tela. O mesmo com os hexes fixos de `PP_TIPOS_BASE`.
+- **REGRA aplicada:** texto/título/chip → **var do tema**; `p.cor` sobrevive só onde é IDENTIDADE do projeto
+  (barra de progresso, borda-esquerda 3px, ícone do tipo, avatar, o destaque de 7% da tarefa em andamento e
+  o seletor de cor). Assim a cor ainda distingue projetos na lista, sem gritar dentro da tela.
+- **Projetos (10):** título de grupo da lista (era `g.color`, hex fixo de `PP_TIPOS_BASE` — o "título em azul"
+  mais visível), nome da fase no card de Tarefas, os **3 `%` grandes** (15px/800), os 2 botões primários
+  sólidos que usavam `background:${p.cor}`, badges de Etapa, chip de conclusão da fase, dropdowns de
+  Fase/Setor e `PP_STATUS.planejamento` (`#888` → `var(--text3)`).
+- **Reuniões (9):** pills `.reun-status-agendada` (fundo `#e8f1fa` FIXO com texto temático por cima — no Klain
+  dava caramelo sobre azul-bebê) e `.reun-status-encerrada`; card "Próxima reunião"; `REUN_STATUS.encerrada`
+  (`#666`); chips do mural; presença baixa; grupo "antigas"; categoria "Outro"; banner "modelo pronto".
+- **FAB:** fixado em `linear-gradient(#185FA5,#1a7a8a)` **hex literal de propósito** — usava `var(--blue-mid)`,
+  que vira VERDE no tema Brasil e MARROM no Klain. É o único elemento que NÃO acompanha o tema (pedido do
+  Diego). O estado `.open` (vermelho) segue temático.
+- **Campo Cor** do Editar projeto: era `width:100%;height:38px` (um banner de cor, a coisa mais chamativa do
+  modal) → disco de **34px** com a legenda "Identifica o projeto nas listas".
+- ⚠️ **REGRESSÃO MINHA, pega e corrigida no teste:** ao trocar as pills por `color-mix`, removi os 4 overrides
+  `body.dark` achando que tinham virado redundantes. **Não tinham** — no escuro as vars de acento são tons
+  médios pensados p/ fundo claro, e o contraste do texto caiu para **3.11** (ilegível). Repus os overrides,
+  mas agora **clareando a própria var** (`color-mix(var(--blue-mid) 45%, #fff)`) em vez dos hexes fixos que
+  estavam lá — assim continua temático. Medido nos 5 temas: escuro **6.46**, meia-noite **7.47**, claro 6.52,
+  Klain 4.36, Brasil 3.61 (os 2 últimos no limite de AA para bold).
+- VERIFICADO: no Klain os títulos de fase saem em `rgb(106,86,55)` = exatamente o `--text2` do tema (antes
+  `#185fa5`); o único azul da tela passa a ser o FAB. jsc SYNTAX_OK, 0 erros de console.
+
 ### 2026-07-19 (jj) — Mac de casa — Fecha o alinhamento + as 4 duplicações que dependiam de decisão
 - O Diego delegou as 4 decisões abertas do (ii) ("você decide o que fica melhor"). Critério de cada uma:
   1. **Nome do projeto 2×** → tirei do **breadcrumb**, mantive o título do corpo. Motivo: o corpo tem ícone
