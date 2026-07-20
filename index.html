@@ -24885,10 +24885,10 @@ function renderProjetosPro(){
   if(!_grpDefs.some(g=>g[0]===_ppGroup)) _ppGroup='tipo';
   const _sortDefs=[['prazo','Prazo'],['progresso','Progresso'],['recentes','Recentes']];
   if(!_sortDefs.some(s=>s[0]===_ppSort)) _ppSort='prazo';
-  // Agrupar/Ordenar vivem dentro do ⋮ (menu no header, ao lado de "Importar").
-  const _grpBtnsHTML=_grpDefs.map(([g,lb])=>{const at=_ppGroup===g;return `<button onclick="setPpGroup('${g}')" style="border:1px solid ${at?'var(--blue-mid)':'var(--border)'};border-radius:7px;padding:6px 11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;background:${at?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--bg2)'};color:${at?'var(--blue-mid)':'var(--text2)'};transition:all .15s">${lb}</button>`;}).join('');
-  const _sortSelHTML=`<select onchange="setPpSort(this.value)" style="width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 9px;font-size:12px;font-weight:600;color:var(--text2);font-family:inherit;cursor:pointer">${_sortDefs.map(([s,l])=>`<option value="${s}" ${_ppSort===s?'selected':''}>${l}</option>`).join('')}</select>`;
-  const _menuAtivo = (_ppGroup!=='tipo' || _ppSort!=='prazo'); // bolinha no ⋮ quando fugiu do padrão
+  // (jul/2026, Diego) O menu ⋮ (Agrupar/Ordenar) foi REMOVIDO da barra. A LÓGICA fica: a lista
+  // segue agrupando por _ppGroup (padrão 'tipo') e ordenando por _ppSort (padrão 'prazo') — os
+  // guards acima mantêm esses valores válidos. As funções setPpGroup/setPpSort/_ppToggleMenu ficam
+  // inertes (sem UI que as chame). Repor = devolver o _ppMenuBtnHTML abaixo.
 
   // Toolbar = só a busca (os 3 filtros Atrasados/Ativos/Meus foram removidos).
   const toolbar = `
@@ -24899,26 +24899,11 @@ function renderProjetosPro(){
       </div>
     </div>`;
 
-  // Botão ⋮ (Agrupar/Ordenar) — renderizado no header, ao lado de "Importar".
-  const _ppMenuBtnHTML = `
-    <button onclick="_ppToggleMenu(event)" title="Agrupar e ordenar" style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:38px;border:1px solid ${_ppMenuOpen?'var(--blue-mid)':'var(--border)'};border-radius:10px;background:${_ppMenuOpen?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--card)'};color:${_ppMenuOpen||_menuAtivo?'var(--blue-mid)':'var(--text2)'};cursor:pointer;font-family:inherit;position:relative"><i class="ti ti-dots-vertical" style="font-size:18px"></i>${_menuAtivo&&!_ppMenuOpen?'<span style="position:absolute;top:6px;right:7px;width:6px;height:6px;border-radius:50%;background:var(--blue-mid)"></span>':''}</button>
-    ${_ppMenuOpen?`
-      <div onclick="_ppToggleMenu(event)" style="position:fixed;inset:0;z-index:190"></div>
-      <div style="position:absolute;top:calc(100% + 6px);left:0;z-index:200;background:var(--card);border:1px solid var(--border);border-radius:11px;box-shadow:0 10px 30px rgba(0,0,0,.16);padding:13px;min-width:250px;display:flex;flex-direction:column;gap:13px;text-align:left">
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px"><i class="ti ti-layout-grid" style="font-size:12px"></i> Agrupar</div>
-          <div style="display:flex;flex-wrap:wrap;gap:5px">${_grpBtnsHTML}</div>
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px"><i class="ti ti-arrows-sort" style="font-size:12px"></i> Ordenar</div>
-          ${_sortSelHTML}
-        </div>
-      </div>`:''}`;
 
   // (jul/2026, Diego) Lista centralizada, "só a parte central" — igual à tela de Reuniões
   // (que usa 940/720 centrado). Antes ocupava a tela toda; agora fica num bloco de 940px.
   container.innerHTML = `<div style="max-width:940px;margin:0 auto;padding-top:22px;padding-bottom:40px">${headerHTML}${toolbar}<div id="pp-grupos">${_ppGruposHTML()}</div></div>`;
-  const _menuHost=document.getElementById('pp-menu-host'); if(_menuHost) _menuHost.innerHTML=_ppMenuBtnHTML;
+  const _menuHost=document.getElementById('pp-menu-host'); if(_menuHost) _menuHost.innerHTML=''; // ⋮ removido (jul/2026)
 }
 
 // ─── IMPORTAR PROJETO (colar JSON) ───────────────────────────────
