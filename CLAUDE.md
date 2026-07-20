@@ -322,6 +322,17 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-20 (vv) — PC da Produção — MOBILE ganhou o tema Klain (creme + caramelo) + botão de tema cicla 3 temas
+- Diego pediu o tema Klain no mobile também. Repo SEPARADO `taskflow-mobile` (commit `34805d1`).
+- Novo `body.klain` com os MESMOS valores do app principal (creme `#e9e0ce`, card `#fbf6ec`, caramelo
+  `--blue-mid:#9a6a2e`, texto `#392a18`; cabeçalho vira gradiente marrom `#5c3d1f→#9a6a2e→#b0863f`).
+- O botão de tema do cabeçalho virou **ciclo de 3** (claro → Klain → escuro), persistido em
+  `localStorage['tfm_theme']`; ícone mostra o tema atual (sol / 🍪 `ti-cookie` / lua). `applyTheme` no boot.
+- ⚠️ **FAB fica AZUL fixo também no Klain** (`#185FA5→#1a7a8a`, hardcoded), seguindo a preferência do Diego no
+  app principal ("FAB azul independente do tema"). Se quiser o FAB caramelo no mobile, é 1 linha.
+- Default segue **claro** (Klain é opção, persiste após escolher). VERIFICADO por DOM: 0 erros de console,
+  vars/header/FAB corretos, ciclo ok. (Screenshot trava nesta máquina.)
+
 ### 2026-07-20 (uu) — PC da Produção — Painel de Projeto (foco): FAB visível, trilha reorganizada (Status/Sair/Finalizar), toggle Etapas/Lista no Planejamento, GESTÃO no tema
 - 6 pedidos do Diego (screenshots do Painel de Projeto em modo FOCO):
   1. **Título do grupo GESTÃO na sidebar → tema.** Era o único com cor FIXA (`var(--purple)` roxo) — destoava no
