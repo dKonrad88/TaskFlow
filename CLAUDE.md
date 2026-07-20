@@ -322,6 +322,28 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-20 (uu) — PC da Produção — Painel de Projeto (foco): FAB visível, trilha reorganizada (Status/Sair/Finalizar), toggle Etapas/Lista no Planejamento, GESTÃO no tema
+- 6 pedidos do Diego (screenshots do Painel de Projeto em modo FOCO):
+  1. **Título do grupo GESTÃO na sidebar → tema.** Era o único com cor FIXA (`var(--purple)` roxo) — destoava no
+     Klain (caramelo). Trocado por `var(--blue-mid)` no `grupo('gestao',…)` (~10205). GERENCIADOR já era `--blue-mid`
+     e as ÁREAS `--text2` (temáticos). ⚠️ Os cabeçalhos de SETOR do Painel (`_setorBloco`) JÁ seguiam o tema
+     (`--bg2`/`--blue-mid`/`--text`) — nada a fazer lá; por isso interpretei "títulos dos grupos" = a sidebar.
+  2. **FAB (+) aparece no modo FOCO** de reunião E projeto. As regras que escondiam (`body.reun-focus … .fab-create,
+     .fab-menu` linha 1506; `body.proj-focus …` linha 1565) perderam o `.fab-create`/`.fab-menu`. FAB já é azul fixo.
+  3. **Planejamento (Visão) ganhou toggle "Por setor/etapa" × "Lista"**, igual à aba Tarefas. Estado por projeto em
+     `sessionStorage['pp-plan-lista-<id>']`. Lista = todas as tarefas da fase na ordem da esteira, sem agrupar por
+     setor, com "+ Nova tarefa nesta fase" (`quickAddTaskPro(…,faseId,'')` → "Geral" ou sem setor). Agrupado (padrão)
+     = como era + "+ Novo setor". Fica no `else` de `detalheBloco` em `renderProjectProVisao`.
+  4-6. **Trilha do FOCO (`_projFocusRailHTML`, ~25110) reorganizada:** Sair saiu do TOPO → RODAPÉ (acima de
+     Finalizar); o **Status** entrou logo ACIMA do Sair (botão de trilha `_projToggleStatus`, ativo↔pausado, cor/ícone
+     do estado). E o status SAIU do cabeçalho de foco (`focusBarHTML` — removido `_projStatusBtnHTML(p,true)`).
+     ⚠️ O cabeçalho NORMAL (fora do foco) MANTÉM o status — lá não há trilha, é o único controle.
+- **VERIFICADO no navegador** (HTTP local 8899): **0 erros de console**; GESTÃO computa `--blue-mid`; trilha do foco
+  sai como Painel→…→Editar→**Em andamento**→**Sair**→**Finalizar**; barra de foco SEM status; FAB `display:flex` em
+  proj-focus E reun-focus; toggle do Planejamento alterna agrupado (2 setores + "Novo setor") ↔ lista (0 cabeçalhos
+  de setor, lista plana + "add tarefa na fase"); clicar no status da trilha alterna ativo→pausado e o rótulo segue.
+  (Screenshot trava nesta máquina — verificado por inspeção do DOM.)
+
 ### 2026-07-20 (tt) — PC da Produção — MOBILE reativado: aba Projetos + Participantes/presença na reunião
 - ⚠️ **O `taskflow-mobile` estava CONGELADO** (nota de 02/07). O Diego **pediu explicitamente** pra mexer, então a
   exceção da regra foi acionada. **Repo SEPARADO** (`G:\g_Diego\HTML\taskflow-mobile`, ~44KB, localStorage `tfm_*`) —

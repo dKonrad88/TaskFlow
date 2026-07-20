@@ -1503,7 +1503,7 @@
   .reun-focus-bar{display:none}
   .reun-focus-rail{display:none}
   .reun-col-rz{display:none}
-  body.reun-focus .hdr,body.reun-focus .sidebar,body.reun-focus #sidebar-resizer,body.reun-focus .sidebar-resizer,body.reun-focus .topbar,body.reun-focus .fab-create,body.reun-focus .fab-menu{display:none!important}
+  body.reun-focus .hdr,body.reun-focus .sidebar,body.reun-focus #sidebar-resizer,body.reun-focus .sidebar-resizer,body.reun-focus .topbar{display:none!important}
   body.reun-focus #task-container{position:fixed;inset:0;z-index:500;overflow-y:auto;overflow-x:hidden;background:var(--bg);padding:0}
   body.reun-focus .reun-panel-wrap{max-width:none!important;padding:0 30px 40px!important;margin-left:74px!important;margin-right:0!important}
   body.reun-focus .reun-voltar-btn,body.reun-focus .reun-normal-header,body.reun-focus .reun-subtabs,body.reun-focus .reun-subtabs-wrap{display:none!important}
@@ -1562,7 +1562,7 @@
   @media(max-width:1040px){.reun-grid4,body.reun-focus .reun-grid4{grid-template-columns:1fr}}
   /* ── Modo FOCO / tela cheia do Painel de PROJETO (espelha o de Reunião) ── */
   .proj-focus-rail{display:none}
-  body.proj-focus .hdr,body.proj-focus .sidebar,body.proj-focus #sidebar-resizer,body.proj-focus .sidebar-resizer,body.proj-focus .topbar,body.proj-focus .fab-create,body.proj-focus .fab-menu{display:none!important}
+  body.proj-focus .hdr,body.proj-focus .sidebar,body.proj-focus #sidebar-resizer,body.proj-focus .sidebar-resizer,body.proj-focus .topbar{display:none!important}
   body.proj-focus #task-container{position:fixed;inset:0;z-index:500;overflow-y:auto;overflow-x:hidden;background:var(--bg);padding:0}
   body.proj-focus .proj-panel-wrap{max-width:none!important;margin-left:74px!important;margin-right:0!important;padding:0 30px 40px!important}
   body.proj-focus .proj-subtabs,body.proj-focus .proj-subtabs-wrap{display:none!important}
@@ -10202,7 +10202,7 @@ function renderSidebar(){
     navSubItem('reunioes','ti-microphone','Reuniões', {badge: reunHoje||null, badgeClass:'warn'}) +
     navSubItem('anotacoes','ti-notes','Notas') +
     navSubItem('rotinas','ti-repeat','Rotinas')
-  , 'var(--purple)');
+  , 'var(--blue-mid)');
 
   // ── ÁREAS: separador + cada área é um GRUPO que expande inline (chama o setter da área,
   // que já seta hubView + renderiza). Assim a sidebar fica fixa — sem "voltar ao início".
@@ -25109,9 +25109,12 @@ function _exitProjFocus(){
 function _projRailActive(v){ return activeProjectProTab===v ? 'background:color-mix(in srgb,var(--blue-mid) 12%,transparent);color:var(--blue-mid)' : ''; }
 function _projFocusRailHTML(p){
   const A=_projRailActive;
+  // (jul/2026, Diego) Sair desceu p/ o rodapé (acima de Finalizar) e o STATUS do projeto entrou
+  // logo acima do Sair — o "Em andamento" saiu do cabeçalho (barra de foco). O botão de status
+  // usa o mesmo _projToggleStatus do header (ativo↔pausado; concluído/arquivado vão pela aba Info).
+  const _sc=PP_STATUS[p.status]||PP_STATUS.planejamento;
+  const _podeAlt=p.status!=='concluido'&&p.status!=='arquivado';
   return `<div class="proj-focus-rail">
-    <button class="proj-rail-btn" onclick="_exitProjFocus()" title="Sair da tela cheia (Esc)"><i class="ti ti-arrows-minimize"></i><span>Sair</span></button>
-    <div class="proj-rail-sep"></div>
     <button class="proj-rail-btn" onclick="setProjectProTab('visao')" style="${A('visao')}" title="Painel — visão geral do projeto"><i class="ti ti-layout-dashboard"></i><span>Painel</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('fases')" style="${A('fases')}" title="${_ppRot(p,1,true)}"><i class="ti ti-layout-rows"></i><span>${_ppRot(p,1,true)}</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('tarefas')" style="${A('tarefas')}" title="Tarefas"><i class="ti ti-checklist"></i><span>Tarefas</span></button>
@@ -25122,6 +25125,9 @@ function _projFocusRailHTML(p){
     <button class="proj-rail-btn" onclick="setProjectProTab('info')" style="${A('info')}" title="Info — detalhes do projeto"><i class="ti ti-info-circle"></i><span>Info</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('editar')" style="${A('editar')}" title="Editar projeto (nome, prazo, cor)"><i class="ti ti-pencil"></i><span>Editar</span></button>
     <div style="flex:1"></div>
+    <div class="proj-rail-sep"></div>
+    <button class="proj-rail-btn" onclick="_projToggleStatus('${p.id}')" style="color:${_sc.color}" title="Status: ${_sc.label}${_podeAlt?' — clique p/ '+(p.status==='ativo'?'pausar':'colocar em andamento'):' (mude na aba Info)'}"><i class="ti ${_sc.icon}"></i><span>${_sc.label}</span></button>
+    <button class="proj-rail-btn" onclick="_exitProjFocus()" title="Sair da tela cheia (Esc)"><i class="ti ti-arrows-minimize"></i><span>Sair</span></button>
     <button class="proj-rail-btn" onclick="_selecionarStatusProjeto('${p.id}','concluido')" style="color:var(--success)" title="Finalizar projeto"><i class="ti ti-flag"></i><span>Finalizar</span></button>
   </div>`;
 }
@@ -25823,7 +25829,6 @@ function renderProjectProView(id){
   const focusBarHTML = `<div class="proj-focus-bar">
     <i class="ti ${tipo.icon}" style="font-size:16px;color:var(--blue-mid)"></i>
     <span style="font-size:15px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:460px">Projeto — ${escapeHTML(p.nome)}</span>
-    ${_projStatusBtnHTML(p,true)}
     <div style="flex:1"></div>
     ${_ppConclusaoHeader(p,prog)}
     <div style="flex:1"></div>
@@ -26194,23 +26199,41 @@ function renderProjectProVisao(p, prog){
     const setores=f.grupos||[];
     const semSetor=tasks.filter(t=>t.projectProFaseId===f.id && !t.projectProGrupoId && t.projectProId===p.id);
     const cFase=fp.pct===100?'var(--success)':'var(--blue-mid)';
-    detalheBloco=`<div>
-      <!-- (jul/2026, Diego) A MESMA fase já mostra feitas/total + barra na coluna Estrutura, a
-           ~34px daqui (o gap do .pp-visao-3col). Aqui ficou só o %, que é a leitura rápida, e o
-           nome, que é o título do bloco. Na Estrutura eles ficam porque lá servem p/ COMPARAR as
-           fases entre si; repetidos no detalhe eram só eco. -->
-      <div style="display:flex;align-items:center;gap:11px;margin-bottom:14px;flex-wrap:wrap">
-        <div style="flex:1;min-width:120px">${_ppTituloCol('ti-layout-rows',escapeHTML(f.nome),'',0)}</div>
-        <span style="font-size:12px;font-weight:800;color:${cFase};min-width:34px;text-align:right">${fp.pct}%</span>
-      </div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:9.5px;font-weight:800;color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 13%,transparent);border-radius:4px;padding:1px 5px">1</span> = etapa (a próxima só começa quando a anterior conclui) · <i class="ti ti-lock" style="font-size:11px"></i> bloqueada · ordem/paralelas na aba <b>Tarefas</b>.</div>
-      ${setores.map(g=>_setorBloco(g,f.id)).join('')}
+    // (jul/2026, Diego) DOIS formatos de visualização do Planejamento — igual à aba Tarefas:
+    // "Por <setor/etapa>" (agrupado, o padrão) × "Lista" (as tarefas da fase em lista plana, na
+    // ordem de execução). Estado por projeto em sessionStorage (espelha o 'pp-agrupar-<id>').
+    const _planLista = sessionStorage.getItem('pp-plan-lista-'+p.id)==='1';
+    const _planBtn=(on,val,icon,label)=>`<button onclick="sessionStorage.setItem('pp-plan-lista-${p.id}','${val}');render()" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:7px;border:none;cursor:pointer;font-family:inherit;${on?'background:var(--card);color:var(--blue-mid);box-shadow:0 1px 2px rgba(0,0,0,.08)':'background:transparent;color:var(--text3)'}"><i class="ti ${icon}" style="font-size:13px"></i>${label}</button>`;
+    const _planToggle=`<div style="display:inline-flex;gap:2px;background:var(--bg2);padding:3px;border-radius:9px">${_planBtn(!_planLista,'0','ti-layout-rows','Por '+_ppRot(p,2,false,true))}${_planBtn(_planLista,'1','ti-list','Lista')}</div>`;
+    let _planBody;
+    if(_planLista){
+      // Lista PLANA: todas as tarefas da fase (de qualquer setor + sem setor), na ordem da esteira.
+      const _faseTasks=_ordE.filter(t=>t.projectProFaseId===f.id && t.projectProId===p.id);
+      const _linhas=_faseTasks.length?_faseTasks.map(_tarefaLinha).join(''):`<div style="padding:14px;font-size:12px;color:var(--text3);font-style:italic">Nenhuma tarefa nesta ${_ppRot(p,1,false,true)} ainda.</div>`;
+      _planBody=`<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-top:8px;background:var(--surface-painel)">
+        ${_linhas}
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;${_faseTasks.length?'border-top:1px solid var(--border)':''}">
+          <i class="ti ti-plus" style="font-size:14px;color:var(--text3);flex-shrink:0"></i>
+          <input id="qa-planlista-${f.id}" autocomplete="off" placeholder="Nova tarefa nesta ${_ppRot(p,1,false,true)} — Enter para adicionar" onkeydown="if(event.key==='Enter'){event.preventDefault();quickAddTaskPro('qa-planlista-${f.id}','${p.id}','${f.id}','')}" style="flex:1;min-width:0;border:none;background:transparent;font-size:12.5px;color:var(--text);font-family:inherit;outline:none;padding:2px 0">
+        </div>
+      </div>`;
+    } else {
+      _planBody=`${setores.map(g=>_setorBloco(g,f.id)).join('')}
       ${semSetor.length?`<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-top:8px;background:var(--surface-painel)"><div style="padding:8px 11px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text3)">Sem ${_ppRot(p,2,false,true)}</div>${semSetor.map(_tarefaLinha).join('')}</div>`:''}
       ${(!setores.length&&!semSetor.length)?`<div style="padding:4px 2px 8px;font-size:12px;color:var(--text3);font-style:italic">Ainda não há ${_ppRot(p,2,true,true)} aqui — adicione abaixo.</div>`:''}
       <div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;border:1px dashed var(--border);border-radius:8px;transition:border-color .12s" onmouseover="this.style.borderColor='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)'">
         <i class="ti ti-plus" style="font-size:14px;color:var(--text3);flex-shrink:0"></i>
         <input id="qa-setor-${f.id}" autocomplete="off" placeholder="${_ppG(p,2,'Nova','Novo')} ${_ppRot(p,2,false,true)} — Enter para adicionar" onkeydown="if(event.key==='Enter'){event.preventDefault();quickAddSetorPro('qa-setor-${f.id}','${p.id}','${f.id}')}" style="flex:1;min-width:0;border:none;background:transparent;font-size:12px;color:var(--text);font-family:inherit;outline:none;padding:0" />
+      </div>`;
+    }
+    detalheBloco=`<div>
+      <div style="display:flex;align-items:center;gap:11px;margin-bottom:14px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">${_ppTituloCol('ti-layout-rows',escapeHTML(f.nome),'',0)}</div>
+        ${_planToggle}
+        <span style="font-size:12px;font-weight:800;color:${cFase};min-width:34px;text-align:right">${fp.pct}%</span>
       </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:9.5px;font-weight:800;color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 13%,transparent);border-radius:4px;padding:1px 5px">1</span> = etapa (a próxima só começa quando a anterior conclui) · <i class="ti ti-lock" style="font-size:11px"></i> bloqueada · ordem/paralelas na aba <b>Tarefas</b>.</div>
+      ${_planBody}
     </div>`;
   }
 
