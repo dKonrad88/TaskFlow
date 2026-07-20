@@ -322,6 +322,28 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-20 (ss) — PC da Produção — Header do projeto: tira "feitas/total" (0/21), mantém barra de %, conclusão prevista vai pro MEIO do header
+- Pedido do Diego (screenshot da faixa de progresso do projeto): (1) tirar o "0/21" (`feitas/total`);
+  (2) manter a barra de %; (3) mover o "13 de ago. · no prazo/folga" (a conclusão prevista, `_ppConclusaoHeader`)
+  para o **meio do header principal** (o `.proj-normal-header`, que tinha só o título "Projeto — nome" à esquerda
+  e um monte de espaço vazio no meio).
+- **3 edições em `renderProjectProView`:**
+  1. `headerProgressoHTML` (~25746, linha das sub-abas): removido o `<span>· feitas/total</span>` e removido o
+     `_ppConclusaoHeader` que ficava grudado no fim. Sobrou barra + `%` (+ badge de atrasadas, se houver).
+  2. `headerHTML` principal (~25836): a flex row virou **título à esquerda (`flex:1`) · conclusão · spacer
+     (`flex:1`)** — a técnica dos dois `flex:1` centraliza a conclusão de verdade. `_ppConclusaoHeader` só
+     renderiza quando `prog.total>0`, então projeto sem tarefa não muda em nada.
+  3. `focusBarHTML` (~25824, modo foco): tirado o `· feitas/total` também e adicionado um `flex:1` depois da
+     conclusão pra centralizá-la — no foco o header principal fica `display:none`, então a conclusão PRECISA
+     continuar aparecendo na barra de foco (por isso não removi de lá, só centralizei).
+- **VERIFICADO no navegador** (servido via HTTP local — esta máquina não tem Python/Node, subi um HttpListener
+  em PowerShell na 8899; `file://` foi bloqueado pelo Browser pane): app bootou com **0 erros de console**
+  (sintaxe intacta); abri o projeto-semente e medi a geometria — **`desvioDoCentro:0`** (centro da conclusão =
+  centro da linha, centralização perfeita), **nenhum "/21" na página**, barra de % presente, **sem overflow
+  horizontal**. Screenshot travou (página ~2MB deixa o renderer lento), mas a medição por bounding box é prova
+  mais precisa que a imagem.
+- Só layout (template strings) — 6 linhas trocadas em index.html. Sem mudança de dado/lógica.
+
 ### 2026-07-19 (rr) — Mac de casa — Removido o título "📋 Painel de Reunião" do topo
 - Pedido do Diego (screenshot): tirar o `<h2>` "📋 Painel de Reunião" que ficava no topo do painel,
   abaixo do "← Voltar às reuniões". Redundante — o "Voltar às reuniões" já dá contexto e o próprio painel

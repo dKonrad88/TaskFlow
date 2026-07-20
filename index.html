@@ -25746,10 +25746,9 @@ function renderProjectProView(id){
   const headerProgressoHTML = prog.total>0 ? `
     <div style="display:flex;align-items:center;gap:10px;min-width:170px;max-width:280px;flex:0 1 auto">
       <div style="flex:1;height:6px;background:var(--bg2);border-radius:99px;overflow:hidden;min-width:80px"><div style="height:100%;background:var(--blue-mid);width:${prog.pct}%;transition:width .3s"></div></div>
-      <span style="font-size:13px;font-weight:800;color:var(--blue-mid);white-space:nowrap">${prog.pct}% <span style="font-size:11px;font-weight:600;color:var(--text3)">· ${prog.feitas}/${prog.total}</span></span>
+      <span style="font-size:13px;font-weight:800;color:var(--blue-mid);white-space:nowrap">${prog.pct}%</span>
       ${prog.atrasadas>0?`<span style="font-size:11px;color:var(--danger);font-weight:700;white-space:nowrap"><i class="ti ti-alert-triangle"></i> ${prog.atrasadas}</span>`:''}
-    </div>
-    ${_ppConclusaoHeader(p,prog)}` : '';
+    </div>` : '';
 
   // Banner de pré-fechamento (se coordenador já pré-fechou)
   let encerramentoBanner = '';
@@ -25827,19 +25826,24 @@ function renderProjectProView(id){
     ${_projStatusBtnHTML(p,true)}
     <div style="flex:1"></div>
     ${_ppConclusaoHeader(p,prog)}
+    <div style="flex:1"></div>
     <div style="display:flex;align-items:center;gap:10px;min-width:180px;max-width:280px">
       <div style="flex:1;height:6px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:var(--blue-mid);width:${prog.pct}%"></div></div>
-      <span style="font-size:13px;font-weight:800;color:var(--blue-mid);white-space:nowrap">${prog.pct}% <span style="font-size:11px;font-weight:600;color:var(--text3)">· ${prog.feitas}/${prog.total}</span></span>
+      <span style="font-size:13px;font-weight:800;color:var(--blue-mid);white-space:nowrap">${prog.pct}%</span>
     </div>
   </div>`;
   // Header do projeto — estilo clean (igual Painel de Reunião). No modo FOCO some (a barra + a trilha assumem).
   const headerHTML = `
     <div class="proj-normal-header">
     ${encerramentoBanner}
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0">
-      <i class="ti ${tipo.icon}" style="font-size:20px;color:var(--blue-mid)"></i>
-      <span style="font-size:21px;font-weight:800;color:var(--text)">Projeto — ${escapeHTML(p.nome)}</span>
-      ${_projStatusBtnHTML(p,false)}
+    <div style="display:flex;align-items:center;gap:12px;min-width:0">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0;flex:1">
+        <i class="ti ${tipo.icon}" style="font-size:20px;color:var(--blue-mid)"></i>
+        <span style="font-size:21px;font-weight:800;color:var(--text)">Projeto — ${escapeHTML(p.nome)}</span>
+        ${_projStatusBtnHTML(p,false)}
+      </div>
+      ${_ppConclusaoHeader(p,prog)}
+      <div style="flex:1"></div>
     </div>
     </div>`;
 
