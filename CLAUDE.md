@@ -322,6 +322,17 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-20 (xx) — PC da Produção — Header do projeto: barra de % SUBIU pro cabeçalho + "⚠ atrasadas" removido
+- Pedido do Diego (screenshot): mover a barra de % pra cima (do canto da linha de sub-abas pro espaço vazio do
+  cabeçalho `.proj-normal-header`, à direita) e tirar o "⚠ 4" (contador de atrasadas).
+- `headerProgressoHTML` (barra+%) saiu do grupo de ícones da sub-navbar (`tabsHTML`) e entrou no `headerHTML`
+  (após a conclusão + spacer, à direita). O `${prog.atrasadas>0?…}` (ícone `ti-alert-triangle` + número) foi
+  removido do `headerProgressoHTML`. Lupa/⛶/template/editar CONTINUAM na linha das abas.
+- ⚠️ Só o cabeçalho NORMAL muda — o modo FOCO (`focusBarHTML`) tem a própria barra/% inline (não usa
+  `headerProgressoHTML`), então não foi afetado.
+- VERIFICADO no navegador: 0 erros de console; barra de % dentro do `.proj-normal-header` (10%); sem
+  alert-triangle no topo; sub-abas com lupa/foco/template/editar e SEM a barra. (Screenshot trava; DOM.)
+
 ### 2026-07-20 (ww) — PC da Produção — Painel de Projeto: LUPA de busca no header (busca AO VIVO em tudo do projeto)
 - Diego pediu uma lupa no header (depois do %) que busca dentro do projeto atual — "qualquer coisa, palavra,
   nome, tudo", com resultados aparecendo à medida que digita.

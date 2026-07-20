@@ -25753,7 +25753,6 @@ function renderProjectProView(id){
     <div style="display:flex;align-items:center;gap:10px;min-width:170px;max-width:280px;flex:0 1 auto">
       <div style="flex:1;height:6px;background:var(--bg2);border-radius:99px;overflow:hidden;min-width:80px"><div style="height:100%;background:var(--blue-mid);width:${prog.pct}%;transition:width .3s"></div></div>
       <span style="font-size:13px;font-weight:800;color:var(--blue-mid);white-space:nowrap">${prog.pct}%</span>
-      ${prog.atrasadas>0?`<span style="font-size:11px;color:var(--danger);font-weight:700;white-space:nowrap"><i class="ti ti-alert-triangle"></i> ${prog.atrasadas}</span>`:''}
     </div>` : '';
 
   // Banner de pré-fechamento (se coordenador já pré-fechou)
@@ -25850,6 +25849,7 @@ function renderProjectProView(id){
       </div>
       ${_ppConclusaoHeader(p,prog)}
       <div style="flex:1"></div>
+      ${headerProgressoHTML}
     </div>
     </div>`;
 
@@ -25881,7 +25881,6 @@ function renderProjectProView(id){
         </button>`).join('')}
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;margin-bottom:6px">
-        ${headerProgressoHTML}
         ${_ppBuscaBtnHTML(p)}
         <button class="reun-ico" onclick="_toggleProjFocus()" title="Abrir em tela cheia (modo foco)"><i class="ti ti-arrows-maximize"></i></button>
         ${ajudaIconHTML}
