@@ -24915,7 +24915,9 @@ function renderProjetosPro(){
         </div>
       </div>`:''}`;
 
-  container.innerHTML = headerHTML + toolbar + `<div id="pp-grupos">${_ppGruposHTML()}</div>`;
+  // (jul/2026, Diego) Lista centralizada, "só a parte central" — igual à tela de Reuniões
+  // (que usa 940/720 centrado). Antes ocupava a tela toda; agora fica num bloco de 940px.
+  container.innerHTML = `<div style="max-width:940px;margin:0 auto;padding-top:22px;padding-bottom:40px">${headerHTML}${toolbar}<div id="pp-grupos">${_ppGruposHTML()}</div></div>`;
   const _menuHost=document.getElementById('pp-menu-host'); if(_menuHost) _menuHost.innerHTML=_ppMenuBtnHTML;
 }
 
@@ -26211,14 +26213,16 @@ function renderProjectProVisao(p, prog){
     // então acompanha o tema: fundo a 7% + faixa de 3px na borda esquerda. Nada fora da paleta.
     const _emAndamento = !done && !bloq && (s.estado==='hoje' || s.estado==='atrasada');
     const _hlCor = s.estado==='atrasada' ? 'var(--danger)' : p.cor;
-    const _hl = _emAndamento
-      ? `background:color-mix(in srgb,${_hlCor} 7%,transparent);box-shadow:inset 3px 0 0 ${_hlCor};`
-      : '';
+    // (jul/2026, Proposta A — Diego) A paralela GRITA (âmbar: badge + conector └ + faixa esquerda),
+    // a sequencial fica QUIETA (só um ↓ apagado). A faixa: âmbar se paralela (agrupa as que rodam
+    // juntas); senão a cor do projeto quando em andamento. O fundo a 7% segue só na tarefa em curso.
+    const _barCor = paralela ? 'var(--amber)' : (_emAndamento ? _hlCor : '');
+    const _hl = `${_emAndamento?`background:color-mix(in srgb,${_hlCor} 7%,transparent);`:''}${_barCor?`box-shadow:inset 3px 0 0 ${_barCor};`:''}`;
     return `<div style="display:grid;grid-template-columns:24px 22px 18px minmax(0,1fr) 104px 46px 84px;gap:9px;align-items:center;padding:7px 10px;border-top:1px solid var(--border);${_hl}">
-      <span title="Etapa ${etapa}${paralela?' · paralela à anterior (roda junto)':' · só começa quando a etapa anterior conclui'}" style="font-size:10px;font-weight:800;color:var(--text3);background:var(--bg2);border-radius:5px;padding:2px 0;text-align:center">${numHier}</span>
+      <span title="Etapa ${etapa}${paralela?' · roda JUNTO com a anterior (mesma etapa, paralela)':' · só começa quando a etapa anterior conclui'}" style="font-size:10px;font-weight:800;color:${paralela?'var(--amber)':'var(--text3)'};background:${paralela?'color-mix(in srgb,var(--amber) 16%,transparent)':'var(--bg2)'};border-radius:5px;padding:2px 0;text-align:center">${numHier}</span>
       ${_primeira
         ? '<span></span>'
-        : `<button onclick="event.stopPropagation();_ppToggleParalela('${p.id}',${t.id})" title="${paralela?'Roda JUNTO com a tarefa anterior — clique p/ torná-la dependente (só começa depois)':'DEPENDE da anterior (só começa quando ela conclui) — clique p/ rodar junto'}" style="background:none;border:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;color:${paralela?'var(--text3)':'var(--blue-mid)'}"><i class="ti ${paralela?'ti-arrows-split-2':'ti-arrow-down-right'}" style="font-size:14px"></i></button>`}
+        : `<button onclick="event.stopPropagation();_ppToggleParalela('${p.id}',${t.id})" title="${paralela?'Roda JUNTO com a anterior (mesma etapa) — clique p/ voltar a rodar em sequência':'Roda em SEQUÊNCIA (só começa quando a anterior conclui) — clique p/ rodar JUNTO com a anterior'}" style="background:none;border:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;color:${paralela?'var(--amber)':'var(--text3)'};opacity:${paralela?'1':'.5'}"><i class="ti ${paralela?'ti-corner-down-right':'ti-arrow-narrow-down'}" style="font-size:${paralela?'16':'13'}px"></i></button>`}
       ${bloq
         ? `<span title="Bloqueada — aguarda a etapa anterior concluir" style="width:18px;height:18px;border-radius:50%;border:1.5px dashed var(--border);color:var(--text3);display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-lock" style="font-size:10px"></i></span>`
         : `<i class="ti ${done?'ti-square-check-filled':'ti-square'}" onclick="toggle(${t.id})" style="font-size:18px;color:${done?'var(--success)':'var(--text3)'};cursor:pointer" title="${done?'Concluída':'Marcar como concluída'}"></i>`}
@@ -26354,7 +26358,7 @@ function renderProjectProVisao(p, prog){
         ${_planToggle}
         <span style="font-size:12px;font-weight:800;color:${cFase};min-width:34px;text-align:right">${fp.pct}%</span>
       </div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:9.5px;font-weight:800;color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 13%,transparent);border-radius:4px;padding:1px 5px">1</span> = etapa (a próxima só começa quando a anterior conclui) · <i class="ti ti-lock" style="font-size:11px"></i> bloqueada · ordem/paralelas na aba <b>Tarefas</b>.</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:9.5px;font-weight:800;color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 13%,transparent);border-radius:4px;padding:1px 5px">1</span> etapa — só começa quando a anterior conclui · <span style="font-size:9.5px;font-weight:800;color:var(--amber);background:color-mix(in srgb,var(--amber) 16%,transparent);border-radius:4px;padding:1px 5px">4.1</span> em âmbar = roda <b>junto</b> (paralela) · <i class="ti ti-lock" style="font-size:11px"></i> bloqueada.</div>
       ${_planBody}
     </div>`;
   }

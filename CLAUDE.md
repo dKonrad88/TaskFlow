@@ -322,6 +322,25 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-20 (yy) — PC da Produção — Proposta A das setas (paralela âmbar / sequencial quieta) + lista de Projetos centralizada
+- Diego escolheu a **Proposta A** do debate sobre as setas de dependência (mockup via show_widget). Implementado
+  no `_tarefaLinha` (Painel/Visão — vale no modo Lista e no por-setor):
+  - **Sequencial QUIETA:** o conector virou um `ti-arrow-narrow-down` (↓) apagado (opacity .5, `--text3`). A
+    sequência + a numeração já dizem "vem depois". (Antes era uma ↘ azul destacada.)
+  - **Paralela GRITA (âmbar):** badge da etapa âmbar (`color-mix(--amber 16%)`), conector `ti-corner-down-right`
+    (└) âmbar apontando p/ a de cima, e faixa esquerda âmbar (`box-shadow:inset 3px`) que agrupa as que rodam
+    juntas. `_hl` reescrito: faixa = âmbar se paralela, senão cor do projeto se em andamento; fundo 7% só na
+    tarefa em curso. (Antes a paralela era cinza/apagada — a ênfase estava invertida.)
+  - Legenda do detalhe atualizada: "…4.1 em âmbar = roda junto (paralela)…".
+  - ⚠️ A aba **Tarefas** (planilha, `renderProjectProTarefas` ~27268) AINDA usa as setas antigas (↘/⤨ com
+    p.cor) — não aliei p/ manter escopo; alinhar lá é o próximo passo se quiser consistência total.
+- **Lista de Projetos centralizada** (`renderProjetosPro` ~24918): a lista COM projetos ocupava a tela toda;
+  agora fica num bloco `max-width:940px;margin:0 auto;padding-top:22px` — igual à tela de Reuniões (940/720
+  centrado). O estado-vazio já era centrado (1000px). Usei 940 (não 720 como a lista de reuniões) porque a
+  linha de projeto tem mais colunas (status/barra/prazo).
+- VERIFICADO no navegador (8899): 0 erros; lista de projetos `max-width:940px` centrada; no painel, sequencial =
+  `ti-arrow-narrow-down` opacity .5 `--text3`, paralela = `ti-corner-down-right` âmbar + badge âmbar. (DOM.)
+
 ### 2026-07-20 (xx) — PC da Produção — Header do projeto: barra de % SUBIU pro cabeçalho + "⚠ atrasadas" removido
 - Pedido do Diego (screenshot): mover a barra de % pra cima (do canto da linha de sub-abas pro espaço vazio do
   cabeçalho `.proj-normal-header`, à direita) e tirar o "⚠ 4" (contador de atrasadas).
