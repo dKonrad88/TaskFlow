@@ -322,6 +322,24 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-20 (ww) — PC da Produção — Painel de Projeto: LUPA de busca no header (busca AO VIVO em tudo do projeto)
+- Diego pediu uma lupa no header (depois do %) que busca dentro do projeto atual — "qualquer coisa, palavra,
+  nome, tudo", com resultados aparecendo à medida que digita.
+- **`_ppBuscaBtnHTML(p)`** (botão lupa `.reun-ico`) inserido DEPOIS do % nos dois headers: `focusBarHTML` (foco)
+  e a linha de sub-abas (normal, após `headerProgressoHTML`).
+- **Popover flutuante** (`_ppBuscaAbrir`/`_ppBuscaFechar`, ancorado por getBoundingClientRect; Esc e clique-fora
+  fecham) com input + lista de resultados; `oninput="_ppBuscaInput()"` re-filtra a cada tecla.
+- **`_ppBuscaColeta(p,q)`** varre: TAREFAS (título/executor/fase/setor/subtarefa), PESSOAS da equipe (dono/coord/
+  membros + papel), FASES, SETORES, COMENTÁRIOS (texto/autor), ANEXOS (nome). Agrupado por tipo. Clique:
+  tarefa→`openEdit`, fase/setor→seleciona a fase na Visão, comentário→aba Comentários, anexo→aba Anexos, pessoa→Pessoas.
+- **Acento-insensível** na busca E no destaque: `_ppBuscaNorm` (NFD + remove U+0300–U+036F + minúsculo);
+  `_ppBuscaMark` destaca por índice no texto normalizado (fold 1:1 em comprimento p/ acentos latinos) → digitar
+  "adocao" acha E destaca "adoção". ⚠️ O regex de `_ppBuscaNorm` usa os combining chars LITERAIS `[̀-ͯ]` (não
+  o escape `̀-ͯ`) — funciona, mas se um editor normalizar o arquivo pode quebrar; se mexer, trocar pelo escape.
+- **VERIFICADO no navegador** (HTTP local 8899): 0 erros de console; lupa nos 2 headers; popover abre/fecha;
+  "acesso"→5 tarefas, "guilherme"→tarefa+setor, "adocao"→"adoção" destacado; clicar tarefa = `openEdit(<id>)`.
+  (Screenshot trava nesta máquina; verificado por DOM.)
+
 ### 2026-07-20 (vv) — PC da Produção — MOBILE ganhou o tema Klain (creme + caramelo) + botão de tema cicla 3 temas
 - Diego pediu o tema Klain no mobile também. Repo SEPARADO `taskflow-mobile` (commit `34805d1`).
 - Novo `body.klain` com os MESMOS valores do app principal (creme `#e9e0ce`, card `#fbf6ec`, caramelo

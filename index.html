@@ -25836,6 +25836,7 @@ function renderProjectProView(id){
       <div style="flex:1;height:6px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:var(--blue-mid);width:${prog.pct}%"></div></div>
       <span style="font-size:13px;font-weight:800;color:var(--blue-mid);white-space:nowrap">${prog.pct}%</span>
     </div>
+    ${_ppBuscaBtnHTML(p)}
   </div>`;
   // Header do projeto — estilo clean (igual Painel de Reunião). No modo FOCO some (a barra + a trilha assumem).
   const headerHTML = `
@@ -25881,6 +25882,7 @@ function renderProjectProView(id){
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;margin-bottom:6px">
         ${headerProgressoHTML}
+        ${_ppBuscaBtnHTML(p)}
         <button class="reun-ico" onclick="_toggleProjFocus()" title="Abrir em tela cheia (modo foco)"><i class="ti ti-arrows-maximize"></i></button>
         ${ajudaIconHTML}
         <button class="reun-ico" onclick="salvarProjetoComoTemplate('${p.id}')" title="Salvar como template"><i class="ti ti-template"></i></button>
@@ -25986,6 +25988,127 @@ function _ppConclusaoHeader(p, prog){
 // no claro, escuro no dark) sobre o fundo da página (--bg). Sem isso o conteúdo fica "solto"
 // direto no fundo — foi o que aconteceu quando tirei os cards a pedido do Diego.
 // ⚠️ Só usar variáveis de tema aqui: nada de hex fixo, senão quebra nos 5 temas.
+// ─── BUSCA DENTRO DO PROJETO (lupa no header) — (Diego, jul/2026) ────────────
+// Busca AO VIVO em tudo do projeto: tarefas (título/executor/fase/setor/subtarefa),
+// pessoas da equipe, comentários (texto/autor), anexos (nome) e a estrutura (fases/setores).
+// Popover flutuante ancorado na lupa; a cada tecla re-filtra e re-renderiza os resultados.
+function _ppBuscaBtnHTML(p){
+  return `<button class="reun-ico" onclick="event.stopPropagation();_ppBuscaAbrir('${p.id}',this)" title="Buscar neste projeto"><i class="ti ti-search"></i></button>`;
+}
+function _ppBuscaNorm(s){ return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+function _ppBuscaColeta(p, q){
+  const nq=_ppBuscaNorm(q); if(!nq) return [];
+  const hit=s=>!!s && _ppBuscaNorm(s).indexOf(nq)>=0;
+  const res=[]; const _fases=p.fases||[];
+  // TAREFAS (título, executor, fase, setor, subtarefa)
+  tasks.filter(t=>t.projectProId===p.id).forEach(t=>{
+    const ex=t.executor?_personById(t.executor):null;
+    const fase=_fases.find(f=>f.id===t.projectProFaseId);
+    const grupo=fase?(fase.grupos||[]).find(g=>g.id===t.projectProGrupoId):null;
+    const subHit=(t.subtasks||[]).some(s=>hit(s.title||s.text||s.titulo));
+    if(hit(t.title)||(ex&&hit(ex.name))||(fase&&hit(fase.nome))||(grupo&&hit(grupo.setor))||subHit){
+      const ctx=[ex?ex.name.split(' ')[0]:'', fase?fase.nome:'', grupo?grupo.setor:''].filter(Boolean).join(' · ');
+      res.push({tipo:'tarefa', id:t.id, titulo:t.title||'(sem título)', sub:ctx, done:!!t.done});
+    }
+  });
+  // PESSOAS da equipe (dono/coordenadores/membros)
+  [...new Set([p.dono,p.coordenador,p.coordenador2,...(p.pessoas||[])].filter(Boolean))].forEach(id=>{
+    const pe=_personById(id); if(pe&&hit(pe.name)){
+      const papel=id===p.dono?'Dono':(id===p.coordenador||id===p.coordenador2)?'Coordenador':'Participante';
+      res.push({tipo:'pessoa', titulo:pe.name, sub:papel});
+    }
+  });
+  // FASES / SETORES
+  _fases.forEach(f=>{
+    if(hit(f.nome)) res.push({tipo:'fase', faseId:f.id, titulo:f.nome});
+    (f.grupos||[]).forEach(g=>{ if(hit(g.setor)) res.push({tipo:'setor', faseId:f.id, titulo:g.setor, sub:f.nome}); });
+  });
+  // COMENTÁRIOS
+  ((typeof getProComments==='function'?getProComments(p.id):[])||[]).forEach(c=>{
+    const a=c.autorId?_personById(c.autorId):null;
+    if(hit(c.texto)||(a&&hit(a.name))) res.push({tipo:'comentario', titulo:c.texto||'', sub:a?a.name:''});
+  });
+  // ANEXOS
+  (p.anexos||[]).forEach(a=>{ const nome=a.nome||a.name||''; if(hit(nome)) res.push({tipo:'anexo', titulo:nome}); });
+  return res;
+}
+function _ppBuscaSnippet(text,q){
+  const t=String(text==null?'':text); const qq=(q||'').trim();
+  const i=qq?_ppBuscaNorm(t).indexOf(_ppBuscaNorm(qq)):-1;
+  if(i<=60) return t.length>120?t.slice(0,120)+'…':t;
+  const start=Math.max(0,i-30);
+  return '…'+t.slice(start,start+120)+(t.length>start+120?'…':'');
+}
+function _ppBuscaMark(text,q){
+  const raw=_ppBuscaSnippet(text,q); const fq=_ppBuscaNorm((q||'').trim());
+  if(!fq) return escapeHTML(raw);
+  // O "fold" (NFD + tira acento + minúsculo) é 1:1 em comprimento para acentos latinos,
+  // então o índice no texto normalizado vale também no texto CRU → destaca acento-insensível.
+  const ft=_ppBuscaNorm(raw); let idx=ft.indexOf(fq);
+  if(idx<0) return escapeHTML(raw);
+  const mk='background:color-mix(in srgb,var(--blue-mid) 30%,transparent);color:inherit;border-radius:3px;padding:0 1px';
+  let out='', i=0;
+  while(idx>=0){
+    out+=escapeHTML(raw.slice(i,idx))+`<mark style="${mk}">${escapeHTML(raw.slice(idx,idx+fq.length))}</mark>`;
+    i=idx+fq.length; idx=ft.indexOf(fq,i);
+  }
+  return out+escapeHTML(raw.slice(i));
+}
+function _ppBuscaAbrir(pid, btn){
+  if(document.getElementById('pp-busca-pop')){ _ppBuscaFechar(); return; }
+  const r=btn.getBoundingClientRect(); const w=360;
+  let left=Math.min(r.right-w, window.innerWidth-w-10); if(left<10) left=10;
+  const pop=document.createElement('div'); pop.id='pp-busca-pop';
+  pop.style.cssText=`position:fixed;top:${Math.round(r.bottom+8)}px;left:${Math.round(left)}px;width:${w}px;max-width:94vw;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.22);z-index:9999;overflow:hidden`;
+  pop.onclick=e=>e.stopPropagation();
+  pop.innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border)">
+      <i class="ti ti-search" style="font-size:15px;color:var(--text3);flex-shrink:0"></i>
+      <input id="pp-busca-inp" data-pid="${pid}" autocomplete="off" placeholder="Buscar neste projeto…" oninput="_ppBuscaInput()" onkeydown="if(event.key==='Escape'){event.preventDefault();_ppBuscaFechar()}" style="flex:1;min-width:0;border:none;background:transparent;font-size:13px;color:var(--text);font-family:inherit;outline:none">
+      <button onclick="_ppBuscaFechar()" title="Fechar" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:2px;display:inline-flex;flex-shrink:0"><i class="ti ti-x" style="font-size:15px"></i></button>
+    </div>
+    <div id="pp-busca-res" style="max-height:52vh;overflow-y:auto;padding:6px"></div>`;
+  document.body.appendChild(pop);
+  const inp=document.getElementById('pp-busca-inp'); if(inp) inp.focus();
+  _ppBuscaInput();
+  setTimeout(()=>document.addEventListener('click',_ppBuscaFecharFora),0);
+}
+function _ppBuscaFecharFora(e){ const pop=document.getElementById('pp-busca-pop'); if(pop && !pop.contains(e.target)) _ppBuscaFechar(); }
+function _ppBuscaFechar(){ document.getElementById('pp-busca-pop')?.remove(); document.removeEventListener('click',_ppBuscaFecharFora); }
+function _ppBuscaAcao(pid, r){
+  if(r.tipo==='tarefa')   return `_ppBuscaFechar();openEdit(${r.id})`;
+  if(r.tipo==='pessoa')   return `_ppBuscaFechar();setProjectProTab('pessoas')`;
+  if(r.tipo==='fase'||r.tipo==='setor') return `_ppBuscaFechar();window._ppFaseSelId='${r.faseId}';setProjectProTab('visao')`;
+  if(r.tipo==='comentario') return `_ppBuscaFechar();setProjectProTab('anotacoes')`;
+  if(r.tipo==='anexo')    return `_ppBuscaFechar();setProjectProTab('anexos')`;
+  return `_ppBuscaFechar()`;
+}
+function _ppBuscaInput(){
+  const inp=document.getElementById('pp-busca-inp'); const box=document.getElementById('pp-busca-res'); if(!inp||!box) return;
+  const pid=inp.dataset.pid; const p=projectsPro.find(x=>x.id===pid); if(!p){ box.innerHTML=''; return; }
+  const q=inp.value||'';
+  if(!q.trim()){ box.innerHTML=`<div style="padding:16px 12px;text-align:center;color:var(--text3);font-size:12px;line-height:1.5">Digite para buscar em <b>tudo</b> deste projeto:<br>tarefas, pessoas, comentários, anexos e ${escapeHTML(_ppRot(p,1,true,true))}/${escapeHTML(_ppRot(p,2,true,true))}.</div>`; return; }
+  const res=_ppBuscaColeta(p,q);
+  if(!res.length){ box.innerHTML=`<div style="padding:16px 12px;text-align:center;color:var(--text3);font-size:12px">Nada encontrado para "<b>${escapeHTML(q.trim())}</b>".</div>`; return; }
+  const meta={tarefa:{ic:'ti-checklist',lb:'Tarefas'},pessoa:{ic:'ti-user',lb:'Pessoas'},fase:{ic:'ti-layout-rows',lb:_ppRot(p,1,true)},setor:{ic:'ti-building',lb:_ppRot(p,2,true)},comentario:{ic:'ti-message-circle',lb:'Comentários'},anexo:{ic:'ti-paperclip',lb:'Anexos'}};
+  const ordem=['tarefa','pessoa','fase','setor','comentario','anexo'];
+  let html='';
+  ordem.forEach(tp=>{
+    const items=res.filter(r=>r.tipo===tp); if(!items.length) return;
+    html+=`<div style="font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding:9px 8px 3px">${escapeHTML(meta[tp].lb)} · ${items.length}</div>`;
+    html+=items.map(r=>{
+      const sub=r.sub?`<div style="font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_ppBuscaMark(r.sub,q)}</div>`:'';
+      return `<div onclick="${_ppBuscaAcao(pid,r)}" style="display:flex;align-items:flex-start;gap:9px;padding:7px 9px;border-radius:8px;cursor:pointer" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'">
+        <i class="ti ${meta[tp].ic}" style="font-size:15px;color:var(--blue-mid);margin-top:1px;flex-shrink:0"></i>
+        <div style="min-width:0;flex:1">
+          <div style="font-size:12.5px;line-height:1.35;color:var(--text);${r.done?'text-decoration:line-through;color:var(--text3)':''};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_ppBuscaMark(r.titulo,q)}</div>
+          ${sub}
+        </div>
+      </div>`;
+    }).join('');
+  });
+  box.innerHTML=html;
+}
 function _ppBloco(conteudo, extra){
   return `<div style="background:var(--surface-painel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;${extra||''}">${conteudo}</div>`;
 }
