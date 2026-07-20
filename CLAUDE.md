@@ -322,6 +322,29 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-20 (tt) — PC da Produção — MOBILE reativado: aba Projetos + Participantes/presença na reunião
+- ⚠️ **O `taskflow-mobile` estava CONGELADO** (nota de 02/07). O Diego **pediu explicitamente** pra mexer, então a
+  exceção da regra foi acionada. **Repo SEPARADO** (`G:\g_Diego\HTML\taskflow-mobile`, ~44KB, localStorage `tfm_*`) —
+  NÃO é este git. Publicado em https://dkonrad88.github.io/taskflow-mobile/ . Commit lá: `9ec5946`.
+- ⚠️ **Descoberta:** o mobile JÁ tinha ganhado (depois do congelamento, por outra máquina) uma **aba Reuniões**
+  (condutor: pauta/tarefas/decisões/ATA) e **menu hambúrguer + drawer** (commits `9420b98`/`6312914`). Dei
+  `git pull --ff-only` no repo mobile (estava 2 commits atrás) antes de mexer.
+- **Pedido do Diego (2 partes), escopo confirmado por pergunta:** (1) **alinhar Reuniões** → escolheu **Participantes +
+  presença** (pauta/tarefas/decisões/ATA já existiam); (2) **aba Projetos** → escolheu **Lista → tarefas do projeto**.
+- **Reuniões — Participantes/presença:** modelo ganhou `r.participantes[]` + `r.presentes[]` (seed + normalização no
+  `loadStore` + `addReuniao` auto-inclui o criador `ME`). Seção no topo do `renderReunPanel`: lista quem participa,
+  `<select>` "+ Adicionar participante", e um check por pessoa = **presença** (rótulo "N/M presentes", concordância
+  singular/plural). Funções `reunAddParticipante`/`reunRemoveParticipante`/`reunTogglePresenca`. Card da lista mostra o total.
+- **Projetos (aba nova, no drawer entre Amanhã e Reuniões):** `MTABS` ganhou `{id:'projetos'}`; painel `#p-projetos`.
+  `projCard` (barra de progresso) → `openProjeto(i)` abre `#psheet` (tela cheia, espelha `#rsheet`) com `renderProjPanel`:
+  % + tarefas do projeto (`projTasks` = tasks com `origem.tipo==='projeto'` && nome), concluir inline recalcula o %, e
+  `projAddTarefa` cria tarefa no projeto. Projetos = a lista fixa `PROJETOS` (3 nomes do mockup). `closeSheets` fecha o `psheet` também.
+- **VERIFICADO no navegador** (HTTP local 8898 — sem Python/Node, HttpListener em PowerShell): **0 erros de console**;
+  abrir projeto e concluir tarefa foi **0/1 → 1/1 (100%)**; marcar presença atualizou **"0/3 presentes" → "1/3 presente"**.
+  (Screenshot do Browser pane trava nesta máquina — verifiquei por inspeção do DOM.)
+- ⚠️ **NÃO fiz CRUD de projeto no mobile** (`PROJETOS` é lista fixa; o Diego pediu "lista → tarefas", não criar projeto).
+  Dado do mobile é **por aparelho** (`tfm_*`), não sincroniza com a nuvem nem com o app principal — é protótipo de UX.
+
 ### 2026-07-20 (ss) — PC da Produção — Header do projeto: tira "feitas/total" (0/21), mantém barra de %, conclusão prevista vai pro MEIO do header
 - Pedido do Diego (screenshot da faixa de progresso do projeto): (1) tirar o "0/21" (`feitas/total`);
   (2) manter a barra de %; (3) mover o "13 de ago. · no prazo/folga" (a conclusão prevista, `_ppConclusaoHeader`)
@@ -2190,6 +2213,9 @@ Editar uma ocorrência oferece **"Só esta" / "Esta e as futuras"** (regenera). 
   foi **só um teste** — **NÃO mexer mais nele** (nem melhorar, nem corrigir) a partir de agora, salvo o Diego pedir explicitamente.
   Guardar só a referência: código em `G:\g_Diego\HTML\taskflow-mobile\index.html` (é o COMBINADO); mockups A/B/COMBINADO em
   `G:\g_Publico\- DIEGO\TaskFlow\`. Se surgir bug lá, **não corrigir** — anotar e seguir.
+  - ⚠️ **REATIVADO em 20/07/2026** (Diego pediu explicitamente — a exceção "salvo o Diego pedir" foi acionada): o mobile
+    voltou a ser editado (aba **Projetos** + **Participantes/presença** na reunião). Ver handoff **2026-07-20 (tt)** no topo.
+    O congelamento **continua valendo por padrão** — só mexer no mobile quando o Diego pedir de novo.
 - **PCP virou "modelo vivo" (Produção › PCP):** colunas **Estoque/Pedido/OP-OC/Maras/MDV editáveis** (inputs inline);
   **Saldo/DDV/DDV S/OP/Sugestão + KPIs recalculam ao vivo**. Helpers novos: `_pcpCalc` (Saldo=Est+OP/OC+Maras−Pedido;
   DDV=Saldo/MDV; DDVs/OP=(Saldo−OP/OC)/MDV; Sugestão=DDV-alvo×MDV−Saldo), `_pcpFmt`, `_pcpSaldoHTML`/`_pcpDdvHTML`/
