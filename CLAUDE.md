@@ -340,6 +340,56 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-07-21 (d) — PC da Empresa (sessão paralela à v7, "Compras") — ⭐ PREVIEW RODA AQUI! + CSS morto (256 regras) + NOVA ÁREA "Compras" (blueprint + casca + Estoque)
+Sessão em **PARALELO à v7** (que fez o "Painel da Tarefa" — ver bloco no fim). As duas dividem o **MESMO
+repo/working tree** nesta máquina, então o HEAD "anda" quando a outra commita (é o "modified on disk" que
+aparece no Edit). **Tudo commitado e pushado; working tree limpo; `main == origin == e8611444`.** Nada
+pendente pro Mac. Merges conferidos como LIMPOS (meu commit só ADICIONA Compras; o commit da v7 não toca
+Compras; app boota 0 erros com os dois juntos).
+
+⭐⭐ **DESCOBERTA QUE MUDA A REGRA: DÁ PRA RODAR O PREVIEW NO PC DA EMPRESA.** A nota repetida "esta máquina
+não roda preview" estava **ERRADA**. **Como:** (1) subir um servidor HTTP local em **PowerShell puro** —
+`System.Net.HttpListener` (o Windows tem embutido; **não precisa** Python/Node); (2) o **navegador embutido**
+(Browser pane) abre `http://localhost:8899` numa boa. O que enganava era o **PROXY corporativo** — mas ele só
+atrapalha o `Invoke-WebRequest` (comando de teste de rede); o **NAVEGADOR IGNORA proxy para localhost**.
+Servidor pronto em `scratchpad/server.ps1` (serve o dir na :8899, `Cache-Control:no-store` → recarregar pega o
+arquivo fresco do disco). **Testei TUDO clicando: 0 erros de console.** ⚠️ **Screenshot ainda TRAVA** (renderer
+lento com arquivo de 2.4MB) — verificar por **DOM/JS** (`read_page`/`javascript_tool`), mais preciso que imagem.
+→ Agora as **3 máquinas** testam. (E o código morto restante já dá p/ limpar COM teste real.)
+
+**Meus 3 commits (área Compras):**
+| Commit | O quê |
+|---|---|
+| `b85bb1d4` | **CSS morto: 256 regras removidas** (só regras de 1 linha, seletor 100% morto). Método determinístico (classes definidas × usadas fora do CSS) + **guarda contra classe montada dinamicamente** — pegou `proj-status-${status}` e **PRESERVOU** (teria quebrado as cores de status dos projetos). Verificação autoritativa por token de classe: NENHUMA das 193 é aplicada a elemento; balanço `{}` idêntico; app boota 0 erros. **Sobram** regras mortas multi-linha/combinadas + funções JS mortas p/ próxima passada (agora COM teste). |
+| `7d9942da` | **NOVA ÁREA "Compras" (casca)** — grupo no acordeão (**1º em ÁREAS**, alfabético) + 8 abas placeholder. Espelha o Marketing: `comprasView` + `switchToCompras`/`setComprasView`/`renderCompras` + `_areaItem('compras',…)` no `areasHTML` (~10008) + dispatch `hubView==='compras'` no `render()` (~16184). Abas: Painel · Estoque · Insumos · Fornecedores · Histórico de compras · Ordens de compra · Orçamentos · Notícias. |
+| `feab6b14` | **Aba Estoque DE VERDADE com DADOS DE EXEMPLO** — `_comprasMockInsumos` (4 insumos fictícios EM CÓDIGO, **não persiste**) + `_comprasEstoqueHTML` (tabela qtd/valor/consumo/dias/últ. compra/fornecedor + total). Coluna **Dias** = estoque÷consumo com **semáforo** (verde≥20 / âmbar / vermelho<10 = comprar). Manteiga 4d vermelho; total R$ 51.985. Testado clicando. |
+
+⭐ **CONCEITO da área (definido com o Diego + blueprint visual — Artifact publicado na conta claude.ai dele):**
+Compras no HUB **NÃO replica o ERP** (OC/NF seguem no ERP/SISPRO). É a **camada de CONSULTA e DECISÃO** sobre
+os dados do ERP: *"o que comprar, quando, de quem, e como está o que já pedi"* — sem entrar no ERP. Mesmo
+espírito do PCP. **A ESPINHA** = o **livro de NFs de compra** (a "planilha" que o Diego citou): quase tudo
+calcula em cima dela; entra por **import/colar do ERP**. **Duas LENTES:** por **INSUMO** (ficha do item) ×
+por **FORNECEDOR** (ficha: ABC de gasto, compras por período p/ reunião, prazo de pagamento, prazo de entrega).
+Ferramentas de decisão aprovadas: **sugestão de compra (ponto de reposição)**, curva ABC (insumo+fornecedor),
+alerta de preço fora da curva, lead time, prazo de pagamento, placar de economia.
+
+📌 **PLANO acordado (RETOMAR NO MAC):** hoje é só a **CASCA com dados de exemplo** pra "brincar" e acertar o
+layout de cada aba; os **valores REAIS entram 22/07 (amanhã) com a TI** (Diego pega o export do ERP). **Próximas
+abas a montar com mock** (ordem sugerida): **Insumos** (ficha — clicar no item do Estoque abre) → **Histórico**
+(livro de NFs) → **Fornecedores** → resto. **Perguntas ABERTAS p/ o Diego:** colunas do Estoque ok? renomear
+"Insumos"→"Ficha do item"? nomes/ordem das abas? ⚠️ **Manutenção › Fornecedores/Orçamentos segue INTACTA** —
+reaproveitar na aba Orçamentos (Fase 3), NÃO dupliquei.
+
+━━━ **Trabalho PARALELO da v7** (`local_6039f889-20c2-48ca-beac-d059182ba1a8`) — "Painel da Tarefa" ━━━
+A v7 (mesmo repo/máquina) entregou um **"Painel da Tarefa"** (tela cheia/foco de uma tarefa, espelhando o
+Painel de Reunião). **3 commits, todos pushados, ORTOGONAIS ao Compras** (não se tocam): `5bbc039b` (foco/tela
+cheia v1, reusa o modal 2-col) · `ed75e6fc` (trilha + cards estilo Reunião) · `e8611444` (sem trilha, header
+encostado, Anotações + faixas de título). ⚠️ **Eu NÃO testei/validei** essa feature — o detalhe completo está
+na **sessão v7** (dá p/ abrir via `mcp__ccd_session_mgmt`). No Mac, quem valida é o Diego (Ctrl+Shift+R).
+
+⚠️ **Preview:** deixei um HttpListener rodando em background nesta sessão (:8899). No Mac, usar o método de lá
+(o Mac já rodava preview via HTTP local).
+
 ### ⭐ 2026-07-21 (c) — PC da Empresa (sessão "v7") — BACKLOG da varredura 18/07 ZERADO + NOVA varredura do app todo (7 subagentes) + ~20 correções
 Sessão **autônoma** (Diego longe do PC, autorizou "faça tudo, sem me pedir nada, de forma detalhada").
 Pediu 2 coisas: (1) **fazer o backlog** de bugs da varredura 18/07; (2) **nova varredura no APP TODO** (bugs,
