@@ -21008,6 +21008,7 @@ function toggle(id){
       if(pertenceAoPainel){
         const wrap=document.getElementById('tarefas-view-'+window._activeReuniaoId);
         if(wrap){wrap.innerHTML=reunTarefasHTML(mAtiva);}
+        else{ render(); } // sub-aba ≠ painel: o tarefas-view não está no DOM → repinta tudo (senão a tela fica velha)
       } else {
         render();
       }
@@ -25282,7 +25283,10 @@ function _ppVocabChange(){
 }
 // Gera {n1,n1p,g1,n2,n2p,g2} a partir dos singulares digitados — plural e gênero por heurística PT-BR.
 function _ppMkRotulo(n1, n2){
-  const cap=s=>{ s=(s||'').trim(); return s?s.charAt(0).toUpperCase()+s.slice(1):s; };
+  // Tira caracteres que quebram HTML/atributos ANTES de virar rótulo — é o único ponto onde o
+  // vocabulário custom (texto livre do usuário) nasce, e ele entra cru em placeholder="..." e
+  // em vários títulos. Palavras de vocabulário real (Fase, Setor, Parte, Etapa) não têm esses chars.
+  const cap=s=>{ s=(s||'').replace(/[<>"']/g,'').trim(); return s?s.charAt(0).toUpperCase()+s.slice(1):s; };
   const plural=s=>{ const l=(s||'').toLowerCase(); if(!l) return s;
     if(/ão$/.test(l)) return s.slice(0,-2)+'ões';
     if(/[mn]$/.test(l)) return s.slice(0,-1)+'ns';
@@ -29769,6 +29773,15 @@ function proximaDataReuniao(dataBase,freq){
   do { d.setDate(d.getDate()+dias); guard++; } while(d < hoje && guard < 600);
   return _isoLocal(d); // FIX: era toISOString() (UTC) — inconsistente com o resto do motor; off-by-one em fusos +12/+13
 }
+// Próxima data de uma reunião recorrente. Usa o motor rec (regra REAL) quando existe; senão cai
+// nos presets de dias fixos (REUN_FREQ). Antes, frequencia:'custom' (a recorrência nova) caía em
+// REUN_FREQ — que não tem essa entrada → retornava '' → o banner de "recorrente vencida" nunca
+// aparecia e "Agendar próxima" sugeria a MESMA data. Delegar ao rec resolve os dois.
+function _reunProxData(m){
+  if(!m||!m.date) return '';
+  try{ const rec=(typeof _recDe==='function')?_recDe(m):null; if(rec&&rec.ativo){ const ds=_recGerarDatas(m.date,rec); if(ds&&ds.length) return ds[0]; } }catch(e){}
+  return proximaDataReuniao(m.date, m.frequencia);
+}
 
 // ════════════════════════════════════════════════════════════════════
 // RECORRÊNCIA DE REUNIÕES — regra personalizada + materialização
@@ -30976,12 +30989,13 @@ function openReuniaoModal(data, hora){
   </div>`;
   document.body.appendChild(ov);
 
-  const realContainer=document.getElementById('task-container');
-  const oldHTML=realContainer.innerHTML;
-  renderNovaReuniaoForm(realContainer, ''); // renderiza o form no #task-container (subNav vazio)
-  const formHTML=realContainer.innerHTML;
-  realContainer.innerHTML=oldHTML; // restaura listagem
-  document.getElementById('reun-modal-form-host').innerHTML=formHTML;
+  // Renderiza o form num container DETACHED (mesma técnica de _reunEditarInlineHTML) em vez de
+  // snapshot/restore do #task-container VIVO. O restore por innerHTML apagava o que estivesse
+  // digitado nos textareas por baixo do modal (ATA, nova tarefa, novo assunto do painel) e matava
+  // os listeners do separador arrastável — agora a tela de baixo nunca é tocada.
+  const tmp=document.createElement('div');
+  renderNovaReuniaoForm(tmp, ''); // subNav vazio
+  document.getElementById('reun-modal-form-host').innerHTML=tmp.innerHTML;
 
   // ESC e clique fora fecham
   ov._escHandler=(e)=>{ if(e.key==='Escape') fecharReuniaoModal(); };
@@ -31902,7 +31916,7 @@ function openReuniaoView(id, _opts){
       ${(()=>{ // ── Reunião recorrente em aberto com data vencida → oferecer atualização ──
         if(!m.frequencia || m.frequencia==='unica' || m.status==='encerrada') return '';
         if(!m.date || m.date>=today) return '';
-        const prox=proximaDataReuniao(m.date, m.frequencia); if(!prox) return '';
+        const prox=_reunProxData(m); if(!prox) return '';
         const dl=new Date(prox+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
         const atual=new Date(m.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
         return `<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; background:var(--amber-bg); border:1px solid var(--amber); border-left:3px solid var(--amber); border-radius:12px; padding:12px 16px; margin-bottom:14px;">
@@ -32923,7 +32937,15 @@ function toggleHistDec(blocoId){
 // usado p/ destacar quem provavelmente participa de novo.
 function _reunFreqMap(excludeId){
   const map={};
-  (meetings||[]).forEach(mt=>{ if(mt.id===excludeId) return; (mt.participantes||[]).forEach(pid=>{ map[pid]=(map[pid]||0)+1; }); });
+  const hoje=today;
+  (meetings||[]).forEach(mt=>{
+    if(mt.id===excludeId) return;
+    // Só conta reuniões que JÁ ACONTECERAM (encerradas ou data passada). Sem isto, as ocorrências
+    // FUTURAS materializadas de uma série acendiam a ⭐ "participa com frequência" p/ todo mundo
+    // desde a 1ª reunião.
+    if(!(mt.status==='encerrada' || String(mt.date||'') < hoje)) return;
+    (mt.participantes||[]).forEach(pid=>{ map[pid]=(map[pid]||0)+1; });
+  });
   return map;
 }
 // Modal de PARTICIPANTES — seletor RÁPIDO: todas as pessoas com checkbox (marca quem participa).
@@ -33482,7 +33504,7 @@ function _gerarProximaRecorrente(m, opts){
 function _reunAtualizarDataVencida(id){
   const m=meetings.find(x=>x.id===id); if(!m) return;
   if(!m.frequencia || m.frequencia==='unica' || m.status==='encerrada') return;
-  const prox=proximaDataReuniao(m.date, m.frequencia); if(!prox) return;
+  const prox=_reunProxData(m); if(!prox) return;
   m.date=prox;
   // Nova ocorrência = folha limpa: zera checks da pauta, presenças e timer. (BUG do Diego:
   // "continuação abrindo com pautas já feitas e data de hoje" — a data avançava e os checks
@@ -33545,7 +33567,7 @@ function reagendarProxima(meetingId, novaData, horaIni, horaFim){
 function abrirProximaReuniaoModal(id){
   const m=meetings.find(x=>x.id===id); if(!m) return;
   document.getElementById('prox-modal-ov')?.remove();
-  const dataSug=proximaDataReuniao(m.date,m.frequencia)||m.date||today;
+  const dataSug=_reunProxData(m)||m.date||today;
   const ov=document.createElement('div');
   ov.id='prox-modal-ov';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9300;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s';
