@@ -1556,11 +1556,12 @@
   .reun-timer-over{animation:reunTimerPulse 1s ease-in-out infinite}
   body.reun-focus .reun-focus-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:60;background:var(--card);border-bottom:1px solid var(--border);padding:11px 30px;margin:0 -30px 26px}
   /* ── TESTE VISUAL do modo foco (Diego, jul/2026): botão que cicla o "clima" da tela cheia.
-     Estado 1 (tint): header + trilha ganham um tom um pouco mais forte que o corpo (--bg + 10% de --text).
+     Estado 1 (tint): header + trilha ficam num tom CARAMELO mais escuro (--blue-mid do tema misturado ao --bg,
+     mesma cor da escrita da Pauta principal).
      Estado 2 (hide): a trilha some (header segue no tom). Estado 0: normal. Escopado a .reun-focus → inerte fora do foco. ── */
   body.reun-focus .reun-focus-bar,body.reun-focus .reun-focus-rail{transition:background .2s}
   body.reun-focus.reun-fxtest-tint .reun-focus-bar,body.reun-focus.reun-fxtest-hide .reun-focus-bar,
-  body.reun-focus.reun-fxtest-tint .reun-focus-rail{background:color-mix(in srgb,var(--bg) 90%,var(--text) 10%)!important}
+  body.reun-focus.reun-fxtest-tint .reun-focus-rail{background:color-mix(in srgb,var(--blue-mid) 55%,var(--bg))!important}
   body.reun-focus.reun-fxtest-hide .reun-focus-rail{display:none!important}
   body.reun-focus.reun-fxtest-hide .reun-panel-wrap{margin-left:0!important}
   body.reun-focus .reun-grid4{grid-template-columns:minmax(0,170px) minmax(0,1fr) minmax(0,1fr) minmax(0,340px);max-width:1580px;margin-left:auto;margin-right:auto}
