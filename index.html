@@ -1274,23 +1274,16 @@
   /* Sidebar cinza com border-radius no canto inferior direito */
   #edit-modal .modal-col-right{border-radius:0 0 14px 0}
 
-  /* ── PAINEL DA TAREFA (modo foco / tela cheia) — painel PRÓPRIO, no padrão do Painel de Reunião ──
-     Trilha lateral + header + cards (Descrição · Detalhes · Checklist c/ sub-checklist · Comentários ·
-     Anexos · Histórico). Renderiza em #task-container (renderTaskFocus). Espelha body.reun-focus. */
+  /* ── PAINEL DA TAREFA (modo foco / tela cheia) — SEM trilha, só header; cards com faixa de título
+     (.reun-card4-title). Renderiza em #task-container (renderTaskFocus). Espelha o mecanismo de
+     body.reun-focus: esconde o chrome e faz o container ocupar a tela. Header encostado no topo. */
   body.task-focus .hdr,body.task-focus .sidebar,body.task-focus #sidebar-resizer,body.task-focus .sidebar-resizer,body.task-focus .topbar{display:none!important}
   body.task-focus #task-container{position:fixed;inset:0;z-index:500;overflow-y:auto;overflow-x:hidden;background:var(--bg);padding:0}
-  .tf-rail{display:flex;flex-direction:column;align-items:center;gap:3px;position:fixed;left:0;top:0;bottom:0;width:74px;background:var(--card);border-right:1px solid var(--border);padding:12px 0;z-index:70;overflow-y:auto;scrollbar-width:none}
-  .tf-rail::-webkit-scrollbar{display:none}
-  .tf-rail-btn{display:flex;flex-direction:column;align-items:center;gap:3px;width:60px;padding:8px 0;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s;flex-shrink:0}
-  .tf-rail-btn:hover{background:var(--bg2);color:var(--blue-mid)}
-  .tf-rail-btn i{font-size:19px}
-  .tf-rail-btn span{font-size:8.5px;font-weight:600;text-align:center;line-height:1.1}
   .tf-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:60;background:var(--card);border-bottom:1px solid var(--border);padding:11px 30px;margin:0 -30px 22px}
-  .tf-wrap{margin-left:74px;padding:6px 30px 44px}
+  .tf-wrap{padding:0 30px 44px}
   .tf-grid{display:grid;grid-template-columns:minmax(0,0.9fr) minmax(0,1.2fr) minmax(0,0.95fr);gap:14px;align-items:start;max-width:1500px;margin:0 auto}
   @media(max-width:1080px){.tf-grid{grid-template-columns:1fr}}
   .tf-col{display:flex;flex-direction:column;gap:14px;min-width:0}
-  .tf-card-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:9px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 
   /* ── Estilo Todoist ESQUERDA: título grande, descrição inline ── */
   .td-title-input{font:inherit;background:transparent;border:none;outline:none;width:100%;font-size:19px;font-weight:700;color:var(--text);padding:2px 0;line-height:1.3;resize:none;overflow:hidden;display:block}
@@ -21624,7 +21617,6 @@ function openTaskFocus(id){
   const c=document.getElementById('task-container'); if(c) c.scrollTop=0;
 }
 function _exitTaskFocus(){ window._activeTaskFocusId=null; document.body.classList.remove('task-focus'); render(); }
-function _tfScroll(a){ document.getElementById('tf-'+a)?.scrollIntoView({behavior:'smooth',block:'start'}); }
 function _tfSetTitle(id,v){ const t=tasks.find(x=>x.id===id); if(!t) return; v=(v||'').trim(); if(!v||v===t.title) return; logHistory(t.id,'title',t.title,v); t.title=v; saveTask_db(t); }
 function _tfSetDesc(id,v){ const t=tasks.find(x=>x.id===id); if(!t) return; if((t.desc||'')===(v||'')) return; t.desc=v; saveTask_db(t); }
 function _tfAddSubSub(id,subId){
@@ -21678,32 +21670,21 @@ function renderTaskFocus(id){
   const hist=(_allHistory[t.id]||[]).slice(-14).reverse();
   const histHTML=hist.length?hist.map(h=>`<div style="font-size:11.5px;color:var(--text3);padding:3px 0;line-height:1.4">${_historyLabel(h.field,h.from,h.to)}</div>`).join(''):`<div style="font-size:12px;color:var(--text3);font-style:italic">Sem histórico.</div>`;
   const origem=proj?`<i class="ti ti-folder" style="font-size:12px"></i> ${esc(proj.nome||proj.name||'Projeto')}`:(reun?`<i class="ti ti-speakerphone" style="font-size:12px"></i> ${esc(reun.title)}`:'');
+  const _btnGhost='background:none;border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:6px 11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;flex-shrink:0';
   cont.innerHTML=`<div class="tf-wrap">
-    <div class="tf-rail">
-      <button class="tf-rail-btn" onclick="_tfScroll('desc')" title="Descrição"><i class="ti ti-align-left"></i><span>Descrição</span></button>
-      <button class="tf-rail-btn" onclick="_tfScroll('det')" title="Detalhes"><i class="ti ti-list-details"></i><span>Detalhes</span></button>
-      <button class="tf-rail-btn" onclick="_tfScroll('chk')" title="Checklist"><i class="ti ti-checklist"></i><span>Checklist</span></button>
-      <button class="tf-rail-btn" onclick="_tfScroll('com')" title="Comentários"><i class="ti ti-message-2"></i><span>Coment.</span></button>
-      <button class="tf-rail-btn" onclick="_tfScroll('anx')" title="Anexos"><i class="ti ti-paperclip"></i><span>Anexos</span></button>
-      <button class="tf-rail-btn" onclick="_tfScroll('his')" title="Histórico"><i class="ti ti-history"></i><span>Histórico</span></button>
-      <div style="flex:1"></div>
-      <div style="height:1px;background:var(--border);width:42px;margin:5px 0;flex-shrink:0"></div>
-      <button class="tf-rail-btn" onclick="_exitTaskFocus()" title="Sair da tela cheia (Esc)"><i class="ti ti-arrows-minimize"></i><span>Sair</span></button>
-      <button class="tf-rail-btn" onclick="openEdit(${t.id})" title="Editar metadados (modal)"><i class="ti ti-pencil"></i><span>Editar</span></button>
-      <button class="tf-rail-btn" onclick="toggle(${t.id})" style="color:${t.done?'var(--text3)':'var(--success)'}" title="${t.done?'Reabrir':'Concluir'} tarefa"><i class="ti ti-circle-check"></i><span>${t.done?'Reabrir':'Concluir'}</span></button>
-    </div>
     <div class="tf-bar">
       ${origem?`<span style="font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0">${origem}</span>`:''}
       <input value="${escA(t.title)}" onfocus="this.style.borderBottomColor='var(--border)'" onblur="this.style.borderBottomColor='transparent';_tfSetTitle(${t.id},this.value)" onkeydown="if(event.key==='Enter')this.blur()" style="flex:1;min-width:120px;font-family:var(--font-title,inherit);font-size:18px;font-weight:800;letter-spacing:-.02em;color:var(--text);background:transparent;border:none;border-bottom:1px solid transparent;outline:none;padding:2px 0">
-      <span style="font-size:11px;font-weight:700;color:var(--blue-mid);background:var(--bg2);border:1px solid var(--border);padding:3px 9px;border-radius:99px;white-space:nowrap;flex-shrink:0">${esc(prioLbl)}</span>
+      <button onclick="openEdit(${t.id})" title="Editar detalhes (modal)" style="${_btnGhost}"><i class="ti ti-pencil" style="font-size:14px"></i> Editar</button>
+      <button onclick="_exitTaskFocus()" title="Sair da tela cheia (Esc)" style="${_btnGhost}"><i class="ti ti-arrows-minimize" style="font-size:14px"></i> Sair</button>
       <button onclick="toggle(${t.id})" style="background:${t.done?'var(--bg2)':'var(--success,#3b6d11)'};color:${t.done?'var(--text2)':'#fff'};border:none;border-radius:8px;padding:6px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;flex-shrink:0"><i class="ti ti-check" style="font-size:14px"></i> ${t.done?'Concluída':'Concluir'}</button>
     </div>
     <div class="tf-grid">
       <div class="tf-col">
-        <div class="reun-card4" id="tf-desc"><div class="tf-card-title">Descrição</div>
+        <div class="reun-card4" id="tf-desc"><div class="reun-card4-title"><span><i class="ti ti-align-left" style="color:var(--text2)"></i> Descrição</span></div>
           <textarea onblur="_tfSetDesc(${t.id},this.value)" placeholder="Adicione uma descrição..." style="width:100%;min-height:90px;resize:vertical;border:none;background:transparent;color:var(--text2);font-size:12.5px;line-height:1.6;font-family:inherit;outline:none">${esc(t.desc||'')}</textarea>
         </div>
-        <div class="reun-card4" id="tf-det"><div class="tf-card-title">Detalhes</div>
+        <div class="reun-card4" id="tf-det"><div class="reun-card4-title"><span><i class="ti ti-list-details" style="color:var(--text2)"></i> Detalhes</span></div>
           ${_row('ti-user','Executor',exec?esc(exec.name):'<span style="color:var(--text3)">Sem executor</span>')}
           ${_row('ti-calendar','Prazo',t.date?formatDate(t.date):'<span style="color:var(--text3)">Sem data</span>')}
           ${_row('ti-flag','Prioridade',esc(prioLbl))}
@@ -21711,9 +21692,10 @@ function renderTaskFocus(id){
           ${(proj||reun)?_row(proj?'ti-folder':'ti-speakerphone','Origem',proj?esc(proj.nome||proj.name||'Projeto'):esc(reun.title)):''}
           <button onclick="openEdit(${t.id})" style="margin-top:9px;width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:7px;font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-pencil" style="font-size:13px"></i> Editar detalhes</button>
         </div>
+        ${_tfAnotacoesHTML(t)}
       </div>
       <div class="tf-col">
-        <div class="reun-card4" id="tf-chk"><div class="tf-card-title"><span>Checklist</span><span style="font-size:11px;color:var(--text3)">${subDone}/${subs.length}</span></div>
+        <div class="reun-card4" id="tf-chk"><div class="reun-card4-title"><span><i class="ti ti-checklist" style="color:var(--text2)"></i> Checklist</span><span style="font-size:11px;color:var(--text3);font-weight:600">${subDone}/${subs.length}</span></div>
           ${subs.length?`<div style="height:5px;background:var(--bg2);border-radius:99px;overflow:hidden;margin-bottom:10px"><div style="height:100%;width:${subPct}%;background:var(--blue-mid)"></div></div>`:''}
           <div class="subtask-list">${subsHTML}</div>
           <div class="subtask-add" style="margin-top:6px">
@@ -21723,18 +21705,18 @@ function renderTaskFocus(id){
         </div>
       </div>
       <div class="tf-col">
-        <div class="reun-card4" id="tf-com"><div class="tf-card-title">Comentários</div>
+        <div class="reun-card4" id="tf-com"><div class="reun-card4-title"><span><i class="ti ti-message-2" style="color:var(--text2)"></i> Comentários</span></div>
           ${comsHTML}
           <div style="display:flex;gap:6px;margin-top:6px">
             <input id="tf-cinp" placeholder="Comentar..." onkeydown="if(event.key==='Enter'){_tfAddComment(${t.id})}" style="flex:1;border:1px solid var(--border);border-radius:99px;padding:6px 12px;background:var(--bg);color:var(--text);font-size:12.5px;font-family:inherit;outline:none">
             <button onclick="_tfAddComment(${t.id})" style="background:var(--blue-mid);border:none;color:#fff;border-radius:50%;width:30px;height:30px;cursor:pointer;flex-shrink:0" title="Enviar"><i class="ti ti-send" style="font-size:13px"></i></button>
           </div>
         </div>
-        <div class="reun-card4" id="tf-anx"><div class="tf-card-title">Anexos</div>
+        <div class="reun-card4" id="tf-anx"><div class="reun-card4-title"><span><i class="ti ti-paperclip" style="color:var(--text2)"></i> Anexos</span></div>
           ${legadoAnx}${anxHTML}${semAnx}
           <label style="display:flex;align-items:center;gap:6px;margin-top:6px;padding:7px 10px;border:1px dashed var(--border);border-radius:8px;cursor:pointer;color:var(--text3);font-size:12px"><i class="ti ti-plus" style="font-size:13px"></i> Anexar arquivo<input type="file" multiple style="display:none" onchange="_tfAddAttach(${t.id},this.files)"></label>
         </div>
-        <div class="reun-card4" id="tf-his"><div class="tf-card-title">Histórico</div>${histHTML}</div>
+        <div class="reun-card4" id="tf-his"><div class="reun-card4-title"><span><i class="ti ti-history" style="color:var(--text2)"></i> Histórico</span></div>${histHTML}</div>
       </div>
     </div>
   </div>`;
@@ -32534,11 +32516,13 @@ function _anotSalvarDeb(mid){ if(_anotTimer) clearTimeout(_anotTimer); _anotTime
 function _anotSalvar(mid){
   if(_anotTimer){ clearTimeout(_anotTimer); _anotTimer=null; }
   const el=document.getElementById('anot-body-'+mid); if(!el) return;
-  const m=meetings.find(x=>x.id===mid); if(!m) return;
   const html=el.innerHTML;
-  if((m.anotacoes||'')===html) return; // nada mudou → não grava à toa
-  m.anotacoes=html;
-  saveMeeting_db(m);
+  const m=meetings.find(x=>x.id===mid);
+  if(m){ if((m.anotacoes||'')===html) return; m.anotacoes=html; saveMeeting_db(m); return; }
+  // Reuso pelo Painel da Tarefa: MESMO editor de Anotações, salva em t.anotacoes. (ids de reunião
+  // são string 'reun...', de tarefa são número → não colidem na busca.)
+  const t=tasks.find(x=>x.id===mid||x.id===Number(mid));
+  if(t){ if((t.anotacoes||'')===html) return; t.anotacoes=html; saveTask_db(t); }
 }
 // onmousedown="event.preventDefault()" nos botões da barra impede que o clique roube o foco
 // do editor — sem isso a seleção some e o execCommand não tem em que aplicar.
@@ -32729,6 +32713,26 @@ function _reunAnotacoesHTML(m){
       <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCmd('${m.id}','removeFormat')" title="Limpar formatação"><i class="ti ti-clear-formatting" style="font-size:14px"></i></button>
     </div>
     <div id="anot-body-${m.id}" class="anot-body" contenteditable="true" placeholder="Anote aqui o que precisar durante a reunião..." onpaste="_onEditorPaste(event)" oninput="_anotSalvarDeb('${m.id}')" onblur="_anotSalvar('${m.id}')" onkeydown="_anotKeydown(event,'${m.id}')" onkeyup="_anotSaveRange('${m.id}')" onmouseup="_anotSaveRange('${m.id}')">${m.anotacoes||''}</div>
+  </div>`;
+}
+// Anotações da TAREFA — MESMO editor da reunião (reusa _anotCmd/_anotCheck/_anotCorMenu/_anotSalvar,
+// que agora tratam tarefa por id). id numérico da tarefa vai SEM aspas no onclick.
+function _tfAnotacoesHTML(t){
+  return `<div class="reun-card4" id="tf-anot"><div class="reun-card4-title"><span><i class="ti ti-notes" style="color:var(--text2)"></i> Anotações</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:-2px 0 8px">
+      <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCmd(${t.id},'bold')" title="Negrito" style="font-weight:800;min-width:26px;justify-content:center">B</button>
+      <div class="anot-sep"></div>
+      <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCmd(${t.id},'formatBlock','H3')" title="Título" style="font-weight:800">Título</button>
+      <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCmd(${t.id},'formatBlock','H4')" title="Subtítulo" style="font-weight:700;font-size:11px">Subtítulo</button>
+      <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCmd(${t.id},'formatBlock','P')" title="Texto normal" style="font-size:11px">Texto</button>
+      <div class="anot-sep"></div>
+      <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCmd(${t.id},'insertOrderedList')" title="Lista numerada"><i class="ti ti-list-numbers" style="font-size:14px"></i></button>
+      <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCheck(${t.id})" title="Item com check"><i class="ti ti-checkbox" style="font-size:14px"></i></button>
+      <div class="anot-sep"></div>
+      <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCorMenu(${t.id},this)" title="Cor do texto" style="position:relative"><i class="ti ti-palette" style="font-size:14px"></i></button>
+      <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCmd(${t.id},'removeFormat')" title="Limpar formatação"><i class="ti ti-clear-formatting" style="font-size:14px"></i></button>
+    </div>
+    <div id="anot-body-${t.id}" class="anot-body" contenteditable="true" placeholder="Anote aqui o que precisar sobre a tarefa..." onpaste="_onEditorPaste(event)" oninput="_anotSalvarDeb(${t.id})" onblur="_anotSalvar(${t.id})" onkeydown="_anotKeydown(event,${t.id})" onkeyup="_anotSaveRange(${t.id})" onmouseup="_anotSaveRange(${t.id})">${t.anotacoes||''}</div>
   </div>`;
 }
 
