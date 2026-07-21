@@ -335,6 +335,32 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-21 (b) — PC da Empresa (sessão "v6") — Título Manrope no Projeto · "Acontecendo agora" em 2 cards · botão de TESTE visual no modo foco da Reunião
+Sessão de continuação (nova sessão do Claude Code, a 6ª da série "HTML - Tarefas v1…v6"). Tudo commitado e
+pushado, working tree limpo, `main == origin/main`. **Último commit de código: `2a7325c8`.** ⚠️ **NADA testado em
+navegador** (esta máquina não roda preview) — verificação = balanço de `( ) { } <div>` / backticks idêntico ao HEAD
++ grep de refs órfãs. **Quem valida comportamento é o Diego no Pages (Ctrl+Shift+R).**
+
+**O que mudou (commits desta sessão, em ordem):**
+| Commit | Área | O quê |
+|---|---|---|
+| `e5836017` | Projeto — títulos | Os 2 títulos do Painel de Projeto (header normal 23px e barra de foco 18px) passaram a usar **`var(--font-title)` (Manrope) + `letter-spacing:-.02em`**, igualando a tipografia modernizada do Painel de Reunião (`6a72ba94`). Só typografia; estrutura/`max-width` do projeto mantidos. |
+| `9d069948` | Reunião — modo foco | **Botão de TESTE** na ponta direita da `.reun-focus-bar` (após o timer): cicla 3 estados — 1) header+trilha num tom mais forte · 2) trilha some · 3) normal. `_reunFxTest`/`_reunFxTestReset`; CSS escopado a `body.reun-focus` (inerte fora do foco); limpa ao entrar/sair. **É só teste, não persiste.** |
+| `bfea3b3f` | Reunião — modo foco | O estado "tint" do botão passou a usar tom **CARAMELO** = `color-mix(--blue-mid 55%, --bg)` (cor da escrita da Pauta principal), a pedido do Diego — antes era escurecimento neutro. |
+| `1d6f8370` + `2a7325c8` | Projeto — "Acontecendo agora" | Saiu o `_ppBloco` **único** que envolvia tudo (`renderProjectProVisao`, ~26166). Agora: header "Acontecendo agora" + nome da fase ficam **soltos**; **"Em andamento"** (TODAS as tarefas da etapa atual, **atrasadas inclusive** com o pill vermelho) e **"Próximas a liberar"** viram **DOIS cards** (`--surface-painel`). Unificado num `rowAgora`. (`2a7325c8` = fix: a atrasada tinha ficado FORA do card; o Diego apontou que "atrasada = em andamento", então voltou pra dentro.) |
+
+**Decisões desta sessão:**
+- ⭐ **Formato CARTÕES será aposentado do HUB** (Diego): "não usar mais". **Neste protótipo já estava removido** das telas de tarefas em julho (toggle só-Lista, escondido). O que resta de "cards" aqui é o toggle **Lista·Cards·Frequência** das **Rotinas** — o Diego decidiu **deixar como está**. ⚠️ O toggle `Lista/Cartões` que ele vê nos prints (com "Buscar nesta página" + fundo de corações) é da **build do Guilherme** (servidor), NÃO deste git — remover de verdade é com o Guilherme.
+- **Workflow de sessões:** o Diego cria sessão nova ao chegar perto do contexto cheio (por medo de perder info na compactação). Alinhado que **manter é bom hábito** (contexto limpo = melhor/mais barato), mas a "memória de verdade" é **git + handoff + MEMORY.md** — compactar RESUME, não apaga. Frase-padrão que ele vai usar p/ fechar: *"Vou encerrar a sessão. Commita e pusha tudo que falta, e atualiza o Log de handoff…"*; e p/ abrir: *"Tô no PC da Empresa. Roda git pull, lê o handoff e me diz onde paramos."*
+- 🆕 **Ferramentas de sessão disponíveis:** dá p/ **listar / buscar / abrir as sessões arquivadas** do Claude Code (via `mcp__ccd_session_mgmt__*`). Ou seja, além do handoff, uma sessão nova consegue **recuperar conteúdo de sessões antigas** sob demanda — o "chats não compartilham histórico" do topo continua o padrão, mas agora há essa ponte. As 5 arquivadas (v1 02/jul · v2 13/jul · v3 16/jul · v4 17/jul · v5 21/jul) foram conferidas: **todas já têm sua entrada no handoff**, nada faltando.
+
+**OPEN — esperando o Diego (nada quebrado):**
+- **Botão de TESTE do modo foco é PROVISÓRIO** — decidir se vira feature de verdade (nome/ícone final; 1 botão ciclando × 2 controles; e se o caramelo fica em 55% ou vai a **caramelo cheio com texto creme** no header/trilha — o Diego cogitou).
+- 🐞 **Estrelinha ⭐ da aba Pessoas (reunião)** — `_reunFreqMap` conta ocorrências FUTURAS de série → acende p/ quase todo mundo (P3 da varredura).
+- **Prioridade nos projetos** — o Diego pediu "agrupar por prioridade" mas ela foi desativada antes; decidir se re-ativa (repor campo no Editar + a aba).
+- **Snack Proteico** — falta o Diego clicar ☁️ **Enviar** no Edge (e Baixar nas outras) p/ propagar.
+- Herdadas (varredura 18/07): 20 bugs restantes (P0/P1/P2/P3) + dupla def de "Atrasada" + `g.tarefaIds`×`t.projectPro*` + código morto.
+
 ### ⭐ 2026-07-21 — RESUMO DA SESSÃO (PC da Empresa) — polimento visual pesado de Reunião + Projeto + recuperação do Snack
 Sessão longa de **UX/identidade visual** nos Painéis de Reunião e Projeto, mais a **recuperação do projeto Snack
 Proteico** (ver seção ✅ RESOLVIDO no topo do arquivo). Tudo commitado e pushado; working tree limpo. **Último commit
