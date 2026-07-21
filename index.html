@@ -8235,7 +8235,7 @@ function renderCompras(){
   const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
-  main.innerHTML=_comprasScaffoldHTML(comprasView);
+  main.innerHTML=(comprasView==='estoque') ? _comprasEstoqueHTML() : _comprasScaffoldHTML(comprasView);
 }
 function _comprasScaffoldHTML(v){
   const T={
@@ -8268,6 +8268,67 @@ function _comprasScaffoldHTML(v){
     <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px 20px; max-width:560px;">
       <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--text3); margin-bottom:10px;">O que vai ter aqui</div>
       <ul style="margin:0; padding-left:18px; color:var(--text2); font-size:14px; line-height:1.9;">${itens}</ul>
+    </div>
+  </div>`;
+}
+// Dados de EXEMPLO (fictícios) só p/ desenhar as telas — trocar pelos reais do
+// ERP depois (import/colar, como no PCP). NÃO persiste; é só p/ prototipar a casca.
+function _comprasMockInsumos(){
+  return [
+    {nome:'Cacau em pó',    un:'kg', estQtd:850,   custoMed:30.10, consumoMes:1200,  ultCompra:'2026-07-12', fornecedor:'Cargill',     divisao:'Matéria-prima'},
+    {nome:'Açúcar cristal', un:'kg', estQtd:4200,  custoMed:3.05,  consumoMes:6000,  ultCompra:'2026-07-14', fornecedor:'Alto Alegre', divisao:'Matéria-prima'},
+    {nome:'Embalagem 200g', un:'un', estQtd:45000, custoMed:0.19,  consumoMes:80000, ultCompra:'2026-07-16', fornecedor:'Plastipack',  divisao:'Embalagem'},
+    {nome:'Manteiga',       un:'kg', estQtd:120,   custoMed:42.00, consumoMes:900,   ultCompra:'2026-07-05', fornecedor:'Aurora',      divisao:'Matéria-prima'},
+  ];
+}
+function _comprasEstoqueHTML(){
+  const brl=n=>'R$ '+Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const qty=n=>Number(n).toLocaleString('pt-BR');
+  const dt=iso=>{ const p=String(iso).split('-'); return p.length===3?(p[2]+'/'+p[1]):iso; };
+  let totalValor=0;
+  const linhas=_comprasMockInsumos().map(it=>{
+    const valor=it.estQtd*it.custoMed; totalValor+=valor;
+    const consumoDia=it.consumoMes/30;
+    const dias=consumoDia>0?Math.round(it.estQtd/consumoDia):999;
+    let cor='var(--success)',bg='var(--success-bg)';
+    if(dias<10){cor='var(--danger)';bg='var(--danger-bg)';}
+    else if(dias<20){cor='var(--amber)';bg='var(--amber-bg)';}
+    return `<tr>
+      <td class="ci-nome">${it.nome}</td>
+      <td class="ci-num">${qty(it.estQtd)} <span class="ci-un">${it.un}</span></td>
+      <td class="ci-num">${brl(valor)}</td>
+      <td class="ci-num">${qty(it.consumoMes)} <span class="ci-un">${it.un}/mês</span></td>
+      <td class="ci-num"><span class="ci-dias" style="color:${cor};background:${bg}">${dias} d</span></td>
+      <td class="ci-num">${dt(it.ultCompra)}</td>
+      <td>${it.fornecedor}</td>
+    </tr>`;
+  }).join('');
+  return `<div style="padding:20px 4px 60px; max-width:1000px; margin:0 auto;">
+    <style>
+      .compras-tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+      .compras-tbl th,.compras-tbl td{padding:10px 14px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+      .compras-tbl thead th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:700;background:var(--bg2)}
+      .compras-tbl th.r,.compras-tbl td.ci-num{text-align:right;font-variant-numeric:tabular-nums}
+      .compras-tbl tbody tr:hover{background:var(--bg2)}
+      .compras-tbl .ci-nome{font-weight:600;color:var(--text)}
+      .compras-tbl .ci-un{color:var(--text3);font-size:11px}
+      .compras-tbl .ci-dias{display:inline-block;padding:2px 9px;border-radius:999px;font-weight:700;font-size:12px}
+      .compras-tbl tfoot td{font-weight:700;color:var(--text);border-top:2px solid var(--border);border-bottom:none}
+    </style>
+    ${hubBreadcrumb([{label:'Compras', onclick:"setComprasView('painel')"},{label:'Estoque'}])}
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:8px 0 4px;">
+      <h1 style="font-size:24px; font-weight:800; letter-spacing:-.02em; color:var(--text); margin:0;">Estoque</h1>
+      <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--amber); background:var(--amber-bg); padding:3px 9px; border-radius:999px;">dados de exemplo</span>
+    </div>
+    <p style="color:var(--text2); font-size:14px; max-width:70ch; margin:4px 0 20px;">Valores fictícios só pra desenhar a tela — trocamos pelos reais do ERP amanhã. A coluna <b>Dias</b> cruza estoque ÷ consumo e acende quando é hora de comprar.</p>
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; overflow-x:auto;">
+      <table class="compras-tbl">
+        <thead><tr>
+          <th>Insumo</th><th class="r">Em estoque</th><th class="r">Valor</th><th class="r">Consumo</th><th class="r">Dias</th><th class="r">Últ. compra</th><th>Fornecedor</th>
+        </tr></thead>
+        <tbody>${linhas}</tbody>
+        <tfoot><tr><td>Total em estoque</td><td></td><td class="ci-num">${brl(totalValor)}</td><td colspan="4"></td></tr></tfoot>
+      </table>
     </div>
   </div>`;
 }
