@@ -3,6 +3,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gerenciador de Tarefas — Diego Konrad</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // Acesso seguro ao armazenamento local. Evita travar o app em contextos onde o navegador bloqueia localStorage.
@@ -177,7 +179,7 @@
     --pink:#a06a2e;--pink-bg:#f1e3c6;
     background-color:var(--bg);
   }
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;--font-title:'Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
 
   .hdr{background:linear-gradient(135deg,var(--blue-dark) 0%,var(--blue-mid) 60%,var(--blue-teal) 100%);width:100%;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
   .hdr-logo{color:#fff;font-size:18px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
@@ -31665,6 +31667,9 @@ function openReuniaoView(id, _opts){
   // conduz que ficava sob o título — essas informações vivem na aba "Info" (não repetir no cabeçalho).
   const presentesCount=(m.participantes||[]).filter(pid=>presencas[pid]===true).length;
   const totalParts=(m.participantes||[]).length;
+  // Data no cabeçalho (discreta): a reunião tem continuação/série, então serve p/ confirmar
+  // que abrimos a ocorrência certa (Diego, jul/2026).
+  const _dataReun=m.date?new Date(m.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}):'Sem data';
 
   // Se cheguei aqui abrindo uma reunião ANTERIOR da série (pelo card "Decisões anteriores"),
   // mostro o caminho de volta pra reunião de onde vim (não só "voltar à lista").
@@ -31716,22 +31721,22 @@ function openReuniaoView(id, _opts){
       <!-- Barra superior do modo foco (só título + status + timer + presença) -->
       <div class="reun-focus-bar">
         ${_voltarSerieFoco}
-        <span style="font-size:15px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:360px">${/^\s*reuni/i.test(m.title||'')?escapeHTML(m.title):'Reunião — '+escapeHTML(m.title)}</span>
-        <span class="reun-status ${st.cls}" style="font-size:10px">${st.label}</span>
-        <div id="reun-focus-timer-${m.id}" data-inicio="${m.inicioReal||''}" data-acumulado="${m.tempoAcumulado||0}" data-planned="${_reunPlannedMin(m)}" style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:99px;padding:5px 14px;min-width:210px">
+        <span style="font-family:var(--font-title);font-size:18px;font-weight:800;letter-spacing:-.02em;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px">${/^\s*reuni/i.test(m.title||'')?escapeHTML(m.title):'Reunião — '+escapeHTML(m.title)}</span>
+        <span style="font-size:11.5px;color:var(--text3);white-space:nowrap;flex-shrink:0"><i class="ti ti-calendar" style="font-size:12px"></i> ${_dataReun}</span>
+        <div style="flex:1"></div>
+        <span style="font-size:12px;color:var(--text3);font-weight:600;white-space:nowrap;flex-shrink:0"><i class="ti ti-users" style="font-size:13px"></i> ${presentesCount}/${totalParts} presentes</span>
+        <div id="reun-focus-timer-${m.id}" data-inicio="${m.inicioReal||''}" data-acumulado="${m.tempoAcumulado||0}" data-planned="${_reunPlannedMin(m)}" style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:99px;padding:5px 14px;min-width:210px;flex-shrink:0">
           <i class="ti ti-${m.pausadoReuniao?'player-pause':'clock-play'}" style="color:${m.pausadoReuniao?'var(--amber)':'var(--success)'};font-size:15px"></i>
           <span style="font-weight:800;font-size:15px;color:var(--text);white-space:nowrap"><span class="rft-elapsed">${m.status==='andamento'?(String(Math.floor(_reunElapsedSec(m)/60)).padStart(2,'0')+':'+String(_reunElapsedSec(m)%60).padStart(2,'0')):'—'}</span> <span style="font-size:11px;font-weight:600;color:var(--text3)">/ ${_reunPlannedMin(m)}min</span></span>
           <div style="flex:1;min-width:50px;height:5px;background:var(--card);border-radius:99px;overflow:hidden"><div class="rft-fill" style="height:100%;width:${m.status==='andamento'?Math.min(100,(_reunElapsedSec(m)/((_reunPlannedMin(m)||60)*60))*100):0}%;background:${m.pausadoReuniao?'var(--amber)':'var(--success)'};transition:width .5s,background .5s"></div></div>
         </div>
-        <div style="flex:1"></div>
-        <span style="font-size:12px;color:var(--text3);font-weight:600"><i class="ti ti-users" style="font-size:13px"></i> ${presentesCount}/${totalParts} presentes</span>
       </div>
 
-      <!-- Cabeçalho: SÓ título + status. (jul/2026) Data/hora/sala/quem conduz vivem na aba "Info";
-           as AÇÕES (Iniciar/cronômetro, Finalizar) e o ⛶ desceram p/ a linha da sub-navbar. -->
-      <div class="reun-normal-header" style="display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap;margin-bottom:8px">
-        <span style="font-size:20px;font-weight:800;color:var(--text)">${/^\s*reuni/i.test(m.title||'')?escapeHTML(m.title):'Reunião — '+escapeHTML(m.title)}</span>
-        <span class="reun-status ${st.cls}" style="font-size:10px">${st.label}</span>
+      <!-- Cabeçalho: título + data (discreta). (jul/2026) Status "Agendada" removido a pedido;
+           hora/sala/quem conduz vivem na aba "Info"; AÇÕES + ⛶ na linha da sub-navbar. -->
+      <div class="reun-normal-header" style="display:flex;align-items:baseline;gap:11px;min-width:0;flex-wrap:wrap;margin-bottom:8px">
+        <span style="font-family:var(--font-title);font-size:23px;font-weight:800;letter-spacing:-.02em;color:var(--text)">${/^\s*reuni/i.test(m.title||'')?escapeHTML(m.title):'Reunião — '+escapeHTML(m.title)}</span>
+        <span style="font-size:12px;color:var(--text3);white-space:nowrap"><i class="ti ti-calendar" style="font-size:12px"></i> ${_dataReun}</span>
         ${m.nivel==='rapida'?`<span style="font-size:10px;font-weight:800;color:var(--purple);background:color-mix(in srgb,var(--purple) 14%,transparent);padding:2px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-bolt" style="font-size:11px"></i> rápida</span>`:''}
       </div>
       <!-- Sub-navbar (estilo Projetos): as VIEWS como abas horizontais com título -->
@@ -32616,7 +32621,7 @@ function reunPautaHTML(m){
       // Cabecinha do autor: só na 1ª linha de cada pessoa (não repete em todas).
       const _sep=(nome!==_ultimoNome);
       _ultimoNome=nome;
-      const _cab=_sep?`<div style="display:flex;align-items:center;gap:5px;margin:10px 0 3px;font-size:10.5px;font-weight:700;color:var(--text3)"><i class="ti ti-${nome?'user':'help-circle'}" style="font-size:12px"></i> ${nome?escapeHTML(nome):'sem autor'}</div>`:'';
+      const _cab=_sep?`<div style="display:flex;align-items:center;gap:5px;margin:19px 0 5px;font-size:11px;font-weight:700;color:var(--text2)"><i class="ti ti-${nome?'user':'help-circle'}" style="font-size:12px;color:var(--text3)"></i> ${nome?escapeHTML(nome):'sem autor'}</div>`:'';
       return `${_cab}<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
         <div role="checkbox" tabindex="0" aria-checked="${done?'true':'false'}" aria-label="Concluir item da pauta" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click();}" onclick="togglePautaItem('${m.id}',${i})" style="width:18px;height:18px;border-radius:4px;border:2px solid ${done?'var(--blue-mid)':'var(--border)'};background:${done?'var(--blue-mid)':'transparent'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s">
           ${done?'<i class="ti ti-check" style="font-size:10px;color:#fff"></i>':''}
