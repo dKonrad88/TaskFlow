@@ -31689,22 +31689,22 @@ function openReuniaoView(id, _opts){
       <!-- Barra do modo FOCO (só aparece em tela cheia) -->
       <!-- Trilha lateral de ícones (só na tela cheia; estilo Fellow) -->
       <div class="reun-focus-rail">
-        <button class="reun-rail-btn" onclick="_exitReunFocus()" title="Sair da tela cheia (Esc)"><i class="ti ti-arrows-minimize"></i><span>Sair</span></button>
-        ${m.status!=='encerrada'?(()=>{const running=m.status==='andamento'&&!m.pausadoReuniao;const lbl=running?'Pausar':(m.pausadoReuniao?'Retomar':'Iniciar');return `<button class="reun-rail-btn" onclick="_toggleReunTimer('${m.id}')" style="color:${running?'var(--amber)':'var(--blue-mid)'}" title="${lbl} reunião"><i class="ti ti-player-${running?'pause':'play'}-filled"></i><span>${lbl}</span></button>`;})():''}
-        <div style="height:1px;background:var(--border);width:42px;margin:5px 0;flex-shrink:0"></div>
-        <!-- ORDEM (jul/2026): por MOMENTO DE USO, não alfabética/aleatória.
-             TRABALHO (Painel · Pessoas) → REGISTRO (ATA · Anexos) → CONSULTA da série (Decisões ·
-             Histórico) → REFERÊNCIA/CONFIG (Info · Editar). Info desceu: é dado fixo, consultado
-             raramente, e estava ocupando a 3ª posição. Manter IDÊNTICA à sub-navbar abaixo. -->
+        <!-- ORDEM das abas (jul/2026, escolhida pelo Diego): Painel · Pessoas · Anexos · Decisões ·
+             Histórico · ATA · Info · Editar. Manter IDÊNTICA à sub-navbar abaixo. As AÇÕES
+             (Sair/expandir · Iniciar · Finalizar) vão no RODAPÉ. -->
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','painel')" style="${_railActive('painel')}" title="Painel — pauta, decisões e tarefas"><i class="ti ti-layout-dashboard"></i><span>Painel</span></button>
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','pessoas')" style="${_railActive('pessoas')}" title="Participantes"><i class="ti ti-users"></i><span>Pessoas</span></button>
-        <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','ata')" style="${_railActive('ata')}" title="ATA / Resumo"><i class="ti ti-notes"></i><span>ATA</span></button>
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','anexos')" style="${_railActive('anexos')}" title="Anexos"><i class="ti ti-paperclip"></i><span>Anexos</span></button>
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','decisoes')" style="${_railActive('decisoes')}" title="Decisões — todas as decisões da série"><i class="ti ti-gavel"></i><span>Decisões</span></button>
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','historico')" style="${_railActive('historico')}" title="Histórico — todas as reuniões desta série"><i class="ti ti-history"></i><span>Histórico</span></button>
+        <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','ata')" style="${_railActive('ata')}" title="ATA / Resumo"><i class="ti ti-notes"></i><span>ATA</span></button>
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','info')" style="${_railActive('info')}" title="Informações da reunião"><i class="ti ti-info-circle"></i><span>Info</span></button>
         <button class="reun-rail-btn" onclick="_reunSetSubView('${m.id}','editar')" style="${_railActive('editar')}" title="Editar reunião (data, hora, sala, recorrência)"><i class="ti ti-pencil"></i><span>Editar</span></button>
         <div style="flex:1"></div>
+        <!-- Rodapé: ações -->
+        <div style="height:1px;background:var(--border);width:42px;margin:5px 0;flex-shrink:0"></div>
+        <button class="reun-rail-btn" onclick="_exitReunFocus()" title="Sair da tela cheia (Esc)"><i class="ti ti-arrows-minimize"></i><span>Sair</span></button>
+        ${m.status!=='encerrada'?(()=>{const running=m.status==='andamento'&&!m.pausadoReuniao;const lbl=running?'Pausar':(m.pausadoReuniao?'Retomar':'Iniciar');return `<button class="reun-rail-btn" onclick="_toggleReunTimer('${m.id}')" style="color:${running?'var(--amber)':'var(--blue-mid)'}" title="${lbl} reunião"><i class="ti ti-player-${running?'pause':'play'}-filled"></i><span>${lbl}</span></button>`;})():''}
         ${m.status==='encerrada'
           ? `<button class="reun-rail-btn" onclick="gerarPDFReuniao('${m.id}')" style="color:var(--danger)" title="PDF da ATA"><i class="ti ti-file-download"></i><span>PDF</span></button>`
           : `<button class="reun-rail-btn" onclick="concluirReuniao('${m.id}')" style="color:var(--success)" title="Finalizar reunião"><i class="ti ti-flag"></i><span>Finalizar</span></button>`}
@@ -31736,13 +31736,13 @@ function openReuniaoView(id, _opts){
         // Wrapper: abas à esquerda (rolam se não couberem) + ⛶ tela cheia discreto na ponta direita.
         return `<div class="reun-subtabs-wrap" style="display:flex;align-items:flex-end;gap:8px;margin:2px 0 28px;border-bottom:1px solid var(--border)">
           <div class="reun-subtabs" style="display:flex;gap:2px;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden">
-          ${/* Mesma ordem da trilha do foco (ver comentário lá): trabalho → registro → consulta → config. */''}
+          ${/* Mesma ordem da trilha do foco (Diego, jul/2026): Painel · Pessoas · Anexos · Decisões · Histórico · ATA · Info · Editar. */''}
           ${_subtab('painel','Painel','ti-layout-dashboard')}
           ${_subtab('pessoas','Pessoas','ti-users')}
-          ${_subtab('ata','ATA','ti-notes')}
           ${_subtab('anexos','Anexos','ti-paperclip')}
           ${_subtab('decisoes','Decisões','ti-gavel')}
           ${_subtab('historico','Histórico','ti-history')}
+          ${_subtab('ata','ATA','ti-notes')}
           ${_subtab('info','Info','ti-info-circle')}
           ${_subtab('editar','Editar','ti-pencil')}
           </div>
