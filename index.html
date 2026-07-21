@@ -10509,7 +10509,11 @@ function restoreFromTrash(idx){
   } else if(type==='orcamento'){
     _mntLoad(); orcamentos.push(item); saveOrcamentos();
   } else if(type==='preventiva'){
-    _eqLoad(); const _e=(equipamentos||[]).find(x=>x.id===item.equipId); if(_e){ (_e.planos=_e.planos||[]).push(item.plano); saveEquipamentos(); }
+    _eqLoad(); const _e=(equipamentos||[]).find(x=>x.id===item.equipId);
+    // Sem o equipamento-pai, o plano não tem onde voltar. Antes seguia adiante e dava "restaurado
+    // com sucesso" enquanto o plano era perdido de vez. Agora aborta e mantém o item na Lixeira.
+    if(!_e){ toast('⚠️ O equipamento deste plano não existe mais — restaure o equipamento primeiro.'); return; }
+    (_e.planos=_e.planos||[]).push(item.plano); saveEquipamentos();
   } else if(type==='fichaProduto'){
     fichasProduto.push(item); saveFichasProduto();
   } else if(type==='reuniaoRapida'){
@@ -17302,25 +17306,28 @@ function deleteRotina(id){
   // Encontrar tarefas abertas geradas por esta rotina
   const tarefasAbertas=tasks.filter(t=>t._rotinaId===id&&!t.done);
 
-  let msg='Excluir esta rotina?';
+  const _fazer=()=>{
+    // Mover tarefas abertas para lixeira
+    tarefasAbertas.forEach(t=>{ moveToTrash('task',{...t}); deleteTask_db(t.id); });
+    tasks=tasks.filter(t=>!(t._rotinaId===id&&!t.done));
+    // Excluir a rotina — vai para a lixeira (recuperável por 30 dias).
+    moveToTrash('rotina',{...rotina});
+    rotinas=rotinas.filter(x=>x.id!==id);
+    deleteRotina_db(id);
+    renderSidebar();updateStats();renderRotinas();
+    const nTarefas=tarefasAbertas.length;
+    _mostrarFABDesfazer('Rotina excluída'+(nTarefas?` (+ ${nTarefas} tarefa${nTarefas!==1?'s':''})`:''), 0);
+  };
+
+  // Antes o msg era montado e NUNCA exibido — a cascata (tarefas abertas somem junto) acontecia
+  // sem confirmação. Confirma só quando há cascata; sem tarefas, segue 1-clique (Lixeira + Desfazer).
   if(tarefasAbertas.length){
-    msg=`Excluir esta rotina?\n\nExistem ${tarefasAbertas.length} tarefa${tarefasAbertas.length!==1?'s':''} aberta${tarefasAbertas.length!==1?'s':''} gerada${tarefasAbertas.length!==1?'s':''} por ela — serão excluídas junto.`;
-  }
-
-  // Mover tarefas abertas para lixeira
-  tarefasAbertas.forEach(t=>{
-    moveToTrash('task',{...t});
-    deleteTask_db(t.id);
-  });
-  tasks=tasks.filter(t=>!(t._rotinaId===id&&!t.done));
-
-  // Excluir a rotina — vai para a lixeira (recuperável por 30 dias).
-  moveToTrash('rotina',{...rotina});
-  rotinas=rotinas.filter(x=>x.id!==id);
-  deleteRotina_db(id);
-  renderSidebar();updateStats();renderRotinas();
-  const nTarefas=tarefasAbertas.length;
-  _mostrarFABDesfazer('Rotina excluída'+(nTarefas?` (+ ${nTarefas} tarefa${nTarefas!==1?'s':''})`:''), 0);
+    confirmModal({
+      title:'Excluir rotina', danger:true, icon:'ti-trash', confirmLabel:'Excluir',
+      message:`Existem ${tarefasAbertas.length} tarefa${tarefasAbertas.length!==1?'s':''} aberta${tarefasAbertas.length!==1?'s':''} desta rotina — serão excluídas junto.\n\nExcluir a rotina?`,
+      onConfirm:_fazer
+    });
+  } else { _fazer(); }
 }
 
 /* ── 13. ABA: TAREFAS (Lista / Cartões / Painel Kanban) ───────────
@@ -20264,7 +20271,7 @@ function tableRowHTML(t, opts){
   // usuário clicou + (isExpanded sem subs = modo "criar primeira subtarefa")
   let subRow = '';
   if(isExpanded){
-    const subColspan = 3 + (showPrio?1:0) + (showProj?1:0) + (showPess?1:0) + (showData?1:0) + (showDias?1:0) + (showTags?1:0) + (fieldPrefs.reuniao?1:0) + 2;
+    const subColspan = 3 + (showPrio?1:0) + (showProj?1:0) + (showPess?1:0) + (showData?1:0) + (showDias?1:0) + (fieldPrefs.reuniao?1:0) + 2;
     // GUILHERME V3 (mai/2026): colspan = expand + check + título + opcionais + status + ações
     const subItems = subs.map(s=>`
       <div class="tt-sub-item" data-sub-id="${s.id}" data-parent-task-id="${t.id}">
@@ -22110,9 +22117,9 @@ function _autoSaveEditField(campo){
     }
   }
   if(changed){
-    saveTask_db(t);
+    const _ok=saveTask_db(t);
     _updateBreadcrumb(t);
-    _showAutosaveToast();
+    _showAutosaveToast(_ok);
     // Atualiza listagem em background (sem fechar modal)
     render();
     renderSidebar();
@@ -22121,7 +22128,10 @@ function _autoSaveEditField(campo){
 }
 
 // Toast discreto no canto inferior direito
-function _showAutosaveToast(){
+function _showAutosaveToast(ok){
+  // Cota estourada: NÃO acende o "✓ salvo" — o campo autossalvado é o caminho mais quente do app,
+  // e mentir "salvo" quando o save falhou faz a edição sumir no F5 sem aviso.
+  if(ok===false){ if(typeof toast==='function') toast('⚠️ Sem espaço para salvar. Esvazie a Lixeira ou remova anexos grandes.'); return; }
   const el = document.getElementById('td-autosave-toast');
   if(!el) return;
   el.classList.add('show');
@@ -24200,10 +24210,12 @@ function addNoteFromPanel(){
 }
 
 function gpDeleteNote(id){
+  const item=notes.find(n=>n.id===id);
+  if(item) moveToTrash('note',{...item}); // era exclusão DEFINITIVA sem Lixeira — agora recuperável (igual deleteNoteRow)
   notes=notes.filter(n=>n.id!==id);
   deleteNote_db(id);
   renderGpNotes();
-  toast('🗑️ Anotação removida');
+  _mostrarFABDesfazer('Anotação excluída', 0);
 }
 
 /* ══════════════════════════════════════
