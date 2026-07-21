@@ -13984,7 +13984,7 @@ function responderCutucada(cutucadaId, resposta){
 function _cutPronto(cutId){
   const cut=_cutucadas.find(c=>c.id===cutId); if(!cut) return;
   const t=tasks.find(x=>x.id===cut.taskId);
-  if(t){ t.done=true; t.kanbanCol='done_col'; if(typeof saveTask_db==='function') saveTask_db(t); }
+  if(t){ t.done=true; t.kanbanCol='done_col'; if(!t.doneAt) t.doneAt=today; if(typeof saveTask_db==='function') saveTask_db(t); } // doneAt: senao some de Confirmacoes/Analise/"concluidas hoje"
   responderCutucada(cutId, '✅ Já está pronto');
 }
 function _cutFacoOpen(cutId){
@@ -14372,6 +14372,7 @@ function eodConcluir(taskId){
   if(!t) return;
   t.done=true;
   t.concluida_em=today;
+  if(!t.doneAt) t.doneAt=today; // concluida_em nao alimenta doneAt — sem isto some de Confirmacoes/Analise
   saveTask_db(t);
   logHistory(t.id,'status','aberta','concluida');
   toast(`✅ "${t.title}" concluída`);
@@ -17730,7 +17731,7 @@ function dropCard(colId,event){
   const prevDone = t.done;
   const prevCol = t.kanbanCol;
   const prevAguardandoDe = t.aguardandoDe;
-  if(colId==='done_col'){t.done=true;t.kanbanCol='done_col';t.aguardandoDe=null;}
+  if(colId==='done_col'){t.done=true;t.kanbanCol='done_col';t.aguardandoDe=null;if(!t.doneAt)t.doneAt=today;} // doneAt: arrastar p/ Concluido tb registra a data
   else if(colId==='waiting'){
     t.done=false;
     t.kanbanCol=colId;
