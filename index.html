@@ -32829,8 +32829,12 @@ function pautaConfirmarAdd(meetingId){
 function removerPautaItem(meetingId,idx){
   const m=meetings.find(x=>x.id===meetingId);
   if(!m) return;
+  const txtRemovido=m.pauta[idx];
   m.pauta.splice(idx,1);
   if(m.pautaDone) m.pautaDone.splice(idx,1);
+  // Limpa o autor (mapa por TEXTO) se nenhum outro assunto restante usa o mesmo texto — senão
+  // reusar esse texto meses depois nasceria atribuído a alguém que ninguém escolheu.
+  if(m.pautaAutor && txtRemovido!=null && !(m.pauta||[]).includes(txtRemovido)) delete m.pautaAutor[txtRemovido];
   saveMeeting_db(m);
   const wrap=document.getElementById('pauta-view-'+meetingId);
   if(wrap) wrap.innerHTML=reunPautaHTML(m);
@@ -33268,11 +33272,25 @@ function _serieTopUp(m){
 // "Esta e as futuras": apaga as ocorrências futuras da série (p/ a Lixeira) e
 // regenera a partir DESTA, com a regra/dia/hora atuais. Usado quando a reunião
 // muda de vez (ex.: sempre quarta -> agora quinta).
+// Ao REMOVER reuniões de uma série, religa os FILHOS SOBREVIVENTES ao 1º ancestral vivo. Sem isto,
+// uma ocorrência ENCERRADA (que estas funções preservam) cujo pai foi removido fica com continuacaoDe
+// apontando p/ reunião inexistente → _reunAncestraisIds quebra na 1ª volta (some o "Da reunião anterior"
+// e as tarefas herdadas). Espelha o religamento que deleteReuniao já faz. Chamar ANTES de tirar do array;
+// só muta os objetos — quem chama persiste (safeSetItem no fim).
+function _reunRelinkAoRemover(removidosIds){
+  const rem = removidosIds instanceof Set ? removidosIds : new Set(removidosIds);
+  const paiDe={}; (meetings||[]).forEach(x=>{ paiDe[x.id]=x.continuacaoDe||null; });
+  const ancestralVivo=(pid)=>{ let c=pid, g=0; while(c && rem.has(c) && g++<40) c=paiDe[c]||null; return (c && !rem.has(c))?c:null; };
+  (meetings||[]).forEach(x=>{
+    if(!rem.has(x.id) && x.continuacaoDe && rem.has(x.continuacaoDe)) x.continuacaoDe=ancestralVivo(x.continuacaoDe);
+  });
+}
 function _recRegenerarFuturas(m){
   const rec=_recDe(m); if(!m||!m.serieId) return 0;
   const futuras=(meetings||[]).filter(x=>x.serieId===m.serieId && String(x.date)>String(m.date) && x.status!=='encerrada');
   futuras.forEach(x=>{ try{ moveToTrash('meeting',{...x}); }catch(e){} });
   const ids=new Set(futuras.map(x=>x.id));
+  _reunRelinkAoRemover(ids); // religa ocorrências encerradas órfãs ANTES de tirar do array
   meetings=meetings.filter(x=>!ids.has(x.id));
   if(!rec||!rec.ativo){ safeSetItem(LS_MEETINGS,JSON.stringify(meetings)); return 0; }
   // FIX (varredura jul/2026): NÃO usar _recMaterializar aqui — ele trata m como #1 e geraria
@@ -33410,6 +33428,7 @@ function _sugEncerrarSerie(id){
   const alvo=(meetings||[]).filter(x=> x.id===p.id || (p.serieId && x.serieId===p.serieId && String(x.date)>=String(p.date) && x.status!=='encerrada'));
   alvo.forEach(x=>{ try{ moveToTrash('meeting',{...x}); }catch(e){} });
   const ids=new Set(alvo.map(x=>x.id));
+  _reunRelinkAoRemover(ids); // religa ocorrências encerradas órfãs ANTES de tirar do array
   meetings=meetings.filter(x=>!ids.has(x.id));
   safeSetItem(LS_MEETINGS,JSON.stringify(meetings));
   window._reunFocus=false; document.body.classList.remove('reun-focus'); window._activeReuniaoId=null; // volta à lista (sai do foco)
