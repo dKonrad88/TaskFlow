@@ -1274,6 +1274,13 @@
   /* Sidebar cinza com border-radius no canto inferior direito */
   #edit-modal .modal-col-right{border-radius:0 0 14px 0}
 
+  /* ── PAINEL DA TAREFA (modo foco / tela cheia) — restyle do próprio #edit-modal, sem render novo ──
+     Reusa 100% do modal 2-col (esquerda = título/desc/subtarefas/comentários · direita = metadados/
+     anexos/histórico); só tira o "modal flutuante" e faz ocupar a tela toda. */
+  body.task-focus #edit-modal{padding:0;background:var(--bg)}
+  body.task-focus #edit-modal .modal.modal-2col{max-width:none;width:100vw;height:100vh;max-height:100vh;border-radius:0}
+  body.task-focus #edit-modal .modal-col-right{border-radius:0}
+
   /* ── Estilo Todoist ESQUERDA: título grande, descrição inline ── */
   .td-title-input{font:inherit;background:transparent;border:none;outline:none;width:100%;font-size:19px;font-weight:700;color:var(--text);padding:2px 0;line-height:1.3;resize:none;overflow:hidden;display:block}
   .td-title-input::placeholder{color:var(--text3);font-weight:600}
@@ -2443,6 +2450,7 @@
           <span id="tt-chip-text"></span>
         </div>
         
+        <button id="m-fs-btn" onclick="_toggleTaskFocus()" title="Abrir em tela cheia" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;border-radius:6px;display:flex;align-items:center;transition:all .15s" onmouseover="this.style.color='var(--blue-mid)';this.style.background='var(--bg2)'" onmouseout="this.style.color='var(--text3)';this.style.background='none'"><i class="ti ti-arrows-maximize" style="font-size:16px"></i></button>
         <button id="m-foco-btn" onclick="_toggleFocoDoEdit()" title="Definir como foco do dia" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;border-radius:6px;display:flex;align-items:center;transition:all .15s" onmouseover="if(this.title.indexOf('ativo')<0){this.style.color='var(--blue-mid)';this.style.background='var(--bg2)'}" onmouseout="if(this.title.indexOf('ativo')<0){this.style.color='var(--text3)';this.style.background='none'}"><i class="ti ti-target" style="font-size:17px"></i></button>
         <span id="m-header-acoes" style="display:inline-flex;align-items:center;gap:2px"></span>
         <button onclick="delFromModal()" title="Mover para lixeira" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;border-radius:6px;display:flex;align-items:center;transition:all .15s" onmouseover="this.style.color='var(--danger,#a32d2d)';this.style.background='var(--danger-bg,#fcebeb)'" onmouseout="this.style.color='var(--text3)';this.style.background='none'"><i class="ti ti-trash" style="font-size:17px"></i></button>
@@ -20107,6 +20115,7 @@ function tableRowHTML(t, opts){
   // Coluna Ações
   const hasAttach = t.attachment;
   const actionsCell = `<td class="tt-col-actions">
+    <button class="tt-act-btn" onclick="event.stopPropagation();openTaskFocus(${t.id})" title="Abrir em tela cheia"><i class="ti ti-arrows-maximize"></i></button>
     <button class="tt-act-btn" onclick="event.stopPropagation();openEdit(${t.id})" title="Editar"><i class="ti ti-pencil"></i></button>
     <button class="tt-act-btn del" onclick="event.stopPropagation();del(${t.id})" title="Excluir"><i class="ti ti-trash"></i></button>
   </td>`;
@@ -21519,9 +21528,20 @@ function closeModalDirect(){
     } else if(dt){ delete dt._novaDraft; }
   }
   document.getElementById('edit-modal').classList.remove('open');
+  document.body.classList.remove('task-focus'); _setTaskFocusIcon(false); // não vaza o modo foco pro próximo open
   editingId=null;
   if(_draftId && typeof render==='function') render(); // atualiza a lista (some o rascunho, ou aparece a nova tarefa)
 }
+// ── PAINEL DA TAREFA (modo foco / tela cheia) ──────────────────────────────────
+// Reusa o MESMO #edit-modal (nada duplicado): openTaskFocus abre a tarefa e liga body.task-focus,
+// que o CSS transforma em tela cheia. O ⛶ do header alterna; fechar/Sair limpa o estado.
+function _setTaskFocusIcon(on){
+  const b=document.getElementById('m-fs-btn'); if(!b) return;
+  b.innerHTML='<i class="ti '+(on?'ti-arrows-minimize':'ti-arrows-maximize')+'" style="font-size:16px"></i>';
+  b.title=on?'Sair da tela cheia':'Abrir em tela cheia';
+}
+function _toggleTaskFocus(){ const on=document.body.classList.toggle('task-focus'); _setTaskFocusIcon(on); }
+function openTaskFocus(id){ if(typeof openEdit==='function') openEdit(id); document.body.classList.add('task-focus'); _setTaskFocusIcon(true); }
 
 // FAB "Nova tarefa": cria uma tarefa RASCUNHO e abre o MESMO modal completo de editar.
 function abrirNovaTarefaCompleta(){
@@ -29467,7 +29487,7 @@ document.addEventListener('keydown',e=>{
     const imgOverlay=document.getElementById('img-overlay');
     if(activeProjectId){if(sidebarPersonId){activeProjectId=null;render();}else{closeProjectView();}return;}
     if(noteModal?.classList.contains('open')){closeNoteModalDirect();return;}
-    if(editModal?.classList.contains('open')){closeModalDirect();return;}
+    if(editModal?.classList.contains('open')){ if(document.body.classList.contains('task-focus')){_toggleTaskFocus();return;} closeModalDirect();return;}
     if(taskModal?.classList.contains('open')){closeTaskModalDirect();return;}
     if(imgOverlay?.classList.contains('open')){closeImgOverlay();return;}
     closeGlobalPanel();
