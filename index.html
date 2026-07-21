@@ -7444,10 +7444,22 @@ function _orcImportarSalvar(){
     o.id=_mntId('or');
     if(!Array.isArray(o.campos)) o.campos=[];
     if(!Array.isArray(o.cotacoes)) o.cotacoes=[];
-    o.cotacoes.forEach(c=>{ if(!c.id) c.id=_mntId('ct'); if(!c.extra || typeof c.extra!=='object') c.extra={}; });
+    if(!Array.isArray(o.itens)) o.itens=[]; // itens em formato inesperado quebrava o editor (reduce em string)
+    // Regenera TODOS os ids (cotacao/item/campo) — id colado entrava CRU em onclick/oninput (XSS via
+    // Importar). Remapeia as referências que usam esses ids como CHAVE (itensVals por item, extra por
+    // campo) e o escolhidoId (por cotacao).
+    const mapItem={}, mapCampo={}, mapCot={};
+    o.itens.forEach(it=>{ if(!it||typeof it!=='object') return; const novo=_mntId('it'); mapItem[it.id]=novo; it.id=novo; });
+    o.campos.forEach(cp=>{ if(!cp||typeof cp!=='object') return; const novo=_mntId('cp'); mapCampo[cp.id]=novo; cp.id=novo; });
+    o.cotacoes.forEach(c=>{
+      const novo=_mntId('ct'); mapCot[c.id]=novo; c.id=novo;
+      if(!c.extra || typeof c.extra!=='object') c.extra={};
+      else { const ne={}; Object.keys(c.extra).forEach(k=>{ if(mapCampo[k]!==undefined) ne[mapCampo[k]]=c.extra[k]; }); c.extra=ne; }
+      if(c.itensVals && typeof c.itensVals==='object'){ const nv={}; Object.keys(c.itensVals).forEach(k=>{ if(mapItem[k]!==undefined) nv[mapItem[k]]=c.itensVals[k]; }); c.itensVals=nv; }
+    });
+    o.escolhidoId=(o.escolhidoId!=null && mapCot[o.escolhidoId]!==undefined)?mapCot[o.escolhidoId]:null;
     if(!o.data) o.data=today;
     if(!o.status) o.status='aberto';
-    o.escolhidoId=o.escolhidoId||null;
     orcamentos.push(o);
   });
   saveOrcamentos();
@@ -35205,11 +35217,14 @@ setTimeout(function(){
       if(!noteId) return;
       setTimeout(function(){
         confirmSimples('Excluir a anotação original que virou tarefa?', function(){
+          // Passa pela Lixeira (era exclusão definitiva) — coerente com as outras exclusões de nota.
+          var _n = (typeof notes!=='undefined') && notes.find(function(x){ return x.id===noteId; });
+          if(_n && typeof moveToTrash==='function') moveToTrash('note', Object.assign({}, _n));
           if(typeof notes!=='undefined') notes = notes.filter(function(x){ return x.id!==noteId; });
           if(typeof deleteNote_db==='function') deleteNote_db(noteId);
           if(typeof closeNoteModalDirect==='function') closeNoteModalDirect();
           try{ renderNotes(); }catch(e){}
-          try{ toast('🗑 Anotação excluída'); }catch(e){}
+          try{ if(typeof _mostrarFABDesfazer==='function') _mostrarFABDesfazer('Anotação excluída', 0); else toast('🗑 Anotação excluída'); }catch(e){}
         });
       }, 200);
     };
@@ -35219,6 +35234,9 @@ function exportarDadosJSON(){
   var data = {};
   try{
     for(var key of safeLSKeys()){
+      // NÃO exporta o token de sessão do Supabase (sb-<ref>-auth-token) — o backup vai p/ outro PC
+      // e não deve carregar credenciais de sessão. Idem o carimbo de sync (é por-aparelho).
+      if(/^sb-/.test(key) || key.indexOf('supabase')>-1 || key==='taskflow__cloud_synced_ts') continue;
       var raw = safeLSGet(key);
       try{ data[key] = JSON.parse(raw); }catch(e){ data[key] = raw; }
     }
