@@ -26169,37 +26169,36 @@ function renderProjectProVisao(p, prog){
         const resto=pend.filter(t=>et.get(t.id)>etAtual);
         const proxEt=resto.length?Math.min.apply(null,resto.map(t=>et.get(t.id))):null;
         const proximas=proxEt!==null?resto.filter(t=>et.get(t.id)===proxEt):[];
-        const cardsAgora=agora.map(t=>{
-          const st=_ppStatus(t,ord,et), atr=st.estado==='atrasada', setor=_setor(t);
-          const pill=atr
-            ? `<span style="font-size:10.5px;font-weight:700;color:var(--danger);background:color-mix(in srgb,var(--danger) 14%,transparent);padding:3px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ti-alarm" style="font-size:12px"></i>Atrasada${st.deadline?' · venceu '+formatDate(st.deadline):''}</span>`
-            : `<span style="font-size:10.5px;font-weight:700;color:var(--orange);background:color-mix(in srgb,var(--orange) 14%,transparent);padding:3px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ti-player-play-filled" style="font-size:11px"></i>Em andamento${st.deadline?' · até '+formatDate(st.deadline):''}</span>`;
-          // (jul/2026) Sem CARD: eram caixas com borda por tarefa, pesando a coluna. Agora é só
-          // texto — número da etapa, título, executor/setor e o pill de estado.
+        // (jul/2026, Diego) SEM fundo único (_ppBloco): o header "Acontecendo agora" + o nome da fase
+        // + a(s) tarefa(s) ATRASADA(s) ficam soltos no painel; "Em andamento" e "Próximas a liberar"
+        // viram DOIS cards separados (superfície do tema). Ficou mais leve de ler.
+        const _rowMeta=(t)=>`${_exec(t)}${_setor(t)?' · '+_setor(t):''}`;
+        const atrasadas=agora.filter(t=>_ppStatus(t,ord,et).estado==='atrasada');
+        const emAndamento=agora.filter(t=>_ppStatus(t,ord,et).estado!=='atrasada');
+        const rowAtrasada=(t)=>{
+          const st=_ppStatus(t,ord,et);
+          const pill=`<span style="font-size:10.5px;font-weight:700;color:var(--danger);background:color-mix(in srgb,var(--danger) 14%,transparent);padding:3px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ti-alarm" style="font-size:12px"></i>Atrasada${st.deadline?' · venceu '+formatDate(st.deadline):''}</span>`;
           return `<div onclick="setProjectProTab('tarefas')" style="display:grid;grid-template-columns:30px minmax(0,1fr);gap:9px;align-items:start;padding:7px 0;cursor:pointer">
             <span style="font-size:11px;font-weight:800;color:var(--text3);margin-top:2px;text-align:center">${num.get(t.id)||''}</span>
             <div style="min-width:0">
               <div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3">${escapeHTML(t.title)}</div>
-              <div style="font-size:11.5px;color:var(--text3);margin-top:2px">${_exec(t)}${setor?' · '+setor:''}</div>
+              <div style="font-size:11.5px;color:var(--text3);margin-top:2px">${_rowMeta(t)}</div>
               <div style="margin-top:5px">${pill}</div>
             </div>
           </div>`;
-        }).join('');
+        };
+        const rowAndamento=(t)=>`<div onclick="setProjectProTab('tarefas')" style="display:grid;grid-template-columns:18px minmax(0,1fr);gap:9px;align-items:start;padding:7px 0;cursor:pointer"><i class="ti ti-loader-2" style="font-size:14px;color:var(--orange);margin-top:2px"></i><div style="min-width:0"><div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3">${escapeHTML(t.title)}</div><div style="font-size:11.5px;color:var(--text3);margin-top:2px">${_rowMeta(t)}</div></div></div>`;
+        const rowProx=(t)=>`<div style="display:grid;grid-template-columns:18px minmax(0,1fr);gap:9px;align-items:start;padding:6px 0"><i class="ti ti-lock" style="font-size:13px;color:var(--text3);margin-top:2px"></i><div style="min-width:0"><div style="font-size:12.5px;color:var(--text)">${escapeHTML(t.title)}</div><div style="font-size:11px;color:var(--text3)">${_rowMeta(t)}</div></div></div>`;
+        const _cardTit=(icon,txt)=>`<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="ti ${icon}" style="font-size:14px"></i>${txt}</div>`;
         const faseAtualNome=(()=>{ const t0=agora[0]; if(!t0)return ''; const f=(p.fases||[]).find(f=>f.id===t0.projectProFaseId); return f?escapeHTML(f.nome):''; })();
-        const listaProx=proximas.map(t=>`<div style="display:grid;grid-template-columns:30px minmax(0,1fr);gap:9px;align-items:start;padding:6px 0"><i class="ti ti-lock" style="font-size:13px;color:var(--text3);text-align:center;margin-top:2px"></i><div style="min-width:0"><div style="font-size:12.5px;color:var(--text)">${escapeHTML(t.title)}</div><div style="font-size:11px;color:var(--text3)">${_exec(t)}${_setor(t)?' · '+_setor(t):''}</div></div></div>`).join('');
-        const faixaInf=proximas.length?`<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="ti ti-arrow-bar-to-down" style="font-size:14px"></i>Próximas a liberar</div><div style="display:grid;grid-template-columns:1fr;gap:8px">${listaProx}</div></div>`:'';
-        // Um bloco só (superfície do tema) com título + tarefas de agora + próximas a liberar —
-        // em vez de uma caixa por tarefa (pesado) ou texto solto no fundo da página (sem acabamento).
-        // Recolhível: fechado, o resumo do cabeçalho já diz a etapa e a tarefa da vez.
+        const _cardSurf='background:var(--surface-painel);border:1px solid var(--border);border-radius:12px;padding:11px 13px;margin-top:12px';
+        // Seção solta (sem card): nome da fase + atrasada(s).
+        const secTopo=`<div style="margin-top:10px">${faseAtualNome?`<div style="font-size:11px;color:var(--text3);margin-bottom:6px">${faseAtualNome}</div>`:''}${atrasadas.length?`<div style="display:flex;flex-direction:column;gap:2px">${atrasadas.map(rowAtrasada).join('')}</div>`:''}</div>`;
+        const cardAndamento=emAndamento.length?`<div style="${_cardSurf}">${_cardTit('ti-player-play','Em andamento')}<div style="display:flex;flex-direction:column;gap:2px">${emAndamento.map(rowAndamento).join('')}</div></div>`:'';
+        const cardProx=proximas.length?`<div style="${_cardSurf}">${_cardTit('ti-arrow-bar-to-down','Próximas a liberar')}<div style="display:flex;flex-direction:column;gap:2px">${proximas.map(rowProx).join('')}</div></div>`:'';
         const _abAgora=_ppCardAberto(p.id,'agora');
         const _resumoAgora=`Etapa ${etAtual} de ${totalEt}${agora.length===1?' · '+escapeHTML(agora[0].title):' · '+agora.length+' em curso'}`;
-        comandoBloco=_ppBloco(`
-          ${_ppCardHead(p.id,'agora','ti-player-play-filled','Acontecendo agora',_resumoAgora,_abAgora)}
-          ${_abAgora?`<div style="margin-top:10px">
-            ${faseAtualNome?`<div style="font-size:11px;color:var(--text3);margin-bottom:6px">${faseAtualNome}</div>`:''}
-            <div style="display:flex;flex-direction:column;gap:2px">${cardsAgora}</div>
-            ${faixaInf}
-          </div>`:''}`);
+        comandoBloco=`<div style="margin-bottom:16px">${_ppCardHead(p.id,'agora','ti-player-play-filled','Acontecendo agora',_resumoAgora,_abAgora)}${_abAgora?`${secTopo}${cardAndamento}${cardProx}`:''}</div>`;
       } else if(ord.length){
         comandoBloco=`<div style="margin-bottom:16px;background:color-mix(in srgb,var(--success) 8%,var(--card));border:1px solid color-mix(in srgb,var(--success) 30%,var(--border));border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:11px"><i class="ti ti-circle-check" style="font-size:22px;color:var(--success)"></i><div><div style="font-size:13.5px;font-weight:800;color:var(--text)">Todas as tarefas concluídas</div><div style="font-size:12px;color:var(--text3)">O projeto está pronto para ser encerrado.</div></div></div>`;
       }
