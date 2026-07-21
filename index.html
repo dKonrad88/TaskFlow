@@ -3460,7 +3460,7 @@
       </div>
 
       <div class="note-modal-body">
-        <div id="nmo-body" class="note-modal-textarea" contenteditable="true" style="outline:none;min-height:300px" placeholder="Escreva aqui..."></div>
+        <div id="nmo-body" class="note-modal-textarea" contenteditable="true" onpaste="_onEditorPaste(event)" style="outline:none;min-height:300px" placeholder="Escreva aqui..."></div>
       </div>
       <div class="note-modal-footer">
         <span style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Cor:</span>
@@ -6855,6 +6855,10 @@ function _pcpCalc(it){
   const alvo=_pcpNum(pcpDdvAlvo);
   const sug=(hasMdv&&!isNaN(alvo))?Math.max(0,Math.round(alvo*mdv-saldo)):null;
   const hasAny=['estoque','pedido','opoc','maras'].some(f=>!isNaN(_pcpNum(it[f])));
+  // Sem NENHUM dado de estoque, DDV/Sugestão não têm significado (saldo cai p/ 0 e o item viraria
+  // RUPTURA fantasma, entrando nos KPIs e nas Ordens de Produção). Retorna "sem dado" (NaN/null) →
+  // o HTML mostra "—" e o semáforo/contagem não o tratam como ruptura.
+  if(!hasAny) return {saldo, ddv:NaN, ddvsop:NaN, sug:null, mdv, hasAny};
   return {saldo,ddv,ddvsop,sug,mdv,hasAny};
 }
 function _pcpFmt(v,dec){ if(v==null||isNaN(v)) return '—'; return Number(v).toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
@@ -8189,7 +8193,7 @@ function renderPCM(){
   const corrConcl=concl.filter(o=>o.tipo==='corretiva');
   const baseM=(corrConcl.length?corrConcl:concl).map(o=>_num(o.tempoParada)).filter(v=>v!=null);
   const mttr=baseM.length?(baseM.reduce((s,v)=>s+v,0)/baseM.length):null;
-  const custoTotal=os.reduce((s,o)=>s+_osCusto(o),0);
+  const custoTotal=os.filter(o=>o.status!=='cancelada').reduce((s,o)=>s+_osCusto(o),0); // OS cancelada nao entra no custo real
   let planTot=0, planAtras=0; eqs.forEach(e=>(e.planos||[]).forEach(p=>{ const px=_planoProxima(p); if(px){ planTot++; if(new Date(px+'T00:00:00')<new Date(today+'T00:00:00')) planAtras++; } }));
   const aderencia=planTot?Math.round((1-planAtras/planTot)*100):100;
   const critCount={A:0,B:0,C:0}; eqs.forEach(e=>{ if(critCount[e.criticidade]!=null) critCount[e.criticidade]++; });
@@ -19140,7 +19144,7 @@ function calDragStart(e,compId){
       if(iso){
         if(_drag.dup){
           // Alt+arrastar → cria cópia na nova posição, mantém o original
-          const copia={...comp,id:Date.now()+'',data:iso,horaInicio:_minToHora(_drag.targetStartMin),horaFim:_minToHora(_drag.targetEndMin),criadoEm:new Date().toISOString()};
+          const copia={...comp,id:Date.now()+'-'+Math.random().toString(36).slice(2,7),data:iso,horaInicio:_minToHora(_drag.targetStartMin),horaFim:_minToHora(_drag.targetEndMin),criadoEm:new Date().toISOString()};
           saveCompromisso_db(copia);
           renderSidebar();
           renderAgenda();
@@ -19234,7 +19238,7 @@ function duplicarCompromisso(id){
   const item=compromissos.find(x=>x.id===id);
   if(!item) return;
   // Cria cópia como NOVO compromisso (mesmos dados, novo id) e abre pra edição
-  const copia={...item,id:Date.now()+'',titulo:(item.titulo||'')+' (cópia)',criadoEm:new Date().toISOString()};
+  const copia={...item,id:Date.now()+'-'+Math.random().toString(36).slice(2,7),titulo:(item.titulo||'')+' (cópia)',criadoEm:new Date().toISOString()};
   saveCompromisso_db(copia);
   fecharCompromissoModal();
   render();
@@ -19304,7 +19308,7 @@ function renderListaCompromissos(){
 function duplicarCompromissoNaLista(id){
   const item=compromissos.find(x=>x.id===id);
   if(!item) return;
-  const copia={...item,id:Date.now()+'',titulo:(item.titulo||'')+' (cópia)',criadoEm:new Date().toISOString()};
+  const copia={...item,id:Date.now()+'-'+Math.random().toString(36).slice(2,7),titulo:(item.titulo||'')+' (cópia)',criadoEm:new Date().toISOString()};
   saveCompromisso_db(copia);
   if(currentTab==='agenda') renderAgenda();
   renderListaCompromissos();
@@ -19627,7 +19631,7 @@ function salvarCompromisso(){
   const _cFim=document.getElementById('comp-fim')?.value||'';
   if(_cIni && _cFim && horaToMin(_cFim)<=horaToMin(_cIni)){ toast('⚠️ O horário de término deve ser depois do início'); return; }
   const obj={
-    id:editingCompromissoId||(Date.now()+''),
+    id:editingCompromissoId||(Date.now()+'-'+Math.random().toString(36).slice(2,7)),
     titulo,
     categoria:_catVal,
     data,
@@ -21215,9 +21219,10 @@ function _historyLabel(field, from, to){
     case 'status':  return to==='done'?`<b>concluiu</b> a tarefa`:`<b>reabriu</b> a tarefa`;
     case 'kanban':  return `moveu para coluna <b>${to}</b>`;
     case 'projeto': {
-      const pFrom=projects.find(p=>p.id===from)?.name;
-      const pTo=projects.find(p=>p.id===to)?.name;
-      return `mudou projeto de <b>${pFrom||'nenhum'}</b> para <b>${pTo||'nenhum'}</b>`;
+      // O log grava projectProId (sistema Pro). Buscar em 'projects' (legado, sempre vazio) dava
+      // sempre "nenhum -> nenhum". projectsPro usa 'nome'.
+      const _pn=id=>{ const p=projectsPro.find(x=>x.id===id); return p?(p.nome||p.name):''; };
+      return `mudou projeto de <b>${escapeHTML(_pn(from)||'nenhum')}</b> para <b>${escapeHTML(_pn(to)||'nenhum')}</b>`;
     }
     case 'criado':  return `<b>criou</b> a tarefa`;
     default:        return `alterou <b>${field}</b>`;
@@ -32621,6 +32626,38 @@ function _pautaPrincParaAnotacao(mid){
   const m=meetings.find(x=>x.id===mid); if(!m) return;
   _pautaParaAnotacao(mid, m.pautaPrincipal||'');
 }
+// Sanitiza HTML colado nos editores rich-text (Notas #nmo-body, Anotações #anot-body). Sem isto,
+// colar de uma página web injetava o HTML CRU no contenteditable, salvo verbatim e REINJETADO via
+// innerHTML a cada abertura → <img onerror>/handlers on* executariam. Remove tags perigosas +
+// atributos on* + hrefs javascript:/data:, preservando a formatação básica (negrito/itálico/listas/cor).
+function _sanitizeHTMLPaste(html){
+  const tpl=document.createElement('template');
+  tpl.innerHTML=String(html||'');
+  const BAN=['script','style','iframe','object','embed','link','meta','base','form'];
+  const walker=document.createTreeWalker(tpl.content, NodeFilter.SHOW_ELEMENT, null);
+  const rem=[]; let node;
+  while(node=walker.nextNode()){
+    if(BAN.indexOf(node.tagName.toLowerCase())>-1){ rem.push(node); continue; }
+    Array.prototype.slice.call(node.attributes).forEach(a=>{
+      const n=a.name.toLowerCase(), v=a.value||'';
+      if(n.indexOf('on')===0) node.removeAttribute(a.name);
+      else if((n==='href'||n==='xlink:href') && /^\s*(javascript|data|vbscript):/i.test(v)) node.removeAttribute(a.name);
+      else if(n==='src' && /^\s*(javascript|vbscript):/i.test(v)) node.removeAttribute(a.name);
+      else if(n==='style' && /javascript:/i.test(v)) node.removeAttribute(a.name); // vetor XSS real no style
+    });
+  }
+  rem.forEach(n=>n.remove());
+  return tpl.innerHTML;
+}
+function _onEditorPaste(e){
+  try{
+    const cd=e.clipboardData||window.clipboardData; if(!cd) return; // sem API → deixa o paste padrão
+    e.preventDefault();
+    const html=cd.getData('text/html');
+    const clean = html ? _sanitizeHTMLPaste(html) : escapeHTML(cd.getData('text/plain')||'').replace(/\n/g,'<br>');
+    document.execCommand('insertHTML', false, clean);
+  }catch(err){ /* deixa o paste padrão */ }
+}
 // Barra + área de digitação. Cores em hex (foreColor não aceita var(--x)); os 5 tons escolhidos
 // têm contraste suficiente no tema claro e no escuro.
 function _reunAnotacoesHTML(m){
@@ -32639,7 +32676,7 @@ function _reunAnotacoesHTML(m){
       <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCorMenu('${m.id}',this)" title="Cor do texto" style="position:relative"><i class="ti ti-palette" style="font-size:14px"></i></button>
       <button class="anot-btn" onmousedown="event.preventDefault()" onclick="_anotCmd('${m.id}','removeFormat')" title="Limpar formatação"><i class="ti ti-clear-formatting" style="font-size:14px"></i></button>
     </div>
-    <div id="anot-body-${m.id}" class="anot-body" contenteditable="true" placeholder="Anote aqui o que precisar durante a reunião..." oninput="_anotSalvarDeb('${m.id}')" onblur="_anotSalvar('${m.id}')" onkeydown="_anotKeydown(event,'${m.id}')" onkeyup="_anotSaveRange('${m.id}')" onmouseup="_anotSaveRange('${m.id}')">${m.anotacoes||''}</div>
+    <div id="anot-body-${m.id}" class="anot-body" contenteditable="true" placeholder="Anote aqui o que precisar durante a reunião..." onpaste="_onEditorPaste(event)" oninput="_anotSalvarDeb('${m.id}')" onblur="_anotSalvar('${m.id}')" onkeydown="_anotKeydown(event,'${m.id}')" onkeyup="_anotSaveRange('${m.id}')" onmouseup="_anotSaveRange('${m.id}')">${m.anotacoes||''}</div>
   </div>`;
 }
 
