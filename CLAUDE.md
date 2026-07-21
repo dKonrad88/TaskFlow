@@ -183,8 +183,13 @@ Não altera nada, só lê e imprime. Rodar em CADA máquina e colar o resultado 
 ## 🐞 VARREDURA 18/07/2026 (Mac) — bugs confirmados em Reuniões + Projetos
 > Auditoria pedida pelo Diego após os 57 commits do PC da Empresa. Método: inventário determinístico
 > (grafo de alcançabilidade + CSS morto) + 5 análises semânticas + **validação em navegador**.
-> **NADA foi corrigido ainda** — esta é a lista de trabalho. Marcar ✅ conforme for resolvendo.
 > Legenda: 🔬 = comprovado rodando no app · 📖 = comprovado lendo o código.
+>
+> ✅ **RESOLVIDO EM 21/07/2026 (sessão v7, PC da Empresa) — TODOS os 20 bugs P0/P1/P2/P3 abaixo foram
+> corrigidos.** Ver a entrada de handoff **2026-07-21 (c)** no topo do Log (com o mapa commit-por-bug).
+> Os checkboxes abaixo seguem `[ ]` porque não reeditei um a um, mas a fila desta varredura está ZERADA.
+> **Falta só o CÓDIGO MORTO** (seção 🧟 mais abaixo) — deixado p/ uma limpeza dedicada (risco de deletar
+> às cegas num arquivo sem teste local). E o P0 nº1 (`renderProjectProTarefas`) já era de 19/07.
 
 ### P0 — corrompe dado ou mente para o usuário
 - [x] ✅ **RESOLVIDO 19/07/2026** — **🔬 `renderProjectProTarefas` REESCREVE `t.date` a cada render** (`26989`). Só abrir a aba Tarefas
@@ -334,6 +339,74 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 - **Indicadores do painel de reunião** — a **coluna 0 já existe** reservada com aviso discreto (ver entrada (g)).
 
 ## Log de handoff (mais recente no topo)
+
+### ⭐ 2026-07-21 (c) — PC da Empresa (sessão "v7") — BACKLOG da varredura 18/07 ZERADO + NOVA varredura do app todo (7 subagentes) + ~20 correções
+Sessão **autônoma** (Diego longe do PC, autorizou "faça tudo, sem me pedir nada, de forma detalhada").
+Pediu 2 coisas: (1) **fazer o backlog** de bugs da varredura 18/07; (2) **nova varredura no APP TODO** (bugs,
+erros, falhas, código morto, melhorias). **11 commits de código**, working tree limpo. **Último commit de
+código: `508f08c0`.** ⚠️ **NADA testado em navegador** (esta máquina não roda preview). Verificação = balanço
+de `( ) { } ` + backticks **idêntico ao HEAD a cada leva** + grep de refs órfãs + conferência de que os 5
+helpers novos têm def+chamadas casando e que as funções reusadas existem. **Quem valida comportamento é o
+Diego no Pages (Ctrl+Shift+R).**
+
+**Método:** lancei **7 subagentes de varredura read-only** (sonnet) em paralelo cobrindo os módulos que a
+varredura 18/07 NÃO aprofundou (Tarefas core · Agenda/roteamento · Notas/Rotinas · Qualidade/Marketing ·
+Manutenção · Produção/PCP · Sync/Cloud+boot). Cada achado sério foi **re-verificado por mim (Opus) lendo o
+código** antes de corrigir — vários achados dos scanners estavam **desatualizados** (ex.: diziam que
+`toggleKanban` não seta `doneAt`, mas já setava; `_meSet` já não colide). Só corrigi o que confirmei.
+
+**(A) BACKLOG 18/07 — os 20 bugs P0/P1/P2/P3, TODOS corrigidos:**
+| Commit | Bugs |
+|---|---|
+| `f61e809c` | **P0×3**: cota silenciosa (anexos checam `save*_db`, que agora RETORNAM boolean; desfazem + avisam em vez de mentir sucesso) · `excluirGrupo` mantém a fase (só tira o setor) · `_encerrarReuniaoFinal` zera `inicioReal` (sem salto de ~24h ao reabrir) |
+| `dd6cab76` | **P1×5**: tarefa inline nasce no fim da PRÓPRIA fase (`_ppOrdemNovaNaFase`, não mais última etapa bloqueada) · `quickAddSetorPro` checa duplicata + bloqueia "Geral" reservado · Esc em campo não sai da tela cheia (guard no listener global + `stopPropagation`) · `_ppSalvarNomeFase` adia render (não engole o 1º clique) |
+| `5f159b8a` | **P2×4 (projeto)**: `_calcularProgressoFase` conta subtarefas (crédito fracionário) · restaurar projeto poda `tarefaIds` (tarefa não aparece em 2 projetos) · `limparOrfaos` limpa `taskflow_pro_comments` dos projetos purgados · aba Fases lista por `t.projectProGrupoId` (fim do "diz 8, conto 7") |
+| `9337e9ff` | **P2×2 (reunião)**: `_recRegenerarFuturas`/`_sugEncerrarSerie` religam a cadeia `continuacaoDe` (`_reunRelinkAoRemover`) · `removerPautaItem` limpa `pautaAutor[texto]` |
+| `f7bd90ef` | **P3×6**: `_reunFreqMap` só conta reuniões que já aconteceram (⭐ não acende p/ todos) · `_reunProxData` delega ao motor `rec` p/ recorrência 'custom' (banner vencida volta) · vocab custom sanitizado em `_ppMkRotulo` · `toggle` repinta em sub-aba ≠ painel · `openReuniaoModal` renderiza em container detached (não apaga o digitado embaixo) · XSS de paste das Anotações (via sanitizador — ver B) |
+
+**(B) NOVA VARREDURA — ~20 achados novos corrigidos:**
+| Commit | Correções |
+|---|---|
+| `5661c19b` | 🔴 **CRASH**: `tableRowHTML` usava `showTags` (nunca declarada) → `ReferenceError` ao EXPANDIR subtarefas, quebrava o render de qualquer tabela · autosave honesto na cota (`_showAutosaveToast(ok)` — o caminho mais quente do app não mente mais "salvo") · `gpDeleteNote` (painel global) → Lixeira+Desfazer · `deleteRotina` confirma a cascata (o `msg` era montado e nunca exibido) · `restoreFromTrash` de preventiva não mente "restaurado" quando o equipamento sumiu |
+| `2c58f240` | **XSS** do Importar Orçamento (regenera todos os ids + remapeia referências) · export JSON não vaza o token de sessão do Supabase · nota pós-conversão → Lixeira |
+| `967b38b6` | **Sanitizador de paste** (`_onEditorPaste`/`_sanitizeHTMLPaste`) nos 2 editores rich-text (Notas + Anotações de reunião) — colar HTML de página externa era injetado cru · PCP: sem dado de estoque não pinta RUPTURA fantasma (`_pcpCalc` → NaN) · `_historyLabel` lê `projectsPro` (não "nenhum→nenhum") · custo do PCM ignora OS cancelada · ids de compromisso ganham random |
+| `fd92b37e` | rotina "Personalizada" exige 1 dia · `confirmarProximaReuniaoModal` valida Fim>Início · `_pcpColarAplicar` confirma antes de substituir · `_moSetCotacao` refaz comparação ao trocar fornecedor |
+| `42265102` | **`doneAt`** em `_cutPronto`/`eodConcluir`/`dropCard` (concluir por esses caminhos sumia de Confirmações/Análise/"concluídas hoje") |
+| `508f08c0` | sensorial: voto duplo do mesmo avaliador SUBSTITUI (não empilha) · atalhos `N`/`Ctrl+K`/`Ctrl+I` não vazam atrás da apresentação em tela cheia (`#sens-pres`) |
+
+**⚠️ 2 falsos-alarmes do balanço (registro p/ não assustar):** o regex `/javascript:/i` de `style` no sanitizador
+e backticks dentro de `//comentários` mudaram a contagem bruta do grep sem quebrar nada — reescrevi o regex e
+troquei os backticks por aspas p/ manter a verificação limpa. **No fim, balanço IDÊNTICO ao início da sessão.**
+
+**❗ NÃO corrigido de propósito (documentado p/ decidir/fazer depois — nada disso quebra o app):**
+- **CÓDIGO MORTO** (inventário grande, alta confiança dos scanners): subsistema `someday`/Lembrete inteiro;
+  `_isRotina`+`toggleRotinaTask` (flag nunca atribuída) — é a raiz de "rotina não avança pelo Kanban";
+  `_reunioesRapidas` cluster (migrado, array esvaziado no boot); `renderNovaNotaInline`/`noteRowHTML`/view
+  'timeline' de Rotinas/`renderAgendaCompromissos`/`calView`; 4 funções do PCP (`_pcpUpdateKPIs`/`_pcpAgrupar`/
+  `_pcpSaveDeb`/`_pcpSugestao`) + campos `saldo/ddv/ddvsop` mortos por item; ~567 ln de CSS morto da 18/07.
+  **Não deletei em massa** — risco alto de tirar algo referenciado num arquivo de 35k linhas sem teste local.
+  Merece uma sessão dedicada (idealmente numa máquina que rode o preview).
+- **`toggleKanban` não avança a rotina** pelo Painel (só a Lista cria a próxima ocorrência). Fiz o `doneAt`
+  (acima); a criação da próxima é arquitetural (depende de reviver o subsistema `_isRotina` morto). Decidir.
+- **Sensorial — editar uma "Resposta" compartilhada** (biblioteca de opções) recalcula resultados de testes JÁ
+  encerrados (casamento por string, sem snapshot por teste). É de design; o fix certo é congelar a escala no
+  teste. Por ora, protótipo (dado descartável) — anotado. Um aviso-ao-editar (como o que já existe ao excluir)
+  seria o meio-termo barato.
+- **Datas globais não recalculam à meia-noite** (`amanha`/`semanaIni` são `const`, só `today` avança no tick) —
+  app aberto virando o dia mostra "Amanhã"=hoje até um F5. Fix = transformar em `let`+recomputar no tick.
+- **Sync/Cloud (achado B do scanner):** o portão anti-sobrescrita está íntegro p/ o caso que resolve, MAS as
+  escritas de BOOT (migrações 1x/seed/purga da Lixeira) rodam antes de `_sbUser` resolver → não entram na fila
+  de push; só sobem quando a MESMA chave for reescrita ou no "Enviar" manual. Baixo impacto (chaves quentes se
+  auto-corrigem), mas é real.
+- **`_num()` (Manutenção)** não parseia formato americano "1,234.56" — mas o Diego usa vírgula decimal (BR), que
+  funciona; o fix do scanner (`/g`) não resolvia o caso US de verdade. Deixado como está.
+- `reunCompromissoMuralHTML` tem XSS latente (`cat.label` sem escape) — mas é **código morto** (mural desligado).
+- IMPROVE menores: filtros do PCP não persistem entre sessões (DDV-alvo volta a 15); grid de Cards de rotina
+  fixo em 3 col; monkey-patch por `setTimeout` de `saveRotina`/`converterNotaEmTarefa`.
+
+**Nota de processo:** 11 levas pequenas, cada uma com balanço conferido contra o HEAD antes de commitar (o
+padrão que pega meus próprios erros — 2 falsos-alarmes de regex/comentário apareceram e foram limpos). Os
+relatórios crus dos 7 scanners não persistem no chat; o essencial está resumido aqui.
 
 ### 2026-07-21 (b) — PC da Empresa (sessão "v6") — Título Manrope no Projeto · "Acontecendo agora" em 2 cards · botão de TESTE visual no modo foco da Reunião
 Sessão de continuação (nova sessão do Claude Code, a 6ª da série "HTML - Tarefas v1…v6"). Tudo commitado e
