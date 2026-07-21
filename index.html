@@ -8194,6 +8194,65 @@ function renderMarketing(){
   if(marketingView==='influenciadores') return renderInfluenciadores();
   main.innerHTML=`<div style="padding:20px 4px 40px;">${hubBreadcrumb([{label:'Marketing', onclick:"setMarketingView('influenciadores')"},{label:'Em construção'}])}<h1 style="font-size:23px; font-weight:700; color:var(--text);">Em construção</h1></div>`;
 }
+
+// ── Área COMPRAS ──────────────────────────────────────────────────────
+// Camada de CONSULTA e DECISÃO sobre os dados do ERP (NÃO replica o ERP:
+// OC/NF continuam no ERP). v1 = CASCA: cada aba abre um placeholder do que
+// vai vir. Ver o blueprint (debate de 21/07). Preenchemos aba por aba.
+let comprasView='painel';
+function switchToCompras(){
+  hubView='compras';
+  comprasView='painel';
+  const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
+  renderSidebar(); render();
+}
+function setComprasView(v){
+  hubView='compras'; window._sbOrigemLixCfg=null;
+  comprasView=v;
+  renderSidebar(); renderCompras();
+}
+function renderCompras(){
+  const main=document.getElementById('task-container'); if(!main) return;
+  const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
+  const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
+  const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
+  main.innerHTML=_comprasScaffoldHTML(comprasView);
+}
+function _comprasScaffoldHTML(v){
+  const T={
+    painel:['Painel','A porta de entrada da área — os alertas de todas as telas reunidos num lugar.',
+      ['KPIs de compras do mês','Alertas de reposição (o que comprar agora)','Itens que subiram de preço','Resumo rápido de gasto']],
+    estoque:['Estoque','O que você tem hoje, de relance.',
+      ['Quantidade e valor em estoque','Consumo mensal','Dias em estoque','Última compra e fornecedor','Gráfico de posição (qtd e valor)']],
+    insumos:['Insumos — ficha do item','A página de cada item comprado — a lente do “o quê”.',
+      ['Consumo e custo médio','Estoque em R$ e em quantidade','Dados técnicos e divisão','Histórico de preço','Fornecedores que fornecem o item']],
+    fornecedores:['Fornecedores — ficha do fornecedor','A página de cada fornecedor — a lente do “quem”.',
+      ['Gasto total (curva ABC)','O que compramos dele num período (pré-reunião)','Prazo de pagamento acordado','Prazo de entrega','Itens que fornece e orçamentos']],
+    historico:['Histórico de compras','O livro de NFs — a espinha de dados da área.',
+      ['Planilha: NF, produto, data, qtd, valor unit, custo médio, ICMS…','Gráficos de volume e quantidade','Valor por kg — por compra e mês a mês']],
+    ordens:['Ordens de compra','As OCs, com foco no que importa pra decisão.',
+      ['OCs abertas','Comparação da OC atual com a anterior (subiu/caiu quantos %)','Acompanhamento de entrega']],
+    orcamentos:['Orçamentos','Cotações e negociação — reaproveitando o que já existe hoje na Manutenção.',
+      ['Comparação de cotações lado a lado','Simulador de negociação','Cadastro de fornecedores']],
+    noticias:['Notícias e relevantes','Espaço reservado — montamos o conteúdo depois.',
+      ['Notícias dos itens que acompanhamos','(a definir)']],
+  };
+  const d=T[v]||T.painel;
+  const itens=d[2].map(i=>`<li>${i}</li>`).join('');
+  return `<div style="padding:20px 4px 60px; max-width:920px; margin:0 auto;">
+    ${hubBreadcrumb([{label:'Compras', onclick:"setComprasView('painel')"},{label:d[0]}])}
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:8px 0 4px;">
+      <h1 style="font-size:24px; font-weight:800; letter-spacing:-.02em; color:var(--text); margin:0;">${d[0]}</h1>
+      <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--amber); background:var(--amber-bg); padding:3px 9px; border-radius:999px;">em construção</span>
+    </div>
+    <p style="color:var(--text2); font-size:15px; max-width:62ch; margin:4px 0 22px;">${d[1]}</p>
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px 20px; max-width:560px;">
+      <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--text3); margin-bottom:10px;">O que vai ter aqui</div>
+      <ul style="margin:0; padding-left:18px; color:var(--text2); font-size:14px; line-height:1.9;">${itens}</ul>
+    </div>
+  </div>`;
+}
+
 function _influSubTabsHTML(){
   _mktLoad();
   const nEmb=(embaixadoras||[]).length;
@@ -10005,7 +10064,18 @@ function renderSidebar(){
   const _pv=(typeof producaoView!=='undefined')?producaoView:'';
   const _kv=(typeof marketingView!=='undefined')?marketingView:'';
   const _qv=(typeof qualidadeView!=='undefined')?qualidadeView:'';
+  const _cv=(typeof comprasView!=='undefined')?comprasView:'';
   const areasHTML = hubGroupDivider('ÁREAS')
+    + grupo('compras','ti-shopping-cart','Compras',
+        _areaItem('compras',_cv,'painel','ti-layout-dashboard','Painel','setComprasView') +
+        _areaItem('compras',_cv,'estoque','ti-packages','Estoque','setComprasView') +
+        _areaItem('compras',_cv,'insumos','ti-cube','Insumos','setComprasView') +
+        _areaItem('compras',_cv,'fornecedores','ti-building-store','Fornecedores','setComprasView') +
+        _areaItem('compras',_cv,'historico','ti-file-invoice','Histórico de compras','setComprasView') +
+        _areaItem('compras',_cv,'ordens','ti-clipboard-list','Ordens de compra','setComprasView') +
+        _areaItem('compras',_cv,'orcamentos','ti-report-money','Orçamentos','setComprasView') +
+        _areaItem('compras',_cv,'noticias','ti-news','Notícias','setComprasView')
+      , 'var(--text2)')
     + grupo('manutencao','ti-tool','Manutenção',
         _areaItem('manutencao',_mv,'pcm','ti-chart-arcs','Painel PCM','setManutencaoView') +
         _areaItem('manutencao',_mv,'ordens','ti-clipboard-list','Ordens de Serviço','setManutencaoView') +
@@ -16179,6 +16249,10 @@ function render(){
   // MODO HUB: renderizar Meu dia! quando hubView === 'meudia'
   if(hubView === 'meudia'){
     renderMeuDia();
+    return;
+  }
+  if(hubView === 'compras'){
+    renderCompras();
     return;
   }
   if(hubView === 'producao'){
