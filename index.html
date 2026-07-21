@@ -25108,11 +25108,11 @@ function _projFocusRailHTML(p){
   const _podeAlt=p.status!=='concluido'&&p.status!=='arquivado';
   return `<div class="proj-focus-rail">
     <button class="proj-rail-btn" onclick="setProjectProTab('visao')" style="${A('visao')}" title="Painel — visão geral do projeto"><i class="ti ti-layout-dashboard"></i><span>Painel</span></button>
+    <button class="proj-rail-btn" onclick="setProjectProTab('pessoas')" style="${A('pessoas')}" title="Pessoas — equipe do projeto"><i class="ti ti-users"></i><span>Pessoas</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('fases')" style="${A('fases')}" title="${_ppRot(p,1,true)}"><i class="ti ti-layout-rows"></i><span>${_ppRot(p,1,true)}</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('tarefas')" style="${A('tarefas')}" title="Tarefas"><i class="ti ti-checklist"></i><span>Tarefas</span></button>
-    <button class="proj-rail-btn" onclick="setProjectProTab('pessoas')" style="${A('pessoas')}" title="Pessoas — equipe do projeto"><i class="ti ti-users"></i><span>Pessoas</span></button>
-    <button class="proj-rail-btn" onclick="setProjectProTab('anotacoes')" style="${A('anotacoes')}" title="Comentários"><i class="ti ti-message-circle"></i><span>Comentários</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('anexos')" style="${A('anexos')}" title="Anexos do projeto"><i class="ti ti-paperclip"></i><span>Anexos</span></button>
+    <button class="proj-rail-btn" onclick="setProjectProTab('anotacoes')" style="${A('anotacoes')}" title="Comentários"><i class="ti ti-message-circle"></i><span>Comentários</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('analise')" style="${A('analise')}" title="Análise"><i class="ti ti-chart-arcs"></i><span>Análise</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('info')" style="${A('info')}" title="Info — detalhes do projeto"><i class="ti ti-info-circle"></i><span>Info</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('editar')" style="${A('editar')}" title="Editar projeto (nome, prazo, cor)"><i class="ti ti-pencil"></i><span>Editar</span></button>
@@ -25851,15 +25851,19 @@ function renderProjectProView(id){
   // TRABALHO (Painel · Fases · Tarefas) → EQUIPE (Pessoas) → REGISTRO (Comentários · Anexos)
   // → CONSULTA (Análise) → REFERÊNCIA (Info). Info desceu: é dado fixo, consultado raramente.
   const _nAnex=(p.anexos||[]).length;
+  // ORDEM (jul/2026, Diego): Painel · Pessoas · Fases · Tarefas · Anexos · Comentários ·
+  // Análise · Info · Editar. Editar entrou como ABA (saiu do grupo de ícones à direita).
+  // Manter IDÊNTICA à trilha do foco (_projFocusRailHTML).
   const subTabs = [
     {id:'visao',     label:'Painel',      icon:'ti-layout-dashboard'},
+    {id:'pessoas',   label:'Pessoas',     icon:'ti-users'},
     {id:'fases',     label:_ppRot(p,1,true), icon:'ti-layout-rows'},
     {id:'tarefas',   label:'Tarefas',     icon:'ti-checklist'},
-    {id:'pessoas',   label:'Pessoas',     icon:'ti-users'},
-    {id:'anotacoes', label:'Comentários'+(_nComs?` (${_nComs})`:''), icon:'ti-message-circle'},
     {id:'anexos',    label:'Anexos'+(_nAnex?` (${_nAnex})`:''), icon:'ti-paperclip'},
+    {id:'anotacoes', label:'Comentários'+(_nComs?` (${_nComs})`:''), icon:'ti-message-circle'},
     {id:'analise',   label:'Análise',     icon:'ti-chart-arcs'},
     {id:'info',      label:'Info',        icon:'ti-info-circle'},
+    {id:'editar',    label:'Editar',      icon:'ti-pencil'},
   ];
   // (jul/2026) Progresso + ícones desceram do canto do header p/ ESTA linha, à direita das abas —
   // mesmo arranjo do Painel de Reunião. O wrapper .proj-subtabs-wrap também some no modo foco
@@ -25872,12 +25876,12 @@ function renderProjectProView(id){
           <i class="ti ${t.icon}"></i> ${t.label}
         </button>`).join('')}
       </div>
+      <!-- Ícones do fim (jul/2026, Diego): buscar · expandir · salvar como modelo. Editar virou ABA. -->
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;margin-bottom:6px">
         ${_ppBuscaBtnHTML(p)}
         <button class="reun-ico" onclick="_toggleProjFocus()" title="Abrir em tela cheia (modo foco)"><i class="ti ti-arrows-maximize"></i></button>
         ${ajudaIconHTML}
-        <button class="reun-ico" onclick="salvarProjetoComoTemplate('${p.id}')" title="Salvar como template"><i class="ti ti-template"></i></button>
-        <button class="reun-ico" onclick="setProjectProTab('editar')" title="Editar projeto" style="${activeProjectProTab==='editar'?'border-color:var(--blue-mid);color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 10%,transparent)':''}"><i class="ti ti-pencil"></i></button>
+        <button class="reun-ico" onclick="salvarProjetoComoTemplate('${p.id}')" title="Salvar como modelo"><i class="ti ti-template"></i></button>
       </div>
     </div>`;
 
