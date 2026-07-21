@@ -1274,12 +1274,23 @@
   /* Sidebar cinza com border-radius no canto inferior direito */
   #edit-modal .modal-col-right{border-radius:0 0 14px 0}
 
-  /* ── PAINEL DA TAREFA (modo foco / tela cheia) — restyle do próprio #edit-modal, sem render novo ──
-     Reusa 100% do modal 2-col (esquerda = título/desc/subtarefas/comentários · direita = metadados/
-     anexos/histórico); só tira o "modal flutuante" e faz ocupar a tela toda. */
-  body.task-focus #edit-modal{padding:0;background:var(--bg)}
-  body.task-focus #edit-modal .modal.modal-2col{max-width:none;width:100vw;height:100vh;max-height:100vh;border-radius:0}
-  body.task-focus #edit-modal .modal-col-right{border-radius:0}
+  /* ── PAINEL DA TAREFA (modo foco / tela cheia) — painel PRÓPRIO, no padrão do Painel de Reunião ──
+     Trilha lateral + header + cards (Descrição · Detalhes · Checklist c/ sub-checklist · Comentários ·
+     Anexos · Histórico). Renderiza em #task-container (renderTaskFocus). Espelha body.reun-focus. */
+  body.task-focus .hdr,body.task-focus .sidebar,body.task-focus #sidebar-resizer,body.task-focus .sidebar-resizer,body.task-focus .topbar{display:none!important}
+  body.task-focus #task-container{position:fixed;inset:0;z-index:500;overflow-y:auto;overflow-x:hidden;background:var(--bg);padding:0}
+  .tf-rail{display:flex;flex-direction:column;align-items:center;gap:3px;position:fixed;left:0;top:0;bottom:0;width:74px;background:var(--card);border-right:1px solid var(--border);padding:12px 0;z-index:70;overflow-y:auto;scrollbar-width:none}
+  .tf-rail::-webkit-scrollbar{display:none}
+  .tf-rail-btn{display:flex;flex-direction:column;align-items:center;gap:3px;width:60px;padding:8px 0;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s;flex-shrink:0}
+  .tf-rail-btn:hover{background:var(--bg2);color:var(--blue-mid)}
+  .tf-rail-btn i{font-size:19px}
+  .tf-rail-btn span{font-size:8.5px;font-weight:600;text-align:center;line-height:1.1}
+  .tf-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:60;background:var(--card);border-bottom:1px solid var(--border);padding:11px 30px;margin:0 -30px 22px}
+  .tf-wrap{margin-left:74px;padding:6px 30px 44px}
+  .tf-grid{display:grid;grid-template-columns:minmax(0,0.9fr) minmax(0,1.2fr) minmax(0,0.95fr);gap:14px;align-items:start;max-width:1500px;margin:0 auto}
+  @media(max-width:1080px){.tf-grid{grid-template-columns:1fr}}
+  .tf-col{display:flex;flex-direction:column;gap:14px;min-width:0}
+  .tf-card-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:9px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 
   /* ── Estilo Todoist ESQUERDA: título grande, descrição inline ── */
   .td-title-input{font:inherit;background:transparent;border:none;outline:none;width:100%;font-size:19px;font-weight:700;color:var(--text);padding:2px 0;line-height:1.3;resize:none;overflow:hidden;display:block}
@@ -2450,7 +2461,7 @@
           <span id="tt-chip-text"></span>
         </div>
         
-        <button id="m-fs-btn" onclick="_toggleTaskFocus()" title="Abrir em tela cheia" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;border-radius:6px;display:flex;align-items:center;transition:all .15s" onmouseover="this.style.color='var(--blue-mid)';this.style.background='var(--bg2)'" onmouseout="this.style.color='var(--text3)';this.style.background='none'"><i class="ti ti-arrows-maximize" style="font-size:16px"></i></button>
+        <button id="m-fs-btn" onclick="openTaskFocus(editingId)" title="Abrir em tela cheia" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;border-radius:6px;display:flex;align-items:center;transition:all .15s" onmouseover="this.style.color='var(--blue-mid)';this.style.background='var(--bg2)'" onmouseout="this.style.color='var(--text3)';this.style.background='none'"><i class="ti ti-arrows-maximize" style="font-size:16px"></i></button>
         <button id="m-foco-btn" onclick="_toggleFocoDoEdit()" title="Definir como foco do dia" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;border-radius:6px;display:flex;align-items:center;transition:all .15s" onmouseover="if(this.title.indexOf('ativo')<0){this.style.color='var(--blue-mid)';this.style.background='var(--bg2)'}" onmouseout="if(this.title.indexOf('ativo')<0){this.style.color='var(--text3)';this.style.background='none'}"><i class="ti ti-target" style="font-size:17px"></i></button>
         <span id="m-header-acoes" style="display:inline-flex;align-items:center;gap:2px"></span>
         <button onclick="delFromModal()" title="Mover para lixeira" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;border-radius:6px;display:flex;align-items:center;transition:all .15s" onmouseover="this.style.color='var(--danger,#a32d2d)';this.style.background='var(--danger-bg,#fcebeb)'" onmouseout="this.style.color='var(--text3)';this.style.background='none'"><i class="ti ti-trash" style="font-size:17px"></i></button>
@@ -15163,6 +15174,7 @@ function setTab(tab,el){
   window._activeReuniaoId=null; // ao navegar por aba, fecha o Painel de Reunião aberto (volta à lista)
   window._reunFocus=false; document.body.classList.remove('reun-focus'); // sai do modo foco ao trocar de aba
   window._projFocus=false; document.body.classList.remove('proj-focus'); // idem: sai do foco de projeto ao trocar de aba
+  window._activeTaskFocusId=null; document.body.classList.remove('task-focus'); // idem: sai do Painel da Tarefa ao trocar de aba
   // GUILHERME V3 (mai/2026): limpar todos os chips/filtros do header ao trocar de aba
   const _chipEl=document.getElementById('tab-proj-chips');
   if(_chipEl){_chipEl.innerHTML='';_chipEl.style.display='none';}
@@ -16253,6 +16265,13 @@ function render(){
   // Idem para o Painel de Projeto (aceita 'projetos'/'projetos-pro' — o redirect ocorre mais abaixo).
   if(window._projFocus && (typeof hubView==='undefined' || hubView!=='taskflow' || (currentTab!=='projetos-pro'&&currentTab!=='projetos') || !activeProjectProId)){
     window._projFocus=false; document.body.classList.remove('proj-focus');
+  }
+  // Painel da Tarefa (tela cheia): quando ativo, re-renderiza ESTE painel e sai. Assim as funções de
+  // subtarefa/etc. que fazem saveTask_db+render() já atualizam o painel (mesmo padrão do Painel de Reunião).
+  // A navegação (setTab) limpa _activeTaskFocusId antes, então isto não prende o usuário.
+  if(window._activeTaskFocusId){
+    if(document.body.classList.contains('task-focus') && tasks.some(x=>x.id===window._activeTaskFocusId)){ renderTaskFocus(window._activeTaskFocusId); return; }
+    window._activeTaskFocusId=null; document.body.classList.remove('task-focus');
   }
   // MODO HUB: renderizar Meu dia! quando hubView === 'meudia'
   if(hubView === 'meudia'){
@@ -21528,20 +21547,137 @@ function closeModalDirect(){
     } else if(dt){ delete dt._novaDraft; }
   }
   document.getElementById('edit-modal').classList.remove('open');
-  document.body.classList.remove('task-focus'); _setTaskFocusIcon(false); // não vaza o modo foco pro próximo open
   editingId=null;
   if(_draftId && typeof render==='function') render(); // atualiza a lista (some o rascunho, ou aparece a nova tarefa)
 }
-// ── PAINEL DA TAREFA (modo foco / tela cheia) ──────────────────────────────────
-// Reusa o MESMO #edit-modal (nada duplicado): openTaskFocus abre a tarefa e liga body.task-focus,
-// que o CSS transforma em tela cheia. O ⛶ do header alterna; fechar/Sair limpa o estado.
-function _setTaskFocusIcon(on){
-  const b=document.getElementById('m-fs-btn'); if(!b) return;
-  b.innerHTML='<i class="ti '+(on?'ti-arrows-minimize':'ti-arrows-maximize')+'" style="font-size:16px"></i>';
-  b.title=on?'Sair da tela cheia':'Abrir em tela cheia';
+// ═══ PAINEL DA TAREFA (modo foco / tela cheia) — painel PRÓPRIO no padrão do Painel de Reunião ═══
+// Renderiza a tarefa em #task-container (trilha lateral + cards). Reusa as funções de dados existentes:
+// subtarefas/subsubs (toggleSub/delSub/toggleSubSub/delSubSub/addSub — todas fazem saveTask_db+render(),
+// e o guard em render() faz re-renderizar ESTE painel) + helpers próprios p/ comentários e anexos.
+function openTaskFocus(id){
+  const t=tasks.find(x=>x.id===id||x.id===Number(id)); if(!t) return;
+  if(document.getElementById('edit-modal')?.classList.contains('open')) closeModalDirect();
+  window._activeTaskFocusId=t.id; editingId=t.id; // editingId ajuda funções que o usam
+  document.body.classList.add('task-focus');
+  renderTaskFocus(t.id);
+  const c=document.getElementById('task-container'); if(c) c.scrollTop=0;
 }
-function _toggleTaskFocus(){ const on=document.body.classList.toggle('task-focus'); _setTaskFocusIcon(on); }
-function openTaskFocus(id){ if(typeof openEdit==='function') openEdit(id); document.body.classList.add('task-focus'); _setTaskFocusIcon(true); }
+function _exitTaskFocus(){ window._activeTaskFocusId=null; document.body.classList.remove('task-focus'); render(); }
+function _tfScroll(a){ document.getElementById('tf-'+a)?.scrollIntoView({behavior:'smooth',block:'start'}); }
+function _tfSetTitle(id,v){ const t=tasks.find(x=>x.id===id); if(!t) return; v=(v||'').trim(); if(!v||v===t.title) return; logHistory(t.id,'title',t.title,v); t.title=v; saveTask_db(t); }
+function _tfSetDesc(id,v){ const t=tasks.find(x=>x.id===id); if(!t) return; if((t.desc||'')===(v||'')) return; t.desc=v; saveTask_db(t); }
+function _tfAddSubSub(id,subId){
+  const inp=document.getElementById('tf-ssinp-'+subId); if(!inp) return; const title=(inp.value||'').trim(); if(!title) return;
+  const t=tasks.find(x=>x.id===id); if(!t) return; const s=(t.subtasks||[]).find(x=>x.id===subId); if(!s) return;
+  if(!s.subsubs) s.subsubs=[]; s.subsubs.push({id:'ss'+Date.now()+Math.floor(Math.random()*999),title,done:false});
+  saveTask_db(t); render(); setTimeout(()=>document.getElementById('tf-ssinp-'+subId)?.focus(),0);
+}
+function _tfAddComment(id){
+  const inp=document.getElementById('tf-cinp'); const text=(inp?.value||'').trim(); if(!text) return;
+  if(!tasks.some(x=>x.id===id)){ toast('⚠️ Tarefa não existe mais.'); _exitTaskFocus(); return; }
+  if(!_allComments[id]) _allComments[id]=[];
+  _allComments[id].push({id:'c'+Date.now(),authorId:CURRENT_USER_ID,text,ts:new Date().toISOString()});
+  saveComments(); render(); setTimeout(()=>document.getElementById('tf-cinp')?.focus(),0);
+}
+function _tfDelComment(id,cid){ if(!_allComments[id]) return; _allComments[id]=_allComments[id].filter(c=>c.id!==cid); if(!_allComments[id].length) delete _allComments[id]; saveComments(); render(); }
+function _tfAddAttach(id,fileList){
+  const t=tasks.find(x=>x.id===id); if(!t) return; if(!Array.isArray(t.attachments)) t.attachments=[];
+  const arquivos=Array.from(fileList||[]); if(!arquivos.length) return; const MAX=5*1024*1024;
+  const proms=arquivos.map(f=>{ if(f.size>MAX){ toast('⚠️ "'+f.name+'" maior que 5MB — ignorado'); return null; }
+    return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res({name:f.name,size:f.size,type:f.type,data:r.result}); r.onerror=rej; r.readAsDataURL(f); }); }).filter(Boolean);
+  Promise.all(proms).then(novos=>{ if(!novos.length) return; t.attachments.push(...novos);
+    if(!saveTask_db(t)){ t.attachments.splice(t.attachments.length-novos.length,novos.length); toast('⚠️ Sem espaço para salvar o anexo. Esvazie a Lixeira ou remova anexos grandes.'); render(); return; }
+    render(); toast('📎 '+novos.length+' anexo'+(novos.length!==1?'s':'')+' adicionado'+(novos.length!==1?'s':'')); }).catch(e=>{console.error(e);toast('❌ Erro ao anexar');});
+}
+function _tfDelAttach(id,idx){ const t=tasks.find(x=>x.id===id); if(!t||!Array.isArray(t.attachments)) return; t.attachments.splice(idx,1); saveTask_db(t); render(); }
+function renderTaskFocus(id){
+  const t=tasks.find(x=>x.id===id||x.id===Number(id));
+  const cont=document.getElementById('task-container');
+  if(!t||!cont){ _exitTaskFocus(); return; }
+  const esc=escapeHTML, escA=escapeAttr;
+  const exec=_personById(t.executor), solic=_personById(t.solicitante);
+  const proj=t.projectProId?projectsPro.find(p=>p.id===t.projectProId):null;
+  const reun=t.meetingId?meetings.find(m=>m.id===t.meetingId):null;
+  const prioLbl=(PRIO_LABEL&&PRIO_LABEL[t.prio])?PRIO_LABEL[t.prio]:(t.prio||'—');
+  const _row=(ic,lbl,val)=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;font-size:12.5px"><span style="color:var(--text3);flex-shrink:0"><i class="ti ${ic}" style="font-size:13px"></i> ${lbl}</span><span style="color:var(--text);text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${val}</span></div>`;
+  const subs=t.subtasks||[], subDone=subs.filter(s=>s.done).length, subPct=subs.length?Math.round(subDone/subs.length*100):0;
+  const subsHTML=subs.map(s=>{
+    const ss=s.subsubs||[], ssDone=ss.filter(x=>x.done).length;
+    const ssHTML=ss.map(x=>`<div class="subtask-item" style="margin-left:22px;padding-left:8px;border-left:2px solid var(--border)"><div class="subtask-check${x.done?' done':''}" onclick="toggleSubSub(${t.id},'${s.id}','${x.id}')">${x.done?'<i class="ti ti-check"></i>':''}</div><span class="subtask-text${x.done?' done':''}" style="font-size:12px">${esc(x.title)}</span><button class="subtask-del" onclick="delSubSub(${t.id},'${s.id}','${x.id}')">×</button></div>`).join('');
+    return `<div class="subtask-item" data-sub-id="${s.id}" data-parent-task-id="${t.id}"><div class="subtask-check${s.done?' done':''}" onclick="toggleSub(${t.id},'${s.id}')">${s.done?'<i class="ti ti-check"></i>':''}</div><span class="subtask-text${s.done?' done':''}">${esc(s.title)}${ss.length?`<span style="font-size:10px;color:var(--text3);margin-left:5px">${ssDone}/${ss.length}</span>`:''}</span><button class="subtask-del" onclick="delSub(${t.id},'${s.id}')">×</button></div>${ssHTML}<div style="margin-left:22px;margin-bottom:5px"><input id="tf-ssinp-${s.id}" placeholder="+ sub-etapa..." onkeydown="if(event.key==='Enter'){_tfAddSubSub(${t.id},'${s.id}')}" style="width:100%;font-size:11.5px;border:none;background:transparent;color:var(--text2);outline:none;padding:2px 0;font-family:inherit"></div>`;
+  }).join('');
+  const coms=getTaskComments(t.id);
+  const comsHTML=coms.length?coms.map(c=>{ const a=_personById(c.authorId), nm=a?a.name:'—', ini=(nm||'?').trim().slice(0,2).toUpperCase();
+    return `<div style="display:flex;gap:8px;margin-bottom:10px"><div style="width:24px;height:24px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);color:var(--blue-mid);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${esc(ini)}</div><div style="min-width:0;flex:1"><div style="font-size:11px;color:var(--text3);margin-bottom:1px">${esc(nm)}</div><div style="font-size:12.5px;color:var(--text);line-height:1.5;word-break:break-word">${esc(c.text)}</div></div><button onclick="_tfDelComment(${t.id},'${c.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;flex-shrink:0;line-height:1" title="Excluir">×</button></div>`;
+  }).join(''):`<div style="font-size:12px;color:var(--text3);font-style:italic;padding:2px 0 8px">Nenhum comentário ainda.</div>`;
+  const anx=Array.isArray(t.attachments)?t.attachments:[];
+  const anxHTML=anx.map((a,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12.5px"><i class="ti ti-file" style="font-size:15px;color:var(--blue-mid);flex-shrink:0"></i><a href="${a.data}" download="${escA(a.name)}" style="min-width:0;flex:1;color:var(--text);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escA(a.name)}">${esc(a.name)}</a><button onclick="_tfDelAttach(${t.id},${i})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;line-height:1" title="Remover">×</button></div>`).join('');
+  const legadoAnx=t.attachment?`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12.5px"><i class="ti ti-file" style="font-size:15px;color:var(--text3);flex-shrink:0"></i><a href="${t.attachment.data}" download="${escA(t.attachment.name)}" style="min-width:0;flex:1;color:var(--text2);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="anexo do modal">${esc(t.attachment.name)}</a></div>`:'';
+  const semAnx=(!anx.length&&!t.attachment)?`<div style="font-size:12px;color:var(--text3);font-style:italic;padding:2px 0 6px">Nenhum anexo ainda.</div>`:'';
+  const hist=(_allHistory[t.id]||[]).slice(-14).reverse();
+  const histHTML=hist.length?hist.map(h=>`<div style="font-size:11.5px;color:var(--text3);padding:3px 0;line-height:1.4">${_historyLabel(h.field,h.from,h.to)}</div>`).join(''):`<div style="font-size:12px;color:var(--text3);font-style:italic">Sem histórico.</div>`;
+  const origem=proj?`<i class="ti ti-folder" style="font-size:12px"></i> ${esc(proj.nome||proj.name||'Projeto')}`:(reun?`<i class="ti ti-speakerphone" style="font-size:12px"></i> ${esc(reun.title)}`:'');
+  cont.innerHTML=`<div class="tf-wrap">
+    <div class="tf-rail">
+      <button class="tf-rail-btn" onclick="_tfScroll('desc')" title="Descrição"><i class="ti ti-align-left"></i><span>Descrição</span></button>
+      <button class="tf-rail-btn" onclick="_tfScroll('det')" title="Detalhes"><i class="ti ti-list-details"></i><span>Detalhes</span></button>
+      <button class="tf-rail-btn" onclick="_tfScroll('chk')" title="Checklist"><i class="ti ti-checklist"></i><span>Checklist</span></button>
+      <button class="tf-rail-btn" onclick="_tfScroll('com')" title="Comentários"><i class="ti ti-message-2"></i><span>Coment.</span></button>
+      <button class="tf-rail-btn" onclick="_tfScroll('anx')" title="Anexos"><i class="ti ti-paperclip"></i><span>Anexos</span></button>
+      <button class="tf-rail-btn" onclick="_tfScroll('his')" title="Histórico"><i class="ti ti-history"></i><span>Histórico</span></button>
+      <div style="flex:1"></div>
+      <div style="height:1px;background:var(--border);width:42px;margin:5px 0;flex-shrink:0"></div>
+      <button class="tf-rail-btn" onclick="_exitTaskFocus()" title="Sair da tela cheia (Esc)"><i class="ti ti-arrows-minimize"></i><span>Sair</span></button>
+      <button class="tf-rail-btn" onclick="openEdit(${t.id})" title="Editar metadados (modal)"><i class="ti ti-pencil"></i><span>Editar</span></button>
+      <button class="tf-rail-btn" onclick="toggle(${t.id})" style="color:${t.done?'var(--text3)':'var(--success)'}" title="${t.done?'Reabrir':'Concluir'} tarefa"><i class="ti ti-circle-check"></i><span>${t.done?'Reabrir':'Concluir'}</span></button>
+    </div>
+    <div class="tf-bar">
+      ${origem?`<span style="font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0">${origem}</span>`:''}
+      <input value="${escA(t.title)}" onfocus="this.style.borderBottomColor='var(--border)'" onblur="this.style.borderBottomColor='transparent';_tfSetTitle(${t.id},this.value)" onkeydown="if(event.key==='Enter')this.blur()" style="flex:1;min-width:120px;font-family:var(--font-title,inherit);font-size:18px;font-weight:800;letter-spacing:-.02em;color:var(--text);background:transparent;border:none;border-bottom:1px solid transparent;outline:none;padding:2px 0">
+      <span style="font-size:11px;font-weight:700;color:var(--blue-mid);background:var(--bg2);border:1px solid var(--border);padding:3px 9px;border-radius:99px;white-space:nowrap;flex-shrink:0">${esc(prioLbl)}</span>
+      <button onclick="toggle(${t.id})" style="background:${t.done?'var(--bg2)':'var(--success,#3b6d11)'};color:${t.done?'var(--text2)':'#fff'};border:none;border-radius:8px;padding:6px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;flex-shrink:0"><i class="ti ti-check" style="font-size:14px"></i> ${t.done?'Concluída':'Concluir'}</button>
+    </div>
+    <div class="tf-grid">
+      <div class="tf-col">
+        <div class="reun-card4" id="tf-desc"><div class="tf-card-title">Descrição</div>
+          <textarea onblur="_tfSetDesc(${t.id},this.value)" placeholder="Adicione uma descrição..." style="width:100%;min-height:90px;resize:vertical;border:none;background:transparent;color:var(--text2);font-size:12.5px;line-height:1.6;font-family:inherit;outline:none">${esc(t.desc||'')}</textarea>
+        </div>
+        <div class="reun-card4" id="tf-det"><div class="tf-card-title">Detalhes</div>
+          ${_row('ti-user','Executor',exec?esc(exec.name):'<span style="color:var(--text3)">Sem executor</span>')}
+          ${_row('ti-calendar','Prazo',t.date?formatDate(t.date):'<span style="color:var(--text3)">Sem data</span>')}
+          ${_row('ti-flag','Prioridade',esc(prioLbl))}
+          ${_row('ti-send','Solicitante',solic?esc(solic.name):'<span style="color:var(--text3)">—</span>')}
+          ${(proj||reun)?_row(proj?'ti-folder':'ti-speakerphone','Origem',proj?esc(proj.nome||proj.name||'Projeto'):esc(reun.title)):''}
+          <button onclick="openEdit(${t.id})" style="margin-top:9px;width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:7px;font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-pencil" style="font-size:13px"></i> Editar detalhes</button>
+        </div>
+      </div>
+      <div class="tf-col">
+        <div class="reun-card4" id="tf-chk"><div class="tf-card-title"><span>Checklist</span><span style="font-size:11px;color:var(--text3)">${subDone}/${subs.length}</span></div>
+          ${subs.length?`<div style="height:5px;background:var(--bg2);border-radius:99px;overflow:hidden;margin-bottom:10px"><div style="height:100%;width:${subPct}%;background:var(--blue-mid)"></div></div>`:''}
+          <div class="subtask-list">${subsHTML}</div>
+          <div class="subtask-add" style="margin-top:6px">
+            <button class="subtask-add-btn" onclick="addSub(${t.id})" title="Adicionar etapa"><i class="ti ti-plus"></i></button>
+            <input id="sub-inp-${t.id}" placeholder="Nova etapa..." onkeydown="if(event.key==='Enter'){addSub(${t.id})}" />
+          </div>
+        </div>
+      </div>
+      <div class="tf-col">
+        <div class="reun-card4" id="tf-com"><div class="tf-card-title">Comentários</div>
+          ${comsHTML}
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <input id="tf-cinp" placeholder="Comentar..." onkeydown="if(event.key==='Enter'){_tfAddComment(${t.id})}" style="flex:1;border:1px solid var(--border);border-radius:99px;padding:6px 12px;background:var(--bg);color:var(--text);font-size:12.5px;font-family:inherit;outline:none">
+            <button onclick="_tfAddComment(${t.id})" style="background:var(--blue-mid);border:none;color:#fff;border-radius:50%;width:30px;height:30px;cursor:pointer;flex-shrink:0" title="Enviar"><i class="ti ti-send" style="font-size:13px"></i></button>
+          </div>
+        </div>
+        <div class="reun-card4" id="tf-anx"><div class="tf-card-title">Anexos</div>
+          ${legadoAnx}${anxHTML}${semAnx}
+          <label style="display:flex;align-items:center;gap:6px;margin-top:6px;padding:7px 10px;border:1px dashed var(--border);border-radius:8px;cursor:pointer;color:var(--text3);font-size:12px"><i class="ti ti-plus" style="font-size:13px"></i> Anexar arquivo<input type="file" multiple style="display:none" onchange="_tfAddAttach(${t.id},this.files)"></label>
+        </div>
+        <div class="reun-card4" id="tf-his"><div class="tf-card-title">Histórico</div>${histHTML}</div>
+      </div>
+    </div>
+  </div>`;
+}
 
 // FAB "Nova tarefa": cria uma tarefa RASCUNHO e abre o MESMO modal completo de editar.
 function abrirNovaTarefaCompleta(){
@@ -29485,9 +29621,10 @@ document.addEventListener('keydown',e=>{
     const editModal=document.getElementById('edit-modal');
     const taskModal=document.getElementById('task-modal');
     const imgOverlay=document.getElementById('img-overlay');
+    if(document.body.classList.contains('task-focus')){_exitTaskFocus();return;} // Esc sai do Painel da Tarefa
     if(activeProjectId){if(sidebarPersonId){activeProjectId=null;render();}else{closeProjectView();}return;}
     if(noteModal?.classList.contains('open')){closeNoteModalDirect();return;}
-    if(editModal?.classList.contains('open')){ if(document.body.classList.contains('task-focus')){_toggleTaskFocus();return;} closeModalDirect();return;}
+    if(editModal?.classList.contains('open')){closeModalDirect();return;}
     if(taskModal?.classList.contains('open')){closeTaskModalDirect();return;}
     if(imgOverlay?.classList.contains('open')){closeImgOverlay();return;}
     closeGlobalPanel();
