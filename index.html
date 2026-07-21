@@ -24707,6 +24707,9 @@ function _ppToggleChip(k){ _ppChips[k]=!_ppChips[k]; render(); }
 function _ppToggleFav(id){ const p=projectsPro.find(x=>x.id===id); if(!p) return; p.favorito=!p.favorito; if(typeof saveProjectPro_db==='function') saveProjectPro_db(p); const el=document.getElementById('pp-grupos'); if(el) el.innerHTML=_ppGruposHTML(); }
 function _ppLimparFiltros(){ _ppQuery=''; _ppChips={atrasados:false, ativos:false, meus:false}; render(); }
 function _ppSetQuery(v){ _ppQuery=v; const el=document.getElementById('pp-grupos'); if(el) el.innerHTML=_ppGruposHTML(); }
+// Lupa da lista de projetos: revela/esconde o campo de busca (some atrás do ícone). Fechar limpa a busca.
+function _ppListaBuscaToggle(){ window._ppListaBuscaOn=!window._ppListaBuscaOn; if(!window._ppListaBuscaOn) _ppQuery=''; render(); }
+function _ppListaBuscaFechar(){ window._ppListaBuscaOn=false; _ppQuery=''; render(); }
 function _ppToggleGrupo(key){ const ck=_ppGroup+':'+key; _ppCollapsed[ck]=!_ppCollapsed[ck]; safeSetItem('taskflow_pp_collapsed',JSON.stringify(_ppCollapsed)); const el=document.getElementById('pp-grupos'); if(el) el.innerHTML=_ppGruposHTML(); }
 
 // Agrupa projetos conforme o modo. Retorna grupos ordenados {key,label,color,icon,items}.
@@ -24728,6 +24731,11 @@ function _ppAgrupar(lista, modo){
     const _dd=iso=>Math.round((new Date(iso+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);
     lista.forEach(p=>{ let k; if(p.status==='concluido')k='concluido'; else if(!p.prazoFim)k='semprazo'; else{ const d=_dd(p.prazoFim); k=d<0?'atrasado':d<=7?'semana':d<=31?'mes':'depois'; } const m=meta[k]; push(k,m.l,m.c,m.i,p); });
     grupos.sort((a,b)=>ord.indexOf(a.key)-ord.indexOf(b.key)); return grupos;
+  }
+  if(modo==='setor'){
+    // Projeto não tem setor próprio → agrupa pelo SETOR do DONO (p.dono → pessoa.setor).
+    lista.forEach(p=>{ const pe=people.find(x=>x.id===p.dono); const s=(pe&&pe.setor)?pe.setor:''; push(s||'__semsetor__', s||'Sem setor definido','var(--blue-mid)','ti-building',p); });
+    grupos.sort((a,b)=>{ if(a.key==='__semsetor__')return 1; if(b.key==='__semsetor__')return -1; return a.label.localeCompare(b.label,'pt-BR'); }); return grupos;
   }
   // default: tipo
   lista.forEach(p=>{ const k=p.tipo||'outro'; const t=PP_TIPOS[k]||PP_TIPOS.outro; push(k,t.label,t.color,t.icon,p); });
@@ -24886,7 +24894,11 @@ function renderProjetosPro(){
   // projeto, vamos trabalhar com data". Quem tiver 'prioridade' salvo em taskflow_pp_group /
   // taskflow_pp_sort cai sozinho no padrão pelas duas guardas abaixo. O campo `p.prioridade`
   // CONTINUA nos dados (não quebra projeto existente) — só não aparece nem ordena mais.
-  const _grpDefs=[['tipo','Tipo'],['status','Status'],['dono','Dono'],['prazo','Prazo'],['nenhum','Sem agrupar']];
+  // Agrupamento (subnavbar discreta, estilo períodos das Reuniões): [key, label, ícone].
+  // Setor = pelo SETOR do DONO (projeto não tem setor próprio — setores vivem nas fases).
+  // Prioridade ficou de fora: foi desativada nos projetos ("trabalhar com data") e o campo não
+  // é preenchido pela tela de Editar, então agruparia quase tudo em "Média".
+  const _grpDefs=[['tipo','Tipo','ti-category'],['status','Status','ti-circle-dot'],['setor','Setor','ti-building'],['prazo','Prazo','ti-calendar'],['nenhum','Sem agrupar','ti-list']];
   if(!_grpDefs.some(g=>g[0]===_ppGroup)) _ppGroup='tipo';
   const _sortDefs=[['prazo','Prazo'],['progresso','Progresso'],['recentes','Recentes']];
   if(!_sortDefs.some(s=>s[0]===_ppSort)) _ppSort='prazo';
@@ -24895,13 +24907,17 @@ function renderProjetosPro(){
   // guards acima mantêm esses valores válidos. As funções setPpGroup/setPpSort/_ppToggleMenu ficam
   // inertes (sem UI que as chame). Repor = devolver o _ppMenuBtnHTML abaixo.
 
-  // Toolbar = só a busca (os 3 filtros Atrasados/Ativos/Meus foram removidos).
+  // Toolbar = subnavbar de AGRUPAMENTO (discreta, estilo períodos das Reuniões) + LUPA no fim.
+  // A busca não fica mais como caixa chamativa: some atrás da lupa, que a revela ao clicar.
+  const _buscaOn = !!window._ppListaBuscaOn || !!_ppQuery;
+  const _grpTab = (g,lb,ic)=>{ const at=_ppGroup===g; return `<button onclick="setPpGroup('${g}')" style="background:none;border:none;border-bottom:2px solid ${at?'var(--blue-mid)':'transparent'};color:${at?'var(--blue-mid)':'var(--text3)'};font-weight:${at?'700':'600'};font-size:12.5px;padding:9px 11px;cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;transition:all .15s"><i class="ti ${ic}" style="font-size:14px"></i>${lb}</button>`; };
   const toolbar = `
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px">
-      <div style="position:relative;flex:1;min-width:200px;max-width:400px">
-        <i class="ti ti-search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:15px"></i>
-        <input id="pp-busca" value="${escapeAttr(_ppQuery)}" oninput="_ppSetQuery(this.value)" placeholder="Buscar projeto…" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:9px 11px 9px 34px;font-size:13px;color:var(--text);font-family:inherit">
+    <div style="display:flex;align-items:flex-end;gap:8px;border-bottom:1px solid var(--border);margin-bottom:24px">
+      <div style="display:flex;justify-content:center;gap:2px;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden">
+        ${_grpDefs.map(([g,lb,ic])=>_grpTab(g,lb,ic)).join('')}
       </div>
+      ${_buscaOn?`<div style="position:relative;margin-bottom:5px;flex-shrink:0"><i class="ti ti-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px"></i><input id="pp-busca" value="${escapeAttr(_ppQuery)}" oninput="_ppSetQuery(this.value)" onkeydown="if(event.key==='Escape')_ppListaBuscaFechar()" placeholder="Buscar…" style="width:168px;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 9px 6px 28px;font-size:12.5px;color:var(--text);font-family:inherit;outline:none"></div>`:''}
+      <button onclick="_ppListaBuscaToggle()" title="Buscar projeto" class="reun-ico" style="margin-bottom:5px;flex-shrink:0;${_buscaOn?'border-color:var(--blue-mid);color:var(--blue-mid)':''}"><i class="ti ti-search"></i></button>
     </div>`;
 
 
@@ -24909,6 +24925,7 @@ function renderProjetosPro(){
   // (que usa 940/720 centrado). Antes ocupava a tela toda; agora fica num bloco de 940px.
   container.innerHTML = `<div style="max-width:940px;margin:0 auto;padding-top:22px;padding-bottom:40px">${headerHTML}${toolbar}<div id="pp-grupos">${_ppGruposHTML()}</div></div>`;
   const _menuHost=document.getElementById('pp-menu-host'); if(_menuHost) _menuHost.innerHTML=''; // ⋮ removido (jul/2026)
+  if(window._ppListaBuscaOn) setTimeout(()=>{ const b=document.getElementById('pp-busca'); if(b){ b.focus(); b.setSelectionRange(b.value.length,b.value.length); } },30);
 }
 
 // ─── IMPORTAR PROJETO (colar JSON) ───────────────────────────────
