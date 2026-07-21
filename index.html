@@ -22560,10 +22560,12 @@ function quickAddTaskPro(inputId, projectId, faseId, grupoId){
   // (aparece na aba Tarefas, não cria fase "Geral" automática).
   let fase = faseId ? (p.fases||[]).find(f=>f.id===faseId) : null;
   let grupo = (fase && grupoId) ? fase.grupos.find(g=>g.id===grupoId) : (fase ? fase.grupos.find(g=>g.setor==='Geral') : null);
-  const t={ id:Date.now()+Math.floor(Math.random()*9999), title, prio:'media', date:'', done:false, escopo:'klain', 
+  const t={ id:Date.now()+Math.floor(Math.random()*9999), title, prio:'media', date:'', done:false, escopo:'klain',
     executor:null, solicitante:null, people:[],
     createdAt:today, subtasks:[], kanbanCol:'todo',
     projectProId:projectId,
+    // nasce no fim da PRÓPRIA fase (não no fim global) — senão cairia na última etapa, bloqueada.
+    ppOrdem: fase ? _ppOrdemNovaNaFase(p, fase.id) : undefined,
     projectProFaseId: fase?fase.id:null, projectProGrupoId: grupo?grupo.id:null, setorManual: grupoId?true:false };
   tasks.push(t);
   if(grupo) grupo.tarefaIds.push(t.id);
@@ -22574,7 +22576,7 @@ function quickAddTaskPro(inputId, projectId, faseId, grupoId){
 }
 function _quickAddProKeydown(e, inputId, projectId, faseId, grupoId){
   if(e.key==='Enter'){ e.preventDefault(); quickAddTaskPro(inputId, projectId, faseId, grupoId); }
-  if(e.key==='Escape'){ e.target.value=''; e.target.blur(); _fecharQuickAdd(inputId); }
+  if(e.key==='Escape'){ e.stopPropagation(); e.target.value=''; e.target.blur(); _fecharQuickAdd(inputId); } // não deixa o Esc sair da tela cheia
 }
 function _quickAddProHTML(projectId, faseId, grupoId, qid, label){
   const btnId='qabtn-'+qid;
@@ -25949,7 +25951,14 @@ function renderProjectProView(id){
   document.body.classList.toggle('proj-focus', !!window._projFocus);
   if(!window._projFocusEscWired){
     window._projFocusEscWired=true;
-    document.addEventListener('keydown',(e)=>{ if(e.key==='Escape' && window._projFocus) _exitProjFocus(); });
+    document.addEventListener('keydown',(e)=>{
+      if(e.key==='Escape' && window._projFocus){
+        const ae=document.activeElement;
+        // Esc dentro de um campo (rename/criação inline) é do CAMPO, não "sair da tela cheia".
+        if(ae && (ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.isContentEditable)) return;
+        _exitProjFocus();
+      }
+    });
   }
 }
 
@@ -26308,7 +26317,7 @@ function renderProjectProVisao(p, prog){
       if(window._ppFaseEdit===f.id){
         return `<div style="display:flex;align-items:center;gap:9px;padding:10px 11px;border:1px solid var(--blue-mid);border-left:3px solid ${cFase};border-radius:9px;margin-bottom:7px;background:var(--card)">
           <span style="font-size:11px;font-weight:800;color:var(--text3);flex-shrink:0">${String(idx+1).padStart(2,'0')}</span>
-          <input id="ed-fase-${f.id}" value="${escapeAttr(f.nome)}" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}else if(event.key==='Escape'){this.dataset.cancel='1';this.blur()}" onblur="_ppSalvarNomeFase('${p.id}','${f.id}',this)" style="flex:1;min-width:0;font-size:13px;font-weight:700;border:1px solid var(--blue-mid);border-radius:6px;padding:4px 7px;background:var(--bg2);color:var(--text);font-family:inherit;outline:none" />
+          <input id="ed-fase-${f.id}" value="${escapeAttr(f.nome)}" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}else if(event.key==='Escape'){event.stopPropagation();this.dataset.cancel='1';this.blur()}" onblur="_ppSalvarNomeFase('${p.id}','${f.id}',this)" style="flex:1;min-width:0;font-size:13px;font-weight:700;border:1px solid var(--blue-mid);border-radius:6px;padding:4px 7px;background:var(--bg2);color:var(--text);font-family:inherit;outline:none" />
         </div>`;
       }
       return `<div class="pp-estr-row" onclick="_ppSelecionarFase('${f.id}')" style="display:flex;align-items:center;gap:9px;padding:10px 11px;border:1px solid ${sel?"var(--blue-mid)":'var(--border)'};border-left:3px solid ${cFase};border-radius:9px;margin-bottom:7px;cursor:pointer;background:${sel?`color-mix(in srgb,var(--blue-mid) 9%,var(--card))`:'var(--surface-painel)'};transition:background .12s">
@@ -26671,7 +26680,9 @@ function _ppSalvarNomeFase(projectId, faseId, el){
     const novo=(valor||'').trim();
     if(f && novo && novo!==f.nome){ f.nome=novo; saveProjectPro_db(p); }
   }
-  render();
+  // Adiado: um render() síncrono aqui troca o innerHTML inteiro e destrói o nó que recebeu
+  // o mousedown → o 1º clique fora do rename era engolido. Deferir deixa o clique ser despachado.
+  setTimeout(render,0);
 }
 // Criar fase/parte INLINE (campo com Enter, no lugar do botão) — reabre focado p/ a próxima.
 function quickAddFasePro(inputId, projectId){
@@ -26688,6 +26699,13 @@ function quickAddSetorPro(inputId, projectId, faseId){
   const nome=(el.value||'').trim(); if(!nome) return;
   const p=projectsPro.find(x=>x.id===projectId); if(!p) return;
   const f=(p.fases||[]).find(x=>x.id===faseId); if(!f) return;
+  // "Geral" é nome reservado (default automático) — grupo "Geral" vazio é podado sozinho
+  // por _ppVincularTarefaPorExecutor. Criar um aqui sumiria sem aviso. Bloqueia.
+  if(nome.toLowerCase()==='geral'){ toast('⚠️ "Geral" é um nome reservado — escolha outro'); el.focus(); return; }
+  // Duplicata (case-insensitive) — o caminho por modal (adicionarGrupo) já checava; o inline não.
+  if((f.grupos||[]).some(g=>g.setor && g.setor.toLowerCase()===nome.toLowerCase())){
+    toast(`⚠️ "${escapeHTML(nome)}" já está nesta fase`); el.value=''; el.focus(); return;
+  }
   (f.grupos=f.grupos||[]).push(_novoGrupo(nome));
   saveProjectPro_db(p); render();
   setTimeout(()=>{ const e2=document.getElementById(inputId); if(e2) e2.focus(); }, 30);
@@ -26842,6 +26860,8 @@ function _ppConfirmarGrupo(projectId, faseId){
   const f = p?.fases?.find(x=>x.id===faseId);
   if(!p || !f) return;
 
+  // "Geral" é reservado (default automático; empties são podados sozinhos) — bloqueia.
+  if(setor.toLowerCase()==='geral'){ toast('⚠️ "Geral" é um nome reservado — escolha outro'); return; }
   // Verifica duplicata
   if((f.grupos||[]).some(g=>g.setor.toLowerCase()===setor.toLowerCase())){
     toast(`⚠️ "${escapeHTML(setor)}" já está nesta fase`);
@@ -26918,6 +26938,24 @@ function _ppTarefasOrdenadas(p){
     semOrdem.forEach(t=>{ t.ppOrdem = ++base; saveTask_db(t); });
   }
   return lista.sort((a,b)=>(a.ppOrdem||0)-(b.ppOrdem||0));
+}
+// ppOrdem para uma tarefa NOVA criada dentro de uma fase: fim da PRÓPRIA fase, não fim global.
+// (Antes, tarefa criada inline nascia sem ppOrdem e _ppTarefasOrdenadas dava max+1 global →
+//  ia parar na ÚLTIMA etapa, bloqueada por tarefas de fases posteriores.) Retorna base+0.5,
+// que sorteia logo após a última tarefa da fase-alvo/anteriores e antes das fases seguintes;
+// vira inteiro no próximo _ppOrdenarPorFase.
+function _ppOrdemNovaNaFase(p, faseId){
+  const ord = _ppTarefasOrdenadas(p); // garante ppOrdem em todos antes de medir
+  const fases = p.fases||[];
+  const faseIdx = new Map(fases.map((f,i)=>[f.id,i]));
+  const semFaseRank = fases.length;
+  const alvoRank = (faseId!=null && faseIdx.has(faseId)) ? faseIdx.get(faseId) : semFaseRank;
+  let base = 0;
+  ord.forEach(t=>{
+    const r = (t.projectProFaseId!=null && faseIdx.has(t.projectProFaseId)) ? faseIdx.get(t.projectProFaseId) : semFaseRank;
+    if(r <= alvoRank) base = Math.max(base, t.ppOrdem||0);
+  });
+  return base + 0.5;
 }
 // Etapa (onda) de cada tarefa: mesma da anterior se ppParalela; senão incrementa. Map id->etapa.
 // Resumo do cronograma calculado: conclusão prevista vs prazo do projeto.
