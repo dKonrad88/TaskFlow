@@ -9265,7 +9265,11 @@ function sensEnviarRespostas(){
     for(const p of t.perguntas){ const v=sensorialDraft[a.id]&&sensorialDraft[a.id][p.id]; if(v!==undefined) valores[a.id][p.id]=v; }
   }
   t.respostas = t.respostas||[];
-  t.respostas.push({ id:_sensId(), avaliador:sensorialAvaliadorId, createdAt:today, valores });
+  // Evita voto duplo do MESMO avaliador (fluxo quiosque: aparelho passa de mão em mão). Substitui a
+  // resposta anterior em vez de empilhar — senão o voto dele pesa dobrado na média/ranking.
+  const _resp = { id:_sensId(), avaliador:sensorialAvaliadorId, createdAt:today, valores };
+  const _rIdx = sensorialAvaliadorId ? t.respostas.findIndex(r=>r.avaliador===sensorialAvaliadorId) : -1;
+  if(_rIdx>=0){ _resp.id=t.respostas[_rIdx].id; t.respostas[_rIdx]=_resp; } else t.respostas.push(_resp);
   saveSensorial_db();
   toast(`Avaliação de ${_sensPersonName(sensorialAvaliadorId)} registrada`);
   sensorialAvaliadorId=''; sensorialDraft={}; sensFocoAmostraId=null;
@@ -23114,6 +23118,7 @@ function searchKeyNav(e){
 
 // Atalho global Ctrl+K / Cmd+K
 document.addEventListener('keydown',e=>{
+  if(document.getElementById('sens-pres')) return; // apresentação sensorial em tela cheia: não abre painel atrás
   if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();openSearchPanel();}
   if((e.ctrlKey||e.metaKey)&&(e.key==='i'||e.key==='I')){e.preventDefault();abrirCapturaRapida();}
 });
@@ -29666,8 +29671,9 @@ document.addEventListener('keydown',e=>{
     const tag = ae?.tagName;
     const isTyping = tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT' || ae?.isContentEditable;
     if(isTyping) return;
-    // Não abrir se já tem modal aberto
-    const anyModalOpen = document.querySelector('.modal-overlay.open');
+    // Não abrir se já tem modal aberto — ou se a apresentação sensorial (tela cheia) está no ar
+    // (o overlay #sens-pres não tem a classe .modal-overlay → abriria um modal atrás dela).
+    const anyModalOpen = document.querySelector('.modal-overlay.open') || document.getElementById('sens-pres');
     if(anyModalOpen) return;
     e.preventDefault();
     toggleForm();
