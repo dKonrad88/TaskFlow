@@ -100,7 +100,20 @@ qualquer coisa. Receita que funcionou p/ divergência com trabalho local não co
    `Co-Authored-By: Claude <noreply@anthropic.com>`
 6. `backups/` e `.claude/` ficam **fora do git** (ver `.gitignore`).
 
-## 🚨 PENDÊNCIA ABERTA — projeto "Snack Proteico" (rodar no PC da EMPRESA e no da PRODUÇÃO)
+## ✅ RESOLVIDO — projeto "Snack Proteico" recuperado (21/07/2026, PC da Empresa)
+> **NÃO É MAIS PENDÊNCIA.** O projeto estava na **LIXEIRA do navegador Edge** do PC da Empresa (o Diego
+> tinha excluído). Como não estava na nuvem (confirmado via Supabase), não dava p/ achar pelo protótipo/Pages —
+> só lendo o disco. Achado assim: li os arquivos **LevelDB do Edge** (`%LOCALAPPDATA%\Microsoft\Edge\User Data\
+> Default\Local Storage\leveldb\*.ldb`) via Bash+strings — o valor do `taskflow_trash` estava LEGÍVEL (não
+> comprimido) e continha o projeto `pp_1780346878364_648` "Snack Proteico" (tipo produto, 6 fases: Briefing/
+> Desenvolvimento & Testes/Aprovações/Produção Piloto/Lançamento, 37 etapas, deletedAt 2026-07-20). O Diego
+> **restaurou pela Lixeira** do app (as tarefas religaram sozinhas). Falta ele **sincronizar** (☁️ Enviar no Edge →
+> Baixar nas outras) — ele disse que não liga pro que estava na nuvem, então push do Edge por cima é seguro.
+> 📌 **Lição:** dá p/ recuperar dado de localStorage do Chromium lendo os `.ldb` do disco com `strings`/`grep`
+> quando o bloco não está comprimido (Snappy); o `.log` (WAL) é sempre legível. A seção detalhada abaixo fica
+> como histórico da investigação.
+
+## 🚨 (HISTÓRICO) PENDÊNCIA — projeto "Snack Proteico" (rodar no PC da EMPRESA e no da PRODUÇÃO)
 > **Instrução do Diego (18/07/2026):** "quando eu estiver no PC da Empresa ou da Produção, tentar
 > recuperar o projeto Snack Proteico". **Qualquer sessão que abrir numa dessas 2 máquinas: execute o
 > passo 1 abaixo ANTES de qualquer outra coisa** e reporte o resultado. Marcar aqui quando feito.
@@ -321,6 +334,37 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 - **Indicadores do painel de reunião** — a **coluna 0 já existe** reservada com aviso discreto (ver entrada (g)).
 
 ## Log de handoff (mais recente no topo)
+
+### ⭐ 2026-07-21 — RESUMO DA SESSÃO (PC da Empresa) — polimento visual pesado de Reunião + Projeto + recuperação do Snack
+Sessão longa de **UX/identidade visual** nos Painéis de Reunião e Projeto, mais a **recuperação do projeto Snack
+Proteico** (ver seção ✅ RESOLVIDO no topo do arquivo). Tudo commitado e pushado; working tree limpo. **Último commit
+de código: `017a53c6`.** ⚠️ **NADA testado em navegador** (esta máquina não roda preview — `file://` abre só snapshot
+estático). Verificação = balanço de `( ) { } <div>`/backticks idêntico ao HEAD + greps de refs órfãs + build do Pages
+`built` + `curl` no HTML servido. **Quem valida comportamento é o Diego no Pages (Ctrl+Shift+R).**
+
+**O que mudou (commits desta sessão, em ordem):**
+| Área | O quê |
+|---|---|
+| **Projetos — lista** | Removido o menu **⋮** (Agrupar/Ordenar) `2ae63b13`; depois **subnavbar de agrupamento** discreta (estilo períodos das Reuniões): **Tipo·Status·Setor·Prazo·Sem agrupar** + **lupa** no fim (busca some atrás dela) `c610d9f0`. Setor = pelo setor do DONO. Prioridade ficou de fora (desativada). |
+| **Reunião — sala** | "Sala de reunião" não abre mais sub-seletor (só há UMA sala) `45aedbc7` |
+| **Reunião — abas** | Nova ordem **Painel·Pessoas·Anexos·Decisões·Histórico·ATA·Info·Editar** (sub-navbar + trilha do foco); ações Sair/Iniciar/Finalizar no rodapé da trilha `1b1cfae6` |
+| **Reunião — seletor de pessoas** | O `<select>` nativo (feio) virou **popover do tema** com busca+avatares (`_pessoaPicker`) `b531b831` |
+| **Reunião — header** | Fonte **Manrope** (Google Fonts, var `--font-title`) maior/moderna; **"Agendada" removido** do painel; **data** ao lado do título (discreta); **timer** foi p/ a ponta direita depois dos presentes; mais espaço entre grupos da pauta `6a72ba94` |
+| **Reunião — cabeçalhos** | "Da reunião anterior"/"Novas tarefas"/data das Decisões anteriores unificados ao estilo do NOME DA PESSOA (11px/700/`--text2`, ícone `--text3`) `017a53c6` |
+| **Projeto — abas** | Nova ordem **Painel·Pessoas·Fases·Tarefas·Anexos·Comentários·Análise·Info·Editar**; Editar virou ABA; ícones do fim = buscar·expandir·salvar como modelo `a0aad88a` |
+
+**⚠️ 2 bugs MEUS pegos na verificação (padrão vale p/ o futuro):** (1) `_pessoaPicker` — escape de aspas `\\'` num
+ícone fecharia a string JS; (2) na lupa da lista nomeei `_ppBuscaFechar`, que **já existe** (busca do painel) —
+duplicado sobrescreveria o outro; renomeei p/ `_ppLista*`. Ambos o balanço NÃO pegaria; foram grep/leitura à mão.
+
+**OPEN — esperando o Diego (nada quebrado):**
+- 🐞 **Estrelinha ⭐ da aba Pessoas (reunião)** acende errado: `_reunFreqMap` conta ocorrências FUTURAS de série
+  recorrente → acende p/ quase todo mundo. Fix pequeno (P3 da varredura).
+- **Prioridade nos projetos:** o Diego pediu "agrupar por prioridade" mas ela foi desativada antes; deixei de fora
+  (agruparia tudo em "Média"). Se quiser, re-ativar = repor o campo no Editar + a aba.
+- **Snack Proteico:** falta o Diego clicar ☁️ **Enviar** no Edge (e Baixar nas outras) p/ propagar.
+- **"Em andamento":** saiu do header junto com o status; se sentir falta de um selo de "ao vivo", repor só p/ esse estado.
+- Herdadas (varredura 18/07): 21 bugs (1 P0 já corrigido), dupla def de "Atrasada", `g.tarefaIds`×`t.projectPro*`, código morto.
 
 ### 2026-07-20 (yy) — PC da Produção — Proposta A das setas (paralela âmbar / sequencial quieta) + lista de Projetos centralizada
 - Diego escolheu a **Proposta A** do debate sobre as setas de dependência (mockup via show_widget). Implementado
