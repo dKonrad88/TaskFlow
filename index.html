@@ -31242,16 +31242,9 @@ function renderNovaReuniaoForm(container, subNav){
                 <option value="pessoa" ${_salaModo==='pessoa'?'selected':''}>Sala de uma pessoa</option>
                 <option value="livre" ${_salaModo==='livre'?'selected':''}>Outro lugar (digitar)</option>
               </select>
-              <!-- sub: sala de reunião -->
-              <div id="reun-sala-sub-sala" style="display:${_salaModo==='sala'?'flex':'none'};gap:6px;align-items:center;margin-top:6px">
-                <select id="reun-sala" class="modal-input" style="flex:1">
-                  <option value="">— Selecione a sala —</option>
-                  ${salas.map(s=>`<option value="${escapeAttr(s)}" ${m&&m.sala===s?'selected':''}>${escapeHTML(s)}</option>`).join('')}
-                  ${m&&m.sala&&!salas.includes(m.sala)?`<option value="${escapeAttr(m.sala)}" selected>${escapeHTML(m.sala)}</option>`:''}
-                </select>
-                <button type="button" onclick="abrirNovaSalaInline()" title="Nova sala de reunião" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:15px;flex-shrink:0;transition:all .2s" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-plus"></i></button>
-                <button type="button" onclick="excluirSalaSelecionada()" title="Excluir sala selecionada" style="background:var(--bg2);border:1px solid var(--border);color:var(--text3);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:15px;flex-shrink:0;transition:all .2s" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'"><i class="ti ti-trash"></i></button>
-              </div>
+              <!-- (jul/2026, Diego) "Sala de reunião" não abre mais sub-seletor: só existe UMA sala,
+                   então o próprio modo já diz tudo. O antigo dropdown de salas + botões +/excluir saiu
+                   (funções abrirNovaSalaInline/confirmarNovaSala/excluirSalaSelecionada ficam inertes). -->
               <!-- sub: sala de uma pessoa (protótipo da regra p/ o Guilherme) -->
               <div id="reun-sala-sub-pessoa" style="display:${_salaModo==='pessoa'?'block':'none'};margin-top:6px">
                 <select id="reun-sala-pessoa" class="modal-input">
@@ -31262,11 +31255,6 @@ function renderNovaReuniaoForm(container, subNav){
               </div>
               <!-- sub: outro lugar (texto livre) -->
               <input id="reun-sala-livre" class="modal-input" placeholder="Ex.: Máquina 3 do setor de Salgados, perto da expedição" value="${m?escapeAttr(m.localExterno||''):''}" style="margin-top:6px;display:${_salaModo==='livre'?'block':'none'}">
-              <div id="nova-sala-inline" style="display:none;gap:6px;align-items:center;margin-top:6px">
-                <input id="nova-sala-inp" class="modal-input" placeholder="Nome da sala..." style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarNovaSala();}if(event.key==='Escape')cancelarNovaSala()">
-                <button type="button" onclick="confirmarNovaSala()" class="btn-modal-save" style="padding:7px 12px;font-size:13px;flex-shrink:0"><i class="ti ti-check"></i></button>
-                <button type="button" onclick="cancelarNovaSala()" class="btn-modal-cancel" style="padding:7px 10px;font-size:13px;flex-shrink:0"><i class="ti ti-x"></i></button>
-              </div>
             </div>
 
             <!-- Recorrência (restaurada jul/2026, agora com regra personalizada + materialização) -->
@@ -31529,16 +31517,15 @@ function excluirSalaSelecionada(){
 // sub-controle certo. 3 opções no topo, o valor específico vem no 2º nível.
 function _reunSalaModo(v){
   const show=(id,on,disp)=>{const e=document.getElementById(id); if(e) e.style.display=on?(disp||'block'):'none';};
-  show('reun-sala-sub-sala', v==='sala', 'flex');
+  // "Sala de reunião" (v==='sala') não tem sub-controle — o modo já é a resposta.
   show('reun-sala-sub-pessoa', v==='pessoa', 'block');
   show('reun-sala-livre', v==='livre', 'block');
-  const nsi=document.getElementById('nova-sala-inline'); if(nsi) nsi.style.display='none';
   if(v==='livre') setTimeout(()=>document.getElementById('reun-sala-livre')?.focus(),50);
 }
 // Coleta a sala/local do modal → {salaTipo, salaPessoaId, sala, localExterno}.
 function _reunColetaSala(){
   const modo=document.getElementById('reun-sala-modo')?.value||'';
-  if(modo==='sala'){   const s=document.getElementById('reun-sala')?.value||'';        return {salaTipo:s?'sala':'',   salaPessoaId:'', sala:s, localExterno:''}; }
+  if(modo==='sala'){   return {salaTipo:'sala', salaPessoaId:'', sala:'', localExterno:''}; } // sala única — sem valor a escolher
   if(modo==='pessoa'){ const p=document.getElementById('reun-sala-pessoa')?.value||''; return {salaTipo:p?'pessoa':'', salaPessoaId:p, sala:'', localExterno:''}; }
   if(modo==='livre'){  const t=(document.getElementById('reun-sala-livre')?.value||'').trim(); return {salaTipo:t?'livre':'', salaPessoaId:'', sala:'', localExterno:t}; }
   return {salaTipo:'', salaPessoaId:'', sala:'', localExterno:''};
@@ -31553,7 +31540,8 @@ function _reunLocalLabel(m){
     const p=(people||[]).find(x=>x.id===m.salaPessoaId);
     return p ? ('Sala de '+p.name) : 'Sala de uma pessoa';
   }
-  if(m.sala) return 'Sala '+m.sala;
+  if(m.sala) return 'Sala '+m.sala;             // dado antigo com sala nomeada (compat)
+  if(m.salaTipo==='sala') return 'Sala de reunião'; // nova regra: sala única
   if(m.localExterno) return m.localExterno;
   return '';
 }
