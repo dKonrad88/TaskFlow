@@ -4895,7 +4895,7 @@ function saveTask_db(t){
   if(t && t.date && (t.prazoBase===undefined || t.prazoBase===null)) t.prazoBase = t.date;
   const idx=tasks.findIndex(x=>x.id===t.id);
   if(idx>=0) tasks[idx]=t; else tasks.push(t);
-  safeSetItem(LS_TASKS,JSON.stringify(tasks));
+  return safeSetItem(LS_TASKS,JSON.stringify(tasks));
 }
 function deleteTask_db(id){
   tasks=tasks.filter(x=>x.id!==id);
@@ -4985,7 +4985,7 @@ function getEquipeGerenciada(pessoaId){
 function saveMeeting_db(m){
   const idx=meetings.findIndex(x=>x.id===m.id);
   if(idx>-1) meetings[idx]=m; else meetings.push(m);
-  safeSetItem(LS_MEETINGS,JSON.stringify(meetings));
+  return safeSetItem(LS_MEETINGS,JSON.stringify(meetings));
 }
 function deleteMeeting_db(id){
   meetings=meetings.filter(x=>x.id!==id);
@@ -5016,7 +5016,7 @@ function deleteProject_db(id){
 function saveProjectPro_db(p){
   const idx=projectsPro.findIndex(x=>x.id===p.id);
   if(idx>=0) projectsPro[idx]=p; else projectsPro.push(p);
-  safeSetItem(LS_PROJECTS_PRO,JSON.stringify(projectsPro));
+  return safeSetItem(LS_PROJECTS_PRO,JSON.stringify(projectsPro));
 }
 function deleteProjectPro_db(id){
   projectsPro=projectsPro.filter(x=>x.id!==id);
@@ -21457,8 +21457,14 @@ function handleAttachModal(taskId,input){
   reader.onload=e=>{
     const t=tasks.find(x=>x.id===taskId);
     if(!t) return;
+    const prev=t.attachment;
     t.attachment={name:file.name,type:file.type,data:e.target.result};
-    saveTask_db(t);
+    if(!saveTask_db(t)){ // sem espaço: volta o anexo anterior e avisa (não mente "anexado!")
+      if(prev) t.attachment=prev; else delete t.attachment;
+      renderModalAttach(taskId);
+      toast('⚠️ Sem espaço para salvar o anexo. Esvazie a Lixeira ou remova anexos grandes.');
+      return;
+    }
     logHistory(t.id,'anexo',null,file.name);
     renderModalAttach(taskId);
     render();
@@ -26859,18 +26865,19 @@ function excluirGrupo(projectId, faseId, grupoId){
   if(!g) return;
   const nTar = tasks.filter(t=>t.projectProGrupoId===grupoId).length;
   const msg = nTar > 0
-    ? `O setor "${escapeHTML(g.setor)}" tem ${nTar} tarefa${nTar!==1?'s':''}.\n\nAs tarefas NÃO serão excluídas — voltam para a triagem do projeto (sem setor) para você reclassificar.\n\nExcluir o setor?`
+    ? `O setor "${escapeHTML(g.setor)}" tem ${nTar} tarefa${nTar!==1?'s':''}.\n\nAs tarefas NÃO serão excluídas — continuam na fase, sem setor, para você reclassificar.\n\nExcluir o setor?`
     : `Excluir o setor "${escapeHTML(g.setor)}"?`;
   confirmModal({
     title:'Excluir setor', message:msg, confirmLabel:'Excluir setor', danger:true, icon:'ti-trash',
     onConfirm:()=>{
-      // Tarefas continuam no projeto — só perdem o setor (voltam pra triagem).
+      // Tarefas continuam NA FASE — só perdem o setor (caem no bloco "Sem setor" da fase).
+      // NÃO zerar projectProFaseId aqui: isso ejetaria a tarefa da fase inteira (era o bug).
       tasks.filter(t=>t.projectProGrupoId===grupoId).forEach(t=>{
-        t.projectProFaseId=null; t.projectProGrupoId=null; t.setorManual=false; saveTask_db(t);
+        t.projectProGrupoId=null; t.setorManual=false; saveTask_db(t);
       });
       f.grupos = f.grupos.filter(x=>x.id!==grupoId);
       saveProjectPro_db(p);
-      toast(nTar>0 ? `🗑️ Setor excluído · ${nTar} tarefa${nTar!==1?'s':''} na triagem` : '🗑️ Setor excluído');
+      toast(nTar>0 ? `🗑️ Setor excluído · ${nTar} tarefa${nTar!==1?'s':''} sem setor na fase` : '🗑️ Setor excluído');
       render();
     }
   });
@@ -30395,7 +30402,9 @@ function abrirHistoricoDetalhe(chaveCodificada){
 
   // Duração de cada reunião encerrada
   const encerradas=grupo.filter(m=>m.status==='encerrada');
-  const duracoes=encerradas.filter(m=>m.inicioReal&&m.fimReal).map(m=>({
+  // duracaoSeg é a fonte primária; o par inicioReal/fimReal é só fallback de registros antigos.
+  // (Encerrar agora zera inicioReal, então NÃO exigi-lo aqui — senão a reunião sumiria da média.)
+  const duracoes=encerradas.filter(m=>m.duracaoSeg||(m.inicioReal&&m.fimReal)).map(m=>({
     m,min:Math.round(m.duracaoSeg?m.duracaoSeg/60:(new Date(m.fimReal)-new Date(m.inicioReal))/60000)
   }));
   const durTotal=duracoes.reduce((a,b)=>a+b.min,0);
@@ -33641,8 +33650,16 @@ function adicionarAnexos(meetingId,fileList){
     });
   }).filter(Boolean);
   Promise.all(promessas).then(novos=>{
+    if(!novos.length) return;
     m.anexos.push(...novos);
-    saveMeeting_db(m);
+    const ok=saveMeeting_db(m);
+    if(!ok){ // sem espaço: desfaz o push p/ não deixar anexo-fantasma (some no F5) e avisa de verdade
+      m.anexos.splice(m.anexos.length-novos.length, novos.length);
+      const wrap=document.getElementById('anexos-view-'+meetingId);
+      if(wrap) wrap.innerHTML=renderAnexos(m);
+      toast('⚠️ Sem espaço para salvar o anexo. Esvazie a Lixeira ou remova anexos grandes.');
+      return;
+    }
     const wrap=document.getElementById('anexos-view-'+meetingId);
     if(wrap) wrap.innerHTML=renderAnexos(m);
     toast('📎 '+novos.length+' anexo'+(novos.length!==1?'s':'')+' adicionado'+(novos.length!==1?'s':''));
@@ -33700,7 +33717,13 @@ function _projAddAnexos(pid, fileList){
   Promise.all(promessas).then(novos=>{
     if(!novos.length) return;
     p.anexos.push(...novos);
-    saveProjectPro_db(p);
+    const ok=saveProjectPro_db(p);
+    if(!ok){ // sem espaço: desfaz o push (evita anexo-fantasma) e avisa
+      p.anexos.splice(p.anexos.length-novos.length, novos.length);
+      _projRefreshAnexos(pid);
+      toast('⚠️ Sem espaço para salvar o anexo. Esvazie a Lixeira ou remova anexos grandes.');
+      return;
+    }
     _projRefreshAnexos(pid);
     toast('📎 '+novos.length+' anexo'+(novos.length!==1?'s':'')+' adicionado'+(novos.length!==1?'s':''));
   }).catch(e=>{console.error(e);toast('❌ Erro ao anexar arquivo');});
@@ -33758,7 +33781,12 @@ function _encerrarReuniaoFinal(meetingId){
   if(!m) return;
   document.getElementById('fech-reun-ov')?.remove();
   m.duracaoSeg=_reunElapsedSec(m); // tempo ativo real (desconta pausas) — pra stats futuras
-  m.pausadoReuniao=false;
+  // Consolida tudo no acumulado e ZERA o trecho em curso (inicioReal). Sem isto, reabrir a
+  // reunião como "andamento" religava o cronômetro a partir da data ORIGINAL (saltava ~24h)
+  // e o Finalizar seguinte gravava duracaoSeg gigante, contaminando as médias de duração.
+  m.tempoAcumulado=m.duracaoSeg;
+  m.inicioReal=null;
+  m.pausadoReuniao=true; // estado "parado" limpo: reabrir vira RETOMAR (novo trecho), sem salto
   m.status='encerrada';
   m.fimReal=new Date().toISOString();
   if(_cronometroInterval){clearInterval(_cronometroInterval);_cronometroInterval=null;}
