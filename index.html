@@ -5198,8 +5198,15 @@ function _calcularProgressoFase(fase){
   const lista = tasks.filter(t=>t.projectProFaseId===fase.id);
   const total = lista.length;
   if(total === 0) return {pct: 0, total: 0, feitas: 0};
-  const feitas = lista.filter(t=>t.done).length;
-  return {pct: Math.round((feitas/total)*100), total, feitas};
+  const feitas = lista.filter(t=>t.done).length; // contagem discreta p/ "X de Y"
+  // pct com crédito fracionário das subtarefas: tarefa feita = 1; senão, fração de subtarefas
+  // concluídas. Antes só t.done entrava → tarefa com 9/10 subtarefas contava 0% (subestimava).
+  const prog = lista.reduce((s,t)=>{
+    if(t.done) return s+1;
+    const subs = t.subtasks||[];
+    return s + (subs.length ? subs.filter(st=>st.done).length/subs.length : 0);
+  }, 0);
+  return {pct: Math.round((prog/total)*100), total, feitas};
 }
 
 // Helpers usados pelos modais "Nova Tarefa" e "Editar Tarefa"
@@ -10483,6 +10490,13 @@ function restoreFromTrash(idx){
     if(Array.isArray(_links)){
       _links.forEach(l=>{ const t=tasks.find(x=>x.id===l.id); if(t && !t.projectProId){ t.projectProId=item.id; if(l.faseId) t.projectProFaseId=l.faseId; if(l.grupoId) t.projectProGrupoId=l.grupoId; saveTask_db(t); } });
     }
+    // Poda g.tarefaIds: mantém só as tarefas que REALMENTE ficaram neste projeto/grupo. Sem isto,
+    // uma tarefa realocada p/ outro projeto enquanto este estava na Lixeira (a guarda !projectProId
+    // acima a pula) continuaria no tarefaIds daqui → apareceria nos DOIS projetos.
+    (item.fases||[]).forEach(f=>(f.grupos||[]).forEach(g=>{
+      g.tarefaIds=(g.tarefaIds||[]).filter(id=>{ const t=tasks.find(x=>x.id===id); return t && t.projectProId===item.id && t.projectProGrupoId===g.id; });
+    }));
+    saveProjectPro_db(item);
   } else if(type==='rotina'){
     rotinas.push(item);
     saveRotina_db(item);
@@ -10543,6 +10557,14 @@ function limparOrfaos(itensExcluidos){
   const taskIdsExcluidas=itensExcluidos
     .filter(x=>x.type==='task')
     .map(x=>String(x.item.id));
+  // Projetos purgados: limpa os comentários deles (taskflow_pro_comments) — chave que só crescia,
+  // sem rota de leitura nem limpeza, empurrando pro limite de cota.
+  const projProIds=itensExcluidos.filter(x=>x.type==='projectPro').map(x=>String(x.item.id));
+  if(projProIds.length){
+    let mudouPro=false;
+    projProIds.forEach(pid=>{ if(_proComments && _proComments[pid]){ delete _proComments[pid]; mudouPro=true; } });
+    if(mudouPro){ try{ safeSetItem(LS_PRO_COMMENTS, JSON.stringify(_proComments)); }catch(e){} }
+  }
   if(!taskIdsExcluidas.length) return;
   let mudouComments=false, mudouHistory=false, mudouNotifs=false, mudouTimeTrack=false, mudouFoco=false, mudouCutucadas=false;
   taskIdsExcluidas.forEach(tid=>{
@@ -26622,7 +26644,10 @@ function renderFaseExpandida(p, f){
 
   // Grupos de setor
   let gruposHTML = (f.grupos||[]).map(g=>{
-    const tarefas = (g.tarefaIds||[]).map(tid=>_taskById(tid)).filter(Boolean);
+    // Fonte de verdade = t.projectProGrupoId (mesma da Visão e do _calcularProgressoFase do cabeçalho).
+    // Antes listava por g.tarefaIds (índice legado que ninguém poda) → a aba Fases mostrava um conjunto
+    // diferente da Visão e do "feitas/total" do topo ("o número diz 8, eu conto 7").
+    const tarefas = tasks.filter(t=>t.projectProGrupoId===g.id && t.projectProId===p.id);
     // Lista no MESMO formato do Organizar: reusa renderTaskTable (colunas seguem fieldPrefs do usuário).
     const tarefasHTML = tarefas.length
       ? renderTaskTable(tarefas, {ocultarProjeto:true})
