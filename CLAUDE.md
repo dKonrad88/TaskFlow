@@ -340,6 +340,49 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-07-22 — PC da Empresa (sessão "Compras v2") — ÁREA COMPRAS COMPLETA com DADO REAL do ERP + perf 22s→0,2s + varredura + bug das datas
+Sessão longa e **autônoma na 2ª metade** (Diego saiu, autorizou "faça o que precisar sem me pedir nada").
+**Tudo commitado e pushado; working tree limpo; `main == origin == 53ce4be0`.** Último commit desta sessão: `53ce4be0`.
+Verificação: **preview rodando (localhost:8899)** — testei clicando/DOM em tudo; 0 erros de console; 34 telas sem erro.
+
+**Contexto que mudou o jogo:** o Diego trouxe **3 exports REAIS do ERP** (Entradas/NFs, Posição de estoque, Consumo mensal).
+A área Compras deixou de ser casca e virou **ferramenta de verdade com o dado da Klain**.
+
+**⚡ PERFORMANCE (a mais importante):** embutir dados como **literais de array aninhados** (17 mil linhas) fazia o
+parser JS travar — o app abria em **21,9 s** (medido: download 19 ms, parse/JS 21.186 ms). Trocar por **`JSON.parse('...')`**
+derrubou pra **~0,2 s (100×+)**. 📌 **REGRA daqui pra frente:** todo dado grande embutido vai como `JSON.parse`, NUNCA como literal.
+
+**🐞 BUG das datas (varredura):** `amanha`/`semanaIni`/`semanaFim`/`proxSemana*` eram `const` (calculadas 1× no load).
+Com o app aberto virando o dia, "Amanhã" mostrava o que já era HOJE (`amanha` é lido em ~48 lugares); só F5 corrigia.
+Agora `let` + `_recalcDatasDerivadas()` chamada no load e no tick da meia-noite. ⚠️ De quebra eu **quebrei tudo** ao
+tornar `_mon/_sun/_proxMon/_proxSun` locais (são lidos no subtítulo "Visão semanal", ~15412) — o próprio teste das 34
+telas pegou (`_mon is not defined`) e corrigi (voltaram a globais). **Lição: refatorar var global exige grep de uso ANTES.**
+
+**Varredura estática (sem subagentes, eu mesmo):** 1.490 funções, **0 duplicatas reais**, **0 chamadas órfãs** em handler,
+**0 ids duplicados** no DOM. Código morto: **29 funções** + **~40 classes CSS** (mapeadas, NÃO removidas — agora dá p/ limpar COM teste).
+
+**⭐ ÁREA COMPRAS — todas as 8 abas completas com dado real (commits `eb90abb8`→`53ce4be0`):**
+- **Dados embutidos** (`JSON.parse`): `_CP_NF` 17.123 linhas de NF (jan/25–jul/26, R$ 69,8 mi), `_CP_EST` 425 itens de
+  estoque (posição 22/07), `_CP_CONS` 309 itens com consumo mensal jan–jul. Cruzam por **código do item** — 236 têm os 3.
+- **`_cpIdx()`** = índice cruzado (compras × estoque × consumo) que deriva valor, consumo/dia, **dias de cobertura**, últ. fornecedor. Base de tudo.
+- **Painel** (cockpit): valor em estoque R$ 5,0 mi, comprar agora, ficar de olho, preço fora da curva (só ≥ R$ 1.000), estoque parado.
+- **Estoque**: 425 itens, cobertura semaforizada, filtros, busca, clique → ficha.
+- **Insumos → ficha do item**: KPIs + **sugestão de compra** (ponto de reposição p/ 45 dias) + **gráfico de consumo** (7 meses) + quem fornece + histórico de preços.
+- **Fornecedores**: **curva ABC real** + ficha "o que compramos dele" por período (tela de reunião). ⚠️ Prazo de pagamento/entrega = "a cadastrar" (não vem no export).
+- **Ordens de compra**: última × anterior por item, ordenado por **impacto em R$**, placar economia/custo-extra.
+- **Orçamentos**: **ponte** p/ o módulo que já existe na Manutenção (não dupliquei). **Notícias**: segue placeholder.
+
+**🔍 3 problemas do DADO REAL achados e tratados (não eram bug meu):**
+1. Alerta de preço com **CMU do ERP** acendia em 84% (CMU = média do estoque, sempre abaixo do preço subindo) → troquei p/ **média das últimas 3 compras** → caiu p/ 8%.
+2. **18 itens com estoque NEGATIVO** (consumo lançado antes da NF) → mostrados com aviso; cobertura/sugestão consideram o buraco.
+3. **Erro de UNIDADE** nas Ordens (mesmo item comprado em rolo e em metro → variação -99,8%, impacto fantasma -R$ 4 mi) → descarto variação > 80%, com nota (12 itens ocultados).
+
+**Cobertura do dado embutido:** é a **base completa** do export (Diego cobrou 2× "cadê os R$ 69,8 mi" — agora Tudo+Tudo bate ao centavo). `index.html` foi de 2,4 → **3,68 MB** (dado dicionarizado + JSON.parse; carrega em ~0,7 s, ok).
+
+📌 **RETOMAR:** as telas rodam sobre **amostra embutida** (protótipo). No sistema do Guilherme isso vem do banco. **Perguntas p/ o Diego:**
+prazo de pagamento/entrega por fornecedor (não vem no export — de onde tiramos?); dias de cobertura = corridos (÷30) ou úteis (como o PCP ÷261)?;
+renomear "Insumos"→"Ficha do item"?. E o **código morto** (29 fn + 40 CSS) está pronto p/ uma faxina com teste.
+
 ### ⭐ 2026-07-21 (d) — PC da Empresa (sessão paralela à v7, "Compras") — ⭐ PREVIEW RODA AQUI! + CSS morto (256 regras) + NOVA ÁREA "Compras" (blueprint + casca + Estoque)
 Sessão em **PARALELO à v7** (que fez o "Painel da Tarefa" — ver bloco no fim). As duas dividem o **MESMO
 repo/working tree** nesta máquina, então o HEAD "anda" quando a outra commita (é o "modified on disk" que
