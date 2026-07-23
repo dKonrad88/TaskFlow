@@ -8638,11 +8638,19 @@ function _cpFichaFornHTML(cod){
 
 // ════════ ORDENS DE COMPRA — última vs anterior (pedido do Diego, item 6) ════════
 function _comprasOrdensHTML(){
-  const L=_cpItens().filter(o=>o.compras.length>=2).map(o=>{
+  // ⚠️ Filtro anti-lixo do dado real: variação de +/-80% num preço unitário NÃO é
+  // negociação — é erro de UNIDADE no cadastro (ex.: Ribbon comprado como "1 rolo a
+  // R$ 103" numa NF e "650m a R$ 0,16" na outra → -99,8% e impacto fantasma de -R$ 4 mi).
+  // Descartamos essas; ninguém renegocia preço em 80%+. Contado no rodapé p/ transparência.
+  const todos=_cpItens().filter(o=>o.compras.length>=2).map(o=>{
     const a=o.compras[0], b=o.compras[1];
     const dif=b.vun>0?((a.vun-b.vun)/b.vun*100):0;
-    return {o:o,a:a,b:b,dif:dif};
-  }).sort((x,y)=>Math.abs(y.dif)-Math.abs(x.dif));
+    const impacto=(a.vun-b.vun)*a.qtd;
+    return {o:o,a:a,b:b,dif:dif,impacto:impacto};
+  });
+  const descartados=todos.filter(x=>Math.abs(x.dif)>80).length;
+  const L=todos.filter(x=>Math.abs(x.dif)<=80)
+    .sort((x,y)=>Math.abs(y.impacto)-Math.abs(x.impacto));  // ordena pelo que PESA no bolso
   const subiu=L.filter(x=>x.dif>0.5).length, caiu=L.filter(x=>x.dif<-0.5).length;
   const economia=L.filter(x=>x.dif<0).reduce((a,x)=>a+((x.b.vun-x.a.vun)*x.a.qtd),0);
   const perda=L.filter(x=>x.dif>0).reduce((a,x)=>a+((x.a.vun-x.b.vun)*x.a.qtd),0);
@@ -8668,7 +8676,8 @@ function _comprasOrdensHTML(){
     ])+
     `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead><tr><th>Item</th><th>Fornecedor (últ.)</th><th>Compra anterior</th><th class="r">Preço</th><th>Última compra</th><th class="r">Preço</th><th class="r">Variação</th><th class="r">Impacto R$</th></tr></thead>
-      <tbody>${linhas}</tbody></table></div>`);
+      <tbody>${linhas}</tbody></table></div>
+    ${descartados?`<div style="font-size:12px;color:var(--text3);margin-top:10px;display:flex;gap:6px;align-items:baseline"><i class="ti ti-filter-off" style="font-size:13px"></i><span><b>${descartados} ${descartados===1?'item foi ocultado':'itens foram ocultados'}</b> por variação acima de 80% — quase sempre erro de unidade no cadastro do ERP (mesmo item comprado em rolo e em metro, por exemplo), não negociação de preço.</span></div>`:''}`);
 }
 
 // ════════ PAINEL — o cockpit ════════
