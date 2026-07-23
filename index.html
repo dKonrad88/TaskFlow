@@ -8378,6 +8378,10 @@ function _cpCSS(){ return `<style>
   .cp-bar{height:7px;border-radius:4px;background:var(--bg2);overflow:hidden}
   .cp-bar i{display:block;height:100%;background:var(--blue-mid)}
   .cp-seg button{padding:6px 13px;border:1px solid var(--border);font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+  /* input discreto do simulador: sem fundo, só uma linha embaixo */
+  .cp-sim-inp{background:transparent;border:none;border-bottom:1.5px solid var(--border);border-radius:0;padding:2px 4px;font-family:inherit;font-size:14px;font-weight:700;color:var(--text);text-align:center}
+  .cp-sim-inp:focus{outline:none;border-bottom-color:var(--blue-mid)}
+  select.cp-sim-inp{padding:2px 2px}
   /* ── PAINEL do item (ficha) — rail + header + corpo, estilo Reunião/Projeto ── */
   .cp-painel{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:12px;overflow:hidden;min-height:520px}
   .cp-painel-rail{flex:0 0 78px;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:stretch}
@@ -8645,27 +8649,27 @@ function _cpSimHTML(o){
   const s=_cpSim, um=o.um||'';
   const precoRef=o.ultPreco||o.precoCompra||0;
   const chip=(m,lab)=>`<button onclick="_cpSimModo('${m}')" style="padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:${s.modo===m?'var(--blue-mid)':'var(--card)'};color:${s.modo===m?'#fff':'var(--text2)'};font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;margin:0 4px 4px 0">${lab}</button>`;
-  const inp=(campo,val,ph,tipo,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimInput('${campo}',this.value)" class="modal-input" style="width:auto;flex:0 1 92px;min-width:64px;padding:6px 9px;font-size:13px"${extra?' '+extra:''}>`;
+  const inp=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimInput('${campo}',this.value)" class="cp-sim-inp" style="width:${w||'50px'}"${extra?' '+extra:''}>`;
+  const lb=t=>`<span style="font-size:13px;color:var(--text2)">${t}</span>`;
   let campoModo='';
-  if(s.modo==='estoqueDias') campoModo=`<span style="font-size:13px;color:var(--text2)">Ter estoque para</span>${inp('dias',s.dias,'','number','min="0"')}<span style="font-size:13px;color:var(--text2)">dias</span>`;
-  else if(s.modo==='comprarDias') campoModo=`<span style="font-size:13px;color:var(--text2)">Comprar</span>${inp('dias',s.dias,'','number','min="0"')}<span style="font-size:13px;color:var(--text2)">dias de consumo</span>`;
-  else if(s.modo==='ate') campoModo=`<span style="font-size:13px;color:var(--text2)">Estoque durar até</span>${inp('data',s.data,'','date')}`;
-  else if(s.modo==='qtd') campoModo=`<span style="font-size:13px;color:var(--text2)">Comprar</span>${inp('qtd',s.qtd,'0','number','min="0"')}<select onchange="_cpSimInput('unidade',this.value)" class="modal-input" style="width:auto;padding:6px;font-size:12.5px">${um==='KG'?`<option value="kg"${s.unidade==='kg'?' selected':''}>kg</option><option value="ton"${s.unidade==='ton'?' selected':''}>t</option>`:`<option value="kg" selected>${escapeHTML(um||'un')}</option>`}</select>`;
+  if(s.modo==='estoqueDias') campoModo=`${lb('Ter estoque para')}${inp('dias',s.dias,'','number','46px','min="0"')}${lb('dias')}`;
+  else if(s.modo==='comprarDias') campoModo=`${lb('Comprar')}${inp('dias',s.dias,'','number','46px','min="0"')}${lb('dias de consumo')}`;
+  else if(s.modo==='ate') campoModo=`${lb('Estoque durar até')}${inp('data',s.data,'','date','130px')}`;
+  else if(s.modo==='qtd') campoModo=`${lb('Comprar')}${inp('qtd',s.qtd,'0','number','58px','min="0"')}<select onchange="_cpSimInput('unidade',this.value)" class="cp-sim-inp" style="width:auto;text-align:left;font-weight:600">${um==='KG'?`<option value="kg"${s.unidade==='kg'?' selected':''}>kg</option><option value="ton"${s.unidade==='ton'?' selected':''}>t</option>`:`<option value="kg" selected>${escapeHTML(um||'un')}</option>`}</select>`;
   return `<div class="cp-card" id="cp-sim" style="padding:15px 17px;border-left:3px solid var(--blue-mid)">
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;gap:10px">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Simulador de compra</div>
       <div style="font-size:11px;color:var(--text3)">consumo ${o.consMed?_cpNum(o.consMed,0)+' '+um+'/mês':'—'}</div>
     </div>
-    <div style="margin-bottom:10px">${chip('estoqueDias','Estoque p/ X dias')}${chip('comprarDias','Comprar X dias')}${chip('ate','Até uma data')}${chip('qtd','Quantidade')}</div>
-    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:9px">${campoModo}</div>
-    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:13px"><span style="font-size:13px;color:var(--text2)">A R$</span>${inp('preco',s.preco,_cpNum(precoRef,2),'text')}<span style="font-size:13px;color:var(--text3)">/${um} — atual ${_cpBRL(precoRef)}</span></div>
+    <div style="margin-bottom:12px">${chip('estoqueDias','Estoque p/ X dias')}${chip('comprarDias','Comprar X dias')}${chip('ate','Até uma data')}${chip('qtd','Quantidade')}</div>
+    <div style="display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin-bottom:14px">${campoModo}<span style="color:var(--border)">|</span>${lb('a R$')}${inp('preco',s.preco,_cpNum(precoRef,2),'text','58px')}<span style="font-size:13px;color:var(--text3)">/${um}</span></div>
     <div id="cp-sim-result">${_cpSimResult(o)}</div>
   </div>`;
 }
 function _cpSimModo(m){ _cpSim.modo=m; _cpSimRerender(); }
 function _cpSimInput(campo,val){ _cpSim[campo]=val; const el=document.getElementById('cp-sim-result'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]); }
 function _cpSimRerender(){ const el=document.getElementById('cp-sim'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.outerHTML=_cpSimHTML(_cpIdx()[_cpItemSel]); }
-function _cpFichaMainHTML(o){ return _cpFichaView==='graficos' ? _cpFichaGraficos(o) : _cpFichaResumo(o); }
+function _cpFichaMainHTML(o){ if(_cpFichaView==='graficos') return _cpFichaGraficos(o); if(_cpFichaView==='fornecedores') return _cpFichaFornecedores(o); return _cpFichaResumo(o); }
 function _cpFichaResumo(o){
   const covCor=o.dias==null?'':(o.dias<10?'var(--danger)':(o.dias<20?'var(--amber)':''));
   const kpis=[
@@ -8677,17 +8681,56 @@ function _cpFichaResumo(o){
     _cpKpiCard('Valor em estoque',o.valor?_cpBRL(o.valor):'—',''),
     _cpKpiCard('Compras',_cpNum(o.compras.length),'no período')
   ].join('');
-  const fs=Object.keys(o.forns).map(k=>({n:k,v:o.forns[k]})).sort((a,b)=>b.v-a.v);
-  const maxF=fs.length?fs[0].v:1;
-  const fornInner=fs.slice(0,6).map(f=>`<div style="margin-bottom:8px">
-    <div style="display:flex;justify-content:space-between;font-size:12px;gap:8px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(f.n)}</span><b style="flex:none">${_cpBRL(f.v)}</b></div>
-    <div class="cp-bar"><i style="width:${Math.round(f.v/maxF*100)}%"></i></div></div>`).join('') || '<div style="color:var(--text3);font-size:13px">Sem compras registradas.</div>';
   return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;margin-bottom:14px">${kpis}</div>
-    <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:12px;align-items:start">
+    <div style="display:grid;grid-template-columns:minmax(340px,1.15fr) minmax(300px,1fr) minmax(160px,0.7fr);gap:12px;align-items:start">
       ${_cpSimHTML(o)}
-      <div class="cp-card" style="padding:15px 17px">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:12px">Quem fornece</div>${fornInner}</div>
+      ${_cpUltimasComprasCard(o)}
+      <div class="cp-card" style="padding:15px 17px;display:flex;align-items:center;justify-content:center;text-align:center;min-height:180px;border-style:dashed;color:var(--text3);font-size:12.5px;line-height:1.5">Espaço reservado<br>(em breve)</div>
     </div>`;
+}
+function _cpUltimasComprasCard(o){
+  const um=o.um||'';
+  const linhas=o.compras.slice(0,10).map(l=>`<tr>
+    <td class="cp-n">${_cpNum(l.qtd,0)} <span class="cp-un">${escapeHTML(um)}</span></td>
+    <td class="cp-n">${_cpBRL(l.vun)}</td>
+    <td class="cp-item" title="${escapeAttr(l.forn[1])}" style="max-width:150px">${escapeHTML(l.forn[1])}</td>
+    <td class="cp-n" style="color:var(--text3)">—</td>
+  </tr>`).join('') || `<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:16px">Sem compras.</td></tr>`;
+  return `<div class="cp-card" style="padding:15px 17px 8px">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:10px">Últimas compras</div>
+    <div style="overflow-x:auto"><table class="cp-tbl" style="font-size:12.5px">
+      <thead><tr><th class="r">Qtde</th><th class="r">Preço</th><th>Fornecedor</th><th class="r">Prazo</th></tr></thead>
+      <tbody>${linhas}</tbody></table></div>
+    <div style="font-size:10.5px;color:var(--text3);padding:6px 2px 0">Prazo (pagamento/entrega) — a cadastrar; não vem no export do ERP.</div>
+  </div>`;
+}
+// View "Fornecedores" (sidebar): quem fornece este item, com participação e ficha por clique.
+function _cpFichaFornecedores(o){
+  const um=o.um||'';
+  const agg={};
+  o.compras.forEach(l=>{ const k=l.forn[0]||l.forn[1];
+    if(!agg[k]) agg[k]={cod:l.forn[0]||'',nome:l.forn[1],total:0,n:0,ult:'',preco:0,qtd:0};
+    agg[k].total+=l.tot; agg[k].n++; agg[k].qtd+=l.qtd;
+    if(l.data>agg[k].ult){ agg[k].ult=l.data; agg[k].preco=l.vun; } });
+  const fs=Object.keys(agg).map(k=>agg[k]).sort((a,b)=>b.total-a.total);
+  const tot=fs.reduce((a,f)=>a+f.total,0), maxF=fs.length?fs[0].total:1;
+  const barras=fs.slice(0,8).map(f=>`<div style="margin-bottom:9px">
+    <div style="display:flex;justify-content:space-between;font-size:12.5px;gap:8px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(f.nome)}</span><b style="flex:none">${_cpBRL(f.total)}</b></div>
+    <div class="cp-bar"><i style="width:${Math.round(f.total/maxF*100)}%"></i></div></div>`).join('') || '<div style="color:var(--text3);font-size:13px">Sem compras registradas.</div>';
+  const linhas=fs.map(f=>`<tr class="cp-clic" onclick="_cpAbrirForn('${escapeAttr(f.cod)}')">
+    <td class="cp-item">${escapeHTML(f.nome)}</td>
+    <td class="cp-n">${_cpBRL(f.total)}</td>
+    <td class="cp-n">${(tot?f.total/tot*100:0).toFixed(1)}%</td>
+    <td class="cp-n">${f.n}</td>
+    <td class="cp-n">${_cpNum(f.qtd,0)} ${escapeHTML(um)}</td>
+    <td class="cp-n">${_cpBRL(f.preco)}</td>
+    <td class="cp-mono">${_cpDt(f.ult)}</td></tr>`).join('');
+  return `<div class="cp-card" style="padding:16px 18px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:12px">Participação no gasto do item</div>${barras}</div>
+    <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
+      <thead><tr><th>Fornecedor</th><th class="r">Comprado</th><th class="r">%</th><th class="r">Compras</th><th class="r">Qtde total</th><th class="r">Últ. preço</th><th class="r">Últ. compra</th></tr></thead>
+      <tbody>${linhas}</tbody></table>
+      <div style="font-size:11.5px;color:var(--text3);padding:8px 14px"><i class="ti ti-hand-finger"></i> Clique num fornecedor para abrir a ficha completa dele.</div></div>`;
 }
 function _cpFichaGraficos(o){
   const serie=_cpItemSerie(o), um=o.um||'';
@@ -8727,6 +8770,7 @@ function _cpFichaItemHTML(o){
       <div style="height:1px;background:var(--border);margin:4px 12px"></div>
       ${rb('resumo','ti-clipboard-data','Resumo')}
       ${rb('graficos','ti-chart-line','Gráfico')}
+      ${rb('fornecedores','ti-building-store','Fornec.')}
       <div class="cp-rail-sp"></div>
       <button class="cp-exp-btn" onclick="_cpToggleFoco()" title="${foco?'Reduzir':'Tela cheia'}"><i class="ti ${foco?'ti-arrows-minimize':'ti-arrows-maximize'}"></i>${foco?'Reduzir':'Tela'}</button>
     </div>
@@ -8750,7 +8794,7 @@ if(typeof window!=='undefined' && !window._cpFocoEsc){ window._cpFocoEsc=true;
 
 // ════════ FORNECEDORES — curva ABC + ficha ════════
 let _cpFornSel=null, _cpFornMeses=12;
-function _cpAbrirForn(cod){ _cpFornSel=cod; comprasView='fornecedores'; renderSidebar(); renderCompras(); window.scrollTo(0,0); }
+function _cpAbrirForn(cod){ _cpFornSel=cod; try{document.body.classList.remove('cp-focus');}catch(e){} comprasView='fornecedores'; renderSidebar(); renderCompras(); window.scrollTo(0,0); }
 function _cpVoltarForns(){ _cpFornSel=null; renderCompras(); }
 function _cpFornSetMeses(v){ _cpFornMeses=Number(v); renderCompras(); }
 function _cpFornAgg(escopo){
