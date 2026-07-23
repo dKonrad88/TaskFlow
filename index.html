@@ -35567,7 +35567,10 @@ window.addEventListener('load', async ()=>{
   if(typeof _loadSidebarWidth==='function') _loadSidebarWidth();
   if(typeof _initSidebarResizer==='function') _initSidebarResizer();
   // GUILHERME V3: checar se precisa abrir modal de revisão de atrasadas
-  setTimeout(()=>{ if(typeof checarRevisaoAtrasadas==='function') checarRevisaoAtrasadas(); }, 800);
+  // DESATIVADO (jul/2026, pedido do Diego): o modal de "revisar tarefas atrasadas" no
+  // início incomodava. Gatilho removido; as funções (checarRevisaoAtrasadas/
+  // abrirModalRevisaoAtrasadas) ficam definidas, só não disparam mais. Reativar = descomentar.
+  // setTimeout(()=>{ if(typeof checarRevisaoAtrasadas==='function') checarRevisaoAtrasadas(); }, 800);
   // activa aba Hoje visualmente (para quando o usuário entrar no TaskFlow)
   document.querySelectorAll('.menu-tab').forEach(b=>b.classList.remove('active'));
   const hojeBtn=document.querySelector('.menu-tab[onclick*="hoje"]');
