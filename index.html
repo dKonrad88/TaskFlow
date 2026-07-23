@@ -8612,20 +8612,23 @@ function _cpKpiCard(lab,val,sub,cor){
   </div>`;
 }
 // ── SIMULADOR DE COMPRA (card da view Resumo). Roda sobre estoque/consumo/preço do item. ──
-let _cpSim={modo:'estoqueDias', dias:'45', data:'', qtd:'', unidade:'kg', preco:''};
-function _cpSimReset(){ _cpSim={modo:'estoqueDias', dias:'45', data:'', qtd:'', unidade:'kg', preco:''}; }
+let _cpSim={modo:'estoqueDias', dias:'45', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7'};
+function _cpSimReset(){ _cpSim={modo:'estoqueDias', dias:'45', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7'}; }
 function _cpSimCalc(o){
   const s=_cpSim, cd=o.consDia||0;
   const precoRef=o.ultPreco||o.precoCompra||0;
-  const pp=parseFloat(String(s.preco).replace(',','.'));
-  const preco=(s.preco!=='' && !isNaN(pp))?pp:precoRef;
   let qtd=0;
   if(s.modo==='estoqueDias') qtd=Math.max(0, cd*(parseFloat(s.dias)||0) - o.est);
   else if(s.modo==='comprarDias') qtd=cd*(parseFloat(s.dias)||0);
   else if(s.modo==='ate'){ if(s.data){ const dd=Math.round((new Date(s.data+'T00:00:00')-new Date(today+'T00:00:00'))/86400000); qtd=Math.max(0, cd*Math.max(0,dd) - o.est); } }
-  else if(s.modo==='qtd'){ let q=parseFloat(String(s.qtd).replace(',','.'))||0; if(s.unidade==='ton') q*=1000; qtd=q; }
-  return {qtd, preco, precoRef, custo:qtd*preco, ganho:(precoRef-preco)*qtd, estDepois:o.est+qtd,
-    cobDepois:cd>0?Math.round((o.est+qtd)/cd):null, cd, semConsumo:!(cd>0)};
+  else if(s.modo==='qtd' || s.modo==='desconto'){ let q=parseFloat(String(s.qtd).replace(',','.'))||0; if(s.unidade==='ton') q*=1000; qtd=q; }
+  // No modo "desconto" o preço é DERIVADO do % sobre o preço atual; nos outros, é digitado.
+  const descPct=parseFloat(String(s.descPct).replace(',','.'))||0;
+  let preco;
+  if(s.modo==='desconto') preco=precoRef*(1-descPct/100);
+  else { const pp=parseFloat(String(s.preco).replace(',','.')); preco=(s.preco!=='' && !isNaN(pp))?pp:precoRef; }
+  return {qtd, preco, precoRef, descPct:(s.modo==='desconto'?descPct:0), custo:qtd*preco, ganho:(precoRef-preco)*qtd,
+    estDepois:o.est+qtd, cobDepois:cd>0?Math.round((o.est+qtd)/cd):null, cd, semConsumo:!(cd>0)};
 }
 function _cpSimResult(o){
   const c=_cpSimCalc(o), um=o.um||'';
@@ -8640,7 +8643,7 @@ function _cpSimResult(o){
   else { gc='var(--text3)'; g='igual à referência'; }
   const gsub=Math.abs(du)>0.005?` · ${du<0?'−':'+'}${_cpBRL(Math.abs(du))}/${um}`:'';
   return `${linha('Comprar',_cpNum(c.qtd,0)+' '+um+tRef(c.qtd))}
-    ${linha('A preço de',_cpBRL(c.preco)+'/'+um)}
+    ${linha('A preço de',_cpBRL(c.preco)+'/'+um+(c.descPct>0?` <span style="color:var(--success)">(−${c.descPct}%)</span>`:''))}
     ${linha('Custo total',_cpBRL(c.custo))}
     ${linha('vs preço atual ('+_cpBRL(c.precoRef)+')', g+gsub, gc)}
     ${linha('Estoque depois',_cpNum(c.estDepois,0)+' '+um+(c.cobDepois!=null?' → '+c.cobDepois+' dias (até '+_cpDataFim(c.cobDepois)+')':''))}`;
@@ -8651,18 +8654,20 @@ function _cpSimHTML(o){
   const chip=(m,lab)=>`<button onclick="_cpSimModo('${m}')" style="padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:${s.modo===m?'var(--blue-mid)':'var(--card)'};color:${s.modo===m?'#fff':'var(--text2)'};font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;margin:0 4px 4px 0">${lab}</button>`;
   const inp=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimInput('${campo}',this.value)" class="cp-sim-inp" style="width:${w||'50px'}"${extra?' '+extra:''}>`;
   const lb=t=>`<span style="font-size:13px;color:var(--text2)">${t}</span>`;
+  const selUn=`<select onchange="_cpSimInput('unidade',this.value)" class="cp-sim-inp" style="width:auto;text-align:left;font-weight:600">${um==='KG'?`<option value="kg"${s.unidade==='kg'?' selected':''}>kg</option><option value="ton"${s.unidade==='ton'?' selected':''}>t</option>`:`<option value="kg" selected>${escapeHTML(um||'un')}</option>`}</select>`;
   let campoModo='';
   if(s.modo==='estoqueDias') campoModo=`${lb('Ter estoque para')}${inp('dias',s.dias,'','number','46px','min="0"')}${lb('dias')}`;
   else if(s.modo==='comprarDias') campoModo=`${lb('Comprar')}${inp('dias',s.dias,'','number','46px','min="0"')}${lb('dias de consumo')}`;
   else if(s.modo==='ate') campoModo=`${lb('Estoque durar até')}${inp('data',s.data,'','date','130px')}`;
-  else if(s.modo==='qtd') campoModo=`${lb('Comprar')}${inp('qtd',s.qtd,'0','number','58px','min="0"')}<select onchange="_cpSimInput('unidade',this.value)" class="cp-sim-inp" style="width:auto;text-align:left;font-weight:600">${um==='KG'?`<option value="kg"${s.unidade==='kg'?' selected':''}>kg</option><option value="ton"${s.unidade==='ton'?' selected':''}>t</option>`:`<option value="kg" selected>${escapeHTML(um||'un')}</option>`}</select>`;
+  else if(s.modo==='qtd') campoModo=`${lb('Comprar')}${inp('qtd',s.qtd,'0','number','88px','min="0"')}${selUn}`;
+  else if(s.modo==='desconto') campoModo=`${lb('Comprar')}${inp('qtd',s.qtd,'0','number','88px','min="0"')}${selUn}${lb('com')}${inp('descPct',s.descPct,'','number','52px','min="0" max="100"')}${lb('% de desconto')}`;
   return `<div class="cp-card" id="cp-sim" style="padding:15px 17px;border-left:3px solid var(--blue-mid)">
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;gap:10px">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Simulador de compra</div>
       <div style="font-size:11px;color:var(--text3)">consumo ${o.consMed?_cpNum(o.consMed,0)+' '+um+'/mês':'—'}</div>
     </div>
-    <div style="margin-bottom:12px">${chip('estoqueDias','Estoque p/ X dias')}${chip('comprarDias','Comprar X dias')}${chip('ate','Até uma data')}${chip('qtd','Quantidade')}</div>
-    <div style="display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin-bottom:14px">${campoModo}<span style="color:var(--border)">|</span>${lb('a R$')}${inp('preco',s.preco,_cpNum(precoRef,2),'text','58px')}<span style="font-size:13px;color:var(--text3)">/${um}</span></div>
+    <div style="margin-bottom:12px">${chip('estoqueDias','Estoque p/ X dias')}${chip('comprarDias','Comprar X dias')}${chip('ate','Até uma data')}${chip('qtd','Quantidade')}${chip('desconto','Desconto %')}</div>
+    <div style="display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin-bottom:14px">${campoModo}${s.modo==='desconto'?'':`<span style="color:var(--border)">|</span>${lb('a R$')}${inp('preco',s.preco,_cpNum(precoRef,2),'text','62px')}<span style="font-size:13px;color:var(--text3)">/${um}</span>`}</div>
     <div id="cp-sim-result">${_cpSimResult(o)}</div>
   </div>`;
 }
