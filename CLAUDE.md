@@ -340,6 +340,48 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-07-23 — PC da Empresa ("Compras v3") — PAINEL DO ITEM (tela cheia) + SIMULADOR DE COMPRA + estoque/consumo reais
+Continuação da sessão anterior. **Tudo commitado e pushado; working tree limpo; `main == origin == 0a9d265b` (+ este commit de docs).**
+Verificação: **preview local rodando** (`scratchpad/server.ps1` na :8899) — testei clicando/DOM em tudo; 0 erros de
+console em todas as levas. ⚠️ **Screenshot segue travando** nesta máquina (renderer + arquivo de 3,7 MB) → validação
+é por **DOM/medição**, não por imagem. **O acabamento visual fino não foi verificado por olho — o Diego confere no Pages.**
+
+**⭐ O PAINEL DO ITEM (ficha do insumo) virou o centro da área.** Evoluiu em várias rodadas com o Diego ao vivo:
+- **Abre em TELA CHEIA** (estilo Reunião/Projeto): `body.cp-focus` esconde header/sidebar/topbar, `#task-container`
+  vira `fixed inset:0`, painel ocupa 100vh. **Rail lateral** colado (Voltar · Resumo · Gráfico · Fornec. · Tela cheia/Reduzir),
+  **header próprio** e **corpo com scroll**. Esc ou "Reduzir" saem; Voltar/trocar-aba limpam o foco.
+- **View RESUMO em 3 COLUNAS:** (1) **Simulador de compra**, (2) **Últimas 10 compras** (Data · Qtde · Preço ·
+  Fornecedor · Prazo), (3) **reservada** (vazia, a definir). KPIs viraram **cards individuais** (7), com a **Cobertura
+  mostrando a data de término** do estoque.
+- **View GRÁFICO:** 4 gráficos em 2 colunas — consumo/mês e valor/mês em **barras**; **preço médio/kg** e **todas as
+  compras** em **LINHA + pontos (SVG)**. **Clicar num mês/ponto filtra a tela** (resumo do mês + tabela).
+- **View FORNECEDORES:** quem fornece o item, participação no gasto + tabela (comprado/%/compras/qtde/últ. preço/data);
+  clique abre a ficha do fornecedor.
+
+**⭐ SIMULADOR DE COMPRA (o card mais pedido).** 5 modos: **Estoque p/ X dias · Comprar X dias · Até uma data ·
+Quantidade (kg/t) · Desconto %**. Campo de preço com default = último preço pago. Resultado ao vivo: quanto comprar,
+custo, **ganho vs preço atual**, estoque depois e nova cobertura (dias + data).
+Conferido com dado real (Amendoim, ref R$ 5,50): 30 t a R$ 5,10 → economia **R$ 12.000**; 90 t com **7%** → preço
+R$ 5,11, economia **R$ 34.650** (bate com 90.000 × 5,50 × 7%). UX: inputs **sem fundo** (só underline, `cp-sim-inp`),
+campos numa linha só, e o re-render é só do bloco de resultado (não perde o foco ao digitar).
+
+**DADOS NOVOS (2 exports do ERP):** `_CP_EST` (425 itens, posição 22/07) e `_CP_CONS` (309 itens, consumo jan–jul).
+Cruzam com as compras por **código do item** via **`_cpIdx()`** — 236 itens têm as 3 fontes. Deriva valor em estoque,
+consumo/dia, **dias de cobertura** e último fornecedor. ⚠️ Cobertura usa **dias CORRIDOS** (consumo/30) — decidir se
+vira dias ÚTEIS (o PCP usa 261/ano).
+
+**Outros ajustes:** removido o **modal "revisar tarefas atrasadas"** que abria no boot (gatilho comentado; funções
+mantidas p/ o Guilherme); coluna **Data** nas Últimas compras; Ordens de compra passou a ordenar por **impacto em R$**.
+
+📌 **PENDÊNCIAS / DECISÕES p/ o Diego:**
+1. **Prazo de pagamento e de entrega NÃO vêm no export do ERP** — a coluna "Prazo" e a ficha do fornecedor estão com
+   "a cadastrar". Definir de onde vem esse dado.
+2. **Cobertura**: dias corridos (hoje) × dias úteis (padrão do PCP)?
+3. **3ª coluna do Resumo** está reservada/vazia — decidir o que entra.
+4. Renomear **"Insumos" → "Ficha do item"**?
+5. Ideia não implementada (só sugerida): botão **"gerar cotação"** levando a simulação p/ o módulo de Orçamentos.
+6. Herdado: **código morto** (29 funções + ~40 classes CSS) mapeado e **não** removido — agora dá p/ limpar COM teste.
+
 ### ⭐ 2026-07-22 — PC da Empresa (sessão "Compras v2") — ÁREA COMPRAS COMPLETA com DADO REAL do ERP + perf 22s→0,2s + varredura + bug das datas
 Sessão longa e **autônoma na 2ª metade** (Diego saiu, autorizou "faça o que precisar sem me pedir nada").
 **Tudo commitado e pushado; working tree limpo; `main == origin == 53ce4be0`.** Último commit desta sessão: `53ce4be0`.
