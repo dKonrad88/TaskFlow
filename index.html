@@ -8691,15 +8691,16 @@ function _cpFichaResumo(o){
 function _cpUltimasComprasCard(o){
   const um=o.um||'';
   const linhas=o.compras.slice(0,10).map(l=>`<tr>
+    <td class="cp-mono">${_cpDt(l.data)}</td>
     <td class="cp-n">${_cpNum(l.qtd,0)} <span class="cp-un">${escapeHTML(um)}</span></td>
     <td class="cp-n">${_cpBRL(l.vun)}</td>
-    <td class="cp-item" title="${escapeAttr(l.forn[1])}" style="max-width:150px">${escapeHTML(l.forn[1])}</td>
+    <td class="cp-item" title="${escapeAttr(l.forn[1])}" style="max-width:140px">${escapeHTML(l.forn[1])}</td>
     <td class="cp-n" style="color:var(--text3)">—</td>
-  </tr>`).join('') || `<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:16px">Sem compras.</td></tr>`;
+  </tr>`).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:16px">Sem compras.</td></tr>`;
   return `<div class="cp-card" style="padding:15px 17px 8px">
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:10px">Últimas compras</div>
     <div style="overflow-x:auto"><table class="cp-tbl" style="font-size:12.5px">
-      <thead><tr><th class="r">Qtde</th><th class="r">Preço</th><th>Fornecedor</th><th class="r">Prazo</th></tr></thead>
+      <thead><tr><th>Data</th><th class="r">Qtde</th><th class="r">Preço</th><th>Fornecedor</th><th class="r">Prazo</th></tr></thead>
       <tbody>${linhas}</tbody></table></div>
     <div style="font-size:10.5px;color:var(--text3);padding:6px 2px 0">Prazo (pagamento/entrega) — a cadastrar; não vem no export do ERP.</div>
   </div>`;
