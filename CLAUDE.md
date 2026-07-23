@@ -307,6 +307,88 @@ Não altera nada, só lê e imprime. Rodar em CADA máquina e colar o resultado 
 > Diferente das "pendências" espalhadas no log: aqui só entra o que o Diego **viu e aprovou**, mas
 > decidiu fazer **mais adiante**. Não começar sem ele pedir; ao pedir, o contexto p/ retomar está aqui.
 
+### ⭐⭐ COMPRAS v4 — reestruturação do MENU + "Ficha do Produto 360°" (definido 23/07 → FAZER 24/07)
+**Status:** o Diego trouxe no fim do dia 23/07 **uma print (árvore de menu) + um texto detalhado** com o desenho
+que ele quer p/ a área Compras. Disse explicitamente: *"são ideias, para continuarmos amanhã"* — **nada foi
+implementado**. ⚠️ **A print e o chat NÃO persistem** — o que está transcrito abaixo é a ÚNICA fonte.
+
+#### (A) NOVA ÁRVORE DE MENU proposta (hoje são 8 abas planas; viraria 5 GRUPOS)
+```
+📁 VISÃO GERAL
+   ├ Dashboard de Compras (Geral)
+   └ Alertas & Rupturas (itens críticos / abaixo do estoque mínimo)
+📦 GESTÃO DE ESTOQUE E INSUMOS
+   ├ Catálogo de Insumos (busca / curva ABC)
+   ├ Ficha do Produto (a TELA ATUAL — Análise 360°)
+   └ Transferências e Ajustes
+🛒 OPERAÇÃO DE COMPRAS
+   ├ Sugestões de Compra (MRP / ponto de pedido)
+   ├ Pedidos de Compra (Abertos, Em Trânsito, Concluídos)
+   └ Painel de Cotações & Negociações
+🏭 FORNECEDORES
+   ├ Cadastro e Desempenho (OTIF)
+   └ Histórico de Preços por Fornecedor
+⚙️ CONFIGURAÇÕES / ERP
+   ├ Parâmetros de Estoque (lead time, estoque de segurança)
+   └ Sincronização ERP
+```
+**Mapa contra o que JÁ EXISTE** (p/ não reconstruir o que está pronto — é mais reorganização que código novo):
+| Item novo | Hoje |
+|---|---|
+| Dashboard de Compras | ✅ = aba **Painel** (cockpit) |
+| Alertas & Rupturas | ⚠️ o conteúdo existe **dentro** do Painel (comprar agora / ficar de olho / preço fora da curva / estoque parado) → só **extrair p/ aba própria** |
+| Catálogo de Insumos | ✅ ≈ abas **Estoque** + **Insumos** (falta a **curva ABC por item** — a de fornecedor já existe) |
+| Ficha do Produto 360° | ✅ é o **painel do item** entregue hoje (tela cheia, views Resumo/Gráfico/Fornecedores) |
+| Transferências e Ajustes | ❌ não existe (depende do ERP) |
+| Sugestões de Compra | ⚠️ a sugestão foi **substituída pelo simulador** dentro da ficha; como **aba/lista** não existe |
+| Pedidos de Compra | ⚠️ **CUIDADO com o nome:** a aba **"Ordens de compra"** de hoje é OUTRA coisa (comparativo última × anterior por item, ordenado por impacto em R$). Decidir: renomear a atual (ex.: "Variação de preços") e criar Pedidos de verdade |
+| Cotações & Negociações | ✅ ≈ aba **Orçamentos** (hoje é ponte p/ o módulo da Manutenção) |
+| Cadastro e Desempenho (OTIF) | ⚠️ aba **Fornecedores** existe (ABC + o que compramos dele); **OTIF não** |
+| Histórico de Preços por Fornecedor | ⚠️ existe **dentro** da ficha do item; não por fornecedor |
+| Configurações / ERP | ❌ não existe |
+| aba **Notícias** | segue placeholder — decidir se some ou entra em algum grupo |
+
+#### (B) FICHA DO PRODUTO 360° — o que o Diego quer em cada bloco (texto dele, condensado)
+- **Cabeçalho/KPIs:** nome, código ERP, categoria/família, almoxarifado, **ABC/XYZ**; saldo físico, **estoque
+  disponível (saldo − reservado)**, posição em R$, **ponto de ressuprimento**; **cobertura atual vs. ALVO** e
+  **giro**; **preço médio pago (com imposto) × custo médio (sem imposto/contábil) × último preço**;
+  **tag dinâmica de status** (Ideal · Crítico · Excesso de estoque · Aguardando entrega).
+- **Bloco 1 — Inteligência de estoque & sugestão:** *"em vez de só dizer 'sem necessidade', mostrar o PORQUÊ"* →
+  qtde sugerida (com opção de recalcular pelo **lote mínimo** do fornecedor), **data limite p/ emitir o pedido
+  sem quebrar o estoque** (usa lead time), e os **parâmetros do ERP visíveis**: estoque mínimo/segurança, lote
+  mínimo, múltiplo de compra, lead time médio.
+- **Bloco 2 — Consumo e demanda:** consumo histórico (12/24 meses) **vs. previsão** (pedidos de venda / OPs
+  abertas do ERP); **sazonalidade** (aviso se os próximos meses historicamente sobem); **em quais produtos
+  acabados** o insumo é mais usado.
+- **Bloco 3 — Preços & mercado:** evolução do **R$/kg**; comparação com **índice de commodities/agro**; **alerta
+  de anomalia** de preço vs. média histórica.
+- **Bloco 4 — Fornecedores & cotações:** **curva de participação** por fornecedor; **matriz de performance**
+  (OTIF, lead time praticado, qualidade/devolução); **pedidos em aberto / em trânsito** (data prevista, qtde, fornecedor).
+
+#### (C) ⚠️ O NÓ: quase metade disso NÃO SAI dos 3 exports que temos hoje
+Os dados embutidos (`_CP_NF` compras, `_CP_EST` estoque, `_CP_CONS` consumo) dão preço, consumo, cobertura e
+fornecedor — **e só**. **Antes de codar, decidir de onde vem cada campo abaixo** (senão a tela nasce com "a
+cadastrar" em todo lugar, que é a pendência nº 1 herdada de hoje):
+1. **Pedidos de compra em ABERTO** (item, fornecedor, qtde, emissão, data prevista, saldo a entregar) → destrava
+   "Em trânsito", "Aguardando entrega", estoque disponível e a data-limite do Bloco 1. **É o export que mais falta.**
+2. **Parâmetros por item:** estoque mínimo/segurança, ponto de ressuprimento, lote mínimo, múltiplo, **lead time**,
+   almoxarifado, categoria/família, curva ABC do ERP (se houver).
+3. **Estoque reservado** (p/ o "disponível"). 4. **Data prevista × real de entrega** (histórico) → **OTIF** e lead
+   time por fornecedor. 5. **Condição de pagamento**. 6. **Estrutura/BOM** (p/ "em quais produtos acabados").
+7. **Pedidos de venda / OPs abertas** (previsão). 8. **Índice de commodities** = fonte EXTERNA (não tem internet
+   no protótipo → manual, ou backend do Guilherme).
+⭐ **Ponte que já existe na casa:** o **PCP** (Produção › PCP, `LS_PCP`) já recebe do SISPRO **Estoque, Pedido,
+OP/OC, Maras e MDV** por item — mas de **produto acabado**, não de insumo. Vale conferir com a TI se o mesmo
+relatório sai para insumo: se sair, resolve previsão e ponto de pedido de uma vez.
+
+#### (D) O que dá p/ fazer JÁ 24/07, sem depender da TI (ordem sugerida)
+1. **Reagrupar o menu** nos 5 grupos (é layout; as telas já existem) + extrair **Alertas & Rupturas** do Painel.
+2. **ABC por item** no Catálogo e **XYZ** (variabilidade do consumo, a partir de `_CP_CONS`) — dá com o dado atual.
+3. **Tag dinâmica de status** no cabeçalho da ficha (Ideal/Crítico/Excesso) — deriva da cobertura que já calculamos.
+4. **3ª coluna do Resumo** (hoje reservada/vazia — pendência nº 3 de hoje): candidatos naturais = "Parâmetros do
+   ERP + status" (Bloco 1) ou "Pedidos em aberto" (Bloco 4). ⚠️ **Os dois dependem do item (C)** → decidir antes.
+5. Renomear "Insumos"→"Ficha do item"/"Ficha do Produto" (pendência nº 4) **cai junto** nesta reorganização.
+
 ### ⭐ 1:1 focado — variação do Painel de Reunião p/ encontro de 2 pessoas
 **Status:** conceito **aprovado em 18/07/2026** ("achei bem legal, porém ainda não irei fazer"). Mockup foi
 mostrado no chat (⚠️ chat NÃO persiste entre máquinas — a descrição abaixo é a fonte).
@@ -339,6 +421,13 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 - **Indicadores do painel de reunião** — a **coluna 0 já existe** reservada com aviso discreto (ver entrada (g)).
 
 ## Log de handoff (mais recente no topo)
+
+> ▶ **RETOMAR EM 24/07 (Compras v4) — o Diego deixou o desenho pronto no fim do dia 23/07.** Ele mandou uma
+> **print com a nova árvore de menu** (5 grupos no lugar das 8 abas planas) + um **texto detalhado da "Ficha do
+> Produto 360°"** (KPIs + 4 blocos), dizendo *"são ideias, para continuarmos amanhã"*. **Nada foi codado.**
+> Tudo transcrito na seção **📌 BACKLOG ACORDADO → "COMPRAS v4"** acima — inclusive (C) a lista do que **não sai
+> dos exports atuais** (pedidos em aberto, lead time, estoque mínimo/reservado, OTIF, BOM) e (D) o que dá p/
+> fazer sem depender da TI. **Começar por (D), e levar (C) pro Diego decidir com a TI.**
 
 ### ⭐ 2026-07-23 — PC da Empresa ("Compras v3") — PAINEL DO ITEM (tela cheia) + SIMULADOR DE COMPRA + estoque/consumo reais
 Continuação da sessão anterior. **Tudo commitado e pushado; working tree limpo; `main == origin == 0a9d265b` (+ este commit de docs).**
