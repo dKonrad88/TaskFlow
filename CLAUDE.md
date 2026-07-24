@@ -422,6 +422,37 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-07-24 (b) — PC da Empresa — NOVA FEATURE: programação semanal de produção (aba Produção do Início) + mais ajustes na ficha do item
+Continuação da sessão, MUITO iterativa (Compras + depois Produção). **Tudo commitado E pushado; `main == origin ==
+7ed50524`.** Verificação por DOM no preview (:8899), **0 erros de console** em tudo. Commits desta leva:
+`a7b7d3d0` (faixa cards) · `2e70e4a6`+`980105ff`+`894179ed`+`92c061b3`+`79495952` (ficha do item) · `7ed50524` (produção).
+
+**⭐ PROGRAMAÇÃO DE PRODUÇÃO (nova).** A aba **Produção** do Início (Meu Dia › sub-aba Produção) deixou de mostrar o
+card "Produção de hoje" de EXEMPLO e virou uma **grade semanal editável por linha**. Nasceu de 4 mockups (via
+show_widget) → o Diego escolheu o formato **"por linha"** (linhas de produção nas linhas, dias nas colunas).
+- **6 linhas fixas** (`PROD_LINHAS`): Forno c/ cobertura · Forno s/ cobertura · Pipoca · Extrusados · Pellet frito ·
+  Palitinho. Colunas = Seg–Sex com cabeçalho **"27 - Seg"** centralizado.
+- **Alternador Semana 1 / Semana 2.** `_prodDias(off)`: off=0 = **PRÓXIMA** semana, off=1 = a seguinte (base = segunda
+  da próxima semana a partir de `today`; **auto-avança**). Em 24/07 deu Semana 1 = 27–31 jul e Semana 2 = 03–07 ago —
+  bate com as prints reais do Diego. ⚠️ Escolhi "próxima semana" (não a atual) porque ele planeja à frente; se um dia
+  quiser incluir a semana corrente, trocar o `+7` do `_prodDias`.
+- **Cadastro de itens** (add/remove) alimenta um **seletor por célula**: clicar na célula → `<select>` dos itens
+  cadastrados + botão **"terceiros"** (etiqueta âmbar `--amber`, NÃO pinta a célula toda — o Diego confirmou que o
+  amarelo da planilha dele = "produção para terceiros/outras marcas"; sim/não, sem nome de marca por ora).
+- **Persistência localStorage:** `taskflow_prod_itens` (array de nomes; seed com 15 itens reais) + `taskflow_prod_prog`
+  (mapa `ISODATE|linhaKey` → `{p,t}`). Prefixo `taskflow` → entra no sync da nuvem. Sem ERP — os itens são cadastrados
+  à mão (igual ao caso das OCs). Funções globais `_prod*` logo após `renderMeuDia` (~6243); re-render pontual de
+  `#prod-root` (não re-renderiza o Meu Dia inteiro). Removido o dado de exemplo `producaoHoje`.
+- 📌 **Aberto:** só o SINAL de terceiros (sim/não) — se quiserem o NOME da marca, o clique em "terceiros" viraria um
+  input. E hoje são 2 semanas fixas (sem navegador ‹ ›), a pedido dele.
+
+**Ficha do item (Compras) — ajustes desta leva** (todos no modo tela cheia salvo indicado):
+- **Sub-navbar horizontal** no NÃO-expandido (sem o rail vertical; rail só na tela cheia). `_cpAbrirItem` abre
+  não-expandido. Nova aba **Histórico** (`ti-receipt`) com a planilha de compras, que SAIU da view Gráfico.
+- **Larguras na tela cheia:** Resumo e Gráfico usam **90%** (`.cp-body-wide`, 5% por lado); Gráfico virou **2 colunas**
+  (gráficos maiores); Histórico e Fornecedores em **1200px** centralizado. Faixa de título escura nos cards
+  (`.cp-card-title`). Máscara de milhar no simulador. Card "Participação no gasto" REMOVIDO de Fornecedores (só tabela).
+
 > ▶ **RETOMAR EM 24/07 (Compras v4) — o Diego deixou o desenho pronto no fim do dia 23/07.** Ele mandou uma
 > **print com a nova árvore de menu** (5 grupos no lugar das 8 abas planas) + um **texto detalhado da "Ficha do
 > Produto 360°"** (KPIs + 4 blocos), dizendo *"são ideias, para continuarmos amanhã"*. **Nada foi codado.**
