@@ -8390,8 +8390,8 @@ function _cpCSS(){ return `<style>
   body.cp-focus #task-container{position:fixed;inset:0;z-index:600;overflow:hidden;background:var(--bg);padding:0;margin:0;max-width:none}
   body.cp-focus .cp-painel-wrap{max-width:none;margin:0;padding:0}
   body.cp-focus .cp-painel{height:100vh;min-height:0;border:none;border-radius:0}
-  /* Na tela cheia, o CONTEÚDO fica centralizado com a mesma largura do painel da reunião (1500px), em vez de esticar. */
-  body.cp-focus .cp-painel-body{padding:22px max(22px,calc((100% - 1500px)/2)) 44px}
+  /* Na tela cheia, o CONTEÚDO fica centralizado e mais estreito (1200px) — não esticar de ponta a ponta. */
+  body.cp-focus .cp-painel-body{padding:22px max(22px,calc((100% - 1200px)/2)) 44px}
 </style>`; }
 function _cpTela(titulo, chip, desc, corpo, larg){
   return `<div style="padding:20px 4px 60px;max-width:${larg||1240}px;margin:0 auto">
@@ -8658,7 +8658,7 @@ function _cpSimHTML(o){
   else if(s.modo==='ate') campoModo=`${lb('Estoque durar até')}${inp('data',s.data,'','date','130px')}`;
   else if(s.modo==='qtd') campoModo=`${lb('Comprar')}${inpQtd('104px')}${selUn}`;
   else if(s.modo==='desconto') campoModo=`${lb('Comprar')}${inpQtd('104px')}${selUn}${lb('com')}${inp('descPct',s.descPct,'','number','52px','min="0" max="100"')}${lb('% de desconto')}`;
-  return `<div class="cp-card" id="cp-sim" style="padding:15px 17px;border-left:3px solid var(--blue-mid)">
+  return `<div class="cp-card" id="cp-sim" style="padding:15px 17px">
     <div class="cp-card-title"><span>Simulador de compra</span><span class="sub">consumo ${o.consMed?_cpNum(o.consMed,0)+' '+um+'/mês':'—'}</span></div>
     <div style="margin-bottom:12px">${chip('estoqueDias','Estoque p/ X dias')}${chip('comprarDias','Comprar X dias')}${chip('ate','Até uma data')}${chip('qtd','Quantidade')}${chip('desconto','Desconto %')}</div>
     <div style="display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin-bottom:14px">${campoModo}${s.modo==='desconto'?'':`<span style="color:var(--border)">|</span>${lb('a R$')}${inp('preco',s.preco,_cpNum(precoRef,2),'text','62px')}<span style="font-size:13px;color:var(--text3)">/${um}</span>`}</div>
@@ -8678,7 +8678,7 @@ function _cpSimQtd(el){
   const r=document.getElementById('cp-sim-result'); if(r && _cpItemSel && _cpIdx()[_cpItemSel]) r.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]);
 }
 function _cpSimRerender(){ const el=document.getElementById('cp-sim'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.outerHTML=_cpSimHTML(_cpIdx()[_cpItemSel]); }
-function _cpFichaMainHTML(o){ if(_cpFichaView==='graficos') return _cpFichaGraficos(o); if(_cpFichaView==='fornecedores') return _cpFichaFornecedores(o); return _cpFichaResumo(o); }
+function _cpFichaMainHTML(o){ if(_cpFichaView==='graficos') return _cpFichaGraficos(o); if(_cpFichaView==='historico') return _cpFichaHistorico(o); if(_cpFichaView==='fornecedores') return _cpFichaFornecedores(o); return _cpFichaResumo(o); }
 function _cpFichaResumo(o){
   const covCor=o.dias==null?'':(o.dias<10?'var(--danger)':(o.dias<20?'var(--amber)':''));
   const kpis=[
@@ -8787,6 +8787,18 @@ function _cpFichaGraficos(o){
   const graf=(tit,sub,chart)=>`<div class="cp-card" style="padding:15px 17px">
     <div class="cp-card-title"><span>${tit}</span></div>
     <div style="font-size:11px;color:var(--text3);margin:-6px 0 12px">${sub}</div>${chart}</div>`;
+  return `${_cpItemMes?'':`<div style="font-size:12px;color:var(--text3);margin-bottom:10px"><i class="ti ti-hand-finger"></i> Clique num mês (ou num ponto) para ver o resumo do período. A planilha completa fica na aba <b>Histórico</b>.</div>`}
+    ${_cpResumoMes(o,serie)}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:14px;margin-bottom:4px">
+      ${graf('Consumo por mês','em '+(um||'un')+' (2026)',_cpBarChart(serie,'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))'))}
+      ${graf('Valor comprado por mês','R$ por mês',_cpBarChart(serie,'valor',v=>_cpBRL(v)))}
+      ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpLine(serie,'precoKg',v=>_cpBRL(v)+'/'+um,{onClick:'_cpItemSetMes',selYm:true,lineCor:'var(--amber)',cor:()=>'var(--amber)'}))}
+      ${graf('Todas as compras','1 ponto = 1 compra · altura = preço pago',_cpComprasLine(o))}
+    </div>`;
+}
+// View "Histórico" (sub-navbar): a planilha completa de compras do item (saiu da view Gráfico).
+function _cpFichaHistorico(o){
+  const um=o.um||'';
   const comprasMes=_cpItemMes?o.compras.filter(l=>l.data.slice(0,7)===_cpItemMes):o.compras;
   const linha=l=>{ const base=l.med3||0, dif=base>0?((l.vun-base)/base*100):null;
     let dc='var(--text3)',db='transparent';
@@ -8795,19 +8807,12 @@ function _cpFichaGraficos(o){
       <td class="cp-n">${_cpNum(l.qtd,2)}</td><td class="cp-n">${_cpBRL(l.vun)}</td>
       <td class="cp-n"><span class="cp-pill" style="color:${dc};background:${db}">${dif===null?'—':(dif>0?'+':'')+dif.toFixed(1)+'%'}</span></td>
       <td class="cp-n">${_cpBRL(l.tot)}</td></tr>`; };
-  const tab=comprasMes.slice(0,80).map(linha).join('');
-  return `${_cpItemMes?'':`<div style="font-size:12px;color:var(--text3);margin-bottom:10px"><i class="ti ti-hand-finger"></i> Clique num mês (ou num ponto) para filtrar a tela.</div>`}
-    ${_cpResumoMes(o,serie)}
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:14px;margin-bottom:16px">
-      ${graf('Consumo por mês','em '+(um||'un')+' (2026)',_cpBarChart(serie,'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))'))}
-      ${graf('Valor comprado por mês','R$ por mês',_cpBarChart(serie,'valor',v=>_cpBRL(v)))}
-      ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpLine(serie,'precoKg',v=>_cpBRL(v)+'/'+um,{onClick:'_cpItemSetMes',selYm:true,lineCor:'var(--amber)',cor:()=>'var(--amber)'}))}
-      ${graf('Todas as compras','1 ponto = 1 compra · altura = preço pago',_cpComprasLine(o))}
-    </div>
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:4px 2px 8px">Compras${_cpItemMes?(' — '+_cpMesLongo(_cpItemMes)):''} <span style="font-weight:400">(${comprasMes.length})</span></div>
+  const tab=comprasMes.map(linha).join('');
+  return `${_cpItemMes?`<div style="font-size:12.5px;color:var(--text2);margin-bottom:10px">Filtrado por <b>${_cpMesLongo(_cpItemMes)}</b> · <button onclick="_cpItemSetMes('${_cpItemMes}')" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;padding:0">limpar filtro</button></div>`:''}
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:2px 2px 8px">Compras${_cpItemMes?(' — '+_cpMesLongo(_cpItemMes)):''} <span style="font-weight:400">(${comprasMes.length})</span></div>
     <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead><tr><th>Data</th><th>Fornecedor</th><th>NF</th><th class="r">Qtde</th><th class="r">Vlr unit.</th><th class="r">vs últ. 3</th><th class="r">Total</th></tr></thead>
-      <tbody>${tab||`<tr><td colspan="7">${_cpVazio('Sem compras neste mês.')}</td></tr>`}</tbody>
+      <tbody>${tab||`<tr><td colspan="7">${_cpVazio('Sem compras.')}</td></tr>`}</tbody>
     </table></div>`;
 }
 // O PAINEL do item. Dois layouts:
@@ -8824,6 +8829,7 @@ function _cpFichaItemHTML(o){
         <div style="height:1px;background:var(--border);margin:4px 12px"></div>
         ${rb('resumo','ti-clipboard-data','Resumo')}
         ${rb('graficos','ti-chart-line','Gráfico')}
+        ${rb('historico','ti-receipt','Histórico')}
         ${rb('fornecedores','ti-building-store','Fornec.')}
         <div class="cp-rail-sp"></div>
         <button class="cp-exp-btn" onclick="_cpToggleFoco()" title="Reduzir"><i class="ti ti-arrows-minimize"></i>Reduzir</button>
@@ -8855,6 +8861,7 @@ function _cpFichaItemHTML(o){
       <div class="cp-subnav">
         ${tb('resumo','ti-clipboard-data','Resumo')}
         ${tb('graficos','ti-chart-line','Gráfico')}
+        ${tb('historico','ti-receipt','Histórico')}
         ${tb('fornecedores','ti-building-store','Fornecedores')}
       </div>
       <button class="cp-exp-btn2" onclick="_cpToggleFoco()" title="Abrir em tela cheia"><i class="ti ti-arrows-maximize"></i> Tela cheia</button>
