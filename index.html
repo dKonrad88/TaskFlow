@@ -6215,7 +6215,7 @@ function renderMeuDia(){
 // Grade editável: cadastro de itens (localStorage) + seletor por célula + etiqueta "terceiros".
 // Dado por aparelho (chaves taskflow_prod_*, entram no sync da nuvem). Sem ERP — o Diego cadastra os itens.
 const PROD_LINHAS=[{k:'com',n:'Forno c/ cobertura'},{k:'sem',n:'Forno s/ cobertura'},{k:'pip',n:'Pipoca'},{k:'ext',n:'Extrusados'},{k:'pel',n:'Pellet frito'},{k:'pal',n:'Palitinho'}];
-const LS_PROD_ITENS='taskflow_prod_itens', LS_PROD_PROG='taskflow_prod_prog';
+const LS_PROD_ITENS='taskflow_prod_itens', LS_PROD_PROG='taskflow_prod_prog', LS_PROD_MODO='taskflow_prod_modo';
 const _PROD_ITENS_SEED=['Amend. preto & branco','Broa','Palitinho + aperitivo','Amanteigado','Palitinho','Duetto','Maisena','Palitinho + bolinha','Pão de mel P&B','Milho','Banana c/ canela','Pipoca tradicional','Mega+ intensus','Amendoim P&B','Salgadão'];
 const _PROD_MES3=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 let prodSemana=0, _prodDragItem=null;
@@ -6223,12 +6223,18 @@ function _prodItens(){ const a=safeJSON(LS_PROD_ITENS,null); return Array.isArra
 function _prodSaveItens(a){ try{ safeSetItem(LS_PROD_ITENS, JSON.stringify(a)); }catch(e){} }
 function _prodProg(){ const o=safeJSON(LS_PROD_PROG,null); return (o&&typeof o==='object'&&!Array.isArray(o))?o:{}; }
 function _prodSaveProg(o){ try{ safeSetItem(LS_PROD_PROG, JSON.stringify(o)); }catch(e){} }
+// Modo de exibição: 'pcp' (edição — cadastro + células com "+") ou 'leitor' (só o que tem produto, sem cadastro).
+function _prodModo(){ try{ return localStorage.getItem(LS_PROD_MODO)==='leitor'?'leitor':'pcp'; }catch(e){ return 'pcp'; } }
+function _prodSetModo(m){ try{ safeSetItem(LS_PROD_MODO, m==='leitor'?'leitor':'pcp'); }catch(e){} _prodRerender(); }
 function _prodISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 // off=0 → PRÓXIMA semana (Seg–Sex); off=1 → a seguinte. (Semana 1 = próxima; auto-avança pela data de hoje.)
 function _prodDias(off){ const d=new Date(today+'T00:00:00'); const m=(d.getDay()+6)%7; d.setDate(d.getDate()-m+7+off*7); const dow=['Seg','Ter','Qua','Qui','Sex','Sáb']; const r=[]; for(let i=0;i<6;i++){ const x=new Date(d); x.setDate(d.getDate()+i); r.push({iso:_prodISO(x),dd:String(x.getDate()).padStart(2,'0'),dow:dow[i],mes:x.getMonth()}); } return r; }
 function _prodRange(dias){ const a=dias[0],b=dias[dias.length-1]; return a.mes===b.mes ? (a.dd+'–'+b.dd+' '+_PROD_MES3[a.mes]) : (a.dd+' '+_PROD_MES3[a.mes]+' – '+b.dd+' '+_PROD_MES3[b.mes]); }
 function _prodCSS(){ return `<style>
-  .prod-seg{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:2px;margin-bottom:16px;flex-wrap:wrap}
+  .prod-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+  .prod-modo{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text2);cursor:pointer;user-select:none}
+  .prod-modo input{width:16px;height:16px;accent-color:var(--blue-mid);cursor:pointer;margin:0}
+  .prod-seg{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:2px;flex-wrap:wrap}
   .prod-seg button{border:none;background:transparent;padding:7px 14px;border-radius:8px;font-size:12.5px;color:var(--text2);cursor:pointer;font-family:inherit;font-weight:600}
   .prod-seg button.on{background:var(--card);color:var(--text);border:1px solid var(--border)}
   .prod-cad{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:14px}
@@ -6255,6 +6261,10 @@ function _prodCSS(){ return `<style>
   .prod-cell:hover{border-color:var(--blue-mid)}
   .prod-cell.prod-empty{background:transparent;border-style:dashed;color:var(--text3);text-align:center;align-items:center;justify-content:center}
   .prod-cell.prod-drop{border-color:var(--blue-mid)!important;border-style:solid!important;background:color-mix(in srgb,var(--blue-mid) 12%,transparent)}
+  .prod-cell.prod-ro{cursor:default}
+  .prod-cell.prod-ro:hover{border-color:var(--border)}
+  .prod-terc-ro{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--amber);background:var(--amber-bg);border-radius:5px;padding:1px 6px}
+  .prod-terc-ro i{font-size:12px}
   .prod-cell-p{width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .prod-terc{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-family:inherit;border:none;background:transparent;color:var(--text3);opacity:.5;cursor:pointer;padding:1px 5px;border-radius:5px}
   .prod-terc i{font-size:12px}
@@ -6262,21 +6272,27 @@ function _prodCSS(){ return `<style>
   .prod-terc.on{opacity:1;color:var(--amber);background:var(--amber-bg)}
   .prod-pick-row:hover{background:var(--bg2)!important}
 </style>`; }
-function _prodCellHTML(key,v){
+function _prodCellHTML(key,v,leitor){
+  if(leitor){
+    if(!v) return '<div style="min-height:18px"></div>';
+    return `<div class="prod-cell prod-ro"><span class="prod-cell-p">${escapeHTML(v.p)}</span>${v.t?`<span class="prod-terc-ro"><i class="ti ti-tag"></i>terceiros</span>`:''}</div>`;
+  }
   const dnd=`ondragover="_prodDragOver(event)" ondragleave="_prodDragLeave(event)" ondrop="_prodDrop(event,'${key}')"`;
   if(v) return `<div class="prod-cell" onclick="_prodPick(this,'${key}')" ${dnd}><span class="prod-cell-p">${escapeHTML(v.p)}</span><button class="prod-terc${v.t?' on':''}" title="${v.t?'Produção para terceiros — clique para tirar':'Marcar produção para terceiros'}" onclick="event.stopPropagation();_prodToggleTerc('${key}')"><i class="ti ti-tag"></i>${v.t?'terceiros':''}</button></div>`;
   return `<div class="prod-cell prod-empty" onclick="_prodPick(this,'${key}')" ${dnd}>+</div>`;
 }
 function _prodRootHTML(){
-  const itens=_prodItens(), prog=_prodProg(), dias=_prodDias(prodSemana);
+  const itens=_prodItens(), prog=_prodProg(), dias=_prodDias(prodSemana), leitor=_prodModo()==='leitor';
   const seg=`<div class="prod-seg">`+[0,1].map(i=>`<button class="${prodSemana===i?'on':''}" onclick="_prodSetSemana(${i})">Semana ${i+1} · ${_prodRange(_prodDias(i))}</button>`).join('')+`</div>`;
+  const modo=`<label class="prod-modo" title="${leitor?'Modo leitor — só exibe o que tem produto no dia':'Modo PCP — edita a programação'}"><input type="checkbox" ${leitor?'':'checked'} onchange="_prodSetModo(this.checked?'pcp':'leitor')"> Modo edição <span style="color:var(--text3)">(PCP)</span></label>`;
+  const topbar=`<div class="prod-topbar">${seg}${modo}</div>`;
   const chips=itens.map((x,i)=>`<span class="prod-chip" draggable="true" data-item="${escapeAttr(x)}" ondragstart="_prodDragStart(event)" title="Arraste para uma célula">${escapeHTML(x)}<button title="remover" onclick="_prodDelItem(${i})"><i class="ti ti-x"></i></button></span>`).join('') || `<span style="font-size:12px;color:var(--text3)">nenhum item — adicione acima</span>`;
-  const cad=`<div class="prod-cad"><h3>Cadastro de itens</h3><div class="prod-cadin"><input id="prod-newit" placeholder="Nome do produto" onkeydown="if(event.key==='Enter'){event.preventDefault();_prodAddItem();}"><button onclick="_prodAddItem()">Adicionar</button></div><div class="prod-chips">${chips}</div></div>`;
+  const cad=leitor?'':`<div class="prod-cad"><h3>Cadastro de itens</h3><div class="prod-cadin"><input id="prod-newit" placeholder="Nome do produto" onkeydown="if(event.key==='Enter'){event.preventDefault();_prodAddItem();}"><button onclick="_prodAddItem()">Adicionar</button></div><div class="prod-chips">${chips}</div></div>`;
   const head=`<th class="prod-corner"></th>`+dias.map(d=>`<th><b>${d.dd}</b> - ${d.dow}</th>`).join('');
-  const body=PROD_LINHAS.map(l=>{ const act=dias.some(d=>prog[d.iso+'|'+l.k]); const cs=dias.map(d=>{ const key=d.iso+'|'+l.k; return `<td>${_prodCellHTML(key,prog[key],itens)}</td>`; }).join(''); return `<tr class="${act?'':'prod-dim'}"><td class="prod-ln">${l.n}</td>${cs}</tr>`; }).join('');
+  const body=PROD_LINHAS.map(l=>{ const act=dias.some(d=>prog[d.iso+'|'+l.k]); const cs=dias.map(d=>{ const key=d.iso+'|'+l.k; return `<td>${_prodCellHTML(key,prog[key],leitor)}</td>`; }).join(''); return `<tr class="${act?'':'prod-dim'}"><td class="prod-ln">${l.n}</td>${cs}</tr>`; }).join('');
   const grid=`<div class="prod-gridwrap"><table class="prod-t"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
-  const hint=`<div style="margin-top:10px;font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px"><i class="ti ti-info-circle" style="font-size:14px"></i> Clique numa célula para escolher (ou arraste um item do cadastro). O ícone de etiqueta marca produção para terceiros.</div>`;
-  return _prodCSS()+seg+cad+grid+hint;
+  const hint=leitor?'':`<div style="margin-top:10px;font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px"><i class="ti ti-info-circle" style="font-size:14px"></i> Clique numa célula para escolher (ou arraste um item do cadastro). O ícone de etiqueta marca produção para terceiros.</div>`;
+  return _prodCSS()+topbar+cad+grid+hint;
 }
 function _prodRerender(){ const el=document.getElementById('prod-root'); if(el) el.innerHTML=_prodRootHTML(); }
 function _prodSetSemana(i){ prodSemana=i; _prodRerender(); }
