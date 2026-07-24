@@ -6665,42 +6665,17 @@ function renderPCP(){
   const _tb=document.querySelector('.main .topbar'); if(_tb) _tb.style.display='none';
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
+  // (jul/2026) Conteúdo do PCP REMOVIDO a pedido do Diego — a ABA "PCP" continua no menu
+  // (Produção › PCP), mas a TELA foi esvaziada. O corpo original (tabela DDV, filtros, sub-abas,
+  // botão "Colar do SISPRO"), os helpers _pcp* e os dados LS_PCP ficam PRESERVADOS/dormentes —
+  // reverter = restaurar este bloco a partir do git.
   main.innerHTML = `
-    <style>
-    .pcpt{width:100%;border-collapse:collapse;font-size:12px}
-    .pcpt thead th{background:var(--bg2);color:var(--text3);font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:9px 8px;border-bottom:2px solid var(--border)}
-    .pcpt tbody td{padding:8px 8px;border-bottom:1px solid color-mix(in srgb,var(--border) 55%,transparent)}
-    .pcpt tbody tr.alt td{background:color-mix(in srgb,var(--bg2) 38%,transparent)}
-    .pcpt tbody tr.r:hover td{background:color-mix(in srgb,var(--blue-mid) 8%,transparent)}
-    .pcpt .pcpg td{background:var(--bg2);font-weight:800;color:var(--text);padding:9px 10px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
-    .pcp-n{text-align:right;font-variant-numeric:tabular-nums;color:var(--text2);white-space:nowrap}
-    .pcp-chip{display:inline-block;min-width:40px;text-align:center;padding:2px 9px;border-radius:20px;font-weight:800;font-size:11.5px}
-    .pcp-sug{display:inline-block;padding:2px 9px;border-radius:7px;font-weight:800;font-size:12px;background:color-mix(in srgb,var(--blue-mid) 14%,transparent);color:var(--blue-mid)}
-    .pcp-edit{box-sizing:border-box;width:76px;text-align:right;background:transparent;border:1px solid transparent;border-radius:6px;padding:4px 6px;font-size:12px;color:var(--text2);font-family:inherit;font-variant-numeric:tabular-nums}
-    .pcp-edit:hover{border-color:color-mix(in srgb,var(--border) 85%,transparent);background:var(--bg);cursor:text}
-    .pcp-edit:focus{outline:none;border-color:var(--blue-mid);background:var(--bg3);color:var(--text)}
-    </style>
     <div style="padding:20px 4px 40px;">
       ${hubBreadcrumb([{label:'Produção', onclick:"setProducaoView('produtos')"},{label:'PCP'}])}
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:2px; flex-wrap:wrap;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:2px; flex-wrap:wrap;">
         <h1 style="font-size:23px; font-weight:700; color:var(--text);">PCP <span style="font-size:14px; font-weight:600; color:var(--text3);">Planejamento de produção · DDV</span></h1>
-        <div style="display:flex; gap:8px;">
-          ${pcpItens.length?`<button onclick="_pcpRestaurar()" title="Descartar edições e voltar aos valores colados do SISPRO" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:9px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px;"><i class="ti ti-arrow-back-up"></i> Restaurar colado</button>`:''}
-          ${pcpItens.length?`<button onclick="_pcpLimpar()" style="background:none; border:1px solid var(--border); color:var(--text2); border-radius:9px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px;"><i class="ti ti-eraser"></i> Limpar</button>`:''}
-          <button onclick="_pcpColarAbrir()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:9px 16px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-clipboard-plus"></i> Colar do SISPRO</button>
-        </div>
       </div>
-      <div style="font-size:12.5px; color:var(--text3); margin-bottom:6px;">Cobertura de estoque por produto — DDV = dias que o saldo cobre as vendas. ${_hint('DDV = Saldo ÷ MDV.  Saldo = Estoque + OP/OC + Maras − Pedido.  Verde = folga · âmbar = atenção · vermelho = ruptura.')}</div>
-      ${_pcpTabsHTML()}
-      ${ pcpSubView==='historico'
-        ? `<div style="display:flex; gap:14px; align-items:flex-start; margin-top:16px;">
-            ${_pcpRailHTML()}
-            <div style="flex:1; min-width:0;">${_pcpToolbarHTML()}<div id="pcp-corpo">${_pcpCorpoHTML()}</div></div>
-          </div>`
-        : pcpSubView==='producao'
-          ? `<div style="margin-top:18px;">${_pcpProducaoHTML()}</div>`
-          : `<div style="padding:54px 0; text-align:center; color:var(--text3); font-size:13px;"><i class="ti ti-tools" style="font-size:24px; display:block; margin-bottom:8px;"></i>Aba em construção.</div>`
-      }
+      <div style="padding:64px 0; text-align:center; color:var(--text3); font-size:13px;"><i class="ti ti-tools" style="font-size:26px; display:block; margin-bottom:10px;"></i>Em construção.</div>
     </div>`;
 }
 
@@ -8394,9 +8369,12 @@ function _cpCSS(){ return `<style>
   .cp-painel-main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
   .cp-painel-head{padding:15px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-shrink:0;background:var(--card)}
   .cp-painel-body{flex:1;overflow:auto;padding:20px 22px;min-height:0}
+  /* Não-expandido: centraliza com largura máxima (respiro nas laterais), igual ao Painel de Reunião. */
+  .cp-painel-wrap{max-width:1500px;margin:0 auto;padding:6px 0 40px}
   /* Tela cheia (botão "Tela cheia"/Esc): some header/sidebar/topbar do HUB; o painel ocupa tudo. */
   body.cp-focus .hdr,body.cp-focus .sidebar,body.cp-focus #sidebar-resizer,body.cp-focus .topbar,body.cp-focus .fab-create,body.cp-focus .fab-menu{display:none!important}
   body.cp-focus #task-container{position:fixed;inset:0;z-index:600;overflow:hidden;background:var(--bg);padding:0;margin:0;max-width:none}
+  body.cp-focus .cp-painel-wrap{max-width:none;margin:0;padding:0}
   body.cp-focus .cp-painel{height:100vh;min-height:0;border:none;border-radius:0}
 </style>`; }
 function _cpTela(titulo, chip, desc, corpo, larg){
@@ -8690,7 +8668,7 @@ function _cpFichaResumo(o){
     <div style="display:grid;grid-template-columns:minmax(340px,1.15fr) minmax(300px,1fr) minmax(160px,0.7fr);gap:12px;align-items:start">
       ${_cpSimHTML(o)}
       ${_cpUltimasComprasCard(o)}
-      <div class="cp-card" style="padding:15px 17px;display:flex;align-items:center;justify-content:center;text-align:center;min-height:180px;border-style:dashed;color:var(--text3);font-size:12.5px;line-height:1.5">Espaço reservado<br>(em breve)</div>
+      ${_cpOCsCard(o)}
     </div>`;
 }
 function _cpUltimasComprasCard(o){
@@ -8708,6 +8686,49 @@ function _cpUltimasComprasCard(o){
       <thead><tr><th>Data</th><th class="r">Qtde</th><th class="r">Preço</th><th>Fornecedor</th><th class="r">Prazo</th></tr></thead>
       <tbody>${linhas}</tbody></table></div>
     <div style="font-size:10.5px;color:var(--text3);padding:6px 2px 0">Prazo (pagamento/entrega) — a cadastrar; não vem no export do ERP.</div>
+  </div>`;
+}
+// ── OCs EM ABERTO (pedidos de compra emitidos, ainda não entregues) — card da view Resumo ──
+// ⚠️ PROTÓTIPO: este dado NÃO vem dos exports atuais (NF/estoque/consumo). `_CP_OC` está semeado
+// como EXEMPLO só p/ demonstrar o FORMATO ao Guilherme; o dado real virá do export de "pedidos em
+// aberto" do ERP (item nº 1 da lista a decidir com a TI — ver BACKLOG "COMPRAS v4" no CLAUDE.md).
+const _CP_OC = {
+  '20017': [ // Amendoim (item de teste do Diego) — fornecedores reais do histórico dele, datas fictícias
+    {oc:'OC-4471', forn:'JOE LORENZATO', emissao:'2026-07-18', prevista:'2026-08-05', qtd:32000, entregue:0},
+    {oc:'OC-4460', forn:'ALMEIDA & ALMEIDA IMPORTACAO E EXPORTACAO LTDA', emissao:'2026-07-10', prevista:'2026-08-20', qtd:20000, entregue:8000}
+  ]
+};
+function _cpOCsItem(o){ return (_CP_OC[o.cod]||[]).map(p=>({...p, saldo:Math.max(0,(p.qtd||0)-(p.entregue||0))})); }
+function _cpOCsCard(o){
+  const um=o.um||'';
+  const ocs=_cpOCsItem(o);
+  const totalSaldo=ocs.reduce((a,p)=>a+p.saldo,0);
+  let corpo;
+  if(!ocs.length){
+    corpo=`<div style="color:var(--text3);font-size:12.5px;text-align:center;padding:22px 6px;line-height:1.5">Nenhuma OC em aberto.<br><span style="font-size:10.5px">(pedidos em trânsito aparecem aqui)</span></div>`;
+  } else {
+    corpo=ocs.map(p=>{
+      const atras = p.prevista && p.prevista < today;
+      const parcial = p.entregue>0;
+      return `<div style="padding:9px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+          <span class="cp-item" title="${escapeAttr(p.forn)}" style="max-width:118px;font-size:12.5px;font-weight:600">${escapeHTML(p.forn)}</span>
+          <b style="flex:none;font-size:13px">${_cpNum(p.saldo,0)} <span class="cp-un">${escapeHTML(um)}</span></b>
+        </div>
+        <div style="display:flex;justify-content:space-between;gap:8px;font-size:10.5px;color:${atras?'var(--danger)':'var(--text3)'};margin-top:2px">
+          <span>${escapeHTML(p.oc)}${parcial?' · parcial':''}</span>
+          <span>${p.prevista?('prev. '+_cpDt(p.prevista)+(atras?' ⚠':'')):'prev. —'}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  return `<div class="cp-card" style="padding:15px 17px 8px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">OCs em aberto</div>
+      ${ocs.length?`<div style="font-size:10.5px;color:var(--text3)">${ocs.length} · ${_cpNum(totalSaldo,0)} ${escapeHTML(um)} a caminho</div>`:''}
+    </div>
+    ${corpo}
+    <div style="font-size:10.5px;color:var(--text3);padding:6px 2px 0">Exemplo — os pedidos em aberto virão do export do ERP (a definir com a TI).</div>
   </div>`;
 }
 // View "Fornecedores" (sidebar): quem fornece este item, com participação e ficha por clique.
@@ -8770,7 +8791,7 @@ function _cpFichaGraficos(o){
 function _cpFichaItemHTML(o){
   const foco=(typeof document!=='undefined') && document.body.classList.contains('cp-focus');
   const rb=(v,ic,lab)=>`<button class="${_cpFichaView===v?'on':''}" onclick="_cpFichaSetView('${v}')" title="${lab}"><i class="ti ${ic}"></i>${lab}</button>`;
-  return `${_cpCSS()}<div class="cp-painel">
+  return `${_cpCSS()}<div class="cp-painel-wrap"><div class="cp-painel">
     <div class="cp-painel-rail">
       <button class="cp-rail-back" onclick="_cpVoltarItens()" title="Voltar aos insumos"><i class="ti ti-arrow-left"></i>Voltar</button>
       <div style="height:1px;background:var(--border);margin:4px 12px"></div>
