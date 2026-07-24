@@ -433,16 +433,23 @@ show_widget) → o Diego escolheu o formato **"por linha"** (linhas de produçã
 - **6 linhas fixas** (`PROD_LINHAS`): Forno c/ cobertura · Forno s/ cobertura · Pipoca · Extrusados · Pellet frito ·
   Palitinho. Colunas = Seg–Sex com cabeçalho **"27 - Seg"** centralizado.
 - **Alternador Semana 1 / Semana 2.** `_prodDias(off)`: off=0 = **PRÓXIMA** semana, off=1 = a seguinte (base = segunda
-  da próxima semana a partir de `today`; **auto-avança**). Em 24/07 deu Semana 1 = 27–31 jul e Semana 2 = 03–07 ago —
-  bate com as prints reais do Diego. ⚠️ Escolhi "próxima semana" (não a atual) porque ele planeja à frente; se um dia
-  quiser incluir a semana corrente, trocar o `+7` do `_prodDias`.
-- **Cadastro de itens** (add/remove) alimenta um **seletor por célula**: clicar na célula → `<select>` dos itens
-  cadastrados + botão **"terceiros"** (etiqueta âmbar `--amber`, NÃO pinta a célula toda — o Diego confirmou que o
-  amarelo da planilha dele = "produção para terceiros/outras marcas"; sim/não, sem nome de marca por ora).
-- **Persistência localStorage:** `taskflow_prod_itens` (array de nomes; seed com 15 itens reais) + `taskflow_prod_prog`
-  (mapa `ISODATE|linhaKey` → `{p,t}`). Prefixo `taskflow` → entra no sync da nuvem. Sem ERP — os itens são cadastrados
-  à mão (igual ao caso das OCs). Funções globais `_prod*` logo após `renderMeuDia` (~6243); re-render pontual de
-  `#prod-root` (não re-renderiza o Meu Dia inteiro). Removido o dado de exemplo `producaoHoje`.
+  da próxima semana a partir de `today`; **auto-avança**). ⚠️ Escolhi "próxima semana" (não a atual) porque ele planeja
+  à frente; se um dia quiser incluir a semana corrente, trocar o `+7` do `_prodDias`. **Colunas Seg–Sáb** (6 dias — ele
+  pediu o sábado; `_prodRange` usa o último dia, cruza mês ok tipo "27 jul – 01 ago"). Cabeçalho **"27 - Seg"** centralizado.
+- **Cadastro de itens** (add/remove) alimenta um **seletor por célula**. ⚠️ O `<select>` nativo (feio) foi trocado por
+  **`_prodItemPicker`** — popover custom **idêntico ao `_pessoaPicker` da Pauta** (avatares, busca, largura 236), com o
+  extra de **"adicionar '<x>'" na hora** se digitar item novo. Preencher a célula: **clicar** (abre o picker) OU
+  **arrastar** o chip do cadastro pra célula (HTML5 DnD, `_prodDragStart/Over/Leave/Drop`). Botão **"terceiros"**
+  (etiqueta âmbar discreta: some quando off, âmbar quando on — o amarelo da planilha dele = "produção p/ terceiros/outras
+  marcas"; sim/não, sem nome de marca por ora).
+- ⭐ **Modo PCP × Leitor** (checkbox "Modo edição (PCP)" no topo, persistido em `taskflow_prod_modo`). **PCP** (marcado,
+  default) = cadastro + células com "+" editáveis. **Leitor** (desmarcado) = esconde o cadastro, células vazias ficam em
+  branco (sem "+"), só as preenchidas aparecem **read-only** (não clicáveis, sem drag, etiqueta terceiros estática).
+- **Persistência localStorage:** `taskflow_prod_itens` (array; seed 15 itens) + `taskflow_prod_prog` (mapa
+  `ISODATE|linhaKey` → `{p,t}`) + `taskflow_prod_modo` (pcp/leitor). Prefixo `taskflow` → sync na nuvem. Sem ERP — itens
+  cadastrados à mão. Funções globais `_prod*` logo após `renderMeuDia` (~6243); re-render pontual de `#prod-root`.
+  Removido o dado de exemplo `producaoHoje`. **Commits da evolução:** `e5b18e1d` (picker custom + sábado + drag) ·
+  `b17c5c68` (picker = _pessoaPicker) · `b1766b25` (modo PCP/Leitor).
 - 📌 **Aberto:** só o SINAL de terceiros (sim/não) — se quiserem o NOME da marca, o clique em "terceiros" viraria um
   input. E hoje são 2 semanas fixas (sem navegador ‹ ›), a pedido dele.
 
