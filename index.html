@@ -6055,15 +6055,8 @@ function renderMeuDia(){
   const _papelPCP = true;     // Stefano, Valesca, Diego → veem "Produção de hoje"
   const _papelGestao = true;  // Diego, irmão, diretoria → veem "Vendas do ano"
 
-  // Produção de hoje (simulada — viria da OP do dia)
-  const producaoHoje = [
-    {produto:'Pão de Mel c/ Chocolate 250g', massadas:12, pacotes:540},
-    {produto:'Wafer Chocolate 115g',          massadas:8,  pacotes:320},
-    {produto:'Rosquinha de Coco 300g',        massadas:5,  pacotes:200},
-    {produto:'Biscoito Maisena 400g',         massadas:6,  pacotes:180},
-  ];
-  const prodTotMassadas = producaoHoje.reduce((s,p)=>s+p.massadas,0);
-  const prodTotPacotes  = producaoHoje.reduce((s,p)=>s+p.pacotes,0);
+  // Produção: a aba agora usa a GRADE EDITÁVEL por linha (cadastro + seletor), ver _prodRootHTML().
+  // Dado real do usuário em localStorage — sem exemplo chumbado.
 
   // Vendas mês a mês (simulada — viria do ERP). Valores em R$.
   const vendasAno = [
@@ -6167,32 +6160,9 @@ function renderMeuDia(){
     </div>
   `;
 
-  // ── BLOCO PRODUÇÃO (dash do setor): card de produção de hoje
-  const _blocoProducao = `
-    <div style="max-width:620px;">
-      <div style="background:var(--card); border:1px solid var(--border); border-radius:13px; padding:16px 18px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:11px;">
-          <div style="display:flex; align-items:center; gap:7px; font-size:12px; font-weight:700; color:var(--text3); letter-spacing:.4px;">
-            <i class="ti ti-building-factory-2" style="font-size:15px;"></i> PRODUÇÃO DE HOJE
-          </div>
-          ${_selo}
-        </div>
-        ${producaoHoje.map((p,i)=>`
-          <div style="display:flex; align-items:center; gap:10px; padding:8px 0; ${i<producaoHoje.length-1?'border-bottom:1px solid var(--border);':''}">
-            <span style="flex:1; min-width:0; font-size:13px; color:var(--text);">${escapeHTML(p.produto)}</span>
-            <span style="font-size:12px; font-weight:600; color:var(--text2); white-space:nowrap;">${p.massadas} massadas · ${p.pacotes} pct</span>
-          </div>
-        `).join('')}
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:10px; padding-top:10px; border-top:2px solid var(--border);">
-          <span style="font-size:12.5px; font-weight:700; color:var(--text);">Total</span>
-          <span style="font-size:12.5px; font-weight:700; color:var(--blue-mid);">${prodTotMassadas} massadas · ${prodTotPacotes} pacotes</span>
-        </div>
-      </div>
-      <div style="margin-top:13px; font-size:12px; color:var(--text3); display:flex; align-items:center; gap:6px;">
-        <i class="ti ti-info-circle" style="font-size:14px;"></i> Outros indicadores de produção entram aqui conforme forem definidos.
-      </div>
-    </div>
-  `;
+  // ── BLOCO PRODUÇÃO: grade editável da programação semanal por linha (cadastro + seletor por célula).
+  //    Interativo → re-renderiza só #prod-root (ver _prodRootHTML e handlers _prod* logo após renderMeuDia).
+  const _blocoProducao = `<div id="prod-root">${_prodRootHTML()}</div>`;
 
   // ── BLOCO COMERCIAL (dash do setor): vendas do ano
   const _blocoComercial = `
@@ -6240,6 +6210,85 @@ function renderMeuDia(){
 
   main.innerHTML = html;
 }
+
+// ════════════ PRODUÇÃO — programação semanal por linha (aba Produção do Início) ════════════
+// Grade editável: cadastro de itens (localStorage) + seletor por célula + etiqueta "terceiros".
+// Dado por aparelho (chaves taskflow_prod_*, entram no sync da nuvem). Sem ERP — o Diego cadastra os itens.
+const PROD_LINHAS=[{k:'com',n:'Forno c/ cobertura'},{k:'sem',n:'Forno s/ cobertura'},{k:'pip',n:'Pipoca'},{k:'ext',n:'Extrusados'},{k:'pel',n:'Pellet frito'},{k:'pal',n:'Palitinho'}];
+const LS_PROD_ITENS='taskflow_prod_itens', LS_PROD_PROG='taskflow_prod_prog';
+const _PROD_ITENS_SEED=['Amend. preto & branco','Broa','Palitinho + aperitivo','Amanteigado','Palitinho','Duetto','Maisena','Palitinho + bolinha','Pão de mel P&B','Milho','Banana c/ canela','Pipoca tradicional','Mega+ intensus','Amendoim P&B','Salgadão'];
+const _PROD_MES3=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+let prodSemana=0, prodEditCell=null;
+function _prodItens(){ const a=safeJSON(LS_PROD_ITENS,null); return Array.isArray(a)?a:_PROD_ITENS_SEED.slice(); }
+function _prodSaveItens(a){ try{ safeSetItem(LS_PROD_ITENS, JSON.stringify(a)); }catch(e){} }
+function _prodProg(){ const o=safeJSON(LS_PROD_PROG,null); return (o&&typeof o==='object'&&!Array.isArray(o))?o:{}; }
+function _prodSaveProg(o){ try{ safeSetItem(LS_PROD_PROG, JSON.stringify(o)); }catch(e){} }
+function _prodISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+// off=0 → PRÓXIMA semana (Seg–Sex); off=1 → a seguinte. (Semana 1 = próxima; auto-avança pela data de hoje.)
+function _prodDias(off){ const d=new Date(today+'T00:00:00'); const m=(d.getDay()+6)%7; d.setDate(d.getDate()-m+7+off*7); const dow=['Seg','Ter','Qua','Qui','Sex']; const r=[]; for(let i=0;i<5;i++){ const x=new Date(d); x.setDate(d.getDate()+i); r.push({iso:_prodISO(x),dd:String(x.getDate()).padStart(2,'0'),dow:dow[i],mes:x.getMonth()}); } return r; }
+function _prodRange(dias){ const a=dias[0],b=dias[4]; return a.mes===b.mes ? (a.dd+'–'+b.dd+' '+_PROD_MES3[a.mes]) : (a.dd+' '+_PROD_MES3[a.mes]+' – '+b.dd+' '+_PROD_MES3[b.mes]); }
+function _prodCSS(){ return `<style>
+  .prod-seg{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:2px;margin-bottom:16px;flex-wrap:wrap}
+  .prod-seg button{border:none;background:transparent;padding:7px 14px;border-radius:8px;font-size:12.5px;color:var(--text2);cursor:pointer;font-family:inherit;font-weight:600}
+  .prod-seg button.on{background:var(--card);color:var(--text);border:1px solid var(--border)}
+  .prod-cad{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:14px}
+  .prod-cad h3{font-size:11.5px;font-weight:700;color:var(--text3);letter-spacing:.4px;text-transform:uppercase;margin:0 0 9px}
+  .prod-cadin{display:flex;gap:8px;margin-bottom:11px}
+  .prod-cadin input{flex:1;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 11px;font-size:13px;color:var(--text);font-family:inherit}
+  .prod-cadin button{background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+  .prod-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .prod-chip{font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:99px;padding:4px 6px 4px 11px;display:inline-flex;align-items:center;gap:6px;color:var(--text)}
+  .prod-chip button{border:none;background:transparent;color:var(--text3);cursor:pointer;padding:0;display:flex;font-size:13px}
+  .prod-chip button:hover{color:var(--danger)}
+  .prod-gridwrap{overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px 12px}
+  .prod-t{width:100%;border-collapse:collapse;table-layout:fixed;min-width:640px}
+  .prod-t th,.prod-t td{padding:6px 6px;vertical-align:middle}
+  .prod-t thead th{border-bottom:1px solid var(--border);font-weight:400;font-size:12px;color:var(--text3);text-align:center}
+  .prod-t thead th b{color:var(--text);font-weight:700}
+  .prod-t th.prod-corner{width:140px}
+  .prod-t td.prod-ln{font-size:12px;color:var(--text2);width:140px}
+  .prod-t tbody tr{border-bottom:1px solid var(--border)}
+  .prod-t tbody tr:last-child{border-bottom:none}
+  .prod-t tbody tr.prod-dim td.prod-ln{opacity:.5}
+  .prod-cell{font-size:12px;line-height:1.25;color:var(--text);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:6px 8px;min-height:20px;cursor:pointer}
+  .prod-cell:hover{border-color:var(--blue-mid)}
+  .prod-cell.prod-empty{background:transparent;border-style:dashed;color:var(--text3);text-align:center}
+  .prod-tt{display:inline-flex;align-items:center;gap:3px;margin-top:4px;font-size:11px;color:var(--amber);background:var(--amber-bg);border-radius:5px;padding:1px 6px}
+  .prod-tt i{font-size:12px}
+  .prod-ed select{width:100%;box-sizing:border-box;height:32px;font-size:12px;font-family:inherit;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text)}
+  .prod-tgl{flex:1;font-size:11px;padding:5px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px}
+  .prod-tgl.on{background:var(--amber-bg);color:var(--amber);border-color:var(--amber)}
+  .prod-ok{border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text2);cursor:pointer;padding:5px 9px;display:flex}
+</style>`; }
+function _prodCellHTML(key,v,itens){
+  if(prodEditCell===key){
+    const extra=(v&&itens.indexOf(v.p)<0)?[v.p]:[];
+    const opts='<option value="">— vazio —</option>'+itens.concat(extra).map(x=>`<option${v&&v.p===x?' selected':''}>${escapeHTML(x)}</option>`).join('');
+    const tgl=v?`<div style="display:flex;gap:5px;margin-top:5px"><button class="prod-tgl${v.t?' on':''}" onclick="_prodToggleTerc('${key}')"><i class="ti ti-tag"></i> terceiros</button><button class="prod-ok" title="Concluir" onclick="_prodDone()"><i class="ti ti-check"></i></button></div>`:'';
+    return `<div class="prod-ed"><select onchange="_prodSetItem('${key}',this.value)">${opts}</select>${tgl}</div>`;
+  }
+  if(v) return `<div class="prod-cell" onclick="_prodEdit('${key}')">${escapeHTML(v.p)}${v.t?`<span class="prod-tt"><i class="ti ti-tag"></i>terceiros</span>`:''}</div>`;
+  return `<div class="prod-cell prod-empty" onclick="_prodEdit('${key}')">+</div>`;
+}
+function _prodRootHTML(){
+  const itens=_prodItens(), prog=_prodProg(), dias=_prodDias(prodSemana);
+  const seg=`<div class="prod-seg">`+[0,1].map(i=>`<button class="${prodSemana===i?'on':''}" onclick="_prodSetSemana(${i})">Semana ${i+1} · ${_prodRange(_prodDias(i))}</button>`).join('')+`</div>`;
+  const chips=itens.map((x,i)=>`<span class="prod-chip">${escapeHTML(x)}<button title="remover" onclick="_prodDelItem(${i})"><i class="ti ti-x"></i></button></span>`).join('') || `<span style="font-size:12px;color:var(--text3)">nenhum item — adicione acima</span>`;
+  const cad=`<div class="prod-cad"><h3>Cadastro de itens</h3><div class="prod-cadin"><input id="prod-newit" placeholder="Nome do produto" onkeydown="if(event.key==='Enter'){event.preventDefault();_prodAddItem();}"><button onclick="_prodAddItem()">Adicionar</button></div><div class="prod-chips">${chips}</div></div>`;
+  const head=`<th class="prod-corner"></th>`+dias.map(d=>`<th><b>${d.dd}</b> - ${d.dow}</th>`).join('');
+  const body=PROD_LINHAS.map(l=>{ const act=dias.some(d=>prog[d.iso+'|'+l.k]); const cs=dias.map(d=>{ const key=d.iso+'|'+l.k; return `<td>${_prodCellHTML(key,prog[key],itens)}</td>`; }).join(''); return `<tr class="${act?'':'prod-dim'}"><td class="prod-ln">${l.n}</td>${cs}</tr>`; }).join('');
+  const grid=`<div class="prod-gridwrap"><table class="prod-t"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+  const hint=`<div style="margin-top:10px;font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px"><i class="ti ti-info-circle" style="font-size:14px"></i> Clique numa célula para escolher o item e marcar produção para terceiros.</div>`;
+  return _prodCSS()+seg+cad+grid+hint;
+}
+function _prodRerender(){ const el=document.getElementById('prod-root'); if(el) el.innerHTML=_prodRootHTML(); }
+function _prodSetSemana(i){ prodSemana=i; prodEditCell=null; _prodRerender(); }
+function _prodEdit(k){ prodEditCell=k; _prodRerender(); const s=document.querySelector('#prod-root .prod-ed select'); if(s) s.focus(); }
+function _prodDone(){ prodEditCell=null; _prodRerender(); }
+function _prodSetItem(k,val){ const p=_prodProg(); if(val){ const o=p[k]||{}; o.p=val; p[k]=o; } else { delete p[k]; } _prodSaveProg(p); prodEditCell=val?k:null; _prodRerender(); if(val){ const s=document.querySelector('#prod-root .prod-ed select'); if(s) s.focus(); } }
+function _prodToggleTerc(k){ const p=_prodProg(); const o=p[k]; if(o){ o.t=o.t?0:1; _prodSaveProg(p); _prodRerender(); } }
+function _prodAddItem(){ const el=document.getElementById('prod-newit'); if(!el) return; const v=el.value.trim(); if(v){ const a=_prodItens(); if(a.indexOf(v)<0){ a.push(v); _prodSaveItens(a); } } _prodRerender(); const n=document.getElementById('prod-newit'); if(n) n.focus(); }
+function _prodDelItem(i){ const a=_prodItens(); if(i>=0&&i<a.length){ a.splice(i,1); _prodSaveItens(a); _prodRerender(); } }
 
 function switchToTaskFlow(){
   hubView = 'taskflow';
