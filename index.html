@@ -8765,10 +8765,7 @@ function _cpFichaFornecedores(o){
     agg[k].total+=l.tot; agg[k].n++; agg[k].qtd+=l.qtd;
     if(l.data>agg[k].ult){ agg[k].ult=l.data; agg[k].preco=l.vun; } });
   const fs=Object.keys(agg).map(k=>agg[k]).sort((a,b)=>b.total-a.total);
-  const tot=fs.reduce((a,f)=>a+f.total,0), maxF=fs.length?fs[0].total:1;
-  const barras=fs.slice(0,8).map(f=>`<div style="margin-bottom:9px">
-    <div style="display:flex;justify-content:space-between;font-size:12.5px;gap:8px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(f.nome)}</span><b style="flex:none">${_cpBRL(f.total)}</b></div>
-    <div class="cp-bar"><i style="width:${Math.round(f.total/maxF*100)}%"></i></div></div>`).join('') || '<div style="color:var(--text3);font-size:13px">Sem compras registradas.</div>';
+  const tot=fs.reduce((a,f)=>a+f.total,0);
   const linhas=fs.map(f=>`<tr class="cp-clic" onclick="_cpAbrirForn('${escapeAttr(f.cod)}')">
     <td class="cp-item">${escapeHTML(f.nome)}</td>
     <td class="cp-n">${_cpBRL(f.total)}</td>
@@ -8777,9 +8774,7 @@ function _cpFichaFornecedores(o){
     <td class="cp-n">${_cpNum(f.qtd,0)} ${escapeHTML(um)}</td>
     <td class="cp-n">${_cpBRL(f.preco)}</td>
     <td class="cp-mono">${_cpDt(f.ult)}</td></tr>`).join('');
-  return `<div class="cp-card" style="padding:15px 17px;margin-bottom:14px">
-      <div class="cp-card-title"><span>Participação no gasto do item</span></div>${barras}</div>
-    <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
+  return `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead><tr><th>Fornecedor</th><th class="r">Comprado</th><th class="r">%</th><th class="r">Compras</th><th class="r">Qtde total</th><th class="r">Últ. preço</th><th class="r">Últ. compra</th></tr></thead>
       <tbody>${linhas}</tbody></table>
       <div style="font-size:11.5px;color:var(--text3);padding:8px 14px"><i class="ti ti-hand-finger"></i> Clique num fornecedor para abrir a ficha completa dele.</div></div>`;
