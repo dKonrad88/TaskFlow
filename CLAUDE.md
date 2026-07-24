@@ -429,22 +429,33 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 > dos exports atuais** (pedidos em aberto, lead time, estoque mínimo/reservado, OTIF, BOM) e (D) o que dá p/
 > fazer sem depender da TI. **Começar por (D), e levar (C) pro Diego decidir com a TI.**
 
-### 2026-07-24 — PC da Empresa (início "Compras v4") — painel do item CENTRALIZADO (não-expandido) + card de OCs em aberto + PCP esvaziado
-Sessão curta, ao vivo com o Diego (3 pedidos avulsos, cada um numa print). **Preview local rodando** (:8899,
-`scratchpad/server.ps1` recriado nesta sessão — o antigo não existia mais). Verificação por **DOM/estilo computado**
-(⚠️ screenshot e medição de largura em px dão **0** nesta máquina — viewport headless reporta 0; então centralização
-fina é o **Diego que confere no Pages**). **0 erros de console em todas as levas.** ⚠️ **NÃO consegui pushar** — a
-rede da Empresa derrubou o `git fetch`/push (porta 443). Commits estão **locais**; **próxima sessão/quando a rede
-voltar: `git push`** (working tree tem os commits à frente do origin).
+### 2026-07-24 — PC da Empresa (início "Compras v4") — ficha do item redesenhada (sub-navbar + faixa nos cards + máscara + centralização) + card de OCs + PCP esvaziado
+Sessão ao vivo com o Diego, MUITO iterativa (vários pedidos avulsos por print, com interrupções). **Preview local
+rodando** (:8899, `scratchpad/server.ps1` recriado nesta sessão). Verificação por **DOM/estilo computado**
+(⚠️ screenshot e medição de largura em px dão **0** nesta máquina — viewport headless reporta 0; então **centralização
+fina é o Diego que confere no Pages**). **0 erros de console em todas as levas. Tudo commitado E pushado** (rede
+oscilou mas os pushes passaram; `main == origin`). Commits: `2e70e4a6`, `a7b7d3d0`, `980105ff` (+ docs).
 
-**1) Painel do item (ficha do insumo), modo NÃO-expandido → centralizado igual à Reunião.** Antes o `.cp-painel`
-era injetado direto no `#task-container` e **esticava de ponta a ponta**. Agora envolto num **`.cp-painel-wrap`**
-(`max-width:1500px;margin:0 auto;padding:6px 0 40px`) — espelha o `.reun-panel-wrap`. No modo **tela cheia**
-(`body.cp-focus`) o wrap zera (`max-width:none;margin:0;padding:0`), então o foco segue ocupando tudo. Moldura do
-painel (borda+radius) mantida no não-expandido. ⚠️ **Perguntei** se ele queria ir além (rail vertical → abas
-horizontais no topo, como Reunião/Projeto de fato fazem) via AskUserQuestion — **ele não respondeu**; fiz só a
-centralização (mínima, reversível). **Se ele pedir "igual mesmo", o próximo passo é trocar o rail por sub-navbar
-horizontal** (padrão do resto do app; o rail volta só no foco).
+**1) Ficha do item (insumo) REDESENHADA p/ espelhar o Painel de Reunião — 2 layouts.** ⚠️ A 1ª tentativa foi só
+centralizar mantendo o rail; o Diego rejeitou ("não expandido, quero TOTALMENTE diferente, com sub-navbar, igual à
+print da reunião"). Estado final (`_cpFichaItemHTML` ramifica por `body.cp-focus`):
+- **NÃO-EXPANDIDO (padrão agora — `_cpAbrirItem` NÃO liga mais `cp-focus`):** link **"← Voltar aos insumos"** +
+  **sub-navbar HORIZONTAL** (Resumo · Gráfico · Fornecedores, classe `.cp-subtab`, ativo sublinhado) + botão **⛶ Tela
+  cheia** na ponta + **cards soltos**, tudo centrado no `.cp-painel-wrap` (max-width 1500). SEM o rail vertical.
+  Espelha a reunião não-expandida. `_cpFichaSetView` teve o seletor ampliado (`[onclick^="_cpFichaSetView"]`) p/
+  atualizar o ativo tanto no rail quanto nas abas horizontais.
+- **TELA CHEIA (`body.cp-focus`, via ⛶):** aí sim o **rail vertical** volta (Voltar/Resumo/Gráfico/Fornec./Reduzir),
+  ocupando a tela. **(B)** E o CORPO agora **centraliza em 1500px** (`body.cp-focus .cp-painel-body{padding:22px
+  max(22px,calc((100% - 1500px)/2)) 44px}`) em vez de esticar — pedido do Diego ("largura igual ao painel da reunião,
+  conteúdo no meio, tipo a aba Decisões").
+
+**1b) Faixa de título mais escura nos cards** (pedido: "igual aos cards do Painel de Reunião"). Classe **`.cp-card-title`**
+(espelha `.reun-card4-title`: `var(--bg2)` + margens negativas −15/−17 casando o padding + `border-bottom`). Aplicada
+em Simulador/Últimas compras/OCs (Resumo), Participação (Fornecedores) e nos 4 gráficos (Gráfico). Acompanha o tema.
+
+**1c) Máscara de milhar (BR) no campo Quantidade do simulador** (`90000`→`90.000`). `_cpSimFmtQtd`/`_cpSimQtd`:
+EXIBEM formatado mas guardam o valor **CRU** em `_cpSim.qtd` (senão o `parseFloat` do `_cpSimCalc` quebraria — ponto
+viraria decimal). Suporta decimal por vírgula (`1,5` t → 1500). Só a Quantidade tem máscara (preço/% são pequenos).
 
 **2) Card "OCs em aberto" na 3ª coluna do Resumo** (era o "Espaço reservado (em breve)" — pendência nº 3 de 23/07).
 `_cpOCsCard(o)` + `_cpOCsItem(o)` + fonte **`_CP_OC`** (mapa código→OCs). Mostra Fornecedor · saldo a entregar (qtde−
