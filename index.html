@@ -8392,6 +8392,8 @@ function _cpCSS(){ return `<style>
   body.cp-focus .cp-painel{height:100vh;min-height:0;border:none;border-radius:0}
   /* Na tela cheia, o CONTEÚDO fica centralizado e mais estreito (1200px) — não esticar de ponta a ponta. */
   body.cp-focus .cp-painel-body{padding:22px max(22px,calc((100% - 1200px)/2)) 44px}
+  /* Exceção: a view RESUMO (3 colunas) usa ~90% da largura (5% de folga em cada lado). */
+  body.cp-focus .cp-painel-body.cp-body-wide{padding:22px 5% 44px}
 </style>`; }
 function _cpTela(titulo, chip, desc, corpo, larg){
   return `<div style="padding:20px 4px 60px;max-width:${larg||1240}px;margin:0 auto">
@@ -8592,7 +8594,7 @@ function _cpItemSetMes(ym){ _cpItemMes=(_cpItemMes===ym)?null:ym; const el=docum
 function _cpFichaSetView(v){
   _cpFichaView=v;
   const el=document.getElementById('cp-ficha-main');
-  if(el && _cpItemSel && _cpIdx()[_cpItemSel]){ el.innerHTML=_cpFichaMainHTML(_cpIdx()[_cpItemSel]); el.scrollTop=0; }
+  if(el && _cpItemSel && _cpIdx()[_cpItemSel]){ el.innerHTML=_cpFichaMainHTML(_cpIdx()[_cpItemSel]); el.scrollTop=0; el.classList.toggle('cp-body-wide', v==='resumo'); }
   // Atualiza o estado ativo tanto do rail vertical (tela cheia) quanto da sub-navbar horizontal (não-expandido).
   document.querySelectorAll('[onclick^="_cpFichaSetView"]').forEach(b=>b.classList.toggle('on', b.getAttribute('onclick').indexOf("'"+v+"'")>=0));
 }
@@ -8844,7 +8846,7 @@ function _cpFichaItemHTML(o){
             ${_sub}
           </div>
         </div>
-        <div class="cp-painel-body" id="cp-ficha-main">${_cpFichaMainHTML(o)}</div>
+        <div class="cp-painel-body${_cpFichaView==='resumo'?' cp-body-wide':''}" id="cp-ficha-main">${_cpFichaMainHTML(o)}</div>
       </div>
     </div></div>`;
   }
