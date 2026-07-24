@@ -8374,11 +8374,24 @@ function _cpCSS(){ return `<style>
   .cp-painel-body{flex:1;overflow:auto;padding:20px 22px;min-height:0}
   /* Não-expandido: centraliza com largura máxima (respiro nas laterais), igual ao Painel de Reunião. */
   .cp-painel-wrap{max-width:1500px;margin:0 auto;padding:6px 0 40px}
+  /* Não-expandido estilo Reunião: link Voltar + sub-navbar horizontal (o rail vertical fica só na tela cheia). */
+  .cp-back-link{background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;padding:0;font-family:inherit;margin-bottom:8px}
+  .cp-back-link:hover{text-decoration:underline}
+  .cp-subnav-wrap{display:flex;align-items:flex-end;gap:8px;margin:2px 0 0;border-bottom:1px solid var(--border)}
+  .cp-subnav{display:flex;gap:2px;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden}
+  .cp-subtab{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text3);padding:8px 13px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;transition:color .15s,border-color .15s}
+  .cp-subtab i{font-size:14px}
+  .cp-subtab:hover{color:var(--text2)}
+  .cp-subtab.on{color:var(--text);border-bottom-color:var(--blue-mid)}
+  .cp-exp-btn2{background:var(--bg2);border:1px solid var(--border);color:var(--text3);cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;padding:6px 11px;border-radius:8px;display:inline-flex;align-items:center;gap:6px;flex-shrink:0;margin-bottom:6px;transition:color .15s,border-color .15s}
+  .cp-exp-btn2:hover{color:var(--blue-mid);border-color:var(--blue-mid)}
   /* Tela cheia (botão "Tela cheia"/Esc): some header/sidebar/topbar do HUB; o painel ocupa tudo. */
   body.cp-focus .hdr,body.cp-focus .sidebar,body.cp-focus #sidebar-resizer,body.cp-focus .topbar,body.cp-focus .fab-create,body.cp-focus .fab-menu{display:none!important}
   body.cp-focus #task-container{position:fixed;inset:0;z-index:600;overflow:hidden;background:var(--bg);padding:0;margin:0;max-width:none}
   body.cp-focus .cp-painel-wrap{max-width:none;margin:0;padding:0}
   body.cp-focus .cp-painel{height:100vh;min-height:0;border:none;border-radius:0}
+  /* Na tela cheia, o CONTEÚDO fica centralizado com a mesma largura do painel da reunião (1500px), em vez de esticar. */
+  body.cp-focus .cp-painel-body{padding:22px max(22px,calc((100% - 1500px)/2)) 44px}
 </style>`; }
 function _cpTela(titulo, chip, desc, corpo, larg){
   return `<div style="padding:20px 4px 60px;max-width:${larg||1240}px;margin:0 auto">
@@ -8463,7 +8476,7 @@ function _comprasEstoqueHTML(){
 // ════════ INSUMOS — ficha do item ════════
 let _cpItemSel=null;
 function _cpAbrirItem(cod){ _cpItemSel=cod; _cpItemMes=null; _cpFichaView='resumo'; _cpSimReset(); comprasView='insumos';
-  try{ document.body.classList.add('cp-focus'); }catch(e){} // abre o painel do item em TELA CHEIA (estilo Reunião/Projeto)
+  try{ document.body.classList.remove('cp-focus'); }catch(e){} // abre NÃO-EXPANDIDO (sub-navbar, estilo Reunião); ⛶ expande p/ tela cheia
   renderSidebar(); renderCompras(); window.scrollTo(0,0); }
 function _cpVoltarItens(){ _cpItemSel=null; _cpItemMes=null; try{document.body.classList.remove('cp-focus');}catch(e){} renderCompras(); }
 function _comprasInsumosHTML(){
@@ -8580,7 +8593,8 @@ function _cpFichaSetView(v){
   _cpFichaView=v;
   const el=document.getElementById('cp-ficha-main');
   if(el && _cpItemSel && _cpIdx()[_cpItemSel]){ el.innerHTML=_cpFichaMainHTML(_cpIdx()[_cpItemSel]); el.scrollTop=0; }
-  document.querySelectorAll('.cp-painel-rail button[onclick^="_cpFichaSetView"]').forEach(b=>b.classList.toggle('on', b.getAttribute('onclick').indexOf("'"+v+"'")>=0));
+  // Atualiza o estado ativo tanto do rail vertical (tela cheia) quanto da sub-navbar horizontal (não-expandido).
+  document.querySelectorAll('[onclick^="_cpFichaSetView"]').forEach(b=>b.classList.toggle('on', b.getAttribute('onclick').indexOf("'"+v+"'")>=0));
 }
 // Foco = tela cheia. Re-renderiza a ficha (o layout/ícone mudam).
 function _cpSetFoco(on){ document.body.classList.toggle('cp-focus', on); if(_cpItemSel && _cpIdx()[_cpItemSel]) renderCompras(); window.scrollTo(0,0); }
@@ -8635,13 +8649,15 @@ function _cpSimHTML(o){
   const chip=(m,lab)=>`<button onclick="_cpSimModo('${m}')" style="padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:${s.modo===m?'var(--blue-mid)':'var(--card)'};color:${s.modo===m?'#fff':'var(--text2)'};font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;margin:0 4px 4px 0">${lab}</button>`;
   const inp=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimInput('${campo}',this.value)" class="cp-sim-inp" style="width:${w||'50px'}"${extra?' '+extra:''}>`;
   const lb=t=>`<span style="font-size:13px;color:var(--text2)">${t}</span>`;
+  // Quantidade com máscara de milhar (BR): exibe formatado, guarda cru em _cpSim.qtd.
+  const inpQtd=(w)=>`<input type="text" inputmode="numeric" value="${escapeAttr(_cpSimFmtQtd(s.qtd))}" placeholder="0" oninput="_cpSimQtd(this)" class="cp-sim-inp" style="width:${w||'104px'}">`;
   const selUn=`<select onchange="_cpSimInput('unidade',this.value)" class="cp-sim-inp" style="width:auto;text-align:left;font-weight:600">${um==='KG'?`<option value="kg"${s.unidade==='kg'?' selected':''}>kg</option><option value="ton"${s.unidade==='ton'?' selected':''}>t</option>`:`<option value="kg" selected>${escapeHTML(um||'un')}</option>`}</select>`;
   let campoModo='';
   if(s.modo==='estoqueDias') campoModo=`${lb('Ter estoque para')}${inp('dias',s.dias,'','number','46px','min="0"')}${lb('dias')}`;
   else if(s.modo==='comprarDias') campoModo=`${lb('Comprar')}${inp('dias',s.dias,'','number','46px','min="0"')}${lb('dias de consumo')}`;
   else if(s.modo==='ate') campoModo=`${lb('Estoque durar até')}${inp('data',s.data,'','date','130px')}`;
-  else if(s.modo==='qtd') campoModo=`${lb('Comprar')}${inp('qtd',s.qtd,'0','number','88px','min="0"')}${selUn}`;
-  else if(s.modo==='desconto') campoModo=`${lb('Comprar')}${inp('qtd',s.qtd,'0','number','88px','min="0"')}${selUn}${lb('com')}${inp('descPct',s.descPct,'','number','52px','min="0" max="100"')}${lb('% de desconto')}`;
+  else if(s.modo==='qtd') campoModo=`${lb('Comprar')}${inpQtd('104px')}${selUn}`;
+  else if(s.modo==='desconto') campoModo=`${lb('Comprar')}${inpQtd('104px')}${selUn}${lb('com')}${inp('descPct',s.descPct,'','number','52px','min="0" max="100"')}${lb('% de desconto')}`;
   return `<div class="cp-card" id="cp-sim" style="padding:15px 17px;border-left:3px solid var(--blue-mid)">
     <div class="cp-card-title"><span>Simulador de compra</span><span class="sub">consumo ${o.consMed?_cpNum(o.consMed,0)+' '+um+'/mês':'—'}</span></div>
     <div style="margin-bottom:12px">${chip('estoqueDias','Estoque p/ X dias')}${chip('comprarDias','Comprar X dias')}${chip('ate','Até uma data')}${chip('qtd','Quantidade')}${chip('desconto','Desconto %')}</div>
@@ -8651,6 +8667,16 @@ function _cpSimHTML(o){
 }
 function _cpSimModo(m){ _cpSim.modo=m; _cpSimRerender(); }
 function _cpSimInput(campo,val){ _cpSim[campo]=val; const el=document.getElementById('cp-sim-result'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]); }
+// Máscara de milhar (BR) do campo Quantidade: guarda o valor CRU em _cpSim.qtd (parseável) e EXIBE formatado.
+function _cpSimFmtQtd(v){ if(v==null||v==='') return ''; const s=String(v), i=s.indexOf(','); const intp=(i>=0?s.slice(0,i):s).replace(/\D/g,'').replace(/^0+(?=\d)/,''); const dec=i>=0?s.slice(i+1).replace(/\D/g,''):null; return (intp||'0').replace(/\B(?=(\d{3})+(?!\d))/g,'.')+(dec!=null?','+dec:''); }
+function _cpSimQtd(el){
+  const s=el.value.replace(/[^\d,]/g,'');
+  if(s===''){ el.value=''; _cpSim.qtd=''; }
+  else { const i=s.indexOf(','); const intp=(i>=0?s.slice(0,i):s).replace(/\D/g,'').replace(/^0+(?=\d)/,''); const dec=i>=0?s.slice(i+1).replace(/\D/g,'').slice(0,3):null;
+    el.value=(intp||'0').replace(/\B(?=(\d{3})+(?!\d))/g,'.')+(i>=0?','+(dec||''):'');
+    _cpSim.qtd=(intp||'0')+(i>=0?','+(dec||''):''); }
+  const r=document.getElementById('cp-sim-result'); if(r && _cpItemSel && _cpIdx()[_cpItemSel]) r.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]);
+}
 function _cpSimRerender(){ const el=document.getElementById('cp-sim'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.outerHTML=_cpSimHTML(_cpIdx()[_cpItemSel]); }
 function _cpFichaMainHTML(o){ if(_cpFichaView==='graficos') return _cpFichaGraficos(o); if(_cpFichaView==='fornecedores') return _cpFichaFornecedores(o); return _cpFichaResumo(o); }
 function _cpFichaResumo(o){
@@ -8784,32 +8810,56 @@ function _cpFichaGraficos(o){
       <tbody>${tab||`<tr><td colspan="7">${_cpVazio('Sem compras neste mês.')}</td></tr>`}</tbody>
     </table></div>`;
 }
-// O PAINEL: rail (Voltar/Resumo/Gráfico/Tela cheia) + header próprio + corpo com scroll.
+// O PAINEL do item. Dois layouts:
+//  • NÃO-EXPANDIDO (padrão): estilo Reunião — link "Voltar" + sub-navbar horizontal + cards soltos, centrado.
+//  • TELA CHEIA (body.cp-focus): rail vertical + header próprio, ocupando a tela toda.
 function _cpFichaItemHTML(o){
   const foco=(typeof document!=='undefined') && document.body.classList.contains('cp-focus');
-  const rb=(v,ic,lab)=>`<button class="${_cpFichaView===v?'on':''}" onclick="_cpFichaSetView('${v}')" title="${lab}"><i class="ti ${ic}"></i>${lab}</button>`;
-  return `${_cpCSS()}<div class="cp-painel-wrap"><div class="cp-painel">
-    <div class="cp-painel-rail">
-      <button class="cp-rail-back" onclick="_cpVoltarItens()" title="Voltar aos insumos"><i class="ti ti-arrow-left"></i>Voltar</button>
-      <div style="height:1px;background:var(--border);margin:4px 12px"></div>
-      ${rb('resumo','ti-clipboard-data','Resumo')}
-      ${rb('graficos','ti-chart-line','Gráfico')}
-      ${rb('fornecedores','ti-building-store','Fornec.')}
-      <div class="cp-rail-sp"></div>
-      <button class="cp-exp-btn" onclick="_cpToggleFoco()" title="${foco?'Reduzir':'Tela cheia'}"><i class="ti ${foco?'ti-arrows-minimize':'ti-arrows-maximize'}"></i>${foco?'Reduzir':'Tela'}</button>
-    </div>
-    <div class="cp-painel-main">
-      <div class="cp-painel-head">
-        <div style="min-width:0">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <h1 style="font-size:21px;font-weight:800;letter-spacing:-.02em;color:var(--text);margin:0">${escapeHTML(o.nome)}</h1>
-            <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--success);background:var(--success-bg);padding:3px 9px;border-radius:999px;flex:none">cód. ${escapeHTML(o.cod)}</span>
-          </div>
-          <div style="font-size:12px;color:var(--text3);margin-top:3px">${o.almox?escapeHTML(o.almox):''}${o.semMov!==null?' · sem movimento há '+o.semMov+' dias':''}${o.compras.length?' · '+o.compras.length+' compras no período':''}</div>
-        </div>
+  const _sub=`<div style="font-size:12px;color:var(--text3)">${o.almox?escapeHTML(o.almox):''}${o.semMov!==null?' · sem movimento há '+o.semMov+' dias':''}${o.compras.length?' · '+o.compras.length+' compras no período':''}</div>`;
+  if(foco){
+    const rb=(v,ic,lab)=>`<button class="${_cpFichaView===v?'on':''}" onclick="_cpFichaSetView('${v}')" title="${lab}"><i class="ti ${ic}"></i>${lab}</button>`;
+    return `${_cpCSS()}<div class="cp-painel-wrap"><div class="cp-painel">
+      <div class="cp-painel-rail">
+        <button class="cp-rail-back" onclick="_cpVoltarItens()" title="Voltar aos insumos"><i class="ti ti-arrow-left"></i>Voltar</button>
+        <div style="height:1px;background:var(--border);margin:4px 12px"></div>
+        ${rb('resumo','ti-clipboard-data','Resumo')}
+        ${rb('graficos','ti-chart-line','Gráfico')}
+        ${rb('fornecedores','ti-building-store','Fornec.')}
+        <div class="cp-rail-sp"></div>
+        <button class="cp-exp-btn" onclick="_cpToggleFoco()" title="Reduzir"><i class="ti ti-arrows-minimize"></i>Reduzir</button>
       </div>
-      <div class="cp-painel-body" id="cp-ficha-main">${_cpFichaMainHTML(o)}</div>
+      <div class="cp-painel-main">
+        <div class="cp-painel-head">
+          <div style="min-width:0">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <h1 style="font-size:21px;font-weight:800;letter-spacing:-.02em;color:var(--text);margin:0">${escapeHTML(o.nome)}</h1>
+              <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--success);background:var(--success-bg);padding:3px 9px;border-radius:999px;flex:none">cód. ${escapeHTML(o.cod)}</span>
+            </div>
+            ${_sub}
+          </div>
+        </div>
+        <div class="cp-painel-body" id="cp-ficha-main">${_cpFichaMainHTML(o)}</div>
+      </div>
+    </div></div>`;
+  }
+  // NÃO-EXPANDIDO — sub-navbar horizontal (as views viram abas), sem o rail vertical.
+  const tb=(v,ic,lab)=>`<button class="cp-subtab ${_cpFichaView===v?'on':''}" onclick="_cpFichaSetView('${v}')"><i class="ti ${ic}"></i>${lab}</button>`;
+  return `${_cpCSS()}<div class="cp-painel-wrap">
+    <button class="cp-back-link" onclick="_cpVoltarItens()"><i class="ti ti-arrow-left"></i> Voltar aos insumos</button>
+    <div style="display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;margin-bottom:2px">
+      <h1 style="font-size:23px;font-weight:800;letter-spacing:-.02em;color:var(--text);margin:0">${escapeHTML(o.nome)}</h1>
+      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--success);background:var(--success-bg);padding:3px 9px;border-radius:999px">cód. ${escapeHTML(o.cod)}</span>
     </div>
+    ${_sub.replace('font-size:12px','font-size:12.5px;margin-bottom:10px')}
+    <div class="cp-subnav-wrap">
+      <div class="cp-subnav">
+        ${tb('resumo','ti-clipboard-data','Resumo')}
+        ${tb('graficos','ti-chart-line','Gráfico')}
+        ${tb('fornecedores','ti-building-store','Fornecedores')}
+      </div>
+      <button class="cp-exp-btn2" onclick="_cpToggleFoco()" title="Abrir em tela cheia"><i class="ti ti-arrows-maximize"></i> Tela cheia</button>
+    </div>
+    <div id="cp-ficha-main" style="margin-top:18px">${_cpFichaMainHTML(o)}</div>
   </div>`;
 }
 // Esc sai da tela cheia (registrado 1x)
