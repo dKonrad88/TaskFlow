@@ -6237,7 +6237,7 @@ function _prodCSS(){ return `<style>
   .prod-seg{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:2px;flex-wrap:wrap}
   .prod-seg button{border:none;background:transparent;padding:7px 14px;border-radius:8px;font-size:12.5px;color:var(--text2);cursor:pointer;font-family:inherit;font-weight:600}
   .prod-seg button.on{background:var(--card);color:var(--text);border:1px solid var(--border)}
-  .prod-cad{background:transparent;border:none;border-radius:0;padding:0;margin-bottom:16px}
+  .prod-cad{background:var(--surface-painel);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:14px}
   .prod-cad h3{font-size:11.5px;font-weight:700;color:var(--text3);letter-spacing:.4px;text-transform:uppercase;margin:0 0 9px}
   .prod-cadin{display:flex;gap:8px;margin-bottom:11px}
   .prod-cadin input{flex:1;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 11px;font-size:13px;color:var(--text);font-family:inherit}
@@ -6247,17 +6247,19 @@ function _prodCSS(){ return `<style>
   .prod-chip:active{cursor:grabbing}
   .prod-chip button{border:none;background:transparent;color:var(--text3);cursor:pointer;padding:0;display:flex;font-size:13px}
   .prod-chip button:hover{color:var(--danger)}
-  .prod-gridwrap{overflow-x:auto;padding:0}
+  .prod-gridwrap{overflow-x:auto;background:var(--surface-painel);border:1px solid var(--border);border-radius:12px;padding:6px 12px 8px}
   .prod-t{width:100%;border-collapse:collapse;table-layout:fixed;min-width:780px}
   .prod-t th,.prod-t td{padding:6px 6px;vertical-align:middle}
   .prod-t thead th{border-bottom:1px solid var(--border);font-weight:400;font-size:12px;color:var(--text3);text-align:center}
+  .prod-t thead th:not(.prod-corner){background:var(--blue-mid);color:rgba(255,255,255,.82)}
   .prod-t thead th b{color:var(--text);font-weight:700}
-  .prod-t th.prod-corner{width:140px}
-  .prod-t td.prod-ln{font-size:12px;color:var(--text2);width:140px}
+  .prod-t thead th:not(.prod-corner) b{color:#fff}
+  .prod-t th.prod-corner{width:140px;border-right:1px solid var(--border)}
+  .prod-t td.prod-ln{font-size:12px;color:var(--text);font-weight:700;width:140px;border-right:1px solid var(--border)}
   .prod-t tbody tr{border-bottom:1px solid var(--border)}
   .prod-t tbody tr:last-child{border-bottom:none}
   .prod-t tbody tr.prod-dim td.prod-ln{opacity:.5}
-  .prod-cell{font-size:12px;line-height:1.25;color:var(--text);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:6px 8px;min-height:20px;cursor:pointer;display:flex;flex-direction:column;gap:3px;align-items:flex-start}
+  .prod-cell{font-size:12px;line-height:1.2;color:var(--text);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:5px 8px;height:46px;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:3px;align-items:flex-start;justify-content:center}
   .prod-cell:hover{border-color:var(--blue-mid)}
   .prod-cell.prod-empty{background:transparent;border-style:dashed;color:var(--text3);text-align:center;align-items:center;justify-content:center}
   .prod-cell.prod-drop{border-color:var(--blue-mid)!important;border-style:solid!important;background:color-mix(in srgb,var(--blue-mid) 12%,transparent)}
@@ -6274,7 +6276,7 @@ function _prodCSS(){ return `<style>
 </style>`; }
 function _prodCellHTML(key,v,leitor){
   if(leitor){
-    if(!v) return '<div style="min-height:18px"></div>';
+    if(!v) return '<div style="height:46px"></div>';
     return `<div class="prod-cell prod-ro"><span class="prod-cell-p">${escapeHTML(v.p)}</span>${v.t?`<span class="prod-terc-ro"><i class="ti ti-tag"></i>terceiros</span>`:''}</div>`;
   }
   const dnd=`ondragover="_prodDragOver(event)" ondragleave="_prodDragLeave(event)" ondrop="_prodDrop(event,'${key}')"`;
