@@ -8347,6 +8347,9 @@ function _cpCSS(){ return `<style>
   .cp-tbl .cp-mono{font-variant-numeric:tabular-nums;color:var(--text3);font-size:12px}
   .cp-clic{cursor:pointer}
   .cp-card{background:var(--card);border:1px solid var(--border);border-radius:12px}
+  /* Faixa de título mais escura no topo do card (igual .reun-card4-title). Requer card com padding 15px 17px e o título como 1º filho. */
+  .cp-card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:-15px -17px 13px;padding:9px 17px;background:var(--bg2);border-bottom:1px solid var(--border);border-radius:11px 11px 0 0}
+  .cp-card-title .sub{font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)}
   .cp-kpi{flex:1;min-width:132px}
   .cp-kpi b{display:block;font-size:19px;font-weight:800;color:var(--text);margin-top:2px}
   .cp-kpi s{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);text-decoration:none}
@@ -8640,10 +8643,7 @@ function _cpSimHTML(o){
   else if(s.modo==='qtd') campoModo=`${lb('Comprar')}${inp('qtd',s.qtd,'0','number','88px','min="0"')}${selUn}`;
   else if(s.modo==='desconto') campoModo=`${lb('Comprar')}${inp('qtd',s.qtd,'0','number','88px','min="0"')}${selUn}${lb('com')}${inp('descPct',s.descPct,'','number','52px','min="0" max="100"')}${lb('% de desconto')}`;
   return `<div class="cp-card" id="cp-sim" style="padding:15px 17px;border-left:3px solid var(--blue-mid)">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;gap:10px">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Simulador de compra</div>
-      <div style="font-size:11px;color:var(--text3)">consumo ${o.consMed?_cpNum(o.consMed,0)+' '+um+'/mês':'—'}</div>
-    </div>
+    <div class="cp-card-title"><span>Simulador de compra</span><span class="sub">consumo ${o.consMed?_cpNum(o.consMed,0)+' '+um+'/mês':'—'}</span></div>
     <div style="margin-bottom:12px">${chip('estoqueDias','Estoque p/ X dias')}${chip('comprarDias','Comprar X dias')}${chip('ate','Até uma data')}${chip('qtd','Quantidade')}${chip('desconto','Desconto %')}</div>
     <div style="display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin-bottom:14px">${campoModo}${s.modo==='desconto'?'':`<span style="color:var(--border)">|</span>${lb('a R$')}${inp('preco',s.preco,_cpNum(precoRef,2),'text','62px')}<span style="font-size:13px;color:var(--text3)">/${um}</span>`}</div>
     <div id="cp-sim-result">${_cpSimResult(o)}</div>
@@ -8681,7 +8681,7 @@ function _cpUltimasComprasCard(o){
     <td class="cp-n" style="color:var(--text3)">—</td>
   </tr>`).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:16px">Sem compras.</td></tr>`;
   return `<div class="cp-card" style="padding:15px 17px 8px">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:10px">Últimas compras</div>
+    <div class="cp-card-title"><span>Últimas compras</span></div>
     <div style="overflow-x:auto"><table class="cp-tbl" style="font-size:12.5px">
       <thead><tr><th>Data</th><th class="r">Qtde</th><th class="r">Preço</th><th>Fornecedor</th><th class="r">Prazo</th></tr></thead>
       <tbody>${linhas}</tbody></table></div>
@@ -8723,10 +8723,7 @@ function _cpOCsCard(o){
     }).join('');
   }
   return `<div class="cp-card" style="padding:15px 17px 8px">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">OCs em aberto</div>
-      ${ocs.length?`<div style="font-size:10.5px;color:var(--text3)">${ocs.length} · ${_cpNum(totalSaldo,0)} ${escapeHTML(um)} a caminho</div>`:''}
-    </div>
+    <div class="cp-card-title"><span>OCs em aberto</span>${ocs.length?`<span class="sub">${ocs.length} · ${_cpNum(totalSaldo,0)} ${escapeHTML(um)} a caminho</span>`:''}</div>
     ${corpo}
     <div style="font-size:10.5px;color:var(--text3);padding:6px 2px 0">Exemplo — os pedidos em aberto virão do export do ERP (a definir com a TI).</div>
   </div>`;
@@ -8752,8 +8749,8 @@ function _cpFichaFornecedores(o){
     <td class="cp-n">${_cpNum(f.qtd,0)} ${escapeHTML(um)}</td>
     <td class="cp-n">${_cpBRL(f.preco)}</td>
     <td class="cp-mono">${_cpDt(f.ult)}</td></tr>`).join('');
-  return `<div class="cp-card" style="padding:16px 18px;margin-bottom:14px">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:12px">Participação no gasto do item</div>${barras}</div>
+  return `<div class="cp-card" style="padding:15px 17px;margin-bottom:14px">
+      <div class="cp-card-title"><span>Participação no gasto do item</span></div>${barras}</div>
     <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead><tr><th>Fornecedor</th><th class="r">Comprado</th><th class="r">%</th><th class="r">Compras</th><th class="r">Qtde total</th><th class="r">Últ. preço</th><th class="r">Últ. compra</th></tr></thead>
       <tbody>${linhas}</tbody></table>
@@ -8761,9 +8758,9 @@ function _cpFichaFornecedores(o){
 }
 function _cpFichaGraficos(o){
   const serie=_cpItemSerie(o), um=o.um||'';
-  const graf=(tit,sub,chart)=>`<div class="cp-card" style="padding:16px 18px">
-    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)">${tit}</div>
-    <div style="font-size:11px;color:var(--text3);margin:1px 0 12px">${sub}</div>${chart}</div>`;
+  const graf=(tit,sub,chart)=>`<div class="cp-card" style="padding:15px 17px">
+    <div class="cp-card-title"><span>${tit}</span></div>
+    <div style="font-size:11px;color:var(--text3);margin:-6px 0 12px">${sub}</div>${chart}</div>`;
   const comprasMes=_cpItemMes?o.compras.filter(l=>l.data.slice(0,7)===_cpItemMes):o.compras;
   const linha=l=>{ const base=l.med3||0, dif=base>0?((l.vun-base)/base*100):null;
     let dc='var(--text3)',db='transparent';
