@@ -6218,15 +6218,15 @@ const PROD_LINHAS=[{k:'com',n:'Forno c/ cobertura'},{k:'sem',n:'Forno s/ cobertu
 const LS_PROD_ITENS='taskflow_prod_itens', LS_PROD_PROG='taskflow_prod_prog';
 const _PROD_ITENS_SEED=['Amend. preto & branco','Broa','Palitinho + aperitivo','Amanteigado','Palitinho','Duetto','Maisena','Palitinho + bolinha','Pão de mel P&B','Milho','Banana c/ canela','Pipoca tradicional','Mega+ intensus','Amendoim P&B','Salgadão'];
 const _PROD_MES3=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-let prodSemana=0, prodEditCell=null;
+let prodSemana=0, _prodDragItem=null;
 function _prodItens(){ const a=safeJSON(LS_PROD_ITENS,null); return Array.isArray(a)?a:_PROD_ITENS_SEED.slice(); }
 function _prodSaveItens(a){ try{ safeSetItem(LS_PROD_ITENS, JSON.stringify(a)); }catch(e){} }
 function _prodProg(){ const o=safeJSON(LS_PROD_PROG,null); return (o&&typeof o==='object'&&!Array.isArray(o))?o:{}; }
 function _prodSaveProg(o){ try{ safeSetItem(LS_PROD_PROG, JSON.stringify(o)); }catch(e){} }
 function _prodISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 // off=0 → PRÓXIMA semana (Seg–Sex); off=1 → a seguinte. (Semana 1 = próxima; auto-avança pela data de hoje.)
-function _prodDias(off){ const d=new Date(today+'T00:00:00'); const m=(d.getDay()+6)%7; d.setDate(d.getDate()-m+7+off*7); const dow=['Seg','Ter','Qua','Qui','Sex']; const r=[]; for(let i=0;i<5;i++){ const x=new Date(d); x.setDate(d.getDate()+i); r.push({iso:_prodISO(x),dd:String(x.getDate()).padStart(2,'0'),dow:dow[i],mes:x.getMonth()}); } return r; }
-function _prodRange(dias){ const a=dias[0],b=dias[4]; return a.mes===b.mes ? (a.dd+'–'+b.dd+' '+_PROD_MES3[a.mes]) : (a.dd+' '+_PROD_MES3[a.mes]+' – '+b.dd+' '+_PROD_MES3[b.mes]); }
+function _prodDias(off){ const d=new Date(today+'T00:00:00'); const m=(d.getDay()+6)%7; d.setDate(d.getDate()-m+7+off*7); const dow=['Seg','Ter','Qua','Qui','Sex','Sáb']; const r=[]; for(let i=0;i<6;i++){ const x=new Date(d); x.setDate(d.getDate()+i); r.push({iso:_prodISO(x),dd:String(x.getDate()).padStart(2,'0'),dow:dow[i],mes:x.getMonth()}); } return r; }
+function _prodRange(dias){ const a=dias[0],b=dias[dias.length-1]; return a.mes===b.mes ? (a.dd+'–'+b.dd+' '+_PROD_MES3[a.mes]) : (a.dd+' '+_PROD_MES3[a.mes]+' – '+b.dd+' '+_PROD_MES3[b.mes]); }
 function _prodCSS(){ return `<style>
   .prod-seg{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:2px;margin-bottom:16px;flex-wrap:wrap}
   .prod-seg button{border:none;background:transparent;padding:7px 14px;border-radius:8px;font-size:12.5px;color:var(--text2);cursor:pointer;font-family:inherit;font-weight:600}
@@ -6237,11 +6237,12 @@ function _prodCSS(){ return `<style>
   .prod-cadin input{flex:1;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 11px;font-size:13px;color:var(--text);font-family:inherit}
   .prod-cadin button{background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
   .prod-chips{display:flex;flex-wrap:wrap;gap:6px}
-  .prod-chip{font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:99px;padding:4px 6px 4px 11px;display:inline-flex;align-items:center;gap:6px;color:var(--text)}
+  .prod-chip{font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:99px;padding:4px 6px 4px 11px;display:inline-flex;align-items:center;gap:6px;color:var(--text);cursor:grab}
+  .prod-chip:active{cursor:grabbing}
   .prod-chip button{border:none;background:transparent;color:var(--text3);cursor:pointer;padding:0;display:flex;font-size:13px}
   .prod-chip button:hover{color:var(--danger)}
   .prod-gridwrap{overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px 12px}
-  .prod-t{width:100%;border-collapse:collapse;table-layout:fixed;min-width:640px}
+  .prod-t{width:100%;border-collapse:collapse;table-layout:fixed;min-width:780px}
   .prod-t th,.prod-t td{padding:6px 6px;vertical-align:middle}
   .prod-t thead th{border-bottom:1px solid var(--border);font-weight:400;font-size:12px;color:var(--text3);text-align:center}
   .prod-t thead th b{color:var(--text);font-weight:700}
@@ -6250,45 +6251,73 @@ function _prodCSS(){ return `<style>
   .prod-t tbody tr{border-bottom:1px solid var(--border)}
   .prod-t tbody tr:last-child{border-bottom:none}
   .prod-t tbody tr.prod-dim td.prod-ln{opacity:.5}
-  .prod-cell{font-size:12px;line-height:1.25;color:var(--text);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:6px 8px;min-height:20px;cursor:pointer}
+  .prod-cell{font-size:12px;line-height:1.25;color:var(--text);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:6px 8px;min-height:20px;cursor:pointer;display:flex;flex-direction:column;gap:3px;align-items:flex-start}
   .prod-cell:hover{border-color:var(--blue-mid)}
-  .prod-cell.prod-empty{background:transparent;border-style:dashed;color:var(--text3);text-align:center}
-  .prod-tt{display:inline-flex;align-items:center;gap:3px;margin-top:4px;font-size:11px;color:var(--amber);background:var(--amber-bg);border-radius:5px;padding:1px 6px}
-  .prod-tt i{font-size:12px}
-  .prod-ed select{width:100%;box-sizing:border-box;height:32px;font-size:12px;font-family:inherit;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text)}
-  .prod-tgl{flex:1;font-size:11px;padding:5px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px}
-  .prod-tgl.on{background:var(--amber-bg);color:var(--amber);border-color:var(--amber)}
-  .prod-ok{border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text2);cursor:pointer;padding:5px 9px;display:flex}
+  .prod-cell.prod-empty{background:transparent;border-style:dashed;color:var(--text3);text-align:center;align-items:center;justify-content:center}
+  .prod-cell.prod-drop{border-color:var(--blue-mid)!important;border-style:solid!important;background:color-mix(in srgb,var(--blue-mid) 12%,transparent)}
+  .prod-cell-p{width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .prod-terc{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-family:inherit;border:none;background:transparent;color:var(--text3);opacity:.5;cursor:pointer;padding:1px 5px;border-radius:5px}
+  .prod-terc i{font-size:12px}
+  .prod-terc:hover{opacity:1;color:var(--amber)}
+  .prod-terc.on{opacity:1;color:var(--amber);background:var(--amber-bg)}
+  .prod-pick-row:hover{background:var(--bg2)!important}
 </style>`; }
-function _prodCellHTML(key,v,itens){
-  if(prodEditCell===key){
-    const extra=(v&&itens.indexOf(v.p)<0)?[v.p]:[];
-    const opts='<option value="">— vazio —</option>'+itens.concat(extra).map(x=>`<option${v&&v.p===x?' selected':''}>${escapeHTML(x)}</option>`).join('');
-    const tgl=v?`<div style="display:flex;gap:5px;margin-top:5px"><button class="prod-tgl${v.t?' on':''}" onclick="_prodToggleTerc('${key}')"><i class="ti ti-tag"></i> terceiros</button><button class="prod-ok" title="Concluir" onclick="_prodDone()"><i class="ti ti-check"></i></button></div>`:'';
-    return `<div class="prod-ed"><select onchange="_prodSetItem('${key}',this.value)">${opts}</select>${tgl}</div>`;
-  }
-  if(v) return `<div class="prod-cell" onclick="_prodEdit('${key}')">${escapeHTML(v.p)}${v.t?`<span class="prod-tt"><i class="ti ti-tag"></i>terceiros</span>`:''}</div>`;
-  return `<div class="prod-cell prod-empty" onclick="_prodEdit('${key}')">+</div>`;
+function _prodCellHTML(key,v){
+  const dnd=`ondragover="_prodDragOver(event)" ondragleave="_prodDragLeave(event)" ondrop="_prodDrop(event,'${key}')"`;
+  if(v) return `<div class="prod-cell" onclick="_prodPick(this,'${key}')" ${dnd}><span class="prod-cell-p">${escapeHTML(v.p)}</span><button class="prod-terc${v.t?' on':''}" title="${v.t?'Produção para terceiros — clique para tirar':'Marcar produção para terceiros'}" onclick="event.stopPropagation();_prodToggleTerc('${key}')"><i class="ti ti-tag"></i>${v.t?'terceiros':''}</button></div>`;
+  return `<div class="prod-cell prod-empty" onclick="_prodPick(this,'${key}')" ${dnd}>+</div>`;
 }
 function _prodRootHTML(){
   const itens=_prodItens(), prog=_prodProg(), dias=_prodDias(prodSemana);
   const seg=`<div class="prod-seg">`+[0,1].map(i=>`<button class="${prodSemana===i?'on':''}" onclick="_prodSetSemana(${i})">Semana ${i+1} · ${_prodRange(_prodDias(i))}</button>`).join('')+`</div>`;
-  const chips=itens.map((x,i)=>`<span class="prod-chip">${escapeHTML(x)}<button title="remover" onclick="_prodDelItem(${i})"><i class="ti ti-x"></i></button></span>`).join('') || `<span style="font-size:12px;color:var(--text3)">nenhum item — adicione acima</span>`;
+  const chips=itens.map((x,i)=>`<span class="prod-chip" draggable="true" data-item="${escapeAttr(x)}" ondragstart="_prodDragStart(event)" title="Arraste para uma célula">${escapeHTML(x)}<button title="remover" onclick="_prodDelItem(${i})"><i class="ti ti-x"></i></button></span>`).join('') || `<span style="font-size:12px;color:var(--text3)">nenhum item — adicione acima</span>`;
   const cad=`<div class="prod-cad"><h3>Cadastro de itens</h3><div class="prod-cadin"><input id="prod-newit" placeholder="Nome do produto" onkeydown="if(event.key==='Enter'){event.preventDefault();_prodAddItem();}"><button onclick="_prodAddItem()">Adicionar</button></div><div class="prod-chips">${chips}</div></div>`;
   const head=`<th class="prod-corner"></th>`+dias.map(d=>`<th><b>${d.dd}</b> - ${d.dow}</th>`).join('');
   const body=PROD_LINHAS.map(l=>{ const act=dias.some(d=>prog[d.iso+'|'+l.k]); const cs=dias.map(d=>{ const key=d.iso+'|'+l.k; return `<td>${_prodCellHTML(key,prog[key],itens)}</td>`; }).join(''); return `<tr class="${act?'':'prod-dim'}"><td class="prod-ln">${l.n}</td>${cs}</tr>`; }).join('');
   const grid=`<div class="prod-gridwrap"><table class="prod-t"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
-  const hint=`<div style="margin-top:10px;font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px"><i class="ti ti-info-circle" style="font-size:14px"></i> Clique numa célula para escolher o item e marcar produção para terceiros.</div>`;
+  const hint=`<div style="margin-top:10px;font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px"><i class="ti ti-info-circle" style="font-size:14px"></i> Clique numa célula para escolher (ou arraste um item do cadastro). O ícone de etiqueta marca produção para terceiros.</div>`;
   return _prodCSS()+seg+cad+grid+hint;
 }
 function _prodRerender(){ const el=document.getElementById('prod-root'); if(el) el.innerHTML=_prodRootHTML(); }
-function _prodSetSemana(i){ prodSemana=i; prodEditCell=null; _prodRerender(); }
-function _prodEdit(k){ prodEditCell=k; _prodRerender(); const s=document.querySelector('#prod-root .prod-ed select'); if(s) s.focus(); }
-function _prodDone(){ prodEditCell=null; _prodRerender(); }
-function _prodSetItem(k,val){ const p=_prodProg(); if(val){ const o=p[k]||{}; o.p=val; p[k]=o; } else { delete p[k]; } _prodSaveProg(p); prodEditCell=val?k:null; _prodRerender(); if(val){ const s=document.querySelector('#prod-root .prod-ed select'); if(s) s.focus(); } }
+function _prodSetSemana(i){ prodSemana=i; _prodRerender(); }
+function _prodSetItem(k,val){ const p=_prodProg(); if(val){ const o=p[k]||{}; o.p=val; p[k]=o; } else { delete p[k]; } _prodSaveProg(p); _prodRerender(); }
 function _prodToggleTerc(k){ const p=_prodProg(); const o=p[k]; if(o){ o.t=o.t?0:1; _prodSaveProg(p); _prodRerender(); } }
+// Dropdown custom (popover ancorado na célula) — substitui o <select> nativo. Busca + "adicionar" na hora.
+function _prodPick(anchor,key){ const cur=(_prodProg()[key]||{}).p||''; _prodItemPicker(anchor,cur,(val)=>_prodSetItem(key,val)); }
+function _prodItemPicker(anchor,atual,onPick){
+  if(!anchor) return;
+  document.getElementById('prod-item-pop')?.remove();
+  const row=(v,lbl,sel,vazio)=>`<button type="button" data-v="${escapeAttr(v)}" class="prod-pick-row" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:${sel?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'transparent'};border:none;border-radius:8px;padding:7px 10px;cursor:pointer;font-family:inherit;font-size:13px;color:var(--text)"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap${vazio?';color:var(--text3);font-style:italic':''}">${escapeHTML(lbl)}</span>${sel?'<i class="ti ti-check" style="font-size:14px;color:var(--blue-mid);flex-shrink:0"></i>':''}</button>`;
+  const build=(f)=>{ f=(f||'').trim(); const fl=f.toLowerCase(); const its=_prodItens(); let h='';
+    if(!f) h+=row('','— vazio —',!atual,true);
+    its.filter(x=>!f||x.toLowerCase().includes(fl)).forEach(x=>{ h+=row(x,x,x===atual); });
+    if(f && !its.some(x=>x.toLowerCase()===fl)) h+=`<button type="button" data-create="${escapeAttr(f)}" class="prod-pick-row" style="display:flex;align-items:center;gap:7px;width:100%;text-align:left;background:transparent;border:none;border-radius:8px;padding:7px 10px;cursor:pointer;font-family:inherit;font-size:13px;color:var(--blue-mid)"><i class="ti ti-plus" style="font-size:14px"></i><span>adicionar “${escapeHTML(f)}”</span></button>`;
+    return h||'<div style="padding:14px;font-size:12px;color:var(--text3);text-align:center">Nada encontrado</div>'; };
+  const pop=document.createElement('div'); pop.id='prod-item-pop';
+  pop.style.cssText='position:fixed;z-index:10001;width:250px;max-height:322px;display:flex;flex-direction:column;overflow:hidden;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.18)';
+  pop.innerHTML=`<div style="padding:8px;border-bottom:1px solid var(--border);flex-shrink:0"><div style="position:relative"><i class="ti ti-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px"></i><input id="prod-pick-busca" placeholder="Buscar ou criar item…" autocomplete="off" style="width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 9px 7px 28px;font-size:12.5px;color:var(--text);font-family:inherit;outline:none"></div></div><div id="prod-pick-lista" style="overflow-y:auto;padding:5px;display:flex;flex-direction:column;gap:1px">${build('')}</div>`;
+  document.body.appendChild(pop);
+  const r=anchor.getBoundingClientRect(), pw=250, ph=Math.min(322, pop.offsetHeight||322);
+  const left=Math.min(Math.max(8,r.left), window.innerWidth-8-pw);
+  const top=(r.bottom+6+ph > window.innerHeight-8) ? Math.max(8, r.top-6-ph) : r.bottom+6;
+  pop.style.left=left+'px'; pop.style.top=top+'px';
+  const close=()=>{ pop.remove(); document.removeEventListener('mousedown',fora,true); document.removeEventListener('keydown',onKey,true); };
+  const fora=(e)=>{ if(!pop.contains(e.target) && e.target!==anchor && !anchor.contains(e.target)) close(); };
+  const onKey=(e)=>{ if(e.key==='Escape'){ e.preventDefault(); close(); } };
+  pop.querySelector('#prod-pick-lista').addEventListener('click',(e)=>{ const b=e.target.closest('.prod-pick-row'); if(!b) return;
+    if(b.dataset.create!=null){ const nm=b.dataset.create; const a=_prodItens(); if(a.indexOf(nm)<0){ a.push(nm); _prodSaveItens(a); } close(); onPick(nm); return; }
+    close(); onPick(b.dataset.v); });
+  const busca=pop.querySelector('#prod-pick-busca');
+  busca.addEventListener('input',()=>{ pop.querySelector('#prod-pick-lista').innerHTML=build(busca.value); });
+  setTimeout(()=>{ document.addEventListener('mousedown',fora,true); document.addEventListener('keydown',onKey,true); busca.focus(); },0);
+}
 function _prodAddItem(){ const el=document.getElementById('prod-newit'); if(!el) return; const v=el.value.trim(); if(v){ const a=_prodItens(); if(a.indexOf(v)<0){ a.push(v); _prodSaveItens(a); } } _prodRerender(); const n=document.getElementById('prod-newit'); if(n) n.focus(); }
 function _prodDelItem(i){ const a=_prodItens(); if(i>=0&&i<a.length){ a.splice(i,1); _prodSaveItens(a); _prodRerender(); } }
+// Arrastar um item do cadastro para dentro de uma célula.
+function _prodDragStart(e){ const el=e.target.closest('.prod-chip'); const name=el?el.getAttribute('data-item'):''; _prodDragItem=name||''; try{ e.dataTransfer.setData('text/plain',name||''); e.dataTransfer.effectAllowed='copy'; }catch(_){} }
+function _prodDragOver(e){ e.preventDefault(); try{ e.dataTransfer.dropEffect='copy'; }catch(_){} e.currentTarget.classList.add('prod-drop'); }
+function _prodDragLeave(e){ e.currentTarget.classList.remove('prod-drop'); }
+function _prodDrop(e,key){ e.preventDefault(); e.currentTarget.classList.remove('prod-drop'); let name=_prodDragItem; if(!name){ try{ name=e.dataTransfer.getData('text/plain'); }catch(_){} } _prodDragItem=null; if(name) _prodSetItem(key,name); }
 
 function switchToTaskFlow(){
   hubView = 'taskflow';
