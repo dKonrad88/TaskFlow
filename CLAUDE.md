@@ -422,10 +422,13 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
-### ⭐ 2026-07-24 (b) — PC da Empresa — NOVA FEATURE: programação semanal de produção (aba Produção do Início) + mais ajustes na ficha do item
-Continuação da sessão, MUITO iterativa (Compras + depois Produção). **Tudo commitado E pushado; `main == origin ==
-7ed50524`.** Verificação por DOM no preview (:8899), **0 erros de console** em tudo. Commits desta leva:
-`a7b7d3d0` (faixa cards) · `2e70e4a6`+`980105ff`+`894179ed`+`92c061b3`+`79495952` (ficha do item) · `7ed50524` (produção).
+### ⭐ 2026-07-24/25 (b) — PC da Empresa — NOVA FEATURE: programação semanal de produção (aba Produção do Início) + mais ajustes na ficha do item
+Sessão longa (começou 24/07 sexta, virou 25/07 sábado; **fechada pelo Diego em 25/07**), MUITO iterativa (Compras →
+depois Produção). **Tudo commitado E pushado; working tree limpo; `main == origin == ceeaf06d`.** Verificação por DOM no
+preview (:8899), **0 erros de console** em tudo. ⚠️ **Push oscilou** com a rede/firewall da Empresa (porta 443 caiu
+várias vezes), mas **todos os pushes passaram** (conferido `push_exit=0` a cada vez). ⚠️ O **preview local (:8899) caiu
+1×** no meio e foi reiniciado (`scratchpad/server.ps1`). Commits do bloco Compras: `a7b7d3d0` (faixa cards) ·
+`2e70e4a6`+`980105ff`+`894179ed`+`92c061b3`+`79495952` (ficha do item). Produção: `7ed50524` (base) + evolução listada abaixo.
 
 **⭐ PROGRAMAÇÃO DE PRODUÇÃO (nova).** A aba **Produção** do Início (Meu Dia › sub-aba Produção) deixou de mostrar o
 card "Produção de hoje" de EXEMPLO e virou uma **grade semanal editável por linha**. Nasceu de 4 mockups (via
@@ -456,12 +459,17 @@ show_widget) → o Diego escolheu o formato **"por linha"** (linhas de produçã
   (Amendoim/Palitinho/Biscoitos/Pipoca e extrusados) — ⚠️ as atribuições são chute demonstrativo, o Diego reorganiza.
 - **Persistência localStorage:** `taskflow_prod_itens` · `taskflow_prod_prog` (agora LISTA por célula) · `taskflow_prod_modo` ·
   `taskflow_prod_familias` · `taskflow_prod_itemfam`. Prefixo `taskflow` → sync na nuvem. Sem ERP. Funções `_prod*` logo após
-  `renderMeuDia` (~6243); re-render pontual de `#prod-root`. **Commits da evolução:** `e5b18e1d` (picker custom + sábado +
-  drag) · `b17c5c68` (picker = _pessoaPicker) · `b1766b25` (PCP/Leitor) · `690c0b50` (card suave + faixa marrom + altura) ·
-  `9633c30b` (multi-item + 2 colunas + famílias).
-- 📌 **Aberto:** só o SINAL de terceiros (sim/não); 2 semanas fixas (sem navegador ‹ ›). ⚠️ **Altura de linha:** o commit
-  `690c0b50` fixou 46px por célula p/ uniformizar, mas com MÚLTIPLOS itens a célula cresce (min-height 46) — linhas com
-  cells de 1×N itens deixam de ser todas iguais (é inerente ao multi-item; a uniformidade valia p/ o caso 1 item).
+  `renderMeuDia` (~6243); re-render pontual de `#prod-root`. **Commits da evolução (em ordem):** `e5b18e1d` (picker custom +
+  sábado + drag) · `b17c5c68` (picker = _pessoaPicker) · `b1766b25` (PCP/Leitor) · `499efb3a` (teste sem card) · `690c0b50`
+  (card suave + faixa marrom + altura uniforme) · `9633c30b` (multi-item + 2 colunas + famílias) · `fbe90caa` (aba Produção
+  usa largura CHEIA — `max-width:none` só nesse setor; Geral/Comercial seguem 1180) · `ceeaf06d` (tira o scroll interno da
+  lista do cadastro; a página é que rola).
+- 📌 **Aberto p/ retomar:** (1) só o SINAL de terceiros (sim/não) — se quiser o NOME da marca, o clique em "terceiros" vira
+  input; (2) 2 semanas fixas (sem navegador ‹ ›); (3) ⚠️ **altura de linha:** `690c0b50` fixou 46px/célula p/ uniformizar,
+  mas com MÚLTIPLOS itens a célula cresce (min-height 46) — linhas com 1×N itens deixam de ser todas iguais (inerente ao
+  multi-item; se incomodar, pôr teto + scroll na célula); (4) as **famílias-seed são chute demonstrativo** (Amendoim/
+  Palitinho/Biscoitos/Pipoca e extrusados) — o Diego reorganiza; (5) com a lista sem scroll, o painel do cadastro comprido
+  pode encostar no FAB no canto inferior direito (o FAB flutua por cima) — pôr folga embaixo se incomodar.
 
 **Ficha do item (Compras) — ajustes desta leva** (todos no modo tela cheia salvo indicado):
 - **Sub-navbar horizontal** no NÃO-expandido (sem o rail vertical; rail só na tela cheia). `_cpAbrirItem` abre
