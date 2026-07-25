@@ -445,13 +445,23 @@ show_widget) → o Diego escolheu o formato **"por linha"** (linhas de produçã
 - ⭐ **Modo PCP × Leitor** (checkbox "Modo edição (PCP)" no topo, persistido em `taskflow_prod_modo`). **PCP** (marcado,
   default) = cadastro + células com "+" editáveis. **Leitor** (desmarcado) = esconde o cadastro, células vazias ficam em
   branco (sem "+"), só as preenchidas aparecem **read-only** (não clicáveis, sem drag, etiqueta terceiros estática).
-- **Persistência localStorage:** `taskflow_prod_itens` (array; seed 15 itens) + `taskflow_prod_prog` (mapa
-  `ISODATE|linhaKey` → `{p,t}`) + `taskflow_prod_modo` (pcp/leitor). Prefixo `taskflow` → sync na nuvem. Sem ERP — itens
-  cadastrados à mão. Funções globais `_prod*` logo após `renderMeuDia` (~6243); re-render pontual de `#prod-root`.
-  Removido o dado de exemplo `producaoHoje`. **Commits da evolução:** `e5b18e1d` (picker custom + sábado + drag) ·
-  `b17c5c68` (picker = _pessoaPicker) · `b1766b25` (modo PCP/Leitor).
-- 📌 **Aberto:** só o SINAL de terceiros (sim/não) — se quiserem o NOME da marca, o clique em "terceiros" viraria um
-  input. E hoje são 2 semanas fixas (sem navegador ‹ ›), a pedido dele.
+- ⭐ **VÁRIOS ITENS por célula** (commit `9633c30b`): cada célula guarda uma **LISTA** `prog[key]=[{p,t},...]` (compat:
+  valor antigo `{p,t}` vira `[{p,t}]` via `_prodCellArr`). Adicionar por clique (picker) OU arrastar; cada item com seu
+  **terceiros** e **×** de remover; **dedup** por nome. Mutações: `_prodAddAt/_prodReplaceAt/_prodDelAt/_prodToggleTerc(key,idx)`.
+- ⭐ **Layout 2 colunas + FAMÍLIAS** (mesmo commit): a **tabela** ficou **sem card de fundo** (esquerda, `flex:1`) e o
+  **cadastro** virou **painel à direita** (`.prod-2col`, 272px; `.prod-famlist` tem `max-height:52vh` p/ não invadir o FAB).
+  **Famílias organizam SÓ o cadastro — NÃO vão pra tabela.** Chaves novas `taskflow_prod_familias` (array) +
+  `taskflow_prod_itemfam` (mapa item→família). Dá p/ **criar/excluir família**, **adicionar item já numa família**, e
+  **arrastar item entre famílias** (`_prodFamDrop`); cadastro agrupado por família + grupo "Sem família". Seeds de exemplo
+  (Amendoim/Palitinho/Biscoitos/Pipoca e extrusados) — ⚠️ as atribuições são chute demonstrativo, o Diego reorganiza.
+- **Persistência localStorage:** `taskflow_prod_itens` · `taskflow_prod_prog` (agora LISTA por célula) · `taskflow_prod_modo` ·
+  `taskflow_prod_familias` · `taskflow_prod_itemfam`. Prefixo `taskflow` → sync na nuvem. Sem ERP. Funções `_prod*` logo após
+  `renderMeuDia` (~6243); re-render pontual de `#prod-root`. **Commits da evolução:** `e5b18e1d` (picker custom + sábado +
+  drag) · `b17c5c68` (picker = _pessoaPicker) · `b1766b25` (PCP/Leitor) · `690c0b50` (card suave + faixa marrom + altura) ·
+  `9633c30b` (multi-item + 2 colunas + famílias).
+- 📌 **Aberto:** só o SINAL de terceiros (sim/não); 2 semanas fixas (sem navegador ‹ ›). ⚠️ **Altura de linha:** o commit
+  `690c0b50` fixou 46px por célula p/ uniformizar, mas com MÚLTIPLOS itens a célula cresce (min-height 46) — linhas com
+  cells de 1×N itens deixam de ser todas iguais (é inerente ao multi-item; a uniformidade valia p/ o caso 1 item).
 
 **Ficha do item (Compras) — ajustes desta leva** (todos no modo tela cheia salvo indicado):
 - **Sub-navbar horizontal** no NÃO-expandido (sem o rail vertical; rail só na tela cheia). `_cpAbrirItem` abre
