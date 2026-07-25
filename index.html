@@ -8989,6 +8989,21 @@ const _CP_NOTICIAS = {
   '20017': { // Amendoim
     tendencia:'alta', atualizado:'2026-07-25',
     resumo:'O mercado brasileiro começou a mostrar recuperação de preços, mas ainda há oferta relativamente confortável no Brasil e no exterior. O cenário favorece compras escalonadas, sem concentrar todo o volume agora.',
+    macro:{
+      safraMeses:[2,3,4,5], safraLabel:'fev–mai', entressafraLabel:'jun–jan',
+      indicadores:[
+        {lab:'Dólar comercial', val:'R$ 5,42', dir:'alta'},
+        {lab:'Referência SP · saca 25 kg', val:'R$ 74,37', dir:'alta'},
+        {lab:'Exportação BR · mês', val:'~31 mil t', dir:'alta'},
+        {lab:'Estoques globais · EUA 25/26', val:'recordes', dir:'baixa'}
+      ]
+    },
+    precoSaca:{ fonte:'IEA-SP · preço médio recebido pelo produtor · sc. 25 kg (jun/25 sem registro na fonte)', serie:[
+      {ym:'2025-01',v:98.07},{ym:'2025-02',v:88.38},{ym:'2025-03',v:84.31},{ym:'2025-04',v:78.15},
+      {ym:'2025-05',v:78.48},{ym:'2025-07',v:73.17},{ym:'2025-08',v:74.83},{ym:'2025-09',v:72.67},
+      {ym:'2025-10',v:70.16},{ym:'2025-11',v:72.76},{ym:'2025-12',v:77.61},{ym:'2026-01',v:75.21},
+      {ym:'2026-02',v:79.35},{ym:'2026-03',v:77.65},{ym:'2026-04',v:75.71},{ym:'2026-05',v:72.73}
+    ]},
     itens:[
       {dir:'alta', tit:'Preço em São Paulo voltou a subir', txt:'Em julho o amendoim em casca foi negociado, em média, a R$ 74,37 por saca de 25 kg — alta de 0,6% sobre junho e 0,9% sobre julho/2025 (1ª alta anual de 2026). No atacado da CEAGESP, R$ 7,38/kg em 29/jun contra R$ 7,70/kg um ano antes.', fonte:'Scot Consultoria · CEAGESP'},
       {dir:'alta', tit:'Exportação brasileira ganhou força com a safra nova', txt:'Em maio o Brasil exportou ~31 mil t de amendoim em grão (+31% sobre abril e sobre maio/2025); óleo ~17 mil t (+58%). Exportação forte pode reduzir a oferta interna e sustentar preços no 2º semestre.', fonte:'Samtraco · MDIC/MAPA'},
@@ -9023,6 +9038,42 @@ function _cpTendencia(o){
   if(o.ultPreco && o.precoCompra){ const r=o.ultPreco/o.precoCompra; return r>1.03?'alta':(r<0.97?'baixa':'neutro'); }
   return 'neutro';
 }
+// Fase atual (safra × entressafra) derivada do mês de hoje contra os meses de colheita do item.
+function _cpMacroFase(m){ if(!m||!m.safraMeses) return null; return m.safraMeses.indexOf(+today.slice(5,7))>=0?'safra':'entressafra'; }
+// Card "Indicadores macroeconômicos" (aba Notícias): tendência + fase da safra/entressafra + indicadores de mercado.
+function _cpMacroCard(o){
+  const n=_CP_NOTICIAS[o.cod]; const m=n&&n.macro; if(!m) return '';
+  const t=_CP_TEND[n.tendencia]||_CP_TEND.neutro;
+  const fase=_cpMacroFase(m);
+  const chip=d=>{ const x=_CP_TEND[d]||_CP_TEND.neutro; return `<span style="flex:none;display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;color:${x.cor}"><i class="ti ${x.ic}" style="font-size:12px"></i>${x.lab}</span>`; };
+  const box=(lab,val,cor)=>`<div style="flex:1;min-width:118px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:8px 11px">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3)">${lab}</div>
+    <div style="font-size:13px;font-weight:800;color:${cor||'var(--text)'};margin-top:2px">${val}</div></div>`;
+  const inds=(m.indicadores||[]).map(it=>`<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--border)">
+    <span style="font-size:12px;color:var(--text3)">${escapeHTML(it.lab)}</span>
+    <span style="display:flex;align-items:baseline;gap:8px"><span style="font-size:12.5px;font-weight:600;color:var(--text)">${escapeHTML(it.val)}</span>${chip(it.dir)}</span></div>`).join('');
+  return `<div class="cp-card" style="padding:15px 17px 10px;margin-bottom:14px">
+    <div class="cp-card-title"><span>Indicadores macroeconômicos</span></div>
+    <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:11px">
+      ${box('Tendência', t.lab+' '+t.seta, t.cor)}
+      ${box('Fase atual', fase==='safra'?'Safra':'Entressafra', fase==='entressafra'?'var(--amber)':'var(--success)')}
+      ${box('Colheita (safra)', escapeHTML(m.safraLabel||'—'))}
+      ${m.entressafraLabel?box('Entressafra', escapeHTML(m.entressafraLabel)):''}
+    </div>
+    ${inds}
+    <div style="font-size:10.5px;color:var(--text3);margin-top:9px;line-height:1.45"><i class="ti ti-info-circle"></i> ${fase==='entressafra'?'Na entressafra a safra nova já foi absorvida e os preços tendem a firmar. ':''}Valores de exemplo — no sistema real virão de fontes de mercado/câmbio.</div>
+  </div>`;
+}
+// Gráfico do preço da saca (referência de mercado IEA-SP) — série mensal transcrita da tabela pública.
+function _cpSacaChart(o){
+  const n=_CP_NOTICIAS[o.cod]; const ps=n&&n.precoSaca; if(!ps||!ps.serie||!ps.serie.length) return '';
+  const serie=ps.serie.map(p=>({ym:p.ym, v:p.v, lbl:_cpMesLbl(+p.ym.slice(0,4),+p.ym.slice(5,7))}));
+  return `<div class="cp-card" style="padding:15px 17px 14px;margin-bottom:14px">
+    <div class="cp-card-title"><span>Preço da saca — referência de mercado</span></div>
+    <div style="font-size:11px;color:var(--text3);margin:2px 0 14px">${escapeHTML(ps.fonte)}</div>
+    ${_cpLine(serie,'v',v=>_cpBRL(v),{lineCor:'var(--blue-mid)',cor:()=>'var(--blue-mid)',labFmt:v=>_cpNum(v,2)})}
+  </div>`;
+}
 function _cpFichaNoticias(o){
   const n=_CP_NOTICIAS[o.cod];
   if(!n) return `<div class="cp-card" style="padding:40px 20px;text-align:center;color:var(--text3);max-width:640px;margin:0 auto">
@@ -9050,6 +9101,8 @@ function _cpFichaNoticias(o){
       </div>
       <div style="font-size:13px;color:var(--text);line-height:1.55">${escapeHTML(n.resumo)}</div>
     </div>
+    ${_cpMacroCard(o)}
+    ${_cpSacaChart(o)}
     <div class="cp-card" style="padding:15px 17px 8px;margin-bottom:14px">
       <div class="cp-card-title"><span>Notícias relevantes</span></div>${itens}
     </div>
