@@ -422,6 +422,71 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-07-25 (c) — PC da Empresa — SESSÃO LONGA em COMPRAS (ficha do item): Notícias/mercado, previsão de consumo, filtro de categoria, decisão de compra + REFRESH mantém a tela
+Sessão inteira na **área Compras**, quase toda na **ficha do item** (Amendoim cód. 20017 como cobaia). **13 commits**
+(`8e8935b9`→`a7d87c57`) — **tudo commitado E pushado; working tree limpo; `main == origin == a7d87c57`.** Verificação:
+**preview local rodando** (`scratchpad/server.ps1` na :8899) — testei TUDO por DOM/JS a cada leva, **0 erros de console**
+em todas. ⚠️ **Screenshot e medição de largura em px continuam dando 0** nesta máquina (viewport headless) — o
+**acabamento visual fino o Diego confere no Pages (Ctrl+Shift+R)**. Push oscilou com a rede da Empresa mas todos passaram.
+
+**⭐ REFRESH AGORA MANTÉM A TELA** (`2cb3f20a` — muda o fluxo de teste): um F5/Ctrl+Shift+R **não volta mais pro Meu
+Dia**. Persistência de rota em **`tf_route`** (localStorage, **SEM prefixo `taskflow` → NÃO sincroniza na nuvem**, é por
+aparelho). Salva ao sair (`beforeunload`+`visibilitychange`) e restaura no boot (`_tfRestoreRoute`, chamado antes do
+`render()` final ~36322; fallback = Meu Dia). Restaura área (`hubView`) + sub-view + ficha do item (`_cpItemSel`/
+`_cpFichaView`/`_cpNotView`) + filtros. ⚠️ **No Mac vale por aparelho** — o Mac abre onde o MAC parou (ou Meu Dia na 1ª vez).
+
+**NOVA FEATURE fora de Compras (`8e8935b9`):** **sub-navbar de 2º nível na aba Produção** do Início. Abaixo de Geral/
+Produção/Comercial, quando Produção está ativa aparece uma sub-navbar (underline); **Programação** é a 1ª aba (a grade
+semanal). Estrutura pronta p/ novos assuntos: `PROD_ABAS` + `prodAba` + `_prodSetAba`; id não tratado → "Em construção".
+(Diego só quis Programação por ora.)
+
+**COMPRAS — ficha do item, por área:**
+- **Gráficos:** valores nos 4 gráficos (`a683e96e`) — rótulo compacto (`_cpAbrevN`: 355k/22,8k) nas barras, preço em
+  cada ponto das linhas com dedupe de repetidos. **PREVISÃO DE CONSUMO SIMULADA** (`a7d87c57`): no "Consumo por mês", 6
+  meses futuros (ago→jan) em **barras VERDES só borda pontilhada, transparentes** (`_cpSerieComPrev` projeta da média com
+  ramp de fim de ano; `_cpBarChart` ganhou 7º param `prevCampo`). ⚠️ EXEMPLO (sem histórico) — legenda "previsão simulada".
+- **Resumo** (evoluiu em `904d3316`,`c977ac9d`,`a1fd0093`,`2cb3f20a`,`faae2582`): **2 gráficos no topo** (Consumo | Preço
+  médio, altura FIXA ~72px iguais) + **3 colunas**: **col1** [Indicadores macroeconômicos + Indicadores] · **col2**
+  [Últimas compras] · **col3** [Simulador → OCs em aberto]. Os 7 KPIs viraram **1 card "Indicadores" em tópicos**;
+  tabelas a 12px. **Subtítulo removido** (almox·sem movimento·N compras) abaixo do nome/código.
+- ⭐ **DECISÃO DE COMPRA (card Indicadores, `2cb3f20a`):** linha **"Necessidade atual"** (Sem necessidade/Comprar em
+  breve/Comprar agora/Em ruptura, colorida) + bloco **"Janela de negociação"** — calcula quando o estoque acaba (mês) e,
+  descontando o **prazo de negociação (~15 dias, `CP_PRAZO_NEG`, A PARAMETRIZAR)**, **até quando INICIAR a negociação**
+  (`_cpNecessidade`). Tira o comprador do "negociar no dia que acaba". ⚠️ falta somar o **lead time de entrega** do ERP
+  (nota no rodapé). + "Último preço de compra". Tendência saiu do Indicadores (já está no macro).
+- ⭐ **ABA NOTÍCIAS** (nova, `411da6fd`+`e8f570f2`+`06abcd72`): resumo de mercado do insumo. Só o **Amendoim** tem
+  conteúdo (semeado em `_CP_NOTICIAS`, adaptado de um teste do Diego no GPT); outros itens = estado vazio. Tem
+  **sub-navbar interna** (`_cpNotView`) em 4 seções: **Panorama** (tendência + macro + gráfico do preço da saca) ·
+  **Notícias** (notícias + fatores de alta/limitam) · **Análise** (leitura + cenários 55/25/15/5% + estimativa por
+  período) · **Recomendação** (o que faria como comprador + leitura + período).
+  - **Card "Indicadores macroeconômicos"** (em tópicos, aparece nas Notícias E no Resumo): Tendência + Fase safra/
+    entressafra (derivada do mês) + indicadores (dólar/referência/exportação/estoques). ⚠️ valores = EXEMPLO.
+  - **Gráfico "Preço da saca — IEA-SP"**: série mensal do Amendoim em casca (sc.25kg) transcrita da tabela pública do
+    IEA-SP (16 registros; jun/25 sem registro na fonte — lacuna mantida).
+- **Insumos (lista, `a1fd0093`):** **filtro de categoria** — chips Todas(1003)/Matéria-prima(272)/Embalagens(283)/
+  Manutenção(87)/Limpeza(9)/Outros(352), **ordem alfabética fixa**, coluna Categoria. ⚠️ categoria **DERIVADA do nome
+  por palavra-chave** (`_cpCategoria`) — o ERP não exporta família; "Outros" grande (produtos acabados, uniformes…).
+  Refinar palavras-chave ou plugar o campo real depois.
+- **Aba Fornecedores da ficha:** virou **2 colunas** (`8ce0e793`) — tabela à esquerda; clicar num fornecedor **abre a
+  ficha dele INLINE na coluna direita** (não navega mais). `_cpFichaFornSel`/`_cpFornDetalheInline`; botão "abrir
+  completa" leva à tela cheia. Tabela sem barra de rolagem (`429fd369`: table-layout:fixed + colgroup + fonte 11,5px).
+- **Nome de fornecedor SEM CAIXA ALTA** (`06abcd72`): `_cpForn()` normaliza o CAIXA ALTA do ERP (de/da/e minúsculos).
+
+**⚠️ Marcadores "exemplo / a cadastrar" (padrão honesto — o que NÃO sai dos exports atuais):** previsão de consumo,
+valores macro, notícias do Amendoim, OCs em aberto (`_CP_OC`), estoque mínimo/ponto de ressuprimento, prazo de
+negociação (15d), lead time de entrega, prazo de pagamento. Tudo com nota — é a lista (C) do COMPRAS v4.
+
+> ▶ **RETOMAR (Mac ou Empresa) — COMPRAS v4 segue o plano.** O Diego reconfirmou nesta sessão que o desenho do COMPRAS
+> v4 (5 grupos de menu + Ficha 360°) é o próximo passo — transcrito em **📌 BACKLOG ACORDADO → "COMPRAS v4"**. Começar
+> por (D) — reagrupar menu, ABC/XYZ por item, tag de status — e levar (C) pra TI (pedidos em aberto, lead time, estoque
+> mín/reservado, OTIF, BOM). Boa parte do Cabeçalho/KPIs da Ficha 360° já está encostada na ficha atual (tendência,
+> necessidade+janela, macro, saca, estoque mín/ponto ressuprimento como "a cadastrar"). ⚠️ **No Mac: abrir o app → ☁️ →
+> Baixar da nuvem ANTES de editar dados** (regra de ouro). E `git pull` no começo (hoje só o `index.html` e este handoff mudaram).
+
+**Estados/chaves novos desta sessão:** `prodAba` · `_cpNotView` · `_cpCatFiltro`/`_CP_CATS`/`_cpCategoria` ·
+`_cpFichaFornSel` · `CP_PRAZO_NEG` · `_CP_NOTICIAS`/`_CP_TEND`/`_cpTendencia`/`_cpMacroFase`/`_cpNecessidade`/
+`_cpSerieComPrev`/`_cpForn` · rota `tf_route` (localStorage, **não sincroniza**). Nenhuma chave de DADO nova sincronizada.
+
 ### ⭐ 2026-07-24/25 (b) — PC da Empresa — NOVA FEATURE: programação semanal de produção (aba Produção do Início) + mais ajustes na ficha do item
 Sessão longa (começou 24/07 sexta, virou 25/07 sábado; **fechada pelo Diego em 25/07**), MUITO iterativa (Compras →
 depois Produção). **Tudo commitado E pushado; working tree limpo; `main == origin == ceeaf06d`.** Verificação por DOM no
