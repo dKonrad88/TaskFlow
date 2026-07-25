@@ -8874,22 +8874,47 @@ function _cpSimQtd(el){
 function _cpSimRerender(){ const el=document.getElementById('cp-sim'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.outerHTML=_cpSimHTML(_cpIdx()[_cpItemSel]); }
 function _cpFichaMainHTML(o){ if(_cpFichaView==='graficos') return _cpFichaGraficos(o); if(_cpFichaView==='historico') return _cpFichaHistorico(o); if(_cpFichaView==='fornecedores') return _cpFichaFornecedores(o); return _cpFichaResumo(o); }
 function _cpFichaResumo(o){
-  const covCor=o.dias==null?'':(o.dias<10?'var(--danger)':(o.dias<20?'var(--amber)':''));
-  const kpis=[
-    _cpKpiCard('Em estoque',_cpNum(o.est,2)+' '+escapeHTML(o.um||''),''),
-    _cpKpiCard('Consumo/mês',o.consMed?_cpNum(o.consMed,0)+' '+escapeHTML(o.um||''):'—',''),
-    _cpKpiCard('Cobertura',o.dias==null?'—':o.dias+' dias', o.dias==null?'':('termina ~'+_cpDataFim(o.dias)), covCor),
-    _cpKpiCard('Preço médio compra',o.precoCompra?_cpBRL(o.precoCompra):'—','o que você paga'),
-    _cpKpiCard('Custo médio s/ imp.',o.cmu?_cpBRL(o.cmu):'—','valor de estoque'),
-    _cpKpiCard('Valor em estoque',o.valor?_cpBRL(o.valor):'—',''),
-    _cpKpiCard('Compras',_cpNum(o.compras.length),'no período')
-  ].join('');
-  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;margin-bottom:14px">${kpis}</div>
-    <div style="display:grid;grid-template-columns:minmax(340px,1.15fr) minmax(300px,1fr) minmax(160px,0.7fr);gap:12px;align-items:start">
-      ${_cpSimHTML(o)}
+  const serie=_cpItemSerie(o), um=o.um||'';
+  const graf=(tit,sub,chart)=>`<div class="cp-card" style="padding:15px 17px">
+    <div class="cp-card-title"><span>${tit}</span></div>
+    <div style="font-size:11px;color:var(--text3);margin:-6px 0 12px">${sub}</div>${chart}</div>`;
+  // TOPO: 2 gráficos lado a lado (Consumo · Preço médio) acima do restante.
+  const graficos=`<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px">
+      ${graf('Consumo por mês','em '+(um||'un')+' (2026)',_cpBarChart(serie,'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN))}
+      ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpLine(serie,'precoKg',v=>_cpBRL(v)+'/'+um,{lineCor:'var(--amber)',cor:()=>'var(--amber)',labFmt:v=>_cpNum(v,2)}))}
+    </div>`;
+  return graficos+`
+    <div style="display:grid;grid-template-columns:minmax(320px,1.05fr) minmax(290px,1fr) minmax(155px,0.66fr);gap:12px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:12px">${_cpIndicadoresCard(o)}${_cpSimHTML(o)}</div>
       ${_cpUltimasComprasCard(o)}
       ${_cpOCsCard(o)}
     </div>`;
+}
+// Indicadores compactos em tópicos (substitui os 7 cartões soltos), na coluna do simulador.
+function _cpIndicadoresCard(o){
+  const um=escapeHTML(o.um||'');
+  const covCor=o.dias==null?'var(--text)':(o.dias<10?'var(--danger)':(o.dias<20?'var(--amber)':'var(--text)'));
+  const pend='<span style="color:var(--text3);font-style:italic;font-weight:400">a cadastrar</span>';
+  const cob=o.dias==null?'—':`<span style="color:${covCor}">${o.dias} dias</span> <span style="color:var(--text3);font-size:11px;font-weight:400">(~${_cpDataFim(o.dias)})</span>`;
+  const rows=[
+    ['Em estoque', _cpNum(o.est,2)+' '+um],
+    ['Consumo/mês', o.consMed?_cpNum(o.consMed,0)+' '+um:'—'],
+    ['Cobertura', cob],
+    ['Estoque mínimo', pend],
+    ['Ponto de ressuprimento', pend],
+    ['Preço médio compra', o.precoCompra?_cpBRL(o.precoCompra):'—'],
+    ['Custo médio s/ imp.', o.cmu?_cpBRL(o.cmu):'—'],
+    ['Valor em estoque', o.valor?_cpBRL(o.valor):'—'],
+    ['Compras no período', _cpNum(o.compras.length)]
+  ];
+  const li=rows.map((r,i)=>`<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:5px 0;${i<rows.length-1?'border-bottom:1px solid var(--border)':''}">
+    <span style="font-size:12px;color:var(--text3)">${r[0]}</span>
+    <span style="font-size:12.5px;font-weight:600;color:var(--text);text-align:right">${r[1]}</span></div>`).join('');
+  return `<div class="cp-card" style="padding:14px 16px">
+    <div class="cp-card-title"><span>Indicadores</span></div>
+    <div style="margin-top:4px">${li}</div>
+    <div style="font-size:10.5px;color:var(--text3);margin-top:9px;line-height:1.4"><i class="ti ti-info-circle"></i> Estoque mínimo e ponto de ressuprimento virão dos parâmetros do ERP (lead time, estoque de segurança) — a definir com a TI.</div>
+  </div>`;
 }
 function _cpUltimasComprasCard(o){
   const um=o.um||'';
