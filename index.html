@@ -8917,24 +8917,39 @@ function _cpFichaResumo(o){
       ${graf('Consumo por mês','em '+(um||'un')+' (2026)',_cpBarChart(serie,'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN,45))}
       ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpLine(serie,'precoKg',v=>_cpBRL(v)+'/'+um,{lineCor:'var(--amber)',cor:()=>'var(--amber)',labFmt:v=>_cpNum(v,2),h:50,pt:6,pb:12,fixedH:72}))}
     </div>`;
-  // Macro card (só aparece p/ itens com notícia/macro, ex. Amendoim) acima da linha de cards.
-  return graficos+_cpMacroCard(o)+`
-    <div style="display:grid;grid-template-columns:minmax(255px,0.82fr) minmax(290px,1.05fr) minmax(300px,1.1fr);gap:12px;align-items:start">
-      ${_cpIndicadoresCard(o)}
-      ${_cpUltimasComprasCard(o)}
+  // 3 colunas: [macro + indicadores] · [OCs + últimas compras] · [simulador]. Macro só aparece p/ item com dado (ex. Amendoim).
+  return graficos+`
+    <div style="display:grid;grid-template-columns:minmax(280px,0.95fr) minmax(310px,1.1fr) minmax(300px,1.05fr);gap:12px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:12px">${_cpMacroCard(o)}${_cpIndicadoresCard(o)}</div>
+      <div style="display:flex;flex-direction:column;gap:12px">${_cpOCsCard(o)}${_cpUltimasComprasCard(o)}</div>
       ${_cpSimHTML(o)}
     </div>`;
 }
 // Indicadores compactos em tópicos (substitui os 7 cartões soltos), na coluna do simulador.
+// Necessidade de compra + JANELA DE NEGOCIAÇÃO: a partir da cobertura, calcula quando o estoque acaba
+// e — descontando o prazo de negociação — até quando INICIAR a negociação p/ não comprar tarde demais.
+const CP_PRAZO_NEG=15; // dias de negociação (padrão; a parametrizar por item/fornecedor)
+function _cpNecessidade(o){
+  if(o.dias==null) return {semDado:true, status:'—', cor:'var(--text3)'};
+  const dias=o.dias, prazoNeg=CP_PRAZO_NEG, diasNeg=dias-prazoNeg;
+  const dnec=new Date(today+'T00:00:00'); dnec.setDate(dnec.getDate()+Math.round(dias));
+  let status, cor;
+  if(dias<=0){ status='Em ruptura'; cor='var(--danger)'; }
+  else if(diasNeg<=0){ status='Comprar agora'; cor='var(--danger)'; }
+  else if(diasNeg<=15){ status='Comprar em breve'; cor='var(--amber)'; }
+  else { status='Sem necessidade'; cor='var(--success)'; }
+  return {semDado:false, status, cor, dias, prazoNeg, diasNeg, mes:_CP_MESLONGO[dnec.getMonth()],
+    dataFim:_cpDataFim(dias), dataNeg:_cpDataFim(Math.max(0,diasNeg))};
+}
 function _cpIndicadoresCard(o){
   const um=escapeHTML(o.um||'');
   const covCor=o.dias==null?'var(--text)':(o.dias<10?'var(--danger)':(o.dias<20?'var(--amber)':'var(--text)'));
   const pend='<span style="color:var(--text3);font-style:italic;font-weight:400">a cadastrar</span>';
   const cob=o.dias==null?'—':`<span style="color:${covCor}">${o.dias} dias</span> <span style="color:var(--text3);font-size:11px;font-weight:400">(~${_cpDataFim(o.dias)})</span>`;
-  const _t=_CP_TEND[_cpTendencia(o)]||_CP_TEND.neutro;
-  const tend=`<span style="color:${_t.cor};font-weight:800">${_t.lab} ${_t.seta}</span>`;
+  const nec=_cpNecessidade(o);
+  const necVal=`<span style="color:${nec.cor};font-weight:800">${nec.status}</span>`;
   const rows=[
-    ['Tendência', tend],
+    ['Necessidade atual', necVal],
     ['Em estoque', _cpNum(o.est,2)+' '+um],
     ['Consumo/mês', o.consMed?_cpNum(o.consMed,0)+' '+um:'—'],
     ['Cobertura', cob],
@@ -8949,9 +8964,15 @@ function _cpIndicadoresCard(o){
   const li=rows.map((r,i)=>`<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:5px 0;${i<rows.length-1?'border-bottom:1px solid var(--border)':''}">
     <span style="font-size:12px;color:var(--text3)">${r[0]}</span>
     <span style="font-size:12.5px;font-weight:600;color:var(--text);text-align:right">${r[1]}</span></div>`).join('');
+  const janela=nec.semDado?'':`<div style="margin-top:11px;padding:10px 12px;background:color-mix(in srgb, ${nec.cor} 8%, transparent);border:1px solid color-mix(in srgb, ${nec.cor} 32%, transparent);border-radius:9px">
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:${nec.cor}"><i class="ti ti-calendar-clock" style="font-size:14px"></i> Janela de negociação</div>
+    <div style="font-size:12px;color:var(--text2);line-height:1.55;margin-top:6px">Estoque cobre até <b style="color:var(--text)">~${nec.dataFim}</b> (${escapeHTML(nec.mes)}). Uma negociação leva ~${nec.prazoNeg} dias, então ${nec.diasNeg<=0?`a janela já <b style="color:${nec.cor}">começou</b> — comece a negociar <b style="color:${nec.cor}">agora</b>.`:`inicie a negociação até <b style="color:var(--text)">${nec.dataNeg}</b> <span style="color:var(--text3)">(em ${nec.diasNeg} dia${nec.diasNeg!==1?'s':''})</span>.`}</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:6px">Prazo de negociação padrão de ~${nec.prazoNeg} dias (a parametrizar). Ainda falta somar o lead time de entrega do ERP.</div>
+  </div>`;
   return `<div class="cp-card" style="padding:14px 16px">
     <div class="cp-card-title"><span>Indicadores</span></div>
     <div style="margin-top:4px">${li}</div>
+    ${janela}
     <div style="font-size:10.5px;color:var(--text3);margin-top:9px;line-height:1.4"><i class="ti ti-info-circle"></i> Estoque mínimo e ponto de ressuprimento virão dos parâmetros do ERP (lead time, estoque de segurança) — a definir com a TI.</div>
   </div>`;
 }
@@ -9123,22 +9144,20 @@ function _cpMacroCard(o){
   const n=_CP_NOTICIAS[o.cod]; const m=n&&n.macro; if(!m) return '';
   const t=_CP_TEND[n.tendencia]||_CP_TEND.neutro;
   const fase=_cpMacroFase(m);
-  const chip=d=>{ const x=_CP_TEND[d]||_CP_TEND.neutro; return `<span style="flex:none;display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;color:${x.cor}"><i class="ti ${x.ic}" style="font-size:12px"></i>${x.lab}</span>`; };
-  const box=(lab,val,cor)=>`<div style="flex:1;min-width:118px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:8px 11px">
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3)">${lab}</div>
-    <div style="font-size:13px;font-weight:800;color:${cor||'var(--text)'};margin-top:2px">${val}</div></div>`;
-  const inds=(m.indicadores||[]).map(it=>`<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--border)">
-    <span style="font-size:12px;color:var(--text3)">${escapeHTML(it.lab)}</span>
-    <span style="display:flex;align-items:baseline;gap:8px"><span style="font-size:12.5px;font-weight:600;color:var(--text)">${escapeHTML(it.val)}</span>${chip(it.dir)}</span></div>`).join('');
-  return `<div class="cp-card" style="padding:15px 17px 10px;margin-bottom:14px">
+  const mini=d=>{ const x=_CP_TEND[d]||_CP_TEND.neutro; return `<span style="color:${x.cor};font-weight:700;font-size:11px;white-space:nowrap"><i class="ti ${x.ic}" style="font-size:11px"></i> ${x.lab}</span>`; };
+  const rows=[
+    ['Tendência', `<span style="color:${t.cor};font-weight:800">${t.lab} ${t.seta}</span>`],
+    ['Fase atual', `<span style="color:${fase==='entressafra'?'var(--amber)':'var(--success)'};font-weight:800">${fase==='safra'?'Safra':'Entressafra'}</span>`],
+    ['Colheita (safra)', escapeHTML(m.safraLabel||'—')]
+  ];
+  if(m.entressafraLabel) rows.push(['Entressafra', escapeHTML(m.entressafraLabel)]);
+  (m.indicadores||[]).forEach(it=>rows.push([escapeHTML(it.lab), `${escapeHTML(it.val)} &nbsp;${mini(it.dir)}`]));
+  const li=rows.map((r,i)=>`<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:5px 0;${i<rows.length-1?'border-bottom:1px solid var(--border)':''}">
+    <span style="font-size:12px;color:var(--text3)">${r[0]}</span>
+    <span style="font-size:12.5px;font-weight:600;color:var(--text);text-align:right">${r[1]}</span></div>`).join('');
+  return `<div class="cp-card" style="padding:14px 16px;margin-bottom:14px">
     <div class="cp-card-title"><span>Indicadores macroeconômicos</span></div>
-    <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:11px">
-      ${box('Tendência', t.lab+' '+t.seta, t.cor)}
-      ${box('Fase atual', fase==='safra'?'Safra':'Entressafra', fase==='entressafra'?'var(--amber)':'var(--success)')}
-      ${box('Colheita (safra)', escapeHTML(m.safraLabel||'—'))}
-      ${m.entressafraLabel?box('Entressafra', escapeHTML(m.entressafraLabel)):''}
-    </div>
-    ${inds}
+    <div style="margin-top:4px">${li}</div>
     <div style="font-size:10.5px;color:var(--text3);margin-top:9px;line-height:1.45"><i class="ti ti-info-circle"></i> ${fase==='entressafra'?'Na entressafra a safra nova já foi absorvida e os preços tendem a firmar. ':''}Valores de exemplo — no sistema real virão de fontes de mercado/câmbio.</div>
   </div>`;
 }
@@ -36160,6 +36179,40 @@ function saveNovaTarefaInline(meetingId){
 
 // openNewTaskInMeeting substituída por saveNovaTarefaInline
 
+// ═══ Persistência de ROTA: um refresh (F5) mantém a tela onde o usuário estava. ═══
+// Device-local (chave 'tf_route', SEM prefixo taskflow → NÃO sincroniza na nuvem). Salva ao sair; restaura no boot.
+function _tfSaveRoute(){
+  try{
+    localStorage.setItem('tf_route', JSON.stringify({
+      hubView:hubView, currentTab:currentTab,
+      comprasView:comprasView, cpItemSel:_cpItemSel, cpFichaView:_cpFichaView, cpNotView:_cpNotView, cpCatFiltro:_cpCatFiltro,
+      manutencaoView:manutencaoView, producaoView:producaoView, qualidadeView:qualidadeView, marketingView:marketingView,
+      meuDiaSetor:meuDiaSetor, prodAba:prodAba
+    }));
+  }catch(e){}
+}
+function _tfRestoreRoute(){
+  let r; try{ r=JSON.parse(localStorage.getItem('tf_route')||'null'); }catch(e){ return false; }
+  if(!r||!r.hubView) return false;
+  try{
+    if(r.meuDiaSetor) meuDiaSetor=r.meuDiaSetor;
+    if(r.prodAba) prodAba=r.prodAba;
+    if(r.hubView==='compras'){
+      hubView='compras'; comprasView=r.comprasView||'painel';
+      _cpItemSel=r.cpItemSel||null; _cpFichaView=r.cpFichaView||'resumo';
+      if(r.cpNotView) _cpNotView=r.cpNotView; if(r.cpCatFiltro) _cpCatFiltro=r.cpCatFiltro;
+      renderSidebar(); renderCompras(); return true;
+    }
+    if(r.hubView==='manutencao'){ hubView='manutencao'; manutencaoView=r.manutencaoView||'ordens'; renderSidebar(); renderManutencao(); return true; }
+    if(r.hubView==='producao'){ hubView='producao'; producaoView=r.producaoView||'produtos'; renderSidebar(); renderProducao(); return true; }
+    if(r.hubView==='qualidade'){ hubView='qualidade'; qualidadeView=r.qualidadeView||'indicadores'; renderSidebar(); renderQualidade(); return true; }
+    if(r.hubView==='marketing'){ hubView='marketing'; marketingView=r.marketingView||'influenciadores'; renderSidebar(); renderMarketing(); return true; }
+    if(r.hubView==='taskflow'){ hubView='taskflow'; currentTab=r.currentTab||'hoje'; const _tb=document.querySelector('.main .topbar'); if(_tb) _tb.style.display=''; renderSidebar(); render(); return true; }
+  }catch(e){ console.warn('[rota] restore falhou',e); hubView='meudia'; }
+  return false; // meudia (ou fallback): deixa o boot renderizar o padrão
+}
+window.addEventListener('beforeunload', _tfSaveRoute);
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='hidden') _tfSaveRoute(); });
 window.addEventListener('load', async ()=>{
   const appEl=document.getElementById('app');
   if(appEl) appEl.style.display='';
@@ -36300,7 +36353,9 @@ window.addEventListener('load', async ()=>{
     const _topbar=document.querySelector('.main .topbar');
     if(_topbar) _topbar.style.display='none';
   }
-  render();
+  // Refresh mantém a tela: tenta restaurar a última rota; se não houver/falhar, renderiza o padrão (Meu dia).
+  let _rotaOk=false; try{ _rotaOk=_tfRestoreRoute(); }catch(e){ console.warn('[rota]',e); }
+  if(!_rotaOk) render();
   setTimeout(()=>{ try{ _sininhoIniciar(); }catch(e){} }, 2000);
 });
 
