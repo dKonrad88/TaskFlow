@@ -8754,19 +8754,38 @@ function _cpAbrevN(v){ v=+v||0; const a=Math.abs(v);
   if(a>=100000) return _cpNum(Math.round(v/1000),0)+'k';
   if(a>=1000) return (v/1000).toFixed(1).replace(/\.0$/,'').replace('.',',')+'k';
   return _cpNum(v,0); }
-function _cpBarChart(serie,campo,fmt,corBase,labFmt,hBar){
-  const vals=serie.map(s=>s[campo]).filter(v=>v!=null && !isNaN(v));
+// Previsão de consumo SIMULADA (base de teste, sem histórico): projeta os próximos meses a partir da média
+// do consumo real, com leve ramp de fim de ano. Devolve a série + meses futuros com campo 'prev'.
+function _cpSerieComPrev(o,serie){
+  const reais=serie.filter(s=>s.consumo!=null && s.consumo>0);
+  if(reais.length<2) return serie;
+  const avg=reais.reduce((a,s)=>a+s.consumo,0)/reais.length;
+  const last=serie.filter(s=>s.consumo!=null).slice(-1)[0]; if(!last) return serie;
+  const mult=[1.05,0.95,1.10,1.18,1.28,1.00]; // ago..jan — fábrica de doces/salgados sobe no fim do ano
+  let y=last.y, m=last.m; const out=serie.slice();
+  for(let i=0;i<mult.length;i++){ m++; if(m>12){m=1;y++;}
+    out.push({ym:y+'-'+String(m).padStart(2,'0'), y:y, m:m, lbl:_cpMesLbl(y,m), consumo:null, valor:0, qtd:0, precoKg:null, nCompras:0, prev:Math.round(avg*mult[i]/100)*100});
+  }
+  return out;
+}
+const _cpLegPrev='<span style="display:inline-flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border:1.5px dotted var(--success);border-radius:2px;display:inline-block;vertical-align:middle"></span>previsão simulada</span>';
+function _cpBarChart(serie,campo,fmt,corBase,labFmt,hBar,prevCampo){
+  const vals=[]; serie.forEach(s=>{ const a=s[campo]; if(a!=null&&!isNaN(a))vals.push(a); if(prevCampo){ const p=s[prevCampo]; if(p!=null&&!isNaN(p))vals.push(p); } });
   const max=vals.length?Math.max.apply(null,vals):1;
   const H=hBar||96;
   return `<div style="display:flex;gap:2px;align-items:flex-end;overflow-x:auto;padding-bottom:2px">`+
     serie.map(s=>{ const v=s[campo], has=(v!=null && !isNaN(v));
-      const h=(has && max>0)?Math.max(v>0?3:0,Math.round(v/max*H)):0;
-      const sel=_cpItemMes===s.ym;
+      const pv=prevCampo?s[prevCampo]:null, isPrev=!has && (pv!=null && !isNaN(pv));
+      const val=has?v:(isPrev?pv:null);
+      const h=(val!=null && max>0)?Math.max(val>0?3:0,Math.round(val/max*H)):0;
+      const sel=(_cpItemMes===s.ym) && !isPrev;
       const cor=sel?'var(--blue-mid)':(corBase||'color-mix(in srgb, var(--blue-mid) 50%, var(--card))');
-      // Rótulo colado no TOPO da barra (coluna bottom-aligned): +13px de folga p/ a barra mais alta não cortar.
-      const lab=(labFmt && has && v>0)?`<div style="font-size:8px;font-weight:600;color:${sel?'var(--text)':'var(--text3)'};line-height:1;margin-bottom:2px;white-space:nowrap">${labFmt(v)}</div>`:'';
-      return `<div class="cp-clic" onclick="_cpItemSetMes('${s.ym}')" title="${_cpMesLongo(s.ym)}: ${has?fmt(v):'sem dado'}" style="flex:1 0 20px;text-align:center">
-        <div style="height:${H+13}px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end">${lab}<div style="width:78%;height:${h}px;background:${cor};border-radius:3px 3px 0 0;${sel?'box-shadow:0 0 0 2px var(--blue-mid)':''}"></div></div>
+      // barra real = preenchida; previsão = só a borda verde pontilhada (transparente por dentro).
+      const barStyle=isPrev?`background:transparent;border:1.5px dotted var(--success);border-bottom:none;box-sizing:border-box`:`background:${cor};${sel?'box-shadow:0 0 0 2px var(--blue-mid)':''}`;
+      const lab=(labFmt && val!=null && val>0)?`<div style="font-size:8px;font-weight:600;color:${isPrev?'var(--success)':(sel?'var(--text)':'var(--text3)')};line-height:1;margin-bottom:2px;white-space:nowrap">${labFmt(val)}</div>`:'';
+      const tt=isPrev?(_cpMesLongo(s.ym)+': ~'+fmt(pv)+' · previsão'):(_cpMesLongo(s.ym)+': '+(has?fmt(v):'sem dado'));
+      return `<div class="cp-clic" onclick="_cpItemSetMes('${s.ym}')" title="${tt}" style="flex:1 0 20px;text-align:center">
+        <div style="height:${H+13}px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end">${lab}<div style="width:78%;height:${h}px;border-radius:3px 3px 0 0;${barStyle}"></div></div>
         <div style="font-size:9px;color:${sel?'var(--text)':'var(--text3)'};font-weight:${sel?700:400};margin-top:3px;white-space:nowrap">${s.lbl}</div>
       </div>`;
     }).join('')+`</div>`;
@@ -8919,7 +8938,7 @@ function _cpFichaResumo(o){
     <div style="font-size:11px;color:var(--text3);margin:-6px 0 12px">${sub}</div>${chart}</div>`;
   // TOPO: 2 gráficos lado a lado (Consumo · Preço médio) acima do restante.
   const graficos=`<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px">
-      ${graf('Consumo por mês','em '+(um||'un')+' (2026)',_cpBarChart(serie,'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN,45))}
+      ${graf('Consumo por mês','em '+(um||'un')+' (2026) · '+_cpLegPrev,_cpBarChart(_cpSerieComPrev(o,serie),'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN,45,'prev'))}
       ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpLine(serie,'precoKg',v=>_cpBRL(v)+'/'+um,{lineCor:'var(--amber)',cor:()=>'var(--amber)',labFmt:v=>_cpNum(v,2),h:50,pt:6,pb:12,fixedH:72}))}
     </div>`;
   // 3 colunas: [macro + indicadores] · [últimas compras] · [simulador + OCs em aberto]. Macro só p/ item com dado (ex. Amendoim).
@@ -9351,7 +9370,7 @@ function _cpFichaGraficos(o){
   return `${_cpItemMes?'':`<div style="font-size:12px;color:var(--text3);margin-bottom:10px"><i class="ti ti-hand-finger"></i> Clique num mês (ou num ponto) para ver o resumo do período. A planilha completa fica na aba <b>Histórico</b>.</div>`}
     ${_cpResumoMes(o,serie)}
     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:4px">
-      ${graf('Consumo por mês','em '+(um||'un')+' (2026)',_cpBarChart(serie,'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN))}
+      ${graf('Consumo por mês','em '+(um||'un')+' (2026) · '+_cpLegPrev,_cpBarChart(_cpSerieComPrev(o,serie),'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN,undefined,'prev'))}
       ${graf('Valor comprado por mês','R$ por mês',_cpBarChart(serie,'valor',v=>_cpBRL(v),undefined,_cpAbrevN))}
       ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpLine(serie,'precoKg',v=>_cpBRL(v)+'/'+um,{onClick:'_cpItemSetMes',selYm:true,lineCor:'var(--amber)',cor:()=>'var(--amber)',labFmt:v=>_cpNum(v,2)}))}
       ${graf('Todas as compras','1 ponto = 1 compra · altura = preço pago',_cpComprasLine(o))}
