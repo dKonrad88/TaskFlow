@@ -8517,6 +8517,13 @@ function _cpCorDias(d){
 }
 // ── Telas da área Compras (sobre os dados REAIS do ERP) ───────────────
 function _cpCSS(){ return `<style>
+  .cp-catbar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+  .cp-catchip{border:1px solid var(--border);background:var(--card);color:var(--text2);border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+  .cp-catchip:hover{border-color:var(--blue-mid)}
+  .cp-catchip.on{background:color-mix(in srgb,var(--blue-mid) 12%,transparent);border-color:var(--blue-mid);color:var(--blue-mid)}
+  .cp-catn{font-size:11px;font-weight:700;color:var(--text3);background:var(--bg2);border-radius:999px;padding:1px 7px}
+  .cp-catchip.on .cp-catn{color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 18%,transparent)}
+  .cp-cattag{font-size:11px;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:2px 7px;white-space:nowrap}
   .cp-tbl{width:100%;border-collapse:collapse;font-size:13px}
   .cp-tbl th,.cp-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
   .cp-tbl thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:700;background:var(--bg2);position:sticky;top:0}
@@ -8662,14 +8669,34 @@ function _cpAbrirItem(cod){ _cpItemSel=cod; _cpItemMes=null; _cpFichaView='resum
   try{ document.body.classList.remove('cp-focus'); }catch(e){} // abre NÃO-EXPANDIDO (sub-navbar, estilo Reunião); ⛶ expande p/ tela cheia
   renderSidebar(); renderCompras(); window.scrollTo(0,0); }
 function _cpVoltarItens(){ _cpItemSel=null; _cpItemMes=null; try{document.body.classList.remove('cp-focus');}catch(e){} renderCompras(); }
+// Categoria do insumo — DERIVADA do nome por palavra-chave (o ERP não exporta o campo família).
+let _cpCatFiltro='todas';
+function _cpSetCat(v){ _cpCatFiltro=v; renderCompras(); window.scrollTo(0,0); }
+const _CP_CATS=['Matéria-prima','Embalagens','Manutenção','Limpeza & higiene','Outros'];
+function _cpCategoria(nome){
+  const s=' '+(nome||'').toLowerCase()+' '; const has=(...ks)=>ks.some(k=>s.indexOf(k)>=0);
+  if(has('bobina','etiqueta','caixa de papel','caixa papel','rótulo','rotulo','sacola',' saco ','pote ','bandeja','filme','lacre','fardo','papelão','papelao',' bopp','ribbon','embalagem','cartela','blister')) return 'Embalagens';
+  if(has('parafuso','porca ','rolamento','conexão','conexao','disjuntor','plugue','cantoneira','célula','celula','resistência','resistencia','válvula','valvula','mangueira','correia','arruela','abraçadeira','abracadeira','vedação','vedacao','veda rosca','lâmpada','lampada','rebolo','eletrodo','cartucho','contator','fusível','fusivel',' graxa','lubrificante','mancal','retentor',' bucha',' pino ','chaveta','engrenagem',' polia','broca',' lima ',' chapa ','registro de','disco de')) return 'Manutenção';
+  if(has('detergente','sabonete','desengraxante','desengordurante','handclean','álcool','alcool',' cloro','sanitizante','desinfetante',' luva','touca','máscara descart','mascara descart','papel toalha','hipoclorito','soda cáustica','soda caustica')) return 'Limpeza & higiene';
+  if(has('amendoim','açúcar','acucar',' óleo',' oleo','gordura','cacau','chocolate','choc.','choc ',' leite','aroma','tempero','mistura','farinha','amido',' sal ','glucose','glicose','lecitina','essência','essencia','corante','flocos','suspiro','trufa','recheio',' coco','castanha','avelã','avela',' mel ','glacê','glace','cobertura','banana','morango','xarope','malto','manteiga',' creme','fermento','baunilha')) return 'Matéria-prima';
+  return 'Outros';
+}
 function _comprasInsumosHTML(){
   if(_cpItemSel && _cpIdx()[_cpItemSel]) return _cpFichaItemHTML(_cpIdx()[_cpItemSel]);
-  const L=_cpItens().filter(o=>o.compras.length||o.est>0).sort((a,b)=>b.valor-a.valor);
-  const linhas=L.slice(0,300).map(o=>{
+  const todos=_cpItens().filter(o=>o.compras.length||o.est>0);
+  const cont={}; _CP_CATS.forEach(c=>cont[c]=0);
+  todos.forEach(o=>{ const c=_cpCategoria(o.nome); cont[c]=(cont[c]||0)+1; });
+  if(_cpCatFiltro!=='todas' && !_CP_CATS.includes(_cpCatFiltro)) _cpCatFiltro='todas';
+  const L=(_cpCatFiltro==='todas'?todos:todos.filter(o=>_cpCategoria(o.nome)===_cpCatFiltro))
+    .sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'}));
+  const chip=(id,lab,n)=>`<button class="cp-catchip${_cpCatFiltro===id?' on':''}" onclick="_cpSetCat('${id}')">${escapeHTML(lab)} <span class="cp-catn">${n}</span></button>`;
+  const chips=`<div class="cp-catbar">${chip('todas','Todas',todos.length)}${_CP_CATS.map(c=>chip(c,c,cont[c]||0)).join('')}</div>`;
+  const linhas=L.map(o=>{
     const [c,bg]=_cpCorDias(o.dias);
     return `<tr class="cp-clic" onclick="_cpAbrirItem('${o.cod}')">
       <td class="cp-mono">${escapeHTML(o.cod)}</td>
       <td class="cp-item">${escapeHTML(o.nome)}</td>
+      <td><span class="cp-cattag">${escapeHTML(_cpCategoria(o.nome))}</span></td>
       <td class="cp-n">${_cpNum(o.est,2)} <span class="cp-un">${escapeHTML(o.um||'')}</span></td>
       <td class="cp-n">${o.cmu?_cpBRL(o.cmu):'—'}</td>
       <td class="cp-n">${o.valor?_cpBRL(o.valor):'—'}</td>
@@ -8678,9 +8705,11 @@ function _comprasInsumosHTML(){
     </tr>`;}).join('');
   return _cpTela('Insumos','dados reais',
     'A ficha de cada item comprado — a lente do <b>“o quê”</b>. Clique para ver consumo, curva de preço, fornecedores e sugestão de compra.',
-    `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
-      <thead><tr><th>Código</th><th>Insumo</th><th class="r">Estoque</th><th class="r">Custo médio</th><th class="r">Valor</th><th class="r">Cobertura</th><th class="r">Compras</th></tr></thead>
-      <tbody>${linhas}</tbody></table></div>`);
+    chips+`<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
+      <thead><tr><th>Código</th><th>Insumo</th><th>Categoria</th><th class="r">Estoque</th><th class="r">Custo médio</th><th class="r">Valor</th><th class="r">Cobertura</th><th class="r">Compras</th></tr></thead>
+      <tbody>${linhas}</tbody></table>
+      <div style="font-size:10.5px;color:var(--text3);padding:8px 14px">${L.length} ${L.length===1?'item':'itens'}${_cpCatFiltro!=='todas'?' em '+escapeHTML(_cpCatFiltro):''} · ordenado por nome. ⚠️ Categoria derivada do nome (o ERP não exporta o campo família).</div>
+    </div>`);
 }
 // ── Painel do item (ficha) — tela cheia estilo Reunião/Projeto: rail + header + conteúdo ──
 const _CP_MESNOME=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
@@ -8888,11 +8917,12 @@ function _cpFichaResumo(o){
       ${graf('Consumo por mês','em '+(um||'un')+' (2026)',_cpBarChart(serie,'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN,45))}
       ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpLine(serie,'precoKg',v=>_cpBRL(v)+'/'+um,{lineCor:'var(--amber)',cor:()=>'var(--amber)',labFmt:v=>_cpNum(v,2),h:50,pt:6,pb:12,fixedH:72}))}
     </div>`;
-  return graficos+`
-    <div style="display:grid;grid-template-columns:minmax(320px,1.05fr) minmax(290px,1fr) minmax(155px,0.66fr);gap:12px;align-items:start">
-      <div style="display:flex;flex-direction:column;gap:12px">${_cpIndicadoresCard(o)}${_cpSimHTML(o)}</div>
+  // Macro card (só aparece p/ itens com notícia/macro, ex. Amendoim) acima da linha de cards.
+  return graficos+_cpMacroCard(o)+`
+    <div style="display:grid;grid-template-columns:minmax(255px,0.82fr) minmax(290px,1.05fr) minmax(300px,1.1fr);gap:12px;align-items:start">
+      ${_cpIndicadoresCard(o)}
       ${_cpUltimasComprasCard(o)}
-      ${_cpOCsCard(o)}
+      ${_cpSimHTML(o)}
     </div>`;
 }
 // Indicadores compactos em tópicos (substitui os 7 cartões soltos), na coluna do simulador.
@@ -9277,7 +9307,7 @@ function _cpFichaHistorico(o){
 //  • TELA CHEIA (body.cp-focus): rail vertical + header próprio, ocupando a tela toda.
 function _cpFichaItemHTML(o){
   const foco=(typeof document!=='undefined') && document.body.classList.contains('cp-focus');
-  const _sub=`<div style="font-size:12px;color:var(--text3)">${o.almox?escapeHTML(o.almox):''}${o.semMov!==null?' · sem movimento há '+o.semMov+' dias':''}${o.compras.length?' · '+o.compras.length+' compras no período':''}</div>`;
+  const _sub=''; // subtítulo (almox · sem movimento · nº compras) removido a pedido do Diego
   if(foco){
     const rb=(v,ic,lab)=>`<button class="${_cpFichaView===v?'on':''}" onclick="_cpFichaSetView('${v}')" title="${lab}"><i class="ti ${ic}"></i>${lab}</button>`;
     return `${_cpCSS()}<div class="cp-painel-wrap"><div class="cp-painel">
