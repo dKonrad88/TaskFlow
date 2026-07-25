@@ -8872,7 +8872,7 @@ function _cpSimQtd(el){
   const r=document.getElementById('cp-sim-result'); if(r && _cpItemSel && _cpIdx()[_cpItemSel]) r.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]);
 }
 function _cpSimRerender(){ const el=document.getElementById('cp-sim'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.outerHTML=_cpSimHTML(_cpIdx()[_cpItemSel]); }
-function _cpFichaMainHTML(o){ if(_cpFichaView==='graficos') return _cpFichaGraficos(o); if(_cpFichaView==='historico') return _cpFichaHistorico(o); if(_cpFichaView==='fornecedores') return _cpFichaFornecedores(o); return _cpFichaResumo(o); }
+function _cpFichaMainHTML(o){ if(_cpFichaView==='graficos') return _cpFichaGraficos(o); if(_cpFichaView==='historico') return _cpFichaHistorico(o); if(_cpFichaView==='fornecedores') return _cpFichaFornecedores(o); if(_cpFichaView==='noticias') return _cpFichaNoticias(o); return _cpFichaResumo(o); }
 function _cpFichaResumo(o){
   const serie=_cpItemSerie(o), um=o.um||'';
   const graf=(tit,sub,chart)=>`<div class="cp-card" style="padding:15px 17px">
@@ -8880,8 +8880,8 @@ function _cpFichaResumo(o){
     <div style="font-size:11px;color:var(--text3);margin:-6px 0 12px">${sub}</div>${chart}</div>`;
   // TOPO: 2 gráficos lado a lado (Consumo · Preço médio) acima do restante.
   const graficos=`<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px">
-      ${graf('Consumo por mês','em '+(um||'un')+' (2026)',_cpBarChart(serie,'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN,73))}
-      ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpLine(serie,'precoKg',v=>_cpBRL(v)+'/'+um,{lineCor:'var(--amber)',cor:()=>'var(--amber)',labFmt:v=>_cpNum(v,2),h:66,pt:8,pb:14,fixedH:100}))}
+      ${graf('Consumo por mês','em '+(um||'un')+' (2026)',_cpBarChart(serie,'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN,45))}
+      ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpLine(serie,'precoKg',v=>_cpBRL(v)+'/'+um,{lineCor:'var(--amber)',cor:()=>'var(--amber)',labFmt:v=>_cpNum(v,2),h:50,pt:6,pb:12,fixedH:72}))}
     </div>`;
   return graficos+`
     <div style="display:grid;grid-template-columns:minmax(320px,1.05fr) minmax(290px,1fr) minmax(155px,0.66fr);gap:12px;align-items:start">
@@ -8896,7 +8896,10 @@ function _cpIndicadoresCard(o){
   const covCor=o.dias==null?'var(--text)':(o.dias<10?'var(--danger)':(o.dias<20?'var(--amber)':'var(--text)'));
   const pend='<span style="color:var(--text3);font-style:italic;font-weight:400">a cadastrar</span>';
   const cob=o.dias==null?'—':`<span style="color:${covCor}">${o.dias} dias</span> <span style="color:var(--text3);font-size:11px;font-weight:400">(~${_cpDataFim(o.dias)})</span>`;
+  const _t=_CP_TEND[_cpTendencia(o)]||_CP_TEND.neutro;
+  const tend=`<span style="color:${_t.cor};font-weight:800">${_t.lab} ${_t.seta}</span>`;
   const rows=[
+    ['Tendência', tend],
     ['Em estoque', _cpNum(o.est,2)+' '+um],
     ['Consumo/mês', o.consMed?_cpNum(o.consMed,0)+' '+um:'—'],
     ['Cobertura', cob],
@@ -8974,6 +8977,93 @@ function _cpOCsCard(o){
     <div style="font-size:10.5px;color:var(--text3);padding:6px 2px 0">Exemplo — os pedidos em aberto virão do export do ERP (a definir com a TI).</div>
   </div>`;
 }
+// ══════════ NOTÍCIAS DE MERCADO por item (view Notícias + Tendência do Resumo) ══════════
+// ⚠️ PROTÓTIPO: sem internet aqui. `_CP_NOTICIAS` é EXEMPLO (o Amendoim veio de um teste no GPT do Diego),
+// só p/ demonstrar o FORMATO. No sistema real virá de um feed de mercado / curadoria.
+const _CP_TEND = {
+  alta:  {lab:'Alta',   ic:'ti-trending-up',   cor:'var(--success)', seta:'↑'},
+  baixa: {lab:'Baixa',  ic:'ti-trending-down', cor:'var(--danger)',  seta:'↓'},
+  neutro:{lab:'Neutro', ic:'ti-minus',         cor:'var(--text)',    seta:''}
+};
+const _CP_NOTICIAS = {
+  '20017': { // Amendoim
+    tendencia:'alta', atualizado:'2026-07-25',
+    resumo:'O mercado brasileiro começou a mostrar recuperação de preços, mas ainda há oferta relativamente confortável no Brasil e no exterior. O cenário favorece compras escalonadas, sem concentrar todo o volume agora.',
+    itens:[
+      {dir:'alta', tit:'Preço em São Paulo voltou a subir', txt:'Em julho o amendoim em casca foi negociado, em média, a R$ 74,37 por saca de 25 kg — alta de 0,6% sobre junho e 0,9% sobre julho/2025 (1ª alta anual de 2026). No atacado da CEAGESP, R$ 7,38/kg em 29/jun contra R$ 7,70/kg um ano antes.', fonte:'Scot Consultoria · CEAGESP'},
+      {dir:'alta', tit:'Exportação brasileira ganhou força com a safra nova', txt:'Em maio o Brasil exportou ~31 mil t de amendoim em grão (+31% sobre abril e sobre maio/2025); óleo ~17 mil t (+58%). Exportação forte pode reduzir a oferta interna e sustentar preços no 2º semestre.', fonte:'Samtraco · MDIC/MAPA'},
+      {dir:'neutro', tit:'Setor ainda trabalha com estoques relevantes', txt:'Em junho havia volume significativo nas empresas, em descascamento/classificação/branqueamento — boa produtividade, mas margem apertada ao produtor. Mercado interno entre R$ 70 e R$ 75/saca de 25 kg em casca.', fonte:'CAMDA'},
+      {dir:'alta', tit:'Argentina é o principal risco de alta', txt:'A área argentina teria caído de ~510 mil para ~400 mil hectares. Problemas de clima/qualidade podem deslocar compradores para o Brasil e elevar cotações. O USDA nota estoques anteriores suficientes — o risco existe, mas não é escassez imediata.', fonte:'USDA'},
+      {dir:'baixa', tit:'Mercado internacional ainda com oferta abundante', txt:'Nos EUA a produção 2025/26 foi recorde e os estoques finais projetados em 2,6 bilhões de libras (>1 bi acima do ciclo anterior). Índia e Argentina abastecem China e Europa — isso limita, por ora, uma disparada internacional.', fonte:'USDA · Univ. da Geórgia'},
+      {dir:'neutro', tit:'Aflatoxina segue como o risco operacional mais importante', txt:'Não basta comprar pelo menor preço. O limite brasileiro indicado é 20 µg/kg de aflatoxinas totais; mercados de exportação podem exigir menos. Umidade, temperatura, secagem, armazenamento e amostragem são pontos críticos.', fonte:'MAPA'}
+    ],
+    leitura:{
+      base:'Cenário-base de alta moderada ou estabilidade firme — não de falta física imediata. O risco de alta cresce se coincidirem: mais exportação brasileira, problemas na safra argentina, dólar em alta e lotes de menor rendimento/reprovados por aflatoxina.',
+      acoes:[
+        'Cobrir agora parte das necessidades dos próximos 60–90 dias, guardando flexibilidade para ofertas.',
+        'Dividir compras maiores em parcelas mensais/quinzenais, em vez de fechar o semestre num preço só.',
+        'Negociar pelo custo por quilo útil (rendimento após seleção, quebra, pele, umidade, ardidos) — não só pelo preço da tonelada.',
+        'Exigir laudo de aflatoxinas por lote, com amostragem acordada, laboratório reconhecido e direito a contraprova.',
+        'Separar especificação por aplicação: granulometria/cor p/ paçoca; sabor/teor de óleo p/ pasta; tamanho/homogeneidade p/ biscoito.',
+        'Acompanhar semanalmente: preço em SP, dólar, exportações e clima/colheita da Argentina.'
+      ]
+    },
+    periodos:[
+      ['Últimos 7 dias','preços, câmbio, clima extremo, recalls e interdições'],
+      ['Últimos 30–45 dias','melhor janela para decisões táticas de compra'],
+      ['Últimos 6 meses','safra, estoques, exportações e situação da Argentina'],
+      ['Últimos 12 meses','comparação sazonal e planejamento de contratos']
+    ]
+  }
+};
+// Tendência do item: usa a notícia semeada; senão deriva do preço (último × médio de compra).
+function _cpTendencia(o){
+  const n=_CP_NOTICIAS[o.cod];
+  if(n && n.tendencia) return n.tendencia;
+  if(o.ultPreco && o.precoCompra){ const r=o.ultPreco/o.precoCompra; return r>1.03?'alta':(r<0.97?'baixa':'neutro'); }
+  return 'neutro';
+}
+function _cpFichaNoticias(o){
+  const n=_CP_NOTICIAS[o.cod];
+  if(!n) return `<div class="cp-card" style="padding:40px 20px;text-align:center;color:var(--text3);max-width:640px;margin:0 auto">
+    <i class="ti ti-news" style="font-size:34px;opacity:.5"></i>
+    <div style="font-size:15px;font-weight:700;color:var(--text2);margin-top:12px">Sem notícias para ${escapeHTML(o.nome)}</div>
+    <div style="font-size:12.5px;margin-top:5px;line-height:1.5">No sistema real, esta aba traz um resumo de mercado do insumo (preços, safra, exportações, riscos), curado ou de um feed. No protótipo, só o Amendoim tem exemplo.</div>
+  </div>`;
+  const t=_CP_TEND[n.tendencia]||_CP_TEND.neutro;
+  const chip=d=>{ const x=_CP_TEND[d]||_CP_TEND.neutro; return `<span style="flex:none;display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;color:${x.cor};background:color-mix(in srgb, ${x.cor} 13%, transparent);padding:2px 8px;border-radius:999px"><i class="ti ${x.ic}" style="font-size:12px"></i>${x.lab}</span>`; };
+  const itens=n.itens.map(it=>`<div style="padding:12px 0;border-bottom:1px solid var(--border)">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:4px">
+      <b style="font-size:13.5px;color:var(--text)">${escapeHTML(it.tit)}</b>${chip(it.dir)}</div>
+    <div style="font-size:12.5px;color:var(--text2);line-height:1.55">${escapeHTML(it.txt)}</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:5px"><i class="ti ti-link" style="font-size:12px"></i> ${escapeHTML(it.fonte)}</div>
+  </div>`).join('');
+  const acoes=n.leitura.acoes.map(a=>`<li style="margin-bottom:6px;line-height:1.5">${escapeHTML(a)}</li>`).join('');
+  const periodos=n.periodos.map(p=>`<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border)">
+    <span style="flex:none;font-size:12px;font-weight:700;color:var(--text);min-width:135px">${escapeHTML(p[0])}</span>
+    <span style="font-size:12px;color:var(--text3)">${escapeHTML(p[1])}</span></div>`).join('');
+  return `<div style="max-width:840px;margin:0 auto">
+    <div class="cp-card" style="padding:16px 18px;margin-bottom:14px;border-left:3px solid ${t.cor}">
+      <div style="display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:8px">
+        <span style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:800;color:${t.cor}"><i class="ti ${t.ic}" style="font-size:18px"></i>Tendência: ${t.lab} ${t.seta}</span>
+        <span style="font-size:11px;color:var(--text3)">atualizado ${_cpDt(n.atualizado)}</span>
+      </div>
+      <div style="font-size:13px;color:var(--text);line-height:1.55">${escapeHTML(n.resumo)}</div>
+    </div>
+    <div class="cp-card" style="padding:15px 17px 8px;margin-bottom:14px">
+      <div class="cp-card-title"><span>Notícias relevantes</span></div>${itens}
+    </div>
+    <div class="cp-card" style="padding:15px 17px;margin-bottom:14px">
+      <div class="cp-card-title"><span>Leitura para as compras</span></div>
+      <div style="font-size:12.5px;color:var(--text2);line-height:1.55;margin-bottom:10px">${escapeHTML(n.leitura.base)}</div>
+      <ul style="margin:0;padding-left:18px;font-size:12.5px;color:var(--text)">${acoes}</ul>
+    </div>
+    <div class="cp-card" style="padding:15px 17px 10px;margin-bottom:8px">
+      <div class="cp-card-title"><span>Período recomendado para acompanhar</span></div>${periodos}
+    </div>
+    <div style="font-size:10.5px;color:var(--text3);padding:4px 2px;line-height:1.45"><i class="ti ti-info-circle"></i> Exemplo (teste no GPT). No sistema real, o resumo virá de um feed de mercado / curadoria — sem internet no protótipo.</div>
+  </div>`;
+}
 // View "Fornecedores" (sidebar): quem fornece este item, com participação e ficha por clique.
 function _cpFichaFornecedores(o){
   const um=o.um||'';
@@ -9046,6 +9136,7 @@ function _cpFichaItemHTML(o){
         ${rb('graficos','ti-chart-line','Gráfico')}
         ${rb('historico','ti-receipt','Histórico')}
         ${rb('fornecedores','ti-building-store','Fornec.')}
+        ${rb('noticias','ti-news','Notícias')}
         <div class="cp-rail-sp"></div>
         <button class="cp-exp-btn" onclick="_cpToggleFoco()" title="Reduzir"><i class="ti ti-arrows-minimize"></i>Reduzir</button>
       </div>
@@ -9078,6 +9169,7 @@ function _cpFichaItemHTML(o){
         ${tb('graficos','ti-chart-line','Gráfico')}
         ${tb('historico','ti-receipt','Histórico')}
         ${tb('fornecedores','ti-building-store','Fornecedores')}
+        ${tb('noticias','ti-news','Notícias')}
       </div>
       <button class="cp-exp-btn2" onclick="_cpToggleFoco()" title="Abrir em tela cheia"><i class="ti ti-arrows-maximize"></i> Tela cheia</button>
     </div>
