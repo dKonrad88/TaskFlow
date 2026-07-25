@@ -8529,6 +8529,8 @@ function _cpCSS(){ return `<style>
   .cp-tbl thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:700;background:var(--bg2);position:sticky;top:0}
   .cp-tbl th.r,.cp-tbl td.cp-n{text-align:right;font-variant-numeric:tabular-nums}
   .cp-tbl tbody tr:hover{background:var(--bg2)}
+  .cp-tbl tbody tr.cp-row-sel{background:color-mix(in srgb,var(--blue-mid) 11%,transparent)}
+  .cp-tbl tbody tr.cp-row-sel .cp-item{color:var(--blue-mid)}
   .cp-tbl .cp-item{font-weight:600;color:var(--text);max-width:330px;overflow:hidden;text-overflow:ellipsis}
   .cp-tbl .cp-un{color:var(--text3);font-size:10.5px}
   .cp-tbl .cp-pill{display:inline-block;padding:1px 8px;border-radius:999px;font-weight:700;font-size:11.5px}
@@ -8665,7 +8667,7 @@ function _comprasEstoqueHTML(){
 
 // ════════ INSUMOS — ficha do item ════════
 let _cpItemSel=null;
-function _cpAbrirItem(cod){ _cpItemSel=cod; _cpItemMes=null; _cpFichaView='resumo'; _cpSimReset(); comprasView='insumos';
+function _cpAbrirItem(cod){ _cpItemSel=cod; _cpItemMes=null; _cpFichaView='resumo'; _cpFichaFornSel=null; _cpSimReset(); comprasView='insumos';
   try{ document.body.classList.remove('cp-focus'); }catch(e){} // abre NÃO-EXPANDIDO (sub-navbar, estilo Reunião); ⛶ expande p/ tela cheia
   renderSidebar(); renderCompras(); window.scrollTo(0,0); }
 function _cpVoltarItens(){ _cpItemSel=null; _cpItemMes=null; try{document.body.classList.remove('cp-focus');}catch(e){} renderCompras(); }
@@ -8820,7 +8822,7 @@ function _cpNotSetView(v){ _cpNotView=v; const el=document.getElementById('cp-fi
 function _cpFichaSetView(v){
   _cpFichaView=v;
   const el=document.getElementById('cp-ficha-main');
-  if(el && _cpItemSel && _cpIdx()[_cpItemSel]){ el.innerHTML=_cpFichaMainHTML(_cpIdx()[_cpItemSel]); el.scrollTop=0; el.classList.toggle('cp-body-wide', v==='resumo'||v==='graficos'); }
+  if(el && _cpItemSel && _cpIdx()[_cpItemSel]){ el.innerHTML=_cpFichaMainHTML(_cpIdx()[_cpItemSel]); el.scrollTop=0; el.classList.toggle('cp-body-wide', v==='resumo'||v==='graficos'||v==='fornecedores'); }
   // Atualiza o estado ativo tanto do rail vertical (tela cheia) quanto da sub-navbar horizontal (não-expandido).
   document.querySelectorAll('[onclick^="_cpFichaSetView"]').forEach(b=>b.classList.toggle('on', b.getAttribute('onclick').indexOf("'"+v+"'")>=0));
 }
@@ -9266,27 +9268,76 @@ function _cpFichaNoticias(o){
   </div>`;
 }
 // View "Fornecedores" (sidebar): quem fornece este item, com participação e ficha por clique.
+// Fornecedor selecionado DENTRO da aba Fornecedores da ficha do item (abre na coluna direita, sem trocar de aba).
+let _cpFichaFornSel=null;
+function _cpFichaFornSet(cod){ _cpFichaFornSel=(_cpFichaFornSel===cod?null:cod); const el=document.getElementById('cp-ficha-main'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.innerHTML=_cpFichaMainHTML(_cpIdx()[_cpItemSel]); }
 function _cpFichaFornecedores(o){
   const um=o.um||'';
   const agg={};
   o.compras.forEach(l=>{ const k=l.forn[0]||l.forn[1];
-    if(!agg[k]) agg[k]={cod:l.forn[0]||'',nome:l.forn[1],total:0,n:0,ult:'',preco:0,qtd:0};
+    if(!agg[k]) agg[k]={cod:k,nome:l.forn[1],total:0,n:0,ult:'',preco:0,qtd:0};
     agg[k].total+=l.tot; agg[k].n++; agg[k].qtd+=l.qtd;
     if(l.data>agg[k].ult){ agg[k].ult=l.data; agg[k].preco=l.vun; } });
   const fs=Object.keys(agg).map(k=>agg[k]).sort((a,b)=>b.total-a.total);
   const tot=fs.reduce((a,f)=>a+f.total,0);
-  const linhas=fs.map(f=>`<tr class="cp-clic" onclick="_cpAbrirForn('${escapeAttr(f.cod)}')">
+  if(_cpFichaFornSel && !fs.some(f=>f.cod===_cpFichaFornSel)) _cpFichaFornSel=null;
+  const linhas=fs.map(f=>{ const sel=_cpFichaFornSel===f.cod;
+    return `<tr class="cp-clic${sel?' cp-row-sel':''}" onclick="_cpFichaFornSet('${escapeAttr(f.cod)}')">
     <td class="cp-item">${escapeHTML(_cpForn(f.nome))}</td>
     <td class="cp-n">${_cpBRL(f.total)}</td>
     <td class="cp-n">${(tot?f.total/tot*100:0).toFixed(1)}%</td>
     <td class="cp-n">${f.n}</td>
     <td class="cp-n">${_cpNum(f.qtd,0)} ${escapeHTML(um)}</td>
     <td class="cp-n">${_cpBRL(f.preco)}</td>
-    <td class="cp-mono">${_cpDt(f.ult)}</td></tr>`).join('');
-  return `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
+    <td class="cp-mono">${_cpDt(f.ult)}</td></tr>`;}).join('');
+  const tabela=`<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead><tr><th>Fornecedor</th><th class="r">Comprado</th><th class="r">%</th><th class="r">Compras</th><th class="r">Qtde total</th><th class="r">Últ. preço</th><th class="r">Últ. compra</th></tr></thead>
       <tbody>${linhas}</tbody></table>
-      <div style="font-size:11.5px;color:var(--text3);padding:8px 14px"><i class="ti ti-hand-finger"></i> Clique num fornecedor para abrir a ficha completa dele.</div></div>`;
+      <div style="font-size:11.5px;color:var(--text3);padding:8px 14px"><i class="ti ti-hand-finger"></i> Clique num fornecedor para ver a ficha dele ao lado.</div></div>`;
+  const detalhe=_cpFichaFornSel ? _cpFornDetalheInline(_cpFichaFornSel)
+    : `<div class="cp-card" style="padding:44px 20px;text-align:center;color:var(--text3)"><i class="ti ti-building-store" style="font-size:32px;opacity:.45"></i><div style="font-size:13px;margin-top:11px;line-height:1.5">Selecione um fornecedor à esquerda<br>para ver a ficha dele aqui.</div></div>`;
+  return `<div style="display:grid;grid-template-columns:minmax(340px,1fr) minmax(360px,1.15fr);gap:14px;align-items:start">${tabela}${detalhe}</div>`;
+}
+// Ficha do fornecedor COMPACTA (coluna direita) — reusa a lógica da ficha completa, sem o wrapper de tela.
+function _cpFornDetalheInline(cod){
+  const f=_cpFornAgg('T').find(x=>x.cod===cod);
+  if(!f) return `<div class="cp-card" style="padding:24px;text-align:center;color:var(--text3)">Sem compras deste fornecedor no período (${_cpFornMeses?('últimos '+_cpFornMeses+' meses'):'tudo'}).</div>`;
+  const it={};
+  f.linhas.forEach(l=>{ const k=l.item[0]; if(!it[k]) it[k]={nome:l.item[1],cod:k,total:0,qtd:0,um:l.um,ult:l.data,preco:l.vun};
+    it[k].total+=l.tot; it[k].qtd+=l.qtd; if(l.data>it[k].ult){it[k].ult=l.data;it[k].preco=l.vun;} });
+  const itens=Object.keys(it).map(k=>it[k]).sort((a,b)=>b.total-a.total);
+  const linhasIt=itens.map(i=>`<tr class="cp-clic" onclick="_cpAbrirItem('${i.cod}')">
+      <td class="cp-item">${escapeHTML(i.nome)}</td>
+      <td class="cp-n">${_cpNum(i.qtd,2)} <span class="cp-un">${escapeHTML(i.um||'')}</span></td>
+      <td class="cp-n">${_cpBRL(i.preco)}</td>
+      <td class="cp-n">${_cpBRL(i.total)}</td>
+      <td class="cp-mono">${_cpDt(i.ult)}</td></tr>`).join('');
+  const ultimas=f.linhas.slice().sort((a,b)=>a.data<b.data?1:-1).slice(0,20).map(l=>
+    `<tr><td class="cp-mono">${_cpDt(l.data)}</td><td class="cp-mono">${escapeHTML(String(l.nf))}</td>
+     <td class="cp-item">${escapeHTML(l.item[1])}</td><td class="cp-n">${_cpNum(l.qtd,2)}</td>
+     <td class="cp-n">${_cpBRL(l.vun)}</td><td class="cp-n">${_cpBRL(l.tot)}</td></tr>`).join('');
+  return `<div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:11px">
+      <h2 style="font-size:17px;font-weight:800;color:var(--text);margin:0">${escapeHTML(_cpForn(f.nome))}</h2>
+      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 12%,transparent);padding:3px 9px;border-radius:999px">ficha do fornecedor</span>
+      <button onclick="_cpAbrirForn('${escapeAttr(cod)}')" class="btn-modal-cancel" style="margin-left:auto;padding:5px 11px;font-size:12px" title="Abrir a ficha completa em tela cheia">abrir completa <i class="ti ti-external-link" style="font-size:12px"></i></button>
+    </div>
+    ${_cpKPIrow([
+      _cpKPI('Comprado',_cpBRL(f.total)),
+      _cpKPI('Notas fiscais',_cpNum(Object.keys(f.nfs).length)),
+      _cpKPI('Itens diferentes',_cpNum(itens.length)),
+      _cpKPI('Prazo de pagamento','a cadastrar')
+    ])}
+    <div style="font-size:11px;color:var(--text3);margin:-4px 2px 12px;line-height:1.45"><i class="ti ti-info-circle"></i> Prazo de pagamento/entrega não vêm no export do ERP — entram aqui quando tivermos. Período: ${_cpFornMeses?('últimos '+_cpFornMeses+' meses'):'tudo'}.</div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:0 2px 6px">Itens fornecidos</div>
+    <div class="cp-card" style="overflow-x:auto;margin-bottom:12px"><table class="cp-tbl" style="font-size:12px">
+      <thead><tr><th>Item</th><th class="r">Qtde total</th><th class="r">Últ. preço</th><th class="r">Total</th><th class="r">Últ. compra</th></tr></thead>
+      <tbody>${linhasIt}</tbody></table></div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:0 2px 6px">Últimas entradas</div>
+    <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl" style="font-size:12px">
+      <thead><tr><th>Data</th><th>NF</th><th>Item</th><th class="r">Qtde</th><th class="r">Vlr unit.</th><th class="r">Total</th></tr></thead>
+      <tbody>${ultimas}</tbody></table></div>
+  </div>`;
 }
 function _cpFichaGraficos(o){
   const serie=_cpItemSerie(o), um=o.um||'';
@@ -9351,7 +9402,7 @@ function _cpFichaItemHTML(o){
             ${_sub}
           </div>
         </div>
-        <div class="cp-painel-body${(_cpFichaView==='resumo'||_cpFichaView==='graficos')?' cp-body-wide':''}" id="cp-ficha-main">${_cpFichaMainHTML(o)}</div>
+        <div class="cp-painel-body${(_cpFichaView==='resumo'||_cpFichaView==='graficos'||_cpFichaView==='fornecedores')?' cp-body-wide':''}" id="cp-ficha-main">${_cpFichaMainHTML(o)}</div>
       </div>
     </div></div>`;
   }
