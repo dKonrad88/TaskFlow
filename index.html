@@ -6215,10 +6215,13 @@ function renderMeuDia(){
 // Grade editável: cadastro de itens (localStorage) + seletor por célula + etiqueta "terceiros".
 // Dado por aparelho (chaves taskflow_prod_*, entram no sync da nuvem). Sem ERP — o Diego cadastra os itens.
 const PROD_LINHAS=[{k:'com',n:'Forno c/ cobertura'},{k:'sem',n:'Forno s/ cobertura'},{k:'pip',n:'Pipoca'},{k:'ext',n:'Extrusados'},{k:'pel',n:'Pellet frito'},{k:'pal',n:'Palitinho'}];
+// Sub-navbar da Produção (2º nível, ABAIXO de Geral/Produção/Comercial). 'programacao' é a 1ª aba (a grade).
+// Pra criar assunto novo: adicione {id,label,icon} aqui + trate o id em _prodRootHTML (senão cai no "em construção").
+const PROD_ABAS=[{id:'programacao',label:'Programação',icon:'ti-calendar-week'}];
 const LS_PROD_ITENS='taskflow_prod_itens', LS_PROD_PROG='taskflow_prod_prog', LS_PROD_MODO='taskflow_prod_modo';
 const _PROD_ITENS_SEED=['Amend. preto & branco','Broa','Palitinho + aperitivo','Amanteigado','Palitinho','Duetto','Maisena','Palitinho + bolinha','Pão de mel P&B','Milho','Banana c/ canela','Pipoca tradicional','Mega+ intensus','Amendoim P&B','Salgadão'];
 const _PROD_MES3=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-let prodSemana=0, _prodDragItem=null;
+let prodSemana=0, _prodDragItem=null, prodAba='programacao';
 function _prodItens(){ const a=safeJSON(LS_PROD_ITENS,null); return Array.isArray(a)?a:_PROD_ITENS_SEED.slice(); }
 function _prodSaveItens(a){ try{ safeSetItem(LS_PROD_ITENS, JSON.stringify(a)); }catch(e){} }
 function _prodProg(){ const o=safeJSON(LS_PROD_PROG,null); return (o&&typeof o==='object'&&!Array.isArray(o))?o:{}; }
@@ -6255,6 +6258,10 @@ function _prodISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart
 function _prodDias(off){ const d=new Date(today+'T00:00:00'); const m=(d.getDay()+6)%7; d.setDate(d.getDate()-m+7+off*7); const dow=['Seg','Ter','Qua','Qui','Sex','Sáb']; const r=[]; for(let i=0;i<6;i++){ const x=new Date(d); x.setDate(d.getDate()+i); r.push({iso:_prodISO(x),dd:String(x.getDate()).padStart(2,'0'),dow:dow[i],mes:x.getMonth()}); } return r; }
 function _prodRange(dias){ const a=dias[0],b=dias[dias.length-1]; return a.mes===b.mes ? (a.dd+'–'+b.dd+' '+_PROD_MES3[a.mes]) : (a.dd+' '+_PROD_MES3[a.mes]+' – '+b.dd+' '+_PROD_MES3[b.mes]); }
 function _prodCSS(){ return `<style>
+  .prod-subnav{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:18px;flex-wrap:wrap}
+  .prod-subnav button{border:none;background:transparent;padding:9px 15px 10px;font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:7px;transition:color .15s}
+  .prod-subnav button:hover{color:var(--text2)}
+  .prod-subnav button.on{color:var(--blue-mid);border-bottom-color:var(--blue-mid)}
   .prod-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
   .prod-modo{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text2);cursor:pointer;user-select:none}
   .prod-modo input{width:16px;height:16px;accent-color:var(--blue-mid);cursor:pointer;margin:0}
@@ -6336,6 +6343,20 @@ function _prodCellHTML(key,arr,leitor){
   return `<div class="prod-multi" ${dnd}>${chips}<button class="prod-add" onclick="_prodPickAdd(this,'${key}')" title="Adicionar outro item"><i class="ti ti-plus"></i></button></div>`;
 }
 function _prodRootHTML(){
+  if(!PROD_ABAS.some(a=>a.id===prodAba)) prodAba='programacao';
+  const subnav=`<div class="prod-subnav">`+PROD_ABAS.map(a=>`<button class="${a.id===prodAba?'on':''}" onclick="_prodSetAba('${a.id}')"><i class="ti ${a.icon}" style="font-size:15px"></i> ${escapeHTML(a.label)}</button>`).join('')+`</div>`;
+  const content = prodAba==='programacao' ? _prodProgramacaoHTML() : _prodEmConstrucaoHTML(PROD_ABAS.find(a=>a.id===prodAba));
+  return _prodCSS()+subnav+content;
+}
+function _prodSetAba(id){ prodAba=id; _prodRerender(); }
+function _prodEmConstrucaoHTML(aba){
+  return `<div style="max-width:520px;margin:0 auto;padding:44px 4px;text-align:center;color:var(--text3)">
+    <i class="ti ${aba&&aba.icon?aba.icon:'ti-tools'}" style="font-size:34px;opacity:.5"></i>
+    <div style="font-size:15px;font-weight:700;color:var(--text2);margin-top:12px">${aba?escapeHTML(aba.label):'Assunto'}</div>
+    <div style="font-size:12.5px;margin-top:5px">Em construção — o conteúdo deste assunto entra aqui.</div>
+  </div>`;
+}
+function _prodProgramacaoHTML(){
   const prog=_prodProg(), dias=_prodDias(prodSemana), leitor=_prodModo()==='leitor';
   const seg=`<div class="prod-seg">`+[0,1].map(i=>`<button class="${prodSemana===i?'on':''}" onclick="_prodSetSemana(${i})">Semana ${i+1} · ${_prodRange(_prodDias(i))}</button>`).join('')+`</div>`;
   const modo=`<label class="prod-modo" title="${leitor?'Modo leitor — só exibe o que tem produto no dia':'Modo PCP — edita a programação'}"><input type="checkbox" ${leitor?'':'checked'} onchange="_prodSetModo(this.checked?'pcp':'leitor')"> Modo edição <span style="color:var(--text3)">(PCP)</span></label>`;
@@ -6344,14 +6365,14 @@ function _prodRootHTML(){
   const body=PROD_LINHAS.map(l=>{ const act=dias.some(d=>_prodCellArr(prog,d.iso+'|'+l.k).length); const cs=dias.map(d=>{ const key=d.iso+'|'+l.k; return `<td>${_prodCellHTML(key,_prodCellArr(prog,key),leitor)}</td>`; }).join(''); return `<tr class="${act?'':'prod-dim'}"><td class="prod-ln">${l.n}</td>${cs}</tr>`; }).join('');
   const grid=`<div class="prod-gridwrap"><table class="prod-t"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
   const hint=leitor?'':`<div style="margin-top:10px;font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px"><i class="ti ti-info-circle" style="font-size:14px"></i> Clique numa célula para adicionar itens (ou arraste do cadastro). Dá pra pôr mais de um item por dia; o ícone de etiqueta marca terceiros.</div>`;
-  if(leitor) return _prodCSS()+topbar+grid+hint;
+  if(leitor) return topbar+grid+hint;
   const famOpts=_prodFamilias().map(f=>`<option>${escapeHTML(f)}</option>`).join('');
   const cad=`<div class="prod-cad"><h3>Cadastro de itens</h3>
     <input id="prod-newit" class="prod-in" placeholder="Nome do produto" onkeydown="if(event.key==='Enter'){event.preventDefault();_prodAddItem();}">
     <div class="prod-addrow"><select id="prod-newit-fam" class="prod-sel" title="Família do item">${famOpts||'<option value="">sem família</option>'}</select><button class="prod-addbtn" onclick="_prodAddItem()">Adicionar</button></div>
     <div class="prod-addrow" style="margin-top:9px"><input id="prod-newfam" class="prod-in" style="margin-bottom:0" placeholder="Nova família" onkeydown="if(event.key==='Enter'){event.preventDefault();_prodAddFam();}"><button class="prod-addbtn2" onclick="_prodAddFam()" title="Criar família"><i class="ti ti-plus"></i></button></div>
     <div class="prod-famlist">${_prodChipsGrouped()}</div></div>`;
-  return _prodCSS()+topbar+`<div class="prod-2col">${grid}${cad}</div>`+hint;
+  return topbar+`<div class="prod-2col">${grid}${cad}</div>`+hint;
 }
 function _prodRerender(){ const el=document.getElementById('prod-root'); if(el) el.innerHTML=_prodRootHTML(); }
 function _prodSetSemana(i){ prodSemana=i; _prodRerender(); }
