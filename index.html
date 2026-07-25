@@ -6199,7 +6199,7 @@ function renderMeuDia(){
                     : _blocoGeral;
 
   const html = `
-    <div style="padding:20px 4px 40px; max-width:1180px;">
+    <div style="padding:20px 4px 40px; max-width:${meuDiaSetor==='producao'?'none':'1180px'};">
       <!-- Header -->
       <h1 style="font-size:23px; font-weight:700; color:var(--text); margin-bottom:3px;">${saudacao}, ${escapeHTML(nome)}</h1>
       <div style="font-size:12.5px; color:var(--text3); margin-bottom:18px;">${dataStr}</div>
