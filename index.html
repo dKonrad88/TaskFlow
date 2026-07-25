@@ -8716,10 +8716,10 @@ function _cpAbrevN(v){ v=+v||0; const a=Math.abs(v);
   if(a>=100000) return _cpNum(Math.round(v/1000),0)+'k';
   if(a>=1000) return (v/1000).toFixed(1).replace(/\.0$/,'').replace('.',',')+'k';
   return _cpNum(v,0); }
-function _cpBarChart(serie,campo,fmt,corBase,labFmt){
+function _cpBarChart(serie,campo,fmt,corBase,labFmt,hBar){
   const vals=serie.map(s=>s[campo]).filter(v=>v!=null && !isNaN(v));
   const max=vals.length?Math.max.apply(null,vals):1;
-  const H=96;
+  const H=hBar||96;
   return `<div style="display:flex;gap:2px;align-items:flex-end;overflow-x:auto;padding-bottom:2px">`+
     serie.map(s=>{ const v=s[campo], has=(v!=null && !isNaN(v));
       const h=(has && max>0)?Math.max(v>0?3:0,Math.round(v/max*H)):0;
@@ -8735,7 +8735,7 @@ function _cpBarChart(serie,campo,fmt,corBase,labFmt){
 }
 function _cpLine(serie,campo,fmt,opts){
   opts=opts||{};
-  const W=460,H=176,pl=10,pr=10,pt=14,pb=26;
+  const W=460,H=opts.h||176,pl=10,pr=10,pt=opts.pt||14,pb=opts.pb||26;
   const pts=serie.map((s,i)=>({s,i,v:s[campo]}));
   const val=pts.filter(p=>p.v!=null && !isNaN(p.v));
   if(!val.length) return '<div style="color:var(--text3);font-size:13px;padding:26px 0;text-align:center">Sem dados suficientes.</div>';
@@ -8758,7 +8758,7 @@ function _cpLine(serie,campo,fmt,opts){
   let _pl=null;
   const vlab = opts.labFmt ? val.map(p=>{ const t=opts.labFmt(p.v); if(t===_pl) return ''; _pl=t; const yy=Y(p.v), ly=yy<pt+15?(yy+13).toFixed(1):(yy-7).toFixed(1);
     return `<text x="${X(p.i).toFixed(1)}" y="${ly}" font-size="8.5" fill="var(--text3)" text-anchor="middle">${escapeHTML(t)}</text>`; }).join('') : '';
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%"${opts.fixedH?` height="${opts.fixedH}" preserveAspectRatio="none"`:''} style="display:block">
     <polyline points="${linePts}" fill="none" stroke="${opts.lineCor||'var(--blue-mid)'}" stroke-width="2" opacity=".5" stroke-linejoin="round"/>
     ${circs}${vlab}${xlab}</svg>`;
 }
@@ -8880,8 +8880,8 @@ function _cpFichaResumo(o){
     <div style="font-size:11px;color:var(--text3);margin:-6px 0 12px">${sub}</div>${chart}</div>`;
   // TOPO: 2 gráficos lado a lado (Consumo · Preço médio) acima do restante.
   const graficos=`<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px">
-      ${graf('Consumo por mês','em '+(um||'un')+' (2026)',_cpBarChart(serie,'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN))}
-      ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpLine(serie,'precoKg',v=>_cpBRL(v)+'/'+um,{lineCor:'var(--amber)',cor:()=>'var(--amber)',labFmt:v=>_cpNum(v,2)}))}
+      ${graf('Consumo por mês','em '+(um||'un')+' (2026)',_cpBarChart(serie,'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN,73))}
+      ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpLine(serie,'precoKg',v=>_cpBRL(v)+'/'+um,{lineCor:'var(--amber)',cor:()=>'var(--amber)',labFmt:v=>_cpNum(v,2),h:66,pt:8,pb:14,fixedH:100}))}
     </div>`;
   return graficos+`
     <div style="display:grid;grid-template-columns:minmax(320px,1.05fr) minmax(290px,1fr) minmax(155px,0.66fr);gap:12px;align-items:start">
@@ -8903,6 +8903,7 @@ function _cpIndicadoresCard(o){
     ['Estoque mínimo', pend],
     ['Ponto de ressuprimento', pend],
     ['Preço médio compra', o.precoCompra?_cpBRL(o.precoCompra):'—'],
+    ['Último preço de compra', o.ultPreco?_cpBRL(o.ultPreco):'—'],
     ['Custo médio s/ imp.', o.cmu?_cpBRL(o.cmu):'—'],
     ['Valor em estoque', o.valor?_cpBRL(o.valor):'—'],
     ['Compras no período', _cpNum(o.compras.length)]
@@ -8927,7 +8928,7 @@ function _cpUltimasComprasCard(o){
   </tr>`).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:16px">Sem compras.</td></tr>`;
   return `<div class="cp-card" style="padding:15px 17px 8px">
     <div class="cp-card-title"><span>Últimas compras</span></div>
-    <div style="overflow-x:auto"><table class="cp-tbl" style="font-size:12.5px">
+    <div style="overflow-x:auto"><table class="cp-tbl" style="font-size:12px">
       <thead><tr><th>Data</th><th class="r">Qtde</th><th class="r">Preço</th><th>Fornecedor</th><th class="r">Prazo</th></tr></thead>
       <tbody>${linhas}</tbody></table></div>
     <div style="font-size:10.5px;color:var(--text3);padding:6px 2px 0">Prazo (pagamento/entrega) — a cadastrar; não vem no export do ERP.</div>
@@ -8957,8 +8958,8 @@ function _cpOCsCard(o){
       const parcial = p.entregue>0;
       return `<div style="padding:9px 0;border-bottom:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
-          <span class="cp-item" title="${escapeAttr(p.forn)}" style="max-width:118px;font-size:12.5px;font-weight:600">${escapeHTML(p.forn)}</span>
-          <b style="flex:none;font-size:13px">${_cpNum(p.saldo,0)} <span class="cp-un">${escapeHTML(um)}</span></b>
+          <span class="cp-item" title="${escapeAttr(p.forn)}" style="max-width:118px;font-size:12px;font-weight:600">${escapeHTML(p.forn)}</span>
+          <b style="flex:none;font-size:12.5px">${_cpNum(p.saldo,0)} <span class="cp-un">${escapeHTML(um)}</span></b>
         </div>
         <div style="display:flex;justify-content:space-between;gap:8px;font-size:10.5px;color:${atras?'var(--danger)':'var(--text3)'};margin-top:2px">
           <span>${escapeHTML(p.oc)}${parcial?' · parcial':''}</span>
