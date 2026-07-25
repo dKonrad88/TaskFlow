@@ -8686,10 +8686,14 @@ function _comprasInsumosHTML(){
 const _CP_MESNOME=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 const _CP_MESLONGO=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 function _cpMesLbl(y,m){ return _CP_MESNOME[m-1]+'/'+String(y).slice(2); }
+// Nome de fornecedor (vem em CAIXA ALTA do ERP) → capitalização normal, com de/da/do/e minúsculos.
+function _cpForn(s){ s=String(s==null?'':s); const low={de:1,da:1,do:1,das:1,dos:1,e:1};
+  return s.toLowerCase().split(/(\s+)/).map((w,i)=> (!w||/^\s+$/.test(w)||(i>0&&low[w])) ? w : w.charAt(0).toUpperCase()+w.slice(1)).join(''); }
 function _cpMesLongo(ym){ const p=String(ym).split('-'); return _CP_MESLONGO[(+p[1])-1]+'/'+p[0]; }
 function _cpDataFim(dias){ if(dias==null) return ''; const d=new Date(today+'T00:00:00'); d.setDate(d.getDate()+Math.round(dias)); return _cpDt(_dateToLocalISO(d)); }
 let _cpItemMes=null;          // 'YYYY-MM' selecionado, ou null
 let _cpFichaView='resumo';    // 'resumo' | 'graficos'
+let _cpNotView='panorama';    // sub-navbar interna da aba Notícias: 'panorama'|'noticias'|'analise'|'recomendacao'
 
 function _cpItemSerie(o){
   const anoCons=2026;
@@ -8783,6 +8787,7 @@ function _cpResumoMes(o,serie){
   </div>`;
 }
 function _cpItemSetMes(ym){ _cpItemMes=(_cpItemMes===ym)?null:ym; const el=document.getElementById('cp-ficha-main'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.innerHTML=_cpFichaMainHTML(_cpIdx()[_cpItemSel]); }
+function _cpNotSetView(v){ _cpNotView=v; const el=document.getElementById('cp-ficha-main'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]){ el.innerHTML=_cpFichaMainHTML(_cpIdx()[_cpItemSel]); el.scrollTop=0; } }
 function _cpFichaSetView(v){
   _cpFichaView=v;
   const el=document.getElementById('cp-ficha-main');
@@ -8926,7 +8931,7 @@ function _cpUltimasComprasCard(o){
     <td class="cp-mono">${_cpDt(l.data)}</td>
     <td class="cp-n">${_cpNum(l.qtd,0)} <span class="cp-un">${escapeHTML(um)}</span></td>
     <td class="cp-n">${_cpBRL(l.vun)}</td>
-    <td class="cp-item" title="${escapeAttr(l.forn[1])}" style="max-width:140px">${escapeHTML(l.forn[1])}</td>
+    <td class="cp-item" title="${escapeAttr(_cpForn(l.forn[1]))}" style="max-width:140px">${escapeHTML(_cpForn(l.forn[1]))}</td>
     <td class="cp-n" style="color:var(--text3)">—</td>
   </tr>`).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:16px">Sem compras.</td></tr>`;
   return `<div class="cp-card" style="padding:15px 17px 8px">
@@ -8961,7 +8966,7 @@ function _cpOCsCard(o){
       const parcial = p.entregue>0;
       return `<div style="padding:9px 0;border-bottom:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
-          <span class="cp-item" title="${escapeAttr(p.forn)}" style="max-width:118px;font-size:12px;font-weight:600">${escapeHTML(p.forn)}</span>
+          <span class="cp-item" title="${escapeAttr(_cpForn(p.forn))}" style="max-width:118px;font-size:12px;font-weight:600">${escapeHTML(_cpForn(p.forn))}</span>
           <b style="flex:none;font-size:12.5px">${_cpNum(p.saldo,0)} <span class="cp-un">${escapeHTML(um)}</span></b>
         </div>
         <div style="display:flex;justify-content:space-between;gap:8px;font-size:10.5px;color:${atras?'var(--danger)':'var(--text3)'};margin-top:2px">
@@ -9028,7 +9033,50 @@ const _CP_NOTICIAS = {
       ['Últimos 30–45 dias','melhor janela para decisões táticas de compra'],
       ['Últimos 6 meses','safra, estoques, exportações e situação da Argentina'],
       ['Últimos 12 meses','comparação sazonal e planejamento de contratos']
-    ]
+    ],
+    fatores:{
+      alta:[
+        'Maio, junho e julho são meses de demanda interna mais aquecida.',
+        'As exportações brasileiras de grão cresceram com a safra nova (maio: ~31 mil t, +31% sobre abril e maio/2025).',
+        'O Brasil exporta parcela relevante da produção; se os embarques seguirem fortes, os bons lotes diminuem mais rápido.',
+        'A área argentina foi reduzida — qualquer problema de produtividade/qualidade pode trazer compradores para o Brasil.',
+        'Produtores tiveram margens apertadas e podem segurar vendas abaixo de certos preços.'
+      ],
+      limitam:[
+        'Ainda existem estoques brasileiros significativos nas beneficiadoras.',
+        'A safra nacional teve boa produtividade e qualidade.',
+        'EUA, Argentina e Índia mantêm oferta internacional razoável.',
+        'Os EUA estão com estoques finais elevados, reduzindo a chance de alta internacional generalizada.',
+        'Se o real se valorizar, a exportação brasileira perde competitividade e mais produto fica no mercado interno.'
+      ]
+    },
+    cenarios:[
+      {pct:55, tit:'Estabilidade com leve alta', desc:'algo como +2% a +7%', dir:'alta'},
+      {pct:25, tit:'Estabilidade praticamente lateral', desc:'oscilação de ~±2%', dir:'neutro'},
+      {pct:15, tit:'Alta mais forte', desc:'acima de +8%, puxada por dólar, exportação ou Argentina', dir:'alta'},
+      {pct:5,  tit:'Queda relevante', desc:'exigiria exportações fracas, estoques maiores que o esperado ou caixa dos vendedores', dir:'baixa'}
+    ],
+    leituraHoje:[
+      {lab:'Agora', txt:'preço firme, com leve tendência de alta'},
+      {lab:'Próximos 1–3 meses', txt:'estabilidade em patamar elevado ou alta moderada'},
+      {lab:'Alta forte', txt:'possível, mas não é o cenário-base'},
+      {lab:'Queda relevante', txt:'hoje parece menos provável no curto prazo'}
+    ],
+    estimativa:[
+      {per:'Próximas 4 semanas', tend:'Estável a levemente mais alto', leit:'Mercado entre R$ 73 e R$ 77/saca, aproximadamente'},
+      {per:'Agosto–outubro', tend:'Leve alta', leit:'Exportações e redução dos estoques podem sustentar o preço'},
+      {per:'Novembro–janeiro', tend:'Mais incerto', leit:'Dependerá do plantio 2026/27, clima, dólar e volume disponível'},
+      {per:'Entrada da safra 2026/27', tend:'Possível alívio', leit:'Se área e clima forem bons, a nova oferta pode pressionar preços'}
+    ],
+    comprador:{
+      intro:'Não compraria todo o volume do semestre agora, mas também não ficaria descoberto esperando queda. Uma estratégia razoável:',
+      plano:[
+        '50–60% da necessidade dos próximos 90 dias contratada agora',
+        '20–25% negociada em agosto',
+        'saldo reservado para setembro/outubro ou para oportunidades pontuais'
+      ],
+      nota:'Se aparecer lote adequado em qualidade por preço próximo ao atual, com entrega futura e reajuste limitado, vale travar parte do volume. O ponto crucial é comparar o custo industrial efetivo, não só o preço por saca: um lote 4% mais barato pode sair mais caro se tiver menor rendimento, mais quebra, defeitos, pele ou descarte por qualidade.'
+    }
   }
 };
 // Tendência do item: usa a notícia semeada; senão deriva do preço (último × médio de compra).
@@ -9074,6 +9122,69 @@ function _cpSacaChart(o){
     ${_cpLine(serie,'v',v=>_cpBRL(v),{lineCor:'var(--blue-mid)',cor:()=>'var(--blue-mid)',labFmt:v=>_cpNum(v,2)})}
   </div>`;
 }
+function _cpNotChip(d){ const x=_CP_TEND[d]||_CP_TEND.neutro; return `<span style="flex:none;display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;color:${x.cor};background:color-mix(in srgb, ${x.cor} 13%, transparent);padding:2px 8px;border-radius:999px"><i class="ti ${x.ic}" style="font-size:12px"></i>${x.lab}</span>`; }
+// ── Cards das seções da aba Notícias (cada um se protege se o dado não existir) ──
+function _cpNoticiasCard(n){ if(!n.itens) return '';
+  const itens=n.itens.map(it=>`<div style="padding:12px 0;border-bottom:1px solid var(--border)">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:4px">
+      <b style="font-size:13.5px;color:var(--text)">${escapeHTML(it.tit)}</b>${_cpNotChip(it.dir)}</div>
+    <div style="font-size:12.5px;color:var(--text2);line-height:1.55">${escapeHTML(it.txt)}</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:5px"><i class="ti ti-link" style="font-size:12px"></i> ${escapeHTML(it.fonte)}</div>
+  </div>`).join('');
+  return `<div class="cp-card" style="padding:15px 17px 8px;margin-bottom:14px"><div class="cp-card-title"><span>Notícias relevantes</span></div>${itens}</div>`;
+}
+function _cpFatoresCard(n){ if(!n.fatores) return '';
+  const ul=arr=>`<ul style="margin:0;padding-left:18px;font-size:12.5px;color:var(--text);line-height:1.5">${arr.map(x=>`<li style="margin-bottom:6px">${escapeHTML(x)}</li>`).join('')}</ul>`;
+  const bloco=(tit,ic,cor,arr)=>`<div style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:${cor};margin-bottom:6px"><i class="ti ${ic}" style="font-size:14px"></i>${tit}</div>${ul(arr)}</div>`;
+  return `<div class="cp-card" style="padding:15px 17px;margin-bottom:14px"><div class="cp-card-title"><span>Por que preço firme ou subindo?</span></div>
+    ${bloco('Fatores de alta','ti-trending-up','var(--success)',n.fatores.alta)}${bloco('Fatores que limitam a alta','ti-trending-down','var(--danger)',n.fatores.limitam)}</div>`;
+}
+function _cpLeituraHojeCard(n){ if(!n.leituraHoje) return '';
+  const rows=n.leituraHoje.map(x=>`<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border)">
+    <span style="flex:none;font-size:12px;font-weight:700;color:var(--text);min-width:135px">${escapeHTML(x.lab)}</span>
+    <span style="font-size:12px;color:var(--text2)">${escapeHTML(x.txt)}</span></div>`).join('');
+  return `<div class="cp-card" style="padding:15px 17px 10px;margin-bottom:14px"><div class="cp-card-title"><span>Minha leitura — ${_cpDt(n.atualizado)}</span></div>${rows}</div>`;
+}
+function _cpCenariosCard(n){ if(!n.cenarios) return '';
+  const rows=n.cenarios.map(c=>{ const x=_CP_TEND[c.dir]||_CP_TEND.neutro;
+    return `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="flex:none;width:44px;font-size:15px;font-weight:800;color:${x.cor};text-align:right">${c.pct}%</span>
+        <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700;color:var(--text)">${escapeHTML(c.tit)}</div>
+          <div style="font-size:11.5px;color:var(--text3);line-height:1.4">${escapeHTML(c.desc)}</div></div></div>
+      <div style="height:5px;background:var(--bg2);border-radius:3px;margin:6px 0 0 54px;overflow:hidden"><div style="height:100%;width:${c.pct}%;background:${x.cor};border-radius:3px"></div></div></div>`; }).join('');
+  return `<div class="cp-card" style="padding:15px 17px 10px;margin-bottom:14px"><div class="cp-card-title"><span>Cenários para os próximos 3 meses</span></div>${rows}
+    <div style="font-size:10.5px;color:var(--text3);margin-top:9px;line-height:1.4">Não é previsão matemática — é uma classificação de risco para orientar as compras.</div></div>`;
+}
+function _cpEstimativaCard(n){ if(!n.estimativa) return '';
+  const th=t=>`<th style="text-align:left;padding:6px 10px;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);border-bottom:1px solid var(--border)">${t}</th>`;
+  const rows=n.estimativa.map(e=>`<tr>
+    <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-weight:700;color:var(--text);vertical-align:top">${escapeHTML(e.per)}</td>
+    <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top">${escapeHTML(e.tend)}</td>
+    <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text3);vertical-align:top">${escapeHTML(e.leit)}</td></tr>`).join('');
+  return `<div class="cp-card" style="padding:15px 17px 12px;margin-bottom:14px"><div class="cp-card-title"><span>Estimativa por período</span></div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>${th('Período')}${th('Tendência')}${th('Leitura')}</tr></thead><tbody>${rows}</tbody></table></div>
+    <div style="font-size:10.5px;color:var(--text3);margin-top:9px;line-height:1.4">Faixas indicativas para amendoim em casca em SP; descascado/blanqueado/selecionado pode variar.</div></div>`;
+}
+function _cpCompradorCard(n){ if(!n.comprador) return ''; const c=n.comprador;
+  const li=c.plano.map(x=>`<li style="margin-bottom:6px;line-height:1.5">${escapeHTML(x)}</li>`).join('');
+  return `<div class="cp-card" style="padding:15px 17px;margin-bottom:14px"><div class="cp-card-title"><span>O que eu faria como comprador</span></div>
+    <div style="font-size:12.5px;color:var(--text2);line-height:1.55;margin-bottom:10px">${escapeHTML(c.intro)}</div>
+    <ul style="margin:0 0 10px;padding-left:18px;font-size:12.5px;color:var(--text)">${li}</ul>
+    <div style="font-size:12px;color:var(--text3);line-height:1.5;border-top:1px solid var(--border);padding-top:10px">${escapeHTML(c.nota)}</div></div>`;
+}
+function _cpLeituraComprasCard(n){ if(!n.leitura) return '';
+  const acoes=n.leitura.acoes.map(a=>`<li style="margin-bottom:6px;line-height:1.5">${escapeHTML(a)}</li>`).join('');
+  return `<div class="cp-card" style="padding:15px 17px;margin-bottom:14px"><div class="cp-card-title"><span>Leitura para as compras</span></div>
+    <div style="font-size:12.5px;color:var(--text2);line-height:1.55;margin-bottom:10px">${escapeHTML(n.leitura.base)}</div>
+    <ul style="margin:0;padding-left:18px;font-size:12.5px;color:var(--text)">${acoes}</ul></div>`;
+}
+function _cpPeriodosCard(n){ if(!n.periodos) return '';
+  const rows=n.periodos.map(p=>`<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border)">
+    <span style="flex:none;font-size:12px;font-weight:700;color:var(--text);min-width:135px">${escapeHTML(p[0])}</span>
+    <span style="font-size:12px;color:var(--text3)">${escapeHTML(p[1])}</span></div>`).join('');
+  return `<div class="cp-card" style="padding:15px 17px 10px;margin-bottom:14px"><div class="cp-card-title"><span>Período recomendado para acompanhar</span></div>${rows}</div>`;
+}
 function _cpFichaNoticias(o){
   const n=_CP_NOTICIAS[o.cod];
   if(!n) return `<div class="cp-card" style="padding:40px 20px;text-align:center;color:var(--text3);max-width:640px;margin:0 auto">
@@ -9081,39 +9192,27 @@ function _cpFichaNoticias(o){
     <div style="font-size:15px;font-weight:700;color:var(--text2);margin-top:12px">Sem notícias para ${escapeHTML(o.nome)}</div>
     <div style="font-size:12.5px;margin-top:5px;line-height:1.5">No sistema real, esta aba traz um resumo de mercado do insumo (preços, safra, exportações, riscos), curado ou de um feed. No protótipo, só o Amendoim tem exemplo.</div>
   </div>`;
+  const abas=[['panorama','ti-gauge','Panorama'],['noticias','ti-news','Notícias'],['analise','ti-chart-arrows-vertical','Análise'],['recomendacao','ti-shopping-cart','Recomendação']];
+  if(!abas.some(a=>a[0]===_cpNotView)) _cpNotView='panorama';
+  const subnav=`<div class="cp-subnav" style="margin-bottom:16px">${abas.map(a=>`<button class="cp-subtab ${_cpNotView===a[0]?'on':''}" onclick="_cpNotSetView('${a[0]}')"><i class="ti ${a[1]}"></i>${a[2]}</button>`).join('')}</div>`;
   const t=_CP_TEND[n.tendencia]||_CP_TEND.neutro;
-  const chip=d=>{ const x=_CP_TEND[d]||_CP_TEND.neutro; return `<span style="flex:none;display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;color:${x.cor};background:color-mix(in srgb, ${x.cor} 13%, transparent);padding:2px 8px;border-radius:999px"><i class="ti ${x.ic}" style="font-size:12px"></i>${x.lab}</span>`; };
-  const itens=n.itens.map(it=>`<div style="padding:12px 0;border-bottom:1px solid var(--border)">
-    <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:4px">
-      <b style="font-size:13.5px;color:var(--text)">${escapeHTML(it.tit)}</b>${chip(it.dir)}</div>
-    <div style="font-size:12.5px;color:var(--text2);line-height:1.55">${escapeHTML(it.txt)}</div>
-    <div style="font-size:11px;color:var(--text3);margin-top:5px"><i class="ti ti-link" style="font-size:12px"></i> ${escapeHTML(it.fonte)}</div>
-  </div>`).join('');
-  const acoes=n.leitura.acoes.map(a=>`<li style="margin-bottom:6px;line-height:1.5">${escapeHTML(a)}</li>`).join('');
-  const periodos=n.periodos.map(p=>`<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border)">
-    <span style="flex:none;font-size:12px;font-weight:700;color:var(--text);min-width:135px">${escapeHTML(p[0])}</span>
-    <span style="font-size:12px;color:var(--text3)">${escapeHTML(p[1])}</span></div>`).join('');
-  return `<div style="max-width:840px;margin:0 auto">
-    <div class="cp-card" style="padding:16px 18px;margin-bottom:14px;border-left:3px solid ${t.cor}">
+  let corpo;
+  if(_cpNotView==='panorama'){
+    corpo=`<div class="cp-card" style="padding:16px 18px;margin-bottom:14px;border-left:3px solid ${t.cor}">
       <div style="display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:8px">
         <span style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:800;color:${t.cor}"><i class="ti ${t.ic}" style="font-size:18px"></i>Tendência: ${t.lab} ${t.seta}</span>
         <span style="font-size:11px;color:var(--text3)">atualizado ${_cpDt(n.atualizado)}</span>
       </div>
       <div style="font-size:13px;color:var(--text);line-height:1.55">${escapeHTML(n.resumo)}</div>
-    </div>
-    ${_cpMacroCard(o)}
-    ${_cpSacaChart(o)}
-    <div class="cp-card" style="padding:15px 17px 8px;margin-bottom:14px">
-      <div class="cp-card-title"><span>Notícias relevantes</span></div>${itens}
-    </div>
-    <div class="cp-card" style="padding:15px 17px;margin-bottom:14px">
-      <div class="cp-card-title"><span>Leitura para as compras</span></div>
-      <div style="font-size:12.5px;color:var(--text2);line-height:1.55;margin-bottom:10px">${escapeHTML(n.leitura.base)}</div>
-      <ul style="margin:0;padding-left:18px;font-size:12.5px;color:var(--text)">${acoes}</ul>
-    </div>
-    <div class="cp-card" style="padding:15px 17px 10px;margin-bottom:8px">
-      <div class="cp-card-title"><span>Período recomendado para acompanhar</span></div>${periodos}
-    </div>
+    </div>${_cpMacroCard(o)}${_cpSacaChart(o)}`;
+  } else if(_cpNotView==='noticias'){
+    corpo=`${_cpNoticiasCard(n)}${_cpFatoresCard(n)}`;
+  } else if(_cpNotView==='analise'){
+    corpo=`${_cpLeituraHojeCard(n)}${_cpCenariosCard(n)}${_cpEstimativaCard(n)}`;
+  } else {
+    corpo=`${_cpCompradorCard(n)}${_cpLeituraComprasCard(n)}${_cpPeriodosCard(n)}`;
+  }
+  return `<div style="max-width:840px;margin:0 auto">${subnav}${corpo}
     <div style="font-size:10.5px;color:var(--text3);padding:4px 2px;line-height:1.45"><i class="ti ti-info-circle"></i> Exemplo (teste no GPT). No sistema real, o resumo virá de um feed de mercado / curadoria — sem internet no protótipo.</div>
   </div>`;
 }
@@ -9128,7 +9227,7 @@ function _cpFichaFornecedores(o){
   const fs=Object.keys(agg).map(k=>agg[k]).sort((a,b)=>b.total-a.total);
   const tot=fs.reduce((a,f)=>a+f.total,0);
   const linhas=fs.map(f=>`<tr class="cp-clic" onclick="_cpAbrirForn('${escapeAttr(f.cod)}')">
-    <td class="cp-item">${escapeHTML(f.nome)}</td>
+    <td class="cp-item">${escapeHTML(_cpForn(f.nome))}</td>
     <td class="cp-n">${_cpBRL(f.total)}</td>
     <td class="cp-n">${(tot?f.total/tot*100:0).toFixed(1)}%</td>
     <td class="cp-n">${f.n}</td>
@@ -9263,7 +9362,7 @@ function _comprasFornecedoresHTML(){
     const cor=classe==='A'?'var(--danger)':(classe==='B'?'var(--amber)':'var(--text3)');
     return `<tr class="cp-clic" onclick="_cpAbrirForn('${escapeAttr(f.cod)}')">
       <td class="cp-n">${i+1}</td>
-      <td class="cp-item">${escapeHTML(f.nome)}</td>
+      <td class="cp-item">${escapeHTML(_cpForn(f.nome))}</td>
       <td class="cp-n">${_cpBRL(f.total)}</td>
       <td class="cp-n">${(tot?f.total/tot*100:0).toFixed(1)}%</td>
       <td class="cp-n">${pAcc.toFixed(1)}%</td>
@@ -9347,7 +9446,7 @@ function _comprasOrdensHTML(){
     if(x.dif>3){c='var(--danger)';bg='var(--danger-bg)';} else if(x.dif<-3){c='var(--success)';bg='var(--success-bg)';}
     return `<tr class="cp-clic" onclick="_cpAbrirItem('${x.o.cod}')">
       <td class="cp-item">${escapeHTML(x.o.nome)}</td>
-      <td>${escapeHTML(x.a.forn[1].slice(0,24))}</td>
+      <td>${escapeHTML(_cpForn(x.a.forn[1]).slice(0,24))}</td>
       <td class="cp-mono">${_cpDt(x.b.data)}</td><td class="cp-n">${_cpBRL(x.b.vun)}</td>
       <td class="cp-mono">${_cpDt(x.a.data)}</td><td class="cp-n">${_cpBRL(x.a.vun)}</td>
       <td class="cp-n"><span class="cp-pill" style="color:${c};background:${bg}">${(x.dif>0?'+':'')+x.dif.toFixed(1)}%</span></td>
@@ -9402,7 +9501,7 @@ function _comprasPainelHTML(){
       ${bloco('💸 Preço fora da curva','Compras acima de R$ 1.000 que saíram +10% da média das 3 anteriores','var(--danger)',
         lista(alertas,l=>`<div style="padding:7px 0;border-bottom:1px solid var(--border)">
           <div style="font-size:13px;font-weight:600;color:var(--text)">${escapeHTML(l.item[1])}</div>
-          <div style="font-size:11.5px;color:var(--text3)">${_cpDt(l.data)} · ${escapeHTML(l.forn[1].slice(0,22))} · pagou ${_cpBRL(l.vun)} vs média ${_cpBRL(l.med3)} <b style="color:var(--danger)">(+${((l.vun-l.med3)/l.med3*100).toFixed(0)}%)</b></div></div>`))}
+          <div style="font-size:11.5px;color:var(--text3)">${_cpDt(l.data)} · ${escapeHTML(_cpForn(l.forn[1]).slice(0,22))} · pagou ${_cpBRL(l.vun)} vs média ${_cpBRL(l.med3)} <b style="color:var(--danger)">(+${((l.vun-l.med3)/l.med3*100).toFixed(0)}%)</b></div></div>`))}
       ${bloco('🧊 Estoque parado','Sem movimento há 180 dias ou mais','var(--text3)',
         lista(parados.slice(0,10),o=>`<div class="cp-clic" onclick="_cpAbrirItem('${o.cod}')" style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
           <span style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o.nome)}</span>
@@ -9505,7 +9604,7 @@ function _cpHistCorpoHTML(){
     return `<tr>
       <td class="cp-mono">${escapeHTML(String(l.nf))}</td>
       <td class="cp-mono">${_cpDt(l.data)}</td>
-      <td>${escapeHTML(l.forn[1])}</td>
+      <td>${escapeHTML(_cpForn(l.forn[1]))}</td>
       <td class="cp-item">${escapeHTML(l.item[1])}</td>
       <td class="cp-n">${_cpNum(l.qtd,2)} <span class="cp-un">${escapeHTML(l.um||'')}</span></td>
       <td class="cp-n">${_cpBRL(l.vun)}</td>
