@@ -8917,12 +8917,12 @@ function _cpFichaResumo(o){
       ${graf('Consumo por mês','em '+(um||'un')+' (2026)',_cpBarChart(serie,'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN,45))}
       ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpLine(serie,'precoKg',v=>_cpBRL(v)+'/'+um,{lineCor:'var(--amber)',cor:()=>'var(--amber)',labFmt:v=>_cpNum(v,2),h:50,pt:6,pb:12,fixedH:72}))}
     </div>`;
-  // 3 colunas: [macro + indicadores] · [OCs + últimas compras] · [simulador]. Macro só aparece p/ item com dado (ex. Amendoim).
+  // 3 colunas: [macro + indicadores] · [últimas compras] · [simulador + OCs em aberto]. Macro só p/ item com dado (ex. Amendoim).
   return graficos+`
     <div style="display:grid;grid-template-columns:minmax(280px,0.95fr) minmax(310px,1.1fr) minmax(300px,1.05fr);gap:12px;align-items:start">
       <div style="display:flex;flex-direction:column;gap:12px">${_cpMacroCard(o)}${_cpIndicadoresCard(o)}</div>
-      <div style="display:flex;flex-direction:column;gap:12px">${_cpOCsCard(o)}${_cpUltimasComprasCard(o)}</div>
-      ${_cpSimHTML(o)}
+      ${_cpUltimasComprasCard(o)}
+      <div style="display:flex;flex-direction:column;gap:12px">${_cpSimHTML(o)}${_cpOCsCard(o)}</div>
     </div>`;
 }
 // Indicadores compactos em tópicos (substitui os 7 cartões soltos), na coluna do simulador.
