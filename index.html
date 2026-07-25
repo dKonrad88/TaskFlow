@@ -6226,6 +6226,30 @@ function _prodSaveProg(o){ try{ safeSetItem(LS_PROD_PROG, JSON.stringify(o)); }c
 // Modo de exibição: 'pcp' (edição — cadastro + células com "+") ou 'leitor' (só o que tem produto, sem cadastro).
 function _prodModo(){ try{ return localStorage.getItem(LS_PROD_MODO)==='leitor'?'leitor':'pcp'; }catch(e){ return 'pcp'; } }
 function _prodSetModo(m){ try{ safeSetItem(LS_PROD_MODO, m==='leitor'?'leitor':'pcp'); }catch(e){} _prodRerender(); }
+// ── FAMÍLIAS: só organizam o CADASTRO (painel direito). NÃO aparecem na tabela da programação. ──
+const LS_PROD_FAMILIAS='taskflow_prod_familias', LS_PROD_ITEMFAM='taskflow_prod_itemfam';
+const _PROD_FAM_SEED=['Amendoim','Palitinho','Biscoitos','Pipoca e extrusados'];
+const _PROD_ITEMFAM_SEED={'Amend. preto & branco':'Amendoim','Amendoim P&B':'Amendoim','Amendoim Ao leite':'Amendoim','Amendoim Branco':'Amendoim','Palitinho':'Palitinho','Palitinho + aperitivo':'Palitinho','Palitinho + bolinha':'Palitinho','Broa':'Biscoitos','Amanteigado':'Biscoitos','Maisena':'Biscoitos','Milho':'Biscoitos','Duetto':'Biscoitos','Banana c/ canela':'Biscoitos','Pão de mel P&B':'Biscoitos','Pipoca tradicional':'Pipoca e extrusados','Mega+ intensus':'Pipoca e extrusados'};
+function _prodFamilias(){ const a=safeJSON(LS_PROD_FAMILIAS,null); return Array.isArray(a)?a:_PROD_FAM_SEED.slice(); }
+function _prodSaveFamilias(a){ try{ safeSetItem(LS_PROD_FAMILIAS, JSON.stringify(a)); }catch(e){} }
+function _prodItemFam(){ const o=safeJSON(LS_PROD_ITEMFAM,null); return (o&&typeof o==='object'&&!Array.isArray(o))?o:Object.assign({},_PROD_ITEMFAM_SEED); }
+function _prodSaveItemFam(o){ try{ safeSetItem(LS_PROD_ITEMFAM, JSON.stringify(o)); }catch(e){} }
+function _prodAddFam(){ const el=document.getElementById('prod-newfam'); if(!el) return; const v=el.value.trim(); if(v){ const a=_prodFamilias(); if(a.indexOf(v)<0){ a.push(v); _prodSaveFamilias(a); } } _prodRerender(); const n=document.getElementById('prod-newfam'); if(n) n.focus(); }
+function _prodDelFam(nome){ const a=_prodFamilias().filter(x=>x!==nome); _prodSaveFamilias(a); const m=_prodItemFam(); Object.keys(m).forEach(k=>{ if(m[k]===nome) delete m[k]; }); _prodSaveItemFam(m); _prodRerender(); }
+function _prodSetItemFam(item,fam){ const m=_prodItemFam(); if(fam) m[item]=fam; else delete m[item]; _prodSaveItemFam(m); _prodRerender(); }
+function _prodFamOver(e){ e.preventDefault(); try{e.dataTransfer.dropEffect='copy';}catch(_){} e.currentTarget.classList.add('prod-fam-drop'); }
+function _prodFamLeave(e){ e.currentTarget.classList.remove('prod-fam-drop'); }
+function _prodFamDrop(e,familia){ e.preventDefault(); e.currentTarget.classList.remove('prod-fam-drop'); let name=_prodDragItem; if(!name){ try{name=e.dataTransfer.getData('text/plain');}catch(_){} } _prodDragItem=null; if(name) _prodSetItemFam(name, familia); }
+function _prodChipsGrouped(){
+  const itens=_prodItens(), fam=_prodItemFam(), fams=_prodFamilias();
+  const chip=(x,i)=>`<span class="prod-chip" draggable="true" data-item="${escapeAttr(x)}" ondragstart="_prodDragStart(event)" title="Arraste p/ uma célula ou p/ outra família">${escapeHTML(x)}<button title="remover" onclick="_prodDelItem(${i})"><i class="ti ti-x"></i></button></span>`;
+  const grp=(nome,arr,real)=>`<div class="prod-famgroup" ondragover="_prodFamOver(event)" ondragleave="_prodFamLeave(event)" ondrop="_prodFamDrop(event,'${real?escapeAttr(nome):''}')"><div class="prod-famhead"><span>${escapeHTML(nome)}</span>${real?`<button title="excluir família" onclick="_prodDelFam('${escapeAttr(nome)}')"><i class="ti ti-x"></i></button>`:''}</div><div class="prod-famchips">${arr.map(o=>chip(o.x,o.i)).join('')||'<span class="prod-fam-empty">arraste itens aqui</span>'}</div></div>`;
+  const groups={}; fams.forEach(f=>groups[f]=[]); const sem=[];
+  itens.forEach((x,i)=>{ const f=fam[x]; if(f && fams.indexOf(f)>=0) groups[f].push({x,i}); else sem.push({x,i}); });
+  let h=fams.map(f=>grp(f,groups[f],true)).join('');
+  if(sem.length) h+=grp('Sem família',sem,false);
+  return h || '<span class="prod-fam-empty">nenhum item cadastrado</span>';
+}
 function _prodISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 // off=0 → PRÓXIMA semana (Seg–Sex); off=1 → a seguinte. (Semana 1 = próxima; auto-avança pela data de hoje.)
 function _prodDias(off){ const d=new Date(today+'T00:00:00'); const m=(d.getDay()+6)%7; d.setDate(d.getDate()-m+7+off*7); const dow=['Seg','Ter','Qua','Qui','Sex','Sáb']; const r=[]; for(let i=0;i<6;i++){ const x=new Date(d); x.setDate(d.getDate()+i); r.push({iso:_prodISO(x),dd:String(x.getDate()).padStart(2,'0'),dow:dow[i],mes:x.getMonth()}); } return r; }
@@ -6237,7 +6261,21 @@ function _prodCSS(){ return `<style>
   .prod-seg{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:2px;flex-wrap:wrap}
   .prod-seg button{border:none;background:transparent;padding:7px 14px;border-radius:8px;font-size:12.5px;color:var(--text2);cursor:pointer;font-family:inherit;font-weight:600}
   .prod-seg button.on{background:var(--card);color:var(--text);border:1px solid var(--border)}
-  .prod-cad{background:var(--surface-painel);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:14px}
+  .prod-2col{display:flex;gap:16px;align-items:flex-start}
+  .prod-cad{flex:0 0 272px;box-sizing:border-box;background:var(--surface-painel);border:1px solid var(--border);border-radius:12px;padding:13px 14px}
+  .prod-in{width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12.5px;color:var(--text);font-family:inherit;margin-bottom:8px}
+  .prod-addrow{display:flex;gap:6px}
+  .prod-sel{flex:1;min-width:0;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--text);font-family:inherit}
+  .prod-addbtn{background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0}
+  .prod-addbtn2{background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;cursor:pointer;font-family:inherit;flex-shrink:0;display:flex;align-items:center}
+  .prod-addbtn2:hover{border-color:var(--blue-mid);color:var(--blue-mid)}
+  .prod-famlist{margin-top:13px;max-height:52vh;overflow-y:auto;display:flex;flex-direction:column;gap:11px}
+  .prod-famgroup.prod-fam-drop{outline:2px dashed var(--blue-mid);outline-offset:2px;border-radius:8px}
+  .prod-famhead{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:6px}
+  .prod-famhead button{border:none;background:transparent;color:var(--text3);cursor:pointer;padding:0;display:flex;font-size:12px}
+  .prod-famhead button:hover{color:var(--danger)}
+  .prod-famchips{display:flex;flex-wrap:wrap;gap:5px}
+  .prod-fam-empty{font-size:11px;color:var(--text3);font-style:italic;padding:2px}
   .prod-cad h3{font-size:11.5px;font-weight:700;color:var(--text3);letter-spacing:.4px;text-transform:uppercase;margin:0 0 9px}
   .prod-cadin{display:flex;gap:8px;margin-bottom:11px}
   .prod-cadin input{flex:1;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 11px;font-size:13px;color:var(--text);font-family:inherit}
@@ -6247,7 +6285,7 @@ function _prodCSS(){ return `<style>
   .prod-chip:active{cursor:grabbing}
   .prod-chip button{border:none;background:transparent;color:var(--text3);cursor:pointer;padding:0;display:flex;font-size:13px}
   .prod-chip button:hover{color:var(--danger)}
-  .prod-gridwrap{overflow-x:auto;background:var(--surface-painel);border:1px solid var(--border);border-radius:12px;padding:6px 12px 8px}
+  .prod-gridwrap{overflow-x:auto;padding:0;flex:1;min-width:0}
   .prod-t{width:100%;border-collapse:collapse;table-layout:fixed;min-width:780px}
   .prod-t th,.prod-t td{padding:6px 6px;vertical-align:middle}
   .prod-t thead th{border-bottom:1px solid var(--border);font-weight:400;font-size:12px;color:var(--text3);text-align:center}
@@ -6273,43 +6311,67 @@ function _prodCSS(){ return `<style>
   .prod-terc:hover{opacity:1;color:var(--amber)}
   .prod-terc.on{opacity:1;color:var(--amber);background:var(--amber-bg)}
   .prod-pick-row:hover{background:var(--bg2)!important}
+  .prod-multi.prod-drop{outline:2px dashed var(--blue-mid);outline-offset:2px;border-radius:8px}
+  .prod-multi{display:flex;flex-direction:column;gap:3px;min-height:46px;justify-content:center;padding:1px 0}
+  .prod-item{display:flex;align-items:center;gap:4px;font-size:11.5px;line-height:1.2;background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:4px 6px}
+  .prod-item-p{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--text)}
+  .prod-item-terc{border:none;background:transparent;color:var(--text3);opacity:.4;cursor:pointer;padding:0;display:flex;font-size:13px;flex-shrink:0}
+  .prod-item-terc:hover,.prod-item-terc.on{opacity:1;color:var(--amber)}
+  .prod-item-x{border:none;background:transparent;color:var(--text3);cursor:pointer;padding:0;display:flex;font-size:13px;flex-shrink:0;opacity:0}
+  .prod-item:hover .prod-item-x{opacity:.55}
+  .prod-item-x:hover{opacity:1;color:var(--danger)}
+  .prod-add{border:1px dashed var(--border);background:transparent;color:var(--text3);border-radius:7px;padding:2px;font-size:12px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center}
+  .prod-add:hover{border-color:var(--blue-mid);color:var(--blue-mid)}
+  .prod-ro-cell{display:flex;flex-direction:column;gap:3px;min-height:46px;justify-content:center;padding:1px 0}
+  .prod-ro-item{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:4px 8px;display:flex;flex-direction:column;gap:2px}
 </style>`; }
-function _prodCellHTML(key,v,leitor){
+function _prodCellHTML(key,arr,leitor){
   if(leitor){
-    if(!v) return '<div style="height:46px"></div>';
-    return `<div class="prod-cell prod-ro"><span class="prod-cell-p">${escapeHTML(v.p)}</span>${v.t?`<span class="prod-terc-ro"><i class="ti ti-tag"></i>terceiros</span>`:''}</div>`;
+    if(!arr.length) return '<div style="min-height:46px"></div>';
+    return `<div class="prod-ro-cell">${arr.map(it=>`<div class="prod-ro-item"><span class="prod-cell-p">${escapeHTML(it.p)}</span>${it.t?`<span class="prod-terc-ro"><i class="ti ti-tag"></i>terceiros</span>`:''}</div>`).join('')}</div>`;
   }
   const dnd=`ondragover="_prodDragOver(event)" ondragleave="_prodDragLeave(event)" ondrop="_prodDrop(event,'${key}')"`;
-  if(v) return `<div class="prod-cell" onclick="_prodPick(this,'${key}')" ${dnd}><span class="prod-cell-p">${escapeHTML(v.p)}</span><button class="prod-terc${v.t?' on':''}" title="${v.t?'Produção para terceiros — clique para tirar':'Marcar produção para terceiros'}" onclick="event.stopPropagation();_prodToggleTerc('${key}')"><i class="ti ti-tag"></i>${v.t?'terceiros':''}</button></div>`;
-  return `<div class="prod-cell prod-empty" onclick="_prodPick(this,'${key}')" ${dnd}>+</div>`;
+  if(!arr.length) return `<div class="prod-cell prod-empty" onclick="_prodPickAdd(this,'${key}')" ${dnd}>+</div>`;
+  const chips=arr.map((it,idx)=>`<div class="prod-item"><span class="prod-item-p" onclick="_prodPickReplace(this,'${key}',${idx})" title="Trocar item">${escapeHTML(it.p)}</span><button class="prod-item-terc${it.t?' on':''}" onclick="event.stopPropagation();_prodToggleTerc('${key}',${idx})" title="${it.t?'Produção para terceiros — clique para tirar':'Marcar produção para terceiros'}"><i class="ti ti-tag"></i></button><button class="prod-item-x" onclick="event.stopPropagation();_prodDelAt('${key}',${idx})" title="remover"><i class="ti ti-x"></i></button></div>`).join('');
+  return `<div class="prod-multi" ${dnd}>${chips}<button class="prod-add" onclick="_prodPickAdd(this,'${key}')" title="Adicionar outro item"><i class="ti ti-plus"></i></button></div>`;
 }
 function _prodRootHTML(){
-  const itens=_prodItens(), prog=_prodProg(), dias=_prodDias(prodSemana), leitor=_prodModo()==='leitor';
+  const prog=_prodProg(), dias=_prodDias(prodSemana), leitor=_prodModo()==='leitor';
   const seg=`<div class="prod-seg">`+[0,1].map(i=>`<button class="${prodSemana===i?'on':''}" onclick="_prodSetSemana(${i})">Semana ${i+1} · ${_prodRange(_prodDias(i))}</button>`).join('')+`</div>`;
   const modo=`<label class="prod-modo" title="${leitor?'Modo leitor — só exibe o que tem produto no dia':'Modo PCP — edita a programação'}"><input type="checkbox" ${leitor?'':'checked'} onchange="_prodSetModo(this.checked?'pcp':'leitor')"> Modo edição <span style="color:var(--text3)">(PCP)</span></label>`;
   const topbar=`<div class="prod-topbar">${seg}${modo}</div>`;
-  const chips=itens.map((x,i)=>`<span class="prod-chip" draggable="true" data-item="${escapeAttr(x)}" ondragstart="_prodDragStart(event)" title="Arraste para uma célula">${escapeHTML(x)}<button title="remover" onclick="_prodDelItem(${i})"><i class="ti ti-x"></i></button></span>`).join('') || `<span style="font-size:12px;color:var(--text3)">nenhum item — adicione acima</span>`;
-  const cad=leitor?'':`<div class="prod-cad"><h3>Cadastro de itens</h3><div class="prod-cadin"><input id="prod-newit" placeholder="Nome do produto" onkeydown="if(event.key==='Enter'){event.preventDefault();_prodAddItem();}"><button onclick="_prodAddItem()">Adicionar</button></div><div class="prod-chips">${chips}</div></div>`;
   const head=`<th class="prod-corner"></th>`+dias.map(d=>`<th><b>${d.dd}</b> - ${d.dow}</th>`).join('');
-  const body=PROD_LINHAS.map(l=>{ const act=dias.some(d=>prog[d.iso+'|'+l.k]); const cs=dias.map(d=>{ const key=d.iso+'|'+l.k; return `<td>${_prodCellHTML(key,prog[key],leitor)}</td>`; }).join(''); return `<tr class="${act?'':'prod-dim'}"><td class="prod-ln">${l.n}</td>${cs}</tr>`; }).join('');
+  const body=PROD_LINHAS.map(l=>{ const act=dias.some(d=>_prodCellArr(prog,d.iso+'|'+l.k).length); const cs=dias.map(d=>{ const key=d.iso+'|'+l.k; return `<td>${_prodCellHTML(key,_prodCellArr(prog,key),leitor)}</td>`; }).join(''); return `<tr class="${act?'':'prod-dim'}"><td class="prod-ln">${l.n}</td>${cs}</tr>`; }).join('');
   const grid=`<div class="prod-gridwrap"><table class="prod-t"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
-  const hint=leitor?'':`<div style="margin-top:10px;font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px"><i class="ti ti-info-circle" style="font-size:14px"></i> Clique numa célula para escolher (ou arraste um item do cadastro). O ícone de etiqueta marca produção para terceiros.</div>`;
-  return _prodCSS()+topbar+cad+grid+hint;
+  const hint=leitor?'':`<div style="margin-top:10px;font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px"><i class="ti ti-info-circle" style="font-size:14px"></i> Clique numa célula para adicionar itens (ou arraste do cadastro). Dá pra pôr mais de um item por dia; o ícone de etiqueta marca terceiros.</div>`;
+  if(leitor) return _prodCSS()+topbar+grid+hint;
+  const famOpts=_prodFamilias().map(f=>`<option>${escapeHTML(f)}</option>`).join('');
+  const cad=`<div class="prod-cad"><h3>Cadastro de itens</h3>
+    <input id="prod-newit" class="prod-in" placeholder="Nome do produto" onkeydown="if(event.key==='Enter'){event.preventDefault();_prodAddItem();}">
+    <div class="prod-addrow"><select id="prod-newit-fam" class="prod-sel" title="Família do item">${famOpts||'<option value="">sem família</option>'}</select><button class="prod-addbtn" onclick="_prodAddItem()">Adicionar</button></div>
+    <div class="prod-addrow" style="margin-top:9px"><input id="prod-newfam" class="prod-in" style="margin-bottom:0" placeholder="Nova família" onkeydown="if(event.key==='Enter'){event.preventDefault();_prodAddFam();}"><button class="prod-addbtn2" onclick="_prodAddFam()" title="Criar família"><i class="ti ti-plus"></i></button></div>
+    <div class="prod-famlist">${_prodChipsGrouped()}</div></div>`;
+  return _prodCSS()+topbar+`<div class="prod-2col">${grid}${cad}</div>`+hint;
 }
 function _prodRerender(){ const el=document.getElementById('prod-root'); if(el) el.innerHTML=_prodRootHTML(); }
 function _prodSetSemana(i){ prodSemana=i; _prodRerender(); }
-function _prodSetItem(k,val){ const p=_prodProg(); if(val){ const o=p[k]||{}; o.p=val; p[k]=o; } else { delete p[k]; } _prodSaveProg(p); _prodRerender(); }
-function _prodToggleTerc(k){ const p=_prodProg(); const o=p[k]; if(o){ o.t=o.t?0:1; _prodSaveProg(p); _prodRerender(); } }
-// Dropdown custom (popover ancorado na célula) — substitui o <select> nativo. Busca + "adicionar" na hora.
-function _prodPick(anchor,key){ const cur=(_prodProg()[key]||{}).p||''; _prodItemPicker(anchor,cur,(val)=>_prodSetItem(key,val)); }
-function _prodItemPicker(anchor,atual,onPick){
+// Cada célula guarda uma LISTA de itens: prog[key] = [{p,t}, ...]. Compat: valor antigo {p,t} vira [{p,t}].
+function _prodCellArr(p,key){ const v=p[key]; if(Array.isArray(v)) return v; if(v&&v.p) return [{p:v.p,t:v.t?1:0}]; return []; }
+function _prodAddAt(key,name){ if(!name) return; const p=_prodProg(); const a=_prodCellArr(p,key).map(x=>({p:x.p,t:x.t})); if(a.some(x=>x.p===name)) return; a.push({p:name,t:0}); p[key]=a; _prodSaveProg(p); _prodRerender(); }
+function _prodReplaceAt(key,idx,name){ const p=_prodProg(); const a=_prodCellArr(p,key).map(x=>({p:x.p,t:x.t})); if(!name){ a.splice(idx,1); } else if(a[idx]){ a[idx].p=name; } if(a.length) p[key]=a; else delete p[key]; _prodSaveProg(p); _prodRerender(); }
+function _prodDelAt(key,idx){ const p=_prodProg(); const a=_prodCellArr(p,key).map(x=>({p:x.p,t:x.t})); a.splice(idx,1); if(a.length) p[key]=a; else delete p[key]; _prodSaveProg(p); _prodRerender(); }
+function _prodToggleTerc(key,idx){ const p=_prodProg(); const a=_prodCellArr(p,key).map(x=>({p:x.p,t:x.t})); if(a[idx]){ a[idx].t=a[idx].t?0:1; } p[key]=a; _prodSaveProg(p); _prodRerender(); }
+// Dropdown custom (popover). Add = adiciona item à célula; Replace = troca o item no índice (vazio remove).
+function _prodPickAdd(anchor,key){ _prodItemPicker(anchor,'',(val)=>_prodAddAt(key,val),false); }
+function _prodPickReplace(anchor,key,idx){ const cur=_prodCellArr(_prodProg(),key)[idx]; _prodItemPicker(anchor,cur?cur.p:'',(val)=>_prodReplaceAt(key,idx,val),true); }
+function _prodItemPicker(anchor,atual,onPick,comVazio){
   if(!anchor) return;
   document.getElementById('prod-item-pop')?.remove();
   const _ini=n=>((n||'').trim()[0]||'').toUpperCase();
   const av=(inner,cor)=>`<span style="width:24px;height:24px;border-radius:50%;background:${cor||'var(--bg2)'};border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--text2);flex-shrink:0">${inner}</span>`;
   const row=(v,lbl,sel,vazio)=>`<button type="button" data-v="${escapeAttr(v)}" class="prod-pick-row" style="display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:${sel?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'transparent'};border:none;border-radius:8px;padding:6px 9px;cursor:pointer;font-family:inherit;font-size:13px;color:var(--text)">${av(vazio?"<i class='ti ti-tag-off' style='font-size:11px'></i>":escapeHTML(_ini(lbl)))}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap${vazio?';color:var(--text3);font-style:italic':''}">${escapeHTML(lbl)}</span>${sel?'<i class="ti ti-check" style="font-size:14px;color:var(--blue-mid);flex-shrink:0"></i>':''}</button>`;
   const build=(f)=>{ f=(f||'').trim(); const fl=f.toLowerCase(); const its=_prodItens(); let h='';
-    if(!f) h+=row('','— vazio —',!atual,true);
+    if(comVazio && !f) h+=row('','— vazio —',!atual,true);
     its.filter(x=>!f||x.toLowerCase().includes(fl)).forEach(x=>{ h+=row(x,x,x===atual); });
     if(f && !its.some(x=>x.toLowerCase()===fl)) h+=`<button type="button" data-create="${escapeAttr(f)}" class="prod-pick-row" style="display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:transparent;border:none;border-radius:8px;padding:6px 9px;cursor:pointer;font-family:inherit;font-size:13px;color:var(--blue-mid)">${av("<i class='ti ti-plus' style='font-size:12px;color:var(--blue-mid)'></i>","color-mix(in srgb,var(--blue-mid) 12%,transparent)")}<span style="flex:1;min-width:0">adicionar “${escapeHTML(f)}”</span></button>`;
     return h||'<div style="padding:14px;font-size:12px;color:var(--text3);text-align:center">Nada encontrado</div>'; };
@@ -6331,13 +6393,13 @@ function _prodItemPicker(anchor,atual,onPick){
   busca.addEventListener('input',()=>{ pop.querySelector('#prod-pick-lista').innerHTML=build(busca.value); });
   setTimeout(()=>{ document.addEventListener('mousedown',fora,true); document.addEventListener('keydown',onKey,true); busca.focus(); },0);
 }
-function _prodAddItem(){ const el=document.getElementById('prod-newit'); if(!el) return; const v=el.value.trim(); if(v){ const a=_prodItens(); if(a.indexOf(v)<0){ a.push(v); _prodSaveItens(a); } } _prodRerender(); const n=document.getElementById('prod-newit'); if(n) n.focus(); }
+function _prodAddItem(){ const el=document.getElementById('prod-newit'); if(!el) return; const v=el.value.trim(); const famEl=document.getElementById('prod-newit-fam'); const fam=famEl?famEl.value:''; if(v){ const a=_prodItens(); if(a.indexOf(v)<0){ a.push(v); _prodSaveItens(a); } if(fam){ const m=_prodItemFam(); m[v]=fam; _prodSaveItemFam(m); } } _prodRerender(); const n=document.getElementById('prod-newit'); if(n) n.focus(); }
 function _prodDelItem(i){ const a=_prodItens(); if(i>=0&&i<a.length){ a.splice(i,1); _prodSaveItens(a); _prodRerender(); } }
 // Arrastar um item do cadastro para dentro de uma célula.
 function _prodDragStart(e){ const el=e.target.closest('.prod-chip'); const name=el?el.getAttribute('data-item'):''; _prodDragItem=name||''; try{ e.dataTransfer.setData('text/plain',name||''); e.dataTransfer.effectAllowed='copy'; }catch(_){} }
 function _prodDragOver(e){ e.preventDefault(); try{ e.dataTransfer.dropEffect='copy'; }catch(_){} e.currentTarget.classList.add('prod-drop'); }
 function _prodDragLeave(e){ e.currentTarget.classList.remove('prod-drop'); }
-function _prodDrop(e,key){ e.preventDefault(); e.currentTarget.classList.remove('prod-drop'); let name=_prodDragItem; if(!name){ try{ name=e.dataTransfer.getData('text/plain'); }catch(_){} } _prodDragItem=null; if(name) _prodSetItem(key,name); }
+function _prodDrop(e,key){ e.preventDefault(); e.currentTarget.classList.remove('prod-drop'); let name=_prodDragItem; if(!name){ try{ name=e.dataTransfer.getData('text/plain'); }catch(_){} } _prodDragItem=null; if(name) _prodAddAt(key,name); }
 
 function switchToTaskFlow(){
   hubView = 'taskflow';
