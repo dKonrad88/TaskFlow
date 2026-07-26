@@ -422,6 +422,13 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-26 (d) — Mac de casa — Renomear TAREFA e ETAPA/SETOR inline (no Painel e nas abas)
+Pedido do Diego: "editar o nome de uma etapa ou tarefa, tanto na aba de cada como no painel". Estado antes: tarefa editável só na aba Tarefas (contenteditable) e no modo Foco; **setor não era editável em lugar nenhum**; fase já editável (coluna Estrutura + lápis na aba Fases).
+- **TAREFA no Painel** (`_tarefaLinha`): o título (que só fazia `openEdit`) virou **contenteditable** + `_ppSalvarTituloInline` (a MESMA função da aba Tarefas). O "abrir tarefa" foi preservado num **botão lápis** no hover, ao lado do excluir.
+- **SETOR/ETAPA**: nova função **`_ppSalvarNomeSetor(projId,faseId,grupoId,el)`** (espelha `_ppSalvarTituloInline`, salva `g.setor` + `saveProjectPro_db`). Nome do setor virou contenteditable no **Painel** (`_setorBloco` — com `onmousedown/onclick stopPropagation` p/ clicar-editar NÃO disparar o recolher da etapa) e na **aba Fases** (`renderFaseExpandida`, aparece ao expandir a fase).
+- ⚠️ **ARMADILHA DE LAYOUT (resolvida) — anotar:** ao pôr os botões de ação como uma 8ª coluna do grid, a coluna do título (`minmax(0,1fr)`) **colapsou p/ 0px** em telas médias (as colunas fixas somavam mais que a largura da coluna do meio). Correção: as ações (lápis+lixeira) viraram **`position:absolute`** à direita (fundo em gradiente p/ `--surface-painel`, aparecem no hover) — saem do fluxo do grid e devolvem a largura ao título. Grid ainda enxugado (executor 104→80, dias 46→40, prazo 84→74). Em viewport 1280 o título fica ~69px (com ellipsis; edita inline ao focar); em tela cheia respira muito mais. ⚠️ **Ao mexer no grid do `_tarefaLinha`, medir o título — ele é o `1fr` e é o primeiro a colapsar.**
+- Testado no navegador (tema Klain): tarefa e setor renomeiam e persistem nos 2 lugares; jsc SYNTAX_OK.
+
 ### 2026-07-26 (c) — Mac de casa — Aba Info do projeto mostra a DESCRIÇÃO
 - Pedido do Diego: ele preencheu a Descrição no Editar, mas ela não aparecia em lugar nenhum depois de salva.
 - A descrição fica em **`p.desc`** (salva no editar, `~25868`; campo `pp-desc` no modal). A aba Info
