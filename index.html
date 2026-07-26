@@ -28041,6 +28041,10 @@ function renderProjectProInfo(p, prog){
   // para "Planejamento"/"Arquivado" — o botão do cabeçalho só alterna ativo↔pausado.
   return `<div style="max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px">
     <div style="font-size:11.5px;color:var(--text3)">Detalhes do projeto. Para mudar nome, prazo ou cor use <b>Editar</b>; papéis da equipe ficam em <b>Pessoas</b>.</div>
+    ${(p.desc&&p.desc.trim())?`<div style="background:var(--surface-painel);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600;margin-bottom:7px;display:flex;align-items:center;gap:6px"><i class="ti ti-notes" style="font-size:13px"></i> Descrição</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.55;white-space:pre-wrap">${escapeHTML(p.desc.trim())}</div>
+    </div>`:''}
     ${infoCard}
     ${statusCard}
     ${statCard('ti-users','Pessoas',nPessoas,'var(--orange)')}

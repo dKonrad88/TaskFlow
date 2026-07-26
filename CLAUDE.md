@@ -422,6 +422,13 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-26 (c) — Mac de casa — Aba Info do projeto mostra a DESCRIÇÃO
+- Pedido do Diego: ele preencheu a Descrição no Editar, mas ela não aparecia em lugar nenhum depois de salva.
+- A descrição fica em **`p.desc`** (salva no editar, `~25868`; campo `pp-desc` no modal). A aba Info
+  (`renderProjectProInfo`, ~27984) não a exibia. Agora abre com um card **"Descrição"** no topo (antes do
+  infoCard), só quando `p.desc` tem texto — `white-space:pre-wrap` + `escapeHTML`, estilo `surface-painel`
+  igual aos outros cards. Testado no navegador (tema Klain), jsc SYNTAX_OK.
+
 ### 2026-07-26 (b) — Mac de casa — Painel de Projeto: TODA a paleta segue o TEMA (fim do azul fixo) + TIPOS de projeto zerados
 Dois pedidos do Diego, testados no navegador (tema Klain, jsc SYNTAX_OK, caça a azul por DOM = 0 visível no Painel):
 - ⭐ **Fim do azul fixo no Painel** ("não queria linha azul, queria tudo no tom da paleta do tema"): vários pontos usavam **`p.cor`** (cor fixa do projeto = azul) ou azul hardcoded. Trocados por **`var(--blue-mid)`** (acento que muda por tema): as **barras de progresso** (projeto/fase/tarefa — `background:${p.cor};width:` → var, em `projectProRowHTML`/`projectProCardHTML`/`renderProjectProInfo`/`renderFaseExpandida`), o `corBase` das barras de tarefa (`28088`), os ícones `ti-building` de setor, o botão **enviar comentário** (`enviarProComment`), e o fundo da opção selecionada nos **dropdowns custom** (`.td-dd-option.selected` `1343/1344`: `rgba(24,95,165,…)` → `color-mix(var(--blue-mid))`). Já havia barras em `--blue-mid` (`27331/27412`) — era inconsistência. **Não mexi:** a faixa de 4px de identidade no topo do card de projeto (`26626`, é a cor do projeto de propósito) nem o **FAB** (azul intencional). ⚠️ **FORA do Painel ainda há azul:** o botão "+ Novo projeto" da lista e o ícone do tipo na linha da lista (`26375`) — perguntar ao Diego se quer no tema também (há ~37 `#185FA5` no arquivo; só troquei os do Painel).
