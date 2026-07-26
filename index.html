@@ -1340,8 +1340,8 @@
     user-select:none
   }
   .td-dd-option:hover{background:var(--bg2)}
-  .td-dd-option.selected{background:rgba(24,95,165,.08)}
-  body.dark .td-dd-option.selected{background:rgba(95,164,255,.12)}
+  .td-dd-option.selected{background:color-mix(in srgb,var(--blue-mid) 9%,transparent)}
+  body.dark .td-dd-option.selected{background:color-mix(in srgb,var(--blue-mid) 16%,transparent)}
   .td-dd-option i.td-dd-opt-icon{font-size:14px;flex-shrink:0;width:14px;text-align:center}
   .td-dd-option .td-dd-opt-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .td-dd-option .td-dd-opt-check{font-size:13px;color:var(--blue-mid);opacity:0;flex-shrink:0}
@@ -25949,14 +25949,12 @@ let activeFaseId = null;           // qual fase está expandida (zoom in)
 // Tipos de projeto (categorias) — usuário pode adicionar mais depois
 // GUILHERME V3 (mai/2026): PP_TIPOS é mutável — usuário pode adicionar tipos novos.
 // Tipos base (nunca removidos). Tipos customizados ficam em localStorage.
-const PP_TIPOS_BASE = {
-  obra:      {label:'Obra/Reforma',     icon:'ti-tools',          color:'#8B5E3C'},
-  produto:   {label:'Novo Produto',     icon:'ti-package',        color:'#185FA5'},
-  bi:        {label:'BI/Sistema',       icon:'ti-chart-line',     color:'#6B46C1'},
-  campanha:  {label:'Campanha',         icon:'ti-bullhorn',       color:'#C97A00'},
-  evento:    {label:'Evento',           icon:'ti-confetti',       color:'#A32D2D'},
-  outro:     {label:'Outro',            icon:'ti-folder',         color:'#666'},
-};
+// (jul/2026, Diego) Tipos base ZERADOS: o dropdown de "Novo projeto" começa SEM opções
+// prontas — cada um cria os tipos da própria operação na hora (+ Novo tipo…). Os criados
+// ficam em LS_PP_TIPOS_CUSTOM. _PP_TIPO_FB é só a rede de EXIBIÇÃO (ícone/cor) p/ projetos e
+// modelos que ainda referenciam um tipo antigo — é o fallback dos acessos, NUNCA vira opção.
+const _PP_TIPO_FB = {label:'', icon:'ti-folder', color:'var(--text3)'};
+const PP_TIPOS_BASE = {};
 const LS_PP_TIPOS_CUSTOM = 'taskflow_pp_tipos_custom';
 let _ppTiposCustom = {};
 try { _ppTiposCustom = JSON.parse(safeLSGet(LS_PP_TIPOS_CUSTOM)||'{}'); } catch(e){console.warn('[ppTiposCustom] parse falhou',e);}
@@ -26152,7 +26150,9 @@ function _ppAdicionarTipoConfirm(selectId, nomeClean){
 }
 
 function _ppTipoOpcoes(selecionado){
-  return Object.entries(PP_TIPOS).map(([k,v])=>
+  // Placeholder "sem tipo" no topo: com a base vazia (Diego), o dropdown abre sem nada
+  // selecionado em vez de cair no "+ Novo tipo…". Criar projeto sem tipo é válido.
+  return `<option value="" ${!selecionado?'selected':''}>— sem tipo —</option>` + Object.entries(PP_TIPOS).map(([k,v])=>
     `<option value="${k}" ${selecionado===k?'selected':''}>${escapeHTML(v.label)}</option>`
   ).join('') + `<option value="__novo__" style="color:var(--blue-mid);font-weight:600">+ Novo tipo…</option>`;
 }
@@ -26305,7 +26305,7 @@ function _ppAgrupar(lista, modo){
     grupos.sort((a,b)=>{ if(a.key==='__semsetor__')return 1; if(b.key==='__semsetor__')return -1; return a.label.localeCompare(b.label,'pt-BR'); }); return grupos;
   }
   // default: tipo
-  lista.forEach(p=>{ const k=p.tipo||'outro'; const t=PP_TIPOS[k]||PP_TIPOS.outro; push(k,t.label,t.color,t.icon,p); });
+  lista.forEach(p=>{ const k=p.tipo||'outro'; const t=PP_TIPOS[k]||_PP_TIPO_FB; push(k,t.label,t.color,t.icon,p); });
   const ordT=Object.keys(PP_TIPOS); grupos.sort((a,b)=>ordT.indexOf(a.key)-ordT.indexOf(b.key)); return grupos;
 }
 
@@ -26370,7 +26370,7 @@ function _ppChipPrazo(p){
 function projectProRowHTML(p){
   const prog=_calcularProgressoProjeto(p);
   const status=PP_STATUS[p.status]||PP_STATUS.planejamento;
-  const tipo=PP_TIPOS[p.tipo]||PP_TIPOS.outro;
+  const tipo=PP_TIPOS[p.tipo]||_PP_TIPO_FB;
   return `<div data-project-pro-id="${p.id}" onclick="abrirProjectProView('${p.id}')" style="display:grid;grid-template-columns:minmax(0,1fr) 104px 140px 58px 92px 26px;align-items:center;gap:12px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-left:3px solid ${p.cor};border-radius:10px;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow='0 3px 12px rgba(0,0,0,.07)'" onmouseout="this.style.boxShadow=''">
     <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px">
       <button onclick="event.stopPropagation();_ppToggleFav('${p.id}')" title="${p.favorito?'Desafixar':'Fixar no topo'}" style="background:none;border:none;cursor:pointer;color:${p.favorito?'var(--amber)':'var(--text3)'};font-size:14px;padding:0;flex-shrink:0;line-height:1"><i class="ti ti-star${p.favorito?'-filled':''}"></i></button>
@@ -26380,7 +26380,7 @@ function projectProRowHTML(p){
     </div>
     <span style="background:${status.color}22;color:${status.color};font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;white-space:nowrap;justify-self:start"><i class="ti ${status.icon}" style="font-size:10px"></i> ${status.label}</span>
     <div style="display:flex;align-items:center;gap:7px;min-width:0">
-      <div style="flex:1;height:6px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:${p.cor};width:${prog.pct}%"></div></div>
+      <div style="flex:1;height:6px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:var(--blue-mid);width:${prog.pct}%"></div></div>
       <span style="font-size:11px;font-weight:700;color:var(--text2);min-width:30px;text-align:right">${prog.pct}%</span>
     </div>
     <span style="font-size:11px;color:var(--text3);white-space:nowrap;text-align:right"><i class="ti ti-checklist" style="font-size:11px"></i> ${prog.feitas}/${prog.total}</span>
@@ -26606,7 +26606,7 @@ function _ppImportarSalvar(){
 // Card de um projeto na lista
 function projectProCardHTML(p){
   const prog = _calcularProgressoProjeto(p);
-  const tipo = PP_TIPOS[p.tipo] || PP_TIPOS.outro;
+  const tipo = PP_TIPOS[p.tipo] || _PP_TIPO_FB;
   const status = PP_STATUS[p.status] || PP_STATUS.planejamento;
   const nFases = (p.fases||[]).length;
   const nPessoas = (p.pessoas||[]).length;
@@ -26637,7 +26637,7 @@ function projectProCardHTML(p){
       ${p.descricao ? `<div style="font-size:12px;color:var(--text3);line-height:1.4;margin-bottom:10px;max-height:34px;overflow:hidden">${escapeHTML(p.descricao.slice(0,90))}${p.descricao.length>90?'…':''}</div>` : ''}
       <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
         <div style="flex:1;height:6px;background:var(--bg2);border-radius:99px;overflow:hidden">
-          <div style="height:100%;background:${p.cor};width:${prog.pct}%;transition:width .3s"></div>
+          <div style="height:100%;background:var(--blue-mid);width:${prog.pct}%;transition:width .3s"></div>
         </div>
         <span style="font-size:15px;font-weight:800;color:var(--text);min-width:40px;text-align:right">${prog.pct}%</span>
       </div>
@@ -26742,7 +26742,7 @@ function abrirModalNovoProjectPro(){
           <div>
             <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Tipo ${_hint('Categoria do projeto — muda só o ícone e a cor. Ex.: Obra, Novo Produto, Campanha.')}</label>
             <select id="pp-tipo" onchange="if(this.value==='__novo__'){ppAdicionarTipo('pp-tipo')}" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg2);color:var(--text);box-sizing:border-box">
-              ${_ppTipoOpcoes('produto')}
+              ${_ppTipoOpcoes('')}
             </select>
           </div>
           <div>
@@ -27315,7 +27315,7 @@ function renderProjectProView(id){
   }
   const container = document.getElementById('task-container');
   const prog = _calcularProgressoProjeto(p);
-  const tipo = PP_TIPOS[p.tipo] || PP_TIPOS.outro;
+  const tipo = PP_TIPOS[p.tipo] || _PP_TIPO_FB;
   // (jul/2026) const `status` removida: o badge virou botão de ação (_projStatusBtnHTML), que
   // resolve o PP_STATUS por conta própria.
   const dono = p.dono ? people.find(x=>x.id===p.dono) : null;
@@ -27983,7 +27983,7 @@ function renderProjectProVisao(p, prog){
 // indicadores (tarefas/atrasadas/pessoas), progresso e conclusão prevista.
 function renderProjectProInfo(p, prog){
   const nPessoas=(p.pessoas||[]).length;
-  const tipo=(typeof PP_TIPOS!=='undefined' && (PP_TIPOS[p.tipo]||PP_TIPOS.outro)) || {icon:'ti-folder',label:''};
+  const tipo=(typeof PP_TIPOS!=='undefined' && (PP_TIPOS[p.tipo]||_PP_TIPO_FB)) || {icon:'ti-folder',label:''};
   const dono   = p.dono         ? people.find(x=>x.id===p.dono)         : null;
   const coord  = p.coordenador  ? people.find(x=>x.id===p.coordenador)  : null;
   const coord2 = p.coordenador2 ? people.find(x=>x.id===p.coordenador2) : null;
@@ -28029,7 +28029,7 @@ function renderProjectProInfo(p, prog){
       <span style="font-size:13px;font-weight:700;color:var(--text)">Progresso do projeto</span>
       <span style="font-size:15px;font-weight:800;color:var(--text)">${prog.pct}% <span style="font-size:11px;font-weight:600;color:var(--text3)">· ${prog.feitas}/${prog.total}</span></span>
     </div>
-    <div style="height:9px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:${p.cor};width:${prog.pct}%;transition:width .3s"></div></div>
+    <div style="height:9px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:var(--blue-mid);width:${prog.pct}%;transition:width .3s"></div></div>
     ${conclLine}
   </div>`;
   // (jul/2026, Diego) Saíram os cards "Tarefas" e "Atrasadas": o primeiro repetia o
@@ -28087,7 +28087,7 @@ function renderProjectProFases(p){
   }
 
   // ─── Lista: cada linha É a barra de progresso da fase ────────────
-  const corBase = p.cor || '#185FA5';
+  const corBase = 'var(--blue-mid)'; // (jul/2026, Diego) barras/acentos de progresso seguem o TEMA, não a cor fixa do projeto
   // (jul/2026, Diego) GRID de colunas fixas em vez de flex-wrap: é o que faz contagem, prazo e %
   // ficarem NA MESMA COLUNA em todas as linhas, independente do tamanho do nome e de a fase ter ou
   // não prazo definido. A célula do prazo é sempre emitida (vazia quando não há) — se ela sumisse,
@@ -28168,7 +28168,7 @@ function renderFaseExpandida(p, f){
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
       <span style="font-size:18px;font-weight:800;color:var(--text)">${escapeHTML(f.nome)}</span>
       <div style="display:flex;align-items:center;gap:9px;flex:1;min-width:180px;max-width:360px">
-        <div style="flex:1;height:7px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:${p.cor};width:${fp.pct}%;transition:width .3s"></div></div>
+        <div style="flex:1;height:7px;background:var(--bg2);border-radius:99px;overflow:hidden"><div style="height:100%;background:var(--blue-mid);width:${fp.pct}%;transition:width .3s"></div></div>
         <span style="font-size:13px;font-weight:800;color:var(--text);white-space:nowrap">${fp.pct}%</span>
         <span style="font-size:11px;color:var(--text3);white-space:nowrap">${fp.feitas}/${fp.total}</span>
       </div>
@@ -28188,7 +28188,7 @@ function renderFaseExpandida(p, f){
 
     return `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden">
       <div style="padding:12px 16px;background:var(--bg2);display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px"><i class="ti ti-building" style="color:${p.cor}"></i>${escapeHTML(g.setor)}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px"><i class="ti ti-building" style="color:var(--blue-mid)"></i>${escapeHTML(g.setor)}</div>
         <div style="display:flex;gap:6px">
           <button onclick="excluirGrupo('${p.id}','${f.id}','${g.id}')" style="background:none;border:1px solid var(--border);color:var(--text3);border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer" title="Excluir setor"><i class="ti ti-trash"></i></button>
         </div>
@@ -28371,7 +28371,7 @@ function adicionarGrupo(projectId, faseId){
   overlay.innerHTML = `
     <div style="background:var(--card);border-radius:14px;width:100%;max-width:460px;box-shadow:0 24px 60px rgba(0,0,0,.3)">
       <div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-        <h3 style="margin:0;font-size:16px"><i class="ti ti-building" style="color:${p.cor}"></i> Adicionar ${_ppRot(p,2,false,true)} ${_hint(`Um agrupamento de tarefas dentro d${_ppG(p,1,'a','o')} ${_ppRot(p,1,false,true)} (ex.: Compras/Produção, ou Planejamento/Desenvolvimento).`)}</h3>
+        <h3 style="margin:0;font-size:16px"><i class="ti ti-building" style="color:var(--blue-mid)"></i> Adicionar ${_ppRot(p,2,false,true)} ${_hint(`Um agrupamento de tarefas dentro d${_ppG(p,1,'a','o')} ${_ppRot(p,1,false,true)} (ex.: Compras/Produção, ou Planejamento/Desenvolvimento).`)}</h3>
         <button onclick="document.getElementById('pp-modal-grupo').remove()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px"><i class="ti ti-x"></i></button>
       </div>
       <div style="padding:18px 22px">
@@ -29945,7 +29945,7 @@ function renderProjectProAnotacoes(p){
         oninput="_ppCheckMencao(this,'${p.id}')"
         style="flex:1;min-width:0;padding:7px 2px;border:none;border-bottom:1px solid var(--border);border-radius:0;font-size:12.5px;background:transparent;color:var(--text);font-family:inherit;box-sizing:border-box;transition:border-color .15s;outline:none"
         onfocus="this.style.borderBottomColor='${p.cor}'" onblur="this.style.borderBottomColor='var(--border)'">
-      <button onclick="enviarProComment('${p.id}')" title="Enviar comentário" style="width:28px;height:28px;flex-shrink:0;background:transparent;color:${p.cor};border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:15px;border-radius:6px" onmouseover="this.style.background='color-mix(in srgb,${p.cor} 12%,transparent)'" onmouseout="this.style.background='transparent'"><i class="ti ti-send"></i></button>
+      <button onclick="enviarProComment('${p.id}')" title="Enviar comentário" style="width:28px;height:28px;flex-shrink:0;background:transparent;color:var(--blue-mid);border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:15px;border-radius:6px" onmouseover="this.style.background='color-mix(in srgb,${p.cor} 12%,transparent)'" onmouseout="this.style.background='transparent'"><i class="ti ti-send"></i></button>
       <!-- Dropdown @menção -->
       <div id="pp-at-menu-${p.id}" style="display:none;position:absolute;bottom:100%;left:0;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:200;min-width:220px;max-height:180px;overflow-y:auto;margin-bottom:4px"></div>
     </div>
