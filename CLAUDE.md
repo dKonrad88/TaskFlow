@@ -422,6 +422,13 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-26 (a) — Mac de casa — Painel de Projeto: linha de tarefa ganha EXCLUIR + PRAZO DEFINIDO + faixa no tom do TEMA (não mais azul)
+Três ajustes na **linha de tarefa do Painel de Projeto** (`_tarefaLinha`, ~27783) — todos pedidos do Diego, testados no navegador (tema Klain, jsc SYNTAX_OK):
+- **Excluir direto do Painel** (antes só na aba Tarefas): botão 🗑️ (`ti-trash`) no fim da linha, aparece no **hover** (`.pp-del`, opacity 0→1 via onmouseenter/leave da linha). Chama o `del(id)` que já existia (permissão dono/coord, animação, Lixeira + FAB desfazer 15s). ⭐ De quebra, a linha ganhou `data-task-id` — antes não tinha, então a animação "amassar" do `del` (que busca `[data-task-id]`) **não pegava o Painel**; agora pega (Lista/Cartões/Painel). Grid passou de 7→8 colunas (…84px **22px**).
+- **Prazo DEFINIDO na linha** (antes mostrava só a *conclusão prevista* calculada): a coluna de data agora mostra o **`t.date`** (o prazo que o Diego definiu) com ícone de bandeira `ti-flag-3`; cai pra previsão (`ti-calendar` apagado) só quando a tarefa **não** tem prazo. Cor por status; apagada se concluída.
+- ⭐ **Faixa da tarefa em andamento no tom do TEMA, não azul** (pedido explícito: "não queria linha azul, tudo no tom da paleta do tema"): `_hlCor` usava **`p.cor`** (cor fixa do projeto = azul), agora usa **`var(--blue-mid)`** — que é o acento que MUDA por tema (#9a6a2e marrom no Klain, #009C3B verde no Brasil, #185FA5 azul no claro; ver comentário `1216`). Comprovado no ar: faixa = `rgb(154,106,46)` no Klain. Comentários do código que diziam "usa p.cor" foram corrigidos (eram mentirosos). A âmbar da paralela (Proposta A) fica — é intencional.
+- **PENDENTE desta sessão:** o Diego também pediu **zerar as opções de TIPO no modal Novo projeto** ("sem nenhuma opção, eu crio na hora"). `PP_TIPOS_BASE` (~25952) tem 6 tipos fixos; os custom dele (Treinamento, Novo programa) ficam em `LS_PP_TIPOS_CUSTOM` (localStorage, e não há UI p/ removê-los). Esvaziar a base remove os 6, mas os 2 custom continuam no aparelho dele → decidir com ele antes (só limpar defaults? limpar custom? criar remoção de tipo?). NÃO feito ainda.
+
 ### ⭐ 2026-07-25 (c) — PC da Empresa — SESSÃO LONGA em COMPRAS (ficha do item): Notícias/mercado, previsão de consumo, filtro de categoria, decisão de compra + REFRESH mantém a tela
 Sessão inteira na **área Compras**, quase toda na **ficha do item** (Amendoim cód. 20017 como cobaia). **13 commits**
 (`8e8935b9`→`a7d87c57`) — **tudo commitado E pushado; working tree limpo; `main == origin == a7d87c57`.** Verificação:
