@@ -8827,20 +8827,23 @@ function _cpComprasLine(o){
       tt:_cpDt(l.data)+' · '+String(l.forn[1]).slice(0,28)+' · '+_cpBRL(l.vun)+'/'+(o.um||'')}; });
   return _cpLine(serie,'v',v=>_cpBRL(v),{onClick:'_cpItemSetMes',selYm:true,lineCor:'var(--blue-mid)',cor:p=>p.cor,labFmt:v=>_cpNum(v,2)});
 }
-// Preço médio POR MÊS no MESMO estilo de _cpComprasLine (pedido do Diego): linha azul, ponto
-// VERDE quando o mês comprou abaixo da média móvel dos meses anteriores (bom) e VERMELHO quando
-// bem acima (caro) — mesmos limiares (-3% / +10%). opts mescla p/ servir a aba Gráfico
-// (onClick/selYm) e o Resumo (h/fixedH menores); lineCor e cor são sempre forçados aqui.
+// Preço médio POR MÊS no estilo do "Todas as compras": linha azul, ponto VERDE quando o mês comprou
+// MAIS BARATO que o MÊS ANTERIOR (com compra) e VERMELHO quando MAIS CARO — a cor compara SEMPRE
+// com o mês anterior (pedido do Diego 27/07: "a bolinha sempre seria em cima da compra anterior"),
+// faixa neutra de ±3% = azul. opts mescla p/ servir a aba Gráfico (onClick/selYm) e o Resumo
+// (h/fixedH menores); lineCor e cor são sempre forçados aqui.
 function _cpPrecoMedLine(o, opts){
   const serie=_cpItemSerie(o), um=o.um||'';
-  const jan=[]; // média móvel dos últimos 3 meses COM compra
+  let prev=null; // preço do ÚLTIMO mês COM compra — a base de comparação
   serie.forEach(s=>{
     if(s.precoKg==null){ s._cor=null; return; }
-    const base=jan.length?jan.reduce((a,b)=>a+b,0)/jan.length:s.precoKg;
-    const dif=base>0?((s.precoKg-base)/base*100):0;
-    let cor='var(--blue-mid)'; if(dif>10)cor='var(--danger)'; else if(dif<-3)cor='var(--success)';
+    let cor='var(--blue-mid)';
+    if(prev!=null && prev>0){
+      const dif=(s.precoKg-prev)/prev*100;
+      if(dif>3)cor='var(--danger)'; else if(dif<-3)cor='var(--success)'; // subiu>3% = caro · caiu>3% = barato
+    }
     s._cor=cor;
-    jan.push(s.precoKg); if(jan.length>3) jan.shift();
+    prev=s.precoKg;
   });
   return _cpLine(serie,'precoKg',v=>_cpBRL(v)+'/'+um,Object.assign({labFmt:v=>_cpNum(v,2)},opts||{},{lineCor:'var(--blue-mid)',cor:s=>s._cor}));
 }
