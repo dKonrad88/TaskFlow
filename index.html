@@ -9389,12 +9389,11 @@ function _cpFichaGraficos(o){
     <div style="font-size:11px;color:var(--text3);margin:-6px 0 12px">${sub}</div>${chart}</div>`;
   return `${_cpItemMes?'':`<div style="font-size:12px;color:var(--text3);margin-bottom:10px"><i class="ti ti-hand-finger"></i> Clique num mês (ou num ponto) para ver o resumo do período. A planilha completa fica na aba <b>Histórico</b>.</div>`}
     ${_cpResumoMes(o,serie)}
-    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:4px">
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px">
       ${graf('Consumo por mês','em '+(um||'un')+' (2026) · '+_cpLegPrev,_cpBarChart(_cpSerieComPrev(o,serie),'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN,undefined,'prev'))}
       ${graf('Valor comprado por mês','R$ por mês',_cpBarChart(serie,'valor',v=>_cpBRL(v),undefined,_cpAbrevN))}
-      ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpPrecoMedLine(o,{onClick:'_cpItemSetMes',selYm:true}))}
-      ${graf('Todas as compras','1 ponto = 1 compra · altura = preço pago',_cpComprasLine(o))}
-    </div>`;
+    </div>
+    ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpPrecoMedLine(o,{onClick:'_cpItemSetMes',selYm:true}))}`;
 }
 // View "Histórico" (sub-navbar): a planilha completa de compras do item (saiu da view Gráfico).
 function _cpFichaHistorico(o){

@@ -422,6 +422,12 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-27 (b) — Mac de casa — COMPRAS: removido o gráfico "Todas as compras" (redundante) + Preço médio em largura total
+- Diego: depois do Preço médio virar azul+verde/vermelho, o **Todas as compras** ficou "quase a mesma coisa" → tirar.
+- Em `_cpFichaGraficos`: removida a chamada `graf('Todas as compras',…,_cpComprasLine(o))`. Reorg do layout: as 2 barras (Consumo · Valor) seguem no grid de 2 colunas; o **Preço médio** saiu do grid e agora ocupa a **largura total** abaixo (mais destaque, bolinhas bem legíveis). Não mexi no helper `graf` (é duplicado em `_cpFichaResumo` 8956 e `_cpFichaGraficos` 9387).
+- ⚠️ **`_cpComprasLine` (8822) ficou ÓRFÃ** (era o único uso). Deixei a definição (não removi — 1 função pequena, e o Diego pode querer o gráfico de volta). Se for limpar código morto um dia, dá p/ tirar. O **Resumo** nunca teve "Todas as compras" (só Consumo + Preço médio no topo), então não mudou.
+- Testado no navegador (tema escuro): "Todas as compras" some, Preço médio em largura total com as cores certas. jsc SYNTAX_OK.
+
 ### 2026-07-27 (a) — Mac de casa — COMPRAS: gráfico "Preço médio de compra" igual ao "Todas as compras" (azul + verde/vermelho)
 Pedido do Diego: o gráfico **Preço médio de compra** (ficha do item, aba Gráfico E no Resumo) era âmbar chapado; deixar como o **Todas as compras** — linha no acento do tema + ponto **verde** quando comprou melhor / **vermelho** quando pior.
 - **`_cpComprasLine`** (o modelo) pinta cada COMPRA por `dif=(vun-med3)/med3`: azul, vermelho se `>+10%`, verde se `<-3%`, e chama `_cpLine(...,{lineCor:'var(--blue-mid)',cor:p=>p.cor})`.
