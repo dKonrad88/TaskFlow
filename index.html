@@ -8827,6 +8827,23 @@ function _cpComprasLine(o){
       tt:_cpDt(l.data)+' · '+String(l.forn[1]).slice(0,28)+' · '+_cpBRL(l.vun)+'/'+(o.um||'')}; });
   return _cpLine(serie,'v',v=>_cpBRL(v),{onClick:'_cpItemSetMes',selYm:true,lineCor:'var(--blue-mid)',cor:p=>p.cor,labFmt:v=>_cpNum(v,2)});
 }
+// Preço médio POR MÊS no MESMO estilo de _cpComprasLine (pedido do Diego): linha azul, ponto
+// VERDE quando o mês comprou abaixo da média móvel dos meses anteriores (bom) e VERMELHO quando
+// bem acima (caro) — mesmos limiares (-3% / +10%). opts mescla p/ servir a aba Gráfico
+// (onClick/selYm) e o Resumo (h/fixedH menores); lineCor e cor são sempre forçados aqui.
+function _cpPrecoMedLine(o, opts){
+  const serie=_cpItemSerie(o), um=o.um||'';
+  const jan=[]; // média móvel dos últimos 3 meses COM compra
+  serie.forEach(s=>{
+    if(s.precoKg==null){ s._cor=null; return; }
+    const base=jan.length?jan.reduce((a,b)=>a+b,0)/jan.length:s.precoKg;
+    const dif=base>0?((s.precoKg-base)/base*100):0;
+    let cor='var(--blue-mid)'; if(dif>10)cor='var(--danger)'; else if(dif<-3)cor='var(--success)';
+    s._cor=cor;
+    jan.push(s.precoKg); if(jan.length>3) jan.shift();
+  });
+  return _cpLine(serie,'precoKg',v=>_cpBRL(v)+'/'+um,Object.assign({labFmt:v=>_cpNum(v,2)},opts||{},{lineCor:'var(--blue-mid)',cor:s=>s._cor}));
+}
 function _cpResumoMes(o,serie){
   if(!_cpItemMes) return '';
   const s=serie.find(x=>x.ym===_cpItemMes); if(!s) return '';
@@ -8939,7 +8956,7 @@ function _cpFichaResumo(o){
   // TOPO: 2 gráficos lado a lado (Consumo · Preço médio) acima do restante.
   const graficos=`<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px">
       ${graf('Consumo por mês','em '+(um||'un')+' (2026) · '+_cpLegPrev,_cpBarChart(_cpSerieComPrev(o,serie),'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN,45,'prev'))}
-      ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpLine(serie,'precoKg',v=>_cpBRL(v)+'/'+um,{lineCor:'var(--amber)',cor:()=>'var(--amber)',labFmt:v=>_cpNum(v,2),h:50,pt:6,pb:12,fixedH:72}))}
+      ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpPrecoMedLine(o,{h:50,pt:6,pb:12,fixedH:72}))}
     </div>`;
   // 3 colunas: [macro + indicadores] · [últimas compras] · [simulador + OCs em aberto]. Macro só p/ item com dado (ex. Amendoim).
   return graficos+`
@@ -9372,7 +9389,7 @@ function _cpFichaGraficos(o){
     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:4px">
       ${graf('Consumo por mês','em '+(um||'un')+' (2026) · '+_cpLegPrev,_cpBarChart(_cpSerieComPrev(o,serie),'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN,undefined,'prev'))}
       ${graf('Valor comprado por mês','R$ por mês',_cpBarChart(serie,'valor',v=>_cpBRL(v),undefined,_cpAbrevN))}
-      ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpLine(serie,'precoKg',v=>_cpBRL(v)+'/'+um,{onClick:'_cpItemSetMes',selYm:true,lineCor:'var(--amber)',cor:()=>'var(--amber)',labFmt:v=>_cpNum(v,2)}))}
+      ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpPrecoMedLine(o,{onClick:'_cpItemSetMes',selYm:true}))}
       ${graf('Todas as compras','1 ponto = 1 compra · altura = preço pago',_cpComprasLine(o))}
     </div>`;
 }

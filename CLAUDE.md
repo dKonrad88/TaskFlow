@@ -422,6 +422,14 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-27 (a) — Mac de casa — COMPRAS: gráfico "Preço médio de compra" igual ao "Todas as compras" (azul + verde/vermelho)
+Pedido do Diego: o gráfico **Preço médio de compra** (ficha do item, aba Gráfico E no Resumo) era âmbar chapado; deixar como o **Todas as compras** — linha no acento do tema + ponto **verde** quando comprou melhor / **vermelho** quando pior.
+- **`_cpComprasLine`** (o modelo) pinta cada COMPRA por `dif=(vun-med3)/med3`: azul, vermelho se `>+10%`, verde se `<-3%`, e chama `_cpLine(...,{lineCor:'var(--blue-mid)',cor:p=>p.cor})`.
+- **Nova `_cpPrecoMedLine(o,opts)`** (logo após `_cpComprasLine`, ~8831): mesmo esquema, mas sobre a série MENSAL (`_cpItemSerie`, campo `precoKg`). Baseline = **média móvel dos últimos 3 meses COM compra**; mesmos limiares (-3%/+10%). Força `lineCor:'var(--blue-mid)'` e `cor:s=>s._cor`; `opts` mescla p/ servir a aba Gráfico (`onClick/selYm`) e o Resumo (`h:50,fixedH:72…`).
+- Trocadas as 2 chamadas que usavam `_cpLine(serie,'precoKg',…,{lineCor:'var(--amber)',cor:()=>'var(--amber)'})` → `_cpPrecoMedLine(o,{…})` em `_cpFichaGraficos` e `_cpFichaResumo`.
+- ⚠️ Esperado: o gráfico MENSAL mostra **menos vermelho** que o "Todas as compras" (individual) — a média do mês suaviza picos (ex.: a compra de R$6,50 do Amendoim é ponto vermelho em "Todas as compras", mas o MÊS 06/26 não passa +10%). É o comportamento certo.
+- `var(--blue-mid)` segue o tema (azul no tema escuro do Diego, marrom no Klain) — consistente com o "Todas as compras" e com a diretriz de paleta. Testado no navegador (tema escuro): linha azul, verdes presentes, 0 âmbar, nos DOIS gráficos. jsc SYNTAX_OK.
+
 ### 2026-07-26 (d) — Mac de casa — Renomear TAREFA e ETAPA/SETOR inline (no Painel e nas abas)
 Pedido do Diego: "editar o nome de uma etapa ou tarefa, tanto na aba de cada como no painel". Estado antes: tarefa editável só na aba Tarefas (contenteditable) e no modo Foco; **setor não era editável em lugar nenhum**; fase já editável (coluna Estrutura + lápis na aba Fases).
 - **TAREFA no Painel** (`_tarefaLinha`): o título (que só fazia `openEdit`) virou **contenteditable** + `_ppSalvarTituloInline` (a MESMA função da aba Tarefas). O "abrir tarefa" foi preservado num **botão lápis** no hover, ao lado do excluir.
