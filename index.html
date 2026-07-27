@@ -8828,22 +8828,22 @@ function _cpComprasLine(o){
   return _cpLine(serie,'v',v=>_cpBRL(v),{onClick:'_cpItemSetMes',selYm:true,lineCor:'var(--blue-mid)',cor:p=>p.cor,labFmt:v=>_cpNum(v,2)});
 }
 // Preço médio POR MÊS no estilo do "Todas as compras": linha azul, ponto VERDE quando o mês comprou
-// MAIS BARATO que o MÊS ANTERIOR (com compra) e VERMELHO quando MAIS CARO — a cor compara SEMPRE
-// com o mês anterior (pedido do Diego 27/07: "a bolinha sempre seria em cima da compra anterior"),
-// faixa neutra de ±3% = azul. opts mescla p/ servir a aba Gráfico (onClick/selYm) e o Resumo
-// (h/fixedH menores); lineCor e cor são sempre forçados aqui.
+// MAIS BARATO que o MÊS ANTERIOR (com compra) e VERMELHO quando MAIS CARO. Compara pelo valor
+// EXIBIDO (2 casas, R$/un): AZUL só quando MANTÉM o mesmo preço; QUALQUER mudança (p/ cima ou p/
+// baixo) colore — SEM faixa neutra (Diego 27/07). opts mescla p/ servir a aba Gráfico (onClick/
+// selYm) e o Resumo (h/fixedH menores); lineCor e cor são sempre forçados aqui.
 function _cpPrecoMedLine(o, opts){
   const serie=_cpItemSerie(o), um=o.um||'';
-  let prev=null; // preço do ÚLTIMO mês COM compra — a base de comparação
+  let prev=null; // preço (2 casas, como exibido) do ÚLTIMO mês COM compra
   serie.forEach(s=>{
     if(s.precoKg==null){ s._cor=null; return; }
-    let cor='var(--blue-mid)';
-    if(prev!=null && prev>0){
-      const dif=(s.precoKg-prev)/prev*100;
-      if(dif>3)cor='var(--danger)'; else if(dif<-3)cor='var(--success)'; // subiu>3% = caro · caiu>3% = barato
+    const atual=Math.round(s.precoKg*100)/100; // compara pelo valor EXIBIDO (evita colorir 5,047 vs 5,053)
+    let cor='var(--blue-mid)'; // azul = manteve o mesmo preço
+    if(prev!=null){
+      if(atual>prev)cor='var(--danger)'; else if(atual<prev)cor='var(--success)'; // qualquer alta=vermelho · queda=verde
     }
     s._cor=cor;
-    prev=s.precoKg;
+    prev=atual;
   });
   return _cpLine(serie,'precoKg',v=>_cpBRL(v)+'/'+um,Object.assign({labFmt:v=>_cpNum(v,2)},opts||{},{lineCor:'var(--blue-mid)',cor:s=>s._cor}));
 }
