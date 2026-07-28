@@ -8887,8 +8887,10 @@ function _cpKpiCard(lab,val,sub,cor){
   </div>`;
 }
 // ── SIMULADOR DE COMPRA (card da view Resumo). Roda sobre estoque/consumo/preço do item. ──
-let _cpSim={modo:'estoqueDias', dias:'45', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7'};
-function _cpSimReset(){ _cpSim={modo:'estoqueDias', dias:'45', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7'}; }
+// Tamanho de uma CARGA fechada (caminhão): hoje 35 t p/ o amendoim. ⚠️ A parametrizar por item quando vier do ERP.
+const CP_CARGA_KG=35000;
+let _cpSim={modo:'estoqueDias', dias:'45', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'3'};
+function _cpSimReset(){ _cpSim={modo:'estoqueDias', dias:'45', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'3'}; }
 function _cpSimCalc(o){
   const s=_cpSim, cd=o.consDia||0;
   const precoRef=o.ultPreco||o.precoCompra||0;
@@ -8896,6 +8898,7 @@ function _cpSimCalc(o){
   if(s.modo==='estoqueDias') qtd=Math.max(0, cd*(parseFloat(s.dias)||0) - o.est);
   else if(s.modo==='comprarDias') qtd=cd*(parseFloat(s.dias)||0);
   else if(s.modo==='ate'){ if(s.data){ const dd=Math.round((new Date(s.data+'T00:00:00')-new Date(today+'T00:00:00'))/86400000); qtd=Math.max(0, cd*Math.max(0,dd) - o.est); } }
+  else if(s.modo==='cargas') qtd=Math.max(0,(parseFloat(String(s.cargas).replace(',','.'))||0))*CP_CARGA_KG;
   else if(s.modo==='qtd' || s.modo==='desconto'){ let q=parseFloat(String(s.qtd).replace(',','.'))||0; if(s.unidade==='ton') q*=1000; qtd=q; }
   // No modo "desconto" o preço é DERIVADO do % sobre o preço atual; nos outros, é digitado.
   const descPct=parseFloat(String(s.descPct).replace(',','.'))||0;
@@ -8917,11 +8920,23 @@ function _cpSimResult(o){
   else if(c.ganho<-0.005){ gc='var(--danger)'; g='custa +'+_cpBRL(-c.ganho); }
   else { gc='var(--text3)'; g='igual à referência'; }
   const gsub=Math.abs(du)>0.005?` · ${du<0?'−':'+'}${_cpBRL(Math.abs(du))}/${um}`:'';
+  // Arredondamento p/ CARGA fechada: não dá p/ comprar fração de carga (35 t). Mostra ↓ pra baixo e ↑ pra cima.
+  let cargasBloco='';
+  if(um==='KG' && CP_CARGA_KG>0 && c.qtd>0){
+    const frac=c.qtd/CP_CARGA_KG, piso=Math.floor(frac), teto=Math.ceil(frac);
+    const opt=(nc,seta)=>{ const q=nc*CP_CARGA_KG, cob=c.cd>0?Math.round((o.est+q)/c.cd):null;
+      return `<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0"><span style="font-size:12px;color:var(--text2)"><span style="color:var(--text3);font-weight:700">${seta}</span> <b style="color:var(--text)">${nc} carga${nc===1?'':'s'}</b> · ${_cpNum(q/1000,0)} t</span><span style="font-size:12px;color:var(--text);text-align:right">${_cpBRL(q*c.preco)}${cob!=null?` · ${cob} d`:''}</span></div>`; };
+    cargasBloco=piso===teto
+      ? `<div style="margin-top:9px;padding-top:9px;border-top:1px dashed var(--border);font-size:11.5px;color:var(--text3)">Fecha exatamente <b style="color:var(--text)">${piso} carga${piso===1?'':'s'}</b> (1 carga = 35 t).</div>`
+      : `<div style="margin-top:9px;padding-top:9px;border-top:1px dashed var(--border)">
+        <div style="font-size:11.5px;color:var(--text3);margin-bottom:3px">Dá <b style="color:var(--text)">${_cpNum(frac,1)} cargas</b> — feche em carga cheia (1 carga = 35 t):</div>
+        ${piso>=1?opt(piso,'↓'):''}${opt(teto,'↑')}</div>`;
+  }
   return `${linha('Comprar',_cpNum(c.qtd,0)+' '+um+tRef(c.qtd))}
     ${linha('A preço de',_cpBRL(c.preco)+'/'+um+(c.descPct>0?` <span style="color:var(--success)">(−${c.descPct}%)</span>`:''))}
     ${linha('Custo total',_cpBRL(c.custo))}
     ${linha('vs preço atual ('+_cpBRL(c.precoRef)+')', g+gsub, gc)}
-    ${linha('Estoque depois',_cpNum(c.estDepois,0)+' '+um+(c.cobDepois!=null?' → '+c.cobDepois+' dias (até '+_cpDataFim(c.cobDepois)+')':''))}`;
+    ${linha('Estoque depois',_cpNum(c.estDepois,0)+' '+um+(c.cobDepois!=null?' → '+c.cobDepois+' dias (até '+_cpDataFim(c.cobDepois)+')':''))}${cargasBloco}`;
 }
 function _cpSimHTML(o){
   const s=_cpSim, um=o.um||'';
@@ -8937,10 +8952,11 @@ function _cpSimHTML(o){
   else if(s.modo==='comprarDias') campoModo=`${lb('Comprar')}${inp('dias',s.dias,'','number','46px','min="0"')}${lb('dias de consumo')}`;
   else if(s.modo==='ate') campoModo=`${lb('Estoque durar até')}${inp('data',s.data,'','date','130px')}`;
   else if(s.modo==='qtd') campoModo=`${lb('Comprar')}${inpQtd('104px')}${selUn}`;
+  else if(s.modo==='cargas') campoModo=`${lb('Comprar')}${inp('cargas',s.cargas,'','number','54px','min="0"')}${lb('cargas × 35 t')}`;
   else if(s.modo==='desconto') campoModo=`${lb('Comprar')}${inpQtd('104px')}${selUn}${lb('com')}${inp('descPct',s.descPct,'','number','52px','min="0" max="100"')}${lb('% de desconto')}`;
   return `<div class="cp-card" id="cp-sim" style="padding:15px 17px">
     <div class="cp-card-title"><span>Simulador de compra</span><span class="sub">consumo ${o.consMed?_cpNum(o.consMed,0)+' '+um+'/mês':'—'}</span></div>
-    <div style="margin-bottom:12px">${chip('estoqueDias','Estoque p/ X dias')}${chip('comprarDias','Comprar X dias')}${chip('ate','Até uma data')}${chip('qtd','Quantidade')}${chip('desconto','Desconto %')}</div>
+    <div style="margin-bottom:12px">${chip('estoqueDias','Estoque p/ X dias')}${chip('comprarDias','Comprar X dias')}${chip('ate','Até uma data')}${chip('qtd','Quantidade')}${chip('cargas','Cargas')}${chip('desconto','Desconto %')}</div>
     <div style="display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin-bottom:14px">${campoModo}${s.modo==='desconto'?'':`<span style="color:var(--border)">|</span>${lb('a R$')}${inp('preco',s.preco,_cpNum(precoRef,2),'text','62px')}<span style="font-size:13px;color:var(--text3)">/${um}</span>`}</div>
     <div id="cp-sim-result">${_cpSimResult(o)}</div>
   </div>`;
