@@ -8781,7 +8781,6 @@ function _cpBarChart(serie,campo,fmt,corBase,labFmt,hBar,prevCampo){
   const vals=[]; serie.forEach(s=>{ const a=s[campo]; if(a!=null&&!isNaN(a))vals.push(a); if(prevCampo){ const p=s[prevCampo]; if(p!=null&&!isNaN(p))vals.push(p); } });
   const max=vals.length?Math.max.apply(null,vals):1;
   const H=hBar||96;
-  const step=Math.max(1,Math.ceil(serie.length/13)); // muitos meses (2025+2026): rotula 1 a cada N p/ não sobrepor
   return `<div style="display:flex;gap:2px;align-items:flex-end;overflow-x:hidden;padding-bottom:2px">`+
     serie.map((s,i)=>{ const v=s[campo], has=(v!=null && !isNaN(v));
       const pv=prevCampo?s[prevCampo]:null, isPrev=!has && (pv!=null && !isNaN(pv));
@@ -8795,7 +8794,7 @@ function _cpBarChart(serie,campo,fmt,corBase,labFmt,hBar,prevCampo){
       const tt=isPrev?(_cpMesLongo(s.ym)+': ~'+fmt(pv)+' · previsão'):(_cpMesLongo(s.ym)+': '+(has?fmt(v):'sem dado'));
       return `<div class="cp-clic" onclick="_cpItemSetMes('${s.ym}')" title="${tt}" style="flex:1 1 0;min-width:0;text-align:center">
         <div style="height:${H+13}px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end">${serie.length<=13?lab:''}<div style="width:78%;height:${h}px;border-radius:3px 3px 0 0;${barStyle}"></div></div>
-        <div style="font-size:9px;color:${sel?'var(--text)':'var(--text3)'};font-weight:${sel?700:400};margin-top:3px;white-space:nowrap">${(i%step===0)?s.lbl:''}</div>
+        <div style="height:26px;position:relative;margin-top:1px"><span style="position:absolute;top:1px;right:50%;font-size:8px;color:${sel?'var(--text)':'var(--text3)'};font-weight:${sel?700:400};white-space:nowrap;transform:rotate(-45deg);transform-origin:100% 0">${s.lbl}</span></div>
       </div>`;
     }).join('')+`</div>`;
 }
@@ -9004,7 +9003,7 @@ function _cpIndicadoresCard(o){
   const rows=[
     ['Necessidade atual', necVal],
     ['Em estoque', _cpNum(o.est,2)+' '+um],
-    ['Consumo/mês', o.consMed?_cpNum(o.consMed,0)+' '+um:'—', 'fonte: export de consumo do ERP · média mensal (jan–jul/26)'],
+    ['Consumo/mês', o.consMed?_cpNum(o.consMed,0)+' '+um:'—', 'jan–jul/26'],
     ['Cobertura', cob],
     ['Estoque mínimo', pend],
     ['Ponto de ressuprimento', pend],
@@ -9018,7 +9017,7 @@ function _cpIndicadoresCard(o){
     <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
       <span style="font-size:12px;color:var(--text3)">${r[0]}</span>
       <span style="font-size:12.5px;font-weight:600;color:var(--text);text-align:right">${r[1]}</span></div>
-    ${r[2]?`<div style="font-size:10px;color:var(--text3);font-style:italic;margin-top:2px;line-height:1.35"><i class="ti ti-database" style="font-size:11px"></i> ${r[2]}</div>`:''}</div>`).join('');
+    ${r[2]?`<div style="font-size:10px;color:var(--text3);font-style:italic;margin-top:2px;line-height:1.35">${r[2]}</div>`:''}</div>`).join('');
   const janela=nec.semDado?'':`<div style="margin-top:11px;padding:10px 12px;background:color-mix(in srgb, ${nec.cor} 8%, transparent);border:1px solid color-mix(in srgb, ${nec.cor} 32%, transparent);border-radius:9px">
     <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:${nec.cor}"><i class="ti ti-calendar-clock" style="font-size:14px"></i> Janela de negociação</div>
     <div style="font-size:12px;color:var(--text2);line-height:1.55;margin-top:6px">Estoque cobre até <b style="color:var(--text)">~${nec.dataFim}</b> (${escapeHTML(nec.mes)}). Uma negociação leva ~${nec.prazoNeg} dias, então ${nec.diasNeg<=0?`a janela já <b style="color:${nec.cor}">começou</b> — comece a negociar <b style="color:${nec.cor}">agora</b>.`:`inicie a negociação até <b style="color:var(--text)">${nec.dataNeg}</b> <span style="color:var(--text3)">(em ${nec.diasNeg} dia${nec.diasNeg!==1?'s':''})</span>.`}</div>
@@ -9211,7 +9210,7 @@ function _cpMacroCard(o){
     <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
       <span style="font-size:12px;color:var(--text3)">${r[0]}</span>
       <span style="font-size:12.5px;font-weight:600;color:var(--text);text-align:right">${r[1]}</span></div>
-    ${r[2]?`<div style="font-size:10px;color:var(--text3);font-style:italic;margin-top:2px;line-height:1.35"><i class="ti ti-database" style="font-size:11px"></i> ${r[2]}</div>`:''}</div>`).join('');
+    ${r[2]?`<div style="font-size:10px;color:var(--text3);font-style:italic;margin-top:2px;line-height:1.35">${r[2]}</div>`:''}</div>`).join('');
   return `<div class="cp-card" style="padding:14px 16px;margin-bottom:14px">
     <div class="cp-card-title"><span>Indicadores macroeconômicos</span></div>
     <div style="margin-top:4px">${li}</div>
