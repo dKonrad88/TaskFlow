@@ -8776,7 +8776,7 @@ function _cpSerieComPrev(o,serie){
   }
   return out;
 }
-const _cpLegPrev='<span style="display:inline-flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border:1.5px dotted var(--success);border-radius:2px;display:inline-block;vertical-align:middle"></span>previsão simulada</span>';
+const _cpLegPrev='<span style="display:inline-flex;align-items:center;gap:4px"><span style="width:10px;height:9px;background:color-mix(in srgb, var(--success) 22%, transparent);border-top:2px solid var(--success);border-radius:2px 2px 0 0;display:inline-block;vertical-align:middle"></span>previsão simulada</span>';
 function _cpBarChart(serie,campo,fmt,corBase,labFmt,hBar,prevCampo){
   const vals=[]; serie.forEach(s=>{ const a=s[campo]; if(a!=null&&!isNaN(a))vals.push(a); if(prevCampo){ const p=s[prevCampo]; if(p!=null&&!isNaN(p))vals.push(p); } });
   const max=vals.length?Math.max.apply(null,vals):1;
@@ -8790,7 +8790,7 @@ function _cpBarChart(serie,campo,fmt,corBase,labFmt,hBar,prevCampo){
       const sel=(_cpItemMes===s.ym) && !isPrev;
       const cor=sel?'var(--blue-mid)':(corBase||'color-mix(in srgb, var(--blue-mid) 50%, var(--card))');
       // barra real = preenchida; previsão = só a borda verde pontilhada (transparente por dentro).
-      const barStyle=isPrev?`background:transparent;border:1.5px dotted var(--success);border-bottom:none;box-sizing:border-box`:`background:${cor};${sel?'box-shadow:0 0 0 2px var(--blue-mid)':''}`;
+      const barStyle=isPrev?`background:color-mix(in srgb, var(--success) 22%, transparent);border-top:2.5px solid var(--success);box-sizing:border-box`:`background:${cor};${sel?'box-shadow:0 0 0 2px var(--blue-mid)':''}`;
       const lab=(labFmt && val!=null && val>0)?`<div style="font-size:8px;font-weight:600;color:${isPrev?'var(--success)':(sel?'var(--text)':'var(--text3)')};line-height:1;margin-bottom:2px;white-space:nowrap">${labFmt(val)}</div>`:'';
       const tt=isPrev?(_cpMesLongo(s.ym)+': ~'+fmt(pv)+' · previsão'):(_cpMesLongo(s.ym)+': '+(has?fmt(v):'sem dado'));
       return `<div class="cp-clic" onclick="_cpItemSetMes('${s.ym}')" title="${tt}" style="flex:1 1 0;min-width:0;text-align:center">
@@ -9004,7 +9004,7 @@ function _cpIndicadoresCard(o){
   const rows=[
     ['Necessidade atual', necVal],
     ['Em estoque', _cpNum(o.est,2)+' '+um],
-    ['Consumo/mês', o.consMed?_cpNum(o.consMed,0)+' '+um:'—'],
+    ['Consumo/mês', o.consMed?_cpNum(o.consMed,0)+' '+um:'—', 'fonte: export de consumo do ERP · média mensal (jan–jul/26)'],
     ['Cobertura', cob],
     ['Estoque mínimo', pend],
     ['Ponto de ressuprimento', pend],
@@ -9014,9 +9014,11 @@ function _cpIndicadoresCard(o){
     ['Valor em estoque', o.valor?_cpBRL(o.valor):'—'],
     ['Compras no período', _cpNum(o.compras.length)]
   ];
-  const li=rows.map((r,i)=>`<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:5px 0;${i<rows.length-1?'border-bottom:1px solid var(--border)':''}">
-    <span style="font-size:12px;color:var(--text3)">${r[0]}</span>
-    <span style="font-size:12.5px;font-weight:600;color:var(--text);text-align:right">${r[1]}</span></div>`).join('');
+  const li=rows.map((r,i)=>`<div style="padding:5px 0;${i<rows.length-1?'border-bottom:1px solid var(--border)':''}">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
+      <span style="font-size:12px;color:var(--text3)">${r[0]}</span>
+      <span style="font-size:12.5px;font-weight:600;color:var(--text);text-align:right">${r[1]}</span></div>
+    ${r[2]?`<div style="font-size:10px;color:var(--text3);font-style:italic;margin-top:2px;line-height:1.35"><i class="ti ti-database" style="font-size:11px"></i> ${r[2]}</div>`:''}</div>`).join('');
   const janela=nec.semDado?'':`<div style="margin-top:11px;padding:10px 12px;background:color-mix(in srgb, ${nec.cor} 8%, transparent);border:1px solid color-mix(in srgb, ${nec.cor} 32%, transparent);border-radius:9px">
     <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:${nec.cor}"><i class="ti ti-calendar-clock" style="font-size:14px"></i> Janela de negociação</div>
     <div style="font-size:12px;color:var(--text2);line-height:1.55;margin-top:6px">Estoque cobre até <b style="color:var(--text)">~${nec.dataFim}</b> (${escapeHTML(nec.mes)}). Uma negociação leva ~${nec.prazoNeg} dias, então ${nec.diasNeg<=0?`a janela já <b style="color:${nec.cor}">começou</b> — comece a negociar <b style="color:${nec.cor}">agora</b>.`:`inicie a negociação até <b style="color:var(--text)">${nec.dataNeg}</b> <span style="color:var(--text3)">(em ${nec.diasNeg} dia${nec.diasNeg!==1?'s':''})</span>.`}</div>
@@ -9205,9 +9207,11 @@ function _cpMacroCard(o){
   ];
   if(m.entressafraLabel) rows.push(['Entressafra', escapeHTML(m.entressafraLabel)]);
   (m.indicadores||[]).forEach(it=>rows.push([escapeHTML(it.lab), `${escapeHTML(it.val)} &nbsp;${mini(it.dir)}`]));
-  const li=rows.map((r,i)=>`<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:5px 0;${i<rows.length-1?'border-bottom:1px solid var(--border)':''}">
-    <span style="font-size:12px;color:var(--text3)">${r[0]}</span>
-    <span style="font-size:12.5px;font-weight:600;color:var(--text);text-align:right">${r[1]}</span></div>`).join('');
+  const li=rows.map((r,i)=>`<div style="padding:5px 0;${i<rows.length-1?'border-bottom:1px solid var(--border)':''}">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
+      <span style="font-size:12px;color:var(--text3)">${r[0]}</span>
+      <span style="font-size:12.5px;font-weight:600;color:var(--text);text-align:right">${r[1]}</span></div>
+    ${r[2]?`<div style="font-size:10px;color:var(--text3);font-style:italic;margin-top:2px;line-height:1.35"><i class="ti ti-database" style="font-size:11px"></i> ${r[2]}</div>`:''}</div>`).join('');
   return `<div class="cp-card" style="padding:14px 16px;margin-bottom:14px">
     <div class="cp-card-title"><span>Indicadores macroeconômicos</span></div>
     <div style="margin-top:4px">${li}</div>
