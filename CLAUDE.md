@@ -422,6 +422,43 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-07-28 (b) — PC da Empresa — COMPRAS (ficha do Amendoim): notícias ATUALIZADAS com dados REAIS da web (mercado virou p/ BAIXA) + rótulos de TODOS os meses + resolvida divergência de 9 commits do Mac
+Sessão curta na volta do Mac pro **PC da Empresa**. **Tudo commitado E pushado; `main == origin == 404b080c`; working tree limpo.**
+Verificação: **preview local (:8899)** por DOM/JS — **0 erros de console** em tudo. ⚠️ Screenshot/medição de px seguem dando 0 aqui
+(headless) → o **visual fino o Diego confere no Pages (Ctrl+Shift+R)**. A rede da Empresa derrubou push/fetch (443) algumas vezes; todos passaram na re-tentativa.
+
+**⚠️ RESOLVIDA DIVERGÊNCIA (importante — leia):** ao pushar, o remoto tinha **9 commits do Mac** (entradas (a) 07-28 … (d) 07-26 abaixo:
+consumo real 2025, "Todas as compras" removido, Preço médio reformulado, e vários de Projetos). Segui a regra: **nada de force-push nem
+pull cego** — backup, `fetch`, análise, e **`git rebase origin/main`** do meu 1 commit. O git **mesclou automático, sem conflito** (minha
+linha `barStyle` e a linha de rótulo do Mac no mesmo `_cpBarChart` eram linhas diferentes). Validei no navegador que **as duas coisas
+convivem**. **Nada de nenhuma máquina foi perdido.** Backup em `backups/index.pre-rebase-*.html`.
+
+**O que fiz nesta sessão (Compras › ficha do item):**
+- ⭐ **NOTÍCIAS DO AMENDOIM ATUALIZADAS COM DADOS REAIS** (`4a9648e5`) — usei **WebSearch/WebFetch** (Diego pediu "buscar na web e
+  atualizar"). O quadro **VIROU**: era 'alta', **agora é viés de BAIXA**. Fatos de jul/2026: safra BR 2025/26 **RECORDE (~1,2 Mt)**;
+  exportação de descascado 311 mil t (+37%) e óleo triplicou (154 mil t); **demanda externa fraca + real valorizado**; Argentina cortou
+  área 24% (406 mil ha); oferta global ampla (~51,5 Mt, estoques acima da média, preço ~US$1.250/t). **Tendência = 'baixa'** (reflete no
+  card Indicadores como "Baixa ↓" vermelho). Reescrevi resumo/macro/itens/fatores/cenários/leitura/estimativa/comprador; **cada notícia
+  cita a fonte real** (Ceasa/Ceagesp, Gov.PR, Camda, Brasilagro, Campo&Negócios/InvestSP, DatamarNews, USDA, Tridge). Gráfico da saca
+  (IEA-SP) e janelas de acompanhamento mantidos. 📌 **WebSearch está disponível — dá pra reusar p/ atualizar mercado de outros itens.**
+- ⭐ **RÓTULOS DE TODOS OS MESES no gráfico Consumo** (`404b080c`) — **este era o "intercalado" que o Diego reclamava desde o começo**
+  (não era o preenchimento das barras): o Mac tinha posto um `step` (`_cpBarChart`, rotula 1 a cada 2) → uns meses sumiam. Removi o step;
+  agora **TODAS as barras mostram o mês**, **inclinados a -45°** p/ caber com ~25 barras (jan/25→jan/27).
+- **Previsão de consumo** (`9d49ba09`): as barras verdes deixaram de ser **só borda pontilhada** (ficava com aspecto de pontinhos
+  espalhados) → agora **verde TRANSLÚCIDO (fill 22%) + topo verde sólido**. Legenda atualizada.
+- **Consumo/mês (card Indicadores):** as linhas passaram a aceitar um 3º campo de "nota"; a linha Consumo/mês mostra **só o período
+  `jan–jul/26`** (o Diego primeiro pediu a fonte, depois "só o período, nada mais" — tirei o texto "export de consumo…" e o ícone).
+
+> ▶ **RETOMAR (nova sessão) — COMPRAS v4 segue o próximo passo** (📌 BACKLOG ACORDADO). Nada quebrado; ficha do Amendoim é a cobaia mais
+> completa. ⚠️ **Na próxima máquina: `git pull` no começo + (se editar DADOS) ☁️ → Baixar da nuvem antes.** A **rota `tf_route`** (refresh
+> mantém a tela) é **por aparelho** — cada máquina abre onde ELA parou. E ⚠️ **o tráfego multi-máquina está intenso** (Empresa + Mac
+> editando Compras ao mesmo tempo hoje) → **`git fetch` religioso antes de editar/commitar** (uma divergência de 9 commits já aconteceu
+> nesta sessão e foi resolvida por rebase).
+
+**Marcadores "exemplo / a cadastrar" (o que ainda NÃO sai dos exports):** OCs em aberto (`_CP_OC`), estoque mínimo/ponto de ressuprimento,
+prazo de negociação (15d, `CP_PRAZO_NEG`), lead time de entrega, prazo de pagamento, previsão de consumo (`_cpSerieComPrev`, simulada). As
+notícias/macro do Amendoim agora são **dados reais de jul/2026** (não mais "exemplo"), com fonte citada.
+
 ### 2026-07-28 (a) — Mac de casa — COMPRAS: consumo REAL de 2025 acrescentado (23 itens de amendoim) + gráfico de barras cabe sem scroll + preço médio de volta ao tamanho normal
 - **Consumo 2025** (planilha `ConsumoEstoqueAmendoim2025` do Diego, lida via openpyxl): 23 itens de amendoim, 12 meses. Antes o gráfico de consumo só tinha **2026** (7 meses reais + previsão); agora mostra **2025 (real) + 2026**, alinhado com os gráficos de preço/valor (que já iam de jan/25 a jul/26). Escopo confirmado pelo Diego: estender (não substituir) + TODOS os 23 itens.
   - **`_CP_CONS_25`** (novo, logo após `_CP_CONS`): `[[cod,nome,um,[12 meses]]…]`, `null` = mês sem consumo. Preenche **`o.cons25`** no mesmo forEach de `_CP_CONS` (~8486).
