@@ -422,6 +422,16 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-07-28 (a) — Mac de casa — COMPRAS: consumo REAL de 2025 acrescentado (23 itens de amendoim) + gráfico de barras cabe sem scroll + preço médio de volta ao tamanho normal
+- **Consumo 2025** (planilha `ConsumoEstoqueAmendoim2025` do Diego, lida via openpyxl): 23 itens de amendoim, 12 meses. Antes o gráfico de consumo só tinha **2026** (7 meses reais + previsão); agora mostra **2025 (real) + 2026**, alinhado com os gráficos de preço/valor (que já iam de jan/25 a jul/26). Escopo confirmado pelo Diego: estender (não substituir) + TODOS os 23 itens.
+  - **`_CP_CONS_25`** (novo, logo após `_CP_CONS`): `[[cod,nome,um,[12 meses]]…]`, `null` = mês sem consumo. Preenche **`o.cons25`** no mesmo forEach de `_CP_CONS` (~8486).
+  - **`_cpItemSerie`**: 2025 entra no eixo (`if(o.cons25) …set.add('2025-'+mm)`) e no consumo (`y===2025 ? o.cons25[m-1]`). Label do card `(2026)` → **`(2025–26)`** (2 lugares: Resumo + Gráfico). Comprovado: série do Amendoim = 12 meses de 2025 (jan 21200…dez 18160) + 7 de 2026, tudo batendo com a planilha. Os 23 itens têm `cons25`.
+- **`_cpBarChart` — cabe sem scroll:** com 25 meses (2025+2026+previsão) as barras estouravam a meia-largura (scroll horizontal). Trocado `flex:1 0 20px` → **`flex:1 1 0;min-width:0`** (barras encolhem p/ caber), `overflow-x:auto`→`hidden`, rótulo de mês só **1 a cada `step=ceil(n/13)`** (não sobrepõe) e rótulo de VALOR só quando `n<=13` (com muitos meses o valor fica no tooltip). Serve Consumo E Valor.
+- **Preço médio de volta ao tamanho normal:** o Diego achou grande demais em largura total → voltou pro grid de 2 colunas (mesmo tamanho dos demais; a 2ª linha fica só com ele à esquerda).
+- ⚠️ **Pendências:** (1) o dado de 2025 é só dos **23 itens de amendoim**; os demais insumos seguem só com 2026. (2) `consMed`/`consTot` (média usada pelo **Simulador** e pela cobertura) ainda são de **2026** — NÃO misturei 2025 na média (o simulador quer a média recente); se o Diego quiser a média incluir 2025, é recalcular `o.consMed` a partir de cons25+cons. (3) Só o Amendoim tem preço/compras ricos; os outros 22 itens têm consumo 2025 mas o resto da ficha varia.
+- Testado no navegador (tema escuro do Diego), jsc SYNTAX_OK.
+
+
 ### 2026-07-27 (b) — Mac de casa — COMPRAS: removido o gráfico "Todas as compras" (redundante) + Preço médio em largura total
 - Diego: depois do Preço médio virar azul+verde/vermelho, o **Todas as compras** ficou "quase a mesma coisa" → tirar.
 - Em `_cpFichaGraficos`: removida a chamada `graf('Todas as compras',…,_cpComprasLine(o))`. Reorg do layout: as 2 barras (Consumo · Valor) seguem no grid de 2 colunas; o **Preço médio** saiu do grid e agora ocupa a **largura total** abaixo (mais destaque, bolinhas bem legíveis). Não mexi no helper `graf` (é duplicado em `_cpFichaResumo` 8956 e `_cpFichaGraficos` 9387).
