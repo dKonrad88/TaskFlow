@@ -1637,7 +1637,7 @@
 
 
   .app-body{display:flex;min-height:calc(100vh - 56px)}
-  .sidebar{width:var(--sidebar-w,280px);flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);padding:10px 0 24px;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;transition:width .2s;scrollbar-width:none}
+  .sidebar{width:var(--sidebar-w,248px);flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);padding:10px 0 24px;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;transition:width .2s;scrollbar-width:none}
   /* Regulador de largura da sidebar — alça fina na borda direita (arrastar p/ redimensionar). */
   .sidebar-resizer{flex-shrink:0;width:6px;cursor:col-resize;position:sticky;top:56px;height:calc(100vh - 56px);background:transparent;transition:background .15s;z-index:50;touch-action:none}
   .sidebar-resizer::before{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:34px;border-radius:99px;background:var(--border);opacity:0;transition:opacity .15s}
@@ -5871,7 +5871,7 @@ function _applySidebarVisibilityState(){
 // Cada usuário arrasta a alça na borda direita da sidebar e define a largura que
 // quiser (persistida por aparelho em LS_SIDEBAR_WIDTH). Duplo-clique volta ao padrão.
 const LS_SIDEBAR_WIDTH = 'taskflow_sidebar_width';
-const SIDEBAR_W_MIN = 200, SIDEBAR_W_MAX = 560, SIDEBAR_W_DEFAULT = 280;
+const SIDEBAR_W_MIN = 200, SIDEBAR_W_MAX = 560, SIDEBAR_W_DEFAULT = 248;
 function _applySidebarWidth(px){
   const w = Math.round(Math.min(SIDEBAR_W_MAX, Math.max(SIDEBAR_W_MIN, px||SIDEBAR_W_DEFAULT)));
   document.documentElement.style.setProperty('--sidebar-w', w+'px');
@@ -6537,37 +6537,10 @@ function hubGroupDivider(label){
 function hubMeuDiaItem(ativo, inline){
   // Variante inline: compacta, fica na linha de controles (à esquerda dos ícones).
   if(inline){
-    if(meuDiaFormato()==='plano'){
-      // Plano (padrão): SEM borda e SEM fundo (pedido do Diego) — item de navegação normal, ícone de casa.
-      const p='display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:700; box-sizing:border-box; font-family:inherit; margin-right:auto; white-space:nowrap; padding:5px 6px; border-radius:8px; background:none; border:none; transition:background .15s, color .15s;';
-      if(ativo) return `<button style="${p} color:var(--text); cursor:default;"><i class="ti ti-home"></i> <span>Início</span></button>`;
-      return `<button onclick="voltarMeuDia()" style="${p} color:var(--text2); cursor:pointer;" onmouseover="this.style.background='color-mix(in srgb, var(--text) 7%, transparent)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text2)'"><i class="ti ti-home"></i> <span>Início</span></button>`;
-    }
-    const corId=meuDiaCorId();
-    const ehBrasil=corId==='brasil';
-    const cor=ehBrasil?'#009739':meuDiaCor();
-    const txtFill=ehBrasil?'#FFDF00':'#fff';
-    const comum='display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:700; box-sizing:border-box; font-family:inherit; margin-right:auto; white-space:nowrap;';
-    if(meuDiaFormato()==='3d'){
-      // Formato 3D: corpo com gradiente, aresta inferior sólida + sombra + brilho interno; afunda ao clicar.
-      const grad=`linear-gradient(180deg, color-mix(in srgb, ${cor} 80%, #fff), ${cor} 55%, color-mix(in srgb, ${cor} 82%, #000))`;
-      const edge=`color-mix(in srgb, ${cor} 45%, #000)`;
-      const up=`0 4px 0 ${edge}, 0 6px 7px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.45)`;
-      const down=`0 1px 0 ${edge}, 0 2px 4px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.3)`;
-      const baseI = comum+` padding:6px 13px; border-radius:10px; color:${txtFill}; background:${grad}; border:none; box-shadow:${up}; text-shadow:0 1px 1px rgba(0,0,0,.28); transition:transform .08s, box-shadow .08s;`;
-      if(ativo){
-        return `<button style="${baseI} cursor:default;"><i class="ti ti-sun"></i> <span>Início</span></button>`;
-      }
-      return `<button onclick="voltarMeuDia()" style="${baseI} cursor:pointer;" onmousedown="this.style.transform='translateY(3px)';this.style.boxShadow='${down}'" onmouseup="this.style.transform='none';this.style.boxShadow='${up}'" onmouseout="this.style.transform='none';this.style.boxShadow='${up}'"><i class="ti ti-sun"></i> <span>Início</span></button>`;
-    }
-    // Formato suave (padrão): fundo claro com texto/borda na cor escolhida (Brasil = verde com amarelo).
-    const baseI = ehBrasil
-      ? comum+` padding:5px 11px; border-radius:8px; color:#FFDF00; background:#009739; border:1.5px solid #FFDF00; transition:filter .15s;`
-      : comum+` padding:5px 11px; border-radius:8px; color:${cor}; background:color-mix(in srgb, ${cor} 14%, transparent); border:1.5px solid color-mix(in srgb, ${cor} 40%, transparent); transition:filter .15s;`;
-    if(ativo){
-      return `<button style="${baseI} cursor:default;"><i class="ti ti-sun"></i> <span>Início</span></button>`;
-    }
-    return `<button onclick="voltarMeuDia()" style="${baseI} cursor:pointer;" onmouseover="this.style.filter='brightness(.96)'" onmouseout="this.style.filter='none'"><i class="ti ti-sun"></i> <span>Início</span></button>`;
+    // "Início" PLANO fixo — sem borda e sem fundo, ícone de casa (pedido do Diego; não depende mais de config).
+    const p='display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:700; box-sizing:border-box; font-family:inherit; margin-right:auto; white-space:nowrap; padding:5px 6px; border-radius:8px; background:none; border:none; transition:background .15s, color .15s;';
+    if(ativo) return `<button style="${p} color:var(--text); cursor:default;"><i class="ti ti-home"></i> <span>Início</span></button>`;
+    return `<button onclick="voltarMeuDia()" style="${p} color:var(--text2); cursor:pointer;" onmouseover="this.style.background='color-mix(in srgb, var(--text) 7%, transparent)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text2)'"><i class="ti ti-home"></i> <span>Início</span></button>`;
   }
   const base = 'display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:9px; font-size:13px; font-weight:600; color:var(--blue-mid); background:none; border:1.5px solid var(--blue-mid); box-sizing:border-box; width:100%; font-family:inherit; transition:background .15s;';
   if(ativo){
@@ -16048,44 +16021,6 @@ function renderConfiguracoes(){
         }).join('')}</div>`
       )}
 
-      ${cardCompacto('ti-droplet','var(--pink)','Cor do botão "Meu dia!"',
-        'Cada um escolhe a cor que mais combina',
-        `<div style="display:flex;gap:8px;flex-wrap:wrap">${MEUDIA_CORES.map(c=>{
-          const at=meuDiaCorId()===c.id;
-          return `<button onclick="setMeuDiaCor('${c.id}')" title="${c.label}" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 14px;border-radius:10px;border:2px solid ${at?c.cor:'var(--border)'};background:${at?`color-mix(in srgb, ${c.cor} 10%, transparent)`:'var(--bg2)'};cursor:pointer;font-family:inherit;transition:all .15s;min-width:72px">
-            ${c.id==='brasil'
-              ? `<span style="width:22px;height:22px;border-radius:99px;background:conic-gradient(#009739 0 50%, #FFDF00 50% 100%);border:1px solid #006b29"></span>`
-              : `<span style="width:22px;height:22px;border-radius:99px;background:${c.cor};border:1px solid color-mix(in srgb, ${c.cor} 55%, #000)"></span>`}
-            <span style="font-size:11px;font-weight:700;color:${at?c.cor:'var(--text2)'}">${c.label}</span>
-            ${at?`<i class="ti ti-circle-check-filled" style="font-size:13px;color:${c.cor}"></i>`:''}
-          </button>`;
-        }).join('')}</div>`
-      )}
-
-      ${cardCompacto('ti-click','var(--blue-mid)','Formato do botão "Meu dia!"',
-        'Escolha o estilo do botão na barra lateral',
-        `<div style="display:flex;gap:10px;flex-wrap:wrap">${[{id:'plano',label:'Plano'},{id:'suave',label:'Cor'},{id:'3d',label:'3D'}].map(fmt=>{
-          const at=meuDiaFormato()===fmt.id;
-          const ehBr=meuDiaCorId()==='brasil';
-          const cor=ehBr?'#009739':meuDiaCor();
-          const txt=ehBr?'#FFDF00':'#fff';
-          let prev;
-          if(fmt.id==='plano'){
-            prev=`<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 6px;font-size:11.5px;font-weight:700;color:var(--text2)"><i class="ti ti-home"></i>Início</span>`;
-          } else if(fmt.id==='3d'){
-            const grad=`linear-gradient(180deg, color-mix(in srgb, ${cor} 80%, #fff), ${cor} 55%, color-mix(in srgb, ${cor} 82%, #000))`;
-            prev=`<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:10px;font-size:11.5px;font-weight:700;color:${txt};background:${grad};box-shadow:0 4px 0 color-mix(in srgb, ${cor} 45%, #000),0 6px 7px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.45);text-shadow:0 1px 1px rgba(0,0,0,.28)"><i class="ti ti-sun"></i>Meu dia!</span>`;
-          } else if(ehBr){
-            prev=`<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:8px;font-size:11.5px;font-weight:700;color:#FFDF00;background:#009739;border:1.5px solid #FFDF00"><i class="ti ti-sun"></i>Meu dia!</span>`;
-          } else {
-            prev=`<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:8px;font-size:11.5px;font-weight:700;color:${cor};background:color-mix(in srgb, ${cor} 14%, transparent);border:1.5px solid color-mix(in srgb, ${cor} 40%, transparent)"><i class="ti ti-sun"></i>Meu dia!</span>`;
-          }
-          return `<button onclick="setMeuDiaFormato('${fmt.id}')" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 16px;border-radius:10px;border:2px solid ${at?'var(--blue-mid)':'var(--border)'};background:${at?'color-mix(in srgb,var(--blue-mid) 8%,transparent)':'var(--bg2)'};cursor:pointer;font-family:inherit;transition:all .15s">
-            ${prev}
-            <span style="font-size:11px;font-weight:700;color:${at?'var(--blue-mid)':'var(--text2)'};display:inline-flex;align-items:center;gap:4px">${fmt.label}${at?'<i class="ti ti-circle-check-filled" style="font-size:12px"></i>':''}</span>
-          </button>`;
-        }).join('')}</div>`
-      )}
 
       ` : ''}
         ${_cfgTab==='notif' ? `${secaoHeader('🔔 Sininho Klain')}
