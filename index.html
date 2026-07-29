@@ -1637,7 +1637,7 @@
 
 
   .app-body{display:flex;min-height:calc(100vh - 56px)}
-  .sidebar{width:var(--sidebar-w,248px);flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);padding:10px 0 24px;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;transition:width .2s;scrollbar-width:none}
+  .sidebar{width:var(--sidebar-w,211px);flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);padding:10px 0 24px;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;transition:width .2s;scrollbar-width:none}
   /* Regulador de largura da sidebar — alça fina na borda direita (arrastar p/ redimensionar). */
   .sidebar-resizer{flex-shrink:0;width:6px;cursor:col-resize;position:sticky;top:56px;height:calc(100vh - 56px);background:transparent;transition:background .15s;z-index:50;touch-action:none}
   .sidebar-resizer::before{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:34px;border-radius:99px;background:var(--border);opacity:0;transition:opacity .15s}
@@ -5871,7 +5871,7 @@ function _applySidebarVisibilityState(){
 // Cada usuário arrasta a alça na borda direita da sidebar e define a largura que
 // quiser (persistida por aparelho em LS_SIDEBAR_WIDTH). Duplo-clique volta ao padrão.
 const LS_SIDEBAR_WIDTH = 'taskflow_sidebar_width';
-const SIDEBAR_W_MIN = 200, SIDEBAR_W_MAX = 560, SIDEBAR_W_DEFAULT = 248;
+const SIDEBAR_W_MIN = 200, SIDEBAR_W_MAX = 560, SIDEBAR_W_DEFAULT = 211;
 function _applySidebarWidth(px){
   const w = Math.round(Math.min(SIDEBAR_W_MAX, Math.max(SIDEBAR_W_MIN, px||SIDEBAR_W_DEFAULT)));
   document.documentElement.style.setProperty('--sidebar-w', w+'px');
