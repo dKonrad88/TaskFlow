@@ -10285,7 +10285,7 @@ function _orgChartHTML(){
   if(!_orgData) return '<div style="color:var(--text3);font-size:13px">Organograma vazio.</div>';
   return `<div class="org-wrap"><div class="org"><ul>${_orgNodeHTML(_orgData)}</ul></div></div>`;
 }
-function _orgRender(){ const r=document.getElementById('org-root'); if(r) r.innerHTML=_orgChartHTML(); }
+function _orgRender(){ const r=document.getElementById('org-root'); if(r){ r.innerHTML=_orgChartHTML(); requestAnimationFrame(_orgFit); } }
 function _orgEditar(id){ _orgEditId=id; _orgRender(); const el=document.getElementById('org-nome-'+id); if(el){ el.focus(); try{el.select();}catch(e){} } }
 function _orgCancelar(){ _orgEditId=null; _orgRender(); }
 function _orgSalvar(id){ const n=_orgFind(id); if(n){ const ne=document.getElementById('org-nome-'+id), ce=document.getElementById('org-cargo-'+id); if(ne) n.nome=(ne.value||'').trim()||'—'; if(ce) n.cargo=(ce.value||'').trim(); _orgSave(); } _orgEditId=null; _orgRender(); }
@@ -10295,12 +10295,28 @@ function _orgSetModo(m){ _orgModo=m; _orgEditId=null; renderRH(); }
 function _orgRestaurarExemplo(){ confirmModal({title:'Restaurar exemplo', message:'Substituir o organograma atual pelo exemplo? As alterações serão perdidas.', danger:true, confirmLabel:'Restaurar', onConfirm:()=>{ _orgData=_orgSeed(); _orgSave(); _orgEditId=null; _orgModo='ver'; renderRH(); } }); }
 function _orgToolbarHTML(){
   const seg=(m,ic,lab)=>`<button onclick="_orgSetModo('${m}')" style="display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid ${_orgModo===m?'var(--blue-mid)':'var(--border)'};background:${_orgModo===m?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--card)'};color:${_orgModo===m?'var(--blue-mid)':'var(--text2)'};font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;border-radius:8px;margin-right:6px"><i class="ti ${ic}"></i>${lab}</button>`;
+  const foco=document.body.classList.contains('org-focus');
+  const btn='display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border-radius:8px';
   return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px">
     <div>${seg('ver','ti-eye','Visualizar')}${seg('editar','ti-pencil','Editar')}</div>
     ${_orgModo==='editar'?`<span style="font-size:11.5px;color:var(--text3)">Passe o mouse num cartão: <i class="ti ti-pencil"></i> editar · <i class="ti ti-plus"></i> adicionar abaixo · <i class="ti ti-trash"></i> excluir</span>`:''}
-    <button onclick="_orgRestaurarExemplo()" style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border-radius:8px"><i class="ti ti-refresh"></i>Restaurar exemplo</button>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button onclick="_orgToggleFoco()" style="${btn}">${foco?'<i class="ti ti-arrows-minimize"></i>Reduzir':'<i class="ti ti-arrows-maximize"></i>Tela cheia'}</button>
+      <button onclick="_orgRestaurarExemplo()" style="${btn}"><i class="ti ti-refresh"></i>Restaurar exemplo</button>
+    </div>
   </div>`;
 }
+// Fit-to-width: no modo Visualizar, escala a árvore p/ caber na largura (sem scroll lateral). No Editar fica em tamanho real.
+function _orgFit(){
+  const wrap=document.querySelector('.org-wrap'), org=document.querySelector('.org'); if(!wrap||!org) return;
+  org.style.transform='none'; org.style.transformOrigin='top left'; wrap.style.height='';
+  if(_orgModo==='editar'){ wrap.style.overflow='auto'; return; }
+  const natW=org.scrollWidth, natH=org.scrollHeight, availW=wrap.clientWidth-2;
+  // availW>80: guarda contra estado de layout degenerado (largura ~0); aí deixa natural+scroll e re-tenta no próximo resize/render.
+  if(natW>availW+1 && availW>80){ const s=availW/natW; org.style.transform='scale('+s+')'; wrap.style.height=Math.ceil(natH*s+4)+'px'; wrap.style.overflow='hidden'; }
+  else { wrap.style.overflow='auto'; }
+}
+function _orgToggleFoco(){ document.body.classList.toggle('org-focus'); renderRH(); }
 function renderRH(){
   const main=document.getElementById('task-container'); if(!main) return;
   const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
@@ -10316,7 +10332,7 @@ function renderRH(){
         .org-wrap{overflow:auto;padding:6px 2px 26px}
         .org{display:inline-block;min-width:100%}
         .org ul{padding-top:22px;position:relative;white-space:nowrap;margin:0}
-        .org li{display:inline-block;vertical-align:top;text-align:center;list-style:none;position:relative;padding:22px 7px 0}
+        .org li{display:inline-block;vertical-align:top;text-align:center;list-style:none;position:relative;padding:20px 5px 0}
         .org li::before,.org li::after{content:'';position:absolute;top:0;right:50%;border-top:1.5px solid var(--border);width:50%;height:22px}
         .org li::after{right:auto;left:50%;border-left:1.5px solid var(--border)}
         .org li:only-child::before,.org li:only-child::after{display:none}
@@ -10325,7 +10341,7 @@ function renderRH(){
         .org li:last-child::before{border-right:1.5px solid var(--border);border-radius:0 6px 0 0}
         .org li:first-child::after{border-radius:6px 0 0 0}
         .org ul ul::before{content:'';position:absolute;top:0;left:50%;border-left:1.5px solid var(--border);width:0;height:22px}
-        .org-node{position:relative;display:inline-block;white-space:normal;text-align:center;border:1.5px solid var(--border);border-radius:12px;background:var(--card);padding:9px 13px;min-width:96px;max-width:210px;vertical-align:top}
+        .org-node{position:relative;display:inline-block;white-space:normal;text-align:center;border:1.5px solid var(--border);border-radius:11px;background:var(--card);padding:7px 10px;min-width:80px;max-width:152px;vertical-align:top}
         .org-node.raiz{border-color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 7%,var(--card))}
         .org-node.equipe{background:var(--bg2)}
         .org-node.equipe .org-nome{font-weight:600;color:var(--text2);font-size:11.5px}
@@ -10337,11 +10353,18 @@ function renderRH(){
         .org-acoes button:hover{color:var(--blue-mid)}
         .org-inp{display:block;width:150px;max-width:100%;border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:12px;font-family:inherit;background:var(--bg2);color:var(--text);outline:none;margin:0 auto 4px}
         .org-inp:focus{border-color:var(--blue-mid)}
+        body.org-focus .hdr,body.org-focus .sidebar,body.org-focus #sidebar-resizer,body.org-focus .topbar,body.org-focus .fab-create,body.org-focus .fab-menu{display:none!important}
+        body.org-focus #task-container{position:fixed;inset:0;z-index:600;overflow:auto;background:var(--bg);padding:0;margin:0;max-width:none}
       </style>
       ${_orgToolbarHTML()}
       <div id="org-root">${_orgChartHTML()}</div>
     </div>`;
-  window.scrollTo(0,0);
+  if(!window._orgBound){ window._orgBound=true;
+    window.addEventListener('resize', function(){ if(typeof hubView!=='undefined'&&hubView==='rh') _orgFit(); });
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape' && document.body.classList.contains('org-focus')){ _orgToggleFoco(); } });
+  }
+  if(!document.body.classList.contains('org-focus')) window.scrollTo(0,0);
+  requestAnimationFrame(_orgFit);
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -11554,6 +11577,7 @@ function _hint(txt){ return `<span class="hint" data-tip="${escapeAttr(txt)}">�
 function renderSidebar(){
   const sb=document.getElementById('sidebar');
   if(!sb) return;
+  try{ if(typeof hubView==='undefined'||hubView!=='rh') document.body.classList.remove('org-focus'); }catch(e){}
 
   // BUGFIX (jun/2026): Lixeira e Configurações são telas GLOBAIS que renderizam no
   // container do Gerenciador (exigem hubView==='taskflow'). Ao abri-las vindo de OUTRO
