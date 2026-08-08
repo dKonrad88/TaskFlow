@@ -10211,6 +10211,139 @@ function renderQualidade(){
   `;
 }
 
+// ─── ÁREA RH ───
+// Por ora só o Organograma (árvore de pessoas/setores). Dá p/ VISUALIZAR e EDITAR (add/renomear/remover).
+// Dado em LS_ORG (prefixo taskflow → sincroniza). Semeado com o exemplo da estrutura da Klain.
+let rhView = 'organograma';   // 'organograma' (única por ora)
+const LS_ORG = 'taskflow_org';
+let _orgData=null, _orgModo='ver', _orgEditId=null;
+function switchToRH(){
+  hubView='rh'; rhView='organograma';
+  const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
+  renderSidebar(); render();
+}
+function setRHView(v){
+  hubView='rh'; window._sbOrigemLixCfg=null;
+  rhView=v; renderSidebar(); renderRH();
+}
+function _orgNewId(){ return 'o'+Date.now().toString(36)+Math.floor(Math.random()*100000).toString(36); }
+function _orgAssignIds(n){ if(!n.id) n.id=_orgNewId(); if(n.filhos&&n.filhos.length) n.filhos.forEach(_orgAssignIds); return n; }
+function _orgSeed(){
+  return _orgAssignIds({ nome:'Diego', cargo:'', filhos:[
+    {nome:'Debora',cargo:'Marketing',filhos:[{nome:'Samuel, Luiza, Camila'}]},
+    {nome:'Denise',cargo:'Financeiro',filhos:[{nome:'Andrea, Evellyn, Camili, Adriana'}]},
+    {nome:'Everaldo',cargo:'Manutenção',filhos:[{nome:'Luciano, Luciano, Rudinei'}]},
+    {nome:'Verônica',cargo:'SESMT'},
+    {nome:'Cristiani',cargo:'RH'},
+    {nome:'Carlos',cargo:'Custos'},
+    {nome:'Joel',cargo:'Compras'},
+    {nome:'Guilherme',cargo:'TI'},
+    {nome:'Maria',cargo:'Apolo'},
+    {nome:'Samuel L.',cargo:'Estoque'},
+    {nome:'Stefano',cargo:'PCP',filhos:[{nome:'Valesca'}]},
+    {nome:'Samuel W.',cargo:'Linha Salgados',filhos:[{nome:'Airton, Diego, Maiquel, Simone, Rosangela (limpeza)'}]},
+    {nome:'Rogério',cargo:'Linha Doces / Pipoca',filhos:[{nome:'Marciel, Hitalo, Claudiomiro, Lisani, Matheus, Sabrina (limpeza)',filhos:[{nome:'Claudia, João, Julia'}]}]},
+    {nome:'Tamires',cargo:'Qualidade',filhos:[{nome:'Emanuele, Natalha, Carmem, Gelson'}]},
+    {nome:'Roselani',cargo:'Embalagens Salgados',filhos:[{nome:'Paola, Richard'}]},
+    {nome:'Danielli',cargo:'Linhas Especiais',filhos:[{nome:'Celécio, Franciele'}]},
+    {nome:'Cleusa',cargo:'Estoque'},
+    {nome:'Luiz',cargo:'Almoxarifado'},
+    {nome:'Suelen',cargo:'Embalagens Doce',filhos:[{nome:'Dalane, Dalva, Eliel, Netlin, Sidimara, Matheus, Rafaela, Jessica (limpeza)'}]}
+  ]});
+}
+function _orgLoad(){ try{ const s=safeLSGet(LS_ORG); _orgData=s?JSON.parse(s):null; }catch(e){ _orgData=null; } if(!_orgData||!_orgData.id){ _orgData=_orgSeed(); _orgSave(); } return _orgData; }
+function _orgSave(){ try{ safeSetItem(LS_ORG, JSON.stringify(_orgData)); }catch(e){ console.warn('[org] save falhou',e); } }
+function _orgFind(id,n){ n=n||_orgData; if(!n) return null; if(n.id===id) return n; if(n.filhos) for(const f of n.filhos){ const r=_orgFind(id,f); if(r) return r; } return null; }
+function _orgFindParent(id,n){ n=n||_orgData; if(!n||!n.filhos) return null; for(const f of n.filhos){ if(f.id===id) return n; const r=_orgFindParent(id,f); if(r) return r; } return null; }
+function _orgNodeHTML(node){
+  const editar=_orgModo==='editar', editando=editar&&_orgEditId===node.id, raiz=node.id===_orgData.id;
+  const filhos=(node.filhos&&node.filhos.length)?`<ul>${node.filhos.map(_orgNodeHTML).join('')}</ul>`:'';
+  let box;
+  if(editando){
+    const kd=`onkeydown="if(event.key==='Enter'){event.preventDefault();_orgSalvar('${node.id}')}else if(event.key==='Escape'){event.preventDefault();_orgCancelar()}"`;
+    box=`<div class="org-node" style="min-width:172px">
+      <input id="org-nome-${node.id}" class="org-inp" value="${escapeAttr(node.nome||'')}" placeholder="Nome(s)" ${kd}>
+      <input id="org-cargo-${node.id}" class="org-inp" value="${escapeAttr(node.cargo||'')}" placeholder="Cargo / setor (opcional)" ${kd}>
+      <div style="display:flex;gap:6px;justify-content:center;margin-top:2px">
+        <button onclick="_orgSalvar('${node.id}')" style="padding:4px 12px;border:none;border-radius:6px;background:var(--blue-mid);color:#fff;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit">Salvar</button>
+        <button onclick="_orgCancelar()" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text2);font-size:11.5px;cursor:pointer;font-family:inherit">Cancelar</button>
+      </div></div>`;
+  } else {
+    const ehEquipe=(!node.cargo && /,/.test(node.nome||''))?' equipe':'';
+    const acoes=editar?`<div class="org-acoes">
+      <button onclick="_orgEditar('${node.id}')" title="Editar"><i class="ti ti-pencil"></i></button>
+      <button onclick="_orgAddFilho('${node.id}')" title="Adicionar abaixo"><i class="ti ti-plus"></i></button>
+      ${!raiz?`<button onclick="_orgDel('${node.id}')" title="Excluir"><i class="ti ti-trash"></i></button>`:''}
+    </div>`:'';
+    box=`<div class="org-node${raiz?' raiz':''}${ehEquipe}">${acoes}
+      <div class="org-nome">${escapeHTML(node.nome||'—')}</div>
+      ${node.cargo?`<div class="org-cargo">${escapeHTML(node.cargo)}</div>`:''}</div>`;
+  }
+  return `<li>${box}${filhos}</li>`;
+}
+function _orgChartHTML(){
+  if(!_orgData) return '<div style="color:var(--text3);font-size:13px">Organograma vazio.</div>';
+  return `<div class="org-wrap"><div class="org"><ul>${_orgNodeHTML(_orgData)}</ul></div></div>`;
+}
+function _orgRender(){ const r=document.getElementById('org-root'); if(r) r.innerHTML=_orgChartHTML(); }
+function _orgEditar(id){ _orgEditId=id; _orgRender(); const el=document.getElementById('org-nome-'+id); if(el){ el.focus(); try{el.select();}catch(e){} } }
+function _orgCancelar(){ _orgEditId=null; _orgRender(); }
+function _orgSalvar(id){ const n=_orgFind(id); if(n){ const ne=document.getElementById('org-nome-'+id), ce=document.getElementById('org-cargo-'+id); if(ne) n.nome=(ne.value||'').trim()||'—'; if(ce) n.cargo=(ce.value||'').trim(); _orgSave(); } _orgEditId=null; _orgRender(); }
+function _orgAddFilho(id){ const n=_orgFind(id); if(!n) return; if(!n.filhos) n.filhos=[]; const novo={id:_orgNewId(),nome:'',cargo:''}; n.filhos.push(novo); _orgEditId=novo.id; _orgSave(); _orgRender(); const el=document.getElementById('org-nome-'+novo.id); if(el) el.focus(); }
+function _orgDel(id){ if(!_orgData||id===_orgData.id) return; const n=_orgFind(id); const nome=n?(n.nome||'este item'):'este item'; const tem=n&&n.filhos&&n.filhos.length; confirmModal({title:'Excluir do organograma', message:`Excluir <b>${escapeHTML(nome)}</b>${tem?' e tudo abaixo':''}?`, danger:true, confirmLabel:'Excluir', onConfirm:()=>{ const p=_orgFindParent(id); if(p){ p.filhos=p.filhos.filter(x=>x.id!==id); _orgSave(); _orgRender(); } } }); }
+function _orgSetModo(m){ _orgModo=m; _orgEditId=null; renderRH(); }
+function _orgRestaurarExemplo(){ confirmModal({title:'Restaurar exemplo', message:'Substituir o organograma atual pelo exemplo? As alterações serão perdidas.', danger:true, confirmLabel:'Restaurar', onConfirm:()=>{ _orgData=_orgSeed(); _orgSave(); _orgEditId=null; _orgModo='ver'; renderRH(); } }); }
+function _orgToolbarHTML(){
+  const seg=(m,ic,lab)=>`<button onclick="_orgSetModo('${m}')" style="display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border:1px solid ${_orgModo===m?'var(--blue-mid)':'var(--border)'};background:${_orgModo===m?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--card)'};color:${_orgModo===m?'var(--blue-mid)':'var(--text2)'};font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;border-radius:8px;margin-right:6px"><i class="ti ${ic}"></i>${lab}</button>`;
+  return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+    <div>${seg('ver','ti-eye','Visualizar')}${seg('editar','ti-pencil','Editar')}</div>
+    ${_orgModo==='editar'?`<span style="font-size:11.5px;color:var(--text3)">Passe o mouse num cartão: <i class="ti ti-pencil"></i> editar · <i class="ti ti-plus"></i> adicionar abaixo · <i class="ti ti-trash"></i> excluir</span>`:''}
+    <button onclick="_orgRestaurarExemplo()" style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border-radius:8px"><i class="ti ti-refresh"></i>Restaurar exemplo</button>
+  </div>`;
+}
+function renderRH(){
+  const main=document.getElementById('task-container'); if(!main) return;
+  const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
+  const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
+  const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
+  _orgLoad();
+  main.innerHTML = `
+    <div style="padding:20px 4px 44px">
+      ${hubBreadcrumb([{label:'RH', onclick:"setRHView('organograma')"},{label:'Organograma'}])}
+      <h1 style="font-size:23px;font-weight:700;color:var(--text);margin:0 0 4px">Organograma</h1>
+      <div style="color:var(--text3);font-size:13px;margin-bottom:16px">Estrutura da equipe — <b>Visualizar</b> ou <b>Editar</b> (adicionar, renomear, remover).</div>
+      <style>
+        .org-wrap{overflow:auto;padding:6px 2px 26px}
+        .org{display:inline-block;min-width:100%}
+        .org ul{padding-top:22px;position:relative;white-space:nowrap;margin:0}
+        .org li{display:inline-block;vertical-align:top;text-align:center;list-style:none;position:relative;padding:22px 7px 0}
+        .org li::before,.org li::after{content:'';position:absolute;top:0;right:50%;border-top:1.5px solid var(--border);width:50%;height:22px}
+        .org li::after{right:auto;left:50%;border-left:1.5px solid var(--border)}
+        .org li:only-child::before,.org li:only-child::after{display:none}
+        .org li:only-child{padding-top:0}
+        .org li:first-child::before,.org li:last-child::after{border:0 none}
+        .org li:last-child::before{border-right:1.5px solid var(--border);border-radius:0 6px 0 0}
+        .org li:first-child::after{border-radius:6px 0 0 0}
+        .org ul ul::before{content:'';position:absolute;top:0;left:50%;border-left:1.5px solid var(--border);width:0;height:22px}
+        .org-node{position:relative;display:inline-block;white-space:normal;text-align:center;border:1.5px solid var(--border);border-radius:12px;background:var(--card);padding:9px 13px;min-width:96px;max-width:210px;vertical-align:top}
+        .org-node.raiz{border-color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 7%,var(--card))}
+        .org-node.equipe{background:var(--bg2)}
+        .org-node.equipe .org-nome{font-weight:600;color:var(--text2);font-size:11.5px}
+        .org-nome{font-size:12.5px;font-weight:700;color:var(--text);line-height:1.25}
+        .org-cargo{font-size:10.5px;font-style:italic;color:var(--text3);margin-top:2px}
+        .org-acoes{position:absolute;top:-11px;right:-9px;display:flex;gap:2px;opacity:0;transition:opacity .12s;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:2px 4px;box-shadow:0 2px 7px rgba(0,0,0,.14);z-index:2}
+        .org-node:hover .org-acoes{opacity:1}
+        .org-acoes button{border:none;background:none;cursor:pointer;color:var(--text3);padding:2px;display:inline-flex;font-size:13.5px;line-height:1}
+        .org-acoes button:hover{color:var(--blue-mid)}
+        .org-inp{display:block;width:150px;max-width:100%;border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:12px;font-family:inherit;background:var(--bg2);color:var(--text);outline:none;margin:0 auto 4px}
+        .org-inp:focus{border-color:var(--blue-mid)}
+      </style>
+      ${_orgToolbarHTML()}
+      <div id="org-root">${_orgChartHTML()}</div>
+    </div>`;
+  window.scrollTo(0,0);
+}
+
 // ════════════════════════════════════════════════════════════════════
 // ANÁLISE SENSORIAL  (Qualidade › Sensorial)
 // ────────────────────────────────────────────────────────────────────
@@ -11649,6 +11782,7 @@ function renderSidebar(){
   const _kv=(typeof marketingView!=='undefined')?marketingView:'';
   const _qv=(typeof qualidadeView!=='undefined')?qualidadeView:'';
   const _cv=(typeof comprasView!=='undefined')?comprasView:'';
+  const _rv=(typeof rhView!=='undefined')?rhView:'';
   const areasHTML = hubGroupDivider('ÁREAS')
     + grupo('compras','ti-shopping-cart','Compras',
         _areaItem('compras',_cv,'painel','ti-layout-dashboard','Painel','setComprasView') +
@@ -11682,6 +11816,9 @@ function renderSidebar(){
         _areaItem('qualidade',_qv,'indicadores','ti-chart-line','Indicadores','setQualidadeView') +
         _areaItem('qualidade',_qv,'naoconformidades','ti-alert-octagon','Não conformidades','setQualidadeView') +
         _areaItem('qualidade',_qv,'auditorias','ti-clipboard-check','Auditorias','setQualidadeView')
+      , 'var(--text2)')
+    + grupo('rh','ti-users-group','RH',
+        _areaItem('rh',_rv,'organograma','ti-sitemap','Organograma','setRHView')
       , 'var(--text2)');
 
   const temModo = false; // (mantido — usado no bloco de "modo" abaixo, desativado)
@@ -17825,6 +17962,10 @@ function render(){
   }
   if(hubView === 'qualidade'){
     renderQualidade();
+    return;
+  }
+  if(hubView === 'rh'){
+    renderRH();
     return;
   }
 
@@ -36288,7 +36429,7 @@ function _tfSaveRoute(){
     localStorage.setItem('tf_route', JSON.stringify({
       hubView:hubView, currentTab:currentTab,
       comprasView:comprasView, cpItemSel:_cpItemSel, cpFichaView:_cpFichaView, cpNotView:_cpNotView, cpCatFiltro:_cpCatFiltro,
-      manutencaoView:manutencaoView, producaoView:producaoView, qualidadeView:qualidadeView, marketingView:marketingView,
+      manutencaoView:manutencaoView, producaoView:producaoView, qualidadeView:qualidadeView, marketingView:marketingView, rhView:(typeof rhView!=='undefined'?rhView:'organograma'),
       meuDiaSetor:meuDiaSetor, prodAba:prodAba
     }));
   }catch(e){}
@@ -36309,6 +36450,7 @@ function _tfRestoreRoute(){
     if(r.hubView==='producao'){ hubView='producao'; producaoView=r.producaoView||'produtos'; renderSidebar(); renderProducao(); return true; }
     if(r.hubView==='qualidade'){ hubView='qualidade'; qualidadeView=r.qualidadeView||'indicadores'; renderSidebar(); renderQualidade(); return true; }
     if(r.hubView==='marketing'){ hubView='marketing'; marketingView=r.marketingView||'influenciadores'; renderSidebar(); renderMarketing(); return true; }
+    if(r.hubView==='rh'){ hubView='rh'; rhView=r.rhView||'organograma'; renderSidebar(); renderRH(); return true; }
     if(r.hubView==='taskflow'){ hubView='taskflow'; currentTab=r.currentTab||'hoje'; const _tb=document.querySelector('.main .topbar'); if(_tb) _tb.style.display=''; renderSidebar(); render(); return true; }
   }catch(e){ console.warn('[rota] restore falhou',e); hubView='meudia'; }
   return false; // meudia (ou fallback): deixa o boot renderizar o padrão
