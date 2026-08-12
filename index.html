@@ -10485,6 +10485,42 @@ function _procRunCard(r){
   </div>`;
 }
 function _procRerenderRuns(){ const el=document.getElementById('proc-runs'); if(el) el.outerHTML=_procAndamentoHTML(); }
+// ── Ponte Processo → Projeto: embute um processo numa FASE (os passos viram tarefas do projeto). ──
+function _projAddProcessoAbrir(projId, faseId){
+  const elig=_procLoad().filter(p=>p.contexto==='ambos'||p.contexto==='projeto');
+  const itens = elig.length ? elig.map(p=>`<div onclick="_projAddProcesso('${projId}','${faseId}','${p.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;cursor:pointer;margin-bottom:8px" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.background='var(--bg2)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='none'">
+      <i class="ti ${escapeAttr(p.icone||'ti-list-check')}" style="font-size:18px;color:var(--blue-mid);flex:none"></i>
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--text)">${escapeHTML(p.nome)}</div><div style="font-size:11px;color:var(--text3)">${(p.passos||[]).length} passos</div></div>
+      <i class="ti ti-plus" style="color:var(--text3);flex:none"></i>
+    </div>`).join('') : '<div style="color:var(--text3);font-size:12.5px;padding:10px 2px">Nenhum processo disponível para projetos. Crie um em <b>Gestão › Processos</b> com contexto "Projeto + avulso" ou "Só projeto".</div>';
+  const ov=document.createElement('div');
+  ov.id='proj-proc-picker';
+  ov.style.cssText='position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
+  ov.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;max-width:440px;width:100%;max-height:80vh;overflow:auto;padding:18px 20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><div style="font-size:15px;font-weight:700;color:var(--text)">Adicionar processo</div><button onclick="var o=document.getElementById('proj-proc-picker');if(o)o.remove()" style="border:none;background:none;cursor:pointer;color:var(--text3);font-size:18px"><i class="ti ti-x"></i></button></div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Os passos entram como tarefas desta fase, já ordenados.</div>
+    ${itens}</div>`;
+  ov.querySelector('div').addEventListener('click',e=>e.stopPropagation());
+  document.body.appendChild(ov);
+}
+function _projAddProcesso(projId, faseId, processoId){
+  const ov=document.getElementById('proj-proc-picker'); if(ov) ov.remove();
+  const p=projectsPro.find(x=>x.id===projId), proc=_procFind(processoId); if(!p||!proc) return;
+  const runId=_procId('run'), base=_ppOrdemNovaNaFase(p, faseId), novas=[];
+  (proc.passos||[]).forEach((ps,i)=>{
+    const t={ id:Date.now()+Math.floor(Math.random()*99999)+i, title:ps.titulo, prio:'media', date:'', done:false, escopo:'klain',
+      executor:null, solicitante:null, people:[], createdAt:today, subtasks:[], kanbanCol:'todo',
+      projectProId:projId, ppOrdem: base + i*0.001,
+      projectProFaseId: faseId||null, projectProGrupoId:null, setorManual:false,
+      procSetor: ps.setor||'', processoId:processoId, processoRunId:runId, processoNome:proc.nome };
+    tasks.push(t); novas.push(t);
+  });
+  if(typeof saveProjectPro_db==='function') saveProjectPro_db(p);
+  novas.forEach(t=>{ if(typeof saveTask_db==='function') saveTask_db(t); });
+  if(typeof toast==='function') toast(`Processo "${proc.nome}" adicionado — ${novas.length} tarefas`);
+  render(); renderSidebar();
+}
 
 // ════════════════════════════════════════════════════════════════════
 // ANÁLISE SENSORIAL  (Qualidade › Sensorial)
@@ -28214,7 +28250,9 @@ function renderProjectProVisao(p, prog){
     // (jul/2026, Diego) DOIS formatos de visualização do Planejamento — igual à aba Tarefas:
     // "Por <setor/etapa>" (agrupado, o padrão) × "Lista" (as tarefas da fase em lista plana, na
     // ordem de execução). Estado por projeto em sessionStorage (espelha o 'pp-agrupar-<id>').
-    const _planLista = sessionStorage.getItem('pp-plan-lista-'+p.id)==='1';
+    // (jul/2026, Diego) PADRÃO agora é LISTA plana (Fase → Tarefa) — setor deixou de ser nível obrigatório.
+    // "Por setor" vira opcional (só quando o valor salvo é '0'). Simplifica a leitura p/ a maioria.
+    const _planLista = sessionStorage.getItem('pp-plan-lista-'+p.id)!=='0';
     const _planBtn=(on,val,icon,label)=>`<button onclick="sessionStorage.setItem('pp-plan-lista-${p.id}','${val}');render()" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:7px;border:none;cursor:pointer;font-family:inherit;${on?'background:var(--card);color:var(--blue-mid);box-shadow:0 1px 2px rgba(0,0,0,.08)':'background:transparent;color:var(--text3)'}"><i class="ti ${icon}" style="font-size:13px"></i>${label}</button>`;
     const _planToggle=`<div style="display:inline-flex;gap:2px;background:var(--bg2);padding:3px;border-radius:9px">${_planBtn(!_planLista,'0','ti-layout-rows','Por '+_ppRot(p,2,false,true))}${_planBtn(_planLista,'1','ti-list','Lista')}</div>`;
     let _planBody;
@@ -28242,6 +28280,7 @@ function renderProjectProVisao(p, prog){
       <div style="display:flex;align-items:center;gap:11px;margin-bottom:14px;flex-wrap:wrap">
         <div style="flex:1;min-width:120px">${_ppTituloCol('ti-layout-rows',escapeHTML(f.nome),'',0)}</div>
         ${_planToggle}
+        <button onclick="_projAddProcessoAbrir('${p.id}','${f.id}')" title="Adicionar um processo pronto a esta fase" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-route"></i>Processo</button>
         <span style="font-size:12px;font-weight:800;color:${cFase};min-width:34px;text-align:right">${fp.pct}%</span>
       </div>
       ${_planBody}
