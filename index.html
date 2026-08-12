@@ -10389,6 +10389,18 @@ function _procSaveAll(a){ try{ safeSetItem(LS_PROCESSOS, JSON.stringify(a)); }ca
 function _procFind(id){ return _procLoad().find(p=>p.id===id)||null; }
 function _procRuns(){ try{ const s=safeLSGet(LS_PROC_RUNS); if(s){ const a=JSON.parse(s); if(Array.isArray(a)) return a; } }catch(e){} return []; }
 function _procRunsSave(a){ try{ safeSetItem(LS_PROC_RUNS, JSON.stringify(a)); }catch(e){} }
+// Executor sugerido a partir do SETOR do passo (casa com people.setor/macroSetor/cargo/area). Null se ninguém casar (fica sem responsável → Organizar).
+function _procExecutorPorSetor(setorNome){
+  if(!setorNome||!String(setorNome).trim()) return null;
+  const alvo=String(setorNome).trim().toLowerCase();
+  const bate=pe=>[pe.setor,pe.macroSetor,pe.cargo,pe.area,pe.funcao].some(v=>v&&String(v).trim().toLowerCase()===alvo);
+  let cand=(people||[]).find(bate);
+  if(cand) return cand.id;
+  cand=(people||[]).find(pe=>[pe.setor,pe.macroSetor,pe.cargo,pe.area].some(v=>v&&String(v).toLowerCase().includes(alvo)));
+  return cand?cand.id:null;
+}
+// Data do passo i: espalha em DIAS ÚTEIS a partir de baseIso (passo 0 = base). Assim cada tarefa cai no Meu Dia da pessoa.
+function _procDataSpread(baseIso,n){ const d=new Date((baseIso||today)+'T00:00:00'); let add=0; while(add<n){ d.setDate(d.getDate()+1); const w=d.getDay(); if(w!==0&&w!==6) add++; } return _dateToLocalISO(d); }
 function setProcView(v){ procView=v; _procSel=null; renderProcessos(); }
 function _procAbrir(id){ _procSel=id; procView='biblioteca'; renderProcessos(); }
 function _procVoltar(){ _procSel=null; renderProcessos(); }
@@ -10399,14 +10411,22 @@ function _procDelPasso(id,psId){ const a=_procLoad(),p=a.find(x=>x.id===id); if(
 function _procSetPasso(id,psId,campo,val){ const a=_procLoad(),p=a.find(x=>x.id===id); if(p){ const ps=(p.passos||[]).find(x=>x.id===psId); if(ps){ ps[campo]=val; _procSaveAll(a); } } }
 function _procMovePasso(id,psId,dir){ const a=_procLoad(),p=a.find(x=>x.id===id); if(!p||!p.passos) return; const i=p.passos.findIndex(x=>x.id===psId), j=i+dir; if(i<0||j<0||j>=p.passos.length) return; const t=p.passos[i]; p.passos[i]=p.passos[j]; p.passos[j]=t; _procSaveAll(a); _procRerenderDetalhe(id); }
 function _procExcluir(id){ const p=_procFind(id); confirmModal({title:'Excluir processo', message:`Excluir o processo <b>${escapeHTML(p?p.nome:'')}</b>? (execuções já criadas não são afetadas)`, danger:true, confirmLabel:'Excluir', onConfirm:()=>{ _procSaveAll(_procLoad().filter(x=>x.id!==id)); _procSel=null; renderProcessos(); }}); }
-function _procIniciar(id){ const p=_procFind(id); if(!p) return; const runs=_procRuns(); runs.push({id:_procId('run'),processoId:id,nome:p.nome,icone:p.icone,projetoId:null,iniciadoPor:CURRENT_USER_ID,iniciadoEm:today,status:'ativo',passos:(p.passos||[]).map(ps=>({id:_procId('rp'),titulo:ps.titulo,setor:ps.setor||'',responsavel:'',done:false,doneAt:''}))}); _procRunsSave(runs); if(typeof toast==='function') toast('Processo iniciado — veja em "Em andamento"'); procView='andamento'; _procSel=null; renderProcessos(); }
-function _procRunToggle(runId,psId){ const runs=_procRuns(),r=runs.find(x=>x.id===runId); if(!r) return; const ps=r.passos.find(x=>x.id===psId); if(ps){ ps.done=!ps.done; ps.doneAt=ps.done?today:''; } r.status=r.passos.every(x=>x.done)?'concluido':'ativo'; _procRunsSave(runs); _procRerenderRuns(); }
-function _procRunExcluir(runId){ confirmModal({title:'Remover execução', message:'Remover esta execução do processo?', danger:true, confirmLabel:'Remover', onConfirm:()=>{ _procRunsSave(_procRuns().filter(x=>x.id!==runId)); renderProcessos(); }}); }
+function _procIniciar(id){ const p=_procFind(id); if(!p) return; const runId=_procId('run'), novas=[];
+  (p.passos||[]).forEach((ps,i)=>{ const t={ id:Date.now()+Math.floor(Math.random()*99999)+i, title:ps.titulo, prio:'media',
+      date:_procDataSpread(today,i), dateManual:true, done:false, escopo:'klain',
+      executor:_procExecutorPorSetor(ps.setor), solicitante:CURRENT_USER_ID, people:[],
+      createdAt:today, subtasks:[], kanbanCol:'todo',
+      procSetor:ps.setor||'', processoId:id, processoRunId:runId, processoNome:p.nome };
+    tasks.push(t); if(typeof saveTask_db==='function') saveTask_db(t); novas.push(t); });
+  const runs=_procRuns(); runs.push({id:runId,processoId:id,nome:p.nome,icone:p.icone,projetoId:null,iniciadoPor:CURRENT_USER_ID,iniciadoEm:today}); _procRunsSave(runs);
+  if(typeof toast==='function') toast(`Processo iniciado — ${novas.length} tarefas criadas (no Meu Dia de cada um)`); procView='andamento'; _procSel=null; renderProcessos(); if(typeof renderSidebar==='function') renderSidebar(); }
+function _procTaskToggle(taskId){ const t=(tasks||[]).find(x=>x.id===taskId); if(!t) return; t.done=!t.done; t.doneAt=t.done?today:null; t.kanbanCol=t.done?'done':'todo'; if(typeof saveTask_db==='function') saveTask_db(t); _procRerenderRuns(); }
+function _procRunExcluir(runId){ confirmModal({title:'Remover execução', message:'Remover esta execução e as tarefas dela?', danger:true, confirmLabel:'Remover', onConfirm:()=>{ const del=(tasks||[]).filter(t=>t.processoRunId===runId); del.forEach(t=>{ const idx=tasks.indexOf(t); if(idx>=0) tasks.splice(idx,1); if(typeof deleteTask_db==='function') deleteTask_db(t.id); }); _procRunsSave(_procRuns().filter(x=>x.id!==runId)); renderProcessos(); if(typeof renderSidebar==='function') renderSidebar(); }}); }
 function renderProcessos(){
   const main=document.getElementById('task-container'); if(!main) return;
   const _st=document.getElementById('stats-box'); if(_st) _st.style.display='none';
   const _pr=document.getElementById('progress-box'); if(_pr) _pr.style.display='none';
-  const runs=_procRuns(), nAtivos=runs.filter(r=>r.status!=='concluido').length;
+  const runs=_procRuns(), nAtivos=runs.filter(r=>{ const ts=(tasks||[]).filter(t=>t.processoRunId===r.id); return ts.length && !ts.every(t=>t.done); }).length;
   const seg=(v,ic,lab,badge)=>`<button onclick="setProcView('${v}')" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid ${procView===v?'var(--blue-mid)':'var(--border)'};background:${procView===v?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--card)'};color:${procView===v?'var(--blue-mid)':'var(--text2)'};font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;border-radius:8px;margin-right:8px"><i class="ti ${ic}"></i>${lab}${badge?` <span style="font-size:10.5px;background:var(--blue-mid);color:#fff;border-radius:10px;padding:0 6px">${badge}</span>`:''}</button>`;
   const corpo = procView==='biblioteca' ? (_procSel?_procDetalheHTML(_procFind(_procSel)):_procBibliotecaHTML()) : _procAndamentoHTML();
   main.innerHTML=`<div style="padding:14px 4px 44px;max-width:1100px;margin:0 auto">
@@ -10465,12 +10485,15 @@ function _procAndamentoHTML(){
   return `<div id="proc-runs" style="display:flex;flex-direction:column;gap:14px">${runs.map(_procRunCard).join('')}</div>`;
 }
 function _procRunCard(r){
-  const total=r.passos.length, feitos=r.passos.filter(x=>x.done).length, pct=total?Math.round(feitos/total*100):0, concl=r.status==='concluido';
-  const passos=r.passos.map(ps=>`<div style="display:flex;align-items:center;gap:9px;padding:5px 0;border-top:1px solid var(--border)">
-    <i class="ti ${ps.done?'ti-square-check-filled':'ti-square'}" onclick="_procRunToggle('${r.id}','${ps.id}')" style="font-size:19px;color:${ps.done?'var(--success)':'var(--text3)'};cursor:pointer;flex:none"></i>
-    <span style="flex:1;min-width:0;font-size:12.5px;color:${ps.done?'var(--text3)':'var(--text)'};${ps.done?'text-decoration:line-through':''}">${escapeHTML(ps.titulo)}</span>
-    ${ps.setor?`<span style="flex:none;font-size:10.5px;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:1px 8px">${escapeHTML(ps.setor)}</span>`:''}
-  </div>`).join('');
+  const ts=(tasks||[]).filter(t=>t.processoRunId===r.id).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  const total=ts.length, feitos=ts.filter(t=>t.done).length, pct=total?Math.round(feitos/total*100):0, concl=total>0&&feitos===total;
+  const passos=ts.map(t=>{ const ex=t.executor?_personById(t.executor):null;
+    return `<div style="display:flex;align-items:center;gap:9px;padding:5px 0;border-top:1px solid var(--border)">
+      <i class="ti ${t.done?'ti-square-check-filled':'ti-square'}" onclick="_procTaskToggle(${t.id})" style="font-size:19px;color:${t.done?'var(--success)':'var(--text3)'};cursor:pointer;flex:none"></i>
+      <span style="flex:1;min-width:0;font-size:12.5px;color:${t.done?'var(--text3)':'var(--text)'};${t.done?'text-decoration:line-through':''}">${escapeHTML(t.title)}</span>
+      ${ex?`<span style="flex:none;font-size:10.5px;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:1px 8px"><i class="ti ti-user" style="font-size:9px"></i> ${escapeHTML((ex.name||'').split(' ')[0])}</span>`:(t.procSetor?`<span style="flex:none;font-size:10px;color:var(--text3);font-style:italic" title="Sem responsável — atribua em Organizar">${escapeHTML(t.procSetor)} · s/ resp.</span>`:'')}
+      ${t.date?`<span style="flex:none;font-size:10px;color:var(--text3)">${formatDate(t.date)}</span>`:''}
+    </div>`; }).join('') || '<div style="font-size:11.5px;color:var(--text3);padding:8px 0">Sem tarefas (removidas).</div>';
   return `<div class="cp-card" style="padding:15px 17px;max-width:780px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
       <i class="ti ${escapeAttr(r.icone||'ti-list-check')}" style="font-size:18px;color:var(--blue-mid);flex:none"></i>
@@ -10479,7 +10502,7 @@ function _procRunCard(r){
       <span style="margin-left:auto;font-size:12px;color:var(--text3)">${feitos}/${total} · ${pct}%</span>
       <button onclick="_procRunExcluir('${r.id}')" title="Remover" style="border:none;background:none;cursor:pointer;color:var(--text3);padding:2px;flex:none"><i class="ti ti-trash"></i></button>
     </div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:9px">avulso · iniciado ${typeof formatDate==='function'?formatDate(r.iniciadoEm):r.iniciadoEm}</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:9px">avulso · iniciado ${typeof formatDate==='function'?formatDate(r.iniciadoEm):r.iniciadoEm} · as tarefas caem no Meu Dia de cada responsável</div>
     <div style="height:6px;background:var(--bg2);border-radius:3px;overflow:hidden;margin-bottom:6px"><div style="width:${pct}%;height:100%;background:var(--success)"></div></div>
     ${passos}
   </div>`;
@@ -10508,9 +10531,12 @@ function _projAddProcesso(projId, faseId, processoId){
   const ov=document.getElementById('proj-proc-picker'); if(ov) ov.remove();
   const p=projectsPro.find(x=>x.id===projId), proc=_procFind(processoId); if(!p||!proc) return;
   const runId=_procId('run'), base=_ppOrdemNovaNaFase(p, faseId), novas=[];
+  // Solicitante = o "dono" do projeto (o projeto pedindo a tarefa). Executor = sugerido pelo setor do passo.
+  const solic = p.dono || p.coordenador || CURRENT_USER_ID;
   (proc.passos||[]).forEach((ps,i)=>{
-    const t={ id:Date.now()+Math.floor(Math.random()*99999)+i, title:ps.titulo, prio:'media', date:'', done:false, escopo:'klain',
-      executor:null, solicitante:null, people:[], createdAt:today, subtasks:[], kanbanCol:'todo',
+    const t={ id:Date.now()+Math.floor(Math.random()*99999)+i, title:ps.titulo, prio:'media',
+      date:_procDataSpread(today,i), dateManual:true, done:false, escopo:'klain',
+      executor:_procExecutorPorSetor(ps.setor), solicitante:solic, people:[], createdAt:today, subtasks:[], kanbanCol:'todo',
       projectProId:projId, ppOrdem: base + i*0.001,
       projectProFaseId: faseId||null, projectProGrupoId:null, setorManual:false,
       procSetor: ps.setor||'', processoId:processoId, processoRunId:runId, processoNome:proc.nome };
