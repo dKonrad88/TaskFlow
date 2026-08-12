@@ -10367,6 +10367,125 @@ function renderRH(){
   requestAnimationFrame(_orgFit);
 }
 
+// ═══════════════════ PROCESSOS (Gestão) — mini-fluxos reutilizáveis ═══════════════════
+// Um Processo é um molde de PASSOS padronizado. Roda AVULSO (checklist próprio) ou é
+// EMBUTIDO numa fase de projeto (os passos viram tarefas do projeto — ver _projAddProcesso).
+// contexto: 'ambos' | 'avulso' | 'projeto'. Dados em taskflow_* (sincronizam).
+const LS_PROCESSOS='taskflow_processos', LS_PROC_RUNS='taskflow_proc_runs';
+let procView='biblioteca', _procSel=null;
+const PROC_CTX={ambos:{lab:'Projeto + avulso',cor:'var(--blue-mid)'}, avulso:{lab:'Só avulso',cor:'var(--success)'}, projeto:{lab:'Só projeto',cor:'var(--amber)'}};
+function _procId(p){ return (p||'p')+Date.now().toString(36)+Math.floor(Math.random()*100000).toString(36); }
+function _procSeed(){
+  const mk=(nome,icone,contexto,desc,passos)=>({id:_procId('proc'),nome,icone,contexto,desc,criadoEm:today,passos:passos.map(p=>({id:_procId('ps'),titulo:p[0],setor:p[1]||''}))});
+  return [
+    mk('Cadastro de produto','ti-cube','ambos','Entrada padronizada de um produto novo.',[['Definir código','Compras'],['Cadastrar no ERP','TI'],['Ficha técnica','Qualidade'],['Definir embalagem','Suprimentos'],['Foto do produto','Marketing'],['Liberar para venda','Comercial']]),
+    mk('Homologação de fornecedor','ti-truck-delivery','ambos','Aprovação de um novo fornecedor.',[['Solicitar documentos','Compras'],['Análise de crédito','Financeiro'],['Amostra e teste','Qualidade'],['Cadastrar no ERP','TI'],['Aprovar','Compras']]),
+    mk('Onboarding de colaborador','ti-user-plus','avulso','Integração de um novo funcionário.',[['Preparar acessos','TI'],['Documentação','RH'],['Kit e uniforme','Apolo'],['Treinamento de segurança','SESMT'],['Apresentar à equipe','RH'],['Acompanhamento 30 dias','RH']]),
+    mk('Abertura de OP','ti-clipboard-list','avulso','Abertura de ordem de produção.',[['Conferir insumos','PCP'],['Emitir OP','PCP'],['Separar materiais','Almoxarifado'],['Liberar para linha','Produção']])
+  ];
+}
+function _procLoad(){ try{ const s=safeLSGet(LS_PROCESSOS); if(s){ const a=JSON.parse(s); if(Array.isArray(a)) return a; } }catch(e){} const seed=_procSeed(); _procSaveAll(seed); return seed; }
+function _procSaveAll(a){ try{ safeSetItem(LS_PROCESSOS, JSON.stringify(a)); }catch(e){ console.warn('[proc] save',e); } }
+function _procFind(id){ return _procLoad().find(p=>p.id===id)||null; }
+function _procRuns(){ try{ const s=safeLSGet(LS_PROC_RUNS); if(s){ const a=JSON.parse(s); if(Array.isArray(a)) return a; } }catch(e){} return []; }
+function _procRunsSave(a){ try{ safeSetItem(LS_PROC_RUNS, JSON.stringify(a)); }catch(e){} }
+function setProcView(v){ procView=v; _procSel=null; renderProcessos(); }
+function _procAbrir(id){ _procSel=id; procView='biblioteca'; renderProcessos(); }
+function _procVoltar(){ _procSel=null; renderProcessos(); }
+function _procNovo(){ const a=_procLoad(); const novo={id:_procId('proc'),nome:'Novo processo',icone:'ti-list-check',contexto:'ambos',desc:'',criadoEm:today,passos:[]}; a.push(novo); _procSaveAll(a); _procSel=novo.id; procView='biblioteca'; renderProcessos(); }
+function _procSetCampo(id,campo,val){ const a=_procLoad(),p=a.find(x=>x.id===id); if(p){ p[campo]=val; _procSaveAll(a); } }
+function _procAddPasso(id,titulo){ const a=_procLoad(),p=a.find(x=>x.id===id); if(p){ if(!p.passos) p.passos=[]; p.passos.push({id:_procId('ps'),titulo:(titulo||'').trim()||'Novo passo',setor:''}); _procSaveAll(a); _procRerenderDetalhe(id); } }
+function _procDelPasso(id,psId){ const a=_procLoad(),p=a.find(x=>x.id===id); if(p){ p.passos=(p.passos||[]).filter(x=>x.id!==psId); _procSaveAll(a); _procRerenderDetalhe(id); } }
+function _procSetPasso(id,psId,campo,val){ const a=_procLoad(),p=a.find(x=>x.id===id); if(p){ const ps=(p.passos||[]).find(x=>x.id===psId); if(ps){ ps[campo]=val; _procSaveAll(a); } } }
+function _procMovePasso(id,psId,dir){ const a=_procLoad(),p=a.find(x=>x.id===id); if(!p||!p.passos) return; const i=p.passos.findIndex(x=>x.id===psId), j=i+dir; if(i<0||j<0||j>=p.passos.length) return; const t=p.passos[i]; p.passos[i]=p.passos[j]; p.passos[j]=t; _procSaveAll(a); _procRerenderDetalhe(id); }
+function _procExcluir(id){ const p=_procFind(id); confirmModal({title:'Excluir processo', message:`Excluir o processo <b>${escapeHTML(p?p.nome:'')}</b>? (execuções já criadas não são afetadas)`, danger:true, confirmLabel:'Excluir', onConfirm:()=>{ _procSaveAll(_procLoad().filter(x=>x.id!==id)); _procSel=null; renderProcessos(); }}); }
+function _procIniciar(id){ const p=_procFind(id); if(!p) return; const runs=_procRuns(); runs.push({id:_procId('run'),processoId:id,nome:p.nome,icone:p.icone,projetoId:null,iniciadoPor:CURRENT_USER_ID,iniciadoEm:today,status:'ativo',passos:(p.passos||[]).map(ps=>({id:_procId('rp'),titulo:ps.titulo,setor:ps.setor||'',responsavel:'',done:false,doneAt:''}))}); _procRunsSave(runs); if(typeof toast==='function') toast('Processo iniciado — veja em "Em andamento"'); procView='andamento'; _procSel=null; renderProcessos(); }
+function _procRunToggle(runId,psId){ const runs=_procRuns(),r=runs.find(x=>x.id===runId); if(!r) return; const ps=r.passos.find(x=>x.id===psId); if(ps){ ps.done=!ps.done; ps.doneAt=ps.done?today:''; } r.status=r.passos.every(x=>x.done)?'concluido':'ativo'; _procRunsSave(runs); _procRerenderRuns(); }
+function _procRunExcluir(runId){ confirmModal({title:'Remover execução', message:'Remover esta execução do processo?', danger:true, confirmLabel:'Remover', onConfirm:()=>{ _procRunsSave(_procRuns().filter(x=>x.id!==runId)); renderProcessos(); }}); }
+function renderProcessos(){
+  const main=document.getElementById('task-container'); if(!main) return;
+  const _st=document.getElementById('stats-box'); if(_st) _st.style.display='none';
+  const _pr=document.getElementById('progress-box'); if(_pr) _pr.style.display='none';
+  const runs=_procRuns(), nAtivos=runs.filter(r=>r.status!=='concluido').length;
+  const seg=(v,ic,lab,badge)=>`<button onclick="setProcView('${v}')" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid ${procView===v?'var(--blue-mid)':'var(--border)'};background:${procView===v?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--card)'};color:${procView===v?'var(--blue-mid)':'var(--text2)'};font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;border-radius:8px;margin-right:8px"><i class="ti ${ic}"></i>${lab}${badge?` <span style="font-size:10.5px;background:var(--blue-mid);color:#fff;border-radius:10px;padding:0 6px">${badge}</span>`:''}</button>`;
+  const corpo = procView==='biblioteca' ? (_procSel?_procDetalheHTML(_procFind(_procSel)):_procBibliotecaHTML()) : _procAndamentoHTML();
+  main.innerHTML=`<div style="padding:14px 4px 44px;max-width:1100px;margin:0 auto">
+    <div style="margin-bottom:18px">${seg('biblioteca','ti-books','Biblioteca')}${seg('andamento','ti-player-play','Em andamento',nAtivos||null)}</div>
+    ${corpo}
+  </div>`;
+}
+function _procVazio(m){ return `<div style="grid-column:1/-1;color:var(--text3);font-size:13px;padding:24px;text-align:center">${escapeHTML(m)}</div>`; }
+function _procBibliotecaHTML(){
+  const a=_procLoad(), runs=_procRuns();
+  const cards=a.map(p=>{ const ctx=PROC_CTX[p.contexto]||PROC_CTX.ambos, nRuns=runs.filter(r=>r.processoId===p.id).length;
+    return `<div onclick="_procAbrir('${p.id}')" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 15px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px"><i class="ti ${escapeAttr(p.icone||'ti-list-check')}" style="font-size:19px;color:var(--blue-mid)"></i><span style="font-size:14px;font-weight:700;color:var(--text)">${escapeHTML(p.nome)}</span></div>
+      <span style="display:inline-block;font-size:11px;font-weight:600;color:${ctx.cor};background:color-mix(in srgb, ${ctx.cor} 13%, transparent);border-radius:20px;padding:2px 10px">${ctx.lab}</span>
+      <div style="font-size:11.5px;color:var(--text3);margin-top:9px">${(p.passos||[]).length} passos${nRuns?` · rodou ${nRuns}×`:''}</div>
+    </div>`; }).join('');
+  return `<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button onclick="_procNovo()" style="display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border:none;border-radius:8px;background:var(--blue-mid);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ti-plus"></i>Novo processo</button></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">${cards||_procVazio('Nenhum processo ainda. Clique em "Novo processo".')}</div>`;
+}
+function _procDetalheHTML(p){
+  if(!p) return _procBibliotecaHTML();
+  const ctxSel=['ambos','avulso','projeto'].map(c=>`<option value="${c}"${p.contexto===c?' selected':''}>${PROC_CTX[c].lab}</option>`).join('');
+  const passos=(p.passos||[]).map((ps,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+    <span style="font-size:11px;color:var(--text3);width:20px;text-align:right;flex:none">${i+1}</span>
+    <input value="${escapeAttr(ps.titulo)}" placeholder="Passo" onchange="_procSetPasso('${p.id}','${ps.id}','titulo',this.value)" style="flex:1;min-width:0;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12.5px;font-family:inherit;background:var(--bg2);color:var(--text);outline:none">
+    <input value="${escapeAttr(ps.setor||'')}" placeholder="Setor / área" onchange="_procSetPasso('${p.id}','${ps.id}','setor',this.value)" style="width:130px;flex:none;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;background:var(--bg2);color:var(--text2);outline:none">
+    <button onclick="_procMovePasso('${p.id}','${ps.id}',-1)" title="Subir" style="border:none;background:none;cursor:pointer;color:var(--text3);padding:2px;flex:none"><i class="ti ti-chevron-up"></i></button>
+    <button onclick="_procMovePasso('${p.id}','${ps.id}',1)" title="Descer" style="border:none;background:none;cursor:pointer;color:var(--text3);padding:2px;flex:none"><i class="ti ti-chevron-down"></i></button>
+    <button onclick="_procDelPasso('${p.id}','${ps.id}')" title="Excluir" style="border:none;background:none;cursor:pointer;color:var(--text3);padding:2px;flex:none"><i class="ti ti-trash"></i></button>
+  </div>`).join('');
+  return `<div id="proc-detalhe">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <button onclick="_procVoltar()" style="display:inline-flex;align-items:center;gap:5px;border:none;background:none;color:var(--blue-mid);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit"><i class="ti ti-arrow-left"></i>Processos</button>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button onclick="_procIniciar('${p.id}')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border:none;border-radius:8px;background:var(--success);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ti-player-play"></i>Iniciar (avulso)</button>
+        <button onclick="_procExcluir('${p.id}')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-trash"></i>Excluir</button>
+      </div>
+    </div>
+    <div class="cp-card" style="padding:16px 18px;max-width:780px">
+      <input value="${escapeAttr(p.nome)}" onchange="_procSetCampo('${p.id}','nome',this.value)" style="width:100%;box-sizing:border-box;border:none;border-bottom:1px solid var(--border);padding:4px 0 7px;font-size:18px;font-weight:700;font-family:inherit;background:none;color:var(--text);outline:none;margin-bottom:10px">
+      <label style="font-size:12px;color:var(--text2)">Onde pode usar: <select onchange="_procSetCampo('${p.id}','contexto',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-family:inherit;font-size:12px;background:var(--bg2);color:var(--text)">${ctxSel}</select></label>
+      <input value="${escapeAttr(p.desc||'')}" placeholder="Descrição (opcional)" onchange="_procSetCampo('${p.id}','desc',this.value)" style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:6px;padding:6px 9px;font-size:12.5px;font-family:inherit;background:var(--bg2);color:var(--text2);outline:none;margin-top:8px">
+      <div style="font-size:12.5px;font-weight:700;color:var(--text);margin:16px 0 4px">Passos</div>
+      <div>${passos||'<div style="color:var(--text3);font-size:12.5px;padding:8px 0">Nenhum passo ainda.</div>'}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+        <i class="ti ti-plus" style="color:var(--text3);flex:none"></i>
+        <input id="proc-novo-passo" placeholder="Novo passo — Enter para adicionar" onkeydown="if(event.key==='Enter'){event.preventDefault();_procAddPasso('${p.id}',this.value);}" style="flex:1;min-width:0;border:none;border-bottom:1px dashed var(--border);padding:5px 2px;font-size:12.5px;font-family:inherit;background:none;color:var(--text);outline:none">
+      </div>
+    </div>
+  </div>`;
+}
+function _procRerenderDetalhe(id){ if(_procSel!==id) return; const el=document.getElementById('proc-detalhe'); if(el){ el.outerHTML=_procDetalheHTML(_procFind(id)); const inp=document.getElementById('proc-novo-passo'); if(inp) inp.focus(); } }
+function _procAndamentoHTML(){
+  const runs=_procRuns().slice().reverse();
+  if(!runs.length) return `<div style="color:var(--text3);font-size:13px;padding:20px">Nenhum processo em andamento. Vá na <b>Biblioteca</b>, abra um processo e clique em <b>Iniciar</b>.</div>`;
+  return `<div id="proc-runs" style="display:flex;flex-direction:column;gap:14px">${runs.map(_procRunCard).join('')}</div>`;
+}
+function _procRunCard(r){
+  const total=r.passos.length, feitos=r.passos.filter(x=>x.done).length, pct=total?Math.round(feitos/total*100):0, concl=r.status==='concluido';
+  const passos=r.passos.map(ps=>`<div style="display:flex;align-items:center;gap:9px;padding:5px 0;border-top:1px solid var(--border)">
+    <i class="ti ${ps.done?'ti-square-check-filled':'ti-square'}" onclick="_procRunToggle('${r.id}','${ps.id}')" style="font-size:19px;color:${ps.done?'var(--success)':'var(--text3)'};cursor:pointer;flex:none"></i>
+    <span style="flex:1;min-width:0;font-size:12.5px;color:${ps.done?'var(--text3)':'var(--text)'};${ps.done?'text-decoration:line-through':''}">${escapeHTML(ps.titulo)}</span>
+    ${ps.setor?`<span style="flex:none;font-size:10.5px;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:1px 8px">${escapeHTML(ps.setor)}</span>`:''}
+  </div>`).join('');
+  return `<div class="cp-card" style="padding:15px 17px;max-width:780px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <i class="ti ${escapeAttr(r.icone||'ti-list-check')}" style="font-size:18px;color:var(--blue-mid);flex:none"></i>
+      <span style="font-size:14.5px;font-weight:700;color:var(--text)">${escapeHTML(r.nome)}</span>
+      ${concl?`<span style="flex:none;font-size:10.5px;font-weight:700;color:var(--success);background:color-mix(in srgb, var(--success) 14%, transparent);border-radius:20px;padding:2px 9px">Concluído</span>`:''}
+      <span style="margin-left:auto;font-size:12px;color:var(--text3)">${feitos}/${total} · ${pct}%</span>
+      <button onclick="_procRunExcluir('${r.id}')" title="Remover" style="border:none;background:none;cursor:pointer;color:var(--text3);padding:2px;flex:none"><i class="ti ti-trash"></i></button>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:9px">avulso · iniciado ${typeof formatDate==='function'?formatDate(r.iniciadoEm):r.iniciadoEm}</div>
+    <div style="height:6px;background:var(--bg2);border-radius:3px;overflow:hidden;margin-bottom:6px"><div style="width:${pct}%;height:100%;background:var(--success)"></div></div>
+    ${passos}
+  </div>`;
+}
+function _procRerenderRuns(){ const el=document.getElementById('proc-runs'); if(el) el.outerHTML=_procAndamentoHTML(); }
+
 // ════════════════════════════════════════════════════════════════════
 // ANÁLISE SENSORIAL  (Qualidade › Sensorial)
 // ────────────────────────────────────────────────────────────────────
@@ -11790,6 +11909,7 @@ function renderSidebar(){
   const gestaoHTML = grupo('gestao','ti-folders','Gestão',
     navSubItem('analise','ti-chart-arcs','Análise') +
     navSubItem('projetos-pro','ti-folders','Projetos', {badge: projectsPro.filter(p=>p.status==='ativo').length||null}) +
+    navSubItem('processos','ti-route','Processos') +
     navSubItem('reunioes','ti-microphone','Reuniões', {badge: reunHoje||null, badgeClass:'warn'}) +
     navSubItem('anotacoes','ti-notes','Notas') +
     navSubItem('rotinas','ti-repeat','Rotinas')
@@ -16882,9 +17002,9 @@ function setTab(tab,el){
   if(el && el.classList) el.classList.add('active');
   renderSidebar();
   // Mapa de títulos e subtítulos para cada aba
-  const titles={dash:'📊 Painel',rotinas:'🔁 Rotinas',hoje:'📅 Tarefas de Hoje','minhas-tarefas':'👤 Minhas Tarefas',solicitadas:'📤 Solicitadas',equipe:'👥 Tarefas da Equipe',entrada:'📥 Organizar',someday:'💤 Lembrete',atrasadas:'🚨 Tarefas Atrasadas',amanha:'🌅 Tarefas de Amanhã',semana:'📆 Tarefas da Semana',pendentes:'⏰ Tarefas Pendentes','prox-semana':'📆 Próxima Semana',concluidas:'✅ Concluídas',todas:'📋 Todas as Tarefas',pessoas:'👤 Por Pessoa',anotacoes:'📝 Anotações',agenda:'🗓️ Agenda',projetos:'📁 Projetos',['projetos-pro']:'📁 Projetos',reunioes:'📅 Reuniões',analise:'📊 Análise',lixeira:'🗑️ Lixeira',ajuda:'❓ Ajuda',mural:'💡 Mural de Ideias'};
+  const titles={dash:'📊 Painel',rotinas:'🔁 Rotinas',hoje:'📅 Tarefas de Hoje','minhas-tarefas':'👤 Minhas Tarefas',solicitadas:'📤 Solicitadas',equipe:'👥 Tarefas da Equipe',entrada:'📥 Organizar',someday:'💤 Lembrete',atrasadas:'🚨 Tarefas Atrasadas',amanha:'🌅 Tarefas de Amanhã',semana:'📆 Tarefas da Semana',pendentes:'⏰ Tarefas Pendentes','prox-semana':'📆 Próxima Semana',concluidas:'✅ Concluídas',todas:'📋 Todas as Tarefas',pessoas:'👤 Por Pessoa',anotacoes:'📝 Anotações',agenda:'🗓️ Agenda',projetos:'📁 Projetos',['projetos-pro']:'📁 Projetos',processos:'🧩 Processos',reunioes:'📅 Reuniões',analise:'📊 Análise',lixeira:'🗑️ Lixeira',ajuda:'❓ Ajuda',mural:'💡 Mural de Ideias'};
   const _fmtTab=x=>x.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit'}).replace('.','');
-  const subs={dash:'Visão geral de todas as suas tarefas',rotinas:'Tarefas que se repetem automaticamente',hoje:'Foque no que importa agora','minhas-tarefas':'Tarefas onde você é o executor',solicitadas:'Tarefas que você pediu a outras pessoas — e confirmações pendentes',equipe:'Atrasadas e de hoje — o que precisa da sua atenção agora',entrada:'Tarefas sem executor — classifique com calma',someday:'Tarefas sem urgência — sem data definida',atrasadas:'Tarefas com data vencida ainda não concluídas',amanha:'O que vem pela frente',semana:`Visão semanal — ${_fmtTab(_mon)} a ${_fmtTab(_sun)}`,pendentes:'Tarefas ainda não concluídas','prox-semana':`Visão da próxima semana — ${_fmtTab(_proxMon)} a ${_fmtTab(_proxSun)}`,concluidas:'Ótimo trabalho!',todas:'Visão completa',pessoas:'Selecione uma pessoa para filtrar',anotacoes:'Blocos rápidos para ideias, reuniões, lembretes e decisões',agenda:'Visualização por dias, estilo Notion',projetos:'Gerencie projetos e equipas',['projetos-pro']:'Projetos com fases, setores e tarefas vinculadas',reunioes:'Hub de reuniões — histórico, pauta e ATA',analise:'Pontualidade e gargalos — pessoal, equipe e reuniões',lixeira:'Itens excluídos — recuperáveis em 30 dias',ajuda:'Tudo o que você precisa saber para usar o sistema',mural:'Ideias e melhorias — vote, comente e acompanhe'};
+  const subs={dash:'Visão geral de todas as suas tarefas',rotinas:'Tarefas que se repetem automaticamente',hoje:'Foque no que importa agora','minhas-tarefas':'Tarefas onde você é o executor',solicitadas:'Tarefas que você pediu a outras pessoas — e confirmações pendentes',equipe:'Atrasadas e de hoje — o que precisa da sua atenção agora',entrada:'Tarefas sem executor — classifique com calma',someday:'Tarefas sem urgência — sem data definida',atrasadas:'Tarefas com data vencida ainda não concluídas',amanha:'O que vem pela frente',semana:`Visão semanal — ${_fmtTab(_mon)} a ${_fmtTab(_sun)}`,pendentes:'Tarefas ainda não concluídas','prox-semana':`Visão da próxima semana — ${_fmtTab(_proxMon)} a ${_fmtTab(_proxSun)}`,concluidas:'Ótimo trabalho!',todas:'Visão completa',pessoas:'Selecione uma pessoa para filtrar',anotacoes:'Blocos rápidos para ideias, reuniões, lembretes e decisões',agenda:'Visualização por dias, estilo Notion',projetos:'Gerencie projetos e equipas',['projetos-pro']:'Projetos com fases, setores e tarefas vinculadas',processos:'Mini-fluxos reutilizáveis — rode avulso ou dentro de um projeto',reunioes:'Hub de reuniões — histórico, pauta e ATA',analise:'Pontualidade e gargalos — pessoal, equipe e reuniões',lixeira:'Itens excluídos — recuperáveis em 30 dias',ajuda:'Tudo o que você precisa saber para usar o sistema',mural:'Ideias e melhorias — vote, comente e acompanhe'};
   document.getElementById('tab-title').textContent=titles[tab];
   document.getElementById('tab-title').style.display='';
   document.getElementById('tab-sub').style.display='';
@@ -18022,6 +18142,7 @@ function render(){
   if(currentTab==='rotinas'){renderRotinas();return;}
   if(currentTab==='pessoas'){renderFilterView('pessoas');return;}
   if(currentTab==='anotacoes'){renderNotes();return;}
+  if(currentTab==='processos'){renderProcessos();return;}
   // GUILHERME V3 (mai/2026): "Projetos" antigo foi removido — redireciona para Projetos Pro.
   if(currentTab==='projetos'){ currentTab='projetos-pro'; renderProjetosPro(); return; }
   if(currentTab==='projetos-pro'){renderProjetosPro();return;}
