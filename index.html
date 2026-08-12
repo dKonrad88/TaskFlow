@@ -10522,7 +10522,7 @@ function _projAddProcessoAbrir(projId, faseId){
   ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
   ov.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;max-width:440px;width:100%;max-height:80vh;overflow:auto;padding:18px 20px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><div style="font-size:15px;font-weight:700;color:var(--text)">Adicionar processo</div><button onclick="var o=document.getElementById('proj-proc-picker');if(o)o.remove()" style="border:none;background:none;cursor:pointer;color:var(--text3);font-size:18px"><i class="ti ti-x"></i></button></div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Os passos entram como tarefas desta fase, já ordenados.</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Os passos entram como um <b>bloco de tarefas</b> nesta fase — agrupados, datados pelo cronograma do projeto e no Meu Dia de cada responsável.</div>
     ${itens}</div>`;
   ov.querySelector('div').addEventListener('click',e=>e.stopPropagation());
   document.body.appendChild(ov);
@@ -10535,16 +10535,25 @@ function _projAddProcesso(projId, faseId, processoId){
   const solic = p.dono || p.coordenador || CURRENT_USER_ID;
   (proc.passos||[]).forEach((ps,i)=>{
     const t={ id:Date.now()+Math.floor(Math.random()*99999)+i, title:ps.titulo, prio:'media',
-      date:_procDataSpread(today,i), dateManual:true, done:false, escopo:'klain',
+      done:false, escopo:'klain',
       executor:_procExecutorPorSetor(ps.setor), solicitante:solic, people:[], createdAt:today, subtasks:[], kanbanCol:'todo',
-      projectProId:projId, ppOrdem: base + i*0.001,
+      projectProId:projId, ppOrdem: base + i*0.001, ppDias:1,
       projectProFaseId: faseId||null, projectProGrupoId:null, setorManual:false,
-      procSetor: ps.setor||'', processoId:processoId, processoRunId:runId, processoNome:proc.nome };
+      procSetor: ps.setor||'', processoId:processoId, processoRunId:runId, processoNome:proc.nome, processoIcone:proc.icone||'ti-route' };
     tasks.push(t); novas.push(t);
   });
+  // (ago/2026, Diego) O processo é PLANEJADO dentro do projeto → a DATA de cada passo segue o
+  // MOMENTO da fase na esteira (a projeção), não "hoje". Assim cada tarefa cai no Meu Dia da pessoa
+  // na data em que o cronograma prevê aquela etapa. É um snapshot no embed (não re-flui sozinho se
+  // reordenar depois) — decisão de protótipo, coerente com a data das outras tarefas do projeto.
+  try{
+    const _ord=_ppTarefasOrdenadas(p), _et=_ppEtapas(_ord), _anchor=(p.prazoInicio&&p.prazoInicio>today)?p.prazoInicio:today;
+    const _proj=_ppProjecao(_ord,_et,_anchor);
+    novas.forEach((t,i)=>{ const pr=_proj.get(t.id); t.date=(pr&&pr.fim)?pr.fim:_procDataSpread(today,i); t.dateManual=false; });
+  }catch(e){ novas.forEach((t,i)=>{ t.date=_procDataSpread(today,i); t.dateManual=false; }); }
   if(typeof saveProjectPro_db==='function') saveProjectPro_db(p);
   novas.forEach(t=>{ if(typeof saveTask_db==='function') saveTask_db(t); });
-  if(typeof toast==='function') toast(`Processo "${proc.nome}" adicionado — ${novas.length} tarefas`);
+  if(typeof toast==='function') toast(`Processo "${proc.nome}" adicionado — ${novas.length} tarefas agrupadas na fase`);
   render(); renderSidebar();
 }
 
@@ -21895,7 +21904,7 @@ function renderTaskTable(taskList, opts){
 
   const bodyHTML = sorted.map(t => tableRowHTML(t, opts)).join('');
 
-  return `<table class="task-table">${headerHTML}<tbody>${bodyHTML}</tbody></table>`;
+  return `<table class="task-table">${(opts&&opts.semHeader)?'':headerHTML}<tbody>${bodyHTML}</tbody></table>`;
 }
 
 function tableRowHTML(t, opts){
@@ -28207,6 +28216,22 @@ function renderProjectProVisao(p, prog){
       </div>`}
     </div>`;
   };
+  // BLOCO do processo embutido: agrupa as tarefas do mesmo run num cartão "Processo · X" (recolhível),
+  // reusando _tarefaLinha nas linhas internas. É o que faz o processo "ficar junto" dentro da fase —
+  // planejado, não espalhado (Diego, ago/2026). Cada passo continua sendo tarefa de verdade.
+  const _procBloco=(seg)=>{
+    const ts=seg.tasks, total=ts.length, feitos=ts.filter(t=>t.done).length, rec=_ppProcRecolhido(seg.runId);
+    const ac='var(--blue-mid)';
+    return `<div style="border-top:1px solid var(--border)"><div style="margin:7px;border:1px solid color-mix(in srgb,${ac} 30%,var(--border));border-radius:10px;overflow:hidden">
+      <div onclick="_ppToggleProc('${seg.runId}')" title="${rec?'Expandir':'Recolher'} processo" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:color-mix(in srgb,${ac} 10%,transparent);cursor:pointer;user-select:none">
+        <i class="ti ti-chevron-${rec?'right':'down'}" style="font-size:13px;color:${ac};flex-shrink:0"></i>
+        <i class="ti ${escapeAttr(seg.icone)}" style="font-size:15px;color:${ac};flex-shrink:0"></i>
+        <span style="flex:1;min-width:0;font-size:11.5px;font-weight:700;color:${ac};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Processo · ${escapeHTML(seg.nome)}</span>
+        <span style="font-size:11px;font-weight:600;color:${ac};flex-shrink:0">${feitos}/${total}</span>
+        <button onclick="event.stopPropagation();_projRemoverProcesso('${p.id}','${seg.runId}')" title="Remover processo" style="background:none;border:none;cursor:pointer;color:${ac};opacity:.65;padding:0;flex-shrink:0"><i class="ti ti-trash" style="font-size:12px"></i></button>
+      </div>${rec?'':ts.map(_tarefaLinha).join('')}
+    </div></div>`;
+  };
   // ── ESTRUTURA em MASTER-DETAIL: coluna de FASES (clicáveis) · DETALHE (setores+tarefas) ao lado. ──
   // (Diego, jul/2026) Clicar na fase NÃO abre mais acordeão pra baixo — abre na coluna do meio.
   const _fasesP=(p.fases||[]);
@@ -28289,7 +28314,7 @@ function renderProjectProVisao(p, prog){
       const _fchip=(val,lab)=>`<button data-setor="${escapeAttr(val)}" onclick="_ppSetFiltroSetor(this.dataset.setor)" style="font-size:10.5px;font-weight:600;padding:2px 9px;border-radius:20px;border:1px solid ${_fS===val?'var(--blue-mid)':'var(--border)'};background:${_fS===val?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--card)'};color:${_fS===val?'var(--blue-mid)':'var(--text2)'};cursor:pointer;font-family:inherit">${escapeHTML(lab)}</button>`;
       const _fbar=_setoresF.length?`<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin:0 0 8px"><span style="font-size:10.5px;color:var(--text3)">Setor:</span>${_fchip('','Todos')}${_setoresF.map(s=>_fchip(s,s)).join('')}</div>`:'';
       const _vis=_fS?_faseTasks.filter(t=>_ppSetorNome(p,t)===_fS):_faseTasks;
-      const _linhas=_vis.length?_vis.map(_tarefaLinha).join(''):`<div style="padding:14px;font-size:12px;color:var(--text3);font-style:italic">Nenhuma tarefa ${_fS?'nesse setor':('nesta '+_ppRot(p,1,false,true))} ainda.</div>`;
+      const _linhas=_vis.length?_ppSegmentarProcessos(_vis).map(sg=>sg.tipo==='proc'?_procBloco(sg):_tarefaLinha(sg.t)).join(''):`<div style="padding:14px;font-size:12px;color:var(--text3);font-style:italic">Nenhuma tarefa ${_fS?'nesse setor':('nesta '+_ppRot(p,1,false,true))} ainda.</div>`;
       _planBody=`${_fbar}<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--surface-painel)">
         ${_linhas}
         <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;${_vis.length?'border-top:1px solid var(--border)':''}">
@@ -28559,9 +28584,25 @@ function renderFaseExpandida(p, f){
   const _visiveis = _fSet ? _faseTasks.filter(t=>_ppSetorNome(p,t)===_fSet) : _faseTasks;
   const _chip=(val,lab)=>`<button data-setor="${escapeAttr(val)}" onclick="_ppSetFiltroSetor(this.dataset.setor)" style="font-size:11px;font-weight:600;padding:3px 11px;border-radius:20px;border:1px solid ${_fSet===val?'var(--blue-mid)':'var(--border)'};background:${_fSet===val?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--card)'};color:${_fSet===val?'var(--blue-mid)':'var(--text2)'};cursor:pointer;font-family:inherit">${escapeHTML(lab)}</button>`;
   const filtroHTML = _setoresFase.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px"><span style="font-size:11px;color:var(--text3);margin-right:2px">Setor:</span>${_chip('','Todos')}${_setoresFase.map(s=>_chip(s,s)).join('')}</div>` : '';
-  const tarefasHTML = _visiveis.length ? renderTaskTable(_visiveis, {ocultarProjeto:true}) : `<div style="padding:16px;text-align:center;font-size:12px;color:var(--text3)">Nenhuma tarefa ${_fSet?'nesse setor':('nesta '+_ppRot(p,1,false,true))} ainda.</div>`;
+  // (ago/2026, Diego) Tarefas de PROCESSO ficam agrupadas em blocos "Processo · X"; o resto vai na tabela.
+  const _soltasF=_visiveis.filter(t=>!t.processoRunId);
+  const _runsF={}, _runOrdF=[];
+  _visiveis.filter(t=>t.processoRunId).forEach(t=>{ if(!_runsF[t.processoRunId]){ _runsF[t.processoRunId]=[]; _runOrdF.push(t.processoRunId); } _runsF[t.processoRunId].push(t); });
+  const _soltasHTML=_soltasF.length?renderTaskTable(_soltasF,{ocultarProjeto:true}):'';
+  const _procBlocosF=_runOrdF.map(rid=>{ const ts=_runsF[rid], feitos=ts.filter(t=>t.done).length, nome=ts[0].processoNome||'Processo', ic=ts[0].processoIcone||'ti-route';
+    return `<div style="border:1px solid color-mix(in srgb,var(--blue-mid) 30%,var(--border));border-radius:12px;overflow:hidden;margin-top:12px">
+      <div style="display:flex;align-items:center;gap:8px;padding:9px 13px;background:color-mix(in srgb,var(--blue-mid) 10%,transparent)">
+        <i class="ti ${escapeAttr(ic)}" style="font-size:16px;color:var(--blue-mid);flex-shrink:0"></i>
+        <span style="flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--blue-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Processo · ${escapeHTML(nome)}</span>
+        <span style="font-size:12px;font-weight:600;color:var(--blue-mid);flex-shrink:0">${feitos}/${ts.length}</span>
+        <button onclick="_projRemoverProcesso('${p.id}','${rid}')" title="Remover processo" style="background:none;border:none;cursor:pointer;color:var(--blue-mid);opacity:.65;padding:2px;flex-shrink:0"><i class="ti ti-trash" style="font-size:13px"></i></button>
+      </div>${renderTaskTable(ts,{ocultarProjeto:true,semHeader:true})}
+    </div>`;
+  }).join('');
+  const _vazioF=`<div style="padding:16px;text-align:center;font-size:12px;color:var(--text3)">Nenhuma tarefa ${_fSet?'nesse setor':('nesta '+_ppRot(p,1,false,true))} ainda.</div>`;
   const addHTML = `<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-top:1px solid var(--border)"><i class="ti ti-plus" style="font-size:14px;color:var(--text3);flex-shrink:0"></i><input id="qa-fase-exp-${f.id}" autocomplete="off" placeholder="Nova tarefa nesta ${_ppRot(p,1,false,true)} — Enter para adicionar" onkeydown="if(event.key==='Enter'){event.preventDefault();quickAddTaskPro('qa-fase-exp-${f.id}','${p.id}','${f.id}','')}" style="flex:1;min-width:0;border:none;background:transparent;font-size:12.5px;color:var(--text);font-family:inherit;outline:none;padding:2px 0"></div>`;
-  return headerHTML + filtroHTML + `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">${tarefasHTML}${addHTML}</div>`;
+  const cardSoltas=`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">${_visiveis.length?_soltasHTML:_vazioF}${addHTML}</div>`;
+  return headerHTML + filtroHTML + cardSoltas + _procBlocosF;
 }
 
 function abrirFaseEspecifica(faseId){
@@ -29242,6 +29283,38 @@ function _ppToggleEtapa(gid){
   if(_ppCardCol[k]) delete _ppCardCol[k]; else _ppCardCol[k]=true;
   safeSetItem('taskflow_pp_card_col', JSON.stringify(_ppCardCol));
   render();
+}
+// ── PROCESSO embutido num projeto: as tarefas do mesmo processoRunId ficam JUNTAS num bloco. ──
+// (ago/2026, Diego) Diferente do avulso (aperta → abre tarefas), no projeto o processo é PLANEJADO
+// e aparece como um bloco "Processo · X" dentro da fase — os passos ficam agrupados, não espalhados.
+// Segmenta uma lista de tarefas (já na ordem da esteira) em: {tipo:'solta',t} | {tipo:'proc',...}.
+// Agrupa TODAS as tarefas de um run no 1º ponto em que ele aparece (robusto a reordenação).
+function _ppSegmentarProcessos(ordTasks){
+  const segs=[], idx={};
+  (ordTasks||[]).forEach(t=>{
+    if(t && t.processoRunId){
+      if(idx[t.processoRunId]!=null){ segs[idx[t.processoRunId]].tasks.push(t); }
+      else { idx[t.processoRunId]=segs.length; segs.push({tipo:'proc',runId:t.processoRunId,nome:t.processoNome||'Processo',icone:t.processoIcone||'ti-route',tasks:[t]}); }
+    } else segs.push({tipo:'solta',t});
+  });
+  return segs;
+}
+// Recolher/expandir o bloco do processo (mesmo storage das etapas, prefixo `proc·`).
+function _ppProcRecolhido(runId){ return !!_ppCardCol['proc·'+runId]; }
+function _ppToggleProc(runId){
+  const k='proc·'+runId;
+  if(_ppCardCol[k]) delete _ppCardCol[k]; else _ppCardCol[k]=true;
+  safeSetItem('taskflow_pp_card_col', JSON.stringify(_ppCardCol));
+  render();
+}
+// Remover um processo embutido inteiro (todas as tarefas daquele run neste projeto).
+function _projRemoverProcesso(projId, runId){
+  confirmModal({title:'Remover processo', message:'Remover este processo e <b>todas as tarefas dele</b> desta fase?', danger:true, confirmLabel:'Remover', onConfirm:()=>{
+    const del=(tasks||[]).filter(t=>t.processoRunId===runId && t.projectProId===projId);
+    del.forEach(t=>{ const i=tasks.indexOf(t); if(i>=0) tasks.splice(i,1); if(typeof deleteTask_db==='function') deleteTask_db(t.id); });
+    const p=projectsPro.find(x=>x.id===projId); if(p && typeof saveProjectPro_db==='function') saveProjectPro_db(p);
+    if(typeof toast==='function') toast('Processo removido'); render(); if(typeof renderSidebar==='function') renderSidebar();
+  }});
 }
 
 // Cabeçalho clicável: chevron + ícone + título + resumo (sempre visível, mesmo fechado).
