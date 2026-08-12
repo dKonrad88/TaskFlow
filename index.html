@@ -28147,6 +28147,19 @@ function renderProjectProVisao(p, prog){
   // Linha de tarefa do detalhe — feita p/ PLANEJAR: badge da ETAPA (dependência), cadeado se
   // bloqueada, dias úteis editáveis e conclusão prevista de cada tarefa (Diego, jul/2026).
   const _tarefaLinha=(t)=>{
+    // Modo SELEÇÃO (agrupar tarefas em processo): linha simplificada e clicável, sem edições inline.
+    if(window._ppSelMode){
+      const _sel=window._ppSelIds&&window._ppSelIds.has(t.id);
+      const _ex=t.executor?_personById(t.executor):null;
+      const _num=_numE.get(t.id)||'';
+      return `<div onclick="_ppToggleSel(${t.id})" style="display:grid;grid-template-columns:26px 24px minmax(0,1fr) 84px 72px;gap:9px;align-items:center;padding:8px 10px;border-top:1px solid var(--border);cursor:pointer;user-select:none;background:${_sel?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'transparent'}">
+        <i class="ti ${_sel?'ti-square-check-filled':'ti-square'}" style="font-size:19px;color:${_sel?'var(--blue-mid)':'var(--text3)'}"></i>
+        <span style="font-size:10px;font-weight:800;color:var(--text3);background:var(--bg2);border-radius:5px;padding:2px 0;text-align:center">${_num}</span>
+        <span style="min-width:0;font-size:12.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(t.title)}</span>
+        <span style="min-width:0;text-align:center;font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_ex?escapeHTML(_ex.name.split(' ')[0]):'—'}</span>
+        <span style="font-size:10.5px;color:var(--text3);text-align:center;white-space:nowrap">${t.date?formatDate(t.date):''}</span>
+      </div>`;
+    }
     const done=!!t.done;
     const s=_ppStatus(t,_ordE,_etE); const bloq=s.estado==='bloqueada';
     let stCor='var(--text3)';
@@ -28313,14 +28326,25 @@ function renderProjectProVisao(p, prog){
       const _fS=window._ppFaseSetorFiltro||'';
       const _fchip=(val,lab)=>`<button data-setor="${escapeAttr(val)}" onclick="_ppSetFiltroSetor(this.dataset.setor)" style="font-size:10.5px;font-weight:600;padding:2px 9px;border-radius:20px;border:1px solid ${_fS===val?'var(--blue-mid)':'var(--border)'};background:${_fS===val?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--card)'};color:${_fS===val?'var(--blue-mid)':'var(--text2)'};cursor:pointer;font-family:inherit">${escapeHTML(lab)}</button>`;
       const _fbar=_setoresF.length?`<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin:0 0 8px"><span style="font-size:10.5px;color:var(--text3)">Setor:</span>${_fchip('','Todos')}${_setoresF.map(s=>_fchip(s,s)).join('')}</div>`:'';
-      const _vis=_fS?_faseTasks.filter(t=>_ppSetorNome(p,t)===_fS):_faseTasks;
-      const _linhas=_vis.length?_ppSegmentarProcessos(_vis).map(sg=>sg.tipo==='proc'?_procBloco(sg):_tarefaLinha(sg.t)).join(''):`<div style="padding:14px;font-size:12px;color:var(--text3);font-style:italic">Nenhuma tarefa ${_fS?'nesse setor':('nesta '+_ppRot(p,1,false,true))} ainda.</div>`;
-      _planBody=`${_fbar}<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--surface-painel)">
+      const _selM=!!window._ppSelMode;
+      const _vis=(_fS&&!_selM)?_faseTasks.filter(t=>_ppSetorNome(p,t)===_fS):_faseTasks;
+      const _linhas=_vis.length
+        ? (_selM ? _vis.map(_tarefaLinha).join('') : _ppSegmentarProcessos(_vis).map(sg=>sg.tipo==='proc'?_procBloco(sg):_tarefaLinha(sg.t)).join(''))
+        : `<div style="padding:14px;font-size:12px;color:var(--text3);font-style:italic">Nenhuma tarefa ${_fS?'nesse setor':('nesta '+_ppRot(p,1,false,true))} ainda.</div>`;
+      const _nSel=(window._ppSelIds&&window._ppSelIds.size)||0;
+      const _selBar=_selM?`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 8px;padding:8px 11px;border:1px solid var(--blue-mid);border-radius:9px;background:color-mix(in srgb,var(--blue-mid) 7%,transparent)">
+          <span style="font-size:11.5px;color:var(--text2)"><b style="color:var(--blue-mid)">${_nSel}</b> selecionada${_nSel===1?'':'s'} — marque as tarefas em sequência (ex.: da 7 à 14) que formam o processo</span>
+          <div style="margin-left:auto;display:flex;gap:7px">
+            <button onclick="_ppAbrirCriarProcesso('${p.id}','${f.id}')" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:8px;border:none;background:var(--blue-mid);color:#fff;cursor:${_nSel<1?'default':'pointer'};opacity:${_nSel<1?'.5':'1'};font-family:inherit"><i class="ti ti-route"></i>Criar processo</button>
+            <button onclick="_ppToggleSelMode()" style="font-size:11.5px;padding:5px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;font-family:inherit">Cancelar</button>
+          </div>
+        </div>`:'';
+      _planBody=`${_selM?'':_fbar}${_selBar}<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--surface-painel)">
         ${_linhas}
-        <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;${_vis.length?'border-top:1px solid var(--border)':''}">
+        ${_selM?'':`<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;${_vis.length?'border-top:1px solid var(--border)':''}">
           <i class="ti ti-plus" style="font-size:14px;color:var(--text3);flex-shrink:0"></i>
           <input id="qa-planlista-${f.id}" autocomplete="off" placeholder="Nova tarefa nesta ${_ppRot(p,1,false,true)} — Enter para adicionar" onkeydown="if(event.key==='Enter'){event.preventDefault();quickAddTaskPro('qa-planlista-${f.id}','${p.id}','${f.id}','')}" style="flex:1;min-width:0;border:none;background:transparent;font-size:12.5px;color:var(--text);font-family:inherit;outline:none;padding:2px 0">
-        </div>
+        </div>`}
       </div>`;
     } else {
       _planBody=`${setores.map(g=>_setorBloco(g,f.id)).join('')}
@@ -28334,7 +28358,7 @@ function renderProjectProVisao(p, prog){
     detalheBloco=`<div>
       <div style="display:flex;align-items:center;gap:11px;margin-bottom:14px;flex-wrap:wrap">
         <div style="flex:1;min-width:120px">${_ppTituloCol('ti-layout-rows',escapeHTML(f.nome),'',0)}</div>
-        <button onclick="_projAddProcessoAbrir('${p.id}','${f.id}')" title="Adicionar um processo pronto a esta fase" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-route"></i>Processo</button>
+        ${window._ppSelMode?'':`<button onclick="_ppToggleSelMode()" title="Selecionar tarefas em sequência e criar um processo a partir delas" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-checkbox"></i>Agrupar</button><button onclick="_projAddProcessoAbrir('${p.id}','${f.id}')" title="Adicionar um processo pronto a esta fase" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-route"></i>Processo</button>`}
         <span style="font-size:12px;font-weight:800;color:${cFase};min-width:34px;text-align:right">${fp.pct}%</span>
       </div>
       ${_planBody}
@@ -28615,6 +28639,7 @@ function abrirFaseEspecifica(faseId){
 window._ppFaseSelId = window._ppFaseSelId || null;
 function _ppSelecionarFase(faseId){
   window._ppFaseSelId = faseId;
+  window._ppSelMode=false; window._ppSelIds=null;  // trocar de fase sai do modo seleção
   render();
 }
 // [compat] antigo acordeão do Painel — alias p/ chamadas remanescentes
@@ -29315,6 +29340,65 @@ function _projRemoverProcesso(projId, runId){
     const p=projectsPro.find(x=>x.id===projId); if(p && typeof saveProjectPro_db==='function') saveProjectPro_db(p);
     if(typeof toast==='function') toast('Processo removido'); render(); if(typeof renderSidebar==='function') renderSidebar();
   }});
+}
+// ── Criar processo A PARTIR de tarefas que já existem no projeto (seleciona um trecho → agrupa). ──
+// (Diego, ago/2026) Fluxo real: solta tudo no projeto, ordena, e onde um conjunto forma um mini-processo
+// (ex.: da 7 à 14 = "Cadastro do produto"), seleciona e vira bloco "Processo · X". Pode ficar só neste
+// projeto OU virar molde reutilizável na biblioteca (contexto 'ambos'). As tarefas NÃO são recriadas —
+// só ganham o vínculo (processoRunId/Nome/Icone), preservando executor, data e ordem.
+function _ppToggleSelMode(){
+  window._ppSelMode=!window._ppSelMode;
+  window._ppSelIds=window._ppSelMode?new Set():null;
+  if(window._ppSelMode) window._ppFaseSetorFiltro='';  // seleção não deve ficar presa a um filtro de setor
+  render();
+}
+function _ppToggleSel(taskId){
+  if(!window._ppSelIds) window._ppSelIds=new Set();
+  if(window._ppSelIds.has(taskId)) window._ppSelIds.delete(taskId); else window._ppSelIds.add(taskId);
+  render();
+}
+function _ppAbrirCriarProcesso(projId, faseId){
+  if(!window._ppSelIds||!window._ppSelIds.size){ if(typeof toast==='function') toast('Selecione ao menos uma tarefa'); return; }
+  const n=window._ppSelIds.size;
+  const ov=document.createElement('div'); ov.id='pp-proc-criar';
+  ov.style.cssText='position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.addEventListener('click',e=>{ if(e.target===ov) ov.remove(); });
+  ov.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;max-width:430px;width:100%;padding:18px 20px">
+    <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px">Criar processo a partir de ${n} tarefa${n>1?'s':''}</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">As selecionadas viram um bloco "Processo · X" agrupado nesta fase — continuam as mesmas (executor, data e ordem preservados).</div>
+    <input id="pp-proc-nome" placeholder="Nome do processo (ex.: Cadastro do produto)" style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;background:var(--bg2);color:var(--text);outline:none;margin-bottom:14px" onkeydown="if(event.key==='Enter'){event.preventDefault();_ppCriarProcessoDaSelecao('${projId}','${faseId}')}">
+    <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Este processo é:</div>
+    <label style="display:flex;align-items:flex-start;gap:9px;font-size:12.5px;color:var(--text);cursor:pointer;margin-bottom:9px"><input type="radio" name="pp-proc-ctx" value="projeto" checked style="margin-top:2px;flex-shrink:0"><span><b>Só neste projeto</b> <span style="font-size:11px;color:var(--text3)">— fica só aqui, não vai pra biblioteca.</span></span></label>
+    <label style="display:flex;align-items:flex-start;gap:9px;font-size:12.5px;color:var(--text);cursor:pointer"><input type="radio" name="pp-proc-ctx" value="ambos" style="margin-top:2px;flex-shrink:0"><span><b>Também reutilizável</b> <span style="font-size:11px;color:var(--text3)">— salva na biblioteca (Gestão › Processos) p/ usar em outros projetos e avulso.</span></span></label>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">
+      <button onclick="var o=document.getElementById('pp-proc-criar');if(o)o.remove()" style="font-size:12.5px;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;font-family:inherit">Cancelar</button>
+      <button onclick="_ppCriarProcessoDaSelecao('${projId}','${faseId}')" style="font-size:12.5px;font-weight:700;padding:7px 16px;border-radius:8px;border:none;background:var(--blue-mid);color:#fff;cursor:pointer;font-family:inherit">Criar processo</button>
+    </div>
+  </div>`;
+  ov.querySelector('div').addEventListener('click',e=>e.stopPropagation());
+  document.body.appendChild(ov);
+  setTimeout(()=>{ const i=document.getElementById('pp-proc-nome'); if(i) i.focus(); },30);
+}
+function _ppCriarProcessoDaSelecao(projId, faseId){
+  const p=projectsPro.find(x=>x.id===projId); if(!p) return;
+  const nomeEl=document.getElementById('pp-proc-nome'); const nome=(nomeEl?nomeEl.value:'').trim();
+  if(!nome){ if(typeof toast==='function') toast('Dê um nome ao processo'); if(nomeEl) nomeEl.focus(); return; }
+  const ctxEl=document.querySelector('input[name="pp-proc-ctx"]:checked'); const reut=ctxEl&&ctxEl.value==='ambos';
+  const ids=window._ppSelIds||new Set();
+  const sel=_ppTarefasOrdenadas(p).filter(t=>ids.has(t.id)&&t.projectProId===p.id);
+  if(!sel.length){ if(typeof toast==='function') toast('Nenhuma tarefa selecionada'); return; }
+  const runId=_procId('run'), icone='ti-route'; let moldId=null;
+  if(reut){
+    const mold={id:_procId('proc'),nome:nome,icone:icone,contexto:'ambos',desc:'',criadoEm:today,
+      passos:sel.map(t=>({id:_procId('ps'),titulo:t.title,setor:(_ppSetorNome(p,t)||t.procSetor||'')}))};
+    const lib=_procLoad(); lib.push(mold); _procSaveAll(lib); moldId=mold.id;
+  }
+  sel.forEach(t=>{ t.processoRunId=runId; t.processoNome=nome; t.processoIcone=icone; if(moldId) t.processoId=moldId; if(typeof saveTask_db==='function') saveTask_db(t); });
+  if(typeof saveProjectPro_db==='function') saveProjectPro_db(p);
+  const o=document.getElementById('pp-proc-criar'); if(o) o.remove();
+  window._ppSelMode=false; window._ppSelIds=null;
+  if(typeof toast==='function') toast(`Processo "${nome}" criado — ${sel.length} tarefa${sel.length>1?'s':''} agrupada${sel.length>1?'s':''}${reut?' (salvo na biblioteca)':''}`);
+  render(); if(typeof renderSidebar==='function') renderSidebar();
 }
 
 // Cabeçalho clicável: chevron + ícone + título + resumo (sempre visível, mesmo fechado).
