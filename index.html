@@ -28184,37 +28184,28 @@ function renderProjectProVisao(p, prog){
     const numHier=_numE.get(t.id)||''; const etapa=_etE.get(t.id); const paralela=!!t.ppParalela;
     const dias=(typeof t.ppDias==='number'&&t.ppDias>0)?t.ppDias:1;
     const prev=_projE.get(t.id); const prevTxt=(!done&&prev&&prev.fim)?formatDate(prev.fim):'';
-    // GRID de colunas fixas (não flex): é o que alinha executor/dias/data VERTICALMENTE entre as
-    // linhas. Com flex, cada linha se ajustava ao próprio conteúdo e nada casava (Diego, jul/2026).
-    // Colunas: etapa · dependência · check · título · executor · dias · previsão.
     const _primeira=(_ordE[0]&&_ordE[0].id===t.id);
-    // (jul/2026, Diego) A tarefa QUE ESTÁ SENDO FEITA fica levemente destacada, p/ bater o olho e
-    // saber qual é. "Sendo feita" = liberada e não concluída (estado 'hoje' ou 'atrasada'); as
-    // bloqueadas e as concluídas ficam neutras. O destaque usa o ACENTO DO TEMA (var(--blue-mid) —
-    // marrom no Klain, verde no Brasil, azul no claro), NÃO a cor do projeto: assim a faixa NUNCA
-    // fica "azul" num tema quente (pedido do Diego). Fundo a 7% + faixa de 3px na borda esquerda.
+    // (ago/2026, Diego) Linha ENXUTA: nº · check · título · executor · data. A maquinaria da esteira
+    // (seta de DEPENDÊNCIA e campo DIAS) foi p/ o HOVER, junto de editar/excluir. O CADEADO sumiu
+    // (bloqueada = checkbox apagado, tooltip explica). A paralela âmbar saiu — a numeração 4.1/4.2 já
+    // mostra o paralelismo. Destaque só na tarefa EM ANDAMENTO. Menos elementos, menos cor.
+    // ⚠️ onmouseleave NÃO esconde o overlay se um input dele (dias) estiver focado — senão sumia ao editar.
     const _emAndamento = !done && !bloq && (s.estado==='hoje' || s.estado==='atrasada');
     const _hlCor = s.estado==='atrasada' ? 'var(--danger)' : 'var(--blue-mid)';
-    // (jul/2026, Proposta A — Diego) A paralela GRITA (âmbar: badge + conector └ + faixa esquerda),
-    // a sequencial fica QUIETA (só um ↓ apagado). A faixa: âmbar se paralela (agrupa as que rodam
-    // juntas); senão o acento do TEMA quando em andamento. O fundo a 7% segue só na tarefa em curso.
-    const _barCor = paralela ? 'var(--amber)' : (_emAndamento ? _hlCor : '');
-    const _hl = `${_emAndamento?`background:color-mix(in srgb,${_hlCor} 7%,transparent);`:''}${_barCor?`box-shadow:inset 3px 0 0 ${_barCor};`:''}`;
-    return `<div data-task-id="${t.id}" onmouseenter="var _b=this.querySelector('.pp-del');if(_b)_b.style.opacity='1'" onmouseleave="var _b=this.querySelector('.pp-del');if(_b)_b.style.opacity='0'" style="position:relative;display:grid;grid-template-columns:24px 22px 18px minmax(0,1fr) 80px 40px 74px;gap:9px;align-items:center;padding:7px 10px;border-top:1px solid var(--border);${_hl}">
-      <span title="Etapa ${etapa}${paralela?' · roda JUNTO com a anterior (mesma etapa, paralela)':' · só começa quando a etapa anterior conclui'}" style="font-size:10px;font-weight:800;color:${paralela?'var(--amber)':'var(--text3)'};background:${paralela?'color-mix(in srgb,var(--amber) 16%,transparent)':'var(--bg2)'};border-radius:5px;padding:2px 0;text-align:center">${numHier}</span>
-      ${_primeira
-        ? '<span></span>'
-        : `<button onclick="event.stopPropagation();_ppToggleParalela('${p.id}',${t.id})" title="${paralela?'Roda JUNTO com a anterior (mesma etapa) — clique p/ voltar a rodar em sequência':'Roda em SEQUÊNCIA (só começa quando a anterior conclui) — clique p/ rodar JUNTO com a anterior'}" style="background:none;border:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;color:${paralela?'var(--amber)':'var(--text3)'};opacity:${paralela?'1':'.5'}"><i class="ti ${paralela?'ti-corner-down-right':'ti-arrow-narrow-down'}" style="font-size:${paralela?'16':'13'}px"></i></button>`}
+    const _hl = _emAndamento ? `background:color-mix(in srgb,${_hlCor} 6%,transparent);box-shadow:inset 3px 0 0 ${_hlCor};` : '';
+    return `<div data-task-id="${t.id}" onmouseenter="var _b=this.querySelector('.pp-del');if(_b)_b.style.opacity='1'" onmouseleave="var _b=this.querySelector('.pp-del');if(_b&&!_b.contains(document.activeElement))_b.style.opacity='0'" style="position:relative;display:grid;grid-template-columns:22px 18px minmax(0,1fr) 92px 82px;gap:9px;align-items:center;padding:8px 10px;border-top:1px solid var(--border);${_hl}">
+      <span title="Etapa ${etapa}${paralela?' · roda junto com a anterior (paralela)':''}" style="font-size:10.5px;font-weight:700;color:var(--text3);text-align:center">${numHier}</span>
       ${bloq
-        ? `<span title="Bloqueada — aguarda a etapa anterior concluir" style="width:18px;height:18px;border-radius:50%;border:1.5px dashed var(--border);color:var(--text3);display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-lock" style="font-size:10px"></i></span>`
+        ? `<span title="Aguarda a etapa anterior concluir" style="display:inline-flex;align-items:center;justify-content:center;opacity:.35"><i class="ti ti-square" style="font-size:18px;color:var(--text3)"></i></span>`
         : `<i class="ti ${done?'ti-square-check-filled':'ti-square'}" onclick="toggle(${t.id})" style="font-size:18px;color:${done?'var(--success)':'var(--text3)'};cursor:pointer" title="${done?'Concluída':'Marcar como concluída'}"></i>`}
-      <span contenteditable="true" spellcheck="false" onfocus="this.dataset.orig=this.textContent" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}else if(event.key==='Escape'){event.preventDefault();this.textContent=this.dataset.orig||'';this.blur();}" onblur="_ppSalvarTituloInline(${t.id},this)" style="min-width:0;font-size:12.5px;color:${done?'var(--text3)':'var(--text)'};${done?'text-decoration:line-through;':''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;outline:none;border-radius:4px;padding:1px 3px" title="Clique para renomear (o lápis abre a tarefa)">${escapeHTML(t.title)}</span>
-      <span style="display:flex;justify-content:center;min-width:0">${ex
-        ? `<span data-exec-anchor="${t.id}" onclick="event.stopPropagation();ttOpenInlineDropdown(${t.id},'executor',this)" title="${escapeAttr(ex.name)} — clique p/ trocar" style="display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:2px 8px;border-radius:99px;background:var(--bg2);border:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text2);cursor:pointer;white-space:nowrap"><i class="ti ti-user" style="font-size:10px;flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis">${escapeHTML(ex.name.split(' ')[0])}</span></span>`
-        : `<span data-exec-anchor="${t.id}" onclick="event.stopPropagation();ttOpenInlineDropdown(${t.id},'executor',this)" title="Definir responsável" style="display:inline-flex;align-items:center;gap:3px;padding:2px 9px;border-radius:99px;border:1px dashed var(--border);color:var(--text3);font-size:11px;cursor:pointer"><i class="ti ti-user-plus" style="font-size:12px"></i></span>`}</span>
-      <input type="number" min="1" max="999" value="${dias}" title="Dias úteis para executar" onchange="_ppSetDias('${p.id}',${t.id},this.value)" style="width:100%;height:23px;text-align:center;font-size:11px;padding:1px 2px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);font-family:inherit;box-sizing:border-box">
-      <span title="${t.date?'Prazo definido desta tarefa':'Conclusão prevista (estimativa — tarefa sem prazo definido)'}" style="font-size:10.5px;color:${done?'var(--text3)':stCor};font-weight:600;white-space:nowrap;text-align:center">${t.date?`<i class="ti ti-flag-3" style="font-size:10px"></i> ${formatDate(t.date)}`:((!done&&prevTxt)?`<i class="ti ti-calendar" style="font-size:10px;opacity:.55"></i> ${prevTxt}`:'')}</span>
-      <span class="pp-del" style="position:absolute;right:10px;top:0;bottom:0;display:inline-flex;align-items:center;gap:6px;opacity:0;transition:opacity .12s;padding-left:24px;background:linear-gradient(90deg,transparent,var(--surface-painel) 45%)">
+      <span contenteditable="true" spellcheck="false" onfocus="this.dataset.orig=this.textContent" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}else if(event.key==='Escape'){event.preventDefault();this.textContent=this.dataset.orig||'';this.blur();}" onblur="_ppSalvarTituloInline(${t.id},this)" style="min-width:0;font-size:12.5px;color:${done?'var(--text3)':'var(--text)'};${done?'text-decoration:line-through;':''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;outline:none;border-radius:4px;padding:1px 3px" title="Clique para renomear">${escapeHTML(t.title)}</span>
+      <span style="min-width:0;text-align:center">${ex
+        ? `<span data-exec-anchor="${t.id}" onclick="event.stopPropagation();ttOpenInlineDropdown(${t.id},'executor',this)" title="${escapeAttr(ex.name)} — clique p/ trocar" style="font-size:11.5px;color:var(--text2);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;max-width:100%">${escapeHTML(ex.name.split(' ')[0])}</span>`
+        : `<span data-exec-anchor="${t.id}" onclick="event.stopPropagation();ttOpenInlineDropdown(${t.id},'executor',this)" title="Definir responsável" style="display:inline-flex;align-items:center;gap:3px;color:var(--text3);font-size:11px;cursor:pointer"><i class="ti ti-user-plus" style="font-size:13px"></i></span>`}</span>
+      <span title="${t.date?'Prazo definido desta tarefa':'Conclusão prevista (estimativa)'}" style="font-size:10.5px;color:${done?'var(--text3)':stCor};font-weight:600;white-space:nowrap;text-align:center">${t.date?`<i class="ti ti-flag-3" style="font-size:10px"></i> ${formatDate(t.date)}`:((!done&&prevTxt)?`<i class="ti ti-calendar" style="font-size:10px;opacity:.55"></i> ${prevTxt}`:'')}</span>
+      <span class="pp-del" style="position:absolute;right:9px;top:0;bottom:0;display:inline-flex;align-items:center;gap:9px;opacity:0;transition:opacity .12s;padding-left:26px;background:linear-gradient(90deg,transparent,var(--surface-painel) 30%)">
+        <input type="number" min="1" max="999" value="${dias}" onclick="event.stopPropagation()" title="Dias úteis para executar" onchange="_ppSetDias('${p.id}',${t.id},this.value)" onblur="var _r=this.closest('[data-task-id]');if(_r&&!_r.matches(':hover')){var _b=_r.querySelector('.pp-del');if(_b)_b.style.opacity='0'}" style="width:34px;height:22px;text-align:center;font-size:10.5px;padding:0;border:1px solid var(--border);border-radius:5px;background:var(--bg2);color:var(--text);font-family:inherit;box-sizing:border-box">
+        ${_primeira?'':`<button onclick="event.stopPropagation();_ppToggleParalela('${p.id}',${t.id})" title="${paralela?'Roda junto com a anterior (paralela) — clique p/ voltar à sequência':'Roda em sequência — clique p/ rodar junto com a anterior'}" style="background:none;border:none;cursor:pointer;color:${paralela?'var(--amber)':'var(--text3)'};padding:0;display:inline-flex;align-items:center"><i class="ti ${paralela?'ti-corner-down-right':'ti-arrow-narrow-down'}" style="font-size:15px"></i></button>`}
         <button onclick="event.stopPropagation();openEdit(${t.id})" title="Abrir tarefa" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:0;display:inline-flex;align-items:center;transition:color .12s" onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-pencil" style="font-size:13px"></i></button>
         <button onclick="event.stopPropagation();del(${t.id})" title="Excluir tarefa" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:0;display:inline-flex;align-items:center;transition:color .12s" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-trash" style="font-size:13px"></i></button>
       </span>
@@ -28341,7 +28332,11 @@ function renderProjectProVisao(p, prog){
       const _setoresF=[...new Set(_faseTasks.map(t=>_ppSetorNome(p,t)).filter(Boolean))].sort();
       const _fS=window._ppFaseSetorFiltro||'';
       const _fchip=(val,lab)=>`<button data-setor="${escapeAttr(val)}" onclick="_ppSetFiltroSetor(this.dataset.setor)" style="font-size:10.5px;font-weight:600;padding:2px 9px;border-radius:20px;border:1px solid ${_fS===val?'var(--blue-mid)':'var(--border)'};background:${_fS===val?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--card)'};color:${_fS===val?'var(--blue-mid)':'var(--text2)'};cursor:pointer;font-family:inherit">${escapeHTML(lab)}</button>`;
-      const _fbar=_setoresF.length?`<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin:0 0 8px"><span style="font-size:10.5px;color:var(--text3)">Setor:</span>${_fchip('','Todos')}${_setoresF.map(s=>_fchip(s,s)).join('')}</div>`:'';
+      const _fAberto=!!window._ppSetorFiltroAberto;
+      const _fbar=_setoresF.length?`<div style="margin:0 0 8px">
+        <button onclick="_ppToggleSetorFiltro()" title="Filtrar por setor" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 11px;border-radius:20px;border:1px solid ${_fS?'var(--blue-mid)':'var(--border)'};background:${_fS?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--card)'};color:${_fS?'var(--blue-mid)':'var(--text2)'};cursor:pointer;font-family:inherit"><i class="ti ti-filter" style="font-size:12px"></i> Setor: ${escapeHTML(_fS||'Todos')} <i class="ti ti-chevron-${_fAberto?'up':'down'}" style="font-size:12px"></i></button>
+        ${_fAberto?`<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:7px">${_fchip('','Todos')}${_setoresF.map(s=>_fchip(s,s)).join('')}</div>`:''}
+      </div>`:'';
       const _selM=!!window._ppSelMode;
       const _vis=(_fS&&!_selM)?_faseTasks.filter(t=>_ppSetorNome(p,t)===_fS):_faseTasks;
       const _linhas=_vis.length
@@ -28374,7 +28369,13 @@ function renderProjectProVisao(p, prog){
     detalheBloco=`<div>
       <div style="display:flex;align-items:center;gap:11px;margin-bottom:14px;flex-wrap:wrap">
         <div style="flex:1;min-width:120px">${_ppTituloCol('ti-layout-rows',escapeHTML(f.nome),'',0)}</div>
-        ${window._ppSelMode?'':`<button onclick="_ppToggleSelMode()" title="Selecionar tarefas em sequência e criar um processo a partir delas" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-checkbox"></i>Agrupar</button><button onclick="_projAddProcessoAbrir('${p.id}','${f.id}')" title="Adicionar um processo pronto a esta fase" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-route"></i>Processo</button>`}
+        ${window._ppSelMode?'':`<div style="position:relative">
+          <button onclick="event.stopPropagation();_ppToggleFaseMenu('${f.id}')" title="Adicionar processo ou agrupar tarefas" style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-plus"></i> Adicionar</button>
+          <div id="fasemenu-${f.id}" style="display:none;position:absolute;right:0;top:calc(100% + 4px);z-index:120;background:var(--card);border:1px solid var(--border);border-radius:9px;box-shadow:0 6px 18px rgba(0,0,0,.14);min-width:232px;overflow:hidden">
+            <button onclick="_ppToggleFaseMenu('${f.id}');_projAddProcessoAbrir('${p.id}','${f.id}')" style="display:flex;align-items:center;gap:9px;width:100%;padding:10px 13px;background:none;border:none;cursor:pointer;font-size:12.5px;color:var(--text);font-family:inherit;text-align:left" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='none'"><i class="ti ti-route" style="font-size:15px;color:var(--blue-mid)"></i> Adicionar processo pronto</button>
+            <button onclick="_ppToggleFaseMenu('${f.id}');_ppToggleSelMode()" style="display:flex;align-items:center;gap:9px;width:100%;padding:10px 13px;background:none;border:none;cursor:pointer;font-size:12.5px;color:var(--text);font-family:inherit;text-align:left;border-top:1px solid var(--border)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='none'"><i class="ti ti-checkbox" style="font-size:15px;color:var(--blue-mid)"></i> Agrupar tarefas em processo</button>
+          </div>
+        </div>`}
         <span style="font-size:12px;font-weight:800;color:${cFase};min-width:34px;text-align:right">${fp.pct}%</span>
       </div>
       ${_planBody}
@@ -28621,6 +28622,15 @@ function _ppSetorNome(p, t){
   return (t&&(t.procSetor||t.setor))||'';
 }
 function _ppSetFiltroSetor(v){ window._ppFaseSetorFiltro=v||''; render(); }
+// Recolher/expandir a lista de chips do filtro de setor (declutter — fica só o botão "Setor ▾").
+function _ppToggleSetorFiltro(){ window._ppSetorFiltroAberto=!window._ppSetorFiltroAberto; render(); }
+// Menu "+ Adicionar" do cabeçalho da fase (Adicionar processo pronto · Agrupar tarefas em processo).
+function _ppToggleFaseMenu(faseId){
+  const menu=document.getElementById('fasemenu-'+faseId); if(!menu) return;
+  const vis=menu.style.display!=='none';
+  document.querySelectorAll('[id^="fasemenu-"]').forEach(m=>{ m.style.display='none'; });
+  if(!vis){ menu.style.display='block'; setTimeout(()=>{ document.addEventListener('click',function _c(){ menu.style.display='none'; document.removeEventListener('click',_c); }); },0); }
+}
 function renderFaseExpandida(p, f){
   const fp = _calcularProgressoFase(f);
 
@@ -36004,13 +36014,19 @@ function renderProjectProAnexos(p){
 // Card compacto — vai na coluna 4 do Painel, abaixo dos Comentários.
 function _projAnexosCardHTML(p){
   const n=(p.anexos||[]).length;
+  // (ago/2026, Diego) Recolhível e FECHADO por padrão (chave presente em _ppCardCol = aberto), pra
+  // a coluna 1 respirar. Fechado mostra só "Anexos (N)"; o "+" segue disponível.
+  const _aberto=!!_ppCardCol[p.id+'·anexos'];
   return `<div>
-    <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;min-width:0">
-      <div style="flex:1;min-width:0">${_ppTituloCol('ti-paperclip','Anexos','',0)}</div>
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:${_aberto?'10px':'0'};min-width:0">
+      <div onclick="_ppToggleCard('${p.id}','anexos')" title="${_aberto?'Recolher':'Expandir'} anexos" style="flex:1;min-width:0;display:flex;align-items:center;gap:5px;cursor:pointer">
+        <i class="ti ti-chevron-${_aberto?'down':'right'}" style="font-size:13px;color:var(--text3);flex-shrink:0"></i>
+        <div style="min-width:0">${_ppTituloCol('ti-paperclip','Anexos'+(n?` (${n})`:''),'',0)}</div>
+      </div>
       <button onclick="document.getElementById('proj-anexo-inp-c-${p.id}').click()" title="Adicionar arquivo" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;display:inline-flex;flex-shrink:0" onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-plus" style="font-size:15px"></i></button>
     </div>
     <input type="file" id="proj-anexo-inp-c-${p.id}" style="display:none" multiple onchange="_projAddAnexos('${p.id}',this.files)">
-    <div data-proj-anexos="${p.id}" data-compacto="1">${_projAnexosLista(p,true)}</div>
+    ${_aberto?`<div data-proj-anexos="${p.id}" data-compacto="1">${_projAnexosLista(p,true)}</div>`:''}
   </div>`;
 }
 
