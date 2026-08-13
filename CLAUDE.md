@@ -422,6 +422,15 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-08-13 (d) — PC da Empresa — FAXINA do Painel do projeto (Diego: "muita informação, bagunçado")
+O Diego achou o Painel poluído (print). Escolheu "fazer tudo" numa AskUserQuestion. **Commit `fb9ddb50`, pushado; `main == origin`; working tree limpo.** Verificado por DOM (:8899) — 0 erros; linha com 5 colunas, sem cadeado, dias no hover, filtro recolhido (0 chips fechado / 3 aberto), menu "+ Adicionar" abre, Anexos fechado.
+- ⭐ **Linha de tarefa ENXUTA** (`_tarefaLinha`, grid **`22px 18px 1fr 92px 82px`** = nº · check · título · executor · data): a **seta de dependência** e o **campo dias** foram p/ o **hover overlay** (`.pp-del`, junto de editar/excluir). O **cadeado sumiu** (bloqueada = checkbox opacity .35 + tooltip). **Executor virou texto simples** (sem pill). ⚠️ o `onmouseleave` da linha **não esconde** o overlay se `document.activeElement` está dentro (senão o input de dias sumia ao editar); o `onblur` do dias re-esconde se a linha não está `:hover`.
+- **Menos COR:** destaque (faixa + fundo 6%) só na tarefa **em andamento**; a **barra âmbar da paralela saiu** (a numeração 4.1/4.2 já mostra o paralelismo; o âmbar sobrou só no ícone de dependência no hover).
+- **Filtro de setor RECOLHIDO:** os 9 chips viram um botão **"Setor: X ▾"** (`_ppToggleSetorFiltro`, estado `window._ppSetorFiltroAberto`) que abre a lista só quando precisa; o botão fica aceso quando há filtro ativo.
+- **Cabeçalho da fase:** "Agrupar" + "Processo" viraram **"+ Adicionar"** com menu (`_ppToggleFaseMenu`, popover `#fasemenu-<faseId>`, fecha no clique-fora).
+- **Card Anexos** recolhível e **FECHADO por padrão** (`_ppCardCol[p.id+'·anexos']`, `_ppToggleCard(p.id,'anexos')`) — coluna 1 respira. "Acontecendo agora" já nascia recolhido (não mexi).
+- ⚠️ **dias** só é editável no **hover** agora (some da linha em repouso) — se incomodar, decidir se volta visível. A aba **Tarefas** (planilha) segue com a coluna Dias fixa.
+
 ### 2026-08-13 (c) — PC da Empresa — Painel do projeto em LARGURA CHEIA + dividers arrastáveis entre as colunas
 Continuação do (b). O Diego pediu (print com 2 riscos vermelhos): usar **toda a largura** da tela e pôr **dividers no meio** entre as colunas, e que **esses mesmos dividers redimensionem** a largura. **Commit `46c8fd6b`, pushado; `main == origin`; working tree limpo.** Verificado por DOM no preview (:8899) — 0 erros; grid com 5 filhos, largura cheia, e **arraste simulado** funcionou (Chat 320→420px, persistiu).
 - **Como:** `.pp-visao-3col` virou grid **`var(--pp-c1) 24px minmax(0,1fr) 24px var(--pp-c3)`**, `width:100%`, **sem max-width** (era 1600). Entre as colunas [Estrutura | detalhe da fase | Chat] entram **2 gutters** (`.pp-col-gutter`, cursor `col-resize`, linha de 1px que acende `--blue-mid` no hover) que são as **alças**: arrastar o da esquerda ajusta a Estrutura (`--pp-c1`), o da direita ajusta o Chat (`--pp-c3`), e o **meio flexa** (1fr). O corpo do visao ficou `max-width:none` (no foco preenche a tela; no normal o `.proj-panel-wrap` ainda limita a 1600).
