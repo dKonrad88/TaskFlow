@@ -27062,7 +27062,7 @@ function _projFocusRailHTML(p){
     <button class="proj-rail-btn" onclick="setProjectProTab('fases')" style="${A('fases')}" title="${_ppRot(p,1,true)}"><i class="ti ti-layout-rows"></i><span>${_ppRot(p,1,true)}</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('tarefas')" style="${A('tarefas')}" title="Tarefas"><i class="ti ti-checklist"></i><span>Tarefas</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('anexos')" style="${A('anexos')}" title="Anexos do projeto"><i class="ti ti-paperclip"></i><span>Anexos</span></button>
-    <button class="proj-rail-btn" onclick="setProjectProTab('anotacoes')" style="${A('anotacoes')}" title="Comentários"><i class="ti ti-message-circle"></i><span>Comentários</span></button>
+    <button class="proj-rail-btn" onclick="setProjectProTab('anotacoes')" style="${A('anotacoes')}" title="Chat"><i class="ti ti-messages"></i><span>Chat</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('analise')" style="${A('analise')}" title="Análise"><i class="ti ti-chart-arcs"></i><span>Análise</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('info')" style="${A('info')}" title="Info — detalhes do projeto"><i class="ti ti-info-circle"></i><span>Info</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('editar')" style="${A('editar')}" title="Editar projeto (nome, prazo, cor)"><i class="ti ti-pencil"></i><span>Editar</span></button>
@@ -27813,7 +27813,7 @@ function renderProjectProView(id){
     {id:'fases',     label:_ppRot(p,1,true), icon:'ti-layout-rows'},
     {id:'tarefas',   label:'Tarefas',     icon:'ti-checklist'},
     {id:'anexos',    label:'Anexos'+(_nAnex?` (${_nAnex})`:''), icon:'ti-paperclip'},
-    {id:'anotacoes', label:'Comentários'+(_nComs?` (${_nComs})`:''), icon:'ti-message-circle'},
+    {id:'anotacoes', label:'Chat'+(_nComs?` (${_nComs})`:''), icon:'ti-messages'},
     {id:'analise',   label:'Análise',     icon:'ti-chart-arcs'},
     {id:'info',      label:'Info',        icon:'ti-info-circle'},
     {id:'editar',    label:'Editar',      icon:'ti-pencil'},
@@ -28045,7 +28045,7 @@ function _ppBuscaInput(){
   if(!q.trim()){ box.innerHTML=`<div style="padding:16px 12px;text-align:center;color:var(--text3);font-size:12px;line-height:1.5">Digite para buscar em <b>tudo</b> deste projeto:<br>tarefas, pessoas, comentários, anexos e ${escapeHTML(_ppRot(p,1,true,true))}/${escapeHTML(_ppRot(p,2,true,true))}.</div>`; return; }
   const res=_ppBuscaColeta(p,q);
   if(!res.length){ box.innerHTML=`<div style="padding:16px 12px;text-align:center;color:var(--text3);font-size:12px">Nada encontrado para "<b>${escapeHTML(q.trim())}</b>".</div>`; return; }
-  const meta={tarefa:{ic:'ti-checklist',lb:'Tarefas'},pessoa:{ic:'ti-user',lb:'Pessoas'},fase:{ic:'ti-layout-rows',lb:_ppRot(p,1,true)},setor:{ic:'ti-building',lb:_ppRot(p,2,true)},comentario:{ic:'ti-message-circle',lb:'Comentários'},anexo:{ic:'ti-paperclip',lb:'Anexos'}};
+  const meta={tarefa:{ic:'ti-checklist',lb:'Tarefas'},pessoa:{ic:'ti-user',lb:'Pessoas'},fase:{ic:'ti-layout-rows',lb:_ppRot(p,1,true)},setor:{ic:'ti-building',lb:_ppRot(p,2,true)},comentario:{ic:'ti-messages',lb:'Chat'},anexo:{ic:'ti-paperclip',lb:'Anexos'}};
   const ordem=['tarefa','pessoa','fase','setor','comentario','anexo'];
   let html='';
   ordem.forEach(tp=>{
@@ -28387,7 +28387,7 @@ function renderProjectProVisao(p, prog){
     <div style="min-width:0;display:flex;flex-direction:column;gap:2px">${projecaoBloco}${estruturaBloco}${comandoBloco?`<div style="margin-top:18px">${comandoBloco}</div>`:''}<div style="margin-top:10px">${_ppBloco(_projAnexosCardHTML(p))}</div></div>
     <div style="min-width:0">${detalheBloco}</div>
     <div style="min-width:0"><div style="position:sticky;top:8px;min-width:0">
-      ${_ppTituloCol('ti-message-circle','Comentários')}${comentariosBloco}
+      ${_ppTituloCol('ti-messages','Chat')}${comentariosBloco}
     </div></div>
   </div>`;
 }
@@ -30402,20 +30402,11 @@ function renderProjectProAnalise(p){
 function renderProjectProAnotacoes(p){
   const comments = getProComments(p.id);
 
-  // Formata timestamp relativo
-  const _fmtTs = ts => {
-    const d = new Date(ts);
-    const diff = Date.now() - d.getTime();
-    const min = Math.floor(diff/60000);
-    const h = Math.floor(diff/3600000);
-    const dias = Math.floor(diff/86400000);
-    if(min < 2) return 'agora';
-    if(min < 60) return `${min}min atrás`;
-    if(h < 24) return `${h}h atrás`;
-    if(dias === 1) return 'ontem';
-    if(dias < 7) return `${dias} dias atrás`;
-    return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-  };
+  // Chat: hora HH:MM por mensagem + divisória por dia (Hoje/Ontem/data).
+  const _hhmm = ts => { try{ return new Date(ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } };
+  const _dayKey = ts => { const d=new Date(ts); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+  const _ontemKey = (()=>{ const d=new Date((today||_dayKey(Date.now()))+'T00:00:00'); d.setDate(d.getDate()-1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })();
+  const _dayLabel = key => key===today ? 'Hoje' : (key===_ontemKey ? 'Ontem' : (()=>{ try{ return new Date(key+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}); }catch(e){ return key; } })());
 
   // Renderiza texto com @menções destacadas (só quando a pessoa EXISTE — @qualquercoisa fica texto normal)
   const _fmtTexto = texto => {
@@ -30426,50 +30417,55 @@ function renderProjectProAnotacoes(p){
     });
   };
 
+  // Estilo CHAT: divisória por dia, balões (sua msg à direita, tom do tema), avatar+nome só no
+  // 1º de uma sequência do mesmo autor, hora HH:MM no rodapé do balão. @menção preservada.
+  let _lastDay='', _lastAutor='';
   const commentsHTML = comments.length
     ? comments.map(c=>{
         const autor = people.find(pe=>pe.id===c.autorId);
         const isMe = c.autorId === CURRENT_USER_ID;
         const ini = autor ? autor.name.charAt(0).toUpperCase() : '?';
-        const avatarBg = isMe ? p.cor : 'var(--text3)';
-        return `<div class="pp-comment-row" data-comment-id="${c.id}" style="display:flex;gap:10px;margin-bottom:16px;animation:arrivalFx .3s ease">
-          <div style="width:32px;height:32px;border-radius:50%;background:${avatarBg};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;margin-top:2px">${ini}</div>
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
-              <span style="font-size:13px;font-weight:700;color:var(--text)">${escapeHTML(autor?autor.name:'Usuário')}</span>
-              <span style="font-size:11px;color:var(--text3)">${_fmtTs(c.criadoEm)}</span>
-              ${isMe?`<div style="margin-left:auto;position:relative">
-                <button onclick="_ppToggleCommentMenu('${c.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px 6px;border-radius:4px;font-size:14px;line-height:1" title="Opções"><i class="ti ti-dots-vertical"></i></button>
-                <div id="cmenu-${c.id}" style="display:none;position:absolute;right:0;top:24px;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 16px rgba(0,0,0,.12);z-index:100;min-width:130px">
-                  <button onclick="_ppExcluirComment('${p.id}','${c.id}')" style="display:flex;align-items:center;gap:8px;width:100%;padding:9px 14px;background:none;border:none;cursor:pointer;font-size:13px;color:var(--danger);font-family:inherit;border-radius:8px" onmouseover="this.style.background='var(--danger-bg)'" onmouseout="this.style.background='none'"><i class="ti ti-trash"></i> Excluir</button>
-                </div>
-              </div>`:''}
-            </div>
-            <div style="font-size:13px;color:var(--text);line-height:1.55;word-break:break-word;white-space:pre-wrap">${_fmtTexto(c.texto)}</div>
+        const dk = _dayKey(c.criadoEm);
+        const divisoria = dk!==_lastDay ? `<div style="text-align:center;margin:8px 0 12px"><span style="font-size:10.5px;color:var(--text3);background:var(--bg2);padding:2px 12px;border-radius:20px">${_dayLabel(dk)}</span></div>` : '';
+        const agrupado = dk===_lastDay && c.autorId===_lastAutor;
+        _lastDay=dk; _lastAutor=c.autorId;
+        const corpo = `<div style="font-size:12.5px;color:var(--text);line-height:1.5;word-break:break-word;white-space:pre-wrap">${_fmtTexto(c.texto)}</div><div style="text-align:right;font-size:10px;color:var(--text3);margin-top:2px">${_hhmm(c.criadoEm)}</div>`;
+        if(isMe){
+          const menu = `<button class="pp-chat-menu-btn" onclick="_ppToggleCommentMenu('${c.id}')" title="Opções" style="position:absolute;top:-14px;right:2px;background:var(--card);border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--text3);opacity:0;transition:opacity .12s;padding:1px 4px;line-height:1"><i class="ti ti-dots-vertical" style="font-size:13px"></i></button><div id="cmenu-${c.id}" style="display:none;position:absolute;top:6px;right:0;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 16px rgba(0,0,0,.12);z-index:100;min-width:130px"><button onclick="_ppExcluirComment('${p.id}','${c.id}')" style="display:flex;align-items:center;gap:8px;width:100%;padding:9px 14px;background:none;border:none;cursor:pointer;font-size:13px;color:var(--danger);font-family:inherit;border-radius:8px" onmouseover="this.style.background='var(--danger-bg)'" onmouseout="this.style.background='none'"><i class="ti ti-trash"></i> Excluir</button></div>`;
+          return `${divisoria}<div class="pp-comment-row" data-comment-id="${c.id}" onmouseenter="var b=this.querySelector('.pp-chat-menu-btn');if(b)b.style.opacity='1'" onmouseleave="var b=this.querySelector('.pp-chat-menu-btn');if(b)b.style.opacity='0'" style="display:flex;justify-content:flex-end;margin-bottom:${agrupado?'3px':'11px'};animation:arrivalFx .3s ease">
+            <div style="max-width:86%;position:relative">${menu}<div style="background:color-mix(in srgb,var(--blue-mid) 15%,var(--card));border:1px solid color-mix(in srgb,var(--blue-mid) 22%,transparent);border-radius:12px 12px 4px 12px;padding:7px 11px">${corpo}</div></div>
+          </div>`;
+        }
+        const av = agrupado ? `<div style="width:28px;flex-shrink:0"></div>` : `<div style="width:28px;height:28px;border-radius:50%;background:var(--text3);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">${ini}</div>`;
+        return `${divisoria}<div class="pp-comment-row" data-comment-id="${c.id}" style="display:flex;gap:8px;align-items:flex-end;margin-bottom:${agrupado?'3px':'11px'};animation:arrivalFx .3s ease">
+          ${av}
+          <div style="max-width:86%">
+            ${agrupado?'':`<div style="font-size:11px;font-weight:700;color:var(--blue-mid);margin:0 0 3px 4px">${escapeHTML(autor?autor.name:'Usuário')}</div>`}
+            <div style="background:var(--bg2);border-radius:12px 12px 12px 4px;padding:7px 11px">${corpo}</div>
           </div>
         </div>`;
       }).join('')
     : `<div style="text-align:center;padding:40px 20px;color:var(--text3)">
-        <i class="ti ti-message-circle" style="font-size:36px;opacity:.4"></i>
-        <p style="margin:10px 0 0;font-size:13px">Nenhum comentário ainda</p>
-        <p style="font-size:12px;margin:4px 0 0;opacity:.7">Seja o primeiro a deixar um registro sobre este projeto</p>
+        <i class="ti ti-messages" style="font-size:36px;opacity:.4"></i>
+        <p style="margin:10px 0 0;font-size:13px">Nenhuma mensagem ainda</p>
+        <p style="font-size:12px;margin:4px 0 0;opacity:.7">Comece a conversa sobre este projeto</p>
       </div>`;
 
   return `<div style="display:flex;flex-direction:column;gap:0">
-    <!-- Feed de comentários -->
-    <div style="padding:0;margin-bottom:10px;max-height:420px;overflow-y:auto" id="pp-comments-feed-${p.id}">
+    <!-- Feed do chat -->
+    <div style="padding:2px 0;margin-bottom:10px;max-height:440px;overflow-y:auto" id="pp-comments-feed-${p.id}">
       ${commentsHTML}
     </div>
 
-    <!-- Input de novo comentário — DISCRETO: 1 linha, Enter envia, @nome menciona -->
-    <div style="display:flex;gap:6px;align-items:center;position:relative">
+    <!-- Barra de nova mensagem — estilo chat (pill), Enter envia, @nome menciona -->
+    <div style="display:flex;gap:7px;align-items:center;position:relative">
       <input id="pp-comment-input-${p.id}" type="text"
-        placeholder="Comentar… (@nome menciona · Enter envia)"
+        placeholder="Mensagem… (@nome menciona · Enter envia)"
         onkeydown="if(event.key==='Enter'){event.preventDefault();enviarProComment('${p.id}');}"
         oninput="_ppCheckMencao(this,'${p.id}')"
-        style="flex:1;min-width:0;padding:7px 2px;border:none;border-bottom:1px solid var(--border);border-radius:0;font-size:12.5px;background:transparent;color:var(--text);font-family:inherit;box-sizing:border-box;transition:border-color .15s;outline:none"
-        onfocus="this.style.borderBottomColor='${p.cor}'" onblur="this.style.borderBottomColor='var(--border)'">
-      <button onclick="enviarProComment('${p.id}')" title="Enviar comentário" style="width:28px;height:28px;flex-shrink:0;background:transparent;color:var(--blue-mid);border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:15px;border-radius:6px" onmouseover="this.style.background='color-mix(in srgb,${p.cor} 12%,transparent)'" onmouseout="this.style.background='transparent'"><i class="ti ti-send"></i></button>
+        style="flex:1;min-width:0;padding:9px 14px;border:1px solid var(--border);border-radius:20px;font-size:12.5px;background:var(--bg2);color:var(--text);font-family:inherit;box-sizing:border-box;transition:border-color .15s;outline:none"
+        onfocus="this.style.borderColor='${p.cor}'" onblur="this.style.borderColor='var(--border)'">
+      <button onclick="enviarProComment('${p.id}')" title="Enviar mensagem" style="width:34px;height:34px;flex-shrink:0;background:var(--blue-mid);color:#fff;border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:15px;border-radius:50%"><i class="ti ti-send"></i></button>
       <!-- Dropdown @menção -->
       <div id="pp-at-menu-${p.id}" style="display:none;position:absolute;bottom:100%;left:0;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:200;min-width:220px;max-height:180px;overflow-y:auto;margin-bottom:4px"></div>
     </div>
@@ -30500,7 +30496,7 @@ function _ppExcluirComment(projectProId, commentId){
   // Regra: só o AUTOR exclui o próprio comentário (a UI só mostra o menu p/ ele,
   // mas a função valida também — regra explícita p/ o backend do Guilherme).
   const c=(getProComments(projectProId)||[]).find(x=>x.id===commentId);
-  if(c && c.autorId && c.autorId!==CURRENT_USER_ID){ toast('🔒 Só o autor pode excluir o comentário'); return; }
+  if(c && c.autorId && c.autorId!==CURRENT_USER_ID){ toast('🔒 Só o autor pode excluir a mensagem'); return; }
   deleteProComment_db(projectProId, commentId);
   const p = projectsPro.find(x=>x.id===projectProId);
   if(p) render();
@@ -30546,7 +30542,6 @@ function enviarProComment(projectProId){
   const atMenu = document.getElementById('pp-at-menu-'+projectProId);
   if(atMenu) atMenu.style.display='none';
 
-  toast('💬 Comentário enviado');
   render();
   // Scroll pro final do feed após render
   setTimeout(()=>{
