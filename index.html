@@ -8500,11 +8500,22 @@ function _cpIdx(){
 }
 function _cpItens(){ const m=_cpIdx(); return Object.keys(m).map(k=>m[k]); }
 // Semáforo de cobertura (dias). Sem consumo → cinza (não dá p/ opinar).
+// Estados operacionais do estoque por COBERTURA (dias). "Sem movimento" (semMov alto) é filtro à parte.
+// <10 comprar agora · <30 em breve · 30–120 saudável · >120 excesso (capital parado) · null sem dados.
+function _cpEstStatus(o){
+  const d=o.dias;
+  if(d===null)  return {key:'semdados',label:'Sem dados',cor:'var(--text3)'};
+  if(d<10)      return {key:'agora',   label:d<=0?'Em ruptura':'Comprar agora',cor:'var(--danger)'};
+  if(d<30)      return {key:'breve',   label:'Comprar em breve',cor:'var(--amber)'};
+  if(d<=120)    return {key:'saudavel',label:'Saudável',cor:'var(--success)'};
+  return {key:'excesso',label:'Excesso',cor:'var(--purple)'};
+}
 function _cpCorDias(d){
   if(d===null) return ['var(--text3)','transparent'];
   if(d<10)  return ['var(--danger)','var(--danger-bg)'];
-  if(d<20)  return ['var(--amber)','var(--amber-bg)'];
-  return ['var(--success)','var(--success-bg)'];
+  if(d<30)  return ['var(--amber)','var(--amber-bg)'];
+  if(d<=120)return ['var(--success)','var(--success-bg)'];
+  return ['var(--purple)','color-mix(in srgb,var(--purple) 14%,transparent)']; // excesso = capital parado
 }
 // ── Telas da área Compras (sobre os dados REAIS do ERP) ───────────────
 function _cpCSS(){ return `<style>
@@ -8599,25 +8610,29 @@ const _cpVazio=t=>`<div style="text-align:center;color:var(--text3);padding:30px
 let _cpEst={busca:'',so:'todos'};
 function _cpEstSet(k,v){ _cpEst[k]=v; const el=document.getElementById('cp-est-corpo'); if(el) el.innerHTML=_cpEstCorpo(); const s=document.getElementById('cp-est-seg'); if(s) s.innerHTML=_cpEstSegHTML(); }
 function _cpEstSegHTML(){
-  const b=(v,l)=>`<button onclick="_cpEstSet('so','${v}')" style="background:${_cpEst.so===v?'var(--blue-mid)':'var(--card)'};color:${_cpEst.so===v?'#fff':'var(--text2)'}">${l}</button>`;
-  return b('todos','Todos')+b('comprar','Precisa comprar')+b('parados','Parados 90d+');
+  const base=_cpItens().filter(o=>o.est>0 || o.consMed>0);
+  const cnt=k=>base.filter(o=>_cpEstStatus(o).key===k).length;
+  const segs=[['todos','Todos',base.length,''],['agora','Comprar agora',cnt('agora'),'var(--danger)'],['breve','Comprar em breve',cnt('breve'),'var(--amber)'],['saudavel','Saudáveis',cnt('saudavel'),'var(--success)'],['excesso','Excesso',cnt('excesso'),'var(--purple)'],['semmov','Sem movimento',base.filter(o=>(o.semMov||0)>=90&&o.est>0).length,'var(--text3)'],['semdados','Sem dados',cnt('semdados'),'var(--text3)']];
+  return segs.map(([v,l,n,cor])=>`<button class="cp-catchip${_cpEst.so===v?' on':''}" onclick="_cpEstSet('so','${v}')">${cor?`<span style="width:8px;height:8px;border-radius:50%;background:${cor};display:inline-block;flex-shrink:0"></span>`:''}${l} <span class="cp-catn">${n}</span></button>`).join('');
 }
 function _cpEstLista(){
   const q=_cpEst.busca.trim().toLowerCase();
   let L=_cpItens().filter(o=>o.est>0 || o.consMed>0);
   L=L.filter(o=>{
     if(q && (o.nome+' '+o.cod).toLowerCase().indexOf(q)<0) return false;
-    if(_cpEst.so==='comprar') return o.dias!==null && o.dias<20;
-    if(_cpEst.so==='parados') return (o.semMov||0)>=90 && o.est>0;
+    if(_cpEst.so==='semmov') return (o.semMov||0)>=90 && o.est>0;
+    if(_cpEst.so!=='todos') return _cpEstStatus(o).key===_cpEst.so;
     return true;
   });
   return L.sort((a,b)=>{const A=a.dias===null?99999:a.dias,B=b.dias===null?99999:b.dias;return A-B||b.valor-a.valor;});
 }
 function _cpEstCorpo(){
   const L=_cpEstLista();
-  const totV=L.reduce((a,o)=>a+o.valor,0);
-  const crit=L.filter(o=>o.dias!==null&&o.dias<10).length;
-  const aten=L.filter(o=>o.dias!==null&&o.dias>=10&&o.dias<20).length;
+  const base=_cpItens().filter(o=>o.est>0 || o.consMed>0); // KPIs sobre a base TODA (não o filtro)
+  const totV=base.reduce((a,o)=>a+o.valor,0);
+  const cntK=k=>base.filter(o=>_cpEstStatus(o).key===k).length;
+  const nAgora=cntK('agora'), nBreve=cntK('breve'), nSemDados=cntK('semdados');
+  const excessoR=base.filter(o=>_cpEstStatus(o).key==='excesso').reduce((a,o)=>a+o.valor,0);
   const TETO=300;
   const linhas=L.slice(0,TETO).map(o=>{
     const [c,bg]=_cpCorDias(o.dias);
@@ -8633,11 +8648,11 @@ function _cpEstCorpo(){
     </tr>`;}).join('');
   const neg=L.filter(o=>o.est<0).length;
   return _cpKPIrow([
-      _cpKPI('Itens',_cpNum(L.length)),
-      _cpKPI('Valor em estoque',_cpBRL(totV)),
-      _cpKPI('Críticos (&lt;10d)',_cpNum(crit),crit?'var(--danger)':''),
-      _cpKPI('Atenção (&lt;20d)',_cpNum(aten),aten?'var(--amber)':''),
-      _cpKPI('Posição de',_cpDt(_CP_POSDATA))
+      _cpKPI('Comprar agora',_cpNum(nAgora),nAgora?'var(--danger)':''),
+      _cpKPI('Comprar em breve',_cpNum(nBreve),nBreve?'var(--amber)':''),
+      _cpKPI('Excesso — capital parado',_cpBRL(excessoR),excessoR?'var(--purple)':''),
+      _cpKPI('Sem dados',_cpNum(nSemDados),nSemDados?'var(--text3)':''),
+      _cpKPI('Valor em estoque',_cpBRL(totV))
     ])+
     (neg?`<div style="font-size:12px;color:var(--text3);margin:-6px 2px 14px;display:flex;gap:6px;align-items:baseline">
       <i class="ti ti-alert-triangle" style="font-size:13px"></i>
@@ -8652,10 +8667,8 @@ function _cpEstCorpo(){
 function _comprasEstoqueHTML(){
   return _cpTela('Estoque','dados reais',
     `Posição de <b>${_cpDt(_CP_POSDATA)}</b> cruzada com o consumo mensal e as compras. A <b>cobertura</b> é estoque ÷ consumo diário (consumo do mês ÷ 30) — acende quando é hora de comprar. Item sem consumo registrado fica cinza: não dá para opinar. <b>Clique num item</b> para abrir a ficha.`,
-    `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-      <div id="cp-est-seg" class="cp-seg" style="display:inline-flex;border-radius:9px;overflow:hidden">${_cpEstSegHTML()}</div>
-      <input value="${escapeAttr(_cpEst.busca)}" oninput="_cpEstSet('busca',this.value)" placeholder="Buscar insumo…" class="modal-input" style="width:auto;flex:1;min-width:220px;padding:7px 11px;font-size:12.5px">
-    </div>
+    `<div id="cp-est-seg" class="cp-catbar" style="margin-bottom:10px">${_cpEstSegHTML()}</div>
+    <input value="${escapeAttr(_cpEst.busca)}" oninput="_cpEstSet('busca',this.value)" placeholder="Buscar insumo…" class="modal-input" style="width:100%;max-width:340px;box-sizing:border-box;padding:7px 11px;font-size:12.5px;margin-bottom:14px">
     <div id="cp-est-corpo">${_cpEstCorpo()}</div>`);
 }
 
