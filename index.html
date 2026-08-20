@@ -8665,8 +8665,7 @@ function _cpEstCorpo(){
     ${L.length>TETO?`<div style="text-align:center;color:var(--text3);font-size:12.5px;margin-top:10px">Mostrando ${TETO} de ${_cpNum(L.length)} — use a busca para afunilar.</div>`:''}`;
 }
 function _comprasEstoqueHTML(){
-  return _cpTela('Estoque','dados reais',
-    `Posição de <b>${_cpDt(_CP_POSDATA)}</b> cruzada com o consumo mensal e as compras. A <b>cobertura</b> é estoque ÷ consumo diário (consumo do mês ÷ 30) — acende quando é hora de comprar. Item sem consumo registrado fica cinza: não dá para opinar. <b>Clique num item</b> para abrir a ficha.`,
+  return _cpTela('Estoque','dados reais','',
     `<div id="cp-est-seg" class="cp-catbar" style="margin-bottom:10px">${_cpEstSegHTML()}</div>
     <input value="${escapeAttr(_cpEst.busca)}" oninput="_cpEstSet('busca',this.value)" placeholder="Buscar insumo…" class="modal-input" style="width:100%;max-width:340px;box-sizing:border-box;padding:7px 11px;font-size:12.5px;margin-bottom:14px">
     <div id="cp-est-corpo">${_cpEstCorpo()}</div>`);
