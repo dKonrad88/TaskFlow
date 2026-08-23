@@ -8582,13 +8582,9 @@ function _cpCSS(){ return `<style>
   .cp-exp-btn2:hover{color:var(--blue-mid);border-color:var(--blue-mid)}
   /* Tela cheia (botão "Tela cheia"/Esc): some header/sidebar/topbar do HUB; o painel ocupa tudo. */
   body.cp-focus .hdr,body.cp-focus .sidebar,body.cp-focus #sidebar-resizer,body.cp-focus .topbar,body.cp-focus .fab-create,body.cp-focus .fab-menu{display:none!important}
-  body.cp-focus #task-container{position:fixed;inset:0;z-index:600;overflow:hidden;background:var(--bg);padding:0;margin:0;max-width:none}
-  body.cp-focus .cp-painel-wrap{max-width:none;margin:0;padding:0}
-  body.cp-focus .cp-painel{height:100vh;min-height:0;border:none;border-radius:0}
-  /* Na tela cheia, o CONTEÚDO fica centralizado e mais estreito (1200px) — não esticar de ponta a ponta. */
-  body.cp-focus .cp-painel-body{padding:22px max(22px,calc((100% - 1200px)/2)) 44px}
-  /* Exceção: a view RESUMO (3 colunas) usa ~90% da largura (5% de folga em cada lado). */
-  body.cp-focus .cp-painel-body.cp-body-wide{padding:22px 5% 44px}
+  body.cp-focus #task-container{position:fixed;inset:0;z-index:600;overflow:auto;background:var(--bg);padding:0;margin:0;max-width:none}
+  /* Tela cheia = MESMO layout horizontal (cp-painel-wrap), só ocupando a tela toda (Diego 23/08). */
+  body.cp-focus .cp-painel-wrap{max-width:none;margin:0;padding:20px 32px 44px;min-height:100vh}
 </style>`; }
 function _cpTela(titulo, chip, desc, corpo, larg, acao){
   return `<div style="padding:20px 4px 60px;max-width:${larg||1240}px;margin:0 auto">
@@ -9467,36 +9463,12 @@ function _cpFichaHistorico(o){
 function _cpFichaItemHTML(o){
   const foco=(typeof document!=='undefined') && document.body.classList.contains('cp-focus');
   const _sub=''; // subtítulo (almox · sem movimento · nº compras) removido a pedido do Diego
-  if(foco){
-    const rb=(v,ic,lab)=>`<button class="${_cpFichaView===v?'on':''}" onclick="_cpFichaSetView('${v}')" title="${lab}"><i class="ti ${ic}"></i>${lab}</button>`;
-    return `${_cpCSS()}<div class="cp-painel-wrap"><div class="cp-painel">
-      <div class="cp-painel-rail">
-        <button class="cp-rail-back" onclick="_cpVoltarItens()" title="Voltar aos insumos"><i class="ti ti-arrow-left"></i>Voltar</button>
-        <div style="height:1px;background:var(--border);margin:4px 12px"></div>
-        ${rb('resumo','ti-clipboard-data','Resumo')}
-        ${rb('graficos','ti-chart-line','Gráfico')}
-        ${rb('historico','ti-receipt','Histórico')}
-        ${rb('fornecedores','ti-building-store','Fornec.')}
-        ${rb('noticias','ti-news','Notícias')}
-        <div class="cp-rail-sp"></div>
-        <button class="cp-exp-btn" onclick="_cpToggleFoco()" title="Reduzir"><i class="ti ti-arrows-minimize"></i>Reduzir</button>
-      </div>
-      <div class="cp-painel-main">
-        <div class="cp-painel-head">
-          <div style="min-width:0">
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <h1 style="font-size:21px;font-weight:800;letter-spacing:-.02em;color:var(--text);margin:0">${escapeHTML(o.nome)}</h1>
-              <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--success);background:var(--success-bg);padding:3px 9px;border-radius:999px;flex:none">cód. ${escapeHTML(o.cod)}</span>
-            </div>
-            ${_sub}
-          </div>
-        </div>
-        <div class="cp-painel-body${(_cpFichaView==='resumo'||_cpFichaView==='graficos'||_cpFichaView==='fornecedores')?' cp-body-wide':''}" id="cp-ficha-main">${_cpFichaMainHTML(o)}</div>
-      </div>
-    </div></div>`;
-  }
-  // NÃO-EXPANDIDO — sub-navbar horizontal (as views viram abas), sem o rail vertical.
+  // Layout ÚNICO — sub-navbar horizontal (Diego 23/08): em tela cheia (cp-focus) é o MESMO layout,
+  // só que o CSS faz ocupar a tela toda. O antigo rail vertical do foco deixou de existir.
   const tb=(v,ic,lab)=>`<button class="cp-subtab ${_cpFichaView===v?'on':''}" onclick="_cpFichaSetView('${v}')"><i class="ti ${ic}"></i>${lab}</button>`;
+  const btnFoco=foco
+    ? `<button class="cp-exp-btn2" onclick="_cpToggleFoco()" title="Reduzir"><i class="ti ti-arrows-minimize"></i> Reduzir</button>`
+    : `<button class="cp-exp-btn2" onclick="_cpToggleFoco()" title="Abrir em tela cheia"><i class="ti ti-arrows-maximize"></i> Tela cheia</button>`;
   return `${_cpCSS()}<div class="cp-painel-wrap">
     <button class="cp-back-link" onclick="_cpVoltarItens()"><i class="ti ti-arrow-left"></i> Voltar aos insumos</button>
     <div style="display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;margin-bottom:2px">
@@ -9512,7 +9484,7 @@ function _cpFichaItemHTML(o){
         ${tb('fornecedores','ti-building-store','Fornecedores')}
         ${tb('noticias','ti-news','Notícias')}
       </div>
-      <button class="cp-exp-btn2" onclick="_cpToggleFoco()" title="Abrir em tela cheia"><i class="ti ti-arrows-maximize"></i> Tela cheia</button>
+      ${btnFoco}
     </div>
     <div id="cp-ficha-main" style="margin-top:18px">${_cpFichaMainHTML(o)}</div>
   </div>`;
