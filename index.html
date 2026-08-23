@@ -8590,13 +8590,14 @@ function _cpCSS(){ return `<style>
   /* Exceção: a view RESUMO (3 colunas) usa ~90% da largura (5% de folga em cada lado). */
   body.cp-focus .cp-painel-body.cp-body-wide{padding:22px 5% 44px}
 </style>`; }
-function _cpTela(titulo, chip, desc, corpo, larg){
+function _cpTela(titulo, chip, desc, corpo, larg, acao){
   return `<div style="padding:20px 4px 60px;max-width:${larg||1240}px;margin:0 auto">
     ${_cpCSS()}
     ${hubBreadcrumb([{label:'Compras', onclick:"setComprasView('painel')"},{label:titulo}])}
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0 4px">
       <h1 style="font-size:24px;font-weight:800;letter-spacing:-.02em;color:var(--text);margin:0">${titulo}</h1>
       ${chip?`<span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--success);background:var(--success-bg);padding:3px 9px;border-radius:999px">${chip}</span>`:''}
+      ${acao?`<div style="margin-left:auto">${acao}</div>`:''}
     </div>
     ${desc?`<p style="color:var(--text2);font-size:14px;max-width:80ch;margin:4px 0 18px">${desc}</p>`:''}
     ${corpo}
@@ -8604,11 +8605,15 @@ function _cpTela(titulo, chip, desc, corpo, larg){
 }
 const _cpKPI=(lab,val,cor)=>`<div class="cp-kpi"><s>${lab}</s><b${cor?` style="color:${cor}"`:''}>${val}</b></div>`;
 const _cpKPIrow=arr=>`<div class="cp-card" style="display:flex;flex-wrap:wrap;gap:18px;padding:15px 18px;margin-bottom:14px">${arr.join('')}</div>`;
+// Variante em CARDS separados (cada indicador no seu card) — usada na tela de Estoque (Diego).
+const _cpKPIcards=arr=>`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">${arr.map(k=>`<div class="cp-card" style="padding:13px 16px">${k}</div>`).join('')}</div>`;
 const _cpVazio=t=>`<div style="text-align:center;color:var(--text3);padding:30px">${t}</div>`;
 
 // ════════ ESTOQUE ════════
-let _cpEst={busca:'',so:'todos'};
+let _cpEst={busca:'',so:'todos',buscaAberta:false};
 function _cpEstSet(k,v){ _cpEst[k]=v; const el=document.getElementById('cp-est-corpo'); if(el) el.innerHTML=_cpEstCorpo(); const s=document.getElementById('cp-est-seg'); if(s) s.innerHTML=_cpEstSegHTML(); }
+// Busca vira LUPA no canto superior direito (Diego): fechada = só o ícone; aberta = campo + X.
+function _cpEstToggleBusca(){ _cpEst.buscaAberta=!_cpEst.buscaAberta; if(!_cpEst.buscaAberta) _cpEst.busca=''; renderCompras(); if(_cpEst.buscaAberta) setTimeout(function(){ var el=document.getElementById('cp-est-busca'); if(el) el.focus(); },30); }
 function _cpEstSegHTML(){
   const base=_cpItens().filter(o=>o.est>0 || o.consMed>0);
   const cnt=k=>base.filter(o=>_cpEstStatus(o).key===k).length;
@@ -8646,18 +8651,13 @@ function _cpEstCorpo(){
       <td>${o.ultForn?escapeHTML(o.ultForn.slice(0,26)):'—'}</td>
       <td class="cp-n">${o.semMov===null?'—':o.semMov+' d'}</td>
     </tr>`;}).join('');
-  const neg=L.filter(o=>o.est<0).length;
-  return _cpKPIrow([
+  return _cpKPIcards([
       _cpKPI('Comprar agora',_cpNum(nAgora),nAgora?'var(--danger)':''),
       _cpKPI('Comprar em breve',_cpNum(nBreve),nBreve?'var(--amber)':''),
       _cpKPI('Excesso — capital parado',_cpBRL(excessoR),excessoR?'var(--purple)':''),
       _cpKPI('Sem dados',_cpNum(nSemDados),nSemDados?'var(--text3)':''),
       _cpKPI('Valor em estoque',_cpBRL(totV))
     ])+
-    (neg?`<div style="font-size:12px;color:var(--text3);margin:-6px 2px 14px;display:flex;gap:6px;align-items:baseline">
-      <i class="ti ti-alert-triangle" style="font-size:13px"></i>
-      <span><b>${neg} ${neg===1?'item está':'itens estão'} com saldo negativo no ERP</b> (consumo lançado antes da entrada da nota). Mostramos como está — a cobertura fica negativa e a sugestão já considera o buraco.</span>
-    </div>`:'')+
     `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead><tr><th>Insumo</th><th class="r">Em estoque</th><th class="r">Valor</th><th class="r">Consumo/mês</th><th class="r">Cobertura</th><th class="r">Últ. compra</th><th>Fornecedor</th><th class="r">Sem mov.</th></tr></thead>
       <tbody>${linhas||`<tr><td colspan="8">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`}</tbody>
@@ -8665,10 +8665,12 @@ function _cpEstCorpo(){
     ${L.length>TETO?`<div style="text-align:center;color:var(--text3);font-size:12.5px;margin-top:10px">Mostrando ${TETO} de ${_cpNum(L.length)} — use a busca para afunilar.</div>`:''}`;
 }
 function _comprasEstoqueHTML(){
+  const acao = _cpEst.buscaAberta
+    ? `<div style="display:inline-flex;align-items:center;gap:6px"><input id="cp-est-busca" value="${escapeAttr(_cpEst.busca)}" oninput="_cpEstSet('busca',this.value)" placeholder="Buscar insumo…" class="modal-input" style="width:220px;padding:6px 11px;font-size:12.5px"><button onclick="_cpEstToggleBusca()" title="Fechar busca" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;display:inline-flex"><i class="ti ti-x" style="font-size:16px"></i></button></div>`
+    : `<button onclick="_cpEstToggleBusca()" title="Buscar insumo" style="background:var(--card);border:1px solid var(--border);border-radius:9px;cursor:pointer;color:var(--text2);width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-search" style="font-size:17px"></i></button>`;
   return _cpTela('Estoque','dados reais','',
-    `<div id="cp-est-seg" class="cp-catbar" style="margin-bottom:10px">${_cpEstSegHTML()}</div>
-    <input value="${escapeAttr(_cpEst.busca)}" oninput="_cpEstSet('busca',this.value)" placeholder="Buscar insumo…" class="modal-input" style="width:100%;max-width:340px;box-sizing:border-box;padding:7px 11px;font-size:12.5px;margin-bottom:14px">
-    <div id="cp-est-corpo">${_cpEstCorpo()}</div>`);
+    `<div id="cp-est-seg" class="cp-catbar" style="margin-bottom:14px">${_cpEstSegHTML()}</div>
+    <div id="cp-est-corpo">${_cpEstCorpo()}</div>`,undefined,acao);
 }
 
 // ════════ INSUMOS — ficha do item ════════
