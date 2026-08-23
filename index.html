@@ -6746,9 +6746,7 @@ function renderProducao(){
   if(producaoView !== 'produtos'){
     const titulo = producaoView==='ordens'?'Ordens de Produção':'Checklists';
     main.innerHTML = `<div style="padding:20px 4px;">
-      ${hubBreadcrumb([{label:'Produção', onclick:"setProducaoView('produtos')"},{label:titulo}])}
-      <h1 style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:6px;">${titulo}</h1>
-      <div style="color:var(--text3);font-size:13px;">Módulo em construção.</div>
+      ${hubHead(titulo,'Em construção — em breve.')}
     </div>`;
     return;
   }
@@ -6838,10 +6836,7 @@ function renderPCP(){
   // reverter = restaurar este bloco a partir do git.
   main.innerHTML = `
     <div style="padding:20px 4px 40px;">
-      ${hubBreadcrumb([{label:'Produção', onclick:"setProducaoView('produtos')"},{label:'PCP'}])}
-      <div style="display:flex; align-items:center; gap:12px; margin-bottom:2px; flex-wrap:wrap;">
-        <h1 style="font-size:23px; font-weight:700; color:var(--text);">PCP <span style="font-size:14px; font-weight:600; color:var(--text3);">Planejamento de produção · DDV</span></h1>
-      </div>
+      ${hubHead('PCP','Planejamento e controle da produção · DDV.')}
       <div style="padding:64px 0; text-align:center; color:var(--text3); font-size:13px;"><i class="ti ti-tools" style="font-size:26px; display:block; margin-bottom:10px;"></i>Em construção.</div>
     </div>`;
 }
@@ -7130,9 +7125,7 @@ function renderManutencao(){
   const titulo=titulos[manutencaoView]||'Manutenção';
   main.innerHTML = `
     <div style="padding:20px 4px 40px;">
-      ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:titulo}])}
-      <h1 style="font-size:23px; font-weight:700; color:var(--text); margin-bottom:6px;">${titulo}</h1>
-      <div style="color:var(--text3); font-size:13px;">Módulo em construção.</div>
+      ${hubHead(titulo,'Em construção — em breve.')}
     </div>
   `;
 }
@@ -7241,12 +7234,7 @@ function renderFornecedores(){
     </div>` : '';
   main.innerHTML=`
     <div style="padding:20px 4px 40px; max-width:1100px;">
-      ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Fornecedores'}])}
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:4px;">
-        <h1 style="font-size:23px; font-weight:700; color:var(--text);">Fornecedores</h1>
-        <button onclick="novoFornecedor()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Novo fornecedor</button>
-      </div>
-      <div style="font-size:12.5px; color:var(--text3); margin-bottom:14px;">Cadastro com categoria macro, produtos e busca — usados nas cotações dos orçamentos.</div>
+      ${hubHead('Fornecedores','Cadastro com categoria, produtos e busca — para as cotações.',`<button onclick="novoFornecedor()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Novo fornecedor</button>`)}
       ${toolbar}
       ${temForn? `<div id="forn-lista">${_fnCardsHTML()}</div>`
         : '<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-building-store" style="font-size:38px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum fornecedor ainda</div>'}
@@ -7316,15 +7304,7 @@ function renderOrcamentos(){
     </div>`; };
   main.innerHTML=`
     <div style="padding:20px 4px 40px; max-width:1100px;">
-      ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Orçamentos'}])}
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:4px;">
-        <h1 style="font-size:23px; font-weight:700; color:var(--text);">Orçamentos</h1>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <button onclick="_orcImportarUI()" title="Colar um orçamento em JSON" style="background:var(--bg2); color:var(--text2); border:1px solid var(--border); border-radius:9px; padding:10px 14px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-clipboard-text"></i> Importar</button>
-          <button onclick="novoOrcamento()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Novo orçamento</button>
-        </div>
-      </div>
-      <div style="font-size:12.5px; color:var(--text3); margin-bottom:18px;">Junte as cotações de vários fornecedores e compare numa tabela só.</div>
+      ${hubHead('Orçamentos','Junte cotações de vários fornecedores e compare numa tabela só.',`<button onclick="_orcImportarUI()" title="Colar um orçamento em JSON" style="background:var(--bg2); color:var(--text2); border:1px solid var(--border); border-radius:9px; padding:10px 14px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-clipboard-text"></i> Importar</button><button onclick="novoOrcamento()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Novo orçamento</button>`)}
       ${arr.length? `<div style="display:flex; flex-direction:column; gap:9px;">${arr.map(card).join('')}</div>`
         : '<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-receipt-2" style="font-size:38px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum orçamento ainda</div>'}
     </div>`;
@@ -7677,12 +7657,7 @@ function renderOrdens(){
     </div>` : '';
   main.innerHTML=`
     <div style="padding:20px 4px 40px; max-width:1100px;">
-      ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Ordens de Serviço'}])}
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:4px;">
-        <h1 style="font-size:23px; font-weight:700; color:var(--text);">Ordens de Serviço</h1>
-        <button onclick="novoOrdem()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Nova ordem</button>
-      </div>
-      <div style="font-size:12.5px; color:var(--text3); margin-bottom:14px;">Ordens de serviço por equipamento — corretiva, preventiva e preditiva. Peças vêm do sistema da empresa (ERP).</div>
+      ${hubHead('Ordens de Serviço','Por equipamento — corretiva, preventiva e preditiva.',`<button onclick="novoOrdem()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Nova ordem</button>`)}
       ${toolbar}
       ${tem? `<div id="os-lista">${_osCardsHTML()}</div>`
         : '<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-clipboard-list" style="font-size:38px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhuma ordem ainda</div>'}
@@ -7920,12 +7895,7 @@ function renderEquipamentos(){
     </div>` : '';
   main.innerHTML=`
     <div style="padding:20px 4px 40px; max-width:1100px;">
-      ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Equipamentos'}])}
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:4px;">
-        <h1 style="font-size:23px; font-weight:700; color:var(--text);">Equipamentos</h1>
-        <button onclick="novoEquipamento()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Novo equipamento</button>
-      </div>
-      <div style="font-size:12.5px; color:var(--text3); margin-bottom:14px;">Cadastro técnico (TAG, criticidade, consumíveis e planos de preventiva) — base do PCM.</div>
+      ${hubHead('Equipamentos','Cadastro técnico — TAG, criticidade, consumíveis e preventivas.',`<button onclick="novoEquipamento()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Novo equipamento</button>`)}
       ${toolbar}
       ${tem? `<div id="eq-lista">${_eqCardsHTML()}</div>`
         : '<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-settings-automation" style="font-size:38px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum equipamento ainda</div>'}
@@ -8085,9 +8055,7 @@ function renderPreventivas(){
   if(poruso.length) corpo+=`<div style="margin-bottom:22px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; color:var(--text2); font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;"><i class="ti ti-gauge"></i> Por uso (horas/ciclos) <span style="background:var(--bg2); color:var(--text3); font-size:11px; padding:2px 8px; border-radius:99px;">${poruso.length}</span></div><div style="display:flex; flex-direction:column; gap:8px;">${poruso.map(itemCard).join('')}</div></div>`;
   main.innerHTML=`
     <div style="padding:20px 4px 40px; max-width:1100px;">
-      ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Preventivas'}])}
-      <h1 style="font-size:23px; font-weight:700; color:var(--text); margin-bottom:4px;">Preventivas</h1>
-      <div style="font-size:12.5px; color:var(--text3); margin-bottom:18px;">Planos dos equipamentos por vencimento — ${nTotal} plano${nTotal!==1?'s':''}${nAtras?` · <span style="color:var(--danger); font-weight:700;">${nAtras} atrasado${nAtras!==1?'s':''}</span>`:''}. <strong>Gerar ordem (OS)</strong> abre a ordem preventiva preenchida.</div>
+      ${hubHead('Preventivas','Planos dos equipamentos por vencimento — gere a OS preventiva.')}
       ${nTotal? corpo : '<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-calendar-off" style="font-size:38px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum plano de preventiva — cadastre nos equipamentos.</div>'}
     </div>`;
 }
@@ -8129,9 +8097,7 @@ function renderPCM(){
 
   main.innerHTML=`
     <div style="padding:20px 4px 50px; max-width:1100px;">
-      ${hubBreadcrumb([{label:'Manutenção', onclick:"setManutencaoView('ordens')"},{label:'Painel PCM'}])}
-      <h1 style="font-size:23px; font-weight:700; color:var(--text); margin-bottom:4px;">Painel PCM</h1>
-      <div style="font-size:12.5px; color:var(--text3); margin-bottom:18px;">Indicadores de Planejamento e Controle da Manutenção, calculados das OS, equipamentos e planos.</div>
+      ${hubHead('Painel PCM','Indicadores de planejamento e controle da manutenção.')}
 
       <div style="display:flex; gap:12px; flex-wrap:wrap;">
         ${kpi('Pendências (backlog)', backlog, 'ordens abertas / em execução', backlog>0?'var(--amber)':'var(--success)', 'ti-inbox', false)}
@@ -8360,7 +8326,7 @@ function renderMarketing(){
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
   if(marketingView==='influenciadores') return renderInfluenciadores();
-  main.innerHTML=`<div style="padding:20px 4px 40px;">${hubBreadcrumb([{label:'Marketing', onclick:"setMarketingView('influenciadores')"},{label:'Em construção'}])}<h1 style="font-size:23px; font-weight:700; color:var(--text);">Em construção</h1></div>`;
+  main.innerHTML=`<div style="padding:20px 4px 40px;">${hubHead('Em construção','Este módulo do Marketing chega em breve.')}</div>`;
 }
 
 // ── Área COMPRAS ──────────────────────────────────────────────────────
@@ -8438,13 +8404,8 @@ function _comprasScaffoldHTML(v){
   };
   const d=T[v]||T.painel;
   const itens=d[2].map(i=>`<li>${i}</li>`).join('');
-  return `<div style="padding:20px 4px 60px; max-width:920px; margin:0 auto;">
-    ${hubBreadcrumb([{label:'Compras', onclick:"setComprasView('painel')"},{label:d[0]}])}
-    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:8px 0 4px;">
-      <h1 style="font-size:24px; font-weight:800; letter-spacing:-.02em; color:var(--text); margin:0;">${d[0]}</h1>
-      <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--amber); background:var(--amber-bg); padding:3px 9px; border-radius:999px;">em construção</span>
-    </div>
-    <p style="color:var(--text2); font-size:15px; max-width:62ch; margin:4px 0 22px;">${d[1]}</p>
+  return `<div style="padding:20px 4px 60px; max-width:920px;">
+    ${hubHead(d[0], d[1])}
     <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px 20px; max-width:560px;">
       <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--text3); margin-bottom:10px;">O que vai ter aqui</div>
       <ul style="margin:0; padding-left:18px; color:var(--text2); font-size:14px; line-height:1.9;">${itens}</ul>
@@ -8587,16 +8548,25 @@ function _cpCSS(){ return `<style>
   /* Tela cheia = MESMO layout horizontal (cp-painel-wrap), só ocupando a tela toda (Diego 23/08). */
   body.cp-focus .cp-painel-wrap{max-width:none;margin:0;padding:20px 32px 44px;min-height:100vh}
 </style>`; }
-function _cpTela(titulo, chip, desc, corpo, larg, acao){
-  return `<div style="padding:20px 4px 60px;max-width:${larg||1240}px;margin:0 auto">
-    ${_cpCSS()}
-    ${hubBreadcrumb([{label:'Compras', onclick:"setComprasView('painel')"},{label:titulo}])}
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0 4px">
-      <h1 style="font-size:24px;font-weight:800;letter-spacing:-.02em;color:var(--text);margin:0">${titulo}</h1>
-      ${chip?`<span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--success);background:var(--success-bg);padding:3px 9px;border-radius:999px">${chip}</span>`:''}
-      ${acao?`<div style="margin-left:auto">${acao}</div>`:''}
+// ═══════════ CABEÇALHO PADRÃO DO HUB ═══════════
+// (ago/2026, Diego) TODAS as telas seguem o formato do Projetos: título no canto
+// superior esquerdo + explicação curta em cinza. SEM trilha (breadcrumb) e SEM selo
+// ("dados reais"/"em construção") — o Diego é quem usa e já sabe o que é cada tela.
+// Espelha .topbar-left h2 (20px/700) e .topbar-left p (13px/var(--text3)).
+// `acao` = botão(ões) opcional(is) à direita (ex.: a lupa de busca).
+function hubHead(titulo, sub, acao){
+  return `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:0 0 20px">
+    <div style="min-width:0">
+      <h2 style="font-size:20px;font-weight:700;letter-spacing:-.01em;color:var(--text);margin:0">${titulo}</h2>
+      ${sub?`<p style="font-size:13px;color:var(--text3);margin:2px 0 0">${sub}</p>`:''}
     </div>
-    ${desc?`<p style="color:var(--text2);font-size:14px;max-width:80ch;margin:4px 0 18px">${desc}</p>`:''}
+    ${acao?`<div style="flex-shrink:0;display:flex;align-items:center;gap:8px">${acao}</div>`:''}
+  </div>`;
+}
+function _cpTela(titulo, sub, corpo, larg, acao){
+  return `<div style="padding:20px 4px 60px;max-width:${larg||1240}px">
+    ${_cpCSS()}
+    ${hubHead(titulo, sub, acao)}
     ${corpo}
   </div>`;
 }
@@ -8665,7 +8635,7 @@ function _comprasEstoqueHTML(){
   const acao = _cpEst.buscaAberta
     ? `<div style="display:inline-flex;align-items:center;gap:6px"><input id="cp-est-busca" value="${escapeAttr(_cpEst.busca)}" oninput="_cpEstSet('busca',this.value)" placeholder="Buscar insumo…" class="modal-input" style="width:220px;padding:6px 11px;font-size:12.5px"><button onclick="_cpEstToggleBusca()" title="Fechar busca" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;display:inline-flex"><i class="ti ti-x" style="font-size:16px"></i></button></div>`
     : `<button onclick="_cpEstToggleBusca()" title="Buscar insumo" style="background:var(--card);border:1px solid var(--border);border-radius:9px;cursor:pointer;color:var(--text2);width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-search" style="font-size:17px"></i></button>`;
-  return _cpTela('Estoque','dados reais','',
+  return _cpTela('Estoque','O que você tem hoje, cobertura e o que comprar.',
     `<div id="cp-est-seg" class="cp-catbar" style="margin-bottom:14px">${_cpEstSegHTML()}</div>
     <div id="cp-est-corpo">${_cpEstCorpo()}</div>`,undefined,acao);
 }
@@ -8710,8 +8680,7 @@ function _comprasInsumosHTML(){
       <td class="cp-n"><span class="cp-pill" style="color:${c};background:${bg}">${o.dias===null?'—':o.dias+' d'}</span></td>
       <td class="cp-n">${o.compras.length}</td>
     </tr>`;}).join('');
-  return _cpTela('Insumos','dados reais',
-    'A ficha de cada item comprado — a lente do <b>“o quê”</b>. Clique para ver consumo, curva de preço, fornecedores e sugestão de compra.',
+  return _cpTela('Insumos','A ficha de cada item comprado — consumo, preço e fornecedores.',
     chips+`<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead><tr><th>Código</th><th>Insumo</th><th>Categoria</th><th class="r">Estoque</th><th class="r">Custo médio</th><th class="r">Valor</th><th class="r">Cobertura</th><th class="r">Compras</th></tr></thead>
       <tbody>${linhas}</tbody></table>
@@ -9408,7 +9377,6 @@ function _cpFornDetalheInline(cod){
   return `<div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:11px">
       <h2 style="font-size:17px;font-weight:800;color:var(--text);margin:0">${escapeHTML(_cpForn(f.nome))}</h2>
-      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 12%,transparent);padding:3px 9px;border-radius:999px">ficha do fornecedor</span>
       <button onclick="_cpAbrirForn('${escapeAttr(cod)}')" class="btn-modal-cancel" style="margin-left:auto;padding:5px 11px;font-size:12px" title="Abrir a ficha completa em tela cheia">abrir completa <i class="ti ti-external-link" style="font-size:12px"></i></button>
     </div>
     ${_cpKPIrow([
@@ -9535,8 +9503,7 @@ function _comprasFornecedoresHTML(){
       <td class="cp-n">${Object.keys(f.itens).length}</td>
     </tr>`;}).join('');
   const nA=(()=>{let a=0,n=0;for(const f of L){a+=f.total;n++;if(tot&&a/tot>=0.8)break;}return n;})();
-  return _cpTela('Fornecedores','dados reais',
-    `A lente do <b>“quem”</b>: curva ABC por valor comprado. <b>${nA} fornecedores concentram 80% do gasto</b> — é neles que a negociação vale. Clique para ver o que compramos de cada um.`,
+  return _cpTela('Fornecedores','Curva ABC por valor comprado — onde a negociação vale.',
     _cpKPIrow([
       _cpKPI('Fornecedores',_cpNum(L.length)),
       _cpKPI('Gasto total',_cpBRL(tot)),
@@ -9552,7 +9519,7 @@ function _comprasFornecedoresHTML(){
 }
 function _cpFichaFornHTML(cod){
   const f=_cpFornAgg('T').find(x=>x.cod===cod);
-  if(!f) return _cpTela('Fornecedor','', 'Fornecedor não encontrado no período.', `<button onclick="_cpVoltarForns()" class="btn-modal-cancel">← Voltar</button>`);
+  if(!f) return _cpTela('Fornecedor','Fornecedor não encontrado no período.', `<button onclick="_cpVoltarForns()" class="btn-modal-cancel">← Voltar</button>`);
   // itens comprados dele
   const it={};
   f.linhas.forEach(l=>{ const k=l.item[0]; if(!it[k]) it[k]={nome:l.item[1],cod:k,total:0,qtd:0,um:l.um,ult:l.data,preco:l.vun};
@@ -9568,8 +9535,7 @@ function _cpFichaFornHTML(cod){
     `<tr><td class="cp-mono">${_cpDt(l.data)}</td><td class="cp-mono">${escapeHTML(String(l.nf))}</td>
      <td class="cp-item">${escapeHTML(l.item[1])}</td><td class="cp-n">${_cpNum(l.qtd,2)}</td>
      <td class="cp-n">${_cpBRL(l.vun)}</td><td class="cp-n">${_cpBRL(l.tot)}</td></tr>`).join('');
-  return _cpTela(f.nome,'ficha do fornecedor',
-    `O que compramos deste fornecedor ${_cpFornMeses?('nos últimos '+_cpFornMeses+' meses'):'em todo o período'} — leve isto para a reunião.`,
+  return _cpTela(f.nome,'O que compramos deste fornecedor no período — leve para a reunião.',
     `<div style="margin-bottom:14px"><button onclick="_cpVoltarForns()" class="btn-modal-cancel" style="padding:6px 12px;font-size:12.5px">← Todos os fornecedores</button></div>
     ${_cpKPIrow([
       _cpKPI('Comprado',_cpBRL(f.total)),
@@ -9616,8 +9582,7 @@ function _comprasOrdensHTML(){
       <td class="cp-n"><span class="cp-pill" style="color:${c};background:${bg}">${(x.dif>0?'+':'')+x.dif.toFixed(1)}%</span></td>
       <td class="cp-n">${_cpBRL((x.a.vun-x.b.vun)*x.a.qtd)}</td>
     </tr>`;}).join('');
-  return _cpTela('Ordens de compra','dados reais',
-    `Comparação da <b>última compra de cada item com a anterior</b> — subiu ou caiu, e quantos %. O impacto em R$ usa a quantidade da última compra. <i>(As OCs em aberto ficam no ERP; aqui entra o que já foi recebido, que é o que dá para comparar.)</i>`,
+  return _cpTela('Ordens de compra','Última compra de cada item vs. a anterior — subiu ou caiu.',
     _cpKPIrow([
       _cpKPI('Itens comparáveis',_cpNum(L.length)),
       _cpKPI('Subiram',_cpNum(subiu),'var(--danger)'),
@@ -9650,8 +9615,7 @@ function _comprasPainelHTML(){
     return `<div class="cp-clic" onclick="_cpAbrirItem('${o.cod}')" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o.nome)}</span>
       <span class="cp-pill" style="color:${c};background:${bg};flex:none">${o.dias} d</span></div>`;};
-  return _cpTela('Painel de Compras','dados reais',
-    `A porta de entrada: o que precisa de decisão hoje, cruzando estoque de <b>${_cpDt(_CP_POSDATA)}</b>, consumo e compras.`,
+  return _cpTela('Painel de Compras','O que precisa de decisão hoje — estoque, consumo e compras.',
     _cpKPIrow([
       _cpKPI('Valor em estoque',_cpBRL(valorEst)),
       _cpKPI('Precisa comprar',_cpNum(comprar.length),comprar.length?'var(--amber)':''),
@@ -9677,8 +9641,7 @@ function _comprasPainelHTML(){
 function _comprasOrcamentosHTML(){
   const n=(typeof orcamentos!=='undefined'&&orcamentos)?orcamentos.length:0;
   const nf=(typeof fornecedores!=='undefined'&&fornecedores)?fornecedores.length:0;
-  return _cpTela('Orçamentos','reaproveitado',
-    'Cotação e negociação já existem no HUB, dentro de Manutenção — com comparação lado a lado e o simulador de negociação. Em vez de duplicar, a área de Compras aponta para lá.',
+  return _cpTela('Orçamentos','Cotações e negociação — reaproveitados da Manutenção.',
     `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
       <div class="cp-card" style="padding:20px">
         <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:6px">Orçamentos <span style="color:var(--text3);font-weight:600">(${n})</span></div>
@@ -9804,7 +9767,7 @@ function _cpHistCorpoHTML(){
 }
 function _comprasHistoricoHTML(){
   const opt=(v,lab)=>`<option value="${v}"${_cpHist.meses===v?' selected':''}>${lab}</option>`;
-  return `<div style="padding:20px 4px 60px; max-width:1240px; margin:0 auto;">
+  return `<div style="padding:20px 4px 60px; max-width:1240px;">
     <style>
       .cp-tbl{width:100%;border-collapse:collapse;font-size:13px}
       .cp-tbl th,.cp-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
@@ -9817,12 +9780,7 @@ function _comprasHistoricoHTML(){
       .cp-tbl .cp-un{color:var(--text3);font-size:10.5px}
       .cp-tbl .cp-dif{display:inline-block;padding:1px 7px;border-radius:999px;font-weight:700;font-size:11.5px}
     </style>
-    ${hubBreadcrumb([{label:'Compras', onclick:"setComprasView('painel')"},{label:'Histórico de compras'}])}
-    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:8px 0 4px;">
-      <h1 style="font-size:24px; font-weight:800; letter-spacing:-.02em; color:var(--text); margin:0;">Histórico de compras</h1>
-      <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--success);background:var(--success-bg);padding:3px 9px;border-radius:999px;">dados reais</span>
-    </div>
-    <p style="color:var(--text2); font-size:14px; max-width:75ch; margin:4px 0 18px;">O livro de notas fiscais de entrada — é daqui que sai todo o resto da área. A coluna <b>vs últ. 3</b> compara o preço pago com a média das <b>3 compras anteriores do mesmo item</b>, e acende quando a compra sai fora da curva. (O <b>Custo médio</b> ao lado é o CMU do ERP — a média ponderada do estoque, que serve de base de custo.)</p>
+    ${hubHead('Histórico de compras','O livro de notas fiscais de entrada — a base de dados da área.')}
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
       <div id="cp-seg" style="display:inline-flex;border-radius:9px;overflow:hidden">${_cpSegHTML()}</div>
       <select onchange="_cpSet('meses',this.value)" class="modal-input" style="width:auto;padding:7px 10px;font-size:12.5px">
@@ -9867,12 +9825,7 @@ function renderInfluenciadores(){
   else if(influView==='config') body = _influConfigHTML();
   else body = _influPainelHTML();
   main.innerHTML=`<div style="padding:20px 4px 60px; max-width:1180px;">
-    ${hubBreadcrumb([{label:'Marketing', onclick:"setMarketingView('influenciadores')"},{label:'Influenciadores'}])}
-    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-      <h1 style="font-size:23px; font-weight:700; color:var(--text); margin:0;">Influenciadores</h1>
-      <span style="background:color-mix(in srgb, var(--blue-mid) 14%, transparent); color:var(--blue-mid); font-size:12px; font-weight:700; padding:3px 10px; border-radius:99px;">Embaixadoras Klain</span>
-    </div>
-    <div style="color:var(--text3); font-size:13px; margin-top:5px;">Gestão de embaixadoras, processo de envio do mês e gamificação de conteúdo.</div>
+    ${hubHead('Influenciadores','Gestão de embaixadoras, envios do mês e gamificação de conteúdo.')}
     ${_influSubTabsHTML()}
     <div style="margin-top:20px;">${body}</div>
   </div>`;
@@ -10201,9 +10154,7 @@ function renderQualidade(){
   const titulo=titulos[qualidadeView]||'Qualidade';
   main.innerHTML = `
     <div style="padding:20px 4px 40px;">
-      ${hubBreadcrumb([{label:'Qualidade', onclick:"setQualidadeView('indicadores')"},{label:titulo}])}
-      <h1 style="font-size:23px; font-weight:700; color:var(--text); margin-bottom:6px;">${titulo}</h1>
-      <div style="color:var(--text3); font-size:13px;">Módulo em construção.</div>
+      ${hubHead(titulo,'Em construção — em breve.')}
     </div>
   `;
 }
@@ -10322,9 +10273,7 @@ function renderRH(){
   _orgLoad();
   main.innerHTML = `
     <div style="padding:20px 4px 44px">
-      ${hubBreadcrumb([{label:'RH', onclick:"setRHView('organograma')"},{label:'Organograma'}])}
-      <h1 style="font-size:23px;font-weight:700;color:var(--text);margin:0 0 4px">Organograma</h1>
-      <div style="color:var(--text3);font-size:13px;margin-bottom:16px">Estrutura da equipe — <b>Visualizar</b> ou <b>Editar</b> (adicionar, renomear, remover).</div>
+      ${hubHead('Organograma','Estrutura da equipe — visualize ou edite.')}
       <style>
         .org-wrap{overflow:auto;padding:6px 2px 26px}
         .org{display:inline-block;min-width:100%}
@@ -10756,12 +10705,7 @@ function renderSensorialLista(){
     </div>`;
   main.innerHTML = `
     <div style="padding:20px 4px 40px; max-width:1180px;">
-      ${hubBreadcrumb([{label:'Qualidade', onclick:"setQualidadeView('sensorial')"},{label:'Análise sensorial'}])}
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:4px;">
-        <h1 style="font-size:23px; font-weight:700; color:var(--text);">Análise sensorial</h1>
-        <button onclick="novoTesteSensorial()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Novo teste</button>
-      </div>
-      <div style="font-size:12.5px; color:var(--text3); margin-bottom:6px;">Testes cegos de comparação — prove as amostras e avalie todas numa tela só.</div>
+      ${hubHead('Análise sensorial','Testes cegos de comparação — avalie todas as amostras numa tela.',`<button onclick="novoTesteSensorial()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Novo teste</button>`)}
       ${(()=>{
         if(!testes.length) return '<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-test-pipe-off" style="font-size:38px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum teste ainda</div>';
         const pend=testes.filter(t=>t.status!=='encerrado'), enc=testes.filter(t=>t.status==='encerrado');
@@ -11579,14 +11523,7 @@ function renderListaProdutos(){
   const main=document.getElementById('task-container');
   main.innerHTML = `
     <div style="padding:20px 4px 40px; max-width:1180px;">
-      ${hubBreadcrumb([{label:'Produção', onclick:"setProducaoView('produtos')"},{label:'Produtos'}])}
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
-        <h1 style="font-size:23px; font-weight:700; color:var(--text);">Produtos</h1>
-        <button onclick="novaFichaProduto()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;">
-          <i class="ti ti-plus"></i> Nova ficha
-        </button>
-      </div>
-      <div style="font-size:12.5px; color:var(--text3); margin-bottom:18px;">Ficha completa de cada produto — produtiva, fiscal, comercial e qualidade</div>
+      ${hubHead('Produtos','Ficha completa de cada produto — produtiva, fiscal, comercial e qualidade.',`<button onclick="novaFichaProduto()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Nova ficha</button>`)}
 
       <!-- Filtros: busca + tipo de produção -->
       <div style="display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap;">
