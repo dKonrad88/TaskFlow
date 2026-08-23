@@ -26271,6 +26271,486 @@ let PP_TIPOS = {...PP_TIPOS_BASE, ..._ppTiposCustom};
 // ═══════════════════════════════════════════════════════════════
 const PROJ_MODELOS = [
   {
+  "id": "seed_snack_protein",
+  "nome": "Snack Protein",
+  "tipo": "produto",
+  "cor": "#185FA5",
+  "descricao": "Lançamento do Snack Protein — montado a partir da planilha de tarefas por setor.\n\n📋 O QUE É\nA planilha lista tudo que precisa ser feito para lançar o produto, separado por SETOR (Cadastro, Compras, Marketing, Comercial, Comitê, Qualidade, Custos, PCP, Expedição). Aqui no Hub, as MESMAS tarefas foram reorganizadas em ETAPAS, na ordem em que precisam acontecer — porque nem toda tarefa de um setor é da mesma fase (ex.: não dá pra fazer teste de bancada antes da pesquisa de mercado).\n\n🧭 POR QUE CADA ETAPA (a lógica da sequência)\n1. Concepção & Mercado — primeiro decidir O QUÊ fazer (sabores, tamanho, posicionamento, gramatura). Sem isso, nada começa.\n2. Desenvolvimento & Aprovação do Produto — formular e validar o produto (ficha técnica, bancada, sensorial, validade). Só se avança com o produto aprovado.\n3. Embalagem, Arte & Regulatório — arte e rótulo só depois que a fórmula e a tabela nutricional existem (o rótulo depende deles).\n4. Cadastro, Custos & Preço — com o produto definido, cadastrar no ERP, calcular custo e definir preço.\n5. Compras & Suprimentos — comprar matéria-prima, embalagem e insumos (já com fórmula e embalagem fechadas).\n6. Produção Piloto & PCP — rodar a 1ª produção de verdade (receita, batelada, parâmetros de extrusão, treinar operadores).\n7. Comercial & Lançamento — treinar vendas, liberar para venda e divulgar (campanha, PDV, influenciadoras, redes).\n8. Pós-lançamento & Ajustes — o que a planilha marca como \"depois da 1ª produção\": paletização final, tempos de batelada, acompanhamentos de pesagem/lote e armazenamento.\n\n⚠️ As etapas são um GUIA de sequência, não uma regra rígida — tarefas podem andar em paralelo. As tarefas da \"Maria\" foram distribuídas nos setores certos (mapa de armazenamento → Expedição; ficha comercial → Comercial).",
+  "fases": [
+    {
+      "nome": "1. Concepção & Mercado",
+      "grupos": [
+        {
+          "setor": "Comitê",
+          "tarefas": [
+            {
+              "title": "Fazer pesquisa de mercado (concorrentes, preços e gramagens)",
+              "prio": "alta"
+            },
+            {
+              "title": "Definir quantos sabores iremos fazer"
+            },
+            {
+              "title": "Definir tamanho de embalagem"
+            },
+            {
+              "title": "Definir o nosso posicionamento"
+            }
+          ]
+        },
+        {
+          "setor": "Marketing",
+          "tarefas": [
+            {
+              "title": "Definição da gramatura do produto"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "2. Desenvolvimento & Aprovação do Produto",
+      "grupos": [
+        {
+          "setor": "Qualidade",
+          "tarefas": [
+            {
+              "title": "Criar ficha técnica do produto"
+            },
+            {
+              "title": "Desenvolver formulação inicial",
+              "prio": "alta"
+            },
+            {
+              "title": "Calcular tabela nutricional"
+            },
+            {
+              "title": "Fazer teste de bancada"
+            },
+            {
+              "title": "Solicitar amostras para teste com o Compras"
+            },
+            {
+              "title": "Definir alergênicos e advertências"
+            },
+            {
+              "title": "Definir prazo de validade"
+            },
+            {
+              "title": "Tirar umidade do produto"
+            },
+            {
+              "title": "Textura e sabor"
+            },
+            {
+              "title": "Quantidade de tempero"
+            },
+            {
+              "title": "Teste de prateleira (shelf)"
+            },
+            {
+              "title": "Aprovação em sensorial",
+              "prio": "alta"
+            }
+          ]
+        },
+        {
+          "setor": "Compras",
+          "tarefas": [
+            {
+              "title": "Pedir amostras"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "3. Embalagem, Arte & Regulatório",
+      "grupos": [
+        {
+          "setor": "Marketing",
+          "tarefas": [
+            {
+              "title": "Definição do gabarito da embalagem"
+            },
+            {
+              "title": "Criar briefing de arte"
+            },
+            {
+              "title": "Criar arte da embalagem"
+            },
+            {
+              "title": "Criar arte da caixa"
+            },
+            {
+              "title": "Aprovar a arte no setor de Marketing"
+            },
+            {
+              "title": "Aprovar a arte no Comercial"
+            },
+            {
+              "title": "Dar ok para prova física"
+            },
+            {
+              "title": "Dar ok para prova digital"
+            },
+            {
+              "title": "Enviar arte para clicheria da embalagem"
+            },
+            {
+              "title": "Enviar arte para clicheria da caixa"
+            },
+            {
+              "title": "Criar mockup para catálogo"
+            }
+          ]
+        },
+        {
+          "setor": "Qualidade",
+          "tarefas": [
+            {
+              "title": "Comunicação de fabricação na Anvisa"
+            },
+            {
+              "title": "Validar rotulagem obrigatória na Anvisa",
+              "prio": "alta"
+            },
+            {
+              "title": "Elaborar instrução de trabalho"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "4. Cadastro, Custos & Preço",
+      "grupos": [
+        {
+          "setor": "Custos",
+          "tarefas": [
+            {
+              "title": "Calcular custo unitário"
+            },
+            {
+              "title": "Definir preço de venda",
+              "prio": "alta"
+            }
+          ]
+        },
+        {
+          "setor": "Cadastro",
+          "tarefas": [
+            {
+              "title": "Para cadastrar item novo (definir descrição, linha, divisão, categoria, unidades de saída, peso bruto, peso líquido, cubagem, múltiplos, quantidade na caixa)"
+            },
+            {
+              "title": "Cadastrar no ERP"
+            },
+            {
+              "title": "Criar código de barras EAN-13"
+            },
+            {
+              "title": "Criar código DUN-14"
+            },
+            {
+              "title": "Criar cód bobina"
+            },
+            {
+              "title": "Criar cód caixa papelão + definição dia da contagem"
+            },
+            {
+              "title": "Criar cód aromas/temperos + definição dia da contagem"
+            },
+            {
+              "title": "Definir o dia da contagem (quando cria o cód do produto pronto)"
+            },
+            {
+              "title": "Vincular tabelas de preço ao produto"
+            },
+            {
+              "title": "Verificar com a contabilidade os impostos estaduais e federais, SPED, conta contábil"
+            },
+            {
+              "title": "Cadastro cliente"
+            },
+            {
+              "title": "Cadastrar fornecedor"
+            },
+            {
+              "title": "Cadastrar tabela de vendas"
+            }
+          ]
+        },
+        {
+          "setor": "Comercial",
+          "tarefas": [
+            {
+              "title": "Criar ficha comercial"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "5. Compras & Suprimentos",
+      "grupos": [
+        {
+          "setor": "Compras",
+          "tarefas": [
+            {
+              "title": "Solicitar cadastro dos insumos e materiais novos"
+            },
+            {
+              "title": "Compra da matéria-prima",
+              "prio": "alta"
+            },
+            {
+              "title": "Compra de embalagem"
+            },
+            {
+              "title": "Compra de cx de papelão"
+            },
+            {
+              "title": "Comprar insumos se tiver necessidade (etiquetas)"
+            }
+          ]
+        },
+        {
+          "setor": "Marketing",
+          "tarefas": [
+            {
+              "title": "Dar ok para embalagem quando o pedido chegar"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "6. Produção Piloto & PCP",
+      "grupos": [
+        {
+          "setor": "PCP",
+          "tarefas": [
+            {
+              "title": "Criar engenharia do produto no sistema"
+            },
+            {
+              "title": "Definir tamanho de caixa + cubagem"
+            },
+            {
+              "title": "Criação cód batelada SIA"
+            },
+            {
+              "title": "Criação cód mistura temperos SIA"
+            },
+            {
+              "title": "Definição do peso da batelada (no caso dos extrusados)"
+            },
+            {
+              "title": "Atualizar folhas no mural do empacotamento (cada folha é uma tarefa; a do mural é o modelo das caixas)"
+            },
+            {
+              "title": "Acrescentar na planilha de produção o modelo de caixas"
+            },
+            {
+              "title": "Fazer treinamento com operadores"
+            },
+            {
+              "title": "Valesca e Stéfano: atualizar todas as folhas e planilhas com os novos itens"
+            }
+          ]
+        },
+        {
+          "setor": "Qualidade",
+          "tarefas": [
+            {
+              "title": "Definir receita batelada e passar para PCP"
+            },
+            {
+              "title": "Definir receita dos temperos e passar para PCP"
+            },
+            {
+              "title": "Fazer teste piloto em máquina",
+              "prio": "alta"
+            },
+            {
+              "title": "Dar entrada no sistema da matéria-prima para acompanhar validade"
+            },
+            {
+              "title": "Acompanhamento da extrusão: data, hora, sabor, formato"
+            },
+            {
+              "title": "Parâmetro da água"
+            },
+            {
+              "title": "Temperatura de extrusão"
+            },
+            {
+              "title": "Parâmetro da faca"
+            },
+            {
+              "title": "Temperatura do secador"
+            },
+            {
+              "title": "Visual final do produto"
+            },
+            {
+              "title": "Visual final da embalagem"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "7. Comercial & Lançamento",
+      "grupos": [
+        {
+          "setor": "Comercial",
+          "tarefas": [
+            {
+              "title": "Fazer apresentação para comercial externo"
+            },
+            {
+              "title": "Dar treinamento de vendas para o time de representantes"
+            },
+            {
+              "title": "Definir o comissionamento e passar ao cadastro (padrão ou não)"
+            },
+            {
+              "title": "Definir qual grupo de Escalonada o produto vai entrar"
+            },
+            {
+              "title": "Definir a forma de venda (fracionado: múltiplos)"
+            },
+            {
+              "title": "Definir quantidade em caixa"
+            },
+            {
+              "title": "Se for nova categoria, incluir nos documentos oficiais (normativas e contratos)"
+            },
+            {
+              "title": "Verificar se vai impactar em campanha de vendas vigente (mesma categoria)"
+            },
+            {
+              "title": "Aplicativo de vendas"
+            },
+            {
+              "title": "Enviar amostras para equipe de vendas"
+            },
+            {
+              "title": "Televendas enviar amostra aos seus clientes"
+            },
+            {
+              "title": "Liberar para venda",
+              "prio": "alta"
+            },
+            {
+              "title": "Avisar equipe quando o item já está disponível nas tabelas de vendas"
+            },
+            {
+              "title": "Enviar imagens no grupo de representantes e broker"
+            }
+          ]
+        },
+        {
+          "setor": "Marketing",
+          "tarefas": [
+            {
+              "title": "Atualizar catálogo com os itens"
+            },
+            {
+              "title": "Criar arte da ficha comercial para enviar junto com o catálogo"
+            },
+            {
+              "title": "Criar campanha de lançamento para redes sociais"
+            },
+            {
+              "title": "Criar material de PDV"
+            },
+            {
+              "title": "Ação de endomarketing para apresentar o novo produto aos colaboradores"
+            },
+            {
+              "title": "Enviar produtos para influenciadoras"
+            },
+            {
+              "title": "Publicar produtos nas redes sociais"
+            },
+            {
+              "title": "Mandar postagens para representantes postarem"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "8. Pós-lançamento & Ajustes",
+      "grupos": [
+        {
+          "setor": "PCP",
+          "tarefas": [
+            {
+              "title": "Definir paletização (lastros e caixas por lastro) — fecha 100% na 1ª produção"
+            },
+            {
+              "title": "Definir tempo por batelada (depois da 1ª produção)"
+            },
+            {
+              "title": "Definir pacotes por batelada (depois da 1ª produção)"
+            },
+            {
+              "title": "Informação do peso de 1 pacote vazio (quando chega a bobina na empresa)"
+            },
+            {
+              "title": "Ajustar no cadastro a unidade de saída PALETE"
+            },
+            {
+              "title": "Acrescentar produto pronto na lista de contagem do domingo"
+            },
+            {
+              "title": "Acrescentar produto na planilha BANCO DE DADOS"
+            },
+            {
+              "title": "Acrescentar produto na planilha ANÁLISE DE PRODUÇÃO"
+            }
+          ]
+        },
+        {
+          "setor": "Qualidade",
+          "tarefas": [
+            {
+              "title": "Acompanhamento de pesagem de temperos"
+            },
+            {
+              "title": "Acompanhamento de pesagem (produto pronto na embalagem)"
+            },
+            {
+              "title": "Acompanhamento da data e lote na embalagem"
+            },
+            {
+              "title": "Planilha com lote, validade, fabricação e fornecedor da matéria-prima"
+            },
+            {
+              "title": "Atualizar plaquinha das balanças do empacotamento (peso mín-máx)"
+            }
+          ]
+        },
+        {
+          "setor": "Expedição",
+          "tarefas": [
+            {
+              "title": "Definir local de armazenamento"
+            },
+            {
+              "title": "Atualizar mapa de armazenamento"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+},
+  {
     id:'seed_implantacao', nome:'Implantação de Sistema', tipo:'bi', cor:'#6B46C1',
     descricao:'Colocar um sistema novo pra rodar na empresa, por ondas, do escopo ao go-live.',
     fases:[
@@ -28428,9 +28908,9 @@ function renderProjectProInfo(p, prog){
   // para "Planejamento"/"Arquivado" — o botão do cabeçalho só alterna ativo↔pausado.
   return `<div style="max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px">
     <div style="font-size:11.5px;color:var(--text3)">Detalhes do projeto. Para mudar nome, prazo ou cor use <b>Editar</b>; papéis da equipe ficam em <b>Pessoas</b>.</div>
-    ${(p.desc&&p.desc.trim())?`<div style="background:var(--surface-painel);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
+    ${((p.descricao||p.desc||'').trim())?`<div style="background:var(--surface-painel);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
       <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600;margin-bottom:7px;display:flex;align-items:center;gap:6px"><i class="ti ti-notes" style="font-size:13px"></i> Descrição</div>
-      <div style="font-size:13px;color:var(--text2);line-height:1.55;white-space:pre-wrap">${escapeHTML(p.desc.trim())}</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.55;white-space:pre-wrap">${escapeHTML((p.descricao||p.desc||'').trim())}</div>
     </div>`:''}
     ${infoCard}
     ${statusCard}
