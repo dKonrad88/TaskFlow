@@ -26275,7 +26275,7 @@ const PROJ_MODELOS = [
   "nome": "Snack Protein",
   "tipo": "produto",
   "cor": "#185FA5",
-  "descricao": "Lançamento do Snack Protein — montado a partir da planilha de tarefas por setor.\n\n📋 O QUE É\nA planilha lista tudo que precisa ser feito para lançar o produto, separado por SETOR (Cadastro, Compras, Marketing, Comercial, Comitê, Qualidade, Custos, PCP, Expedição). Aqui no Hub, as MESMAS tarefas foram reorganizadas em ETAPAS, na ordem em que precisam acontecer — porque nem toda tarefa de um setor é da mesma fase (ex.: não dá pra fazer teste de bancada antes da pesquisa de mercado).\n\n🧭 POR QUE CADA ETAPA (a lógica da sequência)\n1. Concepção & Mercado — primeiro decidir O QUÊ fazer (sabores, tamanho, posicionamento, gramatura). Sem isso, nada começa.\n2. Desenvolvimento & Aprovação do Produto — formular e validar o produto (ficha técnica, bancada, sensorial, validade). Só se avança com o produto aprovado.\n3. Embalagem, Arte & Regulatório — arte e rótulo só depois que a fórmula e a tabela nutricional existem (o rótulo depende deles).\n4. Cadastro, Custos & Preço — com o produto definido, cadastrar no ERP, calcular custo e definir preço.\n5. Compras & Suprimentos — comprar matéria-prima, embalagem e insumos (já com fórmula e embalagem fechadas).\n6. Produção Piloto & PCP — rodar a 1ª produção de verdade (receita, batelada, parâmetros de extrusão, treinar operadores).\n7. Comercial & Lançamento — treinar vendas, liberar para venda e divulgar (campanha, PDV, influenciadoras, redes).\n8. Pós-lançamento & Ajustes — o que a planilha marca como \"depois da 1ª produção\": paletização final, tempos de batelada, acompanhamentos de pesagem/lote e armazenamento.\n\n⚠️ As etapas são um GUIA de sequência, não uma regra rígida — tarefas podem andar em paralelo. As tarefas da \"Maria\" foram distribuídas nos setores certos (mapa de armazenamento → Expedição; ficha comercial → Comercial).",
+  "descricao": "Lançamento do Snack Protein — montado a partir da planilha de tarefas por setor.\n\n📋 O QUE É\nA planilha lista tudo que precisa ser feito para lançar o produto, separado por SETOR (Cadastro, Compras, Marketing, Comercial, Comitê, Qualidade, Custos, PCP, Expedição). Aqui no Hub, as MESMAS tarefas foram reorganizadas em ETAPAS, na ordem em que precisam acontecer — porque nem toda tarefa de um setor é da mesma fase (ex.: não dá pra fazer teste de bancada antes da pesquisa de mercado).\n\n🧭 POR QUE CADA ETAPA (a lógica da sequência)\n1. Concepção & Mercado — primeiro decidir O QUÊ fazer (sabores, tamanho, posicionamento, gramatura). Sem isso, nada começa.\n2. Desenvolvimento & Aprovação do Produto — formular e validar o produto (ficha técnica, bancada, sensorial, validade). Só se avança com o produto aprovado.\n3. Embalagem, Arte & Regulatório — arte e rótulo só depois que a fórmula e a tabela nutricional existem (o rótulo depende deles).\n4. Cadastro, Custos & Preço — com o produto definido, cadastrar no ERP, calcular custo e definir preço.\n5. Compras & Suprimentos — comprar matéria-prima, embalagem e insumos (já com fórmula e embalagem fechadas).\n6. Produção Piloto & PCP — rodar a 1ª produção de verdade (receita, batelada, parâmetros de extrusão, treinar operadores).\n7. Comercial & Lançamento — treinar vendas, liberar para venda e divulgar (campanha, PDV, influenciadoras, redes).\n8. Pós-lançamento & Ajustes — o que a planilha marca como \"depois da 1ª produção\": paletização final, tempos de batelada, acompanhamentos de pesagem/lote e armazenamento.\n\n⚠️ As etapas são um GUIA de sequência, não uma regra rígida — tarefas podem andar em paralelo. As tarefas da \"Maria\" foram distribuídas nos setores certos (mapa de armazenamento → Expedição; ficha comercial → Comercial).\n\n➕ TAREFAS ACRESCENTADAS além da planilha (boas práticas, escolhidas pelo Diego): nome/marca + viabilidade + INPI (etapa 1), análises laboratoriais (etapa 2), validar claims ANVISA (etapa 3), 2º fornecedor + 1ª compra em volume (etapa 5), capacidade da linha + estoque de segurança (etapa 6), fotografia + kit de lançamento (etapa 7).",
   "fases": [
     {
       "nome": "1. Concepção & Mercado",
@@ -26288,13 +26288,20 @@ const PROJ_MODELOS = [
               "prio": "alta"
             },
             {
+              "title": "Definir o nosso posicionamento"
+            },
+            {
               "title": "Definir quantos sabores iremos fazer"
             },
             {
               "title": "Definir tamanho de embalagem"
             },
             {
-              "title": "Definir o nosso posicionamento"
+              "title": "Definir nome comercial/marca do produto"
+            },
+            {
+              "title": "Estudo de viabilidade: preço-alvo × custo estimado (antes de desenvolver)",
+              "prio": "alta"
             }
           ]
         },
@@ -26303,6 +26310,9 @@ const PROJ_MODELOS = [
           "tarefas": [
             {
               "title": "Definição da gramatura do produto"
+            },
+            {
+              "title": "Registro da marca no INPI (se nome novo)"
             }
           ]
         }
@@ -26347,6 +26357,9 @@ const PROJ_MODELOS = [
             },
             {
               "title": "Teste de prateleira (shelf)"
+            },
+            {
+              "title": "Análises laboratoriais externas (microbiológica/físico-química) para registro"
             },
             {
               "title": "Aprovação em sensorial",
@@ -26408,6 +26421,9 @@ const PROJ_MODELOS = [
         {
           "setor": "Qualidade",
           "tarefas": [
+            {
+              "title": "Validar claims (ex.: \"alto teor de proteína\" — regra ANVISA) antes do rótulo"
+            },
             {
               "title": "Comunicação de fabricação na Anvisa"
             },
@@ -26498,7 +26514,13 @@ const PROJ_MODELOS = [
           "setor": "Compras",
           "tarefas": [
             {
+              "title": "Homologar 2º fornecedor da proteína (não depender de um só)"
+            },
+            {
               "title": "Solicitar cadastro dos insumos e materiais novos"
+            },
+            {
+              "title": "Planejar a 1ª compra em volume (não só amostra)"
             },
             {
               "title": "Compra da matéria-prima",
@@ -26532,6 +26554,9 @@ const PROJ_MODELOS = [
           "setor": "PCP",
           "tarefas": [
             {
+              "title": "Validar capacidade da linha e impacto no mix atual"
+            },
+            {
               "title": "Criar engenharia do produto no sistema"
             },
             {
@@ -26557,6 +26582,9 @@ const PROJ_MODELOS = [
             },
             {
               "title": "Valesca e Stéfano: atualizar todas as folhas e planilhas com os novos itens"
+            },
+            {
+              "title": "Definir estoque de segurança inicial e ponto de reposição"
             }
           ]
         },
@@ -26656,10 +26684,16 @@ const PROJ_MODELOS = [
           "setor": "Marketing",
           "tarefas": [
             {
+              "title": "Fotografia do produto (still + ambientada) para catálogo/PDV"
+            },
+            {
               "title": "Atualizar catálogo com os itens"
             },
             {
               "title": "Criar arte da ficha comercial para enviar junto com o catálogo"
+            },
+            {
+              "title": "Kit de lançamento para representantes (argumentário + mídia)"
             },
             {
               "title": "Criar campanha de lançamento para redes sociais"
