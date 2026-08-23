@@ -8528,6 +8528,7 @@ function _cpCSS(){ return `<style>
   .cp-cattag{font-size:11px;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:2px 7px;white-space:nowrap}
   .cp-tbl{width:100%;border-collapse:collapse;font-size:13px}
   .cp-tbl th,.cp-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+  .cp-tbl.cp-tbl-sm th,.cp-tbl.cp-tbl-sm td{padding:5px 6px}
   .cp-tbl thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:700;background:var(--bg2);position:sticky;top:0;z-index:1}
   .cp-tbl th.r,.cp-tbl td.cp-n{text-align:right;font-variant-numeric:tabular-nums}
   .cp-tbl tbody tr:hover{background:var(--bg2)}
@@ -9075,13 +9076,15 @@ function _cpUltimasComprasCard(o){
     <td class="cp-mono">${_cpDt(l.data)}</td>
     <td class="cp-n">${_cpNum(l.qtd,0)} <span class="cp-un">${escapeHTML(um)}</span></td>
     <td class="cp-n">${_cpBRL(l.vun)}</td>
-    <td class="cp-item" title="${escapeAttr(_cpForn(l.forn[1]))}" style="max-width:140px">${escapeHTML(_cpForn(l.forn[1]))}</td>
+    <td class="cp-n">${l.aliq!=null?_cpNum(l.aliq,0)+'%':'—'}</td>
+    <td class="cp-n">${(l.vun&&l.aliq!=null)?_cpBRL(l.vun*(1-l.aliq/100)):'—'}</td>
+    <td class="cp-item" title="${escapeAttr(_cpForn(l.forn[1]))}" style="max-width:84px">${escapeHTML(_cpForn(l.forn[1]))}</td>
     <td class="cp-n" style="color:var(--text3)">—</td>
-  </tr>`).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:16px">Sem compras.</td></tr>`;
+  </tr>`).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:16px">Sem compras.</td></tr>`;
   return `<div class="cp-card" style="padding:15px 17px 8px">
     <div class="cp-card-title"><span>Últimas compras</span></div>
-    <div style="overflow-x:auto"><table class="cp-tbl" style="font-size:12px">
-      <thead><tr><th>Data</th><th class="r">Qtde</th><th class="r">Preço</th><th>Fornecedor</th><th class="r">Prazo</th></tr></thead>
+    <div style="overflow-x:auto"><table class="cp-tbl cp-tbl-sm" style="font-size:11px">
+      <thead><tr><th>Data</th><th class="r">Qtde</th><th class="r">Preço</th><th class="r">ICMS</th><th class="r" title="Preço líquido do ICMS">Preço Net</th><th>Fornecedor</th><th class="r">Prazo</th></tr></thead>
       <tbody>${linhas}</tbody></table></div>
     <div style="font-size:10.5px;color:var(--text3);padding:6px 2px 0">Prazo (pagamento/entrega) — a cadastrar; não vem no export do ERP.</div>
   </div>`;
@@ -9805,6 +9808,7 @@ function _comprasHistoricoHTML(){
     <style>
       .cp-tbl{width:100%;border-collapse:collapse;font-size:13px}
       .cp-tbl th,.cp-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+  .cp-tbl.cp-tbl-sm th,.cp-tbl.cp-tbl-sm td{padding:5px 6px}
       .cp-tbl thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:700;background:var(--bg2);position:sticky;top:0;z-index:1}
       .cp-tbl th.r,.cp-tbl td.cp-n{text-align:right;font-variant-numeric:tabular-nums}
       .cp-tbl tbody tr:hover{background:var(--bg2)}
