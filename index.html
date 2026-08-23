@@ -8528,7 +8528,7 @@ function _cpCSS(){ return `<style>
   .cp-cattag{font-size:11px;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:2px 7px;white-space:nowrap}
   .cp-tbl{width:100%;border-collapse:collapse;font-size:13px}
   .cp-tbl th,.cp-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
-  .cp-tbl thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:700;background:var(--bg2);position:sticky;top:0}
+  .cp-tbl thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:700;background:var(--bg2);position:sticky;top:0;z-index:1}
   .cp-tbl th.r,.cp-tbl td.cp-n{text-align:right;font-variant-numeric:tabular-nums}
   .cp-tbl tbody tr:hover{background:var(--bg2)}
   .cp-tbl tbody tr.cp-row-sel{background:color-mix(in srgb,var(--blue-mid) 11%,transparent)}
@@ -8658,7 +8658,7 @@ function _cpEstCorpo(){
       _cpKPI('Sem dados',_cpNum(nSemDados),nSemDados?'var(--text3)':''),
       _cpKPI('Valor em estoque',_cpBRL(totV))
     ])+
-    `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
+    `<div class="cp-card" style="overflow:auto;max-height:calc(100vh - 320px)"><table class="cp-tbl">
       <thead><tr><th>Insumo</th><th class="r">Em estoque</th><th class="r">Valor</th><th class="r">Consumo/mês</th><th class="r">Cobertura</th><th class="r">Últ. compra</th><th>Fornecedor</th><th class="r">Sem mov.</th></tr></thead>
       <tbody>${linhas||`<tr><td colspan="8">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`}</tbody>
     </table></div>
@@ -9833,7 +9833,7 @@ function _comprasHistoricoHTML(){
     <style>
       .cp-tbl{width:100%;border-collapse:collapse;font-size:13px}
       .cp-tbl th,.cp-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
-      .cp-tbl thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:700;background:var(--bg2);position:sticky;top:0}
+      .cp-tbl thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:700;background:var(--bg2);position:sticky;top:0;z-index:1}
       .cp-tbl th.r,.cp-tbl td.cp-n{text-align:right;font-variant-numeric:tabular-nums}
       .cp-tbl tbody tr:hover{background:var(--bg2)}
       .cp-tbl .cp-mono{font-variant-numeric:tabular-nums;color:var(--text3);font-size:12px}
