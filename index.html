@@ -9608,7 +9608,7 @@ function _comprasPainelHTML(){
   const alertas=_cpLinhas().filter(l=>l.cls==='I'&&l.med3>0&&l.tot>=1000&&((l.vun-l.med3)/l.med3*100)>10)
     .sort((a,b)=>b.data<a.data?-1:1).slice(0,8);
   const lista=(arr,render)=>arr.length?arr.map(render).join(''):`<div style="color:var(--text3);font-size:13px;padding:6px 0">Nada por aqui. 👍</div>`;
-  const bloco=(tit,sub,cor,corpo)=>`<div class="cp-card" style="padding:16px 18px;border-left:3px solid ${cor}">
+  const bloco=(tit,sub,cor,corpo)=>`<div class="cp-card" style="padding:16px 18px">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">${tit}</div>
       <div style="font-size:12px;color:var(--text3);margin:2px 0 12px">${sub}</div>${corpo}</div>`;
   const linhaItem=o=>{const [c,bg]=_cpCorDias(o.dias);
