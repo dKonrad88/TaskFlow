@@ -622,6 +622,18 @@
   .task-check:hover{border-color:var(--blue-mid)}
   .task-check.checked{background:var(--blue-mid);border-color:var(--blue-mid)}
   .task-check.checked i{color:#fff;font-size:12px}
+  /* Seleção múltipla (Diego, ago/2026) */
+  .task-selbox{width:22px;height:22px;border:2px solid var(--border);border-radius:6px;cursor:pointer;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .15s;color:#fff}
+  .task-selbox:hover{border-color:var(--blue-mid)}
+  .task-selbox.on{background:var(--blue-mid);border-color:var(--blue-mid)}
+  .task-selbox.on i{font-size:13px}
+  #tt-selbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:900;display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.18);padding:10px 12px 10px 16px;flex-wrap:wrap;max-width:calc(100vw - 24px)}
+  #tt-selbar .ttsb-n{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap}
+  #tt-selbar button{font-family:inherit;font-size:12.5px;font-weight:700;border-radius:9px;padding:8px 13px;cursor:pointer;border:1px solid var(--border);background:var(--bg2);color:var(--text2);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  #tt-selbar button:hover{border-color:var(--blue-mid);color:var(--blue-mid)}
+  #tt-selbar button.ttsb-del{background:var(--danger);border-color:var(--danger);color:#fff}
+  #tt-selbar button.ttsb-del:hover{filter:brightness(1.05);color:#fff}
+  #tt-selbar button.ttsb-del:disabled{opacity:.4;cursor:not-allowed;filter:none}
   .task-body{flex:1;min-width:0}
   .task-title{font-size:14px;font-weight:500;line-height:1.4}
   .task-meta{display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap}
@@ -16963,6 +16975,15 @@ function _atualizarTabHeaderActions(){
       </div>
     </div>`;
   }
+  // Seleção múltipla — botão nas abas de LISTA de tarefas (Diego, ago/2026)
+  const _selTabs=['entrada','hoje','minhas-tarefas','atrasadas','amanha','semana','prox-semana','pendentes','someday','todas'];
+  if(_selMode && !_selTabs.includes(currentTab)){ _selMode=false; _selSet.clear(); }
+  if(_selTabs.includes(currentTab)){
+    html = (_selMode
+      ? `<button onclick="_selSair()" style="${sec}"${secHover}><i class="ti ti-x"></i> Sair da seleção</button>`
+      : `<button onclick="_selEntrar()" style="${sec}"${secHover}><i class="ti ti-checkbox"></i> Selecionar</button>`) + html;
+  }
+  _selBar();
   if(html){ el.innerHTML=html; el.style.display='flex'; }
   else { el.innerHTML=''; el.style.display='none'; }
 }
@@ -21880,6 +21901,7 @@ function tableRowHTML(t, opts){
   }
   const titleCell = `<td class="tt-col-title">
     <div style="display:flex;align-items:center;gap:4px;min-width:0">
+      ${_selMode?`<div class="task-selbox${_selSet.has(String(t.id))?' on':''}" onclick="event.stopPropagation();_selToggle('${t.id}')" title="Selecionar tarefa" style="margin-right:4px">${_selSet.has(String(t.id))?'<i class="ti ti-check"></i>':''}</div>`:''}
       <span class="tt-title" id="tt-title-${t.id}" onclick="event.stopPropagation();ttEditTitle(${t.id})" title="Clique para editar">${escapeHTML(t.title)}</span>${rotinaLabel}${aguardandoBadge}${subCount}
     </div>
   </td>`;
@@ -22316,6 +22338,7 @@ function taskHTML(t){
   }
 
   return `<div class="task${t.done?' done':''}" data-task-id="${t.id}">
+    ${_selMode?`<div class="task-selbox${_selSet.has(String(t.id))?' on':''}" onclick="event.stopPropagation();_selToggle('${t.id}')" title="Selecionar tarefa">${_selSet.has(String(t.id))?'<i class="ti ti-check"></i>':''}</div>`:''}
     <div class="task-check${t.done?' checked':''}" onclick="toggle(${t.id})">${t.done?'<i class="ti ti-check"></i>':''}</div>
     <div class="task-body">
       <div style="display:flex;align-items:center;gap:6px">
@@ -22785,6 +22808,53 @@ function del(id){
     // GUILHERME V3 (mai/2026): FAB de desfazer (canto inferior esquerdo, 15s)
     _mostrarFABDesfazer("Tarefa excluída", 0);
   });
+}
+
+// ═══ SELEÇÃO MÚLTIPLA DE TAREFAS (Diego, ago/2026) ═══════════════════════════
+// Modo seleção nas abas de lista → checkbox por tarefa + barra fixa com
+// Selecionar todas / Excluir (vai pra Lixeira, recuperável) / Cancelar.
+let _selMode=false;
+const _selSet=new Set(); // guarda data-task-id como STRING (o DOM sempre dá string)
+function _selIdOf(box){ const row=box.closest('[data-task-id]'); return row?row.getAttribute('data-task-id'):null; }
+function _selVisiveis(){ return [...document.querySelectorAll('#task-container tr[data-task-id], #task-container .task[data-task-id]')].map(el=>el.getAttribute('data-task-id')); }
+function _selPintarBoxes(){
+  document.querySelectorAll('#task-container .task-selbox').forEach(el=>{
+    const id=_selIdOf(el); const on=_selSet.has(id); el.classList.toggle('on',on); el.innerHTML=on?'<i class="ti ti-check"></i>':'';
+  });
+}
+function _selEntrar(){ _selMode=true; _selSet.clear(); _atualizarTabHeaderActions(); refreshUI(); }
+function _selSair(){ _selMode=false; _selSet.clear(); _atualizarTabHeaderActions(); refreshUI(); }
+function _selToggle(id){ id=String(id); if(_selSet.has(id)) _selSet.delete(id); else _selSet.add(id); _selPintarBoxes(); _selBar(); }
+function _selTodas(){
+  const vis=_selVisiveis(); const todas=vis.length && vis.every(id=>_selSet.has(id));
+  vis.forEach(id=>{ if(todas) _selSet.delete(id); else _selSet.add(id); });
+  _selPintarBoxes(); _selBar();
+}
+function _selExcluir(){
+  const ids=[..._selSet]; if(!ids.length) return;
+  if(!confirm(`Excluir ${ids.length} tarefa${ids.length>1?'s':''}? Vão para a Lixeira (dá pra recuperar).`)) return;
+  let n=0, bloq=0;
+  ids.forEach(idStr=>{
+    const item=tasks.find(x=>String(x.id)===idStr); if(!item) return;
+    if(item.projectProId){ const _pp=projectsPro.find(x=>x.id===item.projectProId); if(_pp && !_ppPodeGerenciar(_pp)){ bloq++; return; } }
+    moveToTrash('task',{...item});
+    tasks=tasks.filter(x=>x.id!==item.id);
+    deleteTask_db(item.id); n++;
+  });
+  _selSet.clear(); _selMode=false;
+  if(typeof toast==='function') toast(`🗑️ ${n} tarefa${n!==1?'s':''} excluída${n!==1?'s':''}${bloq?` · ${bloq} de projeto mantida${bloq!==1?'s':''} (sem permissão)`:''} — recuperáveis na Lixeira`);
+  _atualizarTabHeaderActions(); refreshUI();
+}
+function _selBar(){
+  let bar=document.getElementById('tt-selbar');
+  if(!_selMode){ if(bar) bar.remove(); return; }
+  if(!bar){ bar=document.createElement('div'); bar.id='tt-selbar'; document.body.appendChild(bar); }
+  const n=_selSet.size;
+  const vis=_selVisiveis(); const todas=vis.length && vis.every(id=>_selSet.has(id));
+  bar.innerHTML=`<span class="ttsb-n">${n} selecionada${n!==1?'s':''}</span>`
+    +`<button onclick="_selTodas()"><i class="ti ti-list-check"></i> ${todas?'Desmarcar todas':'Selecionar todas'}</button>`
+    +`<button class="ttsb-del" onclick="_selExcluir()" ${n?'':'disabled'}><i class="ti ti-trash"></i> Excluir</button>`
+    +`<button onclick="_selSair()"><i class="ti ti-x"></i> Cancelar</button>`;
 }
 
 function addSub(taskId){
