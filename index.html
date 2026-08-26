@@ -5741,10 +5741,13 @@ function createNextTaskFromRotina(r,doneDate){
 // Essas tarefas só aparecem na aba específica "Lembrete".
 function getTodayTasks(){
   // Mostra só tarefas onde o usuário atual é executor, ou tarefas sem executor (entrada)
-  return tasks.filter(t=>t.date===today && !t.someday && (t.executor===CURRENT_USER_ID || !t.executor) && (!t.projectProId || t.executor));
+  // (ago/2026, Diego) `!_ppEstaBloqueada(t)`: tarefa de projeto AINDA bloqueada na esteira (etapa
+  // anterior não concluída) NÃO entra no Meu Dia — só a que está liberada. Antes vazava a próxima
+  // (Minhas Tarefas já filtrava; o Meu Dia não, gerando a inconsistência que o Diego apontou).
+  return tasks.filter(t=>t.date===today && !t.someday && (t.executor===CURRENT_USER_ID || !t.executor) && (!t.projectProId || t.executor) && !_ppEstaBloqueada(t));
 }
-function getAtrasadas(){return tasks.filter(t=>!t.done&&t.date&&t.date<today&&!t.someday&&(t.executor===CURRENT_USER_ID||!t.executor) && (!t.projectProId || t.executor))}
-function getAmanha(){return tasks.filter(t=>t.date===amanha && !t.someday && (!t.projectProId || t.executor));}
+function getAtrasadas(){return tasks.filter(t=>!t.done&&t.date&&t.date<today&&!t.someday&&(t.executor===CURRENT_USER_ID||!t.executor) && (!t.projectProId || t.executor) && !_ppEstaBloqueada(t))}
+function getAmanha(){return tasks.filter(t=>t.date===amanha && !t.someday && (!t.projectProId || t.executor) && !_ppEstaBloqueada(t));}
 function getProxSemana(){return tasks.filter(t=>t.date&&t.date>=proxSemanaIni&&t.date<=proxSemanaFim&&!t.someday);}
 function getDone(){return tasks.filter(t=>t.done)}
 function getSemana(){return tasks.filter(t=>t.date>=semanaIni&&t.date<=semanaFim&&!t.someday);}
@@ -28693,54 +28696,25 @@ function renderProjectProVisao(p, prog){
 
   // ── VISÃO DE COMANDO: "Acontecendo agora" (etapa atual) + próximas a liberar + últimos comentários ──
   // Reusa o motor de etapas (mesma lógica de _ppNotificarLiberacao): a etapa atual são as pendentes de menor etapa.
-  let comandoBloco='';
+  // (ago/2026, Diego) "Acontecendo agora" REMOVIDO da coluna 1 (pedido: tela mais leve). A etapa e a
+  // tarefa atuais agora são marcadas INLINE, de forma suave: uma bolinha na fase (Estrutura) e o nº em
+  // destaque na tarefa. Aqui só sobra o card de "tudo concluído" (CTA p/ encerrar). `_faseAtualId` e
+  // `_curTaskIds` (etapa mínima pendente) alimentam esses marcadores.
+  let comandoBloco=''; let _faseAtualId=null; const _curTaskIds=new Set();
   if(temTarefa){
     try{
       _ppSincronizarLiberacao(p);
-      const ord=_ppTarefasOrdenadas(p), et=_ppEtapas(ord), num=_ppNumHier(ord,et);
-      const totalEt=ord.length?Math.max.apply(null,Array.from(et.values())):0;
+      const ord=_ppTarefasOrdenadas(p), et=_ppEtapas(ord);
       const pend=ord.filter(t=>!t.done);
-      const _exec=(t)=>{ const e=t.executor?_personById(t.executor):null; return e?escapeHTML(e.name):'Sem responsável'; };
-      const _setor=(t)=>{ const g=(p.fases||[]).reduce((a,f)=>a.concat(f.grupos||[]),[]).find(x=>x.id===t.projectProGrupoId); const s=g?g.setor:(((p.fases||[]).find(f=>f.id===t.projectProFaseId)||{}).nome||''); return s?escapeHTML(s):''; };
       if(pend.length){
         const etAtual=Math.min.apply(null,pend.map(t=>et.get(t.id)));
         const agora=pend.filter(t=>et.get(t.id)===etAtual);
-        const resto=pend.filter(t=>et.get(t.id)>etAtual);
-        const proxEt=resto.length?Math.min.apply(null,resto.map(t=>et.get(t.id))):null;
-        const proximas=proxEt!==null?resto.filter(t=>et.get(t.id)===proxEt):[];
-        // (jul/2026, Diego) SEM fundo único (_ppBloco): o header "Acontecendo agora" + o nome da fase
-        // ficam soltos no painel; "Em andamento" (TODAS as tarefas da etapa atual, atrasadas inclusive)
-        // e "Próximas a liberar" viram DOIS cards separados (superfície do tema). Mais leve de ler.
-        const _rowMeta=(t)=>`${_exec(t)}${_setor(t)?' · '+_setor(t):''}`;
-        // Linha da tarefa ATUAL (dentro do card "Em andamento"): número da etapa + título + quem/setor.
-        // Se estiver atrasada, ganha o pill vermelho — mas CONTINUA no card (é trabalho em andamento).
-        const rowAgora=(t)=>{
-          const st=_ppStatus(t,ord,et), atr=st.estado==='atrasada';
-          const pill=atr?`<div style="margin-top:5px"><span style="font-size:10.5px;font-weight:700;color:var(--danger);background:color-mix(in srgb,var(--danger) 14%,transparent);padding:3px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ti-alarm" style="font-size:12px"></i>Atrasada${st.deadline?' · venceu '+formatDate(st.deadline):''}</span></div>`:'';
-          return `<div onclick="setProjectProTab('tarefas')" style="display:grid;grid-template-columns:30px minmax(0,1fr);gap:9px;align-items:start;padding:7px 0;cursor:pointer">
-            <span style="font-size:11px;font-weight:800;color:var(--text3);margin-top:2px;text-align:center">${num.get(t.id)||''}</span>
-            <div style="min-width:0">
-              <div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3">${escapeHTML(t.title)}</div>
-              <div style="font-size:11.5px;color:var(--text3);margin-top:2px">${_rowMeta(t)}</div>
-              ${pill}
-            </div>
-          </div>`;
-        };
-        const rowProx=(t)=>`<div style="display:grid;grid-template-columns:18px minmax(0,1fr);gap:9px;align-items:start;padding:6px 0"><i class="ti ti-lock" style="font-size:13px;color:var(--text3);margin-top:2px"></i><div style="min-width:0"><div style="font-size:12.5px;color:var(--text)">${escapeHTML(t.title)}</div><div style="font-size:11px;color:var(--text3)">${_rowMeta(t)}</div></div></div>`;
-        const _cardTit=(icon,txt)=>`<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="ti ${icon}" style="font-size:14px"></i>${txt}</div>`;
-        const faseAtualNome=(()=>{ const t0=agora[0]; if(!t0)return ''; const f=(p.fases||[]).find(f=>f.id===t0.projectProFaseId); return f?escapeHTML(f.nome):''; })();
-        const _cardSurf='background:var(--surface-painel);border:1px solid var(--border);border-radius:12px;padding:11px 13px;margin-top:12px';
-        // Seção solta (sem card): só o nome da fase. As tarefas ATUAIS (inclusive atrasadas) vão no card.
-        const secTopo=faseAtualNome?`<div style="margin-top:10px;font-size:11px;color:var(--text3)">${faseAtualNome}</div>`:'';
-        const cardAndamento=agora.length?`<div style="${_cardSurf}">${_cardTit('ti-player-play','Em andamento')}<div style="display:flex;flex-direction:column;gap:2px">${agora.map(rowAgora).join('')}</div></div>`:'';
-        const cardProx=proximas.length?`<div style="${_cardSurf}">${_cardTit('ti-arrow-bar-to-down','Próximas a liberar')}<div style="display:flex;flex-direction:column;gap:2px">${proximas.map(rowProx).join('')}</div></div>`:'';
-        const _abAgora=_ppCardAberto(p.id,'agora');
-        const _resumoAgora=`Etapa ${etAtual} de ${totalEt}${agora.length===1?' · '+escapeHTML(agora[0].title):' · '+agora.length+' em curso'}`;
-        comandoBloco=`<div style="margin-bottom:16px">${_ppCardHead(p.id,'agora','ti-player-play-filled','Acontecendo agora',_resumoAgora,_abAgora)}${_abAgora?`${secTopo}${cardAndamento}${cardProx}`:''}</div>`;
+        agora.forEach(t=>_curTaskIds.add(t.id));
+        _faseAtualId=(agora[0]||{}).projectProFaseId||null;
       } else if(ord.length){
         comandoBloco=`<div style="margin-bottom:16px;background:color-mix(in srgb,var(--success) 8%,var(--card));border:1px solid color-mix(in srgb,var(--success) 30%,var(--border));border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:11px"><i class="ti ti-circle-check" style="font-size:22px;color:var(--success)"></i><div><div style="font-size:13.5px;font-weight:800;color:var(--text)">Todas as tarefas concluídas</div><div style="font-size:12px;color:var(--text3)">O projeto está pronto para ser encerrado.</div></div></div>`;
       }
-    }catch(e){ comandoBloco=''; console.warn('[pp] comandoBloco falhou', e); }
+    }catch(e){ comandoBloco=''; _faseAtualId=null; console.warn('[pp] comandoBloco falhou', e); }
   }
 
   // ── PAINEL COMPLETO: o Painel é a tela onde se VÊ e FAZ tudo (o Diego, jul/2026). ──
@@ -28774,18 +28748,20 @@ function renderProjectProVisao(p, prog){
     const dias=(typeof t.ppDias==='number'&&t.ppDias>0)?t.ppDias:1;
     const prev=_projE.get(t.id); const prevTxt=(!done&&prev&&prev.fim)?formatDate(prev.fim):'';
     const _primeira=(_ordE[0]&&_ordE[0].id===t.id);
-    // (ago/2026, Diego) Linha ENXUTA: nº · check · título · executor · data. A maquinaria da esteira
-    // (seta de DEPENDÊNCIA e campo DIAS) foi p/ o HOVER, junto de editar/excluir. O CADEADO sumiu
-    // (bloqueada = checkbox apagado, tooltip explica). A paralela âmbar saiu — a numeração 4.1/4.2 já
-    // mostra o paralelismo. Destaque só na tarefa EM ANDAMENTO. Menos elementos, menos cor.
+    // (ago/2026, Diego) Linha ENXUTA: nº · check · título · executor · data. A seta de DEPENDÊNCIA e o
+    // campo DIAS ficam no HOVER (junto de editar/excluir). A paralela âmbar saiu — a numeração 4.1/4.2
+    // já mostra o paralelismo. A tarefa ATUAL tem o nº em destaque (acento do tema).
+    // ⚠️ BLOQUEADA mostra CADEADO claro (igual à aba Tarefas). O "só apagar o checkbox" era ambíguo — o
+    // Painel parecia não bloquear, e o Meu Dia trazia a próxima como se estivesse livre. Agora
+    // getTodayTasks/Atrasadas/Amanhã filtram `_ppEstaBloqueada`, então bloqueada não vaza pro Meu Dia.
     // ⚠️ onmouseleave NÃO esconde o overlay se um input dele (dias) estiver focado — senão sumia ao editar.
     const _emAndamento = !done && !bloq && (s.estado==='hoje' || s.estado==='atrasada');
     const _hlCor = s.estado==='atrasada' ? 'var(--danger)' : 'var(--blue-mid)';
     const _hl = _emAndamento ? `background:color-mix(in srgb,${_hlCor} 6%,transparent);box-shadow:inset 3px 0 0 ${_hlCor};` : '';
     return `<div data-task-id="${t.id}" onmouseenter="var _b=this.querySelector('.pp-del');if(_b)_b.style.opacity='1'" onmouseleave="var _b=this.querySelector('.pp-del');if(_b&&!_b.contains(document.activeElement))_b.style.opacity='0'" style="position:relative;display:grid;grid-template-columns:22px 18px minmax(0,1fr) 92px 82px;gap:9px;align-items:center;padding:8px 10px;border-top:1px solid var(--border);${_hl}">
-      <span title="Etapa ${etapa}${paralela?' · roda junto com a anterior (paralela)':''}" style="font-size:10.5px;font-weight:700;color:var(--text3);text-align:center">${numHier}</span>
+      <span title="${_emAndamento?'Tarefa atual — estamos aqui':('Etapa '+etapa+(paralela?' · roda junto com a anterior (paralela)':''))}" style="font-size:10.5px;font-weight:${_emAndamento?'800':'700'};color:${_emAndamento?'var(--blue-mid)':'var(--text3)'};text-align:center">${numHier}</span>
       ${bloq
-        ? `<span title="Aguarda a etapa anterior concluir" style="display:inline-flex;align-items:center;justify-content:center;opacity:.35"><i class="ti ti-square" style="font-size:18px;color:var(--text3)"></i></span>`
+        ? `<span title="Bloqueada — aguarda a etapa anterior concluir" style="display:inline-flex;align-items:center;justify-content:center;color:var(--text3)"><i class="ti ti-lock" style="font-size:14px"></i></span>`
         : `<i class="ti ${done?'ti-square-check-filled':'ti-square'}" onclick="toggle(${t.id})" style="font-size:18px;color:${done?'var(--success)':'var(--text3)'};cursor:pointer" title="${done?'Concluída':'Marcar como concluída'}"></i>`}
       <span contenteditable="true" spellcheck="false" onfocus="this.dataset.orig=this.textContent" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}else if(event.key==='Escape'){event.preventDefault();this.textContent=this.dataset.orig||'';this.blur();}" onblur="_ppSalvarTituloInline(${t.id},this)" style="min-width:0;font-size:12.5px;color:${done?'var(--text3)':'var(--text)'};${done?'text-decoration:line-through;':''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;outline:none;border-radius:4px;padding:1px 3px" title="Clique para renomear">${escapeHTML(t.title)}</span>
       <span style="min-width:0;text-align:center">${ex
@@ -28862,6 +28838,7 @@ function renderProjectProVisao(p, prog){
       const fp=_calcularProgressoFase(f);
       const sel=f.id===_faseSelId;
       const cFase=fp.pct===100?'var(--success)':'var(--blue-mid)';
+      const _faseAtual=(f.id===_faseAtualId);  // a fase da etapa em curso — ganha bolinha + nº em destaque
       // Renomear INLINE: enquanto edita, o card vira um input (Enter salva, Esc cancela).
       if(window._ppFaseEdit===f.id){
         return `<div style="display:flex;align-items:center;gap:9px;padding:10px 11px;border:1px solid var(--blue-mid);border-left:3px solid ${cFase};border-radius:9px;margin-bottom:7px;background:var(--card)">
@@ -28870,7 +28847,8 @@ function renderProjectProVisao(p, prog){
         </div>`;
       }
       return `<div class="pp-estr-row" onclick="_ppSelecionarFase('${f.id}')" style="display:flex;align-items:center;gap:9px;padding:10px 11px;border:1px solid ${sel?"var(--blue-mid)":'var(--border)'};border-left:3px solid ${cFase};border-radius:9px;margin-bottom:7px;cursor:pointer;background:${sel?`color-mix(in srgb,var(--blue-mid) 9%,var(--card))`:'var(--surface-painel)'};transition:background .12s">
-        <span style="font-size:11px;font-weight:800;color:var(--text3);flex-shrink:0">${String(idx+1).padStart(2,'0')}</span>
+        <span ${_faseAtual?'title="Etapa atual — estamos aqui"':''} style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:${_faseAtual?'var(--blue-mid)':'transparent'}"></span>
+        <span style="font-size:11px;font-weight:800;color:${_faseAtual?'var(--blue-mid)':'var(--text3)'};flex-shrink:0">${String(idx+1).padStart(2,'0')}</span>
         <span ondblclick="event.stopPropagation();_ppEditarNomeFase('${f.id}')" title="Duplo-clique para renomear" style="flex:1;min-width:0;font-size:13px;font-weight:${sel?'800':'700'};color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(f.nome)}</span>
         <button class="pp-estr-pen" onclick="event.stopPropagation();_ppEditarNomeFase('${f.id}')" title="Renomear" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:2px;flex-shrink:0;line-height:1"><i class="ti ti-pencil" style="font-size:12px"></i></button>
         <span style="font-size:10.5px;color:var(--text3);white-space:nowrap;flex-shrink:0">${fp.feitas}/${fp.total}</span>
@@ -28991,7 +28969,7 @@ function renderProjectProVisao(p, prog){
   // igual ao de "Estrutura" (col 1) e ao da fase (col 2), pra as 3 colunas alinharem no topo.
   const _cols=_ppVisaoCols();
   return `<div class="pp-visao-3col" style="--pp-c1:${_cols.c1}px;--pp-c3:${_cols.c3}px">
-    <div style="min-width:0;display:flex;flex-direction:column;gap:2px">${projecaoBloco}${estruturaBloco}${comandoBloco?`<div style="margin-top:18px">${comandoBloco}</div>`:''}<div style="margin-top:10px">${_ppBloco(_projAnexosCardHTML(p))}</div></div>
+    <div style="min-width:0;display:flex;flex-direction:column;gap:2px">${projecaoBloco}${estruturaBloco}${comandoBloco?`<div style="margin-top:14px">${comandoBloco}</div>`:''}</div>
     <div class="pp-col-gutter" onmousedown="_ppColResizeStart(event,'c1')" title="Arraste para ajustar a largura"><div class="pp-col-gutter-line"></div></div>
     <div style="min-width:0">${detalheBloco}</div>
     <div class="pp-col-gutter" onmousedown="_ppColResizeStart(event,'c3')" title="Arraste para ajustar a largura"><div class="pp-col-gutter-line"></div></div>
