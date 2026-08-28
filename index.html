@@ -1547,7 +1547,7 @@
   /* (ago/2026, Diego) Painel em LARGURA CHEIA com 2 gutters ARRASTÁVEIS entre as colunas:
      [Estrutura (--pp-c1)] | [detalhe da fase (1fr, flexa)] | [Chat (--pp-c3)]. Larguras das laterais
      persistem em localStorage (pp_visao_cols). Ver _ppColResizeStart. */
-  .pp-visao-3col{display:grid;grid-template-columns:var(--pp-c1,300px) 24px minmax(0,1fr) 24px var(--pp-c3,320px);gap:0;align-items:start;width:100%;max-width:none;margin:0}
+  .pp-visao-3col{display:grid;grid-template-columns:var(--pp-c1,300px) 24px minmax(0,1fr);gap:0;align-items:start;width:100%;max-width:none;margin:0}
   .pp-col-gutter{align-self:stretch;cursor:col-resize;display:flex;align-items:stretch;justify-content:center;user-select:none}
   .pp-col-gutter-line{width:1px;background:var(--border);border-radius:2px;transition:background .15s,width .15s}
   .pp-col-gutter:hover .pp-col-gutter-line,.pp-col-gutter.dragging .pp-col-gutter-line{width:3px;background:var(--blue-mid)}
@@ -28949,8 +28949,6 @@ function renderProjectProVisao(p, prog){
     </div>`;
   }
 
-  let comentariosBloco='';
-  try{ comentariosBloco=renderProjectProAnotacoes(p); }catch(e){ comentariosBloco=''; }
 
   // (jul/2026) A CONCLUSÃO PREVISTA subiu p/ o cabeçalho, ao lado do % (_ppConclusaoHeader).
   // O aviso "Todas as tarefas concluídas" que sobrava aqui TAMBÉM saiu: ele dispara na mesma
@@ -28968,14 +28966,13 @@ function renderProjectProVisao(p, prog){
   // COMENTÁRIOS (col 3) perdeu o `_ppBloco`: sem card, sem fundo — só o título `_ppTituloCol`,
   // igual ao de "Estrutura" (col 1) e ao da fase (col 2), pra as 3 colunas alinharem no topo.
   const _cols=_ppVisaoCols();
-  return `<div class="pp-visao-3col" style="--pp-c1:${_cols.c1}px;--pp-c3:${_cols.c3}px">
+  // (ago/2026, Diego) Chat SAIU da coluna 3 do Painel — fica só na sub-navbar (aba "Chat"). O Painel
+  // vira 2 colunas [Estrutura | tarefas], com o divisor arrastável entre elas; as tarefas ganham a
+  // largura que sobrava do Chat.
+  return `<div class="pp-visao-3col" style="--pp-c1:${_cols.c1}px">
     <div style="min-width:0;display:flex;flex-direction:column;gap:2px">${projecaoBloco}${estruturaBloco}${comandoBloco?`<div style="margin-top:14px">${comandoBloco}</div>`:''}</div>
     <div class="pp-col-gutter" onmousedown="_ppColResizeStart(event,'c1')" title="Arraste para ajustar a largura"><div class="pp-col-gutter-line"></div></div>
     <div style="min-width:0">${detalheBloco}</div>
-    <div class="pp-col-gutter" onmousedown="_ppColResizeStart(event,'c3')" title="Arraste para ajustar a largura"><div class="pp-col-gutter-line"></div></div>
-    <div style="min-width:0"><div style="position:sticky;top:8px;min-width:0">
-      ${_ppTituloCol('ti-messages','Chat')}${comentariosBloco}
-    </div></div>
   </div>`;
 }
 // Larguras das colunas laterais do Painel (Estrutura · Chat), redimensionáveis pelos gutters.
@@ -28984,23 +28981,23 @@ function _ppVisaoCols(){ try{ const s=JSON.parse(localStorage.getItem('pp_visao_
 function _ppVisaoColsSave(c1,c3){ try{ localStorage.setItem('pp_visao_cols', JSON.stringify({c1:Math.round(c1),c3:Math.round(c3)})); }catch(e){} }
 function _ppColResizeStart(e, which){
   e.preventDefault();
-  const grid=document.querySelector('.pp-visao-3col'); if(!grid || grid.children.length<5) return;
+  const grid=document.querySelector('.pp-visao-3col'); if(!grid || grid.children.length<3) return;
   const gut=e.currentTarget; if(gut&&gut.classList) gut.classList.add('dragging');
   const startX=e.clientX;
   const start1=grid.children[0].getBoundingClientRect().width;
-  const start3=grid.children[4].getBoundingClientRect().width;
+  const c3el=grid.children[4]; const start3=c3el?c3el.getBoundingClientRect().width:0;  // Chat saiu do Painel → c3 pode não existir
   const prevSel=document.body.style.userSelect, prevCur=document.body.style.cursor;
   document.body.style.userSelect='none'; document.body.style.cursor='col-resize';
   function mv(ev){
     const dx=ev.clientX-startX;
     if(which==='c1'){ const v=Math.max(180,Math.min(560,start1+dx)); grid.style.setProperty('--pp-c1',v+'px'); }
-    else { const v=Math.max(200,Math.min(620,start3-dx)); grid.style.setProperty('--pp-c3',v+'px'); }
+    else if(c3el){ const v=Math.max(200,Math.min(620,start3-dx)); grid.style.setProperty('--pp-c3',v+'px'); }
   }
   function up(){
     document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up);
     document.body.style.userSelect=prevSel; document.body.style.cursor=prevCur;
     if(gut&&gut.classList) gut.classList.remove('dragging');
-    _ppVisaoColsSave(grid.children[0].getBoundingClientRect().width, grid.children[4].getBoundingClientRect().width);
+    _ppVisaoColsSave(grid.children[0].getBoundingClientRect().width, c3el?c3el.getBoundingClientRect().width:_ppVisaoCols().c3);
   }
   document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
 }
