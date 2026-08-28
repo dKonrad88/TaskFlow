@@ -6239,7 +6239,7 @@ function renderMeuDia(){
 const PROD_LINHAS=[{k:'com',n:'Forno c/ cobertura'},{k:'sem',n:'Forno s/ cobertura'},{k:'pip',n:'Pipoca'},{k:'ext',n:'Extrusados'},{k:'pel',n:'Pellet frito'},{k:'pal',n:'Palitinho'}];
 // Sub-navbar da Produção (2º nível, ABAIXO de Geral/Produção/Comercial). 'programacao' é a 1ª aba (a grade).
 // Pra criar assunto novo: adicione {id,label,icon} aqui + trate o id em _prodRootHTML (senão cai no "em construção").
-const PROD_ABAS=[{id:'programacao',label:'Programação',icon:'ti-calendar-week'},{id:'necessidade',label:'Necessidade da semana',icon:'ti-clipboard-list'}];
+const PROD_ABAS=[{id:'programacao',label:'Programação',icon:'ti-calendar-week'}];
 const LS_PROD_ITENS='taskflow_prod_itens', LS_PROD_PROG='taskflow_prod_prog', LS_PROD_MODO='taskflow_prod_modo';
 const _PROD_ITENS_SEED=['Amend. preto & branco','Broa','Palitinho + aperitivo','Amanteigado','Palitinho','Duetto','Maisena','Palitinho + bolinha','Pão de mel P&B','Milho','Banana c/ canela','Pipoca tradicional','Mega+ intensus','Amendoim P&B','Salgadão'];
 const _PROD_MES3=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
@@ -6367,7 +6367,7 @@ function _prodCellHTML(key,arr,leitor){
 function _prodRootHTML(){
   if(!PROD_ABAS.some(a=>a.id===prodAba)) prodAba='programacao';
   const subnav=`<div class="prod-subnav">`+PROD_ABAS.map(a=>`<button class="${a.id===prodAba?'on':''}" onclick="_prodSetAba('${a.id}')"><i class="ti ${a.icon}" style="font-size:15px"></i> ${escapeHTML(a.label)}</button>`).join('')+`</div>`;
-  const content = prodAba==='programacao' ? _prodProgramacaoHTML() : prodAba==='necessidade' ? _prodNecessidadeHTML() : _prodEmConstrucaoHTML(PROD_ABAS.find(a=>a.id===prodAba));
+  const content = prodAba==='programacao' ? _prodProgramacaoHTML() : _prodEmConstrucaoHTML(PROD_ABAS.find(a=>a.id===prodAba));
   return _prodCSS()+subnav+content;
 }
 function _prodSetAba(id){ prodAba=id; _prodRerender(); }
@@ -6511,8 +6511,9 @@ function _prodNecessidadeHTML(){
   const comConsumo=calc.filter(o=>o.util>0).length;
   const rupturas=calc.filter(o=>o.falta>0);
   const comprarR$=rupturas.reduce((a,o)=>a+o.falta*o.preco,0);
-  const seg=`<div class="prod-seg">`+[0,1].map(i=>`<button class="${prodSemana===i?'on':''}" onclick="_prodSetSemana(${i})">Semana ${i+1} · ${_prodRange(_prodDias(i))}</button>`).join('')+`</div>`;
-  const enviar=`<button onclick="_necEnviar()" style="background:var(--blue-mid);color:#fff;border:none;border-radius:9px;padding:9px 15px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px"><i class="ti ti-send" style="font-size:15px"></i> Enviar ao comprador</button>`;
+  const segBtn=(i,lab,on)=>`<button onclick="_necSetSemana(${i})" style="border:${on?'1px solid var(--border)':'none'};background:${on?'var(--card)':'transparent'};padding:7px 14px;border-radius:8px;font-size:12.5px;color:${on?'var(--text)':'var(--text2)'};cursor:pointer;font-family:inherit;font-weight:600">${lab}</button>`;
+  const seg=`<div style="display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:2px;flex-wrap:wrap">`+[0,1].map(i=>segBtn(i,`Semana ${i+1} · ${_prodRange(_prodDias(i))}`,prodSemana===i)).join('')+`</div>`;
+  const enviar=`<button onclick="_necEnviar()" style="background:var(--blue-mid);color:#fff;border:none;border-radius:9px;padding:9px 15px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px"><i class="ti ti-shopping-cart" style="font-size:15px"></i> Marcar para comprar</button>`;
   const kpi=(lab,val,cor)=>`<div style="background:var(--surface-painel);border:1px solid var(--border);border-radius:12px;padding:13px 15px"><div style="font-size:12px;color:var(--text3)">${lab}</div><div style="font-size:22px;font-weight:700;color:${cor||'var(--text)'};margin-top:2px">${val}</div></div>`;
   const kpis=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px">
     ${kpi('Itens com consumo',_necFmt(comConsumo))}
@@ -6545,15 +6546,19 @@ function _prodNecessidadeHTML(){
   const nota=`<div style="margin-top:10px;font-size:12px;color:var(--text3);display:flex;align-items:flex-start;gap:6px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i><span>Linhas em vermelho = o estoque não cobre a semana → viram alerta de compra. <b>Dados de exemplo</b> — no Oficial, o consumo vem da programação × ficha técnica de cada produto.</span></div>`;
   return `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">${seg}${enviar}</div>${envInfo}${kpis}${filtros}${tabela}${nota}`;
 }
-function _necSetDiv(v){ _necDiv=(_necDiv===v)?'':v; _prodRerender(); }
-function _necToggleFalta(){ _necFalta=!_necFalta; _prodRerender(); }
+// A tela vive dentro do Compras (container #nec-root). O re-render acha esse container;
+// se um dia voltar pro PCP (#prod-root), também funciona; senão, render() geral.
+function _necRerender(){ var el=document.getElementById('nec-root'); if(el){ el.innerHTML=_prodNecessidadeHTML(); return; } var pr=document.getElementById('prod-root'); if(pr){ pr.innerHTML=_prodRootHTML(); return; } if(typeof render==='function') render(); }
+function _necSetSemana(i){ prodSemana=i; _necRerender(); }
+function _necSetDiv(v){ _necDiv=(_necDiv===v)?'':v; _necRerender(); }
+function _necToggleFalta(){ _necFalta=!_necFalta; _necRerender(); }
 function _necBuscaInput(el){ _necBusca=el.value; const tb=document.getElementById('nec-tbody'); if(tb) tb.innerHTML=_necTbodyHTML(); }
 function _necEnviar(){
   const rup=_necCalc().filter(o=>o.falta>0);
   if(!rup.length){ if(typeof toast==='function') toast('Nada em falta nesta semana — nada a enviar ao comprador.'); return; }
   _necEnvioSet({semana:_prodRange(_prodDias(prodSemana)), enviadoEm:today, itens:rup.map(o=>({cod:o.cod,nome:o.nome,div:o.div,falta:o.falta,util:o.util,est:o.est}))});
-  if(typeof toast==='function') toast('📨 Enviado ao comprador — '+rup.length+' item(ns) em falta foram para Compras › Painel.');
-  _prodRerender();
+  if(typeof toast==='function') toast('📨 '+rup.length+' item(ns) em falta marcados para compra — veja no Painel de Compras.');
+  _necRerender();
 }
 
 function switchToTaskFlow(){
@@ -8505,7 +8510,7 @@ function renderCompras(){
   const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
-  const telas={ painel:_comprasPainelHTML, estoque:_comprasEstoqueHTML, insumos:_comprasInsumosHTML,
+  const telas={ painel:_comprasPainelHTML, necessidade:_comprasNecessidadeHTML, estoque:_comprasEstoqueHTML, insumos:_comprasInsumosHTML,
                 fornecedores:_comprasFornecedoresHTML, historico:_comprasHistoricoHTML,
                 ordens:_comprasOrdensHTML, orcamentos:_comprasOrcamentosHTML };
   main.innerHTML = telas[comprasView] ? telas[comprasView]() : _comprasScaffoldHTML(comprasView);
@@ -9724,6 +9729,12 @@ function _comprasOrdensHTML(){
 }
 
 // ════════ PAINEL — o cockpit ════════
+// ── Necessidade da semana (mora aqui no Compras — é a lista do que a semana vai consumir). ──
+// O conteúdo é _prodNecessidadeHTML() (dados de exemplo); envolvo em #nec-root p/ o re-render dos filtros.
+function _comprasNecessidadeHTML(){
+  return _cpTela('Necessidade da semana','O que a programação da semana vai consumir — e o que o estoque não cobre vira compra.',
+    `<div id="nec-root">${_prodNecessidadeHTML()}</div>`);
+}
 function _comprasPainelHTML(){
   const itens=_cpItens();
   const comprar=itens.filter(o=>o.dias!==null&&o.dias<20).sort((a,b)=>a.dias-b.dias);
@@ -12078,6 +12089,7 @@ function renderSidebar(){
   const areasHTML = hubGroupDivider('ÁREAS')
     + grupo('compras','ti-shopping-cart','Compras',
         _areaItem('compras',_cv,'painel','ti-layout-dashboard','Painel','setComprasView') +
+        _areaItem('compras',_cv,'necessidade','ti-calendar-week','Necessidade da semana','setComprasView') +
         _areaItem('compras',_cv,'estoque','ti-packages','Estoque','setComprasView') +
         _areaItem('compras',_cv,'insumos','ti-cube','Insumos','setComprasView') +
         _areaItem('compras',_cv,'fornecedores','ti-building-store','Fornecedores','setComprasView') +
