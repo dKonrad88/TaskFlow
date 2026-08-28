@@ -8786,11 +8786,15 @@ function _cpEstCorpo(){
   const linhas=L.slice(0,TETO).map(o=>{
     const [c,bg]=_cpCorDias(o.dias);
     return `<tr class="cp-clic" onclick="_cpAbrirItem('${o.cod}')">
+      <td class="cp-mono">${escapeHTML(o.cod)}</td>
+      <td><span class="cp-cattag">${escapeHTML(_cpCategoria(o.nome))}</span></td>
       <td class="cp-item" title="${escapeAttr(o.nome)}">${escapeHTML(o.nome)}</td>
-      <td class="cp-n">${_cpNum(o.est,2)} <span class="cp-un">${escapeHTML(o.um||'')}</span></td>
       <td class="cp-n">${o.valor?_cpBRL(o.valor):'—'}</td>
+      <td class="cp-n">${o.cmu?_cpBRL(o.cmu):'—'}</td>
+      <td class="cp-n">${_cpNum(o.est,2)} <span class="cp-un">${escapeHTML(o.um||'')}</span></td>
       <td class="cp-n">${o.consMed?_cpNum(o.consMed,0):'<span style="color:var(--text3)">—</span>'}</td>
       <td class="cp-n"><span class="cp-pill" style="color:${c};background:${bg}">${o.dias===null?'—':o.dias+' d'}</span></td>
+      <td class="cp-mono">${o.dias==null?'—':_cpDataFim(o.dias)}</td>
       <td class="cp-mono">${o.ultCompra?_cpDt(o.ultCompra):'—'}</td>
       <td>${o.ultForn?escapeHTML(o.ultForn.slice(0,26)):'—'}</td>
       <td class="cp-n">${o.semMov===null?'—':o.semMov+' d'}</td>
@@ -8803,8 +8807,8 @@ function _cpEstCorpo(){
       _cpKPI('Valor em estoque',_cpBRL(totV))
     ])+
     `<div class="cp-card cp-noscroll" style="overflow:auto;max-height:calc(100vh - 320px)"><table class="cp-tbl">
-      <thead><tr><th>Insumo</th><th class="r">Em estoque</th><th class="r">Valor</th><th class="r">Consumo/mês</th><th class="r">Cobertura</th><th class="r">Últ. compra</th><th>Fornecedor</th><th class="r">Sem mov.</th></tr></thead>
-      <tbody>${linhas||`<tr><td colspan="8">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`}</tbody>
+      <thead><tr><th>Cód.</th><th>Categoria</th><th>Item</th><th class="r">Valor</th><th class="r">Custo médio</th><th class="r">Em estoque</th><th class="r">Consumo/mês</th><th class="r">Cobertura</th><th class="r">Termina em</th><th class="r">Últ. compra</th><th>Fornecedor</th><th class="r">Sem mov.</th></tr></thead>
+      <tbody>${linhas||`<tr><td colspan="12">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`}</tbody>
     </table></div>
     ${L.length>TETO?`<div style="text-align:center;color:var(--text3);font-size:12.5px;margin-top:10px">Mostrando ${TETO} de ${_cpNum(L.length)} — use a busca para afunilar.</div>`:''}`;
 }
@@ -8843,17 +8847,12 @@ function _cpInsRows(){
   }).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'}));
 }
 function _cpInsTbodyHTML(){
-  return _cpInsRows().map(o=>{ const [c,bg]=_cpCorDias(o.dias);
+  return _cpInsRows().map(o=>{
     return `<tr class="cp-clic" onclick="_cpAbrirItem('${o.cod}')">
       <td class="cp-mono">${escapeHTML(o.cod)}</td>
       <td class="cp-item">${escapeHTML(o.nome)}</td>
       <td><span class="cp-cattag">${escapeHTML(_cpCategoria(o.nome))}</span></td>
-      <td class="cp-n">${_cpNum(o.est,2)} <span class="cp-un">${escapeHTML(o.um||'')}</span></td>
-      <td class="cp-n">${o.cmu?_cpBRL(o.cmu):'—'}</td>
-      <td class="cp-n">${o.valor?_cpBRL(o.valor):'—'}</td>
-      <td class="cp-n"><span class="cp-pill" style="color:${c};background:${bg}">${o.dias===null?'—':o.dias+' d'}</span></td>
-      <td class="cp-n">${o.compras.length}</td>
-    </tr>`;}).join('') || `<tr><td colspan="8" style="padding:16px;text-align:center;color:var(--text3);font-style:italic">Nenhum item com esse filtro.</td></tr>`;
+    </tr>`;}).join('') || `<tr><td colspan="3" style="padding:16px;text-align:center;color:var(--text3);font-style:italic">Nenhum item com esse filtro.</td></tr>`;
 }
 function _cpCategoria(nome){
   const s=' '+(nome||'').toLowerCase()+' '; const has=(...ks)=>ks.some(k=>s.indexOf(k)>=0);
@@ -8876,7 +8875,7 @@ function _comprasInsumosHTML(){
   const rows=_cpInsRows();
   return _cpTela('Insumos','A ficha de cada item comprado — consumo, preço e fornecedores.',
     `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
-      <thead><tr><th>Código</th><th>Insumo</th><th>Categoria</th><th class="r">Estoque</th><th class="r">Custo médio</th><th class="r">Valor</th><th class="r">Cobertura</th><th class="r">Compras</th></tr></thead>
+      <thead><tr><th>Código</th><th>Item</th><th>Categoria</th></tr></thead>
       <tbody id="cp-ins-tbody">${_cpInsTbodyHTML()}</tbody></table>
       <div style="font-size:10.5px;color:var(--text3);padding:8px 14px"><span id="cp-ins-count">${rows.length}</span> itens · ordenado por nome. ⚠️ Categoria derivada do nome (o ERP não exporta o campo família).</div>
     </div>`, undefined, filtrosBtn+_cpLupa(_cpInsBuscaAberta,_cpInsBusca,'_cpInsBuscaToggle','_cpInsBuscaInput','cp-ins-busca','Buscar item…'));
@@ -9559,6 +9558,7 @@ function _cpFornDetalheInline(cod){
     it[k].total+=l.tot; it[k].qtd+=l.qtd; if(l.data>it[k].ult){it[k].ult=l.data;it[k].preco=l.vun;} });
   const itens=Object.keys(it).map(k=>it[k]).sort((a,b)=>b.total-a.total);
   const linhasIt=itens.map(i=>`<tr class="cp-clic" onclick="_cpAbrirItem('${i.cod}')">
+      <td class="cp-mono">${escapeHTML(i.cod)}</td>
       <td class="cp-item">${escapeHTML(i.nome)}</td>
       <td class="cp-n">${_cpNum(i.qtd,2)} <span class="cp-un">${escapeHTML(i.um||'')}</span></td>
       <td class="cp-n">${_cpBRL(i.preco)}</td>
@@ -9566,7 +9566,7 @@ function _cpFornDetalheInline(cod){
       <td class="cp-mono">${_cpDt(i.ult)}</td></tr>`).join('');
   const ultimas=f.linhas.slice().sort((a,b)=>a.data<b.data?1:-1).slice(0,20).map(l=>
     `<tr><td class="cp-mono">${_cpDt(l.data)}</td><td class="cp-mono">${escapeHTML(String(l.nf))}</td>
-     <td class="cp-item">${escapeHTML(l.item[1])}</td><td class="cp-n">${_cpNum(l.qtd,2)}</td>
+     <td class="cp-mono">${escapeHTML(String(l.item[0]))}</td><td class="cp-item">${escapeHTML(l.item[1])}</td><td class="cp-n">${_cpNum(l.qtd,2)}</td>
      <td class="cp-n">${_cpBRL(l.vun)}</td><td class="cp-n">${_cpBRL(l.tot)}</td></tr>`).join('');
   return `<div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:11px">
@@ -9582,11 +9582,11 @@ function _cpFornDetalheInline(cod){
     <div style="font-size:11px;color:var(--text3);margin:-4px 2px 12px;line-height:1.45"><i class="ti ti-info-circle"></i> Prazo de pagamento/entrega não vêm no export do ERP — entram aqui quando tivermos. Período: ${_cpFornMeses?('últimos '+_cpFornMeses+' meses'):'tudo'}.</div>
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:0 2px 6px">Itens fornecidos</div>
     <div class="cp-card" style="overflow-x:auto;margin-bottom:12px"><table class="cp-tbl" style="font-size:12px">
-      <thead><tr><th>Item</th><th class="r">Qtde total</th><th class="r">Últ. preço</th><th class="r">Total</th><th class="r">Últ. compra</th></tr></thead>
+      <thead><tr><th>Cód.</th><th>Item</th><th class="r">Qtde total</th><th class="r">Últ. preço</th><th class="r">Total</th><th class="r">Últ. compra</th></tr></thead>
       <tbody>${linhasIt}</tbody></table></div>
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:0 2px 6px">Últimas entradas</div>
     <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl" style="font-size:12px">
-      <thead><tr><th>Data</th><th>NF</th><th>Item</th><th class="r">Qtde</th><th class="r">Vlr unit.</th><th class="r">Total</th></tr></thead>
+      <thead><tr><th>Data</th><th>NF</th><th>Cód.</th><th>Item</th><th class="r">Qtde</th><th class="r">Vlr unit.</th><th class="r">Total</th></tr></thead>
       <tbody>${ultimas}</tbody></table></div>
   </div>`;
 }
@@ -9725,6 +9725,7 @@ function _cpFichaFornHTML(cod){
     it[k].total+=l.tot; it[k].qtd+=l.qtd; if(l.data>it[k].ult){it[k].ult=l.data;it[k].preco=l.vun;} });
   const itens=Object.keys(it).map(k=>it[k]).sort((a,b)=>b.total-a.total);
   const linhasIt=itens.map(i=>`<tr class="cp-clic" onclick="_cpAbrirItem('${i.cod}')">
+      <td class="cp-mono">${escapeHTML(i.cod)}</td>
       <td class="cp-item">${escapeHTML(i.nome)}</td>
       <td class="cp-n">${_cpNum(i.qtd,2)} <span class="cp-un">${escapeHTML(i.um||'')}</span></td>
       <td class="cp-n">${_cpBRL(i.preco)}</td>
@@ -9732,7 +9733,7 @@ function _cpFichaFornHTML(cod){
       <td class="cp-mono">${_cpDt(i.ult)}</td></tr>`).join('');
   const ultimas=f.linhas.slice().sort((a,b)=>a.data<b.data?1:-1).slice(0,25).map(l=>
     `<tr><td class="cp-mono">${_cpDt(l.data)}</td><td class="cp-mono">${escapeHTML(String(l.nf))}</td>
-     <td class="cp-item">${escapeHTML(l.item[1])}</td><td class="cp-n">${_cpNum(l.qtd,2)}</td>
+     <td class="cp-mono">${escapeHTML(String(l.item[0]))}</td><td class="cp-item">${escapeHTML(l.item[1])}</td><td class="cp-n">${_cpNum(l.qtd,2)}</td>
      <td class="cp-n">${_cpBRL(l.vun)}</td><td class="cp-n">${_cpBRL(l.tot)}</td></tr>`).join('');
   return _cpTela(f.nome,'O que compramos deste fornecedor no período — leve para a reunião.',
     `<div style="margin-bottom:14px"><button onclick="_cpVoltarForns()" class="btn-modal-cancel" style="padding:6px 12px;font-size:12.5px">← Todos os fornecedores</button></div>
@@ -9744,11 +9745,11 @@ function _cpFichaFornHTML(cod){
     ])}
     <div style="font-size:12px;color:var(--text3);margin:-6px 2px 14px"><i class="ti ti-info-circle"></i> O prazo de pagamento e o de entrega não vêm neste export do ERP — quando tivermos, entram aqui ao lado do gasto.</div>
     <div class="cp-card" style="overflow-x:auto;margin-bottom:14px"><table class="cp-tbl">
-      <thead><tr><th>Item fornecido</th><th class="r">Qtde total</th><th class="r">Últ. preço</th><th class="r">Total comprado</th><th class="r">Últ. compra</th></tr></thead>
+      <thead><tr><th>Cód.</th><th>Item fornecido</th><th class="r">Qtde total</th><th class="r">Últ. preço</th><th class="r">Total comprado</th><th class="r">Últ. compra</th></tr></thead>
       <tbody>${linhasIt}</tbody></table></div>
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:0 2px 8px">Últimas entradas</div>
     <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
-      <thead><tr><th>Data</th><th>NF</th><th>Item</th><th class="r">Qtde</th><th class="r">Vlr unit.</th><th class="r">Total</th></tr></thead>
+      <thead><tr><th>Data</th><th>NF</th><th>Cód.</th><th>Item</th><th class="r">Qtde</th><th class="r">Vlr unit.</th><th class="r">Total</th></tr></thead>
       <tbody>${ultimas}</tbody></table></div>`);
 }
 
@@ -9764,6 +9765,7 @@ function _cpOrdRowsHTML(){
     let c='var(--text3)',bg='transparent';
     if(x.dif>3){c='var(--danger)';bg='var(--danger-bg)';} else if(x.dif<-3){c='var(--success)';bg='var(--success-bg)';}
     return `<tr class="cp-clic" onclick="_cpAbrirItem('${x.o.cod}')">
+      <td class="cp-mono">${escapeHTML(x.o.cod)}</td>
       <td class="cp-item">${escapeHTML(x.o.nome)}</td>
       <td>${escapeHTML(_cpForn(x.a.forn[1]).slice(0,24))}</td>
       <td class="cp-mono">${_cpDt(x.b.data)}</td><td class="cp-n">${_cpBRL(x.b.vun)}</td>
@@ -9771,7 +9773,7 @@ function _cpOrdRowsHTML(){
       <td class="cp-n"><span class="cp-pill" style="color:${c};background:${bg}">${(x.dif>0?'+':'')+x.dif.toFixed(1)}%</span></td>
       <td class="cp-n">${_cpBRL((x.a.vun-x.b.vun)*x.a.qtd)}</td>
     </tr>`;}).join('');
-  return out || `<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Nenhum item com esse nome.</td></tr>`;
+  return out || `<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Nenhum item com esse nome.</td></tr>`;
 }
 function _comprasOrdensHTML(){
   // ⚠️ Filtro anti-lixo do dado real: variação de +/-80% num preço unitário NÃO é
@@ -9794,6 +9796,7 @@ function _comprasOrdensHTML(){
     let c='var(--text3)',bg='transparent';
     if(x.dif>3){c='var(--danger)';bg='var(--danger-bg)';} else if(x.dif<-3){c='var(--success)';bg='var(--success-bg)';}
     return `<tr class="cp-clic" onclick="_cpAbrirItem('${x.o.cod}')">
+      <td class="cp-mono">${escapeHTML(x.o.cod)}</td>
       <td class="cp-item">${escapeHTML(x.o.nome)}</td>
       <td>${escapeHTML(_cpForn(x.a.forn[1]).slice(0,24))}</td>
       <td class="cp-mono">${_cpDt(x.b.data)}</td><td class="cp-n">${_cpBRL(x.b.vun)}</td>
@@ -9811,7 +9814,7 @@ function _comprasOrdensHTML(){
       _cpKPI('Custo extra nas altas',_cpBRL(perda),'var(--danger)')
     ])+
     `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
-      <thead><tr><th>Item</th><th>Fornecedor (últ.)</th><th>Compra anterior</th><th class="r">Preço</th><th>Última compra</th><th class="r">Preço</th><th class="r">Variação</th><th class="r">Impacto R$</th></tr></thead>
+      <thead><tr><th>Cód.</th><th>Item</th><th>Fornecedor (últ.)</th><th>Compra anterior</th><th class="r">Preço</th><th>Última compra</th><th class="r">Preço</th><th class="r">Variação</th><th class="r">Impacto R$</th></tr></thead>
       <tbody id="cp-ord-tbody">${_cpOrdRowsHTML()}</tbody></table></div>
     ${descartados?`<div style="font-size:12px;color:var(--text3);margin-top:10px;display:flex;gap:6px;align-items:baseline"><i class="ti ti-filter-off" style="font-size:13px"></i><span><b>${descartados} ${descartados===1?'item foi ocultado':'itens foram ocultados'}</b> por variação acima de 80% — quase sempre erro de unidade no cadastro do ERP (mesmo item comprado em rolo e em metro, por exemplo), não negociação de preço.</span></div>`:''}`, undefined, acao);
 }
@@ -10019,6 +10022,7 @@ function _cpHistCorpoHTML(){
       <td class="cp-mono">${escapeHTML(String(l.nf))}</td>
       <td class="cp-mono">${_cpDt(l.data)}</td>
       <td>${escapeHTML(_cpForn(l.forn[1]))}</td>
+      <td class="cp-mono">${escapeHTML(String(l.item[0]))}</td>
       <td class="cp-item">${escapeHTML(l.item[1])}</td>
       <td class="cp-n">${_cpNum(l.qtd,2)} <span class="cp-un">${escapeHTML(l.um||'')}</span></td>
       <td class="cp-n">${_cpBRL(l.vun)}</td>
@@ -10032,11 +10036,11 @@ function _cpHistCorpoHTML(){
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow-x:auto">
       <table class="cp-tbl">
         <thead><tr>
-          <th>NF</th><th>Data</th><th>Fornecedor</th><th>Produto</th><th class="r">Qtde</th>
+          <th>NF</th><th>Data</th><th>Fornecedor</th><th>Cód.</th><th>Produto</th><th class="r">Qtde</th>
           <th class="r">Vlr unit.</th><th class="r">Custo médio</th><th class="r">vs últ. 3</th>
           <th class="r">Total</th><th class="r">ICMS</th><th class="r">%</th>
         </tr></thead>
-        <tbody>${linhas||'<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:26px">Nenhuma linha para esse filtro.</td></tr>'}</tbody>
+        <tbody>${linhas||'<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:26px">Nenhuma linha para esse filtro.</td></tr>'}</tbody>
       </table>
     </div>
     ${L.length>TETO?`<div style="text-align:center;color:var(--text3);font-size:12.5px;margin-top:10px">Mostrando as ${TETO} mais recentes de ${_cpNum(L.length)} — use a busca ou o período para afunilar.</div>`:''}`;
