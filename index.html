@@ -9869,22 +9869,40 @@ function _comprasPainelHTML(){
   }
   // ⚠️ SIMULAÇÃO (Diego pediu p/ ver como fica): validade/lotes NÃO vêm do export atual do ERP —
   // virão da aba "Lotes e OP's" do SISPRO. Aqui é exemplo p/ desenhar a tela.
+  // [cod, nome, qtd, um, validade, consumo mensal]
   const _CP_VALIDADE=[
-    ['30259','Fermento Biológico Úmido','45','kg','2026-08-12'],
-    ['703','Leite Em Pó Desnatado','120','kg','2026-07-30'],
-    ['30575','Ácido Cítrico','22','kg','2026-08-05'],
-    ['15001','Aroma de Leite Condensado','8','kg','2026-08-20'],
-    ['12002','Óleo de Coco - CHOCOLATE','60','kg','2026-08-24'],
-    ['13001','Amendoim Torra Média','210','kg','2026-09-04'],
-    ['30593','Açúcar Cristal Branco','75','kg','2026-09-08'],
-    ['20001','Açúcar Cristal','340','kg','2026-09-10'],
-    ['12001','Gordura Vegetal','90','kg','2026-09-15'],
-    ['11001','Farinha de Trigo','500','kg','2026-09-22'],
-    ['20002','Açúcar Líquido','180','kg','2026-09-30']
+    ['30259','Fermento Biológico Úmido','45','kg','2026-08-12','60'],
+    ['703','Leite Em Pó Desnatado','120','kg','2026-07-30','80'],
+    ['30575','Ácido Cítrico','22','kg','2026-08-05','15'],
+    ['15001','Aroma de Leite Condensado','8','kg','2026-08-20','6'],
+    ['12002','Óleo de Coco - CHOCOLATE','60','kg','2026-08-24','40'],
+    ['13001','Amendoim Torra Média','210','kg','2026-09-04','180'],
+    ['30593','Açúcar Cristal Branco','75','kg','2026-09-08','50'],
+    ['20001','Açúcar Cristal','340','kg','2026-09-10','400'],
+    ['12001','Gordura Vegetal','90','kg','2026-09-15','120'],
+    ['11001','Farinha de Trigo','500','kg','2026-09-22','700'],
+    ['20002','Açúcar Líquido','180','kg','2026-09-30','100']
   ];
   const _vencidos=_CP_VALIDADE.filter(o=>o[4]<today).sort((a,b)=>a[4]<b[4]?-1:1);
   const _aVencer=_CP_VALIDADE.filter(o=>o[4]>=today).sort((a,b)=>a[4]<b[4]?-1:1);
-  const _valRow=(cor,lab)=>o=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)"><span style="font-size:11.5px;color:var(--text3);flex:none;min-width:44px">${escapeHTML(o[0])}</span><span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o[1])}</span><span style="font-size:11.5px;color:var(--text3);flex:none;white-space:nowrap">${escapeHTML(o[2])} ${escapeHTML(o[3])}</span><span style="font-size:12px;color:${cor};font-weight:700;flex:none;white-space:nowrap">${lab} ${formatDate(o[4])}</span></div>`;
+  const _diasCorr=(iso,n)=>{ const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+  const _valRow=(cor,lab,aVencer)=>o=>{
+    const qtd=parseFloat(String(o[2]).replace(',','.'))||0, cons=parseFloat(String(o[5]).replace(',','.'))||0;
+    const fim=cons>0?_diasCorr(today,Math.round(qtd/cons*30)):null;
+    const risco=aVencer && fim && fim>o[4];  // termina DEPOIS de vencer → não usa a tempo (perda)
+    return `<div style="padding:7px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:11.5px;color:var(--text3);flex:none;min-width:44px">${escapeHTML(o[0])}</span>
+        <span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o[1])}</span>
+        <span style="font-size:11.5px;color:var(--text3);flex:none;white-space:nowrap">${escapeHTML(o[2])} ${escapeHTML(o[3])}</span>
+        <span style="font-size:12px;color:${cor};font-weight:700;flex:none;white-space:nowrap">${lab} ${formatDate(o[4])}</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:2px;padding-left:54px;font-size:10.5px;color:var(--text3)">
+        <span>consumo ${escapeHTML(o[5])} ${escapeHTML(o[3])}/mês</span>
+        ${fim?`<span>·</span><span${risco?' style="color:var(--amber);font-weight:600"':''}>termina em ${formatDate(fim)}${risco?' — não usa a tempo':''}</span>`:''}
+      </div>
+    </div>`;
+  };
   return _cpTela('Painel de Compras','O que precisa de decisão hoje — estoque, consumo e compras.',
     necBanner+_cpKPIcards([
       _cpKPI('Valor em estoque',_cpBRL(valorEst)),
@@ -9903,8 +9921,8 @@ function _comprasPainelHTML(){
           <span style="font-size:12px;color:var(--text3);flex:none;white-space:nowrap">${_cpBRL(o.valor)} · ${o.semMov}d</span></div>`))}
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-top:14px">
-      ${bloco('⛔ Itens vencidos','Passaram da validade — segregar/descartar','var(--danger)',lista(_vencidos,_valRow('var(--danger)','vencido em')))}
-      ${bloco('⌛ Itens a vencer','Validade próxima — priorizar consumo (FEFO)','var(--amber)',lista(_aVencer,_valRow('var(--amber)','vence em')))}
+      ${bloco('⛔ Itens vencidos','Passaram da validade — segregar/descartar','var(--danger)',lista(_vencidos,_valRow('var(--danger)','vencido em',false)))}
+      ${bloco('⌛ Itens a vencer','Validade próxima — priorizar consumo (FEFO)','var(--amber)',lista(_aVencer,_valRow('var(--amber)','vence em',true)))}
     </div>
     <div style="font-size:11.5px;color:var(--text3);margin-top:10px;display:flex;gap:6px;align-items:baseline"><i class="ti ti-info-circle" style="font-size:13px"></i><span>Itens vencidos / a vencer são <b>dados de exemplo</b> — a validade virá dos <b>lotes do ERP</b> (aba Lotes e OP's do SISPRO).</span></div>`);
 }
