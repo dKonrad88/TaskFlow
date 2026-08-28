@@ -8850,8 +8850,8 @@ function _cpInsTbodyHTML(){
   return _cpInsRows().map(o=>{
     return `<tr class="cp-clic" onclick="_cpAbrirItem('${o.cod}')">
       <td class="cp-mono">${escapeHTML(o.cod)}</td>
-      <td class="cp-item">${escapeHTML(o.nome)}</td>
       <td><span class="cp-cattag">${escapeHTML(_cpCategoria(o.nome))}</span></td>
+      <td class="cp-item">${escapeHTML(o.nome)}</td>
     </tr>`;}).join('') || `<tr><td colspan="3" style="padding:16px;text-align:center;color:var(--text3);font-style:italic">Nenhum item com esse filtro.</td></tr>`;
 }
 function _cpCategoria(nome){
@@ -8875,7 +8875,7 @@ function _comprasInsumosHTML(){
   const rows=_cpInsRows();
   return _cpTela('Insumos','A ficha de cada item comprado — consumo, preço e fornecedores.',
     `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
-      <thead><tr><th>Código</th><th>Item</th><th>Categoria</th></tr></thead>
+      <thead><tr><th>Código</th><th>Categoria</th><th>Item</th></tr></thead>
       <tbody id="cp-ins-tbody">${_cpInsTbodyHTML()}</tbody></table>
       <div style="font-size:10.5px;color:var(--text3);padding:8px 14px"><span id="cp-ins-count">${rows.length}</span> itens · ordenado por nome. ⚠️ Categoria derivada do nome (o ERP não exporta o campo família).</div>
     </div>`, undefined, filtrosBtn+_cpLupa(_cpInsBuscaAberta,_cpInsBusca,'_cpInsBuscaToggle','_cpInsBuscaInput','cp-ins-busca','Buscar item…'));
