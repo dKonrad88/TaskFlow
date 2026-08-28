@@ -422,6 +422,13 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-08-28 (i) — PC da Empresa — Compras: tarefa vai pro usuário logado (testar) + busca na Ordens + cards de validade
+Continuação da (h). **Commits `0d1cf3c0` (tarefa/Ordens/validade) + `2e688f4e` (consumo/termina), pushados; `main == origin`; working tree limpo; 0 erros.**
+- ⭐ **Necessidade → tarefa agora vai pro USUÁRIO LOGADO** (`_necComprador()` = `CURRENT_USER_ID`), pra o Diego **testar vendo a tarefa no próprio Meu Dia** (verificado: cai no `getTodayTasks`). Em produção o comprador (Joel) loga com o próprio login → o CURRENT_USER_ID já é ele. `_necGerarTarefas` **re-homeia** tarefas antigas que ficaram no Joel (executor≠atual & !done) sem duplicar.
+- **Ordens de compra** ganhou **busca** (faltava): lupa no header (`_cpOrdRowsHTML` filtra por item/fornecedor, re-render só do tbody).
+- **Painel: 2 cards novos** — **Itens vencidos** e **Itens a vencer** (cód · item · qtd · vencido/vence em), 2ª linha com **consumo mensal** + **"termina em"** (projeção `qtd/consumo`); nos "a vencer", se terminar DEPOIS de vencer marca **"não usa a tempo"** (risco FEFO). **Dados de EXEMPLO** (`_CP_VALIDADE`) — validade real vem dos **lotes do ERP**.
+- **Estoque:** placeholder "Buscar insumo" → "Buscar item".
+
 ### ⭐ 2026-08-28 (h) — PC da Empresa — SESSÃO GRANDE: overhaul de UX da área COMPRAS (padrão único) + Necessidade→tarefa do Joel
 Sessão longa e muito iterativa (o Diego mandou ~20 pedidos rápidos por print). **Vários commits, todos pushados, `main == origin`, working tree limpo, 0 erros de console.** Verificado por DOM (:8899) a cada leva. Commits-chave: `5575a3b2` (Joel/banner/KPIs), `1ddd02a6` (Insumos/largura/Orçamentos), `d126b00e` (busca-lupa), `e61be064` (Fornecedores), `09b6aabf` (filtros no header). ⚠️ Visual fino: **Diego confere no Pages**.
 - ⭐ **PADRÃO ÚNICO de filtros+busca (o pedido central):** em TODA aba de lista de Compras, os controles ficam no **canto superior direito, no header (acao do `_cpTela`/`hubHead`), acima dos indicadores**. **Busca = lupa** (novo helper **`_cpLupa`**, modelo do Estoque: ícone → campo + X; param `extra` p/ um filtro ao lado, ex.: período). **Necessidade**: `[Filtros ▾]`(divisão, multi-select) `[Só insuficientes]` `[lupa]` — saíram do conteúdo p/ o header (`_necFiltrosAcao`; os toggles agora chamam `renderCompras`, não `_necRerender`, pois o header não está no `#nec-root`). **Insumos**: `[Filtros ▾]`(categoria) `[lupa]`. **Histórico** e **Fornecedores**: `[período] [lupa]`. **Estoque**: mantém a lupa + os chips de status (é o modelo de referência; não converti os chips).
