@@ -9651,7 +9651,28 @@ if(typeof window!=='undefined' && !window._cpFocoEsc){ window._cpFocoEsc=true;
   document.addEventListener('keydown',function(e){ if(e.key==='Escape' && document.body.classList.contains('cp-focus')) _cpSetFoco(false); }); }
 
 // ════════ FORNECEDORES — curva ABC + ficha ════════
-let _cpFornSel=null, _cpFornMeses=12;
+let _cpFornSel=null, _cpFornMeses=12, _cpFornBusca='', _cpFornBuscaAberta=false;
+function _cpFornBuscaToggle(){ _cpFornBuscaAberta=!_cpFornBuscaAberta; if(!_cpFornBuscaAberta) _cpFornBusca=''; renderCompras(); if(_cpFornBuscaAberta) setTimeout(function(){ var el=document.getElementById('cp-forn-busca'); if(el) el.focus(); },30); }
+function _cpFornBuscaInput(el){ _cpFornBusca=el.value; const tb=document.getElementById('cp-forn-tbody'); if(tb) tb.innerHTML=_cpFornRowsHTML(); }
+function _cpFornRowsHTML(){
+  const L=_cpFornAgg('T'); const tot=L.reduce((a,f)=>a+f.total,0);
+  const q=(_cpFornBusca||'').trim().toLowerCase(); let acc=0; const out=[];
+  L.slice(0,300).forEach((f,i)=>{
+    acc+=f.total; const pAcc=tot?acc/tot*100:0;
+    const classe=pAcc<=80?'A':(pAcc<=95?'B':'C');
+    const cor=classe==='A'?'var(--danger)':(classe==='B'?'var(--amber)':'var(--text3)');
+    const nome=_cpForn(f.nome);
+    if(q && nome.toLowerCase().indexOf(q)<0) return;
+    out.push(`<tr class="cp-clic" onclick="_cpAbrirForn('${escapeAttr(f.cod)}')">
+      <td class="cp-n">${i+1}</td><td class="cp-item">${escapeHTML(nome)}</td>
+      <td class="cp-n">${_cpBRL(f.total)}</td><td class="cp-n">${(tot?f.total/tot*100:0).toFixed(1)}%</td>
+      <td class="cp-n">${pAcc.toFixed(1)}%</td>
+      <td class="cp-n"><span class="cp-pill" style="color:${cor};background:var(--bg2)">${classe}</span></td>
+      <td class="cp-n">${Object.keys(f.nfs).length}</td><td class="cp-n">${Object.keys(f.itens).length}</td>
+    </tr>`);
+  });
+  return out.join('') || `<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Nenhum fornecedor com esse nome.</td></tr>`;
+}
 function _cpAbrirForn(cod){ _cpFornSel=cod; try{document.body.classList.remove('cp-focus');}catch(e){} comprasView='fornecedores'; renderSidebar(); renderCompras(); window.scrollTo(0,0); }
 function _cpVoltarForns(){ _cpFornSel=null; renderCompras(); }
 function _cpFornSetMeses(v){ _cpFornMeses=Number(v); renderCompras(); }
@@ -9673,35 +9694,19 @@ function _comprasFornecedoresHTML(){
   if(_cpFornSel) return _cpFichaFornHTML(_cpFornSel);
   const L=_cpFornAgg('T');
   const tot=L.reduce((a,f)=>a+f.total,0);
-  let acc=0;
-  const linhas=L.slice(0,300).map((f,i)=>{
-    acc+=f.total; const pAcc=tot?acc/tot*100:0;
-    const classe=pAcc<=80?'A':(pAcc<=95?'B':'C');
-    const cor=classe==='A'?'var(--danger)':(classe==='B'?'var(--amber)':'var(--text3)');
-    return `<tr class="cp-clic" onclick="_cpAbrirForn('${escapeAttr(f.cod)}')">
-      <td class="cp-n">${i+1}</td>
-      <td class="cp-item">${escapeHTML(_cpForn(f.nome))}</td>
-      <td class="cp-n">${_cpBRL(f.total)}</td>
-      <td class="cp-n">${(tot?f.total/tot*100:0).toFixed(1)}%</td>
-      <td class="cp-n">${pAcc.toFixed(1)}%</td>
-      <td class="cp-n"><span class="cp-pill" style="color:${cor};background:var(--bg2)">${classe}</span></td>
-      <td class="cp-n">${Object.keys(f.nfs).length}</td>
-      <td class="cp-n">${Object.keys(f.itens).length}</td>
-    </tr>`;}).join('');
   const nA=(()=>{let a=0,n=0;for(const f of L){a+=f.total;n++;if(tot&&a/tot>=0.8)break;}return n;})();
+  const periodo=`<select onchange="_cpFornSetMeses(this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px">${[[3,'Últimos 3 meses'],[6,'Últimos 6 meses'],[12,'Últimos 12 meses'],[0,'Tudo']].map(o=>`<option value="${o[0]}"${_cpFornMeses===o[0]?' selected':''}>${o[1]}</option>`).join('')}</select>`;
+  const acao=_cpLupa(_cpFornBuscaAberta,_cpFornBusca,'_cpFornBuscaToggle','_cpFornBuscaInput','cp-forn-busca','Buscar fornecedor…',periodo);
   return _cpTela('Fornecedores','Curva ABC por valor comprado — onde a negociação vale.',
-    _cpKPIrow([
+    _cpKPIcards([
       _cpKPI('Fornecedores',_cpNum(L.length)),
       _cpKPI('Gasto total',_cpBRL(tot)),
       _cpKPI('Classe A (80%)',_cpNum(nA),'var(--danger)'),
       _cpKPI('Período',_cpFornMeses?('últimos '+_cpFornMeses+' meses'):'tudo')
     ])+
-    `<div style="margin-bottom:12px"><select onchange="_cpFornSetMeses(this.value)" class="modal-input" style="width:auto;padding:7px 10px;font-size:12.5px">
-      ${[[3,'Últimos 3 meses'],[6,'Últimos 6 meses'],[12,'Últimos 12 meses'],[0,'Tudo']].map(o=>`<option value="${o[0]}"${_cpFornMeses===o[0]?' selected':''}>${o[1]}</option>`).join('')}
-    </select></div>
-    <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
+    `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead><tr><th class="r">#</th><th>Fornecedor</th><th class="r">Comprado</th><th class="r">% do total</th><th class="r">% acum.</th><th class="r">ABC</th><th class="r">NFs</th><th class="r">Itens</th></tr></thead>
-      <tbody>${linhas}</tbody></table></div>`);
+      <tbody id="cp-forn-tbody">${_cpFornRowsHTML()}</tbody></table></div>`, undefined, acao);
 }
 function _cpFichaFornHTML(cod){
   const f=_cpFornAgg('T').find(x=>x.cod===cod);
