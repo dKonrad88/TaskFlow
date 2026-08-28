@@ -6549,7 +6549,10 @@ function _necDivToggle(d){ const i=_necDivSel.indexOf(d); if(i>=0) _necDivSel.sp
 function _necDivAll(){ _necDivSel=[]; renderCompras(); }
 function _necToggleFalta(){ _necFalta=!_necFalta; renderCompras(); }
 function _necBuscaInput(el){ _necBusca=el.value; const tb=document.getElementById('nec-tbody'); if(tb) tb.innerHTML=_necTbodyHTML(); }
-function _necComprador(){ const ppl=(typeof people!=='undefined'&&people)?people:[]; const j=ppl.find(p=>/joel/i.test(p.name||'')); if(j) return j.id; const c=ppl.find(p=>/compra/i.test((p.setor||'')+(p.cargo||'')+(p.area||''))); return c?c.id:null; }
+// (ago/2026) PROTÓTIPO/TESTE: a tarefa vai pro USUÁRIO LOGADO ("Eu"), pra dar p/ testar vendo a tarefa
+// no Meu Dia. Em produção o comprador (Joel) loga com o próprio login — aí o CURRENT_USER_ID já É ele.
+// (p/ voltar ao Joel fixo: procurar em `people` por nome 'joel'/setor Compras.)
+function _necComprador(){ return (typeof CURRENT_USER_ID!=='undefined')?CURRENT_USER_ID:null; }
 // Cada item em falta da semana vira 1 TAREFA do comprador (Joel), ele SOLICITANTE e EXECUTOR.
 // Automático ao ABRIR a tela (via setComprasView), NUNCA no render (render que grava no banco = o P0 nº1 desta base).
 // Dedup por (código + semana): não recria a mesma tarefa (mesmo já concluída) — evita duplicar a cada abertura.
@@ -6558,7 +6561,8 @@ function _necGerarTarefas(){
   const semana=_prodRange(_prodDias(prodSemana));
   let criadas=0, last=null;
   _necCalc().filter(o=>o.falta>0).forEach((o,i)=>{
-    if(tasks.some(t=>t.origem==='necessidade' && String(t.necCod)===String(o.cod) && t.necSemana===semana)) return;
+    const ex=tasks.find(t=>t.origem==='necessidade' && String(t.necCod)===String(o.cod) && t.necSemana===semana);
+    if(ex){ if(!ex.done && ex.executor!==joel){ ex.executor=joel; ex.solicitante=joel; ex.people=[joel]; last=ex; } return; }
     const t={ id:Date.now()+Math.floor(Math.random()*9999)+i, title:`Comprar ${o.nome} — faltam ${_necFmt(o.falta)}`,
       desc:`Necessidade da semana ${semana} · cód ${o.cod} · ${o.div} · faltam ${_necFmt(o.falta)} (estoque ${_necFmt(o.est)})`,
       prio:'alta', date:today, done:false, escopo:'klain',
@@ -8802,8 +8806,8 @@ function _cpEstCorpo(){
 }
 function _comprasEstoqueHTML(){
   const acao = _cpEst.buscaAberta
-    ? `<div style="display:inline-flex;align-items:center;gap:6px"><input id="cp-est-busca" value="${escapeAttr(_cpEst.busca)}" oninput="_cpEstSet('busca',this.value)" placeholder="Buscar insumo…" class="modal-input" style="width:220px;padding:6px 11px;font-size:12.5px"><button onclick="_cpEstToggleBusca()" title="Fechar busca" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;display:inline-flex"><i class="ti ti-x" style="font-size:16px"></i></button></div>`
-    : `<button onclick="_cpEstToggleBusca()" title="Buscar insumo" style="background:var(--card);border:1px solid var(--border);border-radius:9px;cursor:pointer;color:var(--text2);width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-search" style="font-size:17px"></i></button>`;
+    ? `<div style="display:inline-flex;align-items:center;gap:6px"><input id="cp-est-busca" value="${escapeAttr(_cpEst.busca)}" oninput="_cpEstSet('busca',this.value)" placeholder="Buscar item…" class="modal-input" style="width:220px;padding:6px 11px;font-size:12.5px"><button onclick="_cpEstToggleBusca()" title="Fechar busca" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;display:inline-flex"><i class="ti ti-x" style="font-size:16px"></i></button></div>`
+    : `<button onclick="_cpEstToggleBusca()" title="Buscar item" style="background:var(--card);border:1px solid var(--border);border-radius:9px;cursor:pointer;color:var(--text2);width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-search" style="font-size:17px"></i></button>`;
   return _cpTela('Estoque','O que você tem hoje, cobertura e o que comprar.',
     `<div id="cp-est-seg" class="cp-catbar" style="margin-bottom:14px">${_cpEstSegHTML()}</div>
     <div id="cp-est-corpo">${_cpEstCorpo()}</div>`,undefined,acao);
@@ -9745,6 +9749,26 @@ function _cpFichaFornHTML(cod){
 }
 
 // ════════ ORDENS DE COMPRA — última vs anterior (pedido do Diego, item 6) ════════
+let _cpOrdBusca='', _cpOrdBuscaAberta=false;
+function _cpOrdBuscaToggle(){ _cpOrdBuscaAberta=!_cpOrdBuscaAberta; if(!_cpOrdBuscaAberta) _cpOrdBusca=''; renderCompras(); if(_cpOrdBuscaAberta) setTimeout(function(){ var el=document.getElementById('cp-ord-busca'); if(el) el.focus(); },30); }
+function _cpOrdBuscaInput(el){ _cpOrdBusca=el.value; const tb=document.getElementById('cp-ord-tbody'); if(tb) tb.innerHTML=_cpOrdRowsHTML(); }
+function _cpOrdRowsHTML(){
+  const q=(_cpOrdBusca||'').trim().toLowerCase();
+  const L=_cpItens().filter(o=>o.compras.length>=2).map(o=>{ const a=o.compras[0], b=o.compras[1]; return {o:o,a:a,b:b,dif:b.vun>0?((a.vun-b.vun)/b.vun*100):0,impacto:(a.vun-b.vun)*a.qtd}; })
+    .filter(x=>Math.abs(x.dif)<=80).sort((x,y)=>Math.abs(y.impacto)-Math.abs(x.impacto));
+  const out=L.slice(0,300).filter(x=>!q || (x.o.nome||'').toLowerCase().indexOf(q)>=0 || _cpForn(x.a.forn[1]).toLowerCase().indexOf(q)>=0).map(x=>{
+    let c='var(--text3)',bg='transparent';
+    if(x.dif>3){c='var(--danger)';bg='var(--danger-bg)';} else if(x.dif<-3){c='var(--success)';bg='var(--success-bg)';}
+    return `<tr class="cp-clic" onclick="_cpAbrirItem('${x.o.cod}')">
+      <td class="cp-item">${escapeHTML(x.o.nome)}</td>
+      <td>${escapeHTML(_cpForn(x.a.forn[1]).slice(0,24))}</td>
+      <td class="cp-mono">${_cpDt(x.b.data)}</td><td class="cp-n">${_cpBRL(x.b.vun)}</td>
+      <td class="cp-mono">${_cpDt(x.a.data)}</td><td class="cp-n">${_cpBRL(x.a.vun)}</td>
+      <td class="cp-n"><span class="cp-pill" style="color:${c};background:${bg}">${(x.dif>0?'+':'')+x.dif.toFixed(1)}%</span></td>
+      <td class="cp-n">${_cpBRL((x.a.vun-x.b.vun)*x.a.qtd)}</td>
+    </tr>`;}).join('');
+  return out || `<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Nenhum item com esse nome.</td></tr>`;
+}
 function _comprasOrdensHTML(){
   // ⚠️ Filtro anti-lixo do dado real: variação de +/-80% num preço unitário NÃO é
   // negociação — é erro de UNIDADE no cadastro (ex.: Ribbon comprado como "1 rolo a
@@ -9773,6 +9797,7 @@ function _comprasOrdensHTML(){
       <td class="cp-n"><span class="cp-pill" style="color:${c};background:${bg}">${(x.dif>0?'+':'')+x.dif.toFixed(1)}%</span></td>
       <td class="cp-n">${_cpBRL((x.a.vun-x.b.vun)*x.a.qtd)}</td>
     </tr>`;}).join('');
+  const acao=_cpLupa(_cpOrdBuscaAberta,_cpOrdBusca,'_cpOrdBuscaToggle','_cpOrdBuscaInput','cp-ord-busca','Buscar item…');
   return _cpTela('Ordens de compra','Última compra de cada item vs. a anterior — subiu ou caiu.',
     _cpKPIrow([
       _cpKPI('Itens comparáveis',_cpNum(L.length)),
@@ -9783,8 +9808,8 @@ function _comprasOrdensHTML(){
     ])+
     `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead><tr><th>Item</th><th>Fornecedor (últ.)</th><th>Compra anterior</th><th class="r">Preço</th><th>Última compra</th><th class="r">Preço</th><th class="r">Variação</th><th class="r">Impacto R$</th></tr></thead>
-      <tbody>${linhas}</tbody></table></div>
-    ${descartados?`<div style="font-size:12px;color:var(--text3);margin-top:10px;display:flex;gap:6px;align-items:baseline"><i class="ti ti-filter-off" style="font-size:13px"></i><span><b>${descartados} ${descartados===1?'item foi ocultado':'itens foram ocultados'}</b> por variação acima de 80% — quase sempre erro de unidade no cadastro do ERP (mesmo item comprado em rolo e em metro, por exemplo), não negociação de preço.</span></div>`:''}`);
+      <tbody id="cp-ord-tbody">${_cpOrdRowsHTML()}</tbody></table></div>
+    ${descartados?`<div style="font-size:12px;color:var(--text3);margin-top:10px;display:flex;gap:6px;align-items:baseline"><i class="ti ti-filter-off" style="font-size:13px"></i><span><b>${descartados} ${descartados===1?'item foi ocultado':'itens foram ocultados'}</b> por variação acima de 80% — quase sempre erro de unidade no cadastro do ERP (mesmo item comprado em rolo e em metro, por exemplo), não negociação de preço.</span></div>`:''}`, undefined, acao);
 }
 
 // ════════ PAINEL — o cockpit ════════
@@ -9842,6 +9867,24 @@ function _comprasPainelHTML(){
       <button onclick="_necReabrir()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 11px;font-size:12px;color:var(--text2);cursor:pointer;font-family:inherit">Reabrir</button>
     </div>`;
   }
+  // ⚠️ SIMULAÇÃO (Diego pediu p/ ver como fica): validade/lotes NÃO vêm do export atual do ERP —
+  // virão da aba "Lotes e OP's" do SISPRO. Aqui é exemplo p/ desenhar a tela.
+  const _CP_VALIDADE=[
+    ['30259','Fermento Biológico Úmido','45','kg','2026-08-12'],
+    ['703','Leite Em Pó Desnatado','120','kg','2026-07-30'],
+    ['30575','Ácido Cítrico','22','kg','2026-08-05'],
+    ['15001','Aroma de Leite Condensado','8','kg','2026-08-20'],
+    ['12002','Óleo de Coco - CHOCOLATE','60','kg','2026-08-24'],
+    ['13001','Amendoim Torra Média','210','kg','2026-09-04'],
+    ['30593','Açúcar Cristal Branco','75','kg','2026-09-08'],
+    ['20001','Açúcar Cristal','340','kg','2026-09-10'],
+    ['12001','Gordura Vegetal','90','kg','2026-09-15'],
+    ['11001','Farinha de Trigo','500','kg','2026-09-22'],
+    ['20002','Açúcar Líquido','180','kg','2026-09-30']
+  ];
+  const _vencidos=_CP_VALIDADE.filter(o=>o[4]<today).sort((a,b)=>a[4]<b[4]?-1:1);
+  const _aVencer=_CP_VALIDADE.filter(o=>o[4]>=today).sort((a,b)=>a[4]<b[4]?-1:1);
+  const _valRow=(cor,lab)=>o=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)"><span style="font-size:11.5px;color:var(--text3);flex:none;min-width:44px">${escapeHTML(o[0])}</span><span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o[1])}</span><span style="font-size:11.5px;color:var(--text3);flex:none;white-space:nowrap">${escapeHTML(o[2])} ${escapeHTML(o[3])}</span><span style="font-size:12px;color:${cor};font-weight:700;flex:none;white-space:nowrap">${lab} ${formatDate(o[4])}</span></div>`;
   return _cpTela('Painel de Compras','O que precisa de decisão hoje — estoque, consumo e compras.',
     necBanner+_cpKPIcards([
       _cpKPI('Valor em estoque',_cpBRL(valorEst)),
@@ -9858,7 +9901,12 @@ function _comprasPainelHTML(){
           <span style="font-size:11.5px;color:var(--text3);flex:none;min-width:40px">${escapeHTML(o.cod)}</span>
           <span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o.nome)}</span>
           <span style="font-size:12px;color:var(--text3);flex:none;white-space:nowrap">${_cpBRL(o.valor)} · ${o.semMov}d</span></div>`))}
-    </div>`);
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-top:14px">
+      ${bloco('⛔ Itens vencidos','Passaram da validade — segregar/descartar','var(--danger)',lista(_vencidos,_valRow('var(--danger)','vencido em')))}
+      ${bloco('⌛ Itens a vencer','Validade próxima — priorizar consumo (FEFO)','var(--amber)',lista(_aVencer,_valRow('var(--amber)','vence em')))}
+    </div>
+    <div style="font-size:11.5px;color:var(--text3);margin-top:10px;display:flex;gap:6px;align-items:baseline"><i class="ti ti-info-circle" style="font-size:13px"></i><span>Itens vencidos / a vencer são <b>dados de exemplo</b> — a validade virá dos <b>lotes do ERP</b> (aba Lotes e OP's do SISPRO).</span></div>`);
 }
 
 // ════════ ORÇAMENTOS — ponte p/ o módulo que já existe ════════
