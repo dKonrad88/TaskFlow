@@ -422,6 +422,11 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-08-25 (b) — PC da Empresa — Chat sai da coluna 3 do Painel (fica só na sub-navbar)
+Pedido do Diego. **Commit `491e15c0`, pushado; `main == origin`; working tree limpo.** Verificado por DOM (:8899) — 0 erros; Painel com grid de 3 filhos (2 colunas + 1 divisor), aba Chat intacta, divisor ainda arrasta (Estrutura 300→380px).
+- O Painel (visao) virou **2 colunas [Estrutura | tarefas]** com o divisor arrastável entre elas; as tarefas ganharam a largura que era do Chat. O **Chat segue na aba "Chat"** da sub-navbar (`renderProjectProAnotacoes`, inalterado).
+- `.pp-visao-3col`: grid **5→3 colunas** (`var(--pp-c1) 24px 1fr`); removido o 2º gutter + a coluna do Chat. `comentariosBloco` não é mais computado no Painel (só na aba) — menos trabalho por render. `_ppColResizeStart` guarda o caso do c3 ausente (grid de 3 filhos); o c1 segue redimensionável. ⚠️ O nome da classe `.pp-visao-3col` ficou "errado" (são 2 colunas agora) — mantido p/ não mexer no querySelector do resizer.
+
 ### 2026-08-25 — PC da Empresa — 🐞 FIX: tarefa bloqueada vazava pro Meu Dia + Painel não mostrava bloqueio + faxina da coluna 1
 Continuação da sessão de faxina do Painel. O Diego apontou um **bug real**: no **Painel central** as tarefas não pareciam bloqueadas, mas na **aba Tarefas** sim — e por isso o **Meu Dia** trazia a **próxima** tarefa (bloqueada na esteira) como se estivesse livre. Deveria trazer só o que está liberado. **Commit `df8cd377`, pushado; `main == origin`; working tree limpo.** Verificado por DOM (:8899) — 0 erros; gate testado (bloqueada NÃO entra em Hoje/Atrasadas/Amanhã, liberada entra).
 - ⭐ **CAUSA RAIZ:** `getTodayTasks`/`getAtrasadas`/`getAmanha` (~5744) filtravam por data + executor **mas não checavam bloqueio**. A **Minhas Tarefas** já filtrava `!_ppEstaBloqueada(t)` (o helper existe justamente p/ "esconder das telas pessoais tarefas ainda não liberadas", ~29664, cache resetado por render em 18147) — o **Meu Dia não**. Adicionei `&& !_ppEstaBloqueada(t)` aos 3. Agora tarefa de projeto com etapa anterior não concluída **não vaza** pro Meu Dia.
