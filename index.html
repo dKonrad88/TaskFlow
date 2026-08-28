@@ -6239,7 +6239,7 @@ function renderMeuDia(){
 const PROD_LINHAS=[{k:'com',n:'Forno c/ cobertura'},{k:'sem',n:'Forno s/ cobertura'},{k:'pip',n:'Pipoca'},{k:'ext',n:'Extrusados'},{k:'pel',n:'Pellet frito'},{k:'pal',n:'Palitinho'}];
 // Sub-navbar da Produção (2º nível, ABAIXO de Geral/Produção/Comercial). 'programacao' é a 1ª aba (a grade).
 // Pra criar assunto novo: adicione {id,label,icon} aqui + trate o id em _prodRootHTML (senão cai no "em construção").
-const PROD_ABAS=[{id:'programacao',label:'Programação',icon:'ti-calendar-week'}];
+const PROD_ABAS=[{id:'programacao',label:'Programação',icon:'ti-calendar-week'},{id:'necessidade',label:'Necessidade da semana',icon:'ti-clipboard-list'}];
 const LS_PROD_ITENS='taskflow_prod_itens', LS_PROD_PROG='taskflow_prod_prog', LS_PROD_MODO='taskflow_prod_modo';
 const _PROD_ITENS_SEED=['Amend. preto & branco','Broa','Palitinho + aperitivo','Amanteigado','Palitinho','Duetto','Maisena','Palitinho + bolinha','Pão de mel P&B','Milho','Banana c/ canela','Pipoca tradicional','Mega+ intensus','Amendoim P&B','Salgadão'];
 const _PROD_MES3=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
@@ -6367,7 +6367,7 @@ function _prodCellHTML(key,arr,leitor){
 function _prodRootHTML(){
   if(!PROD_ABAS.some(a=>a.id===prodAba)) prodAba='programacao';
   const subnav=`<div class="prod-subnav">`+PROD_ABAS.map(a=>`<button class="${a.id===prodAba?'on':''}" onclick="_prodSetAba('${a.id}')"><i class="ti ${a.icon}" style="font-size:15px"></i> ${escapeHTML(a.label)}</button>`).join('')+`</div>`;
-  const content = prodAba==='programacao' ? _prodProgramacaoHTML() : _prodEmConstrucaoHTML(PROD_ABAS.find(a=>a.id===prodAba));
+  const content = prodAba==='programacao' ? _prodProgramacaoHTML() : prodAba==='necessidade' ? _prodNecessidadeHTML() : _prodEmConstrucaoHTML(PROD_ABAS.find(a=>a.id===prodAba));
   return _prodCSS()+subnav+content;
 }
 function _prodSetAba(id){ prodAba=id; _prodRerender(); }
@@ -6443,6 +6443,118 @@ function _prodDragStart(e){ const el=e.target.closest('.prod-chip'); const name=
 function _prodDragOver(e){ e.preventDefault(); try{ e.dataTransfer.dropEffect='copy'; }catch(_){} e.currentTarget.classList.add('prod-drop'); }
 function _prodDragLeave(e){ e.currentTarget.classList.remove('prod-drop'); }
 function _prodDrop(e,key){ e.preventDefault(); e.currentTarget.classList.remove('prod-drop'); let name=_prodDragItem; if(!name){ try{ name=e.dataTransfer.getData('text/plain'); }catch(_){} } _prodDragItem=null; if(name) _prodAddAt(key,name); }
+
+// ══════════ PCP → NECESSIDADE DA SEMANA (consumo de materiais) ══════════
+// A partir da PROGRAMAÇÃO da semana, "explode" o que será CONSUMIDO (matéria-prima +
+// embalagem) e cruza com o ESTOQUE → mostra o que falta (ruptura). O que faltar vira
+// ALERTA DE COMPRA e é enviado ao comprador (área Compras › Painel). Substitui o print
+// semanal que o PCP mandava. ⚠️ PROTÓTIPO: DADOS DE EXEMPLO — no Oficial o consumo vem
+// de programação × ficha técnica × estoque (o Gui liga). Aqui só o FORMATO e as REGRAS.
+const LS_NEC_ENVIO='taskflow_pcp_necessidade';
+let _necDiv='', _necFalta=false, _necBusca='';
+// [cod, nome, divisão, estoque, aUtilizar (base semana 1), preço R$/un] — exemplo (códigos/divisões reais do Excel do PCP)
+const _NEC_SEED=[
+  ['10101','Açúcar Cristal (kg)','Açúcares',48000,12500,3.20],
+  ['10102','Açúcar Invertido (kg)','Açúcares',9200,2100,4.10],
+  ['11001','Farinha de Trigo (kg)','Farinhas',65000,18800,2.60],
+  ['11002','Amido de Milho (kg)','Farinhas',8300,3400,3.90],
+  ['12001','Gordura Vegetal (kg)','Gorduras e óleos',15400,5200,7.40],
+  ['12002','Óleo de Coco - CHOCOLATE (kg)','Gorduras e óleos',640,900,12.80],
+  ['13001','Amendoim Torra Média (kg)','Amendoins',22000,6100,7.50],
+  ['14001','Fermento Biológico Úmido (kg)','Fermentos',380,500,9.20],
+  ['15001','Aroma de Leite Condensado (kg)','Aromas e temperos',210,340,34.00],
+  ['15002','Sal Refinado (kg)','Aromas e temperos',5600,1200,1.80],
+  ['20228','Caixa de Papelão - 001 (Amendoins) 250g','Caixas Klain',13290,1727,1.10],
+  ['20230','Caixa de Papelão - 005 (Pacotão Econômico) 500g','Caixas Klain',11036,3100,1.35],
+  ['20227','Caixa de Papelão - 002 (Clássicos) 240g','Caixas Klain',4455,1867,1.05],
+  ['20231','Caixa de Papelão - 004 (Chocolovers)','Caixas Klain',1710,400,1.20],
+  ['216001','Caixa de Papelão - Casaredo','Caixas Klain',0,800,1.40],
+  ['30207','Chapas de Papelão','Embalagens diversas',0,599,2.30],
+  ['30259','Cantoneiras de Papelão','Embalagens diversas',420,1043,0.90],
+  ['40101','Bobina BOPP Mignon','Bobinas Klain',8600,2400,18.00],
+  ['40102','Bobina Laminada Palitinho','Bobinas Klain',5200,3100,21.00],
+  ['50101','Etiqueta Rótulo Bisnaga ao Leite','Etiquetas Klain',3100,620,0.15]
+];
+function _necEnvioGet(){ const o=safeJSON(LS_NEC_ENVIO,null); return (o&&typeof o==='object'&&Array.isArray(o.itens))?o:null; }
+function _necEnvioSet(o){ try{ safeSetItem(LS_NEC_ENVIO, JSON.stringify(o)); }catch(e){} }
+function _necEnvioClear(){ try{ localStorage.removeItem(LS_NEC_ENVIO); }catch(e){} if(typeof toast==='function') toast('Pedido do PCP arquivado.'); if(typeof render==='function') render(); }
+function _necFator(){ return prodSemana===0?1:1.15; }   // variação leve por semana (exemplo determinístico)
+function _necFmt(n){ return Number(Math.round(n)).toLocaleString('pt-BR'); }
+function _necDivs(){ const s=[]; _NEC_SEED.forEach(r=>{ if(s.indexOf(r[2])<0) s.push(r[2]); }); return s; }
+function _necCalc(){ const f=_necFator(); return _NEC_SEED.map(r=>{ const util=Math.round(r[4]*f); const fim=r[3]-util; return {cod:r[0],nome:r[1],div:r[2],est:r[3],util:util,fim:fim,preco:r[5],falta:fim<0?-fim:0}; }); }
+function _necRows(){
+  const q=_necBusca.trim().toLowerCase();
+  return _necCalc().filter(o=>{
+    if(_necDiv && o.div!==_necDiv) return false;
+    if(_necFalta && o.falta<=0) return false;
+    if(q && !(o.nome.toLowerCase().includes(q) || String(o.cod).indexOf(q)>=0)) return false;
+    return true;
+  });
+}
+function _necTbodyHTML(){
+  const rows=_necRows();
+  if(!rows.length) return `<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--text3);font-size:12.5px;font-style:italic">Nenhum item com esse filtro.</td></tr>`;
+  return rows.map(o=>{
+    const falta=o.fim<0, c=falta?'var(--danger)':'var(--text)', cc=falta?'var(--danger)':'var(--text3)';
+    return `<tr style="border-top:1px solid var(--border);${falta?'background:var(--danger-bg);':''}">
+      <td style="padding:8px 10px;font-size:12px;color:${cc}">${escapeHTML(o.cod)}</td>
+      <td style="padding:8px 10px;font-size:12.5px;color:${c};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o.nome)}</td>
+      <td style="padding:8px 10px;font-size:11.5px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o.div)}</td>
+      <td style="padding:8px 10px;font-size:12.5px;text-align:right;color:${c};white-space:nowrap">${_necFmt(o.est)}</td>
+      <td style="padding:8px 10px;font-size:12.5px;text-align:right;color:${c};white-space:nowrap">${_necFmt(o.util)}</td>
+      <td style="padding:8px 10px;font-size:12.5px;text-align:right;font-weight:${falta?'700':'400'};color:${c};white-space:nowrap">${o.fim<0?'−'+_necFmt(-o.fim):_necFmt(o.fim)}</td>
+    </tr>`;
+  }).join('');
+}
+function _prodNecessidadeHTML(){
+  const calc=_necCalc();
+  const comConsumo=calc.filter(o=>o.util>0).length;
+  const rupturas=calc.filter(o=>o.falta>0);
+  const comprarR$=rupturas.reduce((a,o)=>a+o.falta*o.preco,0);
+  const seg=`<div class="prod-seg">`+[0,1].map(i=>`<button class="${prodSemana===i?'on':''}" onclick="_prodSetSemana(${i})">Semana ${i+1} · ${_prodRange(_prodDias(i))}</button>`).join('')+`</div>`;
+  const enviar=`<button onclick="_necEnviar()" style="background:var(--blue-mid);color:#fff;border:none;border-radius:9px;padding:9px 15px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px"><i class="ti ti-send" style="font-size:15px"></i> Enviar ao comprador</button>`;
+  const kpi=(lab,val,cor)=>`<div style="background:var(--surface-painel);border:1px solid var(--border);border-radius:12px;padding:13px 15px"><div style="font-size:12px;color:var(--text3)">${lab}</div><div style="font-size:22px;font-weight:700;color:${cor||'var(--text)'};margin-top:2px">${val}</div></div>`;
+  const kpis=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px">
+    ${kpi('Itens com consumo',_necFmt(comConsumo))}
+    ${kpi('Precisa comprar',_necFmt(rupturas.length),rupturas.length?'var(--danger)':'var(--text)')}
+    ${kpi('Comprar (estimado)','R$ '+_necFmt(comprarR$))}
+  </div>`;
+  const divchip=(v,lab)=>`<button onclick="_necSetDiv('${escapeAttr(v)}')" style="font-size:11.5px;font-weight:600;padding:4px 11px;border-radius:20px;border:1px solid ${_necDiv===v?'var(--blue-mid)':'var(--border)'};background:${_necDiv===v?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--card)'};color:${_necDiv===v?'var(--blue-mid)':'var(--text2)'};cursor:pointer;font-family:inherit">${escapeHTML(lab)}</button>`;
+  const filtros=`<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:12px">
+    <span style="font-size:11.5px;color:var(--text3)">Divisão:</span>
+    ${divchip('','Todas')}${_necDivs().map(d=>divchip(d,d)).join('')}
+    <button onclick="_necToggleFalta()" style="margin-left:auto;font-size:11.5px;font-weight:600;padding:4px 11px;border-radius:20px;border:1px solid ${_necFalta?'var(--danger)':'var(--border)'};background:${_necFalta?'var(--danger-bg)':'var(--card)'};color:${_necFalta?'var(--danger)':'var(--text2)'};cursor:pointer;font-family:inherit"><i class="ti ti-alert-triangle" style="font-size:12px"></i> Só insuficientes</button>
+    <div style="position:relative"><i class="ti ti-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px"></i><input value="${escapeAttr(_necBusca)}" oninput="_necBuscaInput(this)" placeholder="Buscar material…" style="width:180px;box-sizing:border-box;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:7px 9px 7px 28px;font-size:12.5px;color:var(--text);font-family:inherit;outline:none"></div>
+  </div>`;
+  const tabela=`<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface-painel)">
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;table-layout:fixed;min-width:640px">
+      <colgroup><col style="width:66px"><col><col style="width:160px"><col style="width:88px"><col style="width:92px"><col style="width:96px"></colgroup>
+      <thead><tr style="background:var(--bg2)">
+        <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text3)">Cód.</th>
+        <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text3)">Matéria-prima</th>
+        <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text3)">Divisão</th>
+        <th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">Estoque</th>
+        <th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">A utilizar</th>
+        <th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">Est. final</th>
+      </tr></thead>
+      <tbody id="nec-tbody">${_necTbodyHTML()}</tbody>
+    </table></div>
+  </div>`;
+  const env=_necEnvioGet();
+  const envInfo=env?`<div style="margin:-4px 0 12px;font-size:11.5px;color:var(--success)"><i class="ti ti-check" style="font-size:13px"></i> Último envio ao comprador: ${env.itens.length} item(ns) · semana ${escapeHTML(env.semana||'')} · ${env.enviadoEm===today?'hoje':formatDate(env.enviadoEm)}</div>`:'';
+  const nota=`<div style="margin-top:10px;font-size:12px;color:var(--text3);display:flex;align-items:flex-start;gap:6px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i><span>Linhas em vermelho = o estoque não cobre a semana → viram alerta de compra. <b>Dados de exemplo</b> — no Oficial, o consumo vem da programação × ficha técnica de cada produto.</span></div>`;
+  return `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">${seg}${enviar}</div>${envInfo}${kpis}${filtros}${tabela}${nota}`;
+}
+function _necSetDiv(v){ _necDiv=(_necDiv===v)?'':v; _prodRerender(); }
+function _necToggleFalta(){ _necFalta=!_necFalta; _prodRerender(); }
+function _necBuscaInput(el){ _necBusca=el.value; const tb=document.getElementById('nec-tbody'); if(tb) tb.innerHTML=_necTbodyHTML(); }
+function _necEnviar(){
+  const rup=_necCalc().filter(o=>o.falta>0);
+  if(!rup.length){ if(typeof toast==='function') toast('Nada em falta nesta semana — nada a enviar ao comprador.'); return; }
+  _necEnvioSet({semana:_prodRange(_prodDias(prodSemana)), enviadoEm:today, itens:rup.map(o=>({cod:o.cod,nome:o.nome,div:o.div,falta:o.falta,util:o.util,est:o.est}))});
+  if(typeof toast==='function') toast('📨 Enviado ao comprador — '+rup.length+' item(ns) em falta foram para Compras › Painel.');
+  _prodRerender();
+}
 
 function switchToTaskFlow(){
   hubView = 'taskflow';
@@ -9630,8 +9742,24 @@ function _comprasPainelHTML(){
     return `<div class="cp-clic" onclick="_cpAbrirItem('${o.cod}')" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o.nome)}</span>
       <span class="cp-pill" style="color:${c};background:${bg};flex:none">${o.dias} d</span></div>`;};
+  // Pedido do PCP (necessidade da semana enviada pela tela PCP › Necessidade da semana) — o que
+  // o estoque não cobre vira alerta de compra aqui. É a ponte PCP → comprador (sem print).
+  const _necEnv=(typeof _necEnvioGet==='function')?_necEnvioGet():null;
+  const necBanner=(_necEnv&&_necEnv.itens&&_necEnv.itens.length)?`<div class="cp-card" style="padding:16px 18px;margin-bottom:14px;border:1px solid var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 5%,var(--card))">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:9px">
+        <i class="ti ti-clipboard-list" style="font-size:20px;color:var(--blue-mid)"></i>
+        <div><div style="font-size:13.5px;font-weight:800;color:var(--text)">Pedido do PCP — necessidade da semana ${escapeHTML(_necEnv.semana||'')}</div>
+        <div style="font-size:12px;color:var(--text3)">${_necEnv.itens.length} item(ns) que o estoque não cobre · enviado ${_necEnv.enviadoEm===today?'hoje':formatDate(_necEnv.enviadoEm)}</div></div>
+      </div>
+      <button onclick="_necEnvioClear()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 11px;font-size:12px;color:var(--text2);cursor:pointer;font-family:inherit">Marcar como resolvido</button>
+    </div>
+    ${_necEnv.itens.map(it=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--border)">
+      <span style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(it.nome)}</span>
+      <span style="font-size:12px;color:var(--danger);font-weight:700;flex:none;white-space:nowrap">faltam ${_necFmt(it.falta)}</span></div>`).join('')}
+  </div>`:'';
   return _cpTela('Painel de Compras','O que precisa de decisão hoje — estoque, consumo e compras.',
-    _cpKPIrow([
+    necBanner+_cpKPIrow([
       _cpKPI('Valor em estoque',_cpBRL(valorEst)),
       _cpKPI('Precisa comprar',_cpNum(comprar.length),comprar.length?'var(--amber)':''),
       _cpKPI('Críticos (&lt;10d)',_cpNum(criticos.length),criticos.length?'var(--danger)':''),
