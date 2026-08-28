@@ -9675,11 +9675,12 @@ function _cpFornRowsHTML(){
       <td class="cp-n">${i+1}</td><td class="cp-item">${escapeHTML(nome)}</td>
       <td class="cp-n">${_cpBRL(f.total)}</td><td class="cp-n">${(tot?f.total/tot*100:0).toFixed(1)}%</td>
       <td class="cp-n">${pAcc.toFixed(1)}%</td>
+      <td class="cp-n" style="color:var(--text3)">a cadastrar</td>
       <td class="cp-n"><span class="cp-pill" style="color:${cor};background:var(--bg2)">${classe}</span></td>
       <td class="cp-n">${Object.keys(f.nfs).length}</td><td class="cp-n">${Object.keys(f.itens).length}</td>
     </tr>`);
   });
-  return out.join('') || `<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Nenhum fornecedor com esse nome.</td></tr>`;
+  return out.join('') || `<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Nenhum fornecedor com esse nome.</td></tr>`;
 }
 function _cpAbrirForn(cod){ _cpFornSel=cod; try{document.body.classList.remove('cp-focus');}catch(e){} comprasView='fornecedores'; renderSidebar(); renderCompras(); window.scrollTo(0,0); }
 function _cpVoltarForns(){ _cpFornSel=null; renderCompras(); }
@@ -9713,7 +9714,7 @@ function _comprasFornecedoresHTML(){
       _cpKPI('Período',_cpFornMeses?('últimos '+_cpFornMeses+' meses'):'tudo')
     ])+
     `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
-      <thead><tr><th class="r">#</th><th>Fornecedor</th><th class="r">Comprado</th><th class="r">% do total</th><th class="r">% acum.</th><th class="r">ABC</th><th class="r">NFs</th><th class="r">Itens</th></tr></thead>
+      <thead><tr><th class="r">#</th><th>Fornecedor</th><th class="r">Comprado</th><th class="r">% do total</th><th class="r">% acum.</th><th class="r">Prazo de pagamento</th><th class="r">ABC</th><th class="r">NFs</th><th class="r">Itens</th></tr></thead>
       <tbody id="cp-forn-tbody">${_cpFornRowsHTML()}</tbody></table></div>`, undefined, acao);
 }
 function _cpFichaFornHTML(cod){
