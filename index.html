@@ -6504,8 +6504,8 @@ function _necTbodyHTML(){
     const cobCor=cob==null?'var(--text3)':(cob<10?'var(--danger)':(cob<30?'var(--amber)':'var(--text2)'));
     return `<tr onclick="_cpAbrirItem('${escapeAttr(o.cod)}')" onmouseover="this.style.boxShadow='inset 3px 0 0 var(--blue-mid)'" onmouseout="this.style.boxShadow=''" title="Abrir a ficha deste item no Insumos" style="border-top:1px solid var(--border);cursor:pointer;${falta?'background:var(--danger-bg);':''}">
       <td style="padding:8px 10px;font-size:12px;color:${cc}">${escapeHTML(o.cod)}</td>
-      <td style="padding:8px 10px;font-size:12.5px;color:${c};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o.nome)}</td>
       <td style="padding:8px 10px;font-size:11.5px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o.div)}</td>
+      <td style="padding:8px 10px;font-size:12.5px;color:${c};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o.nome)}</td>
       <td style="padding:8px 10px;font-size:12.5px;text-align:right;color:${c};white-space:nowrap">${_necFmt(o.est)}</td>
       <td style="padding:8px 10px;font-size:12.5px;text-align:right;color:${c};white-space:nowrap">${_necFmt(o.util)}</td>
       <td style="padding:8px 10px;font-size:12.5px;text-align:right;font-weight:${falta?'700':'400'};color:${c};white-space:nowrap">${o.fim<0?'−'+_necFmt(-o.fim):_necFmt(o.fim)}</td>
@@ -6518,11 +6518,11 @@ function _prodNecessidadeHTML(){
   const seg=`<div style="display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:2px;flex-wrap:wrap">`+[0,1].map(i=>segBtn(i,`Semana ${i+1} · ${_prodRange(_prodDias(i))}`,prodSemana===i)).join('')+`</div>`;
   const tabela=`<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface-painel)">
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;table-layout:fixed;min-width:728px">
-      <colgroup><col style="width:66px"><col><col style="width:150px"><col style="width:86px"><col style="width:90px"><col style="width:94px"><col style="width:96px"></colgroup>
+      <colgroup><col style="width:66px"><col style="width:150px"><col><col style="width:86px"><col style="width:90px"><col style="width:94px"><col style="width:96px"></colgroup>
       <thead><tr style="background:var(--bg2)">
         <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text3)">Cód.</th>
-        <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text3)">Matéria-prima</th>
         <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text3)">Divisão</th>
+        <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text3)">Item</th>
         <th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">Estoque</th>
         <th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">A utilizar</th>
         <th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">Est. final</th>
