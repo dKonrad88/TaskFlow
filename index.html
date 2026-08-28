@@ -28860,7 +28860,7 @@ function renderProjectProVisao(p, prog){
   // "+ Adicionar setor" do detalhe — mesma gramática de "criar o próximo item da lista".
   const estruturaBloco=`<div>
     <style>.pp-estr-pen{display:none}.pp-estr-row:hover .pp-estr-pen{display:inline-flex}</style>
-    ${_ppTituloCol('ti-sitemap','Estrutura')}
+    ${_ppTituloCol('ti-sitemap','Etapas')}
     ${fasesLista}
     <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;border:1px dashed var(--border);border-radius:8px;transition:border-color .12s" onmouseover="this.style.borderColor='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)'">
       <i class="ti ti-plus" style="font-size:14px;color:var(--text3);flex-shrink:0"></i>
@@ -28934,8 +28934,8 @@ function renderProjectProVisao(p, prog){
       </div>`;
     }
     detalheBloco=`<div>
-      <div style="display:flex;align-items:center;gap:11px;margin-bottom:14px;flex-wrap:wrap">
-        <div style="flex:1;min-width:120px">${_ppTituloCol('ti-layout-rows',escapeHTML(f.nome),'',0)}</div>
+      <div style="display:flex;align-items:center;gap:11px;margin-bottom:8px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">${_ppTituloCol('ti-checklist','Tarefas','',0)}</div>
         ${window._ppSelMode?'':`<div style="position:relative">
           <button onclick="event.stopPropagation();_ppToggleFaseMenu('${f.id}')" title="Adicionar processo ou agrupar tarefas" style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="ti ti-plus"></i> Adicionar</button>
           <div id="fasemenu-${f.id}" style="display:none;position:absolute;right:0;top:calc(100% + 4px);z-index:120;background:var(--card);border:1px solid var(--border);border-radius:9px;box-shadow:0 6px 18px rgba(0,0,0,.14);min-width:232px;overflow:hidden">
@@ -28945,6 +28945,7 @@ function renderProjectProVisao(p, prog){
         </div>`}
         <span style="font-size:12px;font-weight:800;color:${cFase};min-width:34px;text-align:right">${fp.pct}%</span>
       </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;min-width:0"><i class="ti ti-layout-rows" style="font-size:13px;color:var(--text3);flex-shrink:0"></i><span style="font-size:12.5px;font-weight:700;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(f.nome)}</span></div>
       ${_planBody}
     </div>`;
   }
