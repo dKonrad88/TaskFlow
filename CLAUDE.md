@@ -422,6 +422,14 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-08-28 (g) — PC da Empresa — Compras: filtro "Filtros" (multi-seleção) + limpeza do Painel + barra do Estoque escondida
+Leva de vários pedidos rápidos do Diego. **Commit `52a37195`, pushado; `main == origin`; working tree limpo.** Verificado (:8899), 0 erros.
+- **Necessidade da semana:** o filtro de divisão voltou como **botão "Filtros"** (`_necFiltrosToggle`, popover) com **checklist marcar/desmarcar** (multi-seleção, `_necDivSel[]`; `_necDivToggle`/`_necDivAll`; `_necRows` filtra por `indexOf`). **Removido o botão "Marcar para comprar"** + a linha "Último envio".
+- **Painel de Compras:** (1) os 5 KPIs viraram **células SEPARADAS e SEM fundo** — só a cor do número (grid transparente no lugar do `_cpKPIrow`, que era 1 card só); (2) **banner "Pedido do PCP" REMOVIDO** (ficou órfão sem o botão de enviar); (3) **card "Preço fora da curva" REMOVIDO** → sobram **Comprar agora · Ficar de olho · Estoque parado**.
+- **Estoque:** barra de rolagem **escondida** (nova classe `.cp-noscroll` = `scrollbar-width:none` + `::-webkit-scrollbar{display:none}`, no card `overflow:auto;max-height:calc(100vh-320px)`; **o scroll continua funcionando**).
+- ⚠️ **Dead code inofensivo** (não removido): `_necEnviar`/`_necEnvioGet/Set/Clear`/`LS_NEC_ENVIO` (o fluxo de envio saiu) e o cálculo `alertas` no `_comprasPainelHTML` (era do Preço fora da curva).
+- ⏳ **EM DISCUSSÃO (2 pedidos que NÃO codei — precisam de decisão, ver conversa):** (a) **"Comprar agora" por LEAD TIME** — hoje é corte fixo <10 dias de cobertura; o Diego quer por item (uns precisam comprar com 50 dias de cobertura por causa do prazo de entrega). Lead time NÃO vem dos exports (é "a cadastrar"/TI). (b) ⭐ **Necessidade → TAREFA automática**: o item em falta da semana deve virar **tarefa do JOEL (comprador)**, com ele **solicitante E executor**. Precisa: achar/criar "Joel" em `people`; gatilho (automático × botão) sem escrever no render (o P0 nº1 desta base foi render gravando no banco); e **dedup** (não recriar a cada render). Era a evolução do banner removido — o "resolver" vira concluir a tarefa.
+
 ### 2026-08-28 (f) — PC da Empresa — Necessidade da semana: removidos os KPIs + o filtro de Divisão (pedido do Diego)
 Diego circulou e pediu p/ tirar. **Commit `a4af6b43`, pushado; `main == origin`; working tree limpo.** Verificado (:8899): sem os 3 cards (Itens com consumo/Precisa comprar/Comprar estimado) e sem a linha "Divisão: …chips"; **ficaram** seletor de semana · "Marcar para comprar" · "Só insuficientes" (filtra 6) · busca · tabela clicável. 0 erros. ⚠️ `_necDiv`/`_necSetDiv`/`_necDivs` viraram **código morto inofensivo** (não removi — `_necRows` ainda lê `_necDiv`, que fica sempre '').
 
