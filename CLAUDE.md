@@ -422,6 +422,9 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-08-25 (c) — PC da Empresa — Painel: "Estrutura"→"Etapas" + coluna 2 ganha título "Tarefas"
+Pedido do Diego (rótulos). **Commit `32adfe78`, pushado; `main == origin`.** Col 1: `_ppTituloCol('ti-sitemap','Estrutura')` → `'Etapas'`. Col 2 (detalheBloco): o topo agora é `_ppTituloCol('ti-checklist','Tarefas')` (alinhado com "Etapas"), e o nome da etapa (`f.nome`) desceu p/ uma **sub-linha** logo abaixo (12.5px/700, ícone ti-layout-rows), junto do "+ Adicionar" e do %. Verificado por DOM (:8899): ordem da col2 = Tarefas · Adicionar · % → nome da etapa → Setor → tarefas. 0 erros.
+
 ### 2026-08-25 (b) — PC da Empresa — Chat sai da coluna 3 do Painel (fica só na sub-navbar)
 Pedido do Diego. **Commit `491e15c0`, pushado; `main == origin`; working tree limpo.** Verificado por DOM (:8899) — 0 erros; Painel com grid de 3 filhos (2 colunas + 1 divisor), aba Chat intacta, divisor ainda arrasta (Estrutura 300→380px).
 - O Painel (visao) virou **2 colunas [Estrutura | tarefas]** com o divisor arrastável entre elas; as tarefas ganharam a largura que era do Chat. O **Chat segue na aba "Chat"** da sub-navbar (`renderProjectProAnotacoes`, inalterado).
