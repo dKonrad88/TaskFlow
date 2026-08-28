@@ -422,6 +422,9 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-08-28 (f) — PC da Empresa — Necessidade da semana: removidos os KPIs + o filtro de Divisão (pedido do Diego)
+Diego circulou e pediu p/ tirar. **Commit `a4af6b43`, pushado; `main == origin`; working tree limpo.** Verificado (:8899): sem os 3 cards (Itens com consumo/Precisa comprar/Comprar estimado) e sem a linha "Divisão: …chips"; **ficaram** seletor de semana · "Marcar para comprar" · "Só insuficientes" (filtra 6) · busca · tabela clicável. 0 erros. ⚠️ `_necDiv`/`_necSetDiv`/`_necDivs` viraram **código morto inofensivo** (não removi — `_necRows` ainda lê `_necDiv`, que fica sempre '').
+
 ### 2026-08-28 (e) — PC da Empresa — Necessidade da semana: linhas CLICÁVEIS → ficha no Insumos + seed com códigos REAIS
 Pedido do Diego (clicar num item cai na ficha dele no Insumos). **Commit `98f3fae6`, pushado; `main == origin`; working tree limpo.** Verificado por DOM (:8899): clicar linha 82/393/703 abre `comprasView='insumos'` com a ficha CERTA (`_cpItemSel` = o código, nome do item na tela); 20 linhas, 6 rupturas, filtros/divisões/busca ok; **0 erros**.
 - ⭐ **Linha clicável** (`_necTbodyHTML`): `onclick="_cpAbrirItem('${cod}')"` + `cursor:pointer` + hover (faixa `inset 3px var(--blue-mid)`) + `title`. `_cpAbrirItem` já existia (abre a ficha do Insumos).
