@@ -9754,70 +9754,67 @@ function _cpFichaFornHTML(cod){
       <tbody>${ultimas}</tbody></table></div>`);
 }
 
-// ════════ ORDENS DE COMPRA — última vs anterior (pedido do Diego, item 6) ════════
+// ════════ ORDENS DE COMPRA EM ABERTO (pedido do Diego, ago/2026) ════════
+// ⚠️ PROTÓTIPO: pedidos em aberto NÃO vêm dos exports atuais do ERP (NF/estoque/consumo).
+// `_CP_OCABERTO` é EXEMPLO (códigos e fornecedores reais; quantidades/datas/prazos fictícios) só p/
+// demonstrar o FORMATO. O dado real virá do relatório de "pedidos em aberto" do ERP (a definir c/ a TI).
+// "Em aberto" = pedido emitido, ainda não chegou / o contábil não deu entrada da NF.
+const _CP_OCABERTO = [
+  {cod:'20017', nome:'Amendoim', um:'KG', qtd:32000, valor:176000, forn:'ALMEIDA & ALMEIDA IMPORTACAO E EXPORTACAO LTDA', prazo:'30/60 dias', emissao:'2026-08-14', prevista:'2026-09-02', oc:'OC-4471'},
+  {cod:'20001', nome:'Açúcar Cristal', um:'KG', qtd:48000, valor:84960, forn:'Cargill Agricola Sa', prazo:'28 dias', emissao:'2026-08-19', prevista:'2026-09-04', oc:'OC-4488'},
+  {cod:'703', nome:'Leite Em Pó Desnatado', um:'KG', qtd:6000, valor:168000, forn:'Agrofoods Brasil Alimento S/a', prazo:'30 dias', emissao:'2026-08-20', prevista:'2026-09-08', oc:'OC-4492'},
+  {cod:'1146', nome:'Óleo de Algodão Refinado', um:'KG', qtd:9000, valor:63000, forn:'Bunge Alimentos S/a', prazo:'à vista', emissao:'2026-08-22', prevista:'2026-08-30', oc:'OC-4495'},
+  {cod:'30599', nome:'Bobina - Palitinho Original 138g', um:'KG', qtd:1200, valor:49200, forn:'Pamplastic Industria e Comercio de Embalagens Plasticas Eireli', prazo:'45 dias', emissao:'2026-08-11', prevista:'2026-08-26', oc:'OC-4463'},
+  {cod:'82', nome:'Caixa de Papelão - Modelo 5 ( Rosquinha 500g  22p/fardo )', um:'UN', qtd:15000, valor:22500, forn:'New Pack Embalagens Industriais Ltda', prazo:'30 dias', emissao:'2026-08-21', prevista:'2026-09-10', oc:'OC-4494'},
+  {cod:'20019', nome:'Amido de Milho', um:'KG', qtd:12000, valor:32400, forn:'Bortoloti & Vaz Ltda', prazo:'28 dias', emissao:'2026-08-23', prevista:'2026-09-06', oc:'OC-4498'},
+  {cod:'20180', nome:'Cacau Natural - Olam e diversos', um:'KG', qtd:2500, valor:92500, forn:'Olam Agricola Ltda.', prazo:'30/60 dias', emissao:'2026-08-08', prevista:'2026-08-27', oc:'OC-4459'},
+  {cod:'158', nome:'Gordura Vegetal - (Para recheio forneável)', um:'KG', qtd:8000, valor:101840, forn:'Agrofoods Brasil Alimento S/a', prazo:'30 dias', emissao:'2026-08-24', prevista:'2026-09-12', oc:'OC-4501'},
+  {cod:'699', nome:'Saco Metalizado para Chocolate 20kg', um:'UN', qtd:5000, valor:18500, forn:'Pamplastic Industria e Comercio de Embalagens Plasticas Eireli', prazo:'45 dias', emissao:'2026-08-18', prevista:'2026-09-05', oc:'OC-4486'},
+  {cod:'30575', nome:'Ácido Cítrico', um:'KG', qtd:1000, valor:12010, forn:'Brasquim Brasil * Importacao, Exportacao, Industrializacao & Comercio', prazo:'à vista', emissao:'2026-08-25', prevista:'2026-09-01', oc:'OC-4503'},
+  {cod:'30593', nome:'Açúcar Cristal Branco', um:'KG', qtd:24000, valor:43440, forn:'J. Roberto Comercio Atacadista de Acucar Ltda', prazo:'28 dias', emissao:'2026-08-13', prevista:'2026-08-28', oc:'OC-4470'},
+  {cod:'1040', nome:'Etiqueta - Flocos de Arroz Tradicional', um:'UN', qtd:30000, valor:6600, forn:'New Pack Embalagens Industriais Ltda', prazo:'30 dias', emissao:'2026-08-26', prevista:'2026-09-15', oc:'OC-4506'},
+  {cod:'681', nome:'Fardo - 50 X 60 X 008', um:'UN', qtd:20000, valor:9800, forn:'Pamplastic Industria e Comercio de Embalagens Plasticas Eireli', prazo:'45 dias', emissao:'2026-08-16', prevista:'2026-09-03', oc:'OC-4480'},
+  {cod:'393', nome:'Chapa Preta 4,75 mm', um:'KG', qtd:3500, valor:24500, forn:'Transwerle Transportes Eireli', prazo:'30 dias', emissao:'2026-08-09', prevista:'2026-08-25', oc:'OC-4461'},
+  {cod:'564', nome:'Etiqueta Amarela 50 x 50 - Salgadão', um:'UN', qtd:40000, valor:8000, forn:'New Pack Embalagens Industriais Ltda', prazo:'30/60 dias', emissao:'2026-08-27', prevista:'2026-09-18', oc:'OC-4510'}
+];
 let _cpOrdBusca='', _cpOrdBuscaAberta=false;
 function _cpOrdBuscaToggle(){ _cpOrdBuscaAberta=!_cpOrdBuscaAberta; if(!_cpOrdBuscaAberta) _cpOrdBusca=''; renderCompras(); if(_cpOrdBuscaAberta) setTimeout(function(){ var el=document.getElementById('cp-ord-busca'); if(el) el.focus(); },30); }
 function _cpOrdBuscaInput(el){ _cpOrdBusca=el.value; const tb=document.getElementById('cp-ord-tbody'); if(tb) tb.innerHTML=_cpOrdRowsHTML(); }
 function _cpOrdRowsHTML(){
   const q=(_cpOrdBusca||'').trim().toLowerCase();
-  const L=_cpItens().filter(o=>o.compras.length>=2).map(o=>{ const a=o.compras[0], b=o.compras[1]; return {o:o,a:a,b:b,dif:b.vun>0?((a.vun-b.vun)/b.vun*100):0,impacto:(a.vun-b.vun)*a.qtd}; })
-    .filter(x=>Math.abs(x.dif)<=80).sort((x,y)=>Math.abs(y.impacto)-Math.abs(x.impacto));
-  const out=L.slice(0,300).filter(x=>!q || (x.o.nome||'').toLowerCase().indexOf(q)>=0 || _cpForn(x.a.forn[1]).toLowerCase().indexOf(q)>=0).map(x=>{
-    let c='var(--text3)',bg='transparent';
-    if(x.dif>3){c='var(--danger)';bg='var(--danger-bg)';} else if(x.dif<-3){c='var(--success)';bg='var(--success-bg)';}
-    return `<tr class="cp-clic" onclick="_cpAbrirItem('${x.o.cod}')">
-      <td class="cp-mono">${escapeHTML(x.o.cod)}</td>
-      <td class="cp-item">${escapeHTML(x.o.nome)}</td>
-      <td>${escapeHTML(_cpForn(x.a.forn[1]).slice(0,24))}</td>
-      <td class="cp-mono">${_cpDt(x.b.data)}</td><td class="cp-n">${_cpBRL(x.b.vun)}</td>
-      <td class="cp-mono">${_cpDt(x.a.data)}</td><td class="cp-n">${_cpBRL(x.a.vun)}</td>
-      <td class="cp-n"><span class="cp-pill" style="color:${c};background:${bg}">${(x.dif>0?'+':'')+x.dif.toFixed(1)}%</span></td>
-      <td class="cp-n">${_cpBRL((x.a.vun-x.b.vun)*x.a.qtd)}</td>
+  const L=_CP_OCABERTO.filter(p=>!q || (p.nome||'').toLowerCase().indexOf(q)>=0 || _cpForn(p.forn).toLowerCase().indexOf(q)>=0 || (p.oc||'').toLowerCase().indexOf(q)>=0)
+    .slice().sort((a,b)=>(a.prevista||'').localeCompare(b.prevista||''));  // entrega mais próxima primeiro
+  const out=L.map(p=>{
+    const atras = p.prevista && p.prevista < today;
+    return `<tr class="cp-clic" onclick="_cpAbrirItem('${escapeAttr(p.cod)}')">
+      <td class="cp-mono">${escapeHTML(p.cod)}</td>
+      <td class="cp-item">${escapeHTML(p.nome)}</td>
+      <td class="cp-n">${_cpNum(p.qtd,0)} <span class="cp-un">${escapeHTML(p.um||'')}</span></td>
+      <td>${escapeHTML(_cpForn(p.forn).slice(0,26))}</td>
+      <td>${escapeHTML(p.prazo||'—')}</td>
+      <td class="cp-mono">${p.emissao?_cpDt(p.emissao):'—'}</td>
+      <td class="cp-mono" style="${atras?'color:var(--danger);font-weight:600':''}">${p.prevista?_cpDt(p.prevista)+(atras?' ⚠':''):'—'}</td>
+      <td class="cp-n">${p.valor?_cpBRL(p.valor):'—'}</td>
     </tr>`;}).join('');
-  return out || `<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Nenhum item com esse nome.</td></tr>`;
+  return out || `<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Nenhuma ordem em aberto com esse filtro.</td></tr>`;
 }
 function _comprasOrdensHTML(){
-  // ⚠️ Filtro anti-lixo do dado real: variação de +/-80% num preço unitário NÃO é
-  // negociação — é erro de UNIDADE no cadastro (ex.: Ribbon comprado como "1 rolo a
-  // R$ 103" numa NF e "650m a R$ 0,16" na outra → -99,8% e impacto fantasma de -R$ 4 mi).
-  // Descartamos essas; ninguém renegocia preço em 80%+. Contado no rodapé p/ transparência.
-  const todos=_cpItens().filter(o=>o.compras.length>=2).map(o=>{
-    const a=o.compras[0], b=o.compras[1];
-    const dif=b.vun>0?((a.vun-b.vun)/b.vun*100):0;
-    const impacto=(a.vun-b.vun)*a.qtd;
-    return {o:o,a:a,b:b,dif:dif,impacto:impacto};
-  });
-  const descartados=todos.filter(x=>Math.abs(x.dif)>80).length;
-  const L=todos.filter(x=>Math.abs(x.dif)<=80)
-    .sort((x,y)=>Math.abs(y.impacto)-Math.abs(x.impacto));  // ordena pelo que PESA no bolso
-  const subiu=L.filter(x=>x.dif>0.5).length, caiu=L.filter(x=>x.dif<-0.5).length;
-  const economia=L.filter(x=>x.dif<0).reduce((a,x)=>a+((x.b.vun-x.a.vun)*x.a.qtd),0);
-  const perda=L.filter(x=>x.dif>0).reduce((a,x)=>a+((x.a.vun-x.b.vun)*x.a.qtd),0);
-  const linhas=L.slice(0,300).map(x=>{
-    let c='var(--text3)',bg='transparent';
-    if(x.dif>3){c='var(--danger)';bg='var(--danger-bg)';} else if(x.dif<-3){c='var(--success)';bg='var(--success-bg)';}
-    return `<tr class="cp-clic" onclick="_cpAbrirItem('${x.o.cod}')">
-      <td class="cp-mono">${escapeHTML(x.o.cod)}</td>
-      <td class="cp-item">${escapeHTML(x.o.nome)}</td>
-      <td>${escapeHTML(_cpForn(x.a.forn[1]).slice(0,24))}</td>
-      <td class="cp-mono">${_cpDt(x.b.data)}</td><td class="cp-n">${_cpBRL(x.b.vun)}</td>
-      <td class="cp-mono">${_cpDt(x.a.data)}</td><td class="cp-n">${_cpBRL(x.a.vun)}</td>
-      <td class="cp-n"><span class="cp-pill" style="color:${c};background:${bg}">${(x.dif>0?'+':'')+x.dif.toFixed(1)}%</span></td>
-      <td class="cp-n">${_cpBRL((x.a.vun-x.b.vun)*x.a.qtd)}</td>
-    </tr>`;}).join('');
-  const acao=_cpLupa(_cpOrdBuscaAberta,_cpOrdBusca,'_cpOrdBuscaToggle','_cpOrdBuscaInput','cp-ord-busca','Buscar item…');
-  return _cpTela('Ordens de compra','Última compra de cada item vs. a anterior — subiu ou caiu.',
+  const L=_CP_OCABERTO;
+  const valAb=L.reduce((a,p)=>a+(p.valor||0),0);
+  const nAtras=L.filter(p=>p.prevista && p.prevista<today).length;
+  const nForn=new Set(L.map(p=>p.forn)).size;
+  const acao=_cpLupa(_cpOrdBuscaAberta,_cpOrdBusca,'_cpOrdBuscaToggle','_cpOrdBuscaInput','cp-ord-busca','Buscar item, fornecedor ou OC…');
+  return _cpTela('Ordens de compra em aberto','Pedidos emitidos que ainda não chegaram — a NF não deu entrada no contábil.',
     _cpKPIrow([
-      _cpKPI('Itens comparáveis',_cpNum(L.length)),
-      _cpKPI('Subiram',_cpNum(subiu),'var(--danger)'),
-      _cpKPI('Caíram',_cpNum(caiu),'var(--success)'),
-      _cpKPI('Economia nas quedas',_cpBRL(economia),'var(--success)'),
-      _cpKPI('Custo extra nas altas',_cpBRL(perda),'var(--danger)')
+      _cpKPI('Ordens em aberto',_cpNum(L.length)),
+      _cpKPI('Valor em aberto',_cpBRL(valAb)),
+      _cpKPI('Fornecedores',_cpNum(nForn)),
+      _cpKPI('Entrega atrasada',_cpNum(nAtras),nAtras?'var(--danger)':'')
     ])+
     `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
-      <thead><tr><th>Cód.</th><th>Item</th><th>Fornecedor (últ.)</th><th>Compra anterior</th><th class="r">Preço</th><th>Última compra</th><th class="r">Preço</th><th class="r">Variação</th><th class="r">Impacto R$</th></tr></thead>
+      <thead><tr><th>Cód.</th><th>Item</th><th class="r">Quantidade comprada</th><th>Fornecedor</th><th>Prazo de pagamento</th><th>Emissão</th><th>Previsão de entrega</th><th class="r">Valor</th></tr></thead>
       <tbody id="cp-ord-tbody">${_cpOrdRowsHTML()}</tbody></table></div>
-    ${descartados?`<div style="font-size:12px;color:var(--text3);margin-top:10px;display:flex;gap:6px;align-items:baseline"><i class="ti ti-filter-off" style="font-size:13px"></i><span><b>${descartados} ${descartados===1?'item foi ocultado':'itens foram ocultados'}</b> por variação acima de 80% — quase sempre erro de unidade no cadastro do ERP (mesmo item comprado em rolo e em metro, por exemplo), não negociação de preço.</span></div>`:''}`, undefined, acao);
+    <div style="font-size:12px;color:var(--text3);margin-top:10px;display:flex;gap:6px;align-items:baseline"><i class="ti ti-info-circle" style="font-size:13px"></i><span><b>Dados de exemplo.</b> As ordens de compra em aberto não vêm nos exports atuais do ERP — virão do relatório de <b>pedidos em aberto</b> (a definir com a TI). Aqui demonstramos o formato e as regras.</span></div>`, undefined, acao);
 }
 
 // ════════ PAINEL — o cockpit ════════
