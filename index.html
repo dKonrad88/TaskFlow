@@ -9886,22 +9886,26 @@ function _comprasPainelHTML(){
   const _vencidos=_CP_VALIDADE.filter(o=>o[4]<today).sort((a,b)=>a[4]<b[4]?-1:1);
   const _aVencer=_CP_VALIDADE.filter(o=>o[4]>=today).sort((a,b)=>a[4]<b[4]?-1:1);
   const _diasCorr=(iso,n)=>{ const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
-  const _valRow=(cor,lab,aVencer)=>o=>{
-    const qtd=parseFloat(String(o[2]).replace(',','.'))||0, cons=parseFloat(String(o[5]).replace(',','.'))||0;
-    const fim=cons>0?_diasCorr(today,Math.round(qtd/cons*30)):null;
-    const risco=aVencer && fim && fim>o[4];  // termina DEPOIS de vencer → não usa a tempo (perda)
-    return `<div style="padding:7px 0;border-bottom:1px solid var(--border)">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:11.5px;color:var(--text3);flex:none;min-width:44px">${escapeHTML(o[0])}</span>
-        <span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o[1])}</span>
-        <span style="font-size:11.5px;color:var(--text3);flex:none;white-space:nowrap">${escapeHTML(o[2])} ${escapeHTML(o[3])}</span>
-        <span style="font-size:12px;color:${cor};font-weight:700;flex:none;white-space:nowrap">${lab} ${formatDate(o[4])}</span>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:2px;padding-left:54px;font-size:10.5px;color:var(--text3)">
-        <span>consumo ${escapeHTML(o[5])} ${escapeHTML(o[3])}/mês</span>
-        ${fim?`<span>·</span><span${risco?' style="color:var(--amber);font-weight:600"':''}>termina em ${formatDate(fim)}${risco?' — não usa a tempo':''}</span>`:''}
-      </div>
-    </div>`;
+  const _valTabela=(arr,cor,lab,aVencer)=>{
+    if(!arr.length) return `<div style="color:var(--text3);font-size:13px;padding:6px 0">Nada por aqui. 👍</div>`;
+    const th=(t,r,pl)=>`<th style="padding:6px ${pl?'8px 6px 22px':'8px'};font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);text-align:${r?'right':'left'};white-space:nowrap">${t}</th>`;
+    const rows=arr.map(o=>{
+      const qtd=parseFloat(String(o[2]).replace(',','.'))||0, cons=parseFloat(String(o[5]).replace(',','.'))||0;
+      const fim=cons>0?_diasCorr(today,Math.round(qtd/cons*30)):null;
+      const risco=aVencer && fim && fim>o[4];  // termina DEPOIS de vencer → não usa a tempo (perda)
+      return `<tr style="border-top:1px solid var(--border)">
+        <td style="padding:6px 8px;font-size:11.5px;color:var(--text3);white-space:nowrap">${escapeHTML(o[0])}</td>
+        <td style="padding:6px 8px;font-size:13px;font-weight:600;color:var(--text);max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o[1])}</td>
+        <td style="padding:6px 8px;font-size:12px;color:var(--text2);text-align:right;white-space:nowrap">${escapeHTML(o[5])} ${escapeHTML(o[3])}/mês</td>
+        <td style="padding:6px 8px;font-size:12px;text-align:right;white-space:nowrap;color:${risco?'var(--amber)':'var(--text3)'}">${fim?formatDate(fim):'—'}${risco?` <i class="ti ti-alert-triangle" title="Não usa a tempo — vai perder parte antes de vencer" style="font-size:11px;vertical-align:-1px"></i>`:''}</td>
+        <td style="padding:6px 8px;font-size:12.5px;color:var(--text);text-align:right;white-space:nowrap">${escapeHTML(o[2])} ${escapeHTML(o[3])}</td>
+        <td style="padding:6px 8px 6px 22px;font-size:12px;font-weight:700;text-align:right;white-space:nowrap;color:${cor}">${formatDate(o[4])}</td>
+      </tr>`;
+    }).join('');
+    return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+      <thead><tr>${th('Cód')}${th('Item')}${th('Consumo',1)}${th('Termina em',1)}${th('Qtd',1)}${th(lab,1,1)}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
   };
   return _cpTela('Painel de Compras','O que precisa de decisão hoje — estoque, consumo e compras.',
     necBanner+_cpKPIcards([
@@ -9921,8 +9925,8 @@ function _comprasPainelHTML(){
           <span style="font-size:12px;color:var(--text3);flex:none;white-space:nowrap">${_cpBRL(o.valor)} · ${o.semMov}d</span></div>`))}
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-top:14px">
-      ${bloco('⛔ Itens vencidos','Passaram da validade — segregar/descartar','var(--danger)',lista(_vencidos,_valRow('var(--danger)','vencido em',false)))}
-      ${bloco('⌛ Itens a vencer','Validade próxima — priorizar consumo (FEFO)','var(--amber)',lista(_aVencer,_valRow('var(--amber)','vence em',true)))}
+      ${bloco('⛔ Itens vencidos','Passaram da validade — segregar/descartar','var(--danger)',_valTabela(_vencidos,'var(--danger)','Vencido em',false))}
+      ${bloco('⌛ Itens a vencer','Validade próxima — priorizar consumo (FEFO)','var(--amber)',_valTabela(_aVencer,'var(--amber)','Vence em',true))}
     </div>
     <div style="font-size:11.5px;color:var(--text3);margin-top:10px;display:flex;gap:6px;align-items:baseline"><i class="ti ti-info-circle" style="font-size:13px"></i><span>Itens vencidos / a vencer são <b>dados de exemplo</b> — a validade virá dos <b>lotes do ERP</b> (aba Lotes e OP's do SISPRO).</span></div>`);
 }
