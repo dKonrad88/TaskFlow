@@ -28723,6 +28723,22 @@ function renderProjectProVisao(p, prog){
   const _ordE=_ppTarefasOrdenadas(p), _etE=_ppEtapas(_ordE), _numE=_ppNumHier(_ordE,_etE);
   const _anchorE=(p.prazoInicio && p.prazoInicio>today)?p.prazoInicio:today;
   const _projE=_ppProjecao(_ordE,_etE,_anchorE);
+  // ── SINAIS DE ATENÇÃO (clicáveis) — respondem "onde está o problema?" sem abrir etapa por etapa. ──
+  // Duas listas do PROJETO INTEIRO: ATRASADAS (passaram do prazo da esteira) e SEM RESPONSÁVEL.
+  // Reusam o motor já calculado (_ppStatus / t.executor). Bloqueada+sem dono é duplamente invisível
+  // (some do Meu Dia + sem responsável) → o chip "sem responsável" é o antídoto. Clicar um chip filtra
+  // a lista da direita para essas tarefas, de QUALQUER etapa (window._ppAtencao). (Diego, ago/2026)
+  const _atrasadas=[], _semDono=[];
+  if(temTarefa){ _ordE.forEach(t=>{
+    if(t.done) return;
+    if(!t.executor) _semDono.push(t);
+    if(_ppStatus(t,_ordE,_etE).estado==='atrasada') _atrasadas.push(t);
+  }); }
+  const _atrPorFase={}, _sdPorFase={};
+  _atrasadas.forEach(t=>{ const k=t.projectProFaseId; if(k) _atrPorFase[k]=(_atrPorFase[k]||0)+1; });
+  _semDono.forEach(t=>{ const k=t.projectProFaseId; if(k) _sdPorFase[k]=(_sdPorFase[k]||0)+1; });
+  // Modo atenção só vale se ainda há do que reclamar — senão limpa sozinho (não fica preso num filtro vazio).
+  if(window._ppAtencao && !(window._ppAtencao==='atrasadas'?_atrasadas.length:_semDono.length)) window._ppAtencao=null;
   // Linha de tarefa do detalhe — feita p/ PLANEJAR: badge da ETAPA (dependência), cadeado se
   // bloqueada, dias úteis editáveis e conclusão prevista de cada tarefa (Diego, jul/2026).
   const _tarefaLinha=(t)=>{
@@ -28851,6 +28867,8 @@ function renderProjectProVisao(p, prog){
         <span style="font-size:11px;font-weight:800;color:${_faseAtual?'var(--blue-mid)':'var(--text3)'};flex-shrink:0">${String(idx+1).padStart(2,'0')}</span>
         <span ondblclick="event.stopPropagation();_ppEditarNomeFase('${f.id}')" title="Duplo-clique para renomear" style="flex:1;min-width:0;font-size:13px;font-weight:${sel?'800':'700'};color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(f.nome)}</span>
         <button class="pp-estr-pen" onclick="event.stopPropagation();_ppEditarNomeFase('${f.id}')" title="Renomear" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:2px;flex-shrink:0;line-height:1"><i class="ti ti-pencil" style="font-size:12px"></i></button>
+        ${_atrPorFase[f.id]?`<span title="${_atrPorFase[f.id]} tarefa(s) atrasada(s) nesta etapa" style="font-size:9.5px;font-weight:800;color:#fff;background:var(--danger);border-radius:20px;padding:1px 6px;flex-shrink:0;line-height:1.5">${_atrPorFase[f.id]}</span>`:''}
+        ${_sdPorFase[f.id]?`<span title="${_sdPorFase[f.id]} tarefa(s) sem responsável nesta etapa" style="font-size:9.5px;font-weight:800;color:var(--text);background:var(--amber);border-radius:20px;padding:1px 6px;flex-shrink:0;line-height:1.5">${_sdPorFase[f.id]}</span>`:''}
         <span style="font-size:10.5px;color:var(--text3);white-space:nowrap;flex-shrink:0">${fp.feitas}/${fp.total}</span>
         <div style="width:44px;height:5px;background:var(--bg2);border-radius:99px;overflow:hidden;flex-shrink:0"><div style="height:100%;background:${cFase};width:${fp.pct}%"></div></div>
       </div>`;
@@ -28868,9 +28886,35 @@ function renderProjectProVisao(p, prog){
     </div>
   </div>`;
 
+  // DETALHE em MODO ATENÇÃO: lista cross-etapa das atrasadas / sem responsável, agrupada por etapa
+  // (cada uma rotulada com a etapa a que pertence), reusando _tarefaLinha. É o payoff do chip:
+  // ver o problema mesmo estando noutra etapa, e agir na hora (concluir, atribuir, abrir).
+  const _atencaoDetalhe=(mode)=>{
+    const lista = mode==='atrasadas' ? _atrasadas : _semDono;
+    const titulo = mode==='atrasadas' ? 'Atrasadas' : 'Sem responsável';
+    const cor    = mode==='atrasadas' ? 'var(--danger)' : 'var(--amber)';
+    const ico    = mode==='atrasadas' ? 'ti-alert-triangle' : 'ti-user-question';
+    const dica   = mode==='atrasadas' ? 'Passaram do prazo previsto da esteira.' : 'Ninguém definido para executar — defina o responsável para não travar quando chegar a vez.';
+    const porFase=new Map();
+    lista.forEach(t=>{ const k=t.projectProFaseId||'__none'; if(!porFase.has(k)) porFase.set(k,[]); porFase.get(k).push(t); });
+    const _subhead=(nome)=>`<div style="padding:7px 11px;background:var(--bg2);border-top:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text2);display:flex;align-items:center;gap:6px"><i class="ti ti-layout-rows" style="font-size:12px;color:var(--text3)"></i>${escapeHTML(nome)}</div>`;
+    let corpo='', primeiro=true;
+    _fasesP.forEach(f=>{ if(porFase.has(f.id)){ corpo+=(primeiro?'':'')+_subhead(f.nome)+porFase.get(f.id).map(_tarefaLinha).join(''); porFase.delete(f.id); primeiro=false; } });
+    if(porFase.size){ let resto=[]; porFase.forEach(v=>resto=resto.concat(v)); corpo+=_subhead('Sem etapa')+resto.map(_tarefaLinha).join(''); }
+    return `<div>
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px;display:flex;align-items:center;gap:7px"><i class="ti ${ico}" style="font-size:15px;color:${cor}"></i><span style="font-size:13px;font-weight:800;color:var(--text)">${titulo}</span><span style="font-size:11px;color:#fff;background:${cor};border-radius:20px;padding:1px 8px;font-weight:800">${lista.length}</span></div>
+        <button onclick="_ppSetAtencao('')" style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;font-family:inherit"><i class="ti ti-x" style="font-size:13px"></i> Fechar</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">${dica}</div>
+      <div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--surface-painel)">${corpo}</div>
+    </div>`;
+  };
   // DETAIL — setores + tarefas da fase selecionada (o conteúdo que antes abria no acordeão)
   let detalheBloco;
-  if(!_fasesP.length){
+  if(window._ppAtencao && !window._ppSelMode){
+    detalheBloco=_atencaoDetalhe(window._ppAtencao);
+  } else if(!_fasesP.length){
     detalheBloco=`<div style="background:var(--surface-painel);border:1px dashed var(--border);border-radius:12px;padding:44px 24px;text-align:center;color:var(--text3)">
       <i class="ti ti-layout-rows" style="font-size:30px;opacity:.4"></i>
       <p style="margin:11px 0 0;font-size:13px">Crie ${_ppRot(p,1,false,true)} para organizar ${_ppRot(p,2,true,true)} e tarefas.</p>
@@ -28967,13 +29011,25 @@ function renderProjectProVisao(p, prog){
   // COMENTÁRIOS (col 3) perdeu o `_ppBloco`: sem card, sem fundo — só o título `_ppTituloCol`,
   // igual ao de "Estrutura" (col 1) e ao da fase (col 2), pra as 3 colunas alinharem no topo.
   const _cols=_ppVisaoCols();
+  // Chips clicáveis "N atrasadas" / "N sem responsável" no topo da coluna de Tarefas. Só aparecem
+  // quando há do que reclamar (projeto saudável = sem faixa). Clicar filtra a lista para essas tarefas.
+  const _chipAt=(mode,ico,lab,n,cor)=>{
+    const on=window._ppAtencao===mode;
+    return `<button onclick="_ppSetAtencao('${mode}')" title="Ver ${escapeAttr(lab)} do projeto todo" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;border:1px solid ${on?cor:'var(--border)'};background:${on?`color-mix(in srgb,${cor} 14%,transparent)`:'var(--card)'};color:${on?cor:'var(--text2)'};cursor:pointer;font-family:inherit"><i class="ti ${ico}" style="font-size:13px;color:${cor}"></i> ${n} ${lab}</button>`;
+  };
+  const _atencaoChips = (temTarefa && !window._ppSelMode && (_atrasadas.length||_semDono.length))
+    ? `<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:10px">
+        ${_atrasadas.length?_chipAt('atrasadas','ti-alert-triangle','atrasada'+(_atrasadas.length>1?'s':''),_atrasadas.length,'var(--danger)'):''}
+        ${_semDono.length?_chipAt('semdono','ti-user-question','sem responsável',_semDono.length,'var(--amber)'):''}
+      </div>`
+    : '';
   // (ago/2026, Diego) Chat SAIU da coluna 3 do Painel — fica só na sub-navbar (aba "Chat"). O Painel
   // vira 2 colunas [Estrutura | tarefas], com o divisor arrastável entre elas; as tarefas ganham a
   // largura que sobrava do Chat.
   return `<div class="pp-visao-3col" style="--pp-c1:${_cols.c1}px">
     <div style="min-width:0;display:flex;flex-direction:column;gap:2px">${projecaoBloco}${estruturaBloco}${comandoBloco?`<div style="margin-top:14px">${comandoBloco}</div>`:''}</div>
     <div class="pp-col-gutter" onmousedown="_ppColResizeStart(event,'c1')" title="Arraste para ajustar a largura"><div class="pp-col-gutter-line"></div></div>
-    <div style="min-width:0">${detalheBloco}</div>
+    <div style="min-width:0">${_atencaoChips}${detalheBloco}</div>
   </div>`;
 }
 // Larguras das colunas laterais do Painel (Estrutura · Chat), redimensionáveis pelos gutters.
@@ -29260,8 +29316,12 @@ window._ppFaseSelId = window._ppFaseSelId || null;
 function _ppSelecionarFase(faseId){
   window._ppFaseSelId = faseId;
   window._ppSelMode=false; window._ppSelIds=null;  // trocar de fase sai do modo seleção
+  window._ppAtencao=null;  // escolher uma etapa = sair do filtro de atenção (volta ao master-detail)
   render();
 }
+// Filtro de atenção do Painel: alterna entre null | 'atrasadas' | 'semdono'. Clicar no mesmo chip
+// (ou passar '') limpa; clicar no outro troca. A lista da direita passa a mostrar essas tarefas.
+function _ppSetAtencao(mode){ window._ppAtencao = (!mode || window._ppAtencao===mode) ? null : mode; render(); }
 // [compat] antigo acordeão do Painel — alias p/ chamadas remanescentes
 function _ppTogglePainelFase(faseId){ _ppSelecionarFase(faseId); }
 
