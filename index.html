@@ -8631,6 +8631,9 @@ function _cpCorDias(d){
 }
 // ── Telas da área Compras (sobre os dados REAIS do ERP) ───────────────
 function _cpCSS(){ return `<style>
+  /* Compras em LARGURA CHEIA: enquanto uma tela de Compras está montada (este CSS presente), o .main
+     perde o teto de 1500px. Some ao navegar p/ fora (o CSS sai junto com o conteúdo). */
+  .main{max-width:none !important}
   .cp-catbar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
   .cp-catchip{border:1px solid var(--border);background:var(--card);color:var(--text2);border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
   .cp-catchip:hover{border-color:var(--blue-mid)}
@@ -8717,14 +8720,18 @@ function hubHead(titulo, sub, acao){
   </div>`;
 }
 function _cpTela(titulo, sub, corpo, larg, acao){
-  return `<div style="padding:20px 4px 60px;max-width:${larg||1240}px">
+  // (ago/2026, Diego) Compras usa a LARGURA CHEIA (até perto do FAB) em todas as abas: sem teto por
+  // padrão aqui, e o _cpCSS remove o max-width do .main enquanto uma tela de Compras está aberta.
+  return `<div style="padding:20px 4px 60px;max-width:${larg?larg+'px':'none'}">
     ${_cpCSS()}
     ${hubHead(titulo, sub, acao)}
     ${corpo}
   </div>`;
 }
 const _cpKPI=(lab,val,cor)=>`<div class="cp-kpi"><s>${lab}</s><b${cor?` style="color:${cor}"`:''}>${val}</b></div>`;
-const _cpKPIrow=arr=>`<div class="cp-card" style="display:flex;flex-wrap:wrap;gap:18px;padding:15px 18px;margin-bottom:14px">${arr.join('')}</div>`;
+// (ago/2026, Diego) Cada indicador em CARD separado (formato do Estoque) — vale p/ todas as telas de
+// Compras que usam _cpKPIrow (Fornecedores, Ordens de compra, Histórico, Orçamentos…). Agora == _cpKPIcards.
+const _cpKPIrow=arr=>`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">${arr.map(k=>`<div class="cp-card" style="padding:13px 16px">${k}</div>`).join('')}</div>`;
 // Variante em CARDS separados (cada indicador no seu card) — usada na tela de Estoque (Diego).
 const _cpKPIcards=arr=>`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">${arr.map(k=>`<div class="cp-card" style="padding:13px 16px">${k}</div>`).join('')}</div>`;
 const _cpVazio=t=>`<div style="text-align:center;color:var(--text3);padding:30px">${t}</div>`;
@@ -8803,6 +8810,33 @@ function _cpVoltarItens(){ _cpItemSel=null; _cpItemMes=null; try{document.body.c
 let _cpCatFiltro='todas';
 function _cpSetCat(v){ _cpCatFiltro=v; renderCompras(); window.scrollTo(0,0); }
 const _CP_CATS=['Matéria-prima','Embalagens','Manutenção','Limpeza & higiene','Outros'];
+// (ago/2026, Diego) Categoria virou botão "Filtros" (checklist multi-seleção) + busca — igual à Necessidade.
+let _cpCatSel=[], _cpInsFiltrosAberto=false, _cpInsBusca='';
+function _cpInsFiltrosToggle(){ _cpInsFiltrosAberto=!_cpInsFiltrosAberto; renderCompras(); }
+function _cpCatToggle(c){ const i=_cpCatSel.indexOf(c); if(i>=0) _cpCatSel.splice(i,1); else _cpCatSel.push(c); renderCompras(); }
+function _cpCatAll(){ _cpCatSel=[]; renderCompras(); }
+function _cpInsBuscaInput(el){ _cpInsBusca=el.value; const tb=document.getElementById('cp-ins-tbody'); if(tb) tb.innerHTML=_cpInsTbodyHTML(); const cl=document.getElementById('cp-ins-count'); if(cl) cl.textContent=_cpInsRows().length; }
+function _cpInsRows(){
+  const q=(_cpInsBusca||'').trim().toLowerCase();
+  return _cpItens().filter(o=>o.compras.length||o.est>0).filter(o=>{
+    if(_cpCatSel.length && _cpCatSel.indexOf(_cpCategoria(o.nome))<0) return false;
+    if(q && !((o.nome||'').toLowerCase().includes(q) || String(o.cod).indexOf(q)>=0)) return false;
+    return true;
+  }).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'}));
+}
+function _cpInsTbodyHTML(){
+  return _cpInsRows().map(o=>{ const [c,bg]=_cpCorDias(o.dias);
+    return `<tr class="cp-clic" onclick="_cpAbrirItem('${o.cod}')">
+      <td class="cp-mono">${escapeHTML(o.cod)}</td>
+      <td class="cp-item">${escapeHTML(o.nome)}</td>
+      <td><span class="cp-cattag">${escapeHTML(_cpCategoria(o.nome))}</span></td>
+      <td class="cp-n">${_cpNum(o.est,2)} <span class="cp-un">${escapeHTML(o.um||'')}</span></td>
+      <td class="cp-n">${o.cmu?_cpBRL(o.cmu):'—'}</td>
+      <td class="cp-n">${o.valor?_cpBRL(o.valor):'—'}</td>
+      <td class="cp-n"><span class="cp-pill" style="color:${c};background:${bg}">${o.dias===null?'—':o.dias+' d'}</span></td>
+      <td class="cp-n">${o.compras.length}</td>
+    </tr>`;}).join('') || `<tr><td colspan="8" style="padding:16px;text-align:center;color:var(--text3);font-style:italic">Nenhum item com esse filtro.</td></tr>`;
+}
 function _cpCategoria(nome){
   const s=' '+(nome||'').toLowerCase()+' '; const has=(...ks)=>ks.some(k=>s.indexOf(k)>=0);
   if(has('bobina','etiqueta','caixa de papel','caixa papel','rótulo','rotulo','sacola',' saco ','pote ','bandeja','filme','lacre','fardo','papelão','papelao',' bopp','ribbon','embalagem','cartela','blister')) return 'Embalagens';
@@ -8816,28 +8850,20 @@ function _comprasInsumosHTML(){
   const todos=_cpItens().filter(o=>o.compras.length||o.est>0);
   const cont={}; _CP_CATS.forEach(c=>cont[c]=0);
   todos.forEach(o=>{ const c=_cpCategoria(o.nome); cont[c]=(cont[c]||0)+1; });
-  if(_cpCatFiltro!=='todas' && !_CP_CATS.includes(_cpCatFiltro)) _cpCatFiltro='todas';
-  const L=(_cpCatFiltro==='todas'?todos:todos.filter(o=>_cpCategoria(o.nome)===_cpCatFiltro))
-    .sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'}));
-  const chip=(id,lab,n)=>`<button class="cp-catchip${_cpCatFiltro===id?' on':''}" onclick="_cpSetCat('${id}')">${escapeHTML(lab)} <span class="cp-catn">${n}</span></button>`;
-  const chips=`<div class="cp-catbar">${chip('todas','Todas',todos.length)}${_CP_CATS.map(c=>chip(c,c,cont[c]||0)).join('')}</div>`;
-  const linhas=L.map(o=>{
-    const [c,bg]=_cpCorDias(o.dias);
-    return `<tr class="cp-clic" onclick="_cpAbrirItem('${o.cod}')">
-      <td class="cp-mono">${escapeHTML(o.cod)}</td>
-      <td class="cp-item">${escapeHTML(o.nome)}</td>
-      <td><span class="cp-cattag">${escapeHTML(_cpCategoria(o.nome))}</span></td>
-      <td class="cp-n">${_cpNum(o.est,2)} <span class="cp-un">${escapeHTML(o.um||'')}</span></td>
-      <td class="cp-n">${o.cmu?_cpBRL(o.cmu):'—'}</td>
-      <td class="cp-n">${o.valor?_cpBRL(o.valor):'—'}</td>
-      <td class="cp-n"><span class="cp-pill" style="color:${c};background:${bg}">${o.dias===null?'—':o.dias+' d'}</span></td>
-      <td class="cp-n">${o.compras.length}</td>
-    </tr>`;}).join('');
+  const catPanel=_cpInsFiltrosAberto?`<div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:236px;max-height:300px;overflow:auto;padding:6px">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px 7px"><span style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)">Categoria</span>${_cpCatSel.length?`<button onclick="_cpCatAll()" style="border:none;background:none;color:var(--blue-mid);font-size:11.5px;cursor:pointer;font-family:inherit">Limpar</button>`:''}</div>
+      ${_CP_CATS.map(c=>{const on=_cpCatSel.indexOf(c)>=0;return `<div onclick="_cpCatToggle('${escapeAttr(c)}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;color:var(--text)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'"><i class="ti ${on?'ti-square-check-filled':'ti-square'}" style="font-size:17px;color:${on?'var(--blue-mid)':'var(--text3)'}"></i><span style="flex:1;min-width:0">${escapeHTML(c)} <span style="color:var(--text3)">${cont[c]||0}</span></span></div>`;}).join('')}
+    </div>`:'';
+  const barra=`<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end;margin-bottom:12px">
+    <div style="position:relative"><button onclick="_cpInsFiltrosToggle()" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:20px;border:1px solid ${_cpCatSel.length?'var(--blue-mid)':'var(--border)'};background:${_cpCatSel.length?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--card)'};color:${_cpCatSel.length?'var(--blue-mid)':'var(--text2)'};cursor:pointer;font-family:inherit"><i class="ti ti-filter" style="font-size:13px"></i> Filtros${_cpCatSel.length?` · ${_cpCatSel.length}`:''} <i class="ti ti-chevron-${_cpInsFiltrosAberto?'up':'down'}" style="font-size:12px"></i></button>${catPanel}</div>
+    <div style="position:relative"><i class="ti ti-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px"></i><input value="${escapeAttr(_cpInsBusca)}" oninput="_cpInsBuscaInput(this)" placeholder="Buscar item…" style="width:200px;box-sizing:border-box;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:7px 9px 7px 28px;font-size:12.5px;color:var(--text);font-family:inherit;outline:none"></div>
+  </div>`;
+  const rows=_cpInsRows();
   return _cpTela('Insumos','A ficha de cada item comprado — consumo, preço e fornecedores.',
-    chips+`<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
+    barra+`<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead><tr><th>Código</th><th>Insumo</th><th>Categoria</th><th class="r">Estoque</th><th class="r">Custo médio</th><th class="r">Valor</th><th class="r">Cobertura</th><th class="r">Compras</th></tr></thead>
-      <tbody>${linhas}</tbody></table>
-      <div style="font-size:10.5px;color:var(--text3);padding:8px 14px">${L.length} ${L.length===1?'item':'itens'}${_cpCatFiltro!=='todas'?' em '+escapeHTML(_cpCatFiltro):''} · ordenado por nome. ⚠️ Categoria derivada do nome (o ERP não exporta o campo família).</div>
+      <tbody id="cp-ins-tbody">${_cpInsTbodyHTML()}</tbody></table>
+      <div style="font-size:10.5px;color:var(--text3);padding:8px 14px"><span id="cp-ins-count">${rows.length}</span> itens · ordenado por nome. ⚠️ Categoria derivada do nome (o ERP não exporta o campo família).</div>
     </div>`);
 }
 // ── Painel do item (ficha) — tela cheia estilo Reunião/Projeto: rail + header + conteúdo ──
@@ -12127,7 +12153,6 @@ function renderSidebar(){
         _areaItem('compras',_cv,'fornecedores','ti-building-store','Fornecedores','setComprasView') +
         _areaItem('compras',_cv,'historico','ti-file-invoice','Histórico de compras','setComprasView') +
         _areaItem('compras',_cv,'ordens','ti-clipboard-list','Ordens de compra','setComprasView') +
-        _areaItem('compras',_cv,'orcamentos','ti-report-money','Orçamentos','setComprasView') +
         _areaItem('compras',_cv,'noticias','ti-news','Notícias','setComprasView')
       , 'var(--text2)')
     + grupo('manutencao','ti-tool','Manutenção',
