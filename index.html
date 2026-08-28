@@ -6451,7 +6451,8 @@ function _prodDrop(e,key){ e.preventDefault(); e.currentTarget.classList.remove(
 // semanal que o PCP mandava. ⚠️ PROTÓTIPO: DADOS DE EXEMPLO — no Oficial o consumo vem
 // de programação × ficha técnica × estoque (o Gui liga). Aqui só o FORMATO e as REGRAS.
 const LS_NEC_ENVIO='taskflow_pcp_necessidade';
-let _necDivSel=[], _necFiltrosAberto=false, _necFalta=false, _necBusca='';
+let _necDivSel=[], _necFiltrosAberto=false, _necFalta=false, _necBusca='', _necBuscaAberta=false;
+function _necBuscaToggle(){ _necBuscaAberta=!_necBuscaAberta; if(!_necBuscaAberta) _necBusca=''; renderCompras(); if(_necBuscaAberta) setTimeout(function(){ var el=document.getElementById('nec-busca'); if(el) el.focus(); },30); }
 // [cod, nome, divisão, estoque, aUtilizar (base semana 1), preço R$/un].
 // ⚠️ Os CÓDIGOS e o ESTOQUE são REAIS (batem com os itens do Insumos, _cpItens) — assim clicar numa
 // linha abre a FICHA de verdade (_cpAbrirItem). O "a utilizar" é EXEMPLO (no Oficial vem da
@@ -6519,7 +6520,6 @@ function _prodNecessidadeHTML(){
   const filtros=`<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
     <div style="position:relative"><button onclick="_necFiltrosToggle()" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:4px 11px;border-radius:20px;border:1px solid ${_necDivSel.length?'var(--blue-mid)':'var(--border)'};background:${_necDivSel.length?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--card)'};color:${_necDivSel.length?'var(--blue-mid)':'var(--text2)'};cursor:pointer;font-family:inherit"><i class="ti ti-filter" style="font-size:13px"></i> Filtros${_necDivSel.length?` · ${_necDivSel.length}`:''} <i class="ti ti-chevron-${_necFiltrosAberto?'up':'down'}" style="font-size:12px"></i></button>${divPanel}</div>
     <button onclick="_necToggleFalta()" style="font-size:11.5px;font-weight:600;padding:4px 11px;border-radius:20px;border:1px solid ${_necFalta?'var(--danger)':'var(--border)'};background:${_necFalta?'var(--danger-bg)':'var(--card)'};color:${_necFalta?'var(--danger)':'var(--text2)'};cursor:pointer;font-family:inherit"><i class="ti ti-alert-triangle" style="font-size:12px"></i> Só insuficientes</button>
-    <div style="position:relative"><i class="ti ti-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px"></i><input value="${escapeAttr(_necBusca)}" oninput="_necBuscaInput(this)" placeholder="Buscar material…" style="width:180px;box-sizing:border-box;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:7px 9px 7px 28px;font-size:12.5px;color:var(--text);font-family:inherit;outline:none"></div>
   </div>`;
   const tabela=`<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface-painel)">
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;table-layout:fixed;min-width:640px">
@@ -8734,6 +8734,13 @@ const _cpKPI=(lab,val,cor)=>`<div class="cp-kpi"><s>${lab}</s><b${cor?` style="c
 const _cpKPIrow=arr=>`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">${arr.map(k=>`<div class="cp-card" style="padding:13px 16px">${k}</div>`).join('')}</div>`;
 // Variante em CARDS separados (cada indicador no seu card) — usada na tela de Estoque (Diego).
 const _cpKPIcards=arr=>`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">${arr.map(k=>`<div class="cp-card" style="padding:13px 16px">${k}</div>`).join('')}</div>`;
+// Lupa de busca padrão de Compras (modelo do Estoque): fechada = ícone no canto; aberta = campo + X.
+// Vai no slot `acao` do _cpTela (canto sup. direito). extra = HTML opcional à esquerda do campo (ex.: filtro de período).
+function _cpLupa(aberta, valor, toggleFn, inputFn, inputId, ph, extra){
+  return aberta
+    ? `<div style="display:inline-flex;align-items:center;gap:6px">${extra||''}<input id="${inputId}" value="${escapeAttr(valor||'')}" oninput="${inputFn}(this)" placeholder="${escapeAttr(ph||'Buscar…')}" class="modal-input" style="width:220px;padding:6px 11px;font-size:12.5px"><button onclick="${toggleFn}()" title="Fechar busca" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;display:inline-flex"><i class="ti ti-x" style="font-size:16px"></i></button></div>`
+    : `<div style="display:inline-flex;align-items:center;gap:6px">${extra||''}<button onclick="${toggleFn}()" title="Buscar" style="background:var(--card);border:1px solid var(--border);border-radius:9px;cursor:pointer;color:var(--text2);width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-search" style="font-size:17px"></i></button></div>`;
+}
 const _cpVazio=t=>`<div style="text-align:center;color:var(--text3);padding:30px">${t}</div>`;
 
 // ════════ ESTOQUE ════════
@@ -8811,7 +8818,8 @@ let _cpCatFiltro='todas';
 function _cpSetCat(v){ _cpCatFiltro=v; renderCompras(); window.scrollTo(0,0); }
 const _CP_CATS=['Matéria-prima','Embalagens','Manutenção','Limpeza & higiene','Outros'];
 // (ago/2026, Diego) Categoria virou botão "Filtros" (checklist multi-seleção) + busca — igual à Necessidade.
-let _cpCatSel=[], _cpInsFiltrosAberto=false, _cpInsBusca='';
+let _cpCatSel=[], _cpInsFiltrosAberto=false, _cpInsBusca='', _cpInsBuscaAberta=false;
+function _cpInsBuscaToggle(){ _cpInsBuscaAberta=!_cpInsBuscaAberta; if(!_cpInsBuscaAberta) _cpInsBusca=''; renderCompras(); if(_cpInsBuscaAberta) setTimeout(function(){ var el=document.getElementById('cp-ins-busca'); if(el) el.focus(); },30); }
 function _cpInsFiltrosToggle(){ _cpInsFiltrosAberto=!_cpInsFiltrosAberto; renderCompras(); }
 function _cpCatToggle(c){ const i=_cpCatSel.indexOf(c); if(i>=0) _cpCatSel.splice(i,1); else _cpCatSel.push(c); renderCompras(); }
 function _cpCatAll(){ _cpCatSel=[]; renderCompras(); }
@@ -8856,7 +8864,6 @@ function _comprasInsumosHTML(){
     </div>`:'';
   const barra=`<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end;margin-bottom:12px">
     <div style="position:relative"><button onclick="_cpInsFiltrosToggle()" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:20px;border:1px solid ${_cpCatSel.length?'var(--blue-mid)':'var(--border)'};background:${_cpCatSel.length?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--card)'};color:${_cpCatSel.length?'var(--blue-mid)':'var(--text2)'};cursor:pointer;font-family:inherit"><i class="ti ti-filter" style="font-size:13px"></i> Filtros${_cpCatSel.length?` · ${_cpCatSel.length}`:''} <i class="ti ti-chevron-${_cpInsFiltrosAberto?'up':'down'}" style="font-size:12px"></i></button>${catPanel}</div>
-    <div style="position:relative"><i class="ti ti-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px"></i><input value="${escapeAttr(_cpInsBusca)}" oninput="_cpInsBuscaInput(this)" placeholder="Buscar item…" style="width:200px;box-sizing:border-box;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:7px 9px 7px 28px;font-size:12.5px;color:var(--text);font-family:inherit;outline:none"></div>
   </div>`;
   const rows=_cpInsRows();
   return _cpTela('Insumos','A ficha de cada item comprado — consumo, preço e fornecedores.',
@@ -8864,7 +8871,7 @@ function _comprasInsumosHTML(){
       <thead><tr><th>Código</th><th>Insumo</th><th>Categoria</th><th class="r">Estoque</th><th class="r">Custo médio</th><th class="r">Valor</th><th class="r">Cobertura</th><th class="r">Compras</th></tr></thead>
       <tbody id="cp-ins-tbody">${_cpInsTbodyHTML()}</tbody></table>
       <div style="font-size:10.5px;color:var(--text3);padding:8px 14px"><span id="cp-ins-count">${rows.length}</span> itens · ordenado por nome. ⚠️ Categoria derivada do nome (o ERP não exporta o campo família).</div>
-    </div>`);
+    </div>`, undefined, _cpLupa(_cpInsBuscaAberta,_cpInsBusca,'_cpInsBuscaToggle','_cpInsBuscaInput','cp-ins-busca','Buscar item…'));
 }
 // ── Painel do item (ficha) — tela cheia estilo Reunião/Projeto: rail + header + conteúdo ──
 const _CP_MESNOME=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
@@ -9779,8 +9786,9 @@ function _comprasOrdensHTML(){
 // ── Necessidade da semana (mora aqui no Compras — é a lista do que a semana vai consumir). ──
 // O conteúdo é _prodNecessidadeHTML() (dados de exemplo); envolvo em #nec-root p/ o re-render dos filtros.
 function _comprasNecessidadeHTML(){
+  const acao=_cpLupa(_necBuscaAberta,_necBusca,'_necBuscaToggle','_necBuscaInput','nec-busca','Buscar material…');
   return _cpTela('Necessidade da semana','O que a programação da semana vai consumir — e o que o estoque não cobre vira compra.',
-    `<div id="nec-root">${_prodNecessidadeHTML()}</div>`);
+    `<div id="nec-root">${_prodNecessidadeHTML()}</div>`, undefined, acao);
 }
 function _comprasPainelHTML(){
   const itens=_cpItens();
@@ -9873,7 +9881,9 @@ function _comprasOrcamentosHTML(){
 // Roda sobre os DADOS REAIS (_CP_NF). Escopo Insumos/Despesas/Tudo: as telas
 // de decisão só fazem sentido p/ insumo, mas p/ reunião com fornecedor o
 // Diego quer ver o gasto completo — daí o filtro.
-let _cpHist={escopo:'I', busca:'', meses:12};
+let _cpHist={escopo:'I', busca:'', meses:12, buscaAberta:false};
+function _cpHistBuscaToggle(){ _cpHist.buscaAberta=!_cpHist.buscaAberta; if(!_cpHist.buscaAberta) _cpHist.busca=''; renderCompras(); if(_cpHist.buscaAberta) setTimeout(function(){ var el=document.getElementById('cp-busca'); if(el) el.focus(); },30); }
+function _cpHistBuscaInput(el){ _cpHist.busca=el.value; _cpHistRefresh(); }
 function _cpLinhas(){
   if(!window.__cpCache){
     const arr=_CP_NF.map(r=>({data:r[0],forn:_CP_FO[r[1]],nf:r[2],item:_CP_IT[r[3]],
@@ -9953,18 +9963,7 @@ function _cpHistCorpoHTML(){
       <td class="cp-n">${_cpBRL(l.icms)}</td>
       <td class="cp-n">${_cpNum(l.aliq,0)}%</td>
     </tr>`;}).join('');
-  const M=_CP_META;
-  const nota = _cpHist.escopo==='I'
-    ? `<b>Base completa de insumos</b> — ${_cpNum(M.insL)} linhas / ${_cpBRL(M.insV)} no ERP.`
-    : (_cpHist.escopo==='D'
-      ? `<b>Base completa de despesas</b> — ${_cpNum(M.desL)} linhas / ${_cpBRL(M.desV)} no ERP.`
-      : `<b>Base COMPLETA do ERP</b> — ${_cpNum(M.erpL)} linhas / ${_cpBRL(M.erpV)} (insumos ${_cpBRL(M.insV)} + despesas ${_cpBRL(M.desV)}).`);
-  return `<div style="display:flex;flex-wrap:wrap;gap:18px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:15px 18px;margin-bottom:8px">
-      ${kpi('Linhas',_cpNum(L.length))}${kpi('Notas fiscais',_cpNum(nNF))}${kpi('Itens',_cpNum(nIt))}${kpi('Valor total',_cpBRL(totV))}${kpi('ICMS',_cpBRL(totI))}
-    </div>
-    <div style="font-size:12px;color:var(--text3);margin:0 2px 14px;display:flex;gap:6px;align-items:baseline">
-      <i class="ti ti-database" style="font-size:13px"></i><span>${nota} Os números acima já refletem o período e a busca escolhidos.</span>
-    </div>
+  return `${_cpKPIcards([kpi('Linhas',_cpNum(L.length)),kpi('Notas fiscais',_cpNum(nNF)),kpi('Itens',_cpNum(nIt)),kpi('Valor total',_cpBRL(totV)),kpi('ICMS',_cpBRL(totI))])}
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow-x:auto">
       <table class="cp-tbl">
         <thead><tr>
@@ -9979,8 +9978,11 @@ function _cpHistCorpoHTML(){
 }
 function _comprasHistoricoHTML(){
   const opt=(v,lab)=>`<option value="${v}"${_cpHist.meses===v?' selected':''}>${lab}</option>`;
-  return `<div style="padding:20px 4px 60px; max-width:1240px;">
+  const periodo=`<select onchange="_cpSet('meses',this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px">${opt(3,'Últimos 3 meses')}${opt(6,'Últimos 6 meses')}${opt(12,'Últimos 12 meses')}${opt(0,'Tudo')}</select>`;
+  const acao=_cpLupa(_cpHist.buscaAberta,_cpHist.busca,'_cpHistBuscaToggle','_cpHistBuscaInput','cp-busca','Buscar item, fornecedor ou NF…',periodo);
+  return `<div style="padding:20px 4px 60px;max-width:none">
     <style>
+      .main{max-width:none !important}
       .cp-tbl{width:100%;border-collapse:collapse;font-size:13px}
       .cp-tbl th,.cp-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
   .cp-tbl.cp-tbl-sm th,.cp-tbl.cp-tbl-sm td{padding:5px 6px}
@@ -9992,14 +9994,7 @@ function _comprasHistoricoHTML(){
       .cp-tbl .cp-un{color:var(--text3);font-size:10.5px}
       .cp-tbl .cp-dif{display:inline-block;padding:1px 7px;border-radius:999px;font-weight:700;font-size:11.5px}
     </style>
-    ${hubHead('Histórico de compras','O livro de notas fiscais de entrada — a base de dados da área.')}
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-      <div id="cp-seg" style="display:inline-flex;border-radius:9px;overflow:hidden">${_cpSegHTML()}</div>
-      <select onchange="_cpSet('meses',this.value)" class="modal-input" style="width:auto;padding:7px 10px;font-size:12.5px">
-        ${opt(3,'Últimos 3 meses')}${opt(6,'Últimos 6 meses')}${opt(12,'Últimos 12 meses')}${opt(0,'Tudo')}
-      </select>
-      <input id="cp-busca" value="${escapeAttr(_cpHist.busca)}" oninput="_cpSet('busca',this.value)" placeholder="Buscar item, fornecedor ou NF…" class="modal-input" style="width:auto;flex:1;min-width:220px;padding:7px 11px;font-size:12.5px">
-    </div>
+    ${hubHead('Histórico de compras','O livro de notas fiscais de entrada — a base de dados da área.',acao)}
     <div id="cp-hist-corpo">${_cpHistCorpoHTML()}</div>
   </div>`;
 }
