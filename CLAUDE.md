@@ -422,6 +422,9 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-08-28 (k) — Mac de casa — Ordens em aberto: comparação de preço (última × anterior) trazida pra dentro da tabela
+Diego quis trazer as colunas da versão ANTIGA pra tela atual, **depois da Previsão de entrega**. Em `_cpOrdRowsHTML` adicionei 6 colunas: **Compra anterior + Preço · Última compra + Preço · Variação(%) · Impacto R$** — puxando o histórico REAL por item de `_cpIdx()[p.cod].compras` (`[0]`=última, `[1]`=anterior). `dif=(a.vun-b.vun)/b.vun*100`; `impacto=(a.vun-b.vun)*a.qtd`; cor **vermelha** se subiu >3%, **verde** se caiu <-3%. Item sem ≥2 compras → "—". Agora são **14 colunas** (colspan do vazio = 14, rola na horizontal). Testado no preview (variações reais com cor: +25,8%, -15,0%…). SYNTAX_OK.
+
 ### 2026-08-28 (j) — Mac de casa — Ordens em aberto: Valor após o Item + rodapé "dados de exemplo" removido
 Pedido do Diego (2 ajustes na tela "Ordens de compra em aberto" — `_comprasOrdensHTML` / `_cpOrdRowsHTML`): (1) coluna **Valor** movida pra logo depois de **Item** (no `thead` e nas linhas); (2) removida a nota "Dados de exemplo…" do rodapé. Fiz `git pull --ff-only` antes (estava **37 commits atrás**, tree limpo). Testado no preview, SYNTAX_OK. Contexto: expliquei as colunas da versão ANTIGA dessa aba (comparação última×anterior: Cód · Item · Fornecedor(últ.) · Compra anterior + Preço · Última compra + Preço · **Variação** · **Impacto R$**, sobre dados REAIS) — recuperável do git (pré-`ef19c37`) se ele quiser trazer de volta.
 

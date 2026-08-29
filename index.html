@@ -9784,8 +9784,25 @@ function _cpOrdRowsHTML(){
   const q=(_cpOrdBusca||'').trim().toLowerCase();
   const L=_CP_OCABERTO.filter(p=>!q || (p.nome||'').toLowerCase().indexOf(q)>=0 || _cpForn(p.forn).toLowerCase().indexOf(q)>=0 || (p.oc||'').toLowerCase().indexOf(q)>=0)
     .slice().sort((a,b)=>(a.prevista||'').localeCompare(b.prevista||''));  // entrega mais próxima primeiro
+  const IDX=_cpIdx();
   const out=L.map(p=>{
     const atras = p.prevista && p.prevista < today;
+    // Histórico de preço do item (última × anterior) — dados REAIS de _CP_NF
+    const o=IDX[p.cod];
+    let cmpCells;
+    if(o && o.compras && o.compras.length>=2){
+      const a=o.compras[0], b=o.compras[1]; // a = última, b = anterior
+      const dif=b.vun>0?((a.vun-b.vun)/b.vun*100):0;
+      const impacto=(a.vun-b.vun)*a.qtd;
+      let c='var(--text3)',bg='transparent';
+      if(dif>3){c='var(--danger)';bg='var(--danger-bg)';} else if(dif<-3){c='var(--success)';bg='var(--success-bg)';}
+      cmpCells=`<td class="cp-mono">${_cpDt(b.data)}</td><td class="cp-n">${_cpBRL(b.vun)}</td>`
+        +`<td class="cp-mono">${_cpDt(a.data)}</td><td class="cp-n">${_cpBRL(a.vun)}</td>`
+        +`<td class="cp-n"><span class="cp-pill" style="color:${c};background:${bg}">${(dif>0?'+':'')+dif.toFixed(1)}%</span></td>`
+        +`<td class="cp-n">${_cpBRL(impacto)}</td>`;
+    } else {
+      cmpCells=`<td class="cp-mono">—</td><td class="cp-n">—</td><td class="cp-mono">—</td><td class="cp-n">—</td><td class="cp-n">—</td><td class="cp-n">—</td>`;
+    }
     return `<tr class="cp-clic" onclick="_cpAbrirItem('${escapeAttr(p.cod)}')">
       <td class="cp-mono">${escapeHTML(p.cod)}</td>
       <td class="cp-item">${escapeHTML(p.nome)}</td>
@@ -9795,8 +9812,9 @@ function _cpOrdRowsHTML(){
       <td>${escapeHTML(p.prazo||'—')}</td>
       <td class="cp-mono">${p.emissao?_cpDt(p.emissao):'—'}</td>
       <td class="cp-mono" style="${atras?'color:var(--danger);font-weight:600':''}">${p.prevista?_cpDt(p.prevista)+(atras?' ⚠':''):'—'}</td>
+      ${cmpCells}
     </tr>`;}).join('');
-  return out || `<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Nenhuma ordem em aberto com esse filtro.</td></tr>`;
+  return out || `<tr><td colspan="14" style="text-align:center;color:var(--text3);padding:20px">Nenhuma ordem em aberto com esse filtro.</td></tr>`;
 }
 function _comprasOrdensHTML(){
   const L=_CP_OCABERTO;
@@ -9812,7 +9830,7 @@ function _comprasOrdensHTML(){
       _cpKPI('Entrega atrasada',_cpNum(nAtras),nAtras?'var(--danger)':'')
     ])+
     `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
-      <thead><tr><th>Cód.</th><th>Item</th><th class="r">Valor</th><th class="r">Quantidade comprada</th><th>Fornecedor</th><th>Prazo de pagamento</th><th>Emissão</th><th>Previsão de entrega</th></tr></thead>
+      <thead><tr><th>Cód.</th><th>Item</th><th class="r">Valor</th><th class="r">Quantidade comprada</th><th>Fornecedor</th><th>Prazo de pagamento</th><th>Emissão</th><th>Previsão de entrega</th><th>Compra anterior</th><th class="r">Preço</th><th>Última compra</th><th class="r">Preço</th><th class="r">Variação</th><th class="r">Impacto R$</th></tr></thead>
       <tbody id="cp-ord-tbody">${_cpOrdRowsHTML()}</tbody></table></div>`, undefined, acao);
 }
 
