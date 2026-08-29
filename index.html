@@ -9505,6 +9505,7 @@ const _CP_NOTICIAS = {
 function _cpMacroFase(m){ if(!m||!m.safraMeses) return null; return m.safraMeses.indexOf(+today.slice(5,7))>=0?'safra':'entressafra'; }
 // Card "Indicadores macroeconômicos" (aba Notícias): tendência + fase da safra/entressafra + indicadores de mercado.
 function _cpMacroCard(o){
+  return ''; // [2026-08-29] Diego: ocultar Indicadores Macroeconomicos "por enquanto" — remover esta linha para reativar
   const n=_CP_NOTICIAS[o.cod]; const m=n&&n.macro; if(!m) return '';
   const t=_CP_TEND[n.tendencia]||_CP_TEND.neutro;
   const fase=_cpMacroFase(m);
