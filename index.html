@@ -8994,6 +8994,11 @@ function _cpPrecoMedLine(o, opts){
   });
   return _cpLine(serie,'precoKg',v=>_cpBRL(v)+'/'+um,Object.assign({labFmt:v=>_cpNum(v,2)},opts||{},{lineCor:'var(--blue-mid)',cor:s=>s._cor}));
 }
+// Média das últimas 3 compras = média simples do preço dos 3 ÚLTIMOS MESES com compra —
+// exatamente os 3 últimos pontos do gráfico "Preço médio de compra". Antes usava as 3 últimas
+// NOTAS, o que distorcia quando havia nota pequena a preço alto (ex.: 800 KG @ 6,50 pesava 1/3,
+// igual a uma de 20.000 KG). No mês essa nota é diluída pela quantidade, batendo com o gráfico.
+function _cpMedia3(o){ const s=(_cpItemSerie(o)||[]).filter(x=>x.precoKg!=null).slice(-3); return s.length?s.reduce((a,x)=>a+x.precoKg,0)/s.length:0; }
 function _cpResumoMes(o,serie){
   if(!_cpItemMes) return '';
   const s=serie.find(x=>x.ym===_cpItemMes); if(!s) return '';
@@ -9112,9 +9117,8 @@ function _cpSimResult(o){
   if(c.semConsumo && c.qtd<=0) return '<div style="color:var(--text3);font-size:13px;padding:6px 0">Este item não tem consumo registrado — use <b>Quantidade fixa</b> para simular preço e custo.</div>';
   if(!(c.qtd>0)) return '<div style="color:var(--text3);font-size:13px;padding:6px 0">Nada a comprar com esses parâmetros.</div>';
   const qt=tTxt(c.qtd);
-  // Comparações do custo: vs ÚLTIMA compra (precoRef) e vs MÉDIA das últimas 3 compras.
-  const cmp3=(o.compras||[]).slice(0,3);
-  const media3=cmp3.length?cmp3.reduce((a,l)=>a+(l.vun||0),0)/cmp3.length:0;
+  // Comparações do custo: vs ÚLTIMA compra (precoRef) e vs MÉDIA dos 3 últimos meses (= gráfico).
+  const media3=_cpMedia3(o);
   const cmpLine=(lab,ref)=>{ if(!(ref>0)) return '';
     const ganho=(ref-c.preco)*c.qtd, du=c.preco-ref;
     let cc,tx; if(ganho>0.005){cc='var(--success)';tx='economiza '+_cpBRL(ganho);}
@@ -9134,7 +9138,7 @@ function _cpSimResult(o){
     <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)">Comprar</div>
     <div style="font-size:23px;font-weight:800;color:var(--text);line-height:1.15;margin-top:1px">${_cpNum(c.qtd,0)} <span style="font-size:14px;font-weight:700;color:var(--text3)">${um}</span>${qt?` <span style="font-size:13px;font-weight:600;color:var(--text3)">· ${qt}</span>`:''}</div>
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><span style="font-size:12px;color:var(--text3)">Custo total</span><span style="font-size:16.5px;font-weight:800;color:var(--text)">${_cpBRL(c.custo)}</span></div>
-    <div style="margin-top:7px;display:flex;flex-direction:column;gap:5px">${tetoLine}${cmpLine('vs última compra', c.precoRef)}${cmpLine('vs média 3 compras', media3)}</div>
+    <div style="margin-top:7px;display:flex;flex-direction:column;gap:5px">${tetoLine}${cmpLine('vs última compra', c.precoRef)}${cmpLine('vs média 3 meses', media3)}</div>
   </div>`;
   // linhas de apoio (compactas, sem borda por linha)
   const linha=(lab,val)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0"><span style="font-size:12.5px;color:var(--text3)">${lab}</span><span style="font-size:13px;font-weight:700;color:var(--text);text-align:right">${val}</span></div>`;
@@ -9241,10 +9245,10 @@ function _cpSimHTML(o){
   // Premissas — cada uma na sua linha; só aparecem DEPOIS de preencher o valor do modo.
   const premRow=(lab,content)=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;flex-wrap:wrap"><span style="font-size:12.5px;color:var(--text2);min-width:122px">${lab}</span><span style="display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap">${content}</span></div>`;
   // Referências ao lado do PREÇO (Diego): média das últimas 3 compras + teto de custeio.
-  const _m3=(o.compras||[]).slice(0,3); const _media3=_m3.length?_m3.reduce((a,l)=>a+(l.vun||0),0)/_m3.length:0;
+  const _media3=_cpMedia3(o);
   const _tetoRef=_cpNumParse(_cpGetCusteio(o.cod));
   const _refPill=(lab,val,cor)=>`<span style="display:inline-flex;align-items:baseline;gap:4px;font-size:10.5px;font-weight:600;color:var(--text3);background:${cor?`color-mix(in srgb, ${cor} 13%, transparent)`:'var(--bg2)'};border:1px solid ${cor?`color-mix(in srgb, ${cor} 30%, transparent)`:'var(--border)'};border-radius:7px;padding:2px 8px;white-space:nowrap">${lab} <b style="color:${cor||'var(--text2)'}">${val}</b></span>`;
-  const refChips=`${_media3>0?_refPill('média 3', _cpBRL(_media3)):''}${_tetoRef>0?_refPill('teto', _cpBRL(_tetoRef), 'var(--danger)'):''}`;
+  const refChips=`${_media3>0?_refPill('média 3m', _cpBRL(_media3)):''}${_tetoRef>0?_refPill('teto', _cpBRL(_tetoRef), 'var(--danger)'):''}`;
   // Premissas reveladas UMA A UMA: cada uma só aparece quando a anterior tem valor (preço → carga → validade).
   const steps=[];
   if(s.modo!=='desconto') steps.push([()=>_cpSimPremOK(s.preco), premRow('Preço de compra', `${uSpan('R$')}${inpS('preco',s.preco,_cpNum(precoRef,2),'text','58px')}${uSpan('/'+um)}${refChips}`)]);
