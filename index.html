@@ -9020,13 +9020,28 @@ function _cpSetFoco(on){ document.body.classList.toggle('cp-focus', on); if(_cpI
 function _cpToggleFoco(){ _cpSetFoco(!document.body.classList.contains('cp-focus')); }
 // ── SIMULADOR DE COMPRA (card da view Resumo). Roda sobre estoque/consumo/preço do item. ──
 // Tamanho de uma CARGA fechada (caminhão) é EDITÁVEL no simulador (_cpSim.cargaTon, em toneladas) — varia por item/fornecedor.
-let _cpSim={modo:'estoqueDias', dias:'45', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'3', cargaTon:'35', validadeMeses:'6', entregas:[]};
-function _cpSimReset(){ _cpSim={modo:'estoqueDias', dias:'45', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'3', cargaTon:'35', validadeMeses:'6', entregas:[]}; }
+// modo='' começa VAZIO (fluxo passo-a-passo: primeiro escolhe "Calcular por"); os campos do modo
+// começam vazios p/ o usuário preencher (é o gatilho que libera as premissas). usarCarga: item vem em
+// carga fechada (caminhão) — desligável p/ itens de volume pequeno. entregas: cronograma de chegada.
+let _cpSim={modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'35', validadeMeses:'6', usarCarga:true, entregas:[]};
+function _cpSimReset(){ _cpSim={modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'35', validadeMeses:'6', usarCarga:true, entregas:[]}; }
 function _cpCargaKg(){ return (parseFloat(String(_cpSim.cargaTon).replace(',','.'))||0)*1000; }
-// ── Cargas escalonadas: cada carga chega numa data; validade conta da CHEGADA de cada uma; consumo FEFO (a mais velha primeiro).
+// Já preencheu o valor do modo escolhido? (gatilho que libera as premissas + o resultado no fluxo passo-a-passo)
+function _cpSimModevalFilled(){ const s=_cpSim;
+  if(s.modo==='estoqueDias'||s.modo==='comprarDias') return (parseFloat(String(s.dias).replace(',','.'))||0)>0;
+  if(s.modo==='ate') return !!s.data;
+  if(s.modo==='cargas') return (parseFloat(String(s.cargas).replace(',','.'))||0)>0;
+  if(s.modo==='qtd'||s.modo==='desconto') return (parseFloat(String(s.qtd).replace(',','.'))||0)>0;
+  return false; }
+function _cpSimToggleCarga(){ _cpSim.usarCarga=!_cpSim.usarCarga; if(!_cpSim.usarCarga && _cpSim.modo==='cargas'){ _cpSim.modo=''; } _cpSim.entregas=[]; _cpSimRerender(); }
+// ── Cronograma de entregas: cada entrega chega numa data; a validade conta da CHEGADA de cada uma;
+// o consumo diário come a mais velha primeiro (FEFO). Vale p/ QUALQUER modo/item (não só cargas).
 function _cpDiasEntre(isoA,isoB){ const a=new Date(isoA+'T00:00:00'), b=new Date(isoB+'T00:00:00'); return Math.round((b-a)/86400000); }
-function _cpSimEntregas(n){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; const e=_cpSim.entregas; for(let i=0;i<n;i++){ if(!e[i]) e[i]=today; } e.length=n; return e; }
-function _cpSimSetEntrega(i,val){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; _cpSim.entregas[i]=val; const el=document.getElementById('cp-sim-result'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]); }
+function _cpSimEntregas(n){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; const e=_cpSim.entregas; if(n<1) n=1; for(let i=0;i<n;i++){ if(!e[i]) e[i]=today; } e.length=n; return e; }
+function _cpSimRefreshResult(){ const el=document.getElementById('cp-sim-result'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]); }
+function _cpSimSetEntrega(i,val){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; _cpSim.entregas[i]=val; _cpSimRefreshResult(); }
+function _cpSimAddEntrega(){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[today]; _cpSim.entregas.push(today); _cpSimRefreshResult(); }
+function _cpSimDelEntrega(i){ if(Array.isArray(_cpSim.entregas) && _cpSim.entregas.length>1){ _cpSim.entregas.splice(i,1); _cpSimRefreshResult(); } }
 // Simulação FEFO por dia: cada lote {arr,exp,qty} (dias a partir de hoje); consome consDia/dia do lote que vence primeiro.
 // Retorna a perda (o que vence parado) por lote. É PROTÓTIPO — datas de entrega são estimativa do comprador.
 function _cpFefoSim(batches, consDia){
@@ -9062,7 +9077,8 @@ function _cpSimCalc(o){
 }
 function _cpSimResult(o){
   const c=_cpSimCalc(o), um=o.um||'';
-  const tRef=v=> (um==='KG'&&Math.abs(v)>=1000)?` (${_cpNum(v/1000,1)} t)`:'';
+  // GATE do fluxo passo-a-passo: nada de resultado até escolher o modo E preencher o valor dele.
+  if(!(_cpSim.modo && _cpSimModevalFilled())) return '';
   const tTxt=v=> (um==='KG'&&Math.abs(v)>=1000)?_cpNum(v/1000,1)+' t':'';
   if(c.semConsumo && c.qtd<=0) return '<div style="color:var(--text3);font-size:13px;padding:6px 0">Este item não tem consumo registrado — use <b>Quantidade fixa</b> para simular preço e custo.</div>';
   if(!(c.qtd>0)) return '<div style="color:var(--text3);font-size:13px;padding:6px 0">Nada a comprar com esses parâmetros.</div>';
@@ -9084,10 +9100,10 @@ function _cpSimResult(o){
   const linha=(lab,val)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0"><span style="font-size:12.5px;color:var(--text3)">${lab}</span><span style="font-size:13px;font-weight:700;color:var(--text);text-align:right">${val}</span></div>`;
   const rows=linha('Preço unitário',_cpBRL(c.preco)+'/'+um+(c.descPct>0?` <span style="color:var(--success);font-weight:600;font-size:11.5px">−${c.descPct}%</span>`:''))
     +linha('Cobertura depois', c.cobDepois!=null?`${c.cobDepois} dias <span style="color:var(--text3);font-weight:500">· até ${_cpDataFim(c.cobDepois)}</span>`:`${_cpNum(c.estDepois,0)} ${um}`);
-  // Arredondamento p/ CARGA fechada (só compra carga cheia). Linha compacta, sem bloco. Tamanho editável (_cpSim.cargaTon).
+  // Nota de CARGA FECHADA (arredondamento) — só quando o item USA carga e não está no modo "cargas".
   let cargasBloco='';
   const cargaKg=_cpCargaKg();
-  if(um==='KG' && cargaKg>0 && c.qtd>0){
+  if(_cpSim.usarCarga && um==='KG' && _cpSim.modo!=='cargas' && cargaKg>0 && c.qtd>0){
     const frac=c.qtd/cargaKg, piso=Math.floor(frac), teto=Math.ceil(frac);
     const fmtT=v=>_cpNum(v, Number.isInteger(v)?0:1), cLbl=fmtT(cargaKg/1000);
     const opt=nc=>{ const q=nc*cargaKg, cob=c.cd>0?Math.round((o.est+q)/c.cd):null; return `<b style="color:var(--text)">${nc}</b> (${fmtT(q/1000)} t · ${_cpBRL(q*c.preco)}${cob!=null?' · '+cob+'d':''})`; };
@@ -9095,80 +9111,62 @@ function _cpSimResult(o){
       ? `<div style="margin-top:11px;font-size:11px;color:var(--text3)"><i class="ti ti-truck" style="color:var(--blue-mid)"></i> Fecha exatamente <b style="color:var(--text)">${piso} carga${piso===1?'':'s'}</b> cheia${piso===1?'':'s'} (1 = ${cLbl} t).</div>`
       : `<div style="margin-top:11px;font-size:11px;color:var(--text3);line-height:1.7"><i class="ti ti-truck" style="color:var(--blue-mid)"></i> Só carga fechada (1 = ${cLbl} t) — dá ${_cpNum(frac,1)}: ${piso>=1?opt(piso)+' · ':''}${opt(teto)}</div>`;
   }
-  // Risco de VALIDADE: se a cobertura pós-compra passa da validade do produto, o excedente vence parado.
-  // Validade (meses) é editável no simulador (_cpSim.validadeMeses); consumo mensal vem do item.
-  let validadeBloco='';
+  // CRONOGRAMA DE ENTREGAS + validade via FEFO — vale p/ TODOS os modos/itens (não só cargas). Cada entrega
+  // chega numa data; a validade conta da CHEGADA de cada uma; o consumo come a mais velha primeiro (FEFO).
   const consMes=o.consMed||(o.consDia?o.consDia*30:0);
   const valM=parseFloat(String(_cpSim.validadeMeses).replace(',','.'))||0;
-  if(c.qtd>0 && valM>0 && consMes>0){
-    const consumivel=valM*consMes, cobMeses=c.estDepois/consMes;
-    const perda=Math.max(0, c.estDepois-consumivel), maxCompra=Math.max(0, consumivel-o.est);
-    if(perda>0.5){
-      const pct=Math.round(perda/c.estDepois*100), interval=Math.max(1,Math.min(3,Math.round(valM/3))), lote=consMes*interval;
-      validadeBloco=`<div style="margin-top:11px;padding:11px 13px;background:color-mix(in srgb,var(--danger) 8%,transparent);border:1px solid color-mix(in srgb,var(--danger) 32%,transparent);border-radius:9px">
-        <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;color:var(--danger)"><i class="ti ti-alert-triangle" style="font-size:14px"></i> Risco de validade</div>
-        <div style="font-size:12px;color:var(--text2);line-height:1.5;margin-top:6px">Essa quantidade dá <b style="color:var(--text)">${_cpNum(cobMeses,1)} meses</b> de cobertura, mas a validade é <b style="color:var(--text)">${_cpNum(valM,0)} meses</b> — cerca de <b>${pct}%</b> tende a vencer parado.</div>
-        <div style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap">
-          <div style="flex:1;min-width:132px;background:var(--card);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:7px;padding:7px 10px">
-            <div style="font-size:10.5px;color:var(--text3)">Máximo sem perda</div>
-            <div style="font-size:15px;font-weight:800;color:var(--danger)">${_cpNum(maxCompra,0)} ${um}${tRef(maxCompra)}</div>
-            <div style="font-size:10px;color:var(--text3)">${_cpNum(valM,0)} meses de giro</div>
-          </div>
-          <div style="flex:1;min-width:132px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:7px 10px">
-            <div style="font-size:10.5px;color:var(--text3)">Tende a vencer</div>
-            <div style="font-size:15px;font-weight:800;color:var(--danger)">${_cpNum(perda,0)} ${um}${tRef(perda)}</div>
-            <div style="font-size:10px;color:var(--text3)">≈ ${_cpBRL(perda*c.preco)} a descartar</div>
-          </div>
-        </div>
-        <div style="font-size:11px;color:var(--text2);line-height:1.5;margin-top:9px;padding-top:8px;border-top:1px dashed var(--border)"><i class="ti ti-calendar-repeat" style="color:var(--blue-mid)"></i> Comprar menos, mais vezes: <b style="color:var(--text)">${_cpNum(lote,0)} ${um}</b> agora e repetir a cada <b style="color:var(--text)">${interval} ${interval===1?'mês':'meses'}</b>.</div>
-      </div>`;
-    } else {
-      validadeBloco=`<div style="margin-top:9px;font-size:11px;color:var(--success)"><i class="ti ti-circle-check"></i> Cabe na validade — ${_cpNum(cobMeses,1)} de ${_cpNum(valM,0)} meses de cobertura.</div>`;
-    }
-  } else if(c.qtd>0 && valM<=0){
-    validadeBloco=`<div style="margin-top:9px;font-size:10.5px;color:var(--text3)"><i class="ti ti-info-circle"></i> Informe a <b>validade (meses)</b> do item para checar risco de perda por vencimento.</div>`;
-  }
-  // MODO CARGAS (2+ cargas): elas normalmente NÃO chegam todas hoje. Deixa agendar a chegada de cada
-  // carga e recalcula o vencimento com FEFO — mais realista que assumir "tudo hoje".
   let cronoBloco='';
-  const isCargas=_cpSim.modo==='cargas';
-  const nCargas=isCargas?Math.max(0,Math.round(parseFloat(String(_cpSim.cargas).replace(',','.'))||0)):0;
-  if(isCargas && nCargas>=2 && cargaKg>0 && consMes>0 && valM>0){
-    const ent=_cpSimEntregas(nCargas), consDia=consMes/30, valDias=Math.round(valM*30);
+  if(c.qtd>0 && valM>0 && consMes>0){
+    const isCargas=_cpSim.modo==='cargas';
+    const N=isCargas?Math.max(1,Math.round(parseFloat(String(_cpSim.cargas).replace(',','.'))||1)):Math.max(1,(Array.isArray(_cpSim.entregas)?_cpSim.entregas.length:1));
+    const ent=_cpSimEntregas(N);
+    const consDia=consMes/30, valDias=Math.round(valM*30), qtyPer=c.qtd/ent.length;
     const batches=[];
     if(o.est>0) batches.push({arr:0, exp:valDias, qty:o.est, _i:-1});
-    ent.forEach((iso,i)=>{ const off=Math.max(0,_cpDiasEntre(today,iso)); batches.push({arr:off, exp:off+valDias, qty:cargaKg, _i:i}); });
+    ent.forEach((iso,i)=>{ const off=Math.max(0,_cpDiasEntre(today,iso)); batches.push({arr:off, exp:off+valDias, qty:qtyPer, _i:i}); });
     const sim=_cpFefoSim(batches, consDia);
-    const perdaTot=sim.reduce((a,b)=>a+b.waste,0), totalKg=o.est+nCargas*cargaKg;
+    const perdaTot=sim.reduce((a,b)=>a+b.waste,0), totalKg=o.est+c.qtd;
+    const delLbl=isCargas?'Carga':(ent.length>1?'Entrega':'');
     const rowsCrono=ent.map((iso,i)=>{
       const b=sim.find(x=>x._i===i), w=b?b.waste:0;
       const dinput=`<input type="date" value="${escapeAttr(iso)}" onchange="_cpSimSetEntrega(${i},this.value)" class="cp-sim-inp" style="width:130px;font-size:12px">`;
       const wtxt=w>0.5?`<span style="color:var(--danger);font-weight:700;font-size:11.5px">vence ${_cpNum(w,0)} ${um}</span>`:`<span style="color:var(--success);font-size:11.5px"><i class="ti ti-check"></i> ok</span>`;
-      return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap"><span style="font-size:12px;color:var(--text2);min-width:64px">Carga ${i+1}</span><span style="font-size:11px;color:var(--text3)">chega em</span>${dinput}${wtxt}</div>`;
+      const del=(!isCargas && ent.length>1)?`<button onclick="_cpSimDelEntrega(${i})" title="Remover entrega" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;display:inline-flex"><i class="ti ti-x" style="font-size:13px"></i></button>`:'';
+      const rot=delLbl?`${delLbl} ${i+1} · ${_cpNum(qtyPer,0)} ${um}`:`${_cpNum(qtyPer,0)} ${um}`;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap"><span style="font-size:12px;color:var(--text2);min-width:${delLbl?'110px':'70px'}">${rot}</span><span style="font-size:11px;color:var(--text3)">chega em</span>${dinput}${wtxt}${del}</div>`;
     }).join('');
+    const addBtn=!isCargas?`<button onclick="_cpSimAddEntrega()" style="margin-top:7px;background:none;border:1px dashed var(--border);border-radius:7px;cursor:pointer;color:var(--blue-mid);font-size:11.5px;font-weight:600;padding:5px 10px;font-family:inherit"><i class="ti ti-plus"></i> dividir em outra entrega</button>`:'';
     const okAll=perdaTot<=0.5;
+    const header=isCargas?'Quando cada carga chega':(ent.length>1?'Quando cada entrega chega':'Quando o item chega');
+    const dica=okAll?`<i class="ti ti-circle-check"></i> Nada vence — tudo é consumido dentro da validade.`:`<i class="ti ti-alert-triangle"></i> ~<b>${_cpNum(perdaTot,0)} ${um}</b> (${Math.round(perdaTot/totalKg*100)}%) vence · ≈ ${_cpBRL(perdaTot*c.preco)} a descartar. ${ent.length>1?'Empurre as chegadas para frente.':'Compre menos, ou parcele em mais entregas.'}`;
     cronoBloco=`<div style="margin-top:12px;padding:12px 14px;background:var(--bg2);border-radius:10px">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:8px"><i class="ti ti-truck-delivery" style="color:var(--blue-mid)"></i> Quando cada carga chega</div>
-      ${rowsCrono}
-      <div style="margin-top:9px;padding-top:9px;border-top:1px dashed var(--border);font-size:12px;font-weight:700;color:${okAll?'var(--success)':'var(--danger)'};line-height:1.5">${okAll?`<i class="ti ti-circle-check"></i> Com esse escalonamento, nada vence — tudo é consumido dentro da validade.`:`<i class="ti ti-alert-triangle"></i> Mesmo escalonado, ~<b>${_cpNum(perdaTot,0)} ${um}</b> (${Math.round(perdaTot/totalKg*100)}%) vence · ≈ ${_cpBRL(perdaTot*c.preco)} a descartar. Empurre as chegadas mais para frente.`}</div>
-      <div style="font-size:10.5px;color:var(--text3);margin-top:6px">Consumo ${_cpNum(consMes,0)} ${um}/mês · validade ${_cpNum(valM,0)} meses a partir da chegada de cada carga (FEFO). Datas = estimativa sua.</div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:8px"><i class="ti ti-truck-delivery" style="color:var(--blue-mid)"></i> ${header}</div>
+      ${rowsCrono}${addBtn}
+      <div style="margin-top:9px;padding-top:9px;border-top:1px dashed var(--border);font-size:12px;font-weight:700;color:${okAll?'var(--success)':'var(--danger)'};line-height:1.5">${dica}</div>
+      <div style="font-size:10.5px;color:var(--text3);margin-top:6px">Consumo ${_cpNum(consMes,0)} ${um}/mês · validade ${_cpNum(valM,0)} meses a partir da chegada de cada entrega (FEFO). Datas = estimativa sua.</div>
     </div>`;
+  } else if(c.qtd>0 && valM<=0){
+    cronoBloco=`<div style="margin-top:9px;font-size:10.5px;color:var(--text3)"><i class="ti ti-info-circle"></i> Informe a <b>validade (meses)</b> para checar risco de vencimento.</div>`;
   }
-  const valFinal = cronoBloco || validadeBloco;               // no modo cargas o cronograma substitui o bloco lump-sum
-  const cargasFinal = isCargas ? '' : cargasBloco;            // e a nota de "carga cheia" (redundante quando já são N cargas)
-  return hero+rows+valFinal+cargasFinal;
+  return hero+rows+cronoBloco+cargasBloco;
 }
 function _cpSimHTML(o){
   const s=_cpSim, um=o.um||'';
   const precoRef=o.ultPreco||o.precoCompra||0;
-  const inp=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimInput('${campo}',this.value)" class="cp-sim-inp" style="width:${w||'50px'}"${extra?' '+extra:''}>`;
+  const cargaOK = s.usarCarga && um==='KG';       // carga (caminhão) só p/ item em KG e se ligado
+  const filled = _cpSimModevalFilled();           // já preencheu o valor do modo? (libera premissas + resultado)
+  // Campo do MODO: oninput só guarda o valor (sem re-render, p/ não perder foco); onchange (ao sair do campo) re-renderiza e LIBERA o próximo passo.
+  const inp=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimSet('${campo}',this.value)" onchange="_cpSimRerender()" class="cp-sim-inp" style="width:${w||'50px'}"${extra?' '+extra:''}>`;
+  // Campo de PREMISSA: já visível → atualiza o resultado ao vivo.
   const inpS=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimInput('${campo}',this.value)" class="cp-sim-inp" style="width:${w||'42px'};font-size:12px">`;
   const lb=t=>`<span style="font-size:13px;color:var(--text2)">${t}</span>`;
-  // Quantidade com máscara de milhar (BR): exibe formatado, guarda cru em _cpSim.qtd.
-  const inpQtd=(w)=>`<input type="text" inputmode="numeric" value="${escapeAttr(_cpSimFmtQtd(s.qtd))}" placeholder="0" oninput="_cpSimQtd(this)" class="cp-sim-inp" style="width:${w||'104px'}">`;
-  const selUn=`<select onchange="_cpSimInput('unidade',this.value)" class="cp-sim-inp" style="width:auto;text-align:left;font-weight:600">${um==='KG'?`<option value="kg"${s.unidade==='kg'?' selected':''}>kg</option><option value="ton"${s.unidade==='ton'?' selected':''}>t</option>`:`<option value="kg" selected>${escapeHTML(um||'un')}</option>`}</select>`;
-  // Modo do cálculo vira um DROPDOWN (era 6 botões) — bem mais leve. Só o input do modo escolhido aparece.
-  const MODOS=[['estoqueDias','Estoque para X dias'],['comprarDias','Comprar X dias de consumo'],['ate','Durar até uma data'],['qtd','Quantidade fixa'],['cargas','Número de cargas'],['desconto','Simular desconto %']];
+  const uSpan=t=>`<span style="font-size:12px;color:var(--text3)">${t}</span>`;
+  const inpQtd=(w)=>`<input type="text" inputmode="numeric" value="${escapeAttr(_cpSimFmtQtd(s.qtd))}" placeholder="0" oninput="_cpSimQtd(this)" onchange="_cpSimRerender()" class="cp-sim-inp" style="width:${w||'104px'}">`;
+  const selUn=`<select onchange="_cpSimSet('unidade',this.value);_cpSimRerender()" class="cp-sim-inp" style="width:auto;text-align:left;font-weight:600">${um==='KG'?`<option value="kg"${s.unidade==='kg'?' selected':''}>kg</option><option value="ton"${s.unidade==='ton'?' selected':''}>t</option>`:`<option value="kg" selected>${escapeHTML(um||'un')}</option>`}</select>`;
+  // Passo 1: escolher o modo. Começa em "— escolha —" (fluxo passo-a-passo). "Número de cargas" só se usar carga.
+  const MODOS=[['','— escolha —'],['estoqueDias','Estoque para X dias'],['comprarDias','Comprar X dias de consumo'],['ate','Durar até uma data'],['qtd','Quantidade fixa']];
+  if(cargaOK) MODOS.push(['cargas','Número de cargas']);
+  MODOS.push(['desconto','Simular desconto %']);
   const selModo=`<select onchange="_cpSimModo(this.value)" class="cp-sim-inp" style="width:auto;text-align:left;font-size:13.5px;font-weight:700;color:var(--blue-mid);max-width:100%">${MODOS.map(m=>`<option value="${m[0]}"${s.modo===m[0]?' selected':''}>${m[1]}</option>`).join('')}</select>`;
   let campoModo='';
   if(s.modo==='estoqueDias') campoModo=`${lb('Ter estoque para')}${inp('dias',s.dias,'','number','48px','min="0"')}${lb('dias')}`;
@@ -9177,23 +9175,30 @@ function _cpSimHTML(o){
   else if(s.modo==='qtd') campoModo=`${lb('Comprar')}${inpQtd('108px')}${selUn}`;
   else if(s.modo==='cargas') campoModo=`${lb('Comprar')}${inp('cargas',s.cargas,'','number','56px','min="0"')}${lb('cargas')}`;
   else if(s.modo==='desconto') campoModo=`${lb('Comprar')}${inpQtd('108px')}${selUn}${lb('com')}${inp('descPct',s.descPct,'','number','52px','min="0" max="100"')}${lb('% desc.')}`;
-  // Premissas (preço · carga · validade) — cada uma na SUA linha, com rótulo, no estilo do "Ter estoque para".
+  // Premissas — cada uma na sua linha; só aparecem DEPOIS de preencher o valor do modo.
   const premRow=(lab,content)=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0"><span style="font-size:12.5px;color:var(--text2);min-width:122px">${lab}</span><span style="display:inline-flex;align-items:center;gap:5px">${content}</span></div>`;
-  const uSpan=t=>`<span style="font-size:12px;color:var(--text3)">${t}</span>`;
   const prem=[];
   if(s.modo!=='desconto') prem.push(premRow('Preço de compra', `${uSpan('R$')}${inpS('preco',s.preco,_cpNum(precoRef,2),'text','58px')}${uSpan('/'+um)}`));
-  if(um==='KG') prem.push(premRow('Tamanho da carga', `${inpS('cargaTon',s.cargaTon,'','number','48px','min="0" step="0.5"')}${uSpan('t')}`));
+  if(cargaOK) prem.push(premRow('Tamanho da carga', `${inpS('cargaTon',s.cargaTon,'','number','48px','min="0" step="0.5"')}${uSpan('t')}`));
   prem.push(premRow('Validade', `${inpS('validadeMeses',s.validadeMeses,'—','number','44px','min="0" step="1"')}${uSpan('meses')}`));
+  const premBlock = (s.modo && filled)?`<div style="margin-bottom:14px;padding-top:8px;border-top:1px dashed var(--border)">${prem.join('')}</div>`:'';
+  // Toggle "carga fechada" (só item KG) — discreto, logo abaixo do "Calcular por". Desligar tira a carga da conta.
+  const toggleCarga = um==='KG' ? `<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:11.5px;color:var(--text3);margin-bottom:11px"><input type="checkbox" ${s.usarCarga?'checked':''} onchange="_cpSimToggleCarga()" style="cursor:pointer;margin:0"> Compro em carga fechada (caminhão)</label>` : '';
   return `<div class="cp-card" id="cp-sim" style="padding:15px 17px">
     <div class="cp-card-title"><span>Simulador de compra</span><span class="sub">consumo ${o.consMed?_cpNum(o.consMed,0)+' '+um+'/mês':'—'}</span></div>
-    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:9px"><span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3)">Calcular por</span>${selModo}</div>
-    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:10px">${campoModo}</div>
-    <div style="margin-bottom:14px;padding-top:8px;border-top:1px dashed var(--border)">${prem.join('')}</div>
+    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:${toggleCarga?'8px':(s.modo?'10px':'2px')}"><span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3)">Calcular por</span>${selModo}</div>
+    ${toggleCarga}
+    ${s.modo?`<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:${filled?'10px':'2px'}">${campoModo}</div>`:''}
+    ${premBlock}
     <div id="cp-sim-result">${_cpSimResult(o)}</div>
   </div>`;
 }
-function _cpSimModo(m){ _cpSim.modo=m; _cpSimRerender(); }
-function _cpSimInput(campo,val){ _cpSim[campo]=val; const el=document.getElementById('cp-sim-result'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]); }
+function _cpSimModo(m){ _cpSim.modo=m; _cpSim.entregas=[]; _cpSimRerender(); }
+// _cpSimSet: usado pelos campos do MODO — guarda o valor e SÓ atualiza o resultado se ele já estiver visível
+// (durante a digitação inicial o resultado ainda não apareceu; ele é revelado no onchange via _cpSimRerender).
+function _cpSimSet(campo,val){ _cpSim[campo]=val; const el=document.getElementById('cp-sim-result'); if(el && el.innerHTML.trim()!=='' && _cpItemSel && _cpIdx()[_cpItemSel]) el.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]); }
+// _cpSimInput: usado pelos campos de PREMISSA (já visíveis) — atualiza o resultado ao vivo.
+function _cpSimInput(campo,val){ _cpSim[campo]=val; _cpSimRefreshResult(); }
 // Máscara de milhar (BR) do campo Quantidade: guarda o valor CRU em _cpSim.qtd (parseável) e EXIBE formatado.
 function _cpSimFmtQtd(v){ if(v==null||v==='') return ''; const s=String(v), i=s.indexOf(','); const intp=(i>=0?s.slice(0,i):s).replace(/\D/g,'').replace(/^0+(?=\d)/,''); const dec=i>=0?s.slice(i+1).replace(/\D/g,''):null; return (intp||'0').replace(/\B(?=(\d{3})+(?!\d))/g,'.')+(dec!=null?','+dec:''); }
 function _cpSimQtd(el){
@@ -9202,7 +9207,7 @@ function _cpSimQtd(el){
   else { const i=s.indexOf(','); const intp=(i>=0?s.slice(0,i):s).replace(/\D/g,'').replace(/^0+(?=\d)/,''); const dec=i>=0?s.slice(i+1).replace(/\D/g,'').slice(0,3):null;
     el.value=(intp||'0').replace(/\B(?=(\d{3})+(?!\d))/g,'.')+(i>=0?','+(dec||''):'');
     _cpSim.qtd=(intp||'0')+(i>=0?','+(dec||''):''); }
-  const r=document.getElementById('cp-sim-result'); if(r && _cpItemSel && _cpIdx()[_cpItemSel]) r.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]);
+  const r=document.getElementById('cp-sim-result'); if(r && r.innerHTML.trim()!=='' && _cpItemSel && _cpIdx()[_cpItemSel]) r.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]);
 }
 function _cpSimRerender(){ const el=document.getElementById('cp-sim'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.outerHTML=_cpSimHTML(_cpIdx()[_cpItemSel]); }
 function _cpFichaMainHTML(o){ if(_cpFichaView==='graficos') return _cpFichaGraficos(o); if(_cpFichaView==='historico') return _cpFichaHistorico(o); if(_cpFichaView==='fornecedores') return _cpFichaFornecedores(o); if(_cpFichaView==='noticias') return _cpFichaNoticias(o); return _cpFichaResumo(o); }
