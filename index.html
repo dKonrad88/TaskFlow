@@ -6447,10 +6447,9 @@ function _prodDrop(e,key){ e.preventDefault(); e.currentTarget.classList.remove(
 // ══════════ PCP → NECESSIDADE DA SEMANA (consumo de materiais) ══════════
 // A partir da PROGRAMAÇÃO da semana, "explode" o que será CONSUMIDO (matéria-prima +
 // embalagem) e cruza com o ESTOQUE → mostra o que falta (ruptura). O que faltar vira
-// ALERTA DE COMPRA e é enviado ao comprador (área Compras › Painel). Substitui o print
-// semanal que o PCP mandava. ⚠️ PROTÓTIPO: DADOS DE EXEMPLO — no Oficial o consumo vem
-// de programação × ficha técnica × estoque (o Gui liga). Aqui só o FORMATO e as REGRAS.
-const LS_NEC_ENVIO='taskflow_pcp_necessidade';
+// ALERTA DE COMPRA (área Compras › Painel). Substitui o print semanal que o PCP mandava.
+// ⚠️ PROTÓTIPO: DADOS DE EXEMPLO — no Oficial o consumo vem de programação × ficha técnica ×
+// estoque (o Gui liga). Aqui só o FORMATO e as REGRAS.
 let _necDivSel=[], _necFiltrosAberto=false, _necFalta=false, _necBusca='', _necBuscaAberta=false;
 function _necBuscaToggle(){ _necBuscaAberta=!_necBuscaAberta; if(!_necBuscaAberta) _necBusca=''; renderCompras(); if(_necBuscaAberta) setTimeout(function(){ var el=document.getElementById('nec-busca'); if(el) el.focus(); },30); }
 // [cod, nome, divisão, estoque, aUtilizar (base semana 1), preço R$/un].
@@ -6479,9 +6478,6 @@ const _NEC_SEED=[
   ['2100','Etiqueta - Salgadão Bacon 100g','Etiquetas Klain',6100,1200,0.20],
   ['2101','Etiqueta - Palitinho Churrasco 160g','Etiquetas Klain',4000,900,0.20]
 ];
-function _necEnvioGet(){ const o=safeJSON(LS_NEC_ENVIO,null); return (o&&typeof o==='object'&&Array.isArray(o.itens))?o:null; }
-function _necEnvioSet(o){ try{ safeSetItem(LS_NEC_ENVIO, JSON.stringify(o)); }catch(e){} }
-function _necEnvioClear(){ try{ localStorage.removeItem(LS_NEC_ENVIO); }catch(e){} if(typeof toast==='function') toast('Pedido do PCP arquivado.'); if(typeof render==='function') render(); }
 function _necFator(){ return prodSemana===0?1:1.15; }   // variação leve por semana (exemplo determinístico)
 function _necFmt(n){ return Number(Math.round(n)).toLocaleString('pt-BR'); }
 function _necDivs(){ const s=[]; _NEC_SEED.forEach(r=>{ if(s.indexOf(r[2])<0) s.push(r[2]); }); return s; }
@@ -6579,13 +6575,6 @@ function _necGerarTarefas(){
   if(last){ try{ saveTask_db(last); }catch(e){} }
   return criadas;
 }
-// Necessidade "resolvida" no Painel (o comprador vai dando baixa). Set de códigos resolvidos.
-const LS_NEC_RESOLV='taskflow_pcp_resolvidos';
-function _necResolvidos(){ const a=safeJSON(LS_NEC_RESOLV,null); return Array.isArray(a)?a.map(String):[]; }
-function _necSaveResolv(a){ try{ safeSetItem(LS_NEC_RESOLV, JSON.stringify(a)); }catch(e){} }
-function _necResolver(cod){ const a=_necResolvidos(); if(a.indexOf(String(cod))<0){ a.push(String(cod)); _necSaveResolv(a); } if(typeof render==='function') render(); }
-function _necResolverTodos(){ const a=_necResolvidos(); _necCalc().filter(o=>o.falta>0).forEach(o=>{ if(a.indexOf(String(o.cod))<0) a.push(String(o.cod)); }); _necSaveResolv(a); if(typeof toast==='function') toast('Necessidade da semana resolvida.'); if(typeof render==='function') render(); }
-function _necReabrir(){ _necSaveResolv([]); if(typeof render==='function') render(); }
 
 function switchToTaskFlow(){
   hubView = 'taskflow';
@@ -8531,7 +8520,7 @@ function setComprasView(v){
   try{ document.body.classList.remove('cp-focus'); }catch(e){}
   // Ao ABRIR a Necessidade da semana, os itens em falta viram tarefa do comprador (Joel) — automático,
   // com dedup. É AÇÃO (clique na sidebar), não render, então é seguro gravar aqui.
-  if(v==='necessidade'){ try{ const n=_necGerarTarefas(); if(n>0 && typeof toast==='function') toast('🛒 '+n+' tarefa(s) de compra criada(s) para Joel.'); }catch(e){} }
+  if(v==='necessidade'){ try{ const n=_necGerarTarefas(); if(n>0 && typeof toast==='function') toast('🛒 '+n+' tarefa(s) de compra criada(s) para o comprador.'); }catch(e){} }
   renderSidebar(); renderCompras();
 }
 function renderCompras(){
@@ -8828,8 +8817,7 @@ function _cpAbrirItem(cod){ _cpItemSel=cod; _cpItemMes=null; _cpFichaView='resum
   renderSidebar(); renderCompras(); window.scrollTo(0,0); }
 function _cpVoltarItens(){ _cpItemSel=null; _cpItemMes=null; try{document.body.classList.remove('cp-focus');}catch(e){} renderCompras(); }
 // Categoria do insumo — DERIVADA do nome por palavra-chave (o ERP não exporta o campo família).
-let _cpCatFiltro='todas';
-function _cpSetCat(v){ _cpCatFiltro=v; renderCompras(); window.scrollTo(0,0); }
+let _cpCatFiltro='todas';  // vestígio (persistido na rota); o filtro de Insumos usa _cpCatSel
 const _CP_CATS=['Matéria-prima','Embalagens','Manutenção','Limpeza & higiene','Outros'];
 // (ago/2026, Diego) Categoria virou botão "Filtros" (checklist multi-seleção) + busca — igual à Necessidade.
 let _cpCatSel=[], _cpInsFiltrosAberto=false, _cpInsBusca='', _cpInsBuscaAberta=false;
@@ -8986,14 +8974,6 @@ function _cpLine(serie,campo,fmt,opts){
     <polyline points="${linePts}" fill="none" stroke="${opts.lineCor||'var(--blue-mid)'}" stroke-width="2" opacity=".5" stroke-linejoin="round"/>
     ${circs}${vlab}${xlab}</svg>`;
 }
-function _cpComprasLine(o){
-  const c=o.compras.slice().sort((a,b)=> a.data<b.data?-1:1);
-  const serie=c.map(l=>{ const base=l.med3||0, dif=base>0?((l.vun-base)/base*100):0;
-    let cor='var(--blue-mid)'; if(dif>10)cor='var(--danger)'; else if(dif<-3)cor='var(--success)';
-    return {lbl:l.data.slice(5,7)+'/'+l.data.slice(2,4), v:l.vun, cor, ym:l.data.slice(0,7),
-      tt:_cpDt(l.data)+' · '+String(l.forn[1]).slice(0,28)+' · '+_cpBRL(l.vun)+'/'+(o.um||'')}; });
-  return _cpLine(serie,'v',v=>_cpBRL(v),{onClick:'_cpItemSetMes',selYm:true,lineCor:'var(--blue-mid)',cor:p=>p.cor,labFmt:v=>_cpNum(v,2)});
-}
 // Preço médio POR MÊS no estilo do "Todas as compras": linha azul, ponto VERDE quando o mês comprou
 // MAIS BARATO que o MÊS ANTERIOR (com compra) e VERMELHO quando MAIS CARO. Compara pelo valor
 // EXIBIDO (2 casas, R$/un): AZUL só quando MANTÉM o mesmo preço; QUALQUER mudança (p/ cima ou p/
@@ -9038,13 +9018,6 @@ function _cpFichaSetView(v){
 // Foco = tela cheia. Re-renderiza a ficha (o layout/ícone mudam).
 function _cpSetFoco(on){ document.body.classList.toggle('cp-focus', on); if(_cpItemSel && _cpIdx()[_cpItemSel]) renderCompras(); window.scrollTo(0,0); }
 function _cpToggleFoco(){ _cpSetFoco(!document.body.classList.contains('cp-focus')); }
-function _cpKpiCard(lab,val,sub,cor){
-  return `<div class="cp-card" style="padding:12px 14px">
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3)">${lab}</div>
-    <div style="font-size:18px;font-weight:800;color:${cor||'var(--text)'};margin-top:3px;line-height:1.15">${val}</div>
-    ${sub?`<div style="font-size:10.5px;color:var(--text3);margin-top:2px">${sub}</div>`:''}
-  </div>`;
-}
 // ── SIMULADOR DE COMPRA (card da view Resumo). Roda sobre estoque/consumo/preço do item. ──
 // Tamanho de uma CARGA fechada (caminhão) é EDITÁVEL no simulador (_cpSim.cargaTon, em toneladas) — varia por item/fornecedor.
 let _cpSim={modo:'estoqueDias', dias:'45', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'3', cargaTon:'35', validadeMeses:'6'};
@@ -9386,13 +9359,6 @@ const _CP_NOTICIAS = {
     }
   }
 };
-// Tendência do item: usa a notícia semeada; senão deriva do preço (último × médio de compra).
-function _cpTendencia(o){
-  const n=_CP_NOTICIAS[o.cod];
-  if(n && n.tendencia) return n.tendencia;
-  if(o.ultPreco && o.precoCompra){ const r=o.ultPreco/o.precoCompra; return r>1.03?'alta':(r<0.97?'baixa':'neutro'); }
-  return 'neutro';
-}
 // Fase atual (safra × entressafra) derivada do mês de hoje contra os meses de colheita do item.
 function _cpMacroFase(m){ if(!m||!m.safraMeses) return null; return m.safraMeses.indexOf(+today.slice(5,7))>=0?'safra':'entressafra'; }
 // Card "Indicadores macroeconômicos" (aba Notícias): tendência + fase da safra/entressafra + indicadores de mercado.
@@ -9848,9 +9814,6 @@ function _comprasPainelHTML(){
   const parados=itens.filter(o=>(o.semMov||0)>=180&&o.est>0).sort((a,b)=>b.valor-a.valor);
   const valorEst=itens.reduce((a,o)=>a+o.valor,0);
   const paradoR$=parados.reduce((a,o)=>a+o.valor,0);
-  // preco fora da curva (so compras materiais)
-  const alertas=_cpLinhas().filter(l=>l.cls==='I'&&l.med3>0&&l.tot>=1000&&((l.vun-l.med3)/l.med3*100)>10)
-    .sort((a,b)=>b.data<a.data?-1:1).slice(0,8);
   const lista=(arr,render)=>arr.length?arr.map(render).join(''):`<div style="color:var(--text3);font-size:13px;padding:6px 0">Nada por aqui. 👍</div>`;
   const bloco=(tit,sub,cor,corpo)=>`<div class="cp-card" style="padding:16px 18px">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">${tit}</div>
@@ -10003,15 +9966,8 @@ function _cpFiltradas(){
   });
 }
 function _cpSet(k,v){ _cpHist[k]=(k==='meses')?Number(v):v; _cpHistRefresh(); }
-function _cpSegHTML(){
-  const b=(v,lab)=>`<button onclick="_cpSet('escopo','${v}')" style="padding:6px 13px;border:1px solid var(--border);background:${_cpHist.escopo===v?'var(--blue-mid)':'var(--card)'};color:${_cpHist.escopo===v?'#fff':'var(--text2)'};font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">${lab}</button>`;
-  return b('I','Insumos')+b('D','Despesas')+b('T','Tudo');
-}
-// ⚠️ BUGFIX: o refresh só trocava a tabela — o destaque do escopo ficava preso no
-// valor antigo (dava p/ estar vendo "Tudo" com o botão "Insumos" aceso). Redesenha os dois.
-// O campo de busca fica FORA daqui de propósito, senão perde o foco a cada tecla.
+// O campo de busca fica FORA do #cp-hist-corpo de propósito, senão perde o foco a cada tecla.
 function _cpHistRefresh(){
-  const s=document.getElementById('cp-seg'); if(s) s.innerHTML=_cpSegHTML();
   const el=document.getElementById('cp-hist-corpo'); if(el) el.innerHTML=_cpHistCorpoHTML();
 }
 // Cobertura real do ERP x o que está embutido aqui (p/ a tela não mentir).
@@ -10053,23 +10009,8 @@ function _comprasHistoricoHTML(){
   const opt=(v,lab)=>`<option value="${v}"${_cpHist.meses===v?' selected':''}>${lab}</option>`;
   const periodo=`<select onchange="_cpSet('meses',this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px">${opt(3,'Últimos 3 meses')}${opt(6,'Últimos 6 meses')}${opt(12,'Últimos 12 meses')}${opt(0,'Tudo')}</select>`;
   const acao=_cpLupa(_cpHist.buscaAberta,_cpHist.busca,'_cpHistBuscaToggle','_cpHistBuscaInput','cp-busca','Buscar item, fornecedor ou NF…',periodo);
-  return `<div style="padding:20px 4px 60px;max-width:none">
-    <style>
-      .main{max-width:none !important}
-      .cp-tbl{width:100%;border-collapse:collapse;font-size:13px}
-      .cp-tbl th,.cp-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
-  .cp-tbl.cp-tbl-sm th,.cp-tbl.cp-tbl-sm td{padding:5px 6px}
-      .cp-tbl thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:700;background:var(--bg2);position:sticky;top:0;z-index:1}
-      .cp-tbl th.r,.cp-tbl td.cp-n{text-align:right;font-variant-numeric:tabular-nums}
-      .cp-tbl tbody tr:hover{background:var(--bg2)}
-      .cp-tbl .cp-mono{font-variant-numeric:tabular-nums;color:var(--text3);font-size:12px}
-      .cp-tbl .cp-item{font-weight:600;color:var(--text);max-width:330px;overflow:hidden;text-overflow:ellipsis}
-      .cp-tbl .cp-un{color:var(--text3);font-size:10.5px}
-      .cp-tbl .cp-dif{display:inline-block;padding:1px 7px;border-radius:999px;font-weight:700;font-size:11.5px}
-    </style>
-    ${hubHead('Histórico de compras','O livro de notas fiscais de entrada — a base de dados da área.',acao)}
-    <div id="cp-hist-corpo">${_cpHistCorpoHTML()}</div>
-  </div>`;
+  return _cpTela('Histórico de compras','O livro de notas fiscais de entrada — a base de dados da área.',
+    `<div id="cp-hist-corpo">${_cpHistCorpoHTML()}</div>`, undefined, acao);
 }
 
 function _influSubTabsHTML(){
