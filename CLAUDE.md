@@ -422,6 +422,9 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-08-29 (Mac, f) — Simulador: trocar de modo ZERA o wizard (fix do "um a um")
+Bug do Diego: em "Estoque para X dias", depois de digitar os dias, apareciam TODAS as premissas de uma vez. Causa: `preco`/`cargaTon`/`validadeMeses` PERSISTIAM da simulação anterior (ele tinha testado cargas), então já contavam como preenchidas e o loop revelava tudo. Fix: `_cpSimModo` agora zera `dias/data/qtd/cargas/preco/cargaTon/validadeMeses` (+ `entregas`/`entregasQtd`) ao trocar de modo → sempre recomeça um a um, em QUALQUER modo. Testado (estoqueDias vindo de cargas: dias→só preço→carga→validade). SYNTAX_OK.
+
 ### 2026-08-29 (Mac, e) — Simulador: info por carga no ato + "Preço de custeio" (teto) editável
 1. **Info por carga na hora**: o FEFO passou a rodar com os lotes JÁ preenchidos (estoque + cargas COM data), então cada carga mostra "dura até/vence/ok" **assim que a data é preenchida** (não espera todas). Os TOTAIS seguem só no fim (`cronoFilled`); o estRow (estoque atual) aparece desde o início.
 2. **Preço de custeio** (pedido do Diego): campo MANUAL editável no card **Indicadores** (linha logo abaixo de "Custo médio s/ imp."), por item, em localStorage `taskflow_cp_custeio` (helpers `_cpCusteioMap`/`_cpGetCusteio`/`_cpSetCusteio`, salva via safeSetItem → sincroniza). É o preço que entra na formação do preço de venda (com folga p/ oscilação). No simulador vira **"Teto de custeio (R$ X/un): dentro/ACIMA"** em VERMELHO (1ª linha das comparações), + a média das últimas 3 (já existia). Nomenclatura escolhida por mim (Diego deixou livre): "Preço de custeio" / "Teto de custeio".

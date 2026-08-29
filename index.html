@@ -9257,7 +9257,9 @@ function _cpSimHTML(o){
     <div id="cp-sim-result">${_cpSimResult(o)}</div>
   </div>`;
 }
-function _cpSimModo(m){ _cpSim.modo=m; _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); }
+// Trocar de MODO zera o wizard inteiro (valor do modo + premissas + cronograma) — assim SEMPRE recomeça
+// um a um, independente do que foi preenchido no modo anterior (pedido do Diego).
+function _cpSimModo(m){ _cpSim.modo=m; _cpSim.dias=''; _cpSim.data=''; _cpSim.qtd=''; _cpSim.cargas=''; _cpSim.preco=''; _cpSim.cargaTon=''; _cpSim.validadeMeses=''; _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); }
 // _cpSimSet: usado pelos campos do MODO — guarda o valor e SÓ atualiza o resultado se ele já estiver visível
 // (durante a digitação inicial o resultado ainda não apareceu; ele é revelado no onchange via _cpSimRerender).
 function _cpSimSet(campo,val){ _cpSim[campo]=val; const el=document.getElementById('cp-sim-result'); if(el && el.innerHTML.trim()!=='' && _cpItemSel && _cpIdx()[_cpItemSel]) el.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]); }
