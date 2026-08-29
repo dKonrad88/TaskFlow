@@ -9120,12 +9120,14 @@ function _cpSimResult(o){
     let cc,tx; if(ganho>0.005){cc='var(--success)';tx='economiza '+_cpBRL(ganho);}
       else if(ganho<-0.005){cc='var(--danger)';tx='custa +'+_cpBRL(-ganho);}
       else {cc='var(--text3)';tx='igual';}
-    const sub=Math.abs(du)>0.005?` <span style="color:var(--text3);font-weight:500">(${du<0?'−':'+'}${_cpBRL(Math.abs(du))}/${um})</span>`:'';
+    const pct=ref>0?(du/ref*100):0;
+    const sub=Math.abs(du)>0.005?` <span style="color:var(--text3);font-weight:500">(${du<0?'−':'+'}${_cpBRL(Math.abs(du))}/${um} · ${du<0?'−':'+'}${_cpNum(Math.abs(pct),1)}%)</span>`:'';
     return `<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:${cc}"><span style="width:7px;height:7px;border-radius:50%;background:${cc};display:inline-block;flex-shrink:0"></span><span><span style="color:var(--text3);font-weight:600">${lab} (${_cpBRL(ref)}/${um}):</span> ${tx}${sub}</span></div>`; };
   // TETO de custeio (preço manual cadastrado nos Indicadores) — em vermelho: o comprador não deve passar disso.
   const custeioTeto=_cpNumParse(_cpGetCusteio(o.cod));
   const tetoLine=(custeioTeto>0)?(()=>{ const acima=c.preco>custeioTeto+0.005, folga=custeioTeto-c.preco;
-    const st=acima?`<b>ACIMA do teto</b> (+${_cpBRL(-folga)}/${um})`:`dentro (folga ${_cpBRL(folga)}/${um})`; const stc=acima?'var(--danger)':'var(--success)';
+    const pctT=Math.abs((c.preco-custeioTeto)/custeioTeto*100);
+    const st=acima?`<b>ACIMA do teto</b> (+${_cpBRL(-folga)}/${um} · ${_cpNum(pctT,1)}% acima)`:`dentro (folga ${_cpBRL(folga)}/${um} · ${_cpNum(pctT,1)}% abaixo)`; const stc=acima?'var(--danger)':'var(--success)';
     return `<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700"><span style="width:7px;height:7px;border-radius:50%;background:var(--danger);display:inline-block;flex-shrink:0"></span><span><span style="color:var(--danger);font-weight:700">Teto de custeio (${_cpBRL(custeioTeto)}/${um}):</span> <span style="color:${stc};font-weight:700">${st}</span></span></div>`; })():'';
   // HERÓI: a resposta (quanto comprar) + o custo + se é bom preço, em destaque.
   const hero=`<div style="background:var(--bg2);border-radius:11px;padding:12px 14px;margin-bottom:12px">
