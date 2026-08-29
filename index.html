@@ -9043,28 +9043,37 @@ function _cpSimCalc(o){
 function _cpSimResult(o){
   const c=_cpSimCalc(o), um=o.um||'';
   const tRef=v=> (um==='KG'&&Math.abs(v)>=1000)?` (${_cpNum(v/1000,1)} t)`:'';
-  if(c.semConsumo && c.qtd<=0) return '<div style="color:var(--text3);font-size:13px;padding:6px 0">Este item não tem consumo registrado — use o modo <b>Quantidade</b> para simular preço e custo.</div>';
+  const tTxt=v=> (um==='KG'&&Math.abs(v)>=1000)?_cpNum(v/1000,1)+' t':'';
+  if(c.semConsumo && c.qtd<=0) return '<div style="color:var(--text3);font-size:13px;padding:6px 0">Este item não tem consumo registrado — use <b>Quantidade fixa</b> para simular preço e custo.</div>';
   if(!(c.qtd>0)) return '<div style="color:var(--text3);font-size:13px;padding:6px 0">Nada a comprar com esses parâmetros.</div>';
-  const linha=(lab,val,cor)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:12.5px;color:var(--text3)">${lab}</span><span style="font-size:13.5px;font-weight:700;color:${cor||'var(--text)'};text-align:right">${val}</span></div>`;
   const du=c.preco-c.precoRef;
   let g,gc;
   if(c.ganho>0.005){ gc='var(--success)'; g='economiza '+_cpBRL(c.ganho); }
   else if(c.ganho<-0.005){ gc='var(--danger)'; g='custa +'+_cpBRL(-c.ganho); }
-  else { gc='var(--text3)'; g='igual à referência'; }
-  const gsub=Math.abs(du)>0.005?` · ${du<0?'−':'+'}${_cpBRL(Math.abs(du))}/${um}`:'';
-  // Arredondamento p/ CARGA fechada: não dá p/ comprar fração de carga. Tamanho da carga é editável (_cpSim.cargaTon).
+  else { gc='var(--text3)'; g='igual ao preço atual'; }
+  const dusub=Math.abs(du)>0.005?` <span style="color:var(--text3);font-weight:500">(${du<0?'−':'+'}${_cpBRL(Math.abs(du))}/${um})</span>`:'';
+  const qt=tTxt(c.qtd);
+  // HERÓI: a resposta (quanto comprar) + o custo + se é bom preço, em destaque.
+  const hero=`<div style="background:var(--bg2);border-radius:11px;padding:12px 14px;margin-bottom:12px">
+    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)">Comprar</div>
+    <div style="font-size:23px;font-weight:800;color:var(--text);line-height:1.15;margin-top:1px">${_cpNum(c.qtd,0)} <span style="font-size:14px;font-weight:700;color:var(--text3)">${um}</span>${qt?` <span style="font-size:13px;font-weight:600;color:var(--text3)">· ${qt}</span>`:''}</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><span style="font-size:12px;color:var(--text3)">Custo total</span><span style="font-size:16.5px;font-weight:800;color:var(--text)">${_cpBRL(c.custo)}</span></div>
+    <div style="margin-top:7px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:${gc}"><span style="width:7px;height:7px;border-radius:50%;background:${gc};display:inline-block;flex-shrink:0"></span>${g}${dusub}</div>
+  </div>`;
+  // linhas de apoio (compactas, sem borda por linha)
+  const linha=(lab,val)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0"><span style="font-size:12.5px;color:var(--text3)">${lab}</span><span style="font-size:13px;font-weight:700;color:var(--text);text-align:right">${val}</span></div>`;
+  const rows=linha('Preço unitário',_cpBRL(c.preco)+'/'+um+(c.descPct>0?` <span style="color:var(--success);font-weight:600;font-size:11.5px">−${c.descPct}%</span>`:''))
+    +linha('Cobertura depois', c.cobDepois!=null?`${c.cobDepois} dias <span style="color:var(--text3);font-weight:500">· até ${_cpDataFim(c.cobDepois)}</span>`:`${_cpNum(c.estDepois,0)} ${um}`);
+  // Arredondamento p/ CARGA fechada (só compra carga cheia). Linha compacta, sem bloco. Tamanho editável (_cpSim.cargaTon).
   let cargasBloco='';
   const cargaKg=_cpCargaKg();
   if(um==='KG' && cargaKg>0 && c.qtd>0){
     const frac=c.qtd/cargaKg, piso=Math.floor(frac), teto=Math.ceil(frac);
     const fmtT=v=>_cpNum(v, Number.isInteger(v)?0:1), cLbl=fmtT(cargaKg/1000);
-    const opt=(nc,seta)=>{ const q=nc*cargaKg, cob=c.cd>0?Math.round((o.est+q)/c.cd):null;
-      return `<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0"><span style="font-size:12px;color:var(--text2)"><span style="color:var(--text3);font-weight:700">${seta}</span> <b style="color:var(--text)">${nc} carga${nc===1?'':'s'}</b> · ${fmtT(q/1000)} t</span><span style="font-size:12px;color:var(--text);text-align:right">${_cpBRL(q*c.preco)}${cob!=null?` · ${cob} d`:''}</span></div>`; };
+    const opt=nc=>{ const q=nc*cargaKg, cob=c.cd>0?Math.round((o.est+q)/c.cd):null; return `<b style="color:var(--text)">${nc}</b> (${fmtT(q/1000)} t · ${_cpBRL(q*c.preco)}${cob!=null?' · '+cob+'d':''})`; };
     cargasBloco=piso===teto
-      ? `<div style="margin-top:9px;padding-top:9px;border-top:1px dashed var(--border);font-size:11.5px;color:var(--text3)">Fecha exatamente <b style="color:var(--text)">${piso} carga${piso===1?'':'s'}</b> (1 carga = ${cLbl} t).</div>`
-      : `<div style="margin-top:9px;padding-top:9px;border-top:1px dashed var(--border)">
-        <div style="font-size:11.5px;color:var(--text3);margin-bottom:3px">Dá <b style="color:var(--text)">${_cpNum(frac,1)} cargas</b> — feche em carga cheia (1 carga = ${cLbl} t):</div>
-        ${piso>=1?opt(piso,'↓'):''}${opt(teto,'↑')}</div>`;
+      ? `<div style="margin-top:11px;font-size:11px;color:var(--text3)"><i class="ti ti-truck" style="color:var(--blue-mid)"></i> Fecha exatamente <b style="color:var(--text)">${piso} carga${piso===1?'':'s'}</b> cheia${piso===1?'':'s'} (1 = ${cLbl} t).</div>`
+      : `<div style="margin-top:11px;font-size:11px;color:var(--text3);line-height:1.7"><i class="ti ti-truck" style="color:var(--blue-mid)"></i> Só carga fechada (1 = ${cLbl} t) — dá ${_cpNum(frac,1)}: ${piso>=1?opt(piso)+' · ':''}${opt(teto)}</div>`;
   }
   // Risco de VALIDADE: se a cobertura pós-compra passa da validade do produto, o excedente vence parado.
   // Validade (meses) é editável no simulador (_cpSim.validadeMeses); consumo mensal vem do item.
@@ -9099,32 +9108,38 @@ function _cpSimResult(o){
   } else if(c.qtd>0 && valM<=0){
     validadeBloco=`<div style="margin-top:9px;font-size:10.5px;color:var(--text3)"><i class="ti ti-info-circle"></i> Informe a <b>validade (meses)</b> do item para checar risco de perda por vencimento.</div>`;
   }
-  return `${linha('Comprar',_cpNum(c.qtd,0)+' '+um+tRef(c.qtd))}
-    ${linha('A preço de',_cpBRL(c.preco)+'/'+um+(c.descPct>0?` <span style="color:var(--success)">(−${c.descPct}%)</span>`:''))}
-    ${linha('Custo total',_cpBRL(c.custo))}
-    ${linha('vs preço atual ('+_cpBRL(c.precoRef)+')', g+gsub, gc)}
-    ${linha('Estoque depois',_cpNum(c.estDepois,0)+' '+um+(c.cobDepois!=null?' → '+c.cobDepois+' dias (até '+_cpDataFim(c.cobDepois)+')':''))}${validadeBloco}${cargasBloco}`;
+  return hero+rows+validadeBloco+cargasBloco;
 }
 function _cpSimHTML(o){
   const s=_cpSim, um=o.um||'';
   const precoRef=o.ultPreco||o.precoCompra||0;
-  const chip=(m,lab)=>`<button onclick="_cpSimModo('${m}')" style="padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:${s.modo===m?'var(--blue-mid)':'var(--card)'};color:${s.modo===m?'#fff':'var(--text2)'};font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;margin:0 4px 4px 0">${lab}</button>`;
   const inp=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimInput('${campo}',this.value)" class="cp-sim-inp" style="width:${w||'50px'}"${extra?' '+extra:''}>`;
+  const inpS=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimInput('${campo}',this.value)" class="cp-sim-inp" style="width:${w||'42px'};font-size:12px">`;
   const lb=t=>`<span style="font-size:13px;color:var(--text2)">${t}</span>`;
+  const lbs=t=>`<span style="font-size:11px;color:var(--text3)">${t}</span>`;
   // Quantidade com máscara de milhar (BR): exibe formatado, guarda cru em _cpSim.qtd.
   const inpQtd=(w)=>`<input type="text" inputmode="numeric" value="${escapeAttr(_cpSimFmtQtd(s.qtd))}" placeholder="0" oninput="_cpSimQtd(this)" class="cp-sim-inp" style="width:${w||'104px'}">`;
   const selUn=`<select onchange="_cpSimInput('unidade',this.value)" class="cp-sim-inp" style="width:auto;text-align:left;font-weight:600">${um==='KG'?`<option value="kg"${s.unidade==='kg'?' selected':''}>kg</option><option value="ton"${s.unidade==='ton'?' selected':''}>t</option>`:`<option value="kg" selected>${escapeHTML(um||'un')}</option>`}</select>`;
+  // Modo do cálculo vira um DROPDOWN (era 6 botões) — bem mais leve. Só o input do modo escolhido aparece.
+  const MODOS=[['estoqueDias','Estoque para X dias'],['comprarDias','Comprar X dias de consumo'],['ate','Durar até uma data'],['qtd','Quantidade fixa'],['cargas','Número de cargas'],['desconto','Simular desconto %']];
+  const selModo=`<select onchange="_cpSimModo(this.value)" class="cp-sim-inp" style="width:auto;text-align:left;font-size:13.5px;font-weight:700;color:var(--blue-mid);max-width:100%">${MODOS.map(m=>`<option value="${m[0]}"${s.modo===m[0]?' selected':''}>${m[1]}</option>`).join('')}</select>`;
   let campoModo='';
-  if(s.modo==='estoqueDias') campoModo=`${lb('Ter estoque para')}${inp('dias',s.dias,'','number','46px','min="0"')}${lb('dias')}`;
-  else if(s.modo==='comprarDias') campoModo=`${lb('Comprar')}${inp('dias',s.dias,'','number','46px','min="0"')}${lb('dias de consumo')}`;
-  else if(s.modo==='ate') campoModo=`${lb('Estoque durar até')}${inp('data',s.data,'','date','130px')}`;
-  else if(s.modo==='qtd') campoModo=`${lb('Comprar')}${inpQtd('104px')}${selUn}`;
-  else if(s.modo==='cargas') campoModo=`${lb('Comprar')}${inp('cargas',s.cargas,'','number','54px','min="0"')}${lb('cargas')}`;
-  else if(s.modo==='desconto') campoModo=`${lb('Comprar')}${inpQtd('104px')}${selUn}${lb('com')}${inp('descPct',s.descPct,'','number','52px','min="0" max="100"')}${lb('% de desconto')}`;
+  if(s.modo==='estoqueDias') campoModo=`${lb('Ter estoque para')}${inp('dias',s.dias,'','number','48px','min="0"')}${lb('dias')}`;
+  else if(s.modo==='comprarDias') campoModo=`${lb('Comprar')}${inp('dias',s.dias,'','number','48px','min="0"')}${lb('dias de consumo')}`;
+  else if(s.modo==='ate') campoModo=`${lb('Estoque durar até')}${inp('data',s.data,'','date','132px')}`;
+  else if(s.modo==='qtd') campoModo=`${lb('Comprar')}${inpQtd('108px')}${selUn}`;
+  else if(s.modo==='cargas') campoModo=`${lb('Comprar')}${inp('cargas',s.cargas,'','number','56px','min="0"')}${lb('cargas')}`;
+  else if(s.modo==='desconto') campoModo=`${lb('Comprar')}${inpQtd('108px')}${selUn}${lb('com')}${inp('descPct',s.descPct,'','number','52px','min="0" max="100"')}${lb('% desc.')}`;
+  // Premissas (preço · carga · validade) — ajustes que mudam pouco, numa linha DISCRETA separada do input principal.
+  const prem=[];
+  if(s.modo!=='desconto') prem.push(`<span style="display:inline-flex;align-items:center;gap:4px">${lbs('preço R$')}${inpS('preco',s.preco,_cpNum(precoRef,2),'text','54px')}${lbs('/'+um)}</span>`);
+  if(um==='KG') prem.push(`<span style="display:inline-flex;align-items:center;gap:4px">${lbs('1 carga')}${inpS('cargaTon',s.cargaTon,'','number','40px','min="0" step="0.5"')}${lbs('t')}</span>`);
+  prem.push(`<span style="display:inline-flex;align-items:center;gap:4px">${lbs('validade')}${inpS('validadeMeses',s.validadeMeses,'—','number','36px','min="0" step="1"')}${lbs('meses')}</span>`);
   return `<div class="cp-card" id="cp-sim" style="padding:15px 17px">
     <div class="cp-card-title"><span>Simulador de compra</span><span class="sub">consumo ${o.consMed?_cpNum(o.consMed,0)+' '+um+'/mês':'—'}</span></div>
-    <div style="margin-bottom:12px">${chip('estoqueDias','Estoque p/ X dias')}${chip('comprarDias','Comprar X dias')}${chip('ate','Até uma data')}${chip('qtd','Quantidade')}${chip('cargas','Cargas')}${chip('desconto','Desconto %')}</div>
-    <div style="display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin-bottom:14px">${campoModo}${s.modo==='desconto'?'':`<span style="color:var(--border)">|</span>${lb('a R$')}${inp('preco',s.preco,_cpNum(precoRef,2),'text','62px')}<span style="font-size:13px;color:var(--text3)">/${um}</span>`}${um==='KG'?`<span style="color:var(--border)">|</span>${lb('1 carga =')}${inp('cargaTon',s.cargaTon,'','number','50px','min="0" step="0.5"')}${lb('t')}`:''}<span style="color:var(--border)">|</span>${lb('validade')}${inp('validadeMeses',s.validadeMeses,'—','number','40px','min="0" step="1"')}${lb('meses')}</div>
+    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:9px"><span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3)">Calcular por</span>${selModo}</div>
+    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:11px">${campoModo}</div>
+    <div style="display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;margin-bottom:14px;padding-top:10px;border-top:1px dashed var(--border)">${prem.join('')}</div>
     <div id="cp-sim-result">${_cpSimResult(o)}</div>
   </div>`;
 }
@@ -9150,11 +9165,12 @@ function _cpFichaResumo(o){
   // TOPO: 2 gráficos lado a lado (Consumo · Preço médio) acima do restante.
   const graficos=`<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px">
       ${graf('Consumo por mês','em '+(um||'un')+' (2025–26) · '+_cpLegPrev,_cpBarChart(_cpSerieComPrev(o,serie),'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN,45,'prev'))}
-      ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpPrecoMedLine(o,{h:50,pt:6,pb:12,fixedH:72}))}
+      ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpPrecoMedLine(o,{h:66,pt:8,pb:26,fixedH:72}))}
     </div>`;
   // 3 colunas: [macro + indicadores] · [últimas compras] · [simulador + OCs em aberto]. Macro só p/ item com dado (ex. Amendoim).
+  // Indicadores em ~metade da largura; o espaço liberado vai p/ Últimas compras (col 2). Simulador (col 3) inalterado.
   return graficos+`
-    <div style="display:grid;grid-template-columns:minmax(280px,0.95fr) minmax(310px,1.1fr) minmax(300px,1.05fr);gap:12px;align-items:start">
+    <div style="display:grid;grid-template-columns:minmax(175px,0.48fr) minmax(360px,1.57fr) minmax(300px,1.05fr);gap:12px;align-items:start">
       <div style="display:flex;flex-direction:column;gap:12px">${_cpMacroCard(o)}${_cpIndicadoresCard(o)}</div>
       ${_cpUltimasComprasCard(o)}
       <div style="display:flex;flex-direction:column;gap:12px">${_cpSimHTML(o)}${_cpOCsCard(o)}</div>
