@@ -9023,8 +9023,8 @@ function _cpToggleFoco(){ _cpSetFoco(!document.body.classList.contains('cp-focus
 // modo='' começa VAZIO (fluxo passo-a-passo: primeiro escolhe "Calcular por"); os campos do modo
 // começam vazios p/ o usuário preencher (é o gatilho que libera as premissas). usarCarga: item vem em
 // carga fechada (caminhão) — desligável p/ itens de volume pequeno. entregas: cronograma de chegada.
-let _cpSim={modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'35', validadeMeses:'6', usarCarga:true, entregas:[]};
-function _cpSimReset(){ _cpSim={modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'35', validadeMeses:'6', usarCarga:true, entregas:[]}; }
+let _cpSim={modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', usarCarga:true, entregas:[]};
+function _cpSimReset(){ _cpSim={modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', usarCarga:true, entregas:[]}; }
 function _cpCargaKg(){ return (parseFloat(String(_cpSim.cargaTon).replace(',','.'))||0)*1000; }
 // Já preencheu o valor do modo escolhido? (gatilho que libera as premissas + o resultado no fluxo passo-a-passo)
 function _cpSimModevalFilled(){ const s=_cpSim;
@@ -9033,6 +9033,14 @@ function _cpSimModevalFilled(){ const s=_cpSim;
   if(s.modo==='cargas') return (parseFloat(String(s.cargas).replace(',','.'))||0)>0;
   if(s.modo==='qtd'||s.modo==='desconto') return (parseFloat(String(s.qtd).replace(',','.'))||0)>0;
   return false; }
+// Fluxo 1-a-1 das PREMISSAS: preço → tamanho da carga → validade. Cada uma só libera a próxima
+// (e o resultado) quando tem valor. `_cpSimPremOK` = número > 0.
+function _cpSimPremOK(v){ const n=parseFloat(String(v).replace(',','.')); return isFinite(n)&&n>0; }
+function _cpSimPremsFilled(o){ const s=_cpSim, um=(o&&o.um)||'', cargaOK=s.usarCarga&&um==='KG';
+  if(s.modo!=='desconto' && !_cpSimPremOK(s.preco)) return false;
+  if(cargaOK && !_cpSimPremOK(s.cargaTon)) return false;
+  if(!_cpSimPremOK(s.validadeMeses)) return false;
+  return true; }
 function _cpSimToggleCarga(){ _cpSim.usarCarga=!_cpSim.usarCarga; if(!_cpSim.usarCarga && _cpSim.modo==='cargas'){ _cpSim.modo=''; } _cpSim.entregas=[]; _cpSimRerender(); }
 // ── Cronograma de entregas: cada entrega chega numa data; a validade conta da CHEGADA de cada uma;
 // o consumo diário come a mais velha primeiro (FEFO). Vale p/ QUALQUER modo/item (não só cargas).
@@ -9078,7 +9086,7 @@ function _cpSimCalc(o){
 function _cpSimResult(o){
   const c=_cpSimCalc(o), um=o.um||'';
   // GATE do fluxo passo-a-passo: nada de resultado até escolher o modo E preencher o valor dele.
-  if(!(_cpSim.modo && _cpSimModevalFilled())) return '';
+  if(!(_cpSim.modo && _cpSimModevalFilled() && _cpSimPremsFilled(o))) return '';
   const tTxt=v=> (um==='KG'&&Math.abs(v)>=1000)?_cpNum(v/1000,1)+' t':'';
   if(c.semConsumo && c.qtd<=0) return '<div style="color:var(--text3);font-size:13px;padding:6px 0">Este item não tem consumo registrado — use <b>Quantidade fixa</b> para simular preço e custo.</div>';
   if(!(c.qtd>0)) return '<div style="color:var(--text3);font-size:13px;padding:6px 0">Nada a comprar com esses parâmetros.</div>';
@@ -9158,7 +9166,7 @@ function _cpSimHTML(o){
   // Campo do MODO: oninput só guarda o valor (sem re-render, p/ não perder foco); onchange (ao sair do campo) re-renderiza e LIBERA o próximo passo.
   const inp=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimSet('${campo}',this.value)" onchange="_cpSimRerender()" class="cp-sim-inp" style="width:${w||'50px'}"${extra?' '+extra:''}>`;
   // Campo de PREMISSA: já visível → atualiza o resultado ao vivo.
-  const inpS=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimInput('${campo}',this.value)" class="cp-sim-inp" style="width:${w||'42px'};font-size:12px">`;
+  const inpS=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimInput('${campo}',this.value)" onchange="_cpSimRerender()" class="cp-sim-inp" style="width:${w||'42px'};font-size:12px">`;
   const lb=t=>`<span style="font-size:13px;color:var(--text2)">${t}</span>`;
   const uSpan=t=>`<span style="font-size:12px;color:var(--text3)">${t}</span>`;
   const inpQtd=(w)=>`<input type="text" inputmode="numeric" value="${escapeAttr(_cpSimFmtQtd(s.qtd))}" placeholder="0" oninput="_cpSimQtd(this)" onchange="_cpSimRerender()" class="cp-sim-inp" style="width:${w||'104px'}">`;
@@ -9177,11 +9185,14 @@ function _cpSimHTML(o){
   else if(s.modo==='desconto') campoModo=`${lb('Comprar')}${inpQtd('108px')}${selUn}${lb('com')}${inp('descPct',s.descPct,'','number','52px','min="0" max="100"')}${lb('% desc.')}`;
   // Premissas — cada uma na sua linha; só aparecem DEPOIS de preencher o valor do modo.
   const premRow=(lab,content)=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0"><span style="font-size:12.5px;color:var(--text2);min-width:122px">${lab}</span><span style="display:inline-flex;align-items:center;gap:5px">${content}</span></div>`;
-  const prem=[];
-  if(s.modo!=='desconto') prem.push(premRow('Preço de compra', `${uSpan('R$')}${inpS('preco',s.preco,_cpNum(precoRef,2),'text','58px')}${uSpan('/'+um)}`));
-  if(cargaOK) prem.push(premRow('Tamanho da carga', `${inpS('cargaTon',s.cargaTon,'','number','48px','min="0" step="0.5"')}${uSpan('t')}`));
-  prem.push(premRow('Validade', `${inpS('validadeMeses',s.validadeMeses,'—','number','44px','min="0" step="1"')}${uSpan('meses')}`));
-  const premBlock = (s.modo && filled)?`<div style="margin-bottom:14px;padding-top:8px;border-top:1px dashed var(--border)">${prem.join('')}</div>`:'';
+  // Premissas reveladas UMA A UMA: cada uma só aparece quando a anterior tem valor (preço → carga → validade).
+  const steps=[];
+  if(s.modo!=='desconto') steps.push([()=>_cpSimPremOK(s.preco), premRow('Preço de compra', `${uSpan('R$')}${inpS('preco',s.preco,_cpNum(precoRef,2),'text','58px')}${uSpan('/'+um)}`)]);
+  if(cargaOK) steps.push([()=>_cpSimPremOK(s.cargaTon), premRow('Tamanho da carga', `${inpS('cargaTon',s.cargaTon,'35','number','48px','min="0" step="0.5"')}${uSpan('t')}`)]);
+  steps.push([()=>_cpSimPremOK(s.validadeMeses), premRow('Validade', `${inpS('validadeMeses',s.validadeMeses,'6','number','44px','min="0" step="1"')}${uSpan('meses')}`)]);
+  let premHTML='';
+  if(s.modo && filled){ for(let i=0;i<steps.length;i++){ premHTML+=steps[i][1]; if(!steps[i][0]()) break; } }
+  const premBlock = premHTML?`<div style="margin-bottom:14px;padding-top:8px;border-top:1px dashed var(--border)">${premHTML}</div>`:'';
   // Toggle "carga fechada" (só item KG) — discreto, logo abaixo do "Calcular por". Desligar tira a carga da conta.
   const toggleCarga = um==='KG' ? `<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:11.5px;color:var(--text3);margin-bottom:11px"><input type="checkbox" ${s.usarCarga?'checked':''} onchange="_cpSimToggleCarga()" style="cursor:pointer;margin:0"> Compro em carga fechada (caminhão)</label>` : '';
   return `<div class="cp-card" id="cp-sim" style="padding:15px 17px">
