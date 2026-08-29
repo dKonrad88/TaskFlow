@@ -9045,7 +9045,7 @@ function _cpSimToggleCarga(){ _cpSim.usarCarga=!_cpSim.usarCarga; if(!_cpSim.usa
 // ── Cronograma de entregas: cada entrega chega numa data; a validade conta da CHEGADA de cada uma;
 // o consumo diário come a mais velha primeiro (FEFO). Vale p/ QUALQUER modo/item (não só cargas).
 function _cpDiasEntre(isoA,isoB){ const a=new Date(isoA+'T00:00:00'), b=new Date(isoB+'T00:00:00'); return Math.round((b-a)/86400000); }
-function _cpSimEntregas(n){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; const e=_cpSim.entregas; if(n<1) n=1; for(let i=0;i<n;i++){ if(!e[i]) e[i]=today; } e.length=n; return e; }
+function _cpSimEntregas(n){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; const e=_cpSim.entregas; if(n<1) n=1; for(let i=0;i<n;i++){ if(e[i]==null) e[i]=''; } e.length=n; return e; }
 function _cpSimRefreshResult(){ const el=document.getElementById('cp-sim-result'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]); }
 function _cpSimSetEntrega(i,val){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; _cpSim.entregas[i]=val; _cpSimRefreshResult(); }
 function _cpSimAddEntrega(){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[today]; _cpSim.entregas.push(today); _cpSim.entregasQtd=[]; _cpSimRefreshResult(); }
@@ -9141,6 +9141,7 @@ function _cpSimResult(o){
   // chega numa data; a validade conta da CHEGADA de cada uma; o consumo come a mais velha primeiro (FEFO).
   const consMes=o.consMed||(o.consDia?o.consDia*30:0);
   const valM=parseFloat(String(_cpSim.validadeMeses).replace(',','.'))||0;
+  let cronoFilled=true;   // libera os TOTAIS: true qd não há cronograma OU todas as datas preenchidas
   let cronoBloco='';
   if(c.qtd>0 && valM>0 && consMes>0){
     const isCargas=_cpSim.modo==='cargas';
@@ -9148,40 +9149,54 @@ function _cpSimResult(o){
     const ent=_cpSimEntregas(N);
     const consDia=consMes/30, valDias=Math.round(valM*30);
     const qtys=isCargas?ent.map(()=>c.qtd/ent.length):_cpSimQtds(c.qtd, ent.length);
-    const batches=[];
-    if(o.est>0) batches.push({arr:0, exp:valDias, qty:o.est, _i:-1});
-    ent.forEach((iso,i)=>{ const off=Math.max(0,_cpDiasEntre(today,iso)); batches.push({arr:off, exp:off+valDias, qty:qtys[i], _i:i}); });
-    const sim=_cpFefoSim(batches, consDia);
-    const perdaTot=sim.reduce((a,b)=>a+b.waste,0), totalKg=o.est+c.qtd;
     const delLbl=isCargas?'Carga':(ent.length>1?'Entrega':'');
     const editaQtd=!isCargas && ent.length>1;   // volume por entrega editável (a última = resto automático)
-    const rowsCrono=ent.map((iso,i)=>{
-      const b=sim.find(x=>x._i===i), w=b?b.waste:0;
-      const dinput=`<input type="date" value="${escapeAttr(iso)}" onchange="_cpSimSetEntrega(${i},this.value)" class="cp-sim-inp" style="width:130px;font-size:12px">`;
+    const totalKg=o.est+c.qtd;
+    // Passo-a-passo do cronograma (Diego): revela UMA entrega por vez (até a 1ª SEM data, inclusive).
+    const temData=iso=>!!(iso && String(iso).trim());
+    let reveladas=ent.length; for(let i=0;i<ent.length;i++){ if(!temData(ent[i])){ reveladas=i+1; break; } }
+    cronoFilled=ent.every(temData);   // TODAS as datas preenchidas → libera FEFO + os TOTAIS
+    let sim=null, perdaTot=0, bEst=null, wEst=0;
+    if(cronoFilled){
+      const batches=[]; if(o.est>0) batches.push({arr:0, exp:valDias, qty:o.est, _i:-1});
+      ent.forEach((iso,i)=>{ const off=Math.max(0,_cpDiasEntre(today,iso)); batches.push({arr:off, exp:off+valDias, qty:qtys[i], _i:i}); });
+      sim=_cpFefoSim(batches, consDia); perdaTot=sim.reduce((a,b)=>a+b.waste,0); bEst=sim.find(x=>x._i===-1); wEst=bEst?bEst.waste:0;
+    }
+    const minW=`min-width:${delLbl?(editaQtd?'165px':'110px'):'70px'};display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap`;
+    const rowsCrono=ent.slice(0,reveladas).map((iso,i)=>{
+      const b=sim?sim.find(x=>x._i===i):null, w=b?b.waste:0;
+      const dinput=`<input type="date" value="${escapeAttr(iso||'')}" onchange="_cpSimSetEntrega(${i},this.value)" class="cp-sim-inp" style="width:130px;font-size:12px">`;
       const duraTxt=(b && b.esgotaT!=null)?`<span style="font-size:11px;color:var(--text3)">dura até <b style="color:var(--text2)">${_cpDataFim(b.esgotaT)}</b></span>`:'';
-      const wtxt=w>0.5?`<span style="color:var(--danger);font-weight:700;font-size:11.5px">vence ${_cpNum(w,0)} ${um}</span>`:`<span style="color:var(--success);font-size:11.5px"><i class="ti ti-check"></i> ok</span>`;
+      const wtxt=b?(w>0.5?`<span style="color:var(--danger);font-weight:700;font-size:11.5px">vence ${_cpNum(w,0)} ${um}</span>`:`<span style="color:var(--success);font-size:11.5px"><i class="ti ti-check"></i> ok</span>`):'';
       const del=(!isCargas && ent.length>1)?`<button onclick="_cpSimDelEntrega(${i})" title="Remover entrega" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;display:inline-flex"><i class="ti ti-x" style="font-size:13px"></i></button>`:'';
       let qtyCell;
       if(!editaQtd){ qtyCell=`${_cpNum(qtys[i],0)} ${um}`; }
       else if(i===ent.length-1){ qtyCell=`<b style="color:var(--text2)">${_cpNum(qtys[i],0)}</b> ${um} <span style="font-size:10px;color:var(--text3)">(resto)</span>`; }
       else { qtyCell=`<input type="text" inputmode="numeric" value="${escapeAttr(_cpNum(qtys[i],0))}" onchange="_cpSimSetEntregaQtd(${i},this.value)" class="cp-sim-inp" style="width:66px;font-size:12px"> ${um}`; }
       const rot=delLbl?`${delLbl} ${i+1} · ${qtyCell}`:qtyCell;
-      return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap"><span style="font-size:12px;color:var(--text2);min-width:${delLbl?(editaQtd?'165px':'110px'):'70px'};display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap">${rot}</span><span style="font-size:11px;color:var(--text3)">chega em</span>${dinput}${duraTxt}${wtxt}${del}</div>`;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap"><span style="font-size:12px;color:var(--text2);${minW}">${rot}</span><span style="font-size:11px;color:var(--text3)">chega em</span>${dinput}${duraTxt}${wtxt}${del}</div>`;
     }).join('');
-    const addBtn=!isCargas?`<button onclick="_cpSimAddEntrega()" style="margin-top:7px;background:none;border:1px dashed var(--border);border-radius:7px;cursor:pointer;color:var(--blue-mid);font-size:11.5px;font-weight:600;padding:5px 10px;font-family:inherit"><i class="ti ti-plus"></i> dividir em outra entrega</button>`:'';
-    const okAll=perdaTot<=0.5;
+    // Estoque ATUAL como linha (o FEFO consome ele PRIMEIRO) — só depois que todas as datas estão preenchidas.
+    const estRow=(cronoFilled && o.est>0 && bEst)?`<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap;opacity:.9"><span style="font-size:12px;color:var(--text2);${minW}">Estoque atual · ${_cpNum(o.est,0)} ${um}</span><span style="font-size:11px;color:var(--text3)">já em estoque</span>${bEst.esgotaT!=null?`<span style="font-size:11px;color:var(--text3)">dura até <b style="color:var(--text2)">${_cpDataFim(bEst.esgotaT)}</b></span>`:''}${wEst>0.5?`<span style="color:var(--danger);font-weight:700;font-size:11.5px">vence ${_cpNum(wEst,0)} ${um}</span>`:`<span style="color:var(--success);font-size:11.5px"><i class="ti ti-check"></i> ok</span>`}</div>`:'';
+    const addBtn=(!isCargas && cronoFilled)?`<button onclick="_cpSimAddEntrega()" style="margin-top:7px;background:none;border:1px dashed var(--border);border-radius:7px;cursor:pointer;color:var(--blue-mid);font-size:11.5px;font-weight:600;padding:5px 10px;font-family:inherit"><i class="ti ti-plus"></i> dividir em outra entrega</button>`:'';
+    const okAll=perdaTot<=0.5, wCargas=perdaTot-wEst;
     const header=isCargas?'Quando cada carga chega':(ent.length>1?'Quando cada entrega chega':'Quando o item chega');
-    const dica=okAll?`<i class="ti ti-circle-check"></i> Nada vence — tudo é consumido dentro da validade.`:`<i class="ti ti-alert-triangle"></i> ~<b>${_cpNum(perdaTot,0)} ${um}</b> (${Math.round(perdaTot/totalKg*100)}%) vence · ≈ ${_cpBRL(perdaTot*c.preco)} a descartar. ${ent.length>1?'Empurre as chegadas para frente.':'Compre menos, ou parcele em mais entregas.'}`;
+    const dica=!cronoFilled?`<i class="ti ti-calendar" style="color:var(--blue-mid)"></i> Preencha a data de chegada de cada ${isCargas?'carga':'entrega'} — a próxima aparece ao confirmar a anterior. No fim, os totais aparecem embaixo.`
+      :okAll?`<i class="ti ti-circle-check"></i> Nada vence — tudo é consumido dentro da validade.`
+      :(wCargas<=0.5 && wEst>0.5)?`<i class="ti ti-alert-triangle"></i> ~<b>${_cpNum(perdaTot,0)} ${um}</b> vence — mas é do <b>estoque atual</b>${bEst&&bEst.esgotaT!=null?` (passa da validade ~${_cpDataFim(bEst.esgotaT)})`:''}. A compra em si cabe toda; o ideal é consumir/realocar o estoque antes de comprar mais.`
+      :`<i class="ti ti-alert-triangle"></i> ~<b>${_cpNum(perdaTot,0)} ${um}</b> (${Math.round(perdaTot/totalKg*100)}%) vence · ≈ ${_cpBRL(perdaTot*c.preco)} a descartar. ${ent.length>1?'Empurre as chegadas para frente.':'Compre menos, ou parcele em mais entregas.'}`;
+    const dicaCor=!cronoFilled?'var(--text2)':(okAll?'var(--success)':'var(--danger)');
     cronoBloco=`<div style="margin-top:12px;padding:12px 14px;background:var(--bg2);border-radius:10px">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:8px"><i class="ti ti-truck-delivery" style="color:var(--blue-mid)"></i> ${header}</div>
-      ${rowsCrono}${addBtn}
-      <div style="margin-top:9px;padding-top:9px;border-top:1px dashed var(--border);font-size:12px;font-weight:700;color:${okAll?'var(--success)':'var(--danger)'};line-height:1.5">${dica}</div>
-      <div style="font-size:10.5px;color:var(--text3);margin-top:6px">Consumo ${_cpNum(consMes,0)} ${um}/mês · validade ${_cpNum(valM,0)} meses a partir da chegada de cada entrega (FEFO). Datas = estimativa sua.</div>
+      ${estRow}${rowsCrono}${addBtn}
+      <div style="margin-top:9px;padding-top:9px;border-top:1px dashed var(--border);font-size:12px;font-weight:700;color:${dicaCor};line-height:1.5">${dica}</div>
+      ${cronoFilled?`<div style="font-size:10.5px;color:var(--text3);margin-top:6px">Consumo ${_cpNum(consMes,0)} ${um}/mês · validade ${_cpNum(valM, Number.isInteger(valM)?0:1)} ${valM===1?'mês':'meses'} a partir da chegada de cada entrega (FEFO). Estoque atual conta como o 1º lote. Datas = estimativa sua.</div>`:''}
     </div>`;
   } else if(c.qtd>0 && valM<=0){
     cronoBloco=`<div style="margin-top:9px;font-size:10.5px;color:var(--text3)"><i class="ti ti-info-circle"></i> Informe a <b>validade (meses)</b> para checar risco de vencimento.</div>`;
   }
-  return hero+rows+cronoBloco+cargasBloco;
+  // Ordem (pedido do Diego): cronograma das cargas EM CIMA; os TOTAIS só aparecem depois da última data.
+  return cronoBloco + (cronoFilled ? (hero+rows+cargasBloco) : '');
 }
 function _cpSimHTML(o){
   const s=_cpSim, um=o.um||'';

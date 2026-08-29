@@ -422,6 +422,14 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-08-29 (Mac, d) — Simulador: estoque atual visível + cronograma ACIMA dos totais + cargas passo-a-passo
+Vários ajustes no cronograma do simulador (`_cpSimResult`):
+1. **Estoque atual como linha** — o FEFO consome ele 1º; aparece "Estoque atual · X · dura até · vence". Responde "onde/quando vence": no Óleo de Palma os 5.946 kg que venciam eram do **estoque atual** (cobertura 53d > validade 45d), não das cargas. O aviso agora distingue perda do estoque × das cargas.
+2. **Rodapé "validade"** mostrava "2 meses" p/ 1,5 (`_cpNum(valM,0)` arredondava) → `_cpNum(valM, Number.isInteger?0:1)` + "mês/meses".
+3. **Reordenado**: cronograma das cargas **EM CIMA**, TOTAIS (COMPRAR/custo/comparações/cobertura) **EMBAIXO**.
+4. **Passo-a-passo das cargas/entregas**: datas começam **VAZIAS** (`_cpSimEntregas` usa `''`); revela uma por vez (`reveladas` = até a 1ª sem data); FEFO/estRow/totais só quando **`cronoFilled`** (todas as datas). Return virou `cronoBloco + (cronoFilled ? hero+rows+cargasBloco : '')`.
+Testado no preview (cargas 1→2→3→totais; ordem cronograma<totais confirmada; estRow aparece). SYNTAX_OK.
+
 ### 2026-08-29 (Mac, c) — Simulador: volume EDITÁVEL por entrega (última = resto automático)
 Diego: no "dividir em outra entrega" (modos NÃO-cargas), o volume era dividido igualmente. Agora cada entrega tem **quantidade editável**; o usuário digita as N-1 primeiras e a **ÚLTIMA completa o total automaticamente (resto)** — e as editáveis são limitadas p/ a soma NUNCA passar do total (ex.: 300 em 2 → digita 100 → 2ª vira 200; digita 400 → cap 300, resto 0; 3-way 100/250 → 2ª cap 200, resto 0). Estado novo `_cpSim.entregasQtd[]`; helpers `_cpNumParse` e `_cpSimQtds(total,N)` (últ. = total − soma, cada editável `min(q, total−soma)`); `_cpSimSetEntregaQtd`. Reset de `entregasQtd` em `_cpSimModo`/`_cpSimToggleCarga`/`_cpSimAddEntrega`/`_cpSimDelEntrega`. Em CARGAS continua fixo (cada carga = caminhão cheio). Testado no preview (100→200; cap; 3-way). SYNTAX_OK.
 
