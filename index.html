@@ -9053,16 +9053,18 @@ function _cpSimDelEntrega(i){ if(Array.isArray(_cpSim.entregas) && _cpSim.entreg
 // Simulação FEFO por dia: cada lote {arr,exp,qty} (dias a partir de hoje); consome consDia/dia do lote que vence primeiro.
 // Retorna a perda (o que vence parado) por lote. É PROTÓTIPO — datas de entrega são estimativa do comprador.
 function _cpFefoSim(batches, consDia){
-  const B=batches.map(b=>({arr:b.arr, exp:b.exp, qty:b.qty, _i:b._i, r:0, waste:0}));
+  const B=batches.map(b=>({arr:b.arr, exp:b.exp, qty:b.qty, _i:b._i, r:0, waste:0, esgotaT:null, _cheg:false}));
   if(!B.length) return B;
   if(!(consDia>0)){ B.forEach(b=>b.waste=b.qty); return B; }
   const horizon=Math.min(3650, Math.max.apply(null,B.map(b=>b.exp)));
   for(let t=0;t<=horizon;t++){
-    B.forEach(b=>{ if(b.arr===t) b.r+=b.qty; });
+    B.forEach(b=>{ if(b.arr===t){ b.r+=b.qty; b._cheg=true; } });
     let d=consDia;
     const av=B.filter(b=>b.r>1e-9 && b.exp>t).sort((a,c)=>a.exp-c.exp);
     for(let j=0;j<av.length && d>1e-9;j++){ const take=Math.min(av[j].r,d); av[j].r-=take; d-=take; }
     B.forEach(b=>{ if(b.exp===t+1 && b.r>1e-9){ b.waste+=b.r; b.r=0; } });
+    // dia em que o lote ZERA (consumido ou vencido) = até quando ele "dura" (FEFO)
+    B.forEach(b=>{ if(b._cheg && b.esgotaT==null && b.r<=1e-9) b.esgotaT=t; });
   }
   return B;
 }
@@ -9090,19 +9092,23 @@ function _cpSimResult(o){
   const tTxt=v=> (um==='KG'&&Math.abs(v)>=1000)?_cpNum(v/1000,1)+' t':'';
   if(c.semConsumo && c.qtd<=0) return '<div style="color:var(--text3);font-size:13px;padding:6px 0">Este item não tem consumo registrado — use <b>Quantidade fixa</b> para simular preço e custo.</div>';
   if(!(c.qtd>0)) return '<div style="color:var(--text3);font-size:13px;padding:6px 0">Nada a comprar com esses parâmetros.</div>';
-  const du=c.preco-c.precoRef;
-  let g,gc;
-  if(c.ganho>0.005){ gc='var(--success)'; g='economiza '+_cpBRL(c.ganho); }
-  else if(c.ganho<-0.005){ gc='var(--danger)'; g='custa +'+_cpBRL(-c.ganho); }
-  else { gc='var(--text3)'; g='igual ao preço atual'; }
-  const dusub=Math.abs(du)>0.005?` <span style="color:var(--text3);font-weight:500">(${du<0?'−':'+'}${_cpBRL(Math.abs(du))}/${um})</span>`:'';
   const qt=tTxt(c.qtd);
+  // Comparações do custo: vs ÚLTIMA compra (precoRef) e vs MÉDIA das últimas 3 compras.
+  const cmp3=(o.compras||[]).slice(0,3);
+  const media3=cmp3.length?cmp3.reduce((a,l)=>a+(l.vun||0),0)/cmp3.length:0;
+  const cmpLine=(lab,ref)=>{ if(!(ref>0)) return '';
+    const ganho=(ref-c.preco)*c.qtd, du=c.preco-ref;
+    let cc,tx; if(ganho>0.005){cc='var(--success)';tx='economiza '+_cpBRL(ganho);}
+      else if(ganho<-0.005){cc='var(--danger)';tx='custa +'+_cpBRL(-ganho);}
+      else {cc='var(--text3)';tx='igual';}
+    const sub=Math.abs(du)>0.005?` <span style="color:var(--text3);font-weight:500">(${du<0?'−':'+'}${_cpBRL(Math.abs(du))}/${um})</span>`:'';
+    return `<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:${cc}"><span style="width:7px;height:7px;border-radius:50%;background:${cc};display:inline-block;flex-shrink:0"></span><span><span style="color:var(--text3);font-weight:600">${lab} (${_cpBRL(ref)}/${um}):</span> ${tx}${sub}</span></div>`; };
   // HERÓI: a resposta (quanto comprar) + o custo + se é bom preço, em destaque.
   const hero=`<div style="background:var(--bg2);border-radius:11px;padding:12px 14px;margin-bottom:12px">
     <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)">Comprar</div>
     <div style="font-size:23px;font-weight:800;color:var(--text);line-height:1.15;margin-top:1px">${_cpNum(c.qtd,0)} <span style="font-size:14px;font-weight:700;color:var(--text3)">${um}</span>${qt?` <span style="font-size:13px;font-weight:600;color:var(--text3)">· ${qt}</span>`:''}</div>
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><span style="font-size:12px;color:var(--text3)">Custo total</span><span style="font-size:16.5px;font-weight:800;color:var(--text)">${_cpBRL(c.custo)}</span></div>
-    <div style="margin-top:7px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:${gc}"><span style="width:7px;height:7px;border-radius:50%;background:${gc};display:inline-block;flex-shrink:0"></span>${g}${dusub}</div>
+    <div style="margin-top:7px;display:flex;flex-direction:column;gap:5px">${cmpLine('vs última compra', c.precoRef)}${cmpLine('vs média 3 compras', media3)}</div>
   </div>`;
   // linhas de apoio (compactas, sem borda por linha)
   const linha=(lab,val)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0"><span style="font-size:12.5px;color:var(--text3)">${lab}</span><span style="font-size:13px;font-weight:700;color:var(--text);text-align:right">${val}</span></div>`;
@@ -9138,10 +9144,11 @@ function _cpSimResult(o){
     const rowsCrono=ent.map((iso,i)=>{
       const b=sim.find(x=>x._i===i), w=b?b.waste:0;
       const dinput=`<input type="date" value="${escapeAttr(iso)}" onchange="_cpSimSetEntrega(${i},this.value)" class="cp-sim-inp" style="width:130px;font-size:12px">`;
+      const duraTxt=(b && b.esgotaT!=null)?`<span style="font-size:11px;color:var(--text3)">dura até <b style="color:var(--text2)">${_cpDataFim(b.esgotaT)}</b></span>`:'';
       const wtxt=w>0.5?`<span style="color:var(--danger);font-weight:700;font-size:11.5px">vence ${_cpNum(w,0)} ${um}</span>`:`<span style="color:var(--success);font-size:11.5px"><i class="ti ti-check"></i> ok</span>`;
       const del=(!isCargas && ent.length>1)?`<button onclick="_cpSimDelEntrega(${i})" title="Remover entrega" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;display:inline-flex"><i class="ti ti-x" style="font-size:13px"></i></button>`:'';
       const rot=delLbl?`${delLbl} ${i+1} · ${_cpNum(qtyPer,0)} ${um}`:`${_cpNum(qtyPer,0)} ${um}`;
-      return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap"><span style="font-size:12px;color:var(--text2);min-width:${delLbl?'110px':'70px'}">${rot}</span><span style="font-size:11px;color:var(--text3)">chega em</span>${dinput}${wtxt}${del}</div>`;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap"><span style="font-size:12px;color:var(--text2);min-width:${delLbl?'110px':'70px'}">${rot}</span><span style="font-size:11px;color:var(--text3)">chega em</span>${dinput}${duraTxt}${wtxt}${del}</div>`;
     }).join('');
     const addBtn=!isCargas?`<button onclick="_cpSimAddEntrega()" style="margin-top:7px;background:none;border:1px dashed var(--border);border-radius:7px;cursor:pointer;color:var(--blue-mid);font-size:11.5px;font-weight:600;padding:5px 10px;font-family:inherit"><i class="ti ti-plus"></i> dividir em outra entrega</button>`:'';
     const okAll=perdaTot<=0.5;
