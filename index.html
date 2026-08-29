@@ -9116,7 +9116,6 @@ function _cpSimHTML(o){
   const inp=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimInput('${campo}',this.value)" class="cp-sim-inp" style="width:${w||'50px'}"${extra?' '+extra:''}>`;
   const inpS=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimInput('${campo}',this.value)" class="cp-sim-inp" style="width:${w||'42px'};font-size:12px">`;
   const lb=t=>`<span style="font-size:13px;color:var(--text2)">${t}</span>`;
-  const lbs=t=>`<span style="font-size:11px;color:var(--text3)">${t}</span>`;
   // Quantidade com máscara de milhar (BR): exibe formatado, guarda cru em _cpSim.qtd.
   const inpQtd=(w)=>`<input type="text" inputmode="numeric" value="${escapeAttr(_cpSimFmtQtd(s.qtd))}" placeholder="0" oninput="_cpSimQtd(this)" class="cp-sim-inp" style="width:${w||'104px'}">`;
   const selUn=`<select onchange="_cpSimInput('unidade',this.value)" class="cp-sim-inp" style="width:auto;text-align:left;font-weight:600">${um==='KG'?`<option value="kg"${s.unidade==='kg'?' selected':''}>kg</option><option value="ton"${s.unidade==='ton'?' selected':''}>t</option>`:`<option value="kg" selected>${escapeHTML(um||'un')}</option>`}</select>`;
@@ -9130,16 +9129,18 @@ function _cpSimHTML(o){
   else if(s.modo==='qtd') campoModo=`${lb('Comprar')}${inpQtd('108px')}${selUn}`;
   else if(s.modo==='cargas') campoModo=`${lb('Comprar')}${inp('cargas',s.cargas,'','number','56px','min="0"')}${lb('cargas')}`;
   else if(s.modo==='desconto') campoModo=`${lb('Comprar')}${inpQtd('108px')}${selUn}${lb('com')}${inp('descPct',s.descPct,'','number','52px','min="0" max="100"')}${lb('% desc.')}`;
-  // Premissas (preço · carga · validade) — ajustes que mudam pouco, numa linha DISCRETA separada do input principal.
+  // Premissas (preço · carga · validade) — cada uma na SUA linha, com rótulo, no estilo do "Ter estoque para".
+  const premRow=(lab,content)=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0"><span style="font-size:12.5px;color:var(--text2);min-width:122px">${lab}</span><span style="display:inline-flex;align-items:center;gap:5px">${content}</span></div>`;
+  const uSpan=t=>`<span style="font-size:12px;color:var(--text3)">${t}</span>`;
   const prem=[];
-  if(s.modo!=='desconto') prem.push(`<span style="display:inline-flex;align-items:center;gap:4px">${lbs('preço R$')}${inpS('preco',s.preco,_cpNum(precoRef,2),'text','54px')}${lbs('/'+um)}</span>`);
-  if(um==='KG') prem.push(`<span style="display:inline-flex;align-items:center;gap:4px">${lbs('1 carga')}${inpS('cargaTon',s.cargaTon,'','number','40px','min="0" step="0.5"')}${lbs('t')}</span>`);
-  prem.push(`<span style="display:inline-flex;align-items:center;gap:4px">${lbs('validade')}${inpS('validadeMeses',s.validadeMeses,'—','number','36px','min="0" step="1"')}${lbs('meses')}</span>`);
+  if(s.modo!=='desconto') prem.push(premRow('Preço de compra', `${uSpan('R$')}${inpS('preco',s.preco,_cpNum(precoRef,2),'text','58px')}${uSpan('/'+um)}`));
+  if(um==='KG') prem.push(premRow('Tamanho da carga', `${inpS('cargaTon',s.cargaTon,'','number','48px','min="0" step="0.5"')}${uSpan('t')}`));
+  prem.push(premRow('Validade', `${inpS('validadeMeses',s.validadeMeses,'—','number','44px','min="0" step="1"')}${uSpan('meses')}`));
   return `<div class="cp-card" id="cp-sim" style="padding:15px 17px">
     <div class="cp-card-title"><span>Simulador de compra</span><span class="sub">consumo ${o.consMed?_cpNum(o.consMed,0)+' '+um+'/mês':'—'}</span></div>
     <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:9px"><span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3)">Calcular por</span>${selModo}</div>
-    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:11px">${campoModo}</div>
-    <div style="display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;margin-bottom:14px;padding-top:10px;border-top:1px dashed var(--border)">${prem.join('')}</div>
+    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:10px">${campoModo}</div>
+    <div style="margin-bottom:14px;padding-top:8px;border-top:1px dashed var(--border)">${prem.join('')}</div>
     <div id="cp-sim-result">${_cpSimResult(o)}</div>
   </div>`;
 }
