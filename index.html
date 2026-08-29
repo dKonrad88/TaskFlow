@@ -9023,8 +9023,8 @@ function _cpToggleFoco(){ _cpSetFoco(!document.body.classList.contains('cp-focus
 // modo='' começa VAZIO (fluxo passo-a-passo: primeiro escolhe "Calcular por"); os campos do modo
 // começam vazios p/ o usuário preencher (é o gatilho que libera as premissas). usarCarga: item vem em
 // carga fechada (caminhão) — desligável p/ itens de volume pequeno. entregas: cronograma de chegada.
-let _cpSim={modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', usarCarga:true, entregas:[]};
-function _cpSimReset(){ _cpSim={modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', usarCarga:true, entregas:[]}; }
+let _cpSim={modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', usarCarga:true, entregas:[], entregasQtd:[]};
+function _cpSimReset(){ _cpSim={modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', usarCarga:true, entregas:[], entregasQtd:[]}; }
 function _cpCargaKg(){ return (parseFloat(String(_cpSim.cargaTon).replace(',','.'))||0)*1000; }
 // Já preencheu o valor do modo escolhido? (gatilho que libera as premissas + o resultado no fluxo passo-a-passo)
 function _cpSimModevalFilled(){ const s=_cpSim;
@@ -9041,15 +9041,27 @@ function _cpSimPremsFilled(o){ const s=_cpSim, um=(o&&o.um)||'', cargaOK=s.usarC
   if(cargaOK && !_cpSimPremOK(s.cargaTon)) return false;
   if(!_cpSimPremOK(s.validadeMeses)) return false;
   return true; }
-function _cpSimToggleCarga(){ _cpSim.usarCarga=!_cpSim.usarCarga; if(!_cpSim.usarCarga && _cpSim.modo==='cargas'){ _cpSim.modo=''; } _cpSim.entregas=[]; _cpSimRerender(); }
+function _cpSimToggleCarga(){ _cpSim.usarCarga=!_cpSim.usarCarga; if(!_cpSim.usarCarga && _cpSim.modo==='cargas'){ _cpSim.modo=''; } _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); }
 // ── Cronograma de entregas: cada entrega chega numa data; a validade conta da CHEGADA de cada uma;
 // o consumo diário come a mais velha primeiro (FEFO). Vale p/ QUALQUER modo/item (não só cargas).
 function _cpDiasEntre(isoA,isoB){ const a=new Date(isoA+'T00:00:00'), b=new Date(isoB+'T00:00:00'); return Math.round((b-a)/86400000); }
 function _cpSimEntregas(n){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; const e=_cpSim.entregas; if(n<1) n=1; for(let i=0;i<n;i++){ if(!e[i]) e[i]=today; } e.length=n; return e; }
 function _cpSimRefreshResult(){ const el=document.getElementById('cp-sim-result'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]); }
 function _cpSimSetEntrega(i,val){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; _cpSim.entregas[i]=val; _cpSimRefreshResult(); }
-function _cpSimAddEntrega(){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[today]; _cpSim.entregas.push(today); _cpSimRefreshResult(); }
-function _cpSimDelEntrega(i){ if(Array.isArray(_cpSim.entregas) && _cpSim.entregas.length>1){ _cpSim.entregas.splice(i,1); _cpSimRefreshResult(); } }
+function _cpSimAddEntrega(){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[today]; _cpSim.entregas.push(today); _cpSim.entregasQtd=[]; _cpSimRefreshResult(); }
+function _cpSimDelEntrega(i){ if(Array.isArray(_cpSim.entregas) && _cpSim.entregas.length>1){ _cpSim.entregas.splice(i,1); _cpSim.entregasQtd=[]; _cpSimRefreshResult(); } }
+// Quantidade por entrega (modos NÃO-cargas): o usuário digita as N-1 primeiras; a ÚLTIMA completa o total (resto).
+// As editáveis são limitadas p/ a soma NUNCA passar do total (proteção contra erro do comprador).
+function _cpNumParse(v){ return parseFloat(String(v==null?'':v).replace(/\./g,'').replace(',','.'))||0; }
+function _cpSimQtds(total, N){
+  if(N<=1) return [total];
+  const custom=Array.isArray(_cpSim.entregasQtd)?_cpSim.entregasQtd:[];
+  const base=total/N; const arr=[]; let soma=0;
+  for(let i=0;i<N-1;i++){ let q=(custom[i]!=null && custom[i]!=='')?_cpNumParse(custom[i]):base; q=Math.max(0, Math.min(q, total-soma)); arr.push(q); soma+=q; }
+  arr.push(Math.max(0, total-soma));  // última entrega = resto (automática)
+  return arr;
+}
+function _cpSimSetEntregaQtd(i,val){ if(!Array.isArray(_cpSim.entregasQtd)) _cpSim.entregasQtd=[]; _cpSim.entregasQtd[i]=val; _cpSimRefreshResult(); }
 // Simulação FEFO por dia: cada lote {arr,exp,qty} (dias a partir de hoje); consome consDia/dia do lote que vence primeiro.
 // Retorna a perda (o que vence parado) por lote. É PROTÓTIPO — datas de entrega são estimativa do comprador.
 function _cpFefoSim(batches, consDia){
@@ -9134,21 +9146,27 @@ function _cpSimResult(o){
     const isCargas=_cpSim.modo==='cargas';
     const N=isCargas?Math.max(1,Math.round(parseFloat(String(_cpSim.cargas).replace(',','.'))||1)):Math.max(1,(Array.isArray(_cpSim.entregas)?_cpSim.entregas.length:1));
     const ent=_cpSimEntregas(N);
-    const consDia=consMes/30, valDias=Math.round(valM*30), qtyPer=c.qtd/ent.length;
+    const consDia=consMes/30, valDias=Math.round(valM*30);
+    const qtys=isCargas?ent.map(()=>c.qtd/ent.length):_cpSimQtds(c.qtd, ent.length);
     const batches=[];
     if(o.est>0) batches.push({arr:0, exp:valDias, qty:o.est, _i:-1});
-    ent.forEach((iso,i)=>{ const off=Math.max(0,_cpDiasEntre(today,iso)); batches.push({arr:off, exp:off+valDias, qty:qtyPer, _i:i}); });
+    ent.forEach((iso,i)=>{ const off=Math.max(0,_cpDiasEntre(today,iso)); batches.push({arr:off, exp:off+valDias, qty:qtys[i], _i:i}); });
     const sim=_cpFefoSim(batches, consDia);
     const perdaTot=sim.reduce((a,b)=>a+b.waste,0), totalKg=o.est+c.qtd;
     const delLbl=isCargas?'Carga':(ent.length>1?'Entrega':'');
+    const editaQtd=!isCargas && ent.length>1;   // volume por entrega editável (a última = resto automático)
     const rowsCrono=ent.map((iso,i)=>{
       const b=sim.find(x=>x._i===i), w=b?b.waste:0;
       const dinput=`<input type="date" value="${escapeAttr(iso)}" onchange="_cpSimSetEntrega(${i},this.value)" class="cp-sim-inp" style="width:130px;font-size:12px">`;
       const duraTxt=(b && b.esgotaT!=null)?`<span style="font-size:11px;color:var(--text3)">dura até <b style="color:var(--text2)">${_cpDataFim(b.esgotaT)}</b></span>`:'';
       const wtxt=w>0.5?`<span style="color:var(--danger);font-weight:700;font-size:11.5px">vence ${_cpNum(w,0)} ${um}</span>`:`<span style="color:var(--success);font-size:11.5px"><i class="ti ti-check"></i> ok</span>`;
       const del=(!isCargas && ent.length>1)?`<button onclick="_cpSimDelEntrega(${i})" title="Remover entrega" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;display:inline-flex"><i class="ti ti-x" style="font-size:13px"></i></button>`:'';
-      const rot=delLbl?`${delLbl} ${i+1} · ${_cpNum(qtyPer,0)} ${um}`:`${_cpNum(qtyPer,0)} ${um}`;
-      return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap"><span style="font-size:12px;color:var(--text2);min-width:${delLbl?'110px':'70px'}">${rot}</span><span style="font-size:11px;color:var(--text3)">chega em</span>${dinput}${duraTxt}${wtxt}${del}</div>`;
+      let qtyCell;
+      if(!editaQtd){ qtyCell=`${_cpNum(qtys[i],0)} ${um}`; }
+      else if(i===ent.length-1){ qtyCell=`<b style="color:var(--text2)">${_cpNum(qtys[i],0)}</b> ${um} <span style="font-size:10px;color:var(--text3)">(resto)</span>`; }
+      else { qtyCell=`<input type="text" inputmode="numeric" value="${escapeAttr(_cpNum(qtys[i],0))}" onchange="_cpSimSetEntregaQtd(${i},this.value)" class="cp-sim-inp" style="width:66px;font-size:12px"> ${um}`; }
+      const rot=delLbl?`${delLbl} ${i+1} · ${qtyCell}`:qtyCell;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap"><span style="font-size:12px;color:var(--text2);min-width:${delLbl?(editaQtd?'165px':'110px'):'70px'};display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap">${rot}</span><span style="font-size:11px;color:var(--text3)">chega em</span>${dinput}${duraTxt}${wtxt}${del}</div>`;
     }).join('');
     const addBtn=!isCargas?`<button onclick="_cpSimAddEntrega()" style="margin-top:7px;background:none;border:1px dashed var(--border);border-radius:7px;cursor:pointer;color:var(--blue-mid);font-size:11.5px;font-weight:600;padding:5px 10px;font-family:inherit"><i class="ti ti-plus"></i> dividir em outra entrega</button>`:'';
     const okAll=perdaTot<=0.5;
@@ -9211,7 +9229,7 @@ function _cpSimHTML(o){
     <div id="cp-sim-result">${_cpSimResult(o)}</div>
   </div>`;
 }
-function _cpSimModo(m){ _cpSim.modo=m; _cpSim.entregas=[]; _cpSimRerender(); }
+function _cpSimModo(m){ _cpSim.modo=m; _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); }
 // _cpSimSet: usado pelos campos do MODO — guarda o valor e SÓ atualiza o resultado se ele já estiver visível
 // (durante a digitação inicial o resultado ainda não apareceu; ele é revelado no onchange via _cpSimRerender).
 function _cpSimSet(campo,val){ _cpSim[campo]=val; const el=document.getElementById('cp-sim-result'); if(el && el.innerHTML.trim()!=='' && _cpItemSel && _cpIdx()[_cpItemSel]) el.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]); }
