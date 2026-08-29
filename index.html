@@ -9237,10 +9237,15 @@ function _cpSimHTML(o){
   else if(s.modo==='cargas') campoModo=`${lb('Comprar')}${inp('cargas',s.cargas,'','number','56px','min="0"')}${lb('cargas')}`;
   else if(s.modo==='desconto') campoModo=`${lb('Comprar')}${inpQtd('108px')}${selUn}${lb('com')}${inp('descPct',s.descPct,'','number','52px','min="0" max="100"')}${lb('% desc.')}`;
   // Premissas — cada uma na sua linha; só aparecem DEPOIS de preencher o valor do modo.
-  const premRow=(lab,content)=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0"><span style="font-size:12.5px;color:var(--text2);min-width:122px">${lab}</span><span style="display:inline-flex;align-items:center;gap:5px">${content}</span></div>`;
+  const premRow=(lab,content)=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;flex-wrap:wrap"><span style="font-size:12.5px;color:var(--text2);min-width:122px">${lab}</span><span style="display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap">${content}</span></div>`;
+  // Referências ao lado do PREÇO (Diego): média das últimas 3 compras + teto de custeio.
+  const _m3=(o.compras||[]).slice(0,3); const _media3=_m3.length?_m3.reduce((a,l)=>a+(l.vun||0),0)/_m3.length:0;
+  const _tetoRef=_cpNumParse(_cpGetCusteio(o.cod));
+  const _refPill=(lab,val,cor)=>`<span style="display:inline-flex;align-items:baseline;gap:4px;font-size:10.5px;font-weight:600;color:var(--text3);background:${cor?`color-mix(in srgb, ${cor} 13%, transparent)`:'var(--bg2)'};border:1px solid ${cor?`color-mix(in srgb, ${cor} 30%, transparent)`:'var(--border)'};border-radius:7px;padding:2px 8px;white-space:nowrap">${lab} <b style="color:${cor||'var(--text2)'}">${val}</b></span>`;
+  const refChips=`${_media3>0?_refPill('média 3', _cpBRL(_media3)):''}${_tetoRef>0?_refPill('teto', _cpBRL(_tetoRef), 'var(--danger)'):''}`;
   // Premissas reveladas UMA A UMA: cada uma só aparece quando a anterior tem valor (preço → carga → validade).
   const steps=[];
-  if(s.modo!=='desconto') steps.push([()=>_cpSimPremOK(s.preco), premRow('Preço de compra', `${uSpan('R$')}${inpS('preco',s.preco,_cpNum(precoRef,2),'text','58px')}${uSpan('/'+um)}`)]);
+  if(s.modo!=='desconto') steps.push([()=>_cpSimPremOK(s.preco), premRow('Preço de compra', `${uSpan('R$')}${inpS('preco',s.preco,_cpNum(precoRef,2),'text','58px')}${uSpan('/'+um)}${refChips}`)]);
   if(cargaOK) steps.push([()=>_cpSimPremOK(s.cargaTon), premRow('Tamanho da carga', `${inpS('cargaTon',s.cargaTon,'35','number','48px','min="0" step="0.5"')}${uSpan('t')}`)]);
   steps.push([()=>_cpSimPremOK(s.validadeMeses), premRow('Validade', `${inpS('validadeMeses',s.validadeMeses,'6','number','44px','min="0" step="1"')}${uSpan('meses')}`)]);
   let premHTML='';
@@ -9329,7 +9334,7 @@ function _cpIndicadoresCard(o){
     ['Preço médio compra', o.precoCompra?_cpBRL(o.precoCompra):'—'],
     ['Último preço de compra', o.ultPreco?_cpBRL(o.ultPreco):'—'],
     ['Custo médio s/ imp.', o.cmu?_cpBRL(o.cmu):'—'],
-    ['Preço de custeio', `R$ <input type="text" inputmode="decimal" value="${escapeAttr(_cpGetCusteio(o.cod))}" placeholder="a cadastrar" onchange="_cpSetCusteio('${escapeAttr(o.cod)}',this.value)" onclick="event.stopPropagation()" style="width:72px;text-align:right;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:12.5px;font-weight:700;color:var(--text);font-family:inherit">`, 'manual · teto no simulador'],
+    ['Preço de custeio', `R$ <input type="text" inputmode="decimal" value="${escapeAttr(_cpGetCusteio(o.cod))}" placeholder="a cadastrar" onchange="_cpSetCusteio('${escapeAttr(o.cod)}',this.value)" onclick="event.stopPropagation()" style="width:64px;text-align:right;background:transparent;border:none;border-bottom:1px dashed var(--border);border-radius:0;padding:1px 2px;font-size:12.5px;font-weight:600;color:var(--text);font-family:inherit">`, 'manual · teto no simulador'],
     ['Valor em estoque', o.valor?_cpBRL(o.valor):'—'],
     ['Compras no período', _cpNum(o.compras.length)]
   ];

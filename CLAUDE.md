@@ -422,6 +422,9 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-08-29 (Mac, g) — Simulador: campo de custeio suave + referências (média 3 · teto) ao lado do Preço
+Diego: (1) o input de "Preço de custeio" no card estava chamativo (caixa escura `var(--bg2)` + borda) → agora **transparente com sublinhado tracejado**, discreto como os outros valores. (2) Ao lado do **"Preço de compra"** no simulador, dois chips de referência: **"média 3 · R$ X"** (neutro) e **"teto · R$ Y"** (vermelho) — o comprador vê os âncoras enquanto digita o preço (`refChips`/`_refPill` em `_cpSimHTML`; `premRow` ganhou `flex-wrap`). Testado no preview. SYNTAX_OK.
+
 ### 2026-08-29 (Mac, f) — Simulador: trocar de modo ZERA o wizard (fix do "um a um")
 Bug do Diego: em "Estoque para X dias", depois de digitar os dias, apareciam TODAS as premissas de uma vez. Causa: `preco`/`cargaTon`/`validadeMeses` PERSISTIAM da simulação anterior (ele tinha testado cargas), então já contavam como preenchidas e o loop revelava tudo. Fix: `_cpSimModo` agora zera `dias/data/qtd/cargas/preco/cargaTon/validadeMeses` (+ `entregas`/`entregasQtd`) ao trocar de modo → sempre recomeça um a um, em QUALQUER modo. Testado (estoqueDias vindo de cargas: dias→só preço→carga→validade). SYNTAX_OK.
 
