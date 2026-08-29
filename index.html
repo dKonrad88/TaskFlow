@@ -9170,7 +9170,7 @@ function _cpFichaResumo(o){
   // 3 colunas: [macro + indicadores] · [últimas compras] · [simulador + OCs em aberto]. Macro só p/ item com dado (ex. Amendoim).
   // Indicadores em ~metade da largura; o espaço liberado vai p/ Últimas compras (col 2). Simulador (col 3) inalterado.
   return graficos+`
-    <div style="display:grid;grid-template-columns:minmax(175px,0.48fr) minmax(360px,1.57fr) minmax(300px,1.05fr);gap:12px;align-items:start">
+    <div style="display:grid;grid-template-columns:minmax(193px,0.53fr) minmax(360px,1.57fr) minmax(282px,1.00fr);gap:12px;align-items:start">
       <div style="display:flex;flex-direction:column;gap:12px">${_cpMacroCard(o)}${_cpIndicadoresCard(o)}</div>
       ${_cpUltimasComprasCard(o)}
       <div style="display:flex;flex-direction:column;gap:12px">${_cpSimHTML(o)}${_cpOCsCard(o)}</div>
@@ -9225,17 +9225,17 @@ function _cpUltimasComprasCard(o){
   const um=o.um||'';
   const linhas=o.compras.slice(0,10).map(l=>`<tr>
     <td class="cp-mono">${_cpDt(l.data)}</td>
-    <td class="cp-n">${_cpNum(l.qtd,0)} <span class="cp-un">${escapeHTML(um)}</span></td>
+    <td style="white-space:normal;line-height:1.3;font-weight:600;color:var(--text);min-width:120px" title="${escapeAttr(_cpForn(l.forn[1]))}">${escapeHTML(_cpForn(l.forn[1]))}</td>
     <td class="cp-n">${_cpBRL(l.vun)}</td>
+    <td class="cp-n">${_cpNum(l.qtd,0)} <span class="cp-un">${escapeHTML(um)}</span></td>
     <td class="cp-n">${l.aliq!=null?_cpNum(l.aliq,0)+'%':'—'}</td>
     <td class="cp-n">${(l.vun&&l.aliq!=null)?_cpBRL(l.vun*(1-l.aliq/100)):'—'}</td>
-    <td class="cp-item" title="${escapeAttr(_cpForn(l.forn[1]))}" style="max-width:84px">${escapeHTML(_cpForn(l.forn[1]))}</td>
     <td class="cp-n" style="color:var(--text3)">—</td>
   </tr>`).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:16px">Sem compras.</td></tr>`;
   return `<div class="cp-card" style="padding:15px 17px 8px">
     <div class="cp-card-title"><span>Últimas compras</span></div>
     <div style="overflow-x:auto"><table class="cp-tbl cp-tbl-sm" style="font-size:11px">
-      <thead><tr><th>Data</th><th class="r">Qtde</th><th class="r">Preço</th><th class="r">ICMS</th><th class="r" title="Preço líquido do ICMS">Preço Net</th><th>Fornecedor</th><th class="r">Prazo</th></tr></thead>
+      <thead><tr><th>Data</th><th>Fornecedor</th><th class="r">Preço</th><th class="r">Qtde</th><th class="r">ICMS</th><th class="r" title="Preço líquido do ICMS">Preço Net</th><th class="r">Prazo</th></tr></thead>
       <tbody>${linhas}</tbody></table></div>
     <div style="font-size:10.5px;color:var(--text3);padding:6px 2px 0">Prazo (pagamento/entrega) — a cadastrar; não vem no export do ERP.</div>
   </div>`;
