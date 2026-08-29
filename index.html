@@ -9020,9 +9020,29 @@ function _cpSetFoco(on){ document.body.classList.toggle('cp-focus', on); if(_cpI
 function _cpToggleFoco(){ _cpSetFoco(!document.body.classList.contains('cp-focus')); }
 // ── SIMULADOR DE COMPRA (card da view Resumo). Roda sobre estoque/consumo/preço do item. ──
 // Tamanho de uma CARGA fechada (caminhão) é EDITÁVEL no simulador (_cpSim.cargaTon, em toneladas) — varia por item/fornecedor.
-let _cpSim={modo:'estoqueDias', dias:'45', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'3', cargaTon:'35', validadeMeses:'6'};
-function _cpSimReset(){ _cpSim={modo:'estoqueDias', dias:'45', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'3', cargaTon:'35', validadeMeses:'6'}; }
+let _cpSim={modo:'estoqueDias', dias:'45', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'3', cargaTon:'35', validadeMeses:'6', entregas:[]};
+function _cpSimReset(){ _cpSim={modo:'estoqueDias', dias:'45', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'3', cargaTon:'35', validadeMeses:'6', entregas:[]}; }
 function _cpCargaKg(){ return (parseFloat(String(_cpSim.cargaTon).replace(',','.'))||0)*1000; }
+// ── Cargas escalonadas: cada carga chega numa data; validade conta da CHEGADA de cada uma; consumo FEFO (a mais velha primeiro).
+function _cpDiasEntre(isoA,isoB){ const a=new Date(isoA+'T00:00:00'), b=new Date(isoB+'T00:00:00'); return Math.round((b-a)/86400000); }
+function _cpSimEntregas(n){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; const e=_cpSim.entregas; for(let i=0;i<n;i++){ if(!e[i]) e[i]=today; } e.length=n; return e; }
+function _cpSimSetEntrega(i,val){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; _cpSim.entregas[i]=val; const el=document.getElementById('cp-sim-result'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]); }
+// Simulação FEFO por dia: cada lote {arr,exp,qty} (dias a partir de hoje); consome consDia/dia do lote que vence primeiro.
+// Retorna a perda (o que vence parado) por lote. É PROTÓTIPO — datas de entrega são estimativa do comprador.
+function _cpFefoSim(batches, consDia){
+  const B=batches.map(b=>({arr:b.arr, exp:b.exp, qty:b.qty, _i:b._i, r:0, waste:0}));
+  if(!B.length) return B;
+  if(!(consDia>0)){ B.forEach(b=>b.waste=b.qty); return B; }
+  const horizon=Math.min(3650, Math.max.apply(null,B.map(b=>b.exp)));
+  for(let t=0;t<=horizon;t++){
+    B.forEach(b=>{ if(b.arr===t) b.r+=b.qty; });
+    let d=consDia;
+    const av=B.filter(b=>b.r>1e-9 && b.exp>t).sort((a,c)=>a.exp-c.exp);
+    for(let j=0;j<av.length && d>1e-9;j++){ const take=Math.min(av[j].r,d); av[j].r-=take; d-=take; }
+    B.forEach(b=>{ if(b.exp===t+1 && b.r>1e-9){ b.waste+=b.r; b.r=0; } });
+  }
+  return B;
+}
 function _cpSimCalc(o){
   const s=_cpSim, cd=o.consDia||0;
   const precoRef=o.ultPreco||o.precoCompra||0;
@@ -9108,7 +9128,35 @@ function _cpSimResult(o){
   } else if(c.qtd>0 && valM<=0){
     validadeBloco=`<div style="margin-top:9px;font-size:10.5px;color:var(--text3)"><i class="ti ti-info-circle"></i> Informe a <b>validade (meses)</b> do item para checar risco de perda por vencimento.</div>`;
   }
-  return hero+rows+validadeBloco+cargasBloco;
+  // MODO CARGAS (2+ cargas): elas normalmente NÃO chegam todas hoje. Deixa agendar a chegada de cada
+  // carga e recalcula o vencimento com FEFO — mais realista que assumir "tudo hoje".
+  let cronoBloco='';
+  const isCargas=_cpSim.modo==='cargas';
+  const nCargas=isCargas?Math.max(0,Math.round(parseFloat(String(_cpSim.cargas).replace(',','.'))||0)):0;
+  if(isCargas && nCargas>=2 && cargaKg>0 && consMes>0 && valM>0){
+    const ent=_cpSimEntregas(nCargas), consDia=consMes/30, valDias=Math.round(valM*30);
+    const batches=[];
+    if(o.est>0) batches.push({arr:0, exp:valDias, qty:o.est, _i:-1});
+    ent.forEach((iso,i)=>{ const off=Math.max(0,_cpDiasEntre(today,iso)); batches.push({arr:off, exp:off+valDias, qty:cargaKg, _i:i}); });
+    const sim=_cpFefoSim(batches, consDia);
+    const perdaTot=sim.reduce((a,b)=>a+b.waste,0), totalKg=o.est+nCargas*cargaKg;
+    const rowsCrono=ent.map((iso,i)=>{
+      const b=sim.find(x=>x._i===i), w=b?b.waste:0;
+      const dinput=`<input type="date" value="${escapeAttr(iso)}" onchange="_cpSimSetEntrega(${i},this.value)" class="cp-sim-inp" style="width:130px;font-size:12px">`;
+      const wtxt=w>0.5?`<span style="color:var(--danger);font-weight:700;font-size:11.5px">vence ${_cpNum(w,0)} ${um}</span>`:`<span style="color:var(--success);font-size:11.5px"><i class="ti ti-check"></i> ok</span>`;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap"><span style="font-size:12px;color:var(--text2);min-width:64px">Carga ${i+1}</span><span style="font-size:11px;color:var(--text3)">chega em</span>${dinput}${wtxt}</div>`;
+    }).join('');
+    const okAll=perdaTot<=0.5;
+    cronoBloco=`<div style="margin-top:12px;padding:12px 14px;background:var(--bg2);border-radius:10px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:8px"><i class="ti ti-truck-delivery" style="color:var(--blue-mid)"></i> Quando cada carga chega</div>
+      ${rowsCrono}
+      <div style="margin-top:9px;padding-top:9px;border-top:1px dashed var(--border);font-size:12px;font-weight:700;color:${okAll?'var(--success)':'var(--danger)'};line-height:1.5">${okAll?`<i class="ti ti-circle-check"></i> Com esse escalonamento, nada vence — tudo é consumido dentro da validade.`:`<i class="ti ti-alert-triangle"></i> Mesmo escalonado, ~<b>${_cpNum(perdaTot,0)} ${um}</b> (${Math.round(perdaTot/totalKg*100)}%) vence · ≈ ${_cpBRL(perdaTot*c.preco)} a descartar. Empurre as chegadas mais para frente.`}</div>
+      <div style="font-size:10.5px;color:var(--text3);margin-top:6px">Consumo ${_cpNum(consMes,0)} ${um}/mês · validade ${_cpNum(valM,0)} meses a partir da chegada de cada carga (FEFO). Datas = estimativa sua.</div>
+    </div>`;
+  }
+  const valFinal = cronoBloco || validadeBloco;               // no modo cargas o cronograma substitui o bloco lump-sum
+  const cargasFinal = isCargas ? '' : cargasBloco;            // e a nota de "carga cheia" (redundante quando já são N cargas)
+  return hero+rows+valFinal+cargasFinal;
 }
 function _cpSimHTML(o){
   const s=_cpSim, um=o.um||'';
