@@ -9062,6 +9062,13 @@ function _cpSimQtds(total, N){
   return arr;
 }
 function _cpSimSetEntregaQtd(i,val){ if(!Array.isArray(_cpSim.entregasQtd)) _cpSim.entregasQtd=[]; _cpSim.entregasQtd[i]=val; _cpSimRefreshResult(); }
+// ── Preço de CUSTEIO (Diego): preço MANUAL que entra na formação do preço de venda do produto
+// (com folga p/ oscilação). No simulador vira o TETO que o comprador não deve passar. Por item, em localStorage (sincroniza).
+const LS_CP_CUSTEIO='taskflow_cp_custeio';
+let _cpCusteio=null;
+function _cpCusteioMap(){ if(_cpCusteio===null){ try{ _cpCusteio=safeJSON(LS_CP_CUSTEIO,{})||{}; }catch(e){ _cpCusteio={}; } } return _cpCusteio; }
+function _cpGetCusteio(cod){ const v=_cpCusteioMap()[cod]; return v==null?'':v; }
+function _cpSetCusteio(cod,val){ const m=_cpCusteioMap(); if(val==null||String(val).trim()===''){ delete m[cod]; } else { m[cod]=String(val).trim(); } try{ safeSetItem(LS_CP_CUSTEIO, JSON.stringify(m)); }catch(e){} _cpSimRerender(); }
 // Simulação FEFO por dia: cada lote {arr,exp,qty} (dias a partir de hoje); consome consDia/dia do lote que vence primeiro.
 // Retorna a perda (o que vence parado) por lote. É PROTÓTIPO — datas de entrega são estimativa do comprador.
 function _cpFefoSim(batches, consDia){
@@ -9115,12 +9122,17 @@ function _cpSimResult(o){
       else {cc='var(--text3)';tx='igual';}
     const sub=Math.abs(du)>0.005?` <span style="color:var(--text3);font-weight:500">(${du<0?'−':'+'}${_cpBRL(Math.abs(du))}/${um})</span>`:'';
     return `<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:${cc}"><span style="width:7px;height:7px;border-radius:50%;background:${cc};display:inline-block;flex-shrink:0"></span><span><span style="color:var(--text3);font-weight:600">${lab} (${_cpBRL(ref)}/${um}):</span> ${tx}${sub}</span></div>`; };
+  // TETO de custeio (preço manual cadastrado nos Indicadores) — em vermelho: o comprador não deve passar disso.
+  const custeioTeto=_cpNumParse(_cpGetCusteio(o.cod));
+  const tetoLine=(custeioTeto>0)?(()=>{ const acima=c.preco>custeioTeto+0.005, folga=custeioTeto-c.preco;
+    const st=acima?`<b>ACIMA do teto</b> (+${_cpBRL(-folga)}/${um})`:`dentro (folga ${_cpBRL(folga)}/${um})`; const stc=acima?'var(--danger)':'var(--success)';
+    return `<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700"><span style="width:7px;height:7px;border-radius:50%;background:var(--danger);display:inline-block;flex-shrink:0"></span><span><span style="color:var(--danger);font-weight:700">Teto de custeio (${_cpBRL(custeioTeto)}/${um}):</span> <span style="color:${stc};font-weight:700">${st}</span></span></div>`; })():'';
   // HERÓI: a resposta (quanto comprar) + o custo + se é bom preço, em destaque.
   const hero=`<div style="background:var(--bg2);border-radius:11px;padding:12px 14px;margin-bottom:12px">
     <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)">Comprar</div>
     <div style="font-size:23px;font-weight:800;color:var(--text);line-height:1.15;margin-top:1px">${_cpNum(c.qtd,0)} <span style="font-size:14px;font-weight:700;color:var(--text3)">${um}</span>${qt?` <span style="font-size:13px;font-weight:600;color:var(--text3)">· ${qt}</span>`:''}</div>
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><span style="font-size:12px;color:var(--text3)">Custo total</span><span style="font-size:16.5px;font-weight:800;color:var(--text)">${_cpBRL(c.custo)}</span></div>
-    <div style="margin-top:7px;display:flex;flex-direction:column;gap:5px">${cmpLine('vs última compra', c.precoRef)}${cmpLine('vs média 3 compras', media3)}</div>
+    <div style="margin-top:7px;display:flex;flex-direction:column;gap:5px">${tetoLine}${cmpLine('vs última compra', c.precoRef)}${cmpLine('vs média 3 compras', media3)}</div>
   </div>`;
   // linhas de apoio (compactas, sem borda por linha)
   const linha=(lab,val)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0"><span style="font-size:12.5px;color:var(--text3)">${lab}</span><span style="font-size:13px;font-weight:700;color:var(--text);text-align:right">${val}</span></div>`;
@@ -9156,11 +9168,12 @@ function _cpSimResult(o){
     const temData=iso=>!!(iso && String(iso).trim());
     let reveladas=ent.length; for(let i=0;i<ent.length;i++){ if(!temData(ent[i])){ reveladas=i+1; break; } }
     cronoFilled=ent.every(temData);   // TODAS as datas preenchidas → libera FEFO + os TOTAIS
+    // FEFO com os lotes JÁ preenchidos (estoque atual + cargas COM data) — mostra a info POR carga na hora
+    // em que a data é preenchida (não espera todas). Os TOTAIS é que só aparecem com cronoFilled.
     let sim=null, perdaTot=0, bEst=null, wEst=0;
-    if(cronoFilled){
-      const batches=[]; if(o.est>0) batches.push({arr:0, exp:valDias, qty:o.est, _i:-1});
-      ent.forEach((iso,i)=>{ const off=Math.max(0,_cpDiasEntre(today,iso)); batches.push({arr:off, exp:off+valDias, qty:qtys[i], _i:i}); });
-      sim=_cpFefoSim(batches, consDia); perdaTot=sim.reduce((a,b)=>a+b.waste,0); bEst=sim.find(x=>x._i===-1); wEst=bEst?bEst.waste:0;
+    { const batches=[]; if(o.est>0) batches.push({arr:0, exp:valDias, qty:o.est, _i:-1});
+      ent.forEach((iso,i)=>{ if(temData(iso)){ const off=Math.max(0,_cpDiasEntre(today,iso)); batches.push({arr:off, exp:off+valDias, qty:qtys[i], _i:i}); } });
+      if(batches.length && consDia>0){ sim=_cpFefoSim(batches, consDia); perdaTot=sim.reduce((a,b)=>a+b.waste,0); bEst=sim.find(x=>x._i===-1); wEst=bEst?bEst.waste:0; }
     }
     const minW=`min-width:${delLbl?(editaQtd?'165px':'110px'):'70px'};display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap`;
     const rowsCrono=ent.slice(0,reveladas).map((iso,i)=>{
@@ -9177,7 +9190,7 @@ function _cpSimResult(o){
       return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap"><span style="font-size:12px;color:var(--text2);${minW}">${rot}</span><span style="font-size:11px;color:var(--text3)">chega em</span>${dinput}${duraTxt}${wtxt}${del}</div>`;
     }).join('');
     // Estoque ATUAL como linha (o FEFO consome ele PRIMEIRO) — só depois que todas as datas estão preenchidas.
-    const estRow=(cronoFilled && o.est>0 && bEst)?`<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap;opacity:.9"><span style="font-size:12px;color:var(--text2);${minW}">Estoque atual · ${_cpNum(o.est,0)} ${um}</span><span style="font-size:11px;color:var(--text3)">já em estoque</span>${bEst.esgotaT!=null?`<span style="font-size:11px;color:var(--text3)">dura até <b style="color:var(--text2)">${_cpDataFim(bEst.esgotaT)}</b></span>`:''}${wEst>0.5?`<span style="color:var(--danger);font-weight:700;font-size:11.5px">vence ${_cpNum(wEst,0)} ${um}</span>`:`<span style="color:var(--success);font-size:11.5px"><i class="ti ti-check"></i> ok</span>`}</div>`:'';
+    const estRow=(o.est>0 && bEst)?`<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap;opacity:.9"><span style="font-size:12px;color:var(--text2);${minW}">Estoque atual · ${_cpNum(o.est,0)} ${um}</span><span style="font-size:11px;color:var(--text3)">já em estoque</span>${bEst.esgotaT!=null?`<span style="font-size:11px;color:var(--text3)">dura até <b style="color:var(--text2)">${_cpDataFim(bEst.esgotaT)}</b></span>`:''}${wEst>0.5?`<span style="color:var(--danger);font-weight:700;font-size:11.5px">vence ${_cpNum(wEst,0)} ${um}</span>`:`<span style="color:var(--success);font-size:11.5px"><i class="ti ti-check"></i> ok</span>`}</div>`:'';
     const addBtn=(!isCargas && cronoFilled)?`<button onclick="_cpSimAddEntrega()" style="margin-top:7px;background:none;border:1px dashed var(--border);border-radius:7px;cursor:pointer;color:var(--blue-mid);font-size:11.5px;font-weight:600;padding:5px 10px;font-family:inherit"><i class="ti ti-plus"></i> dividir em outra entrega</button>`:'';
     const okAll=perdaTot<=0.5, wCargas=perdaTot-wEst;
     const header=isCargas?'Quando cada carga chega':(ent.length>1?'Quando cada entrega chega':'Quando o item chega');
@@ -9314,6 +9327,7 @@ function _cpIndicadoresCard(o){
     ['Preço médio compra', o.precoCompra?_cpBRL(o.precoCompra):'—'],
     ['Último preço de compra', o.ultPreco?_cpBRL(o.ultPreco):'—'],
     ['Custo médio s/ imp.', o.cmu?_cpBRL(o.cmu):'—'],
+    ['Preço de custeio', `R$ <input type="text" inputmode="decimal" value="${escapeAttr(_cpGetCusteio(o.cod))}" placeholder="a cadastrar" onchange="_cpSetCusteio('${escapeAttr(o.cod)}',this.value)" onclick="event.stopPropagation()" style="width:72px;text-align:right;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:12.5px;font-weight:700;color:var(--text);font-family:inherit">`, 'manual · teto no simulador'],
     ['Valor em estoque', o.valor?_cpBRL(o.valor):'—'],
     ['Compras no período', _cpNum(o.compras.length)]
   ];

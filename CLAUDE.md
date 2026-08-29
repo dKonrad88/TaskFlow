@@ -422,6 +422,11 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-08-29 (Mac, e) — Simulador: info por carga no ato + "Preço de custeio" (teto) editável
+1. **Info por carga na hora**: o FEFO passou a rodar com os lotes JÁ preenchidos (estoque + cargas COM data), então cada carga mostra "dura até/vence/ok" **assim que a data é preenchida** (não espera todas). Os TOTAIS seguem só no fim (`cronoFilled`); o estRow (estoque atual) aparece desde o início.
+2. **Preço de custeio** (pedido do Diego): campo MANUAL editável no card **Indicadores** (linha logo abaixo de "Custo médio s/ imp."), por item, em localStorage `taskflow_cp_custeio` (helpers `_cpCusteioMap`/`_cpGetCusteio`/`_cpSetCusteio`, salva via safeSetItem → sincroniza). É o preço que entra na formação do preço de venda (com folga p/ oscilação). No simulador vira **"Teto de custeio (R$ X/un): dentro/ACIMA"** em VERMELHO (1ª linha das comparações), + a média das últimas 3 (já existia). Nomenclatura escolhida por mim (Diego deixou livre): "Preço de custeio" / "Teto de custeio".
+Testado no preview (carga 1 mostra dura até no parcial; teto R$ 9,50 → "dentro (folga R$ 1,50)"; linha do custeio no card, após Custo médio). SYNTAX_OK.
+
 ### 2026-08-29 (Mac, d) — Simulador: estoque atual visível + cronograma ACIMA dos totais + cargas passo-a-passo
 Vários ajustes no cronograma do simulador (`_cpSimResult`):
 1. **Estoque atual como linha** — o FEFO consome ele 1º; aparece "Estoque atual · X · dura até · vence". Responde "onde/quando vence": no Óleo de Palma os 5.946 kg que venciam eram do **estoque atual** (cobertura 53d > validade 45d), não das cargas. O aviso agora distingue perda do estoque × das cargas.
