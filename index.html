@@ -10026,36 +10026,25 @@ function _cpHistCorpoHTML(){
   const TETO=250, mostrar=L.slice(0,TETO);
   const kpi=(lab,val)=>`<div style="flex:1;min-width:140px"><div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">${lab}</div><div style="font-size:19px;font-weight:800;color:var(--text);margin-top:2px">${val}</div></div>`;
   const linhas=mostrar.map(l=>{
-    const base=l.med3||0;
-    const dif=(base>0)?((l.vun-base)/base*100):null;
-    let dc='var(--text3)',db='transparent';
-    if(dif!==null){ if(dif>10){dc='var(--danger)';db='var(--danger-bg)';}
-      else if(dif>3){dc='var(--amber)';db='var(--amber-bg)';}
-      else if(dif<-3){dc='var(--success)';db='var(--success-bg)';} }
-    const difTxt=(dif===null)?'—':((dif>0?'+':'')+dif.toFixed(1)+'%');
     return `<tr>
       <td class="cp-mono">${escapeHTML(String(l.nf))}</td>
       <td class="cp-mono">${_cpDt(l.data)}</td>
-      <td>${escapeHTML(_cpForn(l.forn[1]))}</td>
       <td class="cp-mono">${escapeHTML(String(l.item[0]))}</td>
       <td class="cp-item">${escapeHTML(l.item[1])}</td>
-      <td class="cp-n">${_cpNum(l.qtd,2)} <span class="cp-un">${escapeHTML(l.um||'')}</span></td>
+      <td>${escapeHTML(_cpForn(l.forn[1]))}</td>
       <td class="cp-n">${_cpBRL(l.vun)}</td>
-      <td class="cp-n">${_cpBRL(l.cmu)}</td>
-      <td class="cp-n"><span class="cp-dif" title="${base>0?('média das 3 compras anteriores: '+_cpBRL(base)):'primeira compra do item no período'}" style="color:${dc};background:${db}">${difTxt}</span></td>
+      <td class="cp-n">${_cpNum(l.qtd,2)} <span class="cp-un">${escapeHTML(l.um||'')}</span></td>
       <td class="cp-n">${_cpBRL(l.tot)}</td>
-      <td class="cp-n">${_cpBRL(l.icms)}</td>
       <td class="cp-n">${_cpNum(l.aliq,0)}%</td>
     </tr>`;}).join('');
   return `${_cpKPIcards([kpi('Linhas',_cpNum(L.length)),kpi('Notas fiscais',_cpNum(nNF)),kpi('Itens',_cpNum(nIt)),kpi('Valor total',_cpBRL(totV)),kpi('ICMS',_cpBRL(totI))])}
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow-x:auto">
       <table class="cp-tbl">
         <thead><tr>
-          <th>NF</th><th>Data</th><th>Fornecedor</th><th>Cód.</th><th>Produto</th><th class="r">Qtde</th>
-          <th class="r">Vlr unit.</th><th class="r">Custo médio</th><th class="r">vs últ. 3</th>
-          <th class="r">Total</th><th class="r">ICMS</th><th class="r">%</th>
+          <th>NF</th><th>Data</th><th>Cód.</th><th>Produto</th><th>Fornecedor</th>
+          <th class="r">Vlr unit.</th><th class="r">Qtde</th><th class="r">Total</th><th class="r">ICMS %</th>
         </tr></thead>
-        <tbody>${linhas||'<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:26px">Nenhuma linha para esse filtro.</td></tr>'}</tbody>
+        <tbody>${linhas||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:26px">Nenhuma linha para esse filtro.</td></tr>'}</tbody>
       </table>
     </div>
     ${L.length>TETO?`<div style="text-align:center;color:var(--text3);font-size:12.5px;margin-top:10px">Mostrando as ${TETO} mais recentes de ${_cpNum(L.length)} — use a busca ou o período para afunilar.</div>`:''}`;

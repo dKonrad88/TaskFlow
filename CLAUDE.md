@@ -422,6 +422,9 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-08-28 (l) — Mac de casa — Histórico de compras: enxugado e reordenado
+Pedido do Diego (tela Histórico, `_cpHistCorpoHTML` ~10022): **removidas** as colunas **Custo médio**, **vs últ. 3** e **ICMS (valor R$)**. Nova ordem: **NF · Data · Cód · Produto · Fornecedor · Vlr unit · Qtde · Total · ICMS %** (ele confirmou MANTER Fornecedor, depois do Item, quando perguntei — a lista dele tinha 8 sem Fornecedor). Header "%" virou "ICMS %"; colspan do vazio 12→9; removida a computação `med3/dif` (era só do "vs últ.3"). O KPI de ICMS total (card) foi MANTIDO — só a coluna saiu. Testado no preview, SYNTAX_OK.
+
 ### 2026-08-28 (k) — Mac de casa — Ordens em aberto: comparação de preço (última × anterior) trazida pra dentro da tabela
 Diego quis trazer as colunas da versão ANTIGA pra tela atual, **depois da Previsão de entrega**. Em `_cpOrdRowsHTML` adicionei 6 colunas: **Compra anterior + Preço · Última compra + Preço · Variação(%) · Impacto R$** — puxando o histórico REAL por item de `_cpIdx()[p.cod].compras` (`[0]`=última, `[1]`=anterior). `dif=(a.vun-b.vun)/b.vun*100`; `impacto=(a.vun-b.vun)*a.qtd`; cor **vermelha** se subiu >3%, **verde** se caiu <-3%. Item sem ≥2 compras → "—". Agora são **14 colunas** (colspan do vazio = 14, rola na horizontal). Testado no preview (variações reais com cor: +25,8%, -15,0%…). SYNTAX_OK.
 
