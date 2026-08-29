@@ -422,6 +422,9 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-08-28 (j) — Mac de casa — Ordens em aberto: Valor após o Item + rodapé "dados de exemplo" removido
+Pedido do Diego (2 ajustes na tela "Ordens de compra em aberto" — `_comprasOrdensHTML` / `_cpOrdRowsHTML`): (1) coluna **Valor** movida pra logo depois de **Item** (no `thead` e nas linhas); (2) removida a nota "Dados de exemplo…" do rodapé. Fiz `git pull --ff-only` antes (estava **37 commits atrás**, tree limpo). Testado no preview, SYNTAX_OK. Contexto: expliquei as colunas da versão ANTIGA dessa aba (comparação última×anterior: Cód · Item · Fornecedor(últ.) · Compra anterior + Preço · Última compra + Preço · **Variação** · **Impacto R$**, sobre dados REAIS) — recuperável do git (pré-`ef19c37`) se ele quiser trazer de volta.
+
 ### 2026-08-28 (i) — PC da Empresa — Compras: tarefa vai pro usuário logado (testar) + busca na Ordens + cards de validade
 Continuação da (h). **Commits `0d1cf3c0` (tarefa/Ordens/validade) + `2e688f4e` (consumo/termina), pushados; `main == origin`; working tree limpo; 0 erros.**
 - ⭐ **Necessidade → tarefa agora vai pro USUÁRIO LOGADO** (`_necComprador()` = `CURRENT_USER_ID`), pra o Diego **testar vendo a tarefa no próprio Meu Dia** (verificado: cai no `getTodayTasks`). Em produção o comprador (Joel) loga com o próprio login → o CURRENT_USER_ID já é ele. `_necGerarTarefas` **re-homeia** tarefas antigas que ficaram no Joel (executor≠atual & !done) sem duplicar.
