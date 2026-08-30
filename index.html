@@ -9119,8 +9119,7 @@ function _cpSimCronoExtra(o,c,fd){
     :`<i class="ti ti-alert-triangle"></i> ~<b>${_cpNum(fd.perdaTot,0)} ${um}</b> (${Math.round(fd.perdaTot/fd.totalKg*100)}%) vence · ≈ ${_cpBRL(fd.perdaTot*c.preco)} a descartar. ${fd.ent.length>1?'Empurre as chegadas para frente.':'Compre menos, ou parcele em mais entregas.'}`;
   const dicaCor=!fd.cronoFilled?'var(--text2)':((temRuptura||!okAll)?'var(--danger)':'var(--success)');
   const addBtn=(!fd.isCargas && fd.cronoFilled)?`<button onclick="_cpSimAddEntrega()" style="margin-top:7px;background:none;border:1px dashed var(--border);border-radius:7px;cursor:pointer;color:var(--blue-mid);font-size:11.5px;font-weight:600;padding:5px 10px;font-family:inherit"><i class="ti ti-plus"></i> dividir em outra entrega</button>`:'';
-  const foot=fd.cronoFilled?`<div style="font-size:10.5px;color:var(--text3);margin-top:6px">Consumo ${_cpNum(fd.consMes,0)} ${um}/mês · validade ${_cpNum(fd.valM, Number.isInteger(fd.valM)?0:1)} ${fd.valM===1?'mês':'meses'} a partir da chegada de cada entrega (FEFO). Estoque atual conta como o 1º lote. Datas = estimativa sua.</div>`:'';
-  return `${gapsBloco}${addBtn}<div style="margin-top:9px;padding-top:9px;border-top:1px dashed var(--border);font-size:12px;font-weight:700;color:${dicaCor};line-height:1.5">${dica}</div>${foot}`;
+  return `${gapsBloco}${addBtn}<div style="margin-top:9px;padding-top:9px;border-top:1px dashed var(--border);font-size:12px;font-weight:700;color:${dicaCor};line-height:1.5">${dica}</div>`;
 }
 function _cpSimCronoTextos(){
   const o=(_cpItemSel&&_cpIdx()[_cpItemSel])||null; if(!o) return;
@@ -9405,13 +9404,13 @@ function _cpFichaResumo(o){
       ${graf('Consumo por mês','em '+(um||'un')+' (2025–26) · '+_cpLegPrev,_cpBarChart(_cpSerieComPrev(o,serie),'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN,45,'prev'))}
       ${graf('Preço médio de compra <span style="font-weight:500;color:var(--text3);font-size:11.5px">(preço bruto)</span>','R$/'+(um||'un')+' por mês · valor da nota, com impostos (não é o net)',_cpPrecoMedLine(o,{h:66,pt:8,pb:26,fixedH:72}))}
     </div>`;
-  // 3 colunas: [macro + indicadores] · [últimas compras] · [simulador + OCs em aberto]. Macro só p/ item com dado (ex. Amendoim).
-  // Indicadores em ~metade da largura; o espaço liberado vai p/ Últimas compras (col 2). Simulador (col 3) inalterado.
+  // 3 colunas: [macro + indicadores] · [OCs em aberto + últimas compras] · [simulador]. Macro só p/ item com dado (ex. Amendoim).
+  // Diego: OCs em aberto (o que já está a caminho) vem ACIMA das Últimas compras, na mesma coluna.
   return graficos+`
     <div style="display:grid;grid-template-columns:minmax(193px,0.53fr) minmax(360px,1.57fr) minmax(282px,1.00fr);gap:12px;align-items:start">
       <div style="display:flex;flex-direction:column;gap:12px">${_cpMacroCard(o)}${_cpIndicadoresCard(o)}</div>
-      ${_cpUltimasComprasCard(o)}
-      <div style="display:flex;flex-direction:column;gap:12px">${_cpSimHTML(o)}${_cpOCsCard(o)}</div>
+      <div style="display:flex;flex-direction:column;gap:12px">${_cpOCsCard(o)}${_cpUltimasComprasCard(o)}</div>
+      <div style="display:flex;flex-direction:column;gap:12px">${_cpSimHTML(o)}</div>
     </div>`;
 }
 // Indicadores compactos em tópicos (substitui os 7 cartões soltos), na coluna do simulador.
