@@ -9146,12 +9146,13 @@ function _cpSimResult(o){
     const pct=ref>0?(du/ref*100):0;
     const sub=Math.abs(du)>0.005?` <span style="color:var(--text3);font-weight:500">(${du<0?'−':'+'}${_cpBRL(Math.abs(du))}/${um} · ${du<0?'−':'+'}${_cpNum(Math.abs(pct),1)}%)</span>`:'';
     return `<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:${cc}"><span style="width:7px;height:7px;border-radius:50%;background:${cc};display:inline-block;flex-shrink:0"></span><span><span style="color:var(--text3);font-weight:600">${lab} (${_cpBRL(ref)}/${um}):</span> ${tx}${sub}</span></div>`; };
-  // TETO de custeio (preço manual cadastrado nos Indicadores) — em vermelho: o comprador não deve passar disso.
+  // TETO de custeio (preço manual cadastrado nos Indicadores): o comprador não deve passar disso.
+  // Texto em cor normal (como as outras linhas); só a BOLINHA fica vermelha (acima) ou verde (dentro).
   const custeioTeto=_cpNumParse(_cpGetCusteio(o.cod));
   const tetoLine=(custeioTeto>0)?(()=>{ const acima=c.preco>custeioTeto+0.005, folga=custeioTeto-c.preco;
     const pctT=Math.abs((c.preco-custeioTeto)/custeioTeto*100);
     const st=acima?`<b>ACIMA do teto</b> (+${_cpBRL(-folga)}/${um} · ${_cpNum(pctT,1)}% acima)`:`dentro (folga ${_cpBRL(folga)}/${um} · ${_cpNum(pctT,1)}% abaixo)`; const stc=acima?'var(--danger)':'var(--success)';
-    return `<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700"><span style="width:7px;height:7px;border-radius:50%;background:var(--danger);display:inline-block;flex-shrink:0"></span><span><span style="color:var(--danger);font-weight:700">Teto de custeio (${_cpBRL(custeioTeto)}/${um}):</span> <span style="color:${stc};font-weight:700">${st}</span></span></div>`; })():'';
+    return `<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700"><span style="width:7px;height:7px;border-radius:50%;background:${stc};display:inline-block;flex-shrink:0"></span><span><span style="color:var(--text3);font-weight:600">Teto de custeio (${_cpBRL(custeioTeto)}/${um}):</span> <span style="color:${stc};font-weight:700">${st}</span></span></div>`; })():'';
   // HERÓI: a resposta (quanto comprar) + o custo + se é bom preço, em destaque.
   const hero=`<div style="background:var(--bg2);border-radius:11px;padding:12px 14px;margin-bottom:12px">
     <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)">Comprar</div>
@@ -9219,7 +9220,7 @@ function _cpSimResult(o){
     const addBtn=(!isCargas && cronoFilled)?`<button onclick="_cpSimAddEntrega()" style="margin-top:7px;background:none;border:1px dashed var(--border);border-radius:7px;cursor:pointer;color:var(--blue-mid);font-size:11.5px;font-weight:600;padding:5px 10px;font-family:inherit"><i class="ti ti-plus"></i> dividir em outra entrega</button>`:'';
     const okAll=perdaTot<=0.5, wCargas=perdaTot-wEst;
     const header=isCargas?'Quando cada carga chega':(ent.length>1?'Quando cada entrega chega':'Quando o item chega');
-    const dica=!cronoFilled?`<i class="ti ti-calendar" style="color:var(--blue-mid)"></i> Preencha a data de chegada de cada ${isCargas?'carga':'entrega'} — a próxima aparece ao confirmar a anterior. No fim, os totais aparecem embaixo.`
+    const dica=!cronoFilled?`<i class="ti ti-calendar" style="color:var(--blue-mid)"></i> Preencha a data de chegada de cada ${isCargas?'carga':'entrega'} — a próxima aparece ao confirmar a anterior.`
       :okAll?`<i class="ti ti-circle-check"></i> Nada vence — tudo é consumido dentro da validade.`
       :(wCargas<=0.5 && wEst>0.5)?`<i class="ti ti-alert-triangle"></i> ~<b>${_cpNum(perdaTot,0)} ${um}</b> vence — mas é do <b>estoque atual</b>${bEst&&bEst.esgotaT!=null?` (passa da validade ~${_cpDataFim(bEst.esgotaT)})`:''}. A compra em si cabe toda; o ideal é consumir/realocar o estoque antes de comprar mais.`
       :`<i class="ti ti-alert-triangle"></i> ~<b>${_cpNum(perdaTot,0)} ${um}</b> (${Math.round(perdaTot/totalKg*100)}%) vence · ≈ ${_cpBRL(perdaTot*c.preco)} a descartar. ${ent.length>1?'Empurre as chegadas para frente.':'Compre menos, ou parcele em mais entregas.'}`;
@@ -9233,10 +9234,9 @@ function _cpSimResult(o){
   } else if(c.qtd>0 && valM<=0){
     cronoBloco=`<div style="margin-top:9px;font-size:10.5px;color:var(--text3)"><i class="ti ti-info-circle"></i> Informe a <b>validade (meses)</b> para checar risco de vencimento.</div>`;
   }
-  // Ordem (pedido do Diego): cronograma das cargas EM CIMA; os TOTAIS só aparecem depois da última data.
-  // Respiro entre o card do cronograma e o card dos totais (Diego: estavam colados).
-  const _sep = cronoBloco ? '<div style="height:12px"></div>' : '';
-  return cronoBloco + (cronoFilled ? (_sep+hero+rows+cargasBloco) : '');
+  // Ordem (pedido do Diego, revertido): PRIMEIRO o card do "Comprar/Custo total"; DEPOIS o card do
+  // cronograma "Quando o item chega". O respiro (12px) entre eles vem do margin-top do cronoBloco.
+  return hero + rows + cargasBloco + cronoBloco;
 }
 function _cpSimHTML(o){
   const s=_cpSim, um=o.um||'';
