@@ -9028,8 +9028,24 @@ function _cpToggleFoco(){ _cpSetFoco(!document.body.classList.contains('cp-focus
 // modo='' começa VAZIO (fluxo passo-a-passo: primeiro escolhe "Calcular por"); os campos do modo
 // começam vazios p/ o usuário preencher (é o gatilho que libera as premissas). usarCarga: item vem em
 // carga fechada (caminhão) — desligável p/ itens de volume pequeno. entregas: cronograma de chegada.
-let _cpSim={modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', usarCarga:true, entregas:[], entregasQtd:[]};
-function _cpSimReset(){ _cpSim={modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', usarCarga:true, entregas:[], entregasQtd:[]}; }
+let _cpSim={periodo:'', perDe:'', perAte:'', modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', usarCarga:true, entregas:[], entregasQtd:[]};
+function _cpSimReset(){ _cpSim={periodo:'', perDe:'', perAte:'', modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', usarCarga:true, entregas:[], entregasQtd:[]}; }
+// ── PERÍODO de referência do consumo (Diego): 1º passo do wizard (antes de "Calcular por"). O comprador
+// escolhe sobre qual janela calcular o CONSUMO MENSAL médio — presets (1,2,3,4,6,9,12 meses) ou intervalo
+// de datas. Vira a base de TODO o cálculo (qtd, cobertura, cronograma). Média simples dos meses COM consumo.
+function _cpConsSerie(o){ return (_cpItemSerie(o)||[]).filter(x=>x.consumo!=null); }
+function _cpSimPeriodoFilled(){ const s=_cpSim; if(s.periodo==='custom') return !!(s.perDe && s.perAte && s.perDe<=s.perAte); return !!(s.periodo && s.periodo!==''); }
+function _cpConsMesSel(o){ const s=_cpSim, serie=_cpConsSerie(o); if(!serie.length) return o.consMed||0;
+  let sel;
+  if(s.periodo==='custom'){ if(!(s.perDe && s.perAte)) return o.consMed||0; const de=s.perDe.slice(0,7), ate=s.perAte.slice(0,7); sel=serie.filter(x=>x.ym>=de && x.ym<=ate); }
+  else { const n=parseInt(s.periodo,10); if(!(n>0)) return o.consMed||0; sel=serie.slice(-n); }
+  if(!sel.length) return 0;
+  return sel.reduce((a,x)=>a+(x.consumo||0),0)/sel.length; }
+// Rótulo curto do período p/ o cabeçalho ("últ. 3 meses" / "período") + nº de meses efetivamente usados.
+function _cpConsMesInfo(o){ const s=_cpSim, val=_cpConsMesSel(o); let lab='', n=0;
+  if(s.periodo==='custom' && s.perDe && s.perAte){ const serie=_cpConsSerie(o); const de=s.perDe.slice(0,7), ate=s.perAte.slice(0,7); n=serie.filter(x=>x.ym>=de && x.ym<=ate).length; const dm=iso=>{ const p=String(iso).split('-'); return p.length>=3?(p[2]+'/'+p[1]):iso; }; lab=dm(s.perDe)+'–'+dm(s.perAte)+(n?' · '+n+(n===1?' mês':' meses'):''); }
+  else if(s.periodo && s.periodo!=='' && s.periodo!=='custom'){ n=parseInt(s.periodo,10); lab='últ. '+n+(n===1?' mês':' meses'); }
+  return {val, lab, n}; }
 function _cpCargaKg(){ return (parseFloat(String(_cpSim.cargaTon).replace(',','.'))||0)*1000; }
 // Já preencheu o valor do modo escolhido? (gatilho que libera as premissas + o resultado no fluxo passo-a-passo)
 function _cpSimModevalFilled(){ const s=_cpSim;
@@ -9093,7 +9109,7 @@ function _cpFefoSim(batches, consDia){
   return B;
 }
 function _cpSimCalc(o){
-  const s=_cpSim, cd=o.consDia||0;
+  const s=_cpSim, cd=_cpConsMesSel(o)/30;   // consumo/dia da JANELA escolhida (período) — base de tudo
   const precoRef=o.ultPreco||o.precoCompra||0;
   let qtd=0;
   if(s.modo==='estoqueDias') qtd=Math.max(0, cd*(parseFloat(s.dias)||0) - o.est);
@@ -9111,8 +9127,8 @@ function _cpSimCalc(o){
 }
 function _cpSimResult(o){
   const c=_cpSimCalc(o), um=o.um||'';
-  // GATE do fluxo passo-a-passo: nada de resultado até escolher o modo E preencher o valor dele.
-  if(!(_cpSim.modo && _cpSimModevalFilled() && _cpSimPremsFilled(o))) return '';
+  // GATE do fluxo passo-a-passo: nada de resultado até escolher o PERÍODO, o modo E preencher o valor dele.
+  if(!(_cpSimPeriodoFilled() && _cpSim.modo && _cpSimModevalFilled() && _cpSimPremsFilled(o))) return '';
   const tTxt=v=> (um==='KG'&&Math.abs(v)>=1000)?_cpNum(v/1000,1)+' t':'';
   if(c.semConsumo && c.qtd<=0) return '<div style="color:var(--text3);font-size:13px;padding:6px 0">Este item não tem consumo registrado — use <b>Quantidade fixa</b> para simular preço e custo.</div>';
   if(!(c.qtd>0)) return '<div style="color:var(--text3);font-size:13px;padding:6px 0">Nada a comprar com esses parâmetros.</div>';
@@ -9157,7 +9173,7 @@ function _cpSimResult(o){
   }
   // CRONOGRAMA DE ENTREGAS + validade via FEFO — vale p/ TODOS os modos/itens (não só cargas). Cada entrega
   // chega numa data; a validade conta da CHEGADA de cada uma; o consumo come a mais velha primeiro (FEFO).
-  const consMes=o.consMed||(o.consDia?o.consDia*30:0);
+  const consMes=_cpConsMesSel(o)||o.consMed||(o.consDia?o.consDia*30:0);
   const valM=parseFloat(String(_cpSim.validadeMeses).replace(',','.'))||0;
   let cronoFilled=true;   // libera os TOTAIS: true qd não há cronograma OU todas as datas preenchidas
   let cronoBloco='';
@@ -9184,14 +9200,14 @@ function _cpSimResult(o){
     const minW=`min-width:${delLbl?(editaQtd?'165px':'110px'):'70px'};display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap`;
     const rowsCrono=ent.slice(0,reveladas).map((iso,i)=>{
       const b=sim?sim.find(x=>x._i===i):null, w=b?b.waste:0;
-      const dinput=`<input type="date" value="${escapeAttr(iso||'')}" onchange="_cpSimSetEntrega(${i},this.value)" class="cp-sim-inp" style="width:130px;font-size:12px">`;
+      const dinput=`<input type="date" value="${escapeAttr(iso||'')}" onchange="_cpSimSetEntrega(${i},this.value)" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:130px;font-size:12px">`;
       const duraTxt=(b && b.esgotaT!=null)?`<span style="font-size:11px;color:var(--text3)">dura até <b style="color:var(--text2)">${_cpDataFim(b.esgotaT)}</b></span>`:'';
       const wtxt=b?(w>0.5?`<span style="color:var(--danger);font-weight:700;font-size:11.5px">vence ${_cpNum(w,0)} ${um}</span>`:`<span style="color:var(--success);font-size:11.5px"><i class="ti ti-check"></i> ok</span>`):'';
       const del=(!isCargas && ent.length>1)?`<button onclick="_cpSimDelEntrega(${i})" title="Remover entrega" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;display:inline-flex"><i class="ti ti-x" style="font-size:13px"></i></button>`:'';
       let qtyCell;
       if(!editaQtd){ qtyCell=`${_cpNum(qtys[i],0)} ${um}`; }
       else if(i===ent.length-1){ qtyCell=`<b style="color:var(--text2)">${_cpNum(qtys[i],0)}</b> ${um} <span style="font-size:10px;color:var(--text3)">(resto)</span>`; }
-      else { qtyCell=`<input type="text" inputmode="numeric" value="${escapeAttr(_cpNum(qtys[i],0))}" onchange="_cpSimSetEntregaQtd(${i},this.value)" class="cp-sim-inp" style="width:66px;font-size:12px"> ${um}`; }
+      else { qtyCell=`<input type="text" inputmode="numeric" value="${escapeAttr(_cpNum(qtys[i],0))}" onchange="_cpSimSetEntregaQtd(${i},this.value)" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:66px;font-size:12px"> ${um}`; }
       const rot=delLbl?`${delLbl} ${i+1} · ${qtyCell}`:qtyCell;
       return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap"><span style="font-size:12px;color:var(--text2);${minW}">${rot}</span><span style="font-size:11px;color:var(--text3)">chega em</span>${dinput}${duraTxt}${wtxt}${del}</div>`;
     }).join('');
@@ -9223,18 +9239,25 @@ function _cpSimHTML(o){
   const cargaOK = s.usarCarga && um==='KG';       // carga (caminhão) só p/ item em KG e se ligado
   const filled = _cpSimModevalFilled();           // já preencheu o valor do modo? (libera premissas + resultado)
   // Campo do MODO: oninput só guarda o valor (sem re-render, p/ não perder foco); onchange (ao sair do campo) re-renderiza e LIBERA o próximo passo.
-  const inp=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimSet('${campo}',this.value)" onchange="_cpSimRerender()" class="cp-sim-inp" style="width:${w||'50px'}"${extra?' '+extra:''}>`;
+  const inp=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimSet('${campo}',this.value)" onchange="_cpSimRerender()" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:${w||'50px'}"${extra?' '+extra:''}>`;
   // Campo de PREMISSA: já visível → atualiza o resultado ao vivo.
-  const inpS=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimInput('${campo}',this.value)" onchange="_cpSimRerender()" class="cp-sim-inp" style="width:${w||'42px'};font-size:12px">`;
+  const inpS=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimInput('${campo}',this.value)" onchange="_cpSimRerender()" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:${w||'42px'};font-size:12px">`;
   const lb=t=>`<span style="font-size:13px;color:var(--text2)">${t}</span>`;
   const uSpan=t=>`<span style="font-size:12px;color:var(--text3)">${t}</span>`;
-  const inpQtd=(w)=>`<input type="text" inputmode="numeric" value="${escapeAttr(_cpSimFmtQtd(s.qtd))}" placeholder="0" oninput="_cpSimQtd(this)" onchange="_cpSimRerender()" class="cp-sim-inp" style="width:${w||'104px'}">`;
+  const inpQtd=(w)=>`<input type="text" inputmode="numeric" value="${escapeAttr(_cpSimFmtQtd(s.qtd))}" placeholder="0" oninput="_cpSimQtd(this)" onchange="_cpSimRerender()" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:${w||'104px'}">`;
   const selUn=`<select onchange="_cpSimSet('unidade',this.value);_cpSimRerender()" class="cp-sim-inp" style="width:auto;text-align:left;font-weight:600">${um==='KG'?`<option value="kg"${s.unidade==='kg'?' selected':''}>kg</option><option value="ton"${s.unidade==='ton'?' selected':''}>t</option>`:`<option value="kg" selected>${escapeHTML(um||'un')}</option>`}</select>`;
   // Passo 1: escolher o modo. Começa em "— escolha —" (fluxo passo-a-passo). "Número de cargas" só se usar carga.
   const MODOS=[['','— escolha —'],['estoqueDias','Estoque para X dias'],['comprarDias','Comprar X dias de consumo'],['ate','Durar até uma data'],['qtd','Quantidade fixa']];
   if(cargaOK) MODOS.push(['cargas','Número de cargas']);
   MODOS.push(['desconto','Simular desconto %']);
-  const selModo=`<select onchange="_cpSimModo(this.value)" class="cp-sim-inp" style="width:auto;text-align:left;font-size:13.5px;font-weight:700;color:var(--blue-mid);max-width:100%">${MODOS.map(m=>`<option value="${m[0]}"${s.modo===m[0]?' selected':''}>${m[1]}</option>`).join('')}</select>`;
+  const selModo=`<select onchange="_cpSimModo(this.value)" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:auto;text-align:left;font-size:13.5px;font-weight:700;color:var(--blue-mid);max-width:100%">${MODOS.map(m=>`<option value="${m[0]}"${s.modo===m[0]?' selected':''}>${m[1]}</option>`).join('')}</select>`;
+  // Passo 0 (NOVO): PERÍODO do consumo — antes de tudo. Presets + intervalo de datas. Só depois libera "Calcular por".
+  const _ci=_cpConsMesInfo(o);
+  const consHdr = _ci.val>0 ? `consumo ${_cpNum(_ci.val,0)} ${um}/mês${_ci.lab?` <span style="opacity:.65">· ${_ci.lab}</span>`:''}` : '—';
+  const PERIODOS=[['','— escolha —'],['1','Último mês'],['2','Últimos 2 meses'],['3','Últimos 3 meses'],['4','Últimos 4 meses'],['6','Últimos 6 meses'],['9','Últimos 9 meses'],['12','Últimos 12 meses'],['custom','Data (personalizado)']];
+  const selPer=`<select onchange="_cpSimPeriodo(this.value)" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:auto;text-align:left;font-size:13.5px;font-weight:700;color:var(--blue-mid);max-width:100%">${PERIODOS.map(p=>`<option value="${p[0]}"${s.periodo===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>`;
+  const perCustom = s.periodo==='custom' ? `<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:8px">${lb('De')}<input type="date" value="${escapeAttr(s.perDe||'')}" onchange="_cpSimSetPer('perDe',this.value)" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:130px;font-size:12px">${lb('até')}<input type="date" value="${escapeAttr(s.perAte||'')}" onchange="_cpSimSetPer('perAte',this.value)" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:130px;font-size:12px"></div>` : '';
+  const perFilled=_cpSimPeriodoFilled();
   let campoModo='';
   if(s.modo==='estoqueDias') campoModo=`${lb('Ter estoque para')}${inp('dias',s.dias,'','number','48px','min="0"')}${lb('dias')}`;
   else if(s.modo==='comprarDias') campoModo=`${lb('Comprar')}${inp('dias',s.dias,'','number','48px','min="0"')}${lb('dias de consumo')}`;
@@ -9260,17 +9283,27 @@ function _cpSimHTML(o){
   // Toggle "carga fechada" (só item KG) — discreto, logo abaixo do "Calcular por". Desligar tira a carga da conta.
   const toggleCarga = um==='KG' ? `<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:11.5px;color:var(--text3);margin-bottom:11px"><input type="checkbox" ${s.usarCarga?'checked':''} onchange="_cpSimToggleCarga()" style="cursor:pointer;margin:0"> Compro em carga fechada (caminhão)</label>` : '';
   return `<div class="cp-card" id="cp-sim" style="padding:15px 17px">
-    <div class="cp-card-title"><span>Simulador de compra</span><span class="sub">consumo ${o.consMed?_cpNum(o.consMed,0)+' '+um+'/mês':'—'}</span></div>
-    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:${toggleCarga?'8px':(s.modo?'10px':'2px')}"><span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3)">Calcular por</span>${selModo}</div>
+    <div class="cp-card-title"><span>Simulador de compra</span><span class="sub">${consHdr}</span></div>
+    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:${perFilled&&!perCustom?'12px':'2px'}"><span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3)">Período do consumo</span>${selPer}</div>
+    ${perCustom}
+    ${perFilled?`<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:${perCustom?'12px':'0'};margin-bottom:${toggleCarga?'8px':(s.modo?'10px':'2px')}"><span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3)">Calcular por</span>${selModo}</div>
     ${toggleCarga}
     ${s.modo?`<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:${filled?'10px':'2px'}">${campoModo}</div>`:''}
     ${premBlock}
-    <div id="cp-sim-result">${_cpSimResult(o)}</div>
+    <div id="cp-sim-result">${_cpSimResult(o)}</div>`:''}
   </div>`;
 }
 // Trocar de MODO zera o wizard inteiro (valor do modo + premissas + cronograma) — assim SEMPRE recomeça
 // um a um, independente do que foi preenchido no modo anterior (pedido do Diego).
-function _cpSimModo(m){ _cpSim.modo=m; _cpSim.dias=''; _cpSim.data=''; _cpSim.qtd=''; _cpSim.cargas=''; _cpSim.preco=''; _cpSim.cargaTon=''; _cpSim.validadeMeses=''; _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); }
+function _cpSimModo(m){ _cpSim.modo=m; _cpSim.dias=''; _cpSim.data=''; _cpSim.qtd=''; _cpSim.cargas=''; _cpSim.preco=''; _cpSim.cargaTon=''; _cpSim.validadeMeses=''; _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); setTimeout(_cpSimFocusNext,0); }
+// PERÍODO (passo 0): trocar limpa as datas custom se sair de "personalizado"; NÃO zera o modo (dá pra
+// comparar períodos sem refazer tudo). Ao escolher, já pula o foco pro próximo passo ("Calcular por").
+function _cpSimPeriodo(v){ _cpSim.periodo=v; if(v!=='custom'){ _cpSim.perDe=''; _cpSim.perAte=''; } _cpSimRerender(); setTimeout(_cpSimFocusNext,0); }
+function _cpSimSetPer(campo,val){ _cpSim[campo]=val; _cpSimRerender(); setTimeout(_cpSimFocusNext,0); }
+// ENTER comita o campo atual (blur → dispara o onchange/rerender do próprio campo) e, no fim, pula pro
+// próximo campo AINDA VAZIO do wizard (na ordem do DOM) = o passo recém-revelado.
+function _cpSimKey(e){ if(!e || e.key!=='Enter') return; e.preventDefault(); const a=document.activeElement; if(a && typeof a.blur==='function') a.blur(); _cpSimRerender(); setTimeout(_cpSimFocusNext,0); }
+function _cpSimFocusNext(){ const root=document.getElementById('cp-sim'); if(!root) return; const fs=root.querySelectorAll('.js-sim-field'); for(let i=0;i<fs.length;i++){ const f=fs[i]; const v=(f.value==null?'':String(f.value)).trim(); if(v===''){ try{ f.focus(); if(f.tagName==='INPUT' && typeof f.select==='function') f.select(); }catch(err){} return; } } }
 // _cpSimSet: usado pelos campos do MODO — guarda o valor e SÓ atualiza o resultado se ele já estiver visível
 // (durante a digitação inicial o resultado ainda não apareceu; ele é revelado no onchange via _cpSimRerender).
 function _cpSimSet(campo,val){ _cpSim[campo]=val; const el=document.getElementById('cp-sim-result'); if(el && el.innerHTML.trim()!=='' && _cpItemSel && _cpIdx()[_cpItemSel]) el.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]); }
