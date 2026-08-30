@@ -9183,10 +9183,11 @@ function _cpSimResult(o){
   if(_cpSim.usarCarga && um==='KG' && _cpSim.modo!=='cargas' && cargaKg>0 && c.qtd>0){
     const frac=c.qtd/cargaKg, piso=Math.floor(frac), teto=Math.ceil(frac);
     const fmtT=v=>_cpNum(v, Number.isInteger(v)?0:1), cLbl=fmtT(cargaKg/1000);
-    const opt=nc=>{ const q=nc*cargaKg, cob=c.cd>0?Math.round((o.est+q)/c.cd):null; return `<b style="color:var(--text)">${nc}</b> (${fmtT(q/1000)} t · ${_cpBRL(q*c.preco)}${cob!=null?' · '+cob+'d':''})`; };
+    // Uma opção por LINHA (Diego): fica mais fácil de ler que a linha corrida. Intro + 1 linha por nº de cargas.
+    const optLine=nc=>{ const q=nc*cargaKg, cob=c.cd>0?Math.round((o.est+q)/c.cd):null; return `<div style="padding-left:19px;margin-top:2px"><b style="color:var(--text)">${nc}</b> carga${nc===1?'':'s'} · ${fmtT(q/1000)} t · <b style="color:var(--text2)">${_cpBRL(q*c.preco)}</b>${cob!=null?` · cobre ${cob} dias`:''}</div>`; };
     cargasBloco=piso===teto
       ? `<div style="margin-top:11px;font-size:11px;color:var(--text3)"><i class="ti ti-truck" style="color:var(--blue-mid)"></i> Fecha exatamente <b style="color:var(--text)">${piso} carga${piso===1?'':'s'}</b> cheia${piso===1?'':'s'} (1 = ${cLbl} t).</div>`
-      : `<div style="margin-top:11px;font-size:11px;color:var(--text3);line-height:1.7"><i class="ti ti-truck" style="color:var(--blue-mid)"></i> Só carga fechada (1 = ${cLbl} t) — dá ${_cpNum(frac,1)}: ${piso>=1?opt(piso)+' · ':''}${opt(teto)}</div>`;
+      : `<div style="margin-top:11px;font-size:11px;color:var(--text3);line-height:1.6"><div><i class="ti ti-truck" style="color:var(--blue-mid)"></i> Só carga fechada (1 = ${cLbl} t) — dá ${_cpNum(frac,1)}:</div>${piso>=1?optLine(piso):''}${optLine(teto)}</div>`;
   }
   // CRONOGRAMA DE ENTREGAS + validade via FEFO — vale p/ TODOS os modos/itens (não só cargas). Cada entrega
   // chega numa data; a validade conta da CHEGADA de cada uma; o consumo come a mais velha primeiro (FEFO).
