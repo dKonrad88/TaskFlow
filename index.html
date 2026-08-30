@@ -9130,8 +9130,11 @@ function _cpSimResult(o){
   // GATE do fluxo passo-a-passo: nada de resultado até escolher o PERÍODO, o modo E preencher o valor dele.
   if(!(_cpSimPeriodoFilled() && _cpSim.modo && _cpSimModevalFilled() && _cpSimPremsFilled(o))) return '';
   const tTxt=v=> (um==='KG'&&Math.abs(v)>=1000)?_cpNum(v/1000,1)+' t':'';
-  if(c.semConsumo && c.qtd<=0) return '<div style="color:var(--text3);font-size:13px;padding:6px 0">Este item não tem consumo registrado — use <b>Quantidade fixa</b> para simular preço e custo.</div>';
-  if(!(c.qtd>0)) return '<div style="color:var(--text3);font-size:13px;padding:6px 0">Nada a comprar com esses parâmetros.</div>';
+  // Estados "sem resultado" em CARD destacado (Diego) — pra chamar atenção, sem sumir no meio do texto.
+  // Sem barra lateral colorida (Diego não curte); o destaque vem do ícone + tinta suave + borda leve.
+  const msgCard=(ic,cor,tit,sub)=>`<div style="margin-top:2px;padding:14px 16px;background:color-mix(in srgb, ${cor} 7%, var(--bg2));border:1px solid color-mix(in srgb, ${cor} 28%, transparent);border-radius:11px;display:flex;align-items:center;gap:11px"><i class="ti ${ic}" style="font-size:22px;color:${cor};flex-shrink:0"></i><div><div style="font-size:14px;font-weight:800;color:var(--text)">${tit}</div><div style="font-size:11.5px;color:var(--text3);margin-top:2px">${sub}</div></div></div>`;
+  if(c.semConsumo && c.qtd<=0) return msgCard('ti-info-circle','var(--amber)','Sem consumo registrado','Este item não tem histórico de consumo — use <b>Quantidade fixa</b> para simular preço e custo.');
+  if(!(c.qtd>0)) return msgCard('ti-circle-check','var(--success)','Nada a comprar','O estoque atual já cobre o período escolhido — nenhuma compra necessária com esses parâmetros.');
   const qt=tTxt(c.qtd);
   // Comparações do custo: vs ÚLTIMA compra (precoRef) e vs MÉDIA dos 3 últimos meses (= gráfico).
   const media3=_cpMedia3(o);
@@ -9231,7 +9234,9 @@ function _cpSimResult(o){
     cronoBloco=`<div style="margin-top:9px;font-size:10.5px;color:var(--text3)"><i class="ti ti-info-circle"></i> Informe a <b>validade (meses)</b> para checar risco de vencimento.</div>`;
   }
   // Ordem (pedido do Diego): cronograma das cargas EM CIMA; os TOTAIS só aparecem depois da última data.
-  return cronoBloco + (cronoFilled ? (hero+rows+cargasBloco) : '');
+  // Respiro entre o card do cronograma e o card dos totais (Diego: estavam colados).
+  const _sep = cronoBloco ? '<div style="height:12px"></div>' : '';
+  return cronoBloco + (cronoFilled ? (_sep+hero+rows+cargasBloco) : '');
 }
 function _cpSimHTML(o){
   const s=_cpSim, um=o.um||'';
