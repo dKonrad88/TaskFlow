@@ -9069,6 +9069,8 @@ function _cpDiasEntre(isoA,isoB){ const a=new Date(isoA+'T00:00:00'), b=new Date
 function _cpSimEntregas(n){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; const e=_cpSim.entregas; if(n<1) n=1; for(let i=0;i<n;i++){ if(e[i]==null) e[i]=''; } e.length=n; return e; }
 function _cpSimRefreshResult(){ const el=document.getElementById('cp-sim-result'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]); }
 function _cpSimSetEntrega(i,val){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; _cpSim.entregas[i]=val; _cpSimRefreshResult(); }
+// RAW: só guarda a data da entrega enquanto o usuário digita (sem refresh/rebuild, p/ não travar o ano no <input type=date>). O refresh vem no blur via _cpSimSetEntrega.
+function _cpSimSetEntregaRaw(i,val){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; _cpSim.entregas[i]=val; }
 function _cpSimAddEntrega(){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[today]; _cpSim.entregas.push(today); _cpSim.entregasQtd=[]; _cpSimRefreshResult(); }
 function _cpSimDelEntrega(i){ if(Array.isArray(_cpSim.entregas) && _cpSim.entregas.length>1){ _cpSim.entregas.splice(i,1); _cpSim.entregasQtd=[]; _cpSimRefreshResult(); } }
 // Quantidade por entrega (modos NÃO-cargas): o usuário digita as N-1 primeiras; a ÚLTIMA completa o total (resto).
@@ -9204,7 +9206,7 @@ function _cpSimResult(o){
     const minW=`min-width:${delLbl?(editaQtd?'165px':'110px'):'70px'};display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap`;
     const rowsCrono=ent.slice(0,reveladas).map((iso,i)=>{
       const b=sim?sim.find(x=>x._i===i):null, w=b?b.waste:0;
-      const dinput=`<input type="date" value="${escapeAttr(iso||'')}" onchange="_cpSimSetEntrega(${i},this.value)" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:130px;font-size:12px">`;
+      const dinput=`<input type="date" value="${escapeAttr(iso||'')}" oninput="_cpSimSetEntregaRaw(${i},this.value)" onblur="_cpSimSetEntrega(${i},this.value)" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:130px;font-size:12px">`;
       const duraTxt=(b && b.esgotaT!=null)?`<span style="font-size:11px;color:var(--text3)">dura até <b style="color:var(--text2)">${_cpDataFim(b.esgotaT)}</b></span>`:'';
       const wtxt=b?(w>0.5?`<span style="color:var(--danger);font-weight:700;font-size:11.5px">vence ${_cpNum(w,0)} ${um}</span>`:`<span style="color:var(--success);font-size:11.5px"><i class="ti ti-check"></i> ok</span>`):'';
       const del=(!isCargas && ent.length>1)?`<button onclick="_cpSimDelEntrega(${i})" title="Remover entrega" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;display:inline-flex"><i class="ti ti-x" style="font-size:13px"></i></button>`:'';
@@ -9244,7 +9246,14 @@ function _cpSimHTML(o){
   const cargaOK = s.usarCarga && um==='KG';       // carga (caminhão) só p/ item em KG e se ligado
   const filled = _cpSimModevalFilled();           // já preencheu o valor do modo? (libera premissas + resultado)
   // Campo do MODO: oninput só guarda o valor (sem re-render, p/ não perder foco); onchange (ao sair do campo) re-renderiza e LIBERA o próximo passo.
-  const inp=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimSet('${campo}',this.value)" onchange="_cpSimRerender()" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:${w||'50px'}"${extra?' '+extra:''}>`;
+  // DATA é caso especial: <input type=date> dispara change/input com valor PARCIAL enquanto se digita o ano
+  // (ex.: "2" vira 0002). Re-renderizar aí recria o input e o foco some → trava o ano. Então data só GUARDA
+  // o valor enquanto edita e re-renderiza no BLUR (foco já saiu → seguro; picker do calendário não "cai fora").
+  const inp=(campo,val,ph,tipo,w,extra)=>{
+    const common=`value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:${w||'50px'}"${extra?' '+extra:''}`;
+    if(tipo==='date') return `<input type="date" ${common} oninput="_cpSimSetRaw('${campo}',this.value)" onblur="_cpSimRerender()">`;
+    return `<input ${tipo?`type="${tipo}"`:'type="text"'} ${common} oninput="_cpSimSet('${campo}',this.value)" onchange="_cpSimRerender()">`;
+  };
   // Campo de PREMISSA: já visível → atualiza o resultado ao vivo.
   const inpS=(campo,val,ph,tipo,w,extra)=>`<input ${tipo?`type="${tipo}"`:'type="text"'} value="${val==null?'':escapeAttr(String(val))}"${ph?` placeholder="${escapeAttr(ph)}"`:''} oninput="_cpSimInput('${campo}',this.value)" onchange="_cpSimRerender()" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:${w||'42px'};font-size:12px">`;
   const lb=t=>`<span style="font-size:13px;color:var(--text2)">${t}</span>`;
@@ -9261,7 +9270,7 @@ function _cpSimHTML(o){
   const consHdr = _ci.val>0 ? `consumo ${_cpNum(_ci.val,0)} ${um}/mês${_ci.lab?` <span style="opacity:.65">· ${_ci.lab}</span>`:''}` : '—';
   const PERIODOS=[['','— escolha —'],['1','Último mês'],['2','Últimos 2 meses'],['3','Últimos 3 meses'],['4','Últimos 4 meses'],['6','Últimos 6 meses'],['9','Últimos 9 meses'],['12','Últimos 12 meses'],['custom','Data (personalizado)']];
   const selPer=`<select onchange="_cpSimPeriodo(this.value)" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:auto;text-align:left;font-size:13.5px;font-weight:700;color:var(--blue-mid);max-width:100%">${PERIODOS.map(p=>`<option value="${p[0]}"${s.periodo===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>`;
-  const perCustom = s.periodo==='custom' ? `<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:8px">${lb('De')}<input type="date" value="${escapeAttr(s.perDe||'')}" onchange="_cpSimSetPer('perDe',this.value)" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:130px;font-size:12px">${lb('até')}<input type="date" value="${escapeAttr(s.perAte||'')}" onchange="_cpSimSetPer('perAte',this.value)" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:130px;font-size:12px"></div>` : '';
+  const perCustom = s.periodo==='custom' ? `<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:8px">${lb('De')}<input type="date" value="${escapeAttr(s.perDe||'')}" oninput="_cpSimSetRaw('perDe',this.value)" onblur="_cpSimSetPer('perDe',this.value)" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:130px;font-size:12px">${lb('até')}<input type="date" value="${escapeAttr(s.perAte||'')}" oninput="_cpSimSetRaw('perAte',this.value)" onblur="_cpSimSetPer('perAte',this.value)" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:130px;font-size:12px"></div>` : '';
   const perFilled=_cpSimPeriodoFilled();
   let campoModo='';
   if(s.modo==='estoqueDias') campoModo=`${lb('Ter estoque para')}${inp('dias',s.dias,'','number','48px','min="0"')}${lb('dias')}`;
@@ -9312,6 +9321,9 @@ function _cpSimFocusNext(){ const root=document.getElementById('cp-sim'); if(!ro
 // _cpSimSet: usado pelos campos do MODO — guarda o valor e SÓ atualiza o resultado se ele já estiver visível
 // (durante a digitação inicial o resultado ainda não apareceu; ele é revelado no onchange via _cpSimRerender).
 function _cpSimSet(campo,val){ _cpSim[campo]=val; const el=document.getElementById('cp-sim-result'); if(el && el.innerHTML.trim()!=='' && _cpItemSel && _cpIdx()[_cpItemSel]) el.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]); }
+// RAW: só guarda o valor (sem refresh nem rebuild) — usado por campos de DATA enquanto se digita, p/ o
+// <input type=date> não ser recriado no meio (o que travaria o ano). A revelação vem no blur (_cpSimRerender).
+function _cpSimSetRaw(campo,val){ _cpSim[campo]=val; }
 // _cpSimInput: usado pelos campos de PREMISSA (já visíveis) — atualiza o resultado ao vivo.
 function _cpSimInput(campo,val){ _cpSim[campo]=val; _cpSimRefreshResult(); }
 // Máscara de milhar (BR) do campo Quantidade: guarda o valor CRU em _cpSim.qtd (parseável) e EXIBE formatado.
