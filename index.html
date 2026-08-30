@@ -9028,8 +9028,8 @@ function _cpToggleFoco(){ _cpSetFoco(!document.body.classList.contains('cp-focus
 // modo='' começa VAZIO (fluxo passo-a-passo: primeiro escolhe "Calcular por"); os campos do modo
 // começam vazios p/ o usuário preencher (é o gatilho que libera as premissas). usarCarga: item vem em
 // carga fechada (caminhão) — desligável p/ itens de volume pequeno. entregas: cronograma de chegada.
-let _cpSim={periodo:'', perDe:'', perAte:'', modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', usarCarga:true, entregas:[], entregasQtd:[]};
-function _cpSimReset(){ _cpSim={periodo:'', perDe:'', perAte:'', modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', usarCarga:true, entregas:[], entregasQtd:[]}; }
+let _cpSim={periodo:'', perDe:'', perAte:'', modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', usarCarga:true, cargaEscolhida:'', entregas:[], entregasQtd:[]};
+function _cpSimReset(){ _cpSim={periodo:'', perDe:'', perAte:'', modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', usarCarga:true, cargaEscolhida:'', entregas:[], entregasQtd:[]}; }
 // ── PERÍODO de referência do consumo (Diego): 1º passo do wizard (antes de "Calcular por"). O comprador
 // escolhe sobre qual janela calcular o CONSUMO MENSAL médio — presets (1,2,3,4,6,9,12 meses) ou intervalo
 // de datas. Vira a base de TODO o cálculo (qtd, cobertura, cronograma). Média simples dos meses COM consumo.
@@ -9119,12 +9119,19 @@ function _cpSimCalc(o){
   else if(s.modo==='ate'){ if(s.data){ const dd=Math.round((new Date(s.data+'T00:00:00')-new Date(today+'T00:00:00'))/86400000); qtd=Math.max(0, cd*Math.max(0,dd) - o.est); } }
   else if(s.modo==='cargas') qtd=Math.max(0,(parseFloat(String(s.cargas).replace(',','.'))||0))*_cpCargaKg();
   else if(s.modo==='qtd' || s.modo==='desconto'){ let q=parseFloat(String(s.qtd).replace(',','.'))||0; if(s.unidade==='ton') q*=1000; qtd=q; }
+  // Override CARGA ESCOLHIDA: em modo não-cargas comprando carga fechada, o usuário pode arredondar a compra
+  // p/ um nº inteiro de cargas (piso/teto). Aí a compra passa a ser exatamente N cargas. qtdBase = antes disso.
+  const qtdBase=qtd; const _ckg=_cpCargaKg(); let cargaEsc=0;
+  if(s.usarCarga && o.um==='KG' && s.modo!=='cargas' && _ckg>0 && qtd>0){
+    const _frac=qtd/_ckg, _piso=Math.floor(_frac), _teto=Math.ceil(_frac), _ce=parseInt(s.cargaEscolhida,10);
+    if(_ce===_piso || _ce===_teto){ cargaEsc=_ce; qtd=_ce*_ckg; }
+  }
   // No modo "desconto" o preço é DERIVADO do % sobre o preço atual; nos outros, é digitado.
   const descPct=parseFloat(String(s.descPct).replace(',','.'))||0;
   let preco;
   if(s.modo==='desconto') preco=precoRef*(1-descPct/100);
   else { const pp=parseFloat(String(s.preco).replace(',','.')); preco=(s.preco!=='' && !isNaN(pp))?pp:precoRef; }
-  return {qtd, preco, precoRef, descPct:(s.modo==='desconto'?descPct:0), custo:qtd*preco, ganho:(precoRef-preco)*qtd,
+  return {qtd, qtdBase, cargaEsc, cargaKg:_ckg, preco, precoRef, descPct:(s.modo==='desconto'?descPct:0), custo:qtd*preco, ganho:(precoRef-preco)*qtd,
     estDepois:o.est+qtd, cobDepois:cd>0?Math.round((o.est+qtd)/cd):null, cd, semConsumo:!(cd>0)};
 }
 function _cpSimResult(o){
@@ -9162,7 +9169,7 @@ function _cpSimResult(o){
   const cobreEst=(c.cd>0 && o.est>0)?Math.round(o.est/c.cd):0;
   let baseNota='';
   if(_cpSim.modo==='ate' || _cpSim.modo==='estoqueDias'){
-    if(o.est>0){ const alvo=(_cpSim.modo==='ate' && _cpSim.data)?` até <b style="color:var(--text2)">${brDate(_cpSim.data)}</b>`:''; baseNota=`<b style="color:var(--text2)">Já descontado o estoque atual.</b> As <b style="color:var(--text2)">${_cpNum(o.est,0)} ${um}</b> que já temos cobrem${cobreEst>0?` até <b style="color:var(--text2)">${_cpDataFim(cobreEst)}</b>`:''}; esta compra cobre de lá em diante${alvo}.`; }
+    if(o.est>0){ const alvo=(_cpSim.modo==='ate' && _cpSim.data && !c.cargaEsc)?` até <b style="color:var(--text2)">${brDate(_cpSim.data)}</b>`:''; const arred=c.cargaEsc?` <span style="color:var(--text3)">(arredondado p/ ${c.cargaEsc} carga${c.cargaEsc===1?'':'s'} — veja a cobertura abaixo)</span>`:''; baseNota=`<b style="color:var(--text2)">Já descontado o estoque atual.</b> As <b style="color:var(--text2)">${_cpNum(o.est,0)} ${um}</b> que já temos cobrem${cobreEst>0?` até <b style="color:var(--text2)">${_cpDataFim(cobreEst)}</b>`:''}; esta compra cobre de lá em diante${alvo}.${arred}`; }
     else { baseNota='Sem estoque atual — este volume vale a partir de hoje.'; }
   } else if(_cpSim.modo==='comprarDias'){ baseNota='Consumo cheio do período — <b style="color:var(--text2)">não</b> desconta o estoque atual.'; }
   const baseLine = baseNota?`<div style="font-size:11px;color:var(--text3);margin-top:5px;line-height:1.5">${baseNota}</div>`:'';
@@ -9177,17 +9184,19 @@ function _cpSimResult(o){
   const linha=(lab,val)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0"><span style="font-size:12.5px;color:var(--text3)">${lab}</span><span style="font-size:13px;font-weight:700;color:var(--text);text-align:right">${val}</span></div>`;
   const rows=linha('Preço unitário',_cpBRL(c.preco)+'/'+um+(c.descPct>0?` <span style="color:var(--success);font-weight:600;font-size:11.5px">−${c.descPct}%</span>`:''))
     +linha('Cobertura após a compra', c.cobDepois!=null?`${c.cobDepois} dias <span style="color:var(--text3);font-weight:500">· até ${_cpDataFim(c.cobDepois)}</span>`:`${_cpNum(c.estDepois,0)} ${um}`);
-  // Nota de CARGA FECHADA (arredondamento) — só quando o item USA carga e não está no modo "cargas".
+  // SELETOR de CARGA FECHADA — só quando o item USA carga e não está no modo "cargas". Usa qtdBase (antes do
+  // override) p/ calcular piso/teto. Diego: poder CLICAR em 5 ou 6 cargas aqui; a escolha vira a compra + cronograma.
   let cargasBloco='';
   const cargaKg=_cpCargaKg();
-  if(_cpSim.usarCarga && um==='KG' && _cpSim.modo!=='cargas' && cargaKg>0 && c.qtd>0){
-    const frac=c.qtd/cargaKg, piso=Math.floor(frac), teto=Math.ceil(frac);
+  if(_cpSim.usarCarga && um==='KG' && _cpSim.modo!=='cargas' && cargaKg>0 && c.qtdBase>0){
+    const frac=c.qtdBase/cargaKg, piso=Math.floor(frac), teto=Math.ceil(frac);
     const fmtT=v=>_cpNum(v, Number.isInteger(v)?0:1), cLbl=fmtT(cargaKg/1000);
-    // Uma opção por LINHA (Diego): fica mais fácil de ler que a linha corrida. Intro + 1 linha por nº de cargas.
-    const optLine=nc=>{ const q=nc*cargaKg, cob=c.cd>0?Math.round((o.est+q)/c.cd):null; return `<div style="padding-left:19px;margin-top:2px"><b style="color:var(--text)">${nc}</b> carga${nc===1?'':'s'} · ${fmtT(q/1000)} t · <b style="color:var(--text2)">${_cpBRL(q*c.preco)}</b>${cob!=null?` · cobre ${cob} dias`:''}</div>`; };
+    const dot=sel=>`<span style="width:14px;height:14px;border-radius:50%;border:2px solid ${sel?'var(--blue-mid)':'var(--text3)'};background:${sel?'var(--blue-mid)':'transparent'};flex-shrink:0;display:inline-block"></span>`;
+    const optLine=nc=>{ const q=nc*cargaKg, cob=c.cd>0?Math.round((o.est+q)/c.cd):null, sel=(c.cargaEsc===nc);
+      return `<div onclick="_cpSimSetCargaEsc(${nc})" style="display:flex;align-items:center;gap:9px;margin-top:5px;padding:7px 10px;border-radius:9px;cursor:pointer;border:1px solid ${sel?'var(--blue-mid)':'var(--border)'};background:${sel?'color-mix(in srgb, var(--blue-mid) 12%, transparent)':'transparent'}">${dot(sel)}<span style="font-size:12px;color:var(--text2)"><b style="color:var(--text)">${nc}</b> carga${nc===1?'':'s'} · ${fmtT(q/1000)} t · <b style="color:var(--text2)">${_cpBRL(q*c.preco)}</b>${cob!=null?` · cobre ${cob} dias`:''}</span></div>`; };
     cargasBloco=piso===teto
-      ? `<div style="margin-top:11px;font-size:11px;color:var(--text3)"><i class="ti ti-truck" style="color:var(--blue-mid)"></i> Fecha exatamente <b style="color:var(--text)">${piso} carga${piso===1?'':'s'}</b> cheia${piso===1?'':'s'} (1 = ${cLbl} t).</div>`
-      : `<div style="margin-top:11px;font-size:11px;color:var(--text3);line-height:1.6"><div><i class="ti ti-truck" style="color:var(--blue-mid)"></i> Só carga fechada (1 = ${cLbl} t) — dá ${_cpNum(frac,1)}:</div>${piso>=1?optLine(piso):''}${optLine(teto)}</div>`;
+      ? `<div style="font-size:11.5px;color:var(--text3)"><i class="ti ti-truck" style="color:var(--blue-mid)"></i> Fecha exatamente <b style="color:var(--text)">${piso} carga${piso===1?'':'s'}</b> cheia${piso===1?'':'s'} (1 = ${cLbl} t).</div>`
+      : `<div style="font-size:11.5px;color:var(--text3)"><div><i class="ti ti-truck" style="color:var(--blue-mid)"></i> Carga fechada (1 = ${cLbl} t) — dá ${_cpNum(frac,1)}. <b style="color:var(--text2)">Escolha quantas comprar:</b></div>${piso>=1?optLine(piso):''}${optLine(teto)}</div>`;
   }
   // CRONOGRAMA DE ENTREGAS + validade via FEFO — vale p/ TODOS os modos/itens (não só cargas). Cada entrega
   // chega numa data; a validade conta da CHEGADA de cada uma; o consumo come a mais velha primeiro (FEFO).
@@ -9196,8 +9205,9 @@ function _cpSimResult(o){
   let cronoFilled=true;   // libera os TOTAIS: true qd não há cronograma OU todas as datas preenchidas
   let cronoBloco='';
   if(c.qtd>0 && valM>0 && consMes>0){
-    const isCargas=_cpSim.modo==='cargas';
-    const N=isCargas?Math.max(1,Math.round(parseFloat(String(_cpSim.cargas).replace(',','.'))||1)):Math.max(1,(Array.isArray(_cpSim.entregas)?_cpSim.entregas.length:1));
+    // cargaEsc (nº de cargas escolhido num modo não-cargas) faz o cronograma virar carga-a-carga também.
+    const isCargas=_cpSim.modo==='cargas' || c.cargaEsc>0;
+    const N=(_cpSim.modo==='cargas')?Math.max(1,Math.round(parseFloat(String(_cpSim.cargas).replace(',','.'))||1)):(c.cargaEsc>0?c.cargaEsc:Math.max(1,(Array.isArray(_cpSim.entregas)?_cpSim.entregas.length:1)));
     const ent=_cpSimEntregas(N);
     const consDia=consMes/30, valDias=Math.round(valM*30);
     const qtys=isCargas?ent.map(()=>c.qtd/ent.length):_cpSimQtds(c.qtd, ent.length);
@@ -9248,9 +9258,13 @@ function _cpSimResult(o){
   } else if(c.qtd>0 && valM<=0){
     cronoBloco=`<div style="margin-top:9px;font-size:10.5px;color:var(--text3)"><i class="ti ti-info-circle"></i> Informe a <b>validade (meses)</b> para checar risco de vencimento.</div>`;
   }
-  // Ordem (pedido do Diego, revertido): PRIMEIRO o card do "Comprar/Custo total"; DEPOIS o card do
-  // cronograma "Quando o item chega". O respiro (12px) entre eles vem do margin-top do cronoBloco.
-  return hero + rows + cargasBloco + cronoBloco;
+  // Ordem: PRIMEIRO o card "Comprar/Custo total"; DEPOIS o cronograma "Quando o item chega".
+  // Respiro entre os blocos (Diego: estava amontoado) com um divider SUTIL (bem apagado, não chama atenção).
+  const sdiv='<div style="border-top:1px solid color-mix(in srgb, var(--border) 45%, transparent);margin:14px 0"></div>';
+  return hero
+    + `<div style="padding:1px 2px 0">${rows}</div>`
+    + (cargasBloco ? sdiv + `<div style="padding:0 2px">${cargasBloco}</div>` : '')
+    + cronoBloco;
 }
 function _cpSimHTML(o){
   const s=_cpSim, um=o.um||'';
@@ -9321,7 +9335,10 @@ function _cpSimHTML(o){
 }
 // Trocar de MODO zera o wizard inteiro (valor do modo + premissas + cronograma) — assim SEMPRE recomeça
 // um a um, independente do que foi preenchido no modo anterior (pedido do Diego).
-function _cpSimModo(m){ _cpSim.modo=m; _cpSim.dias=''; _cpSim.data=''; _cpSim.qtd=''; _cpSim.cargas=''; _cpSim.preco=''; _cpSim.cargaTon=''; _cpSim.validadeMeses=''; _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); setTimeout(_cpSimFocusNext,0); }
+function _cpSimModo(m){ _cpSim.modo=m; _cpSim.dias=''; _cpSim.data=''; _cpSim.qtd=''; _cpSim.cargas=''; _cpSim.preco=''; _cpSim.cargaTon=''; _cpSim.validadeMeses=''; _cpSim.cargaEscolhida=''; _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); setTimeout(_cpSimFocusNext,0); }
+// CARGA ESCOLHIDA (Diego): em modo não-cargas comprando carga fechada, arredonda a compra p/ N cargas
+// inteiras (piso/teto). Clicar de novo na mesma desmarca. Muda o nº de cargas → zera as datas do cronograma.
+function _cpSimSetCargaEsc(nc){ _cpSim.cargaEscolhida=(String(_cpSim.cargaEscolhida)===String(nc))?'':nc; _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); }
 // PERÍODO (passo 0): trocar limpa as datas custom se sair de "personalizado"; NÃO zera o modo (dá pra
 // comparar períodos sem refazer tudo). Ao escolher, já pula o foco pro próximo passo ("Calcular por").
 function _cpSimPeriodo(v){ _cpSim.periodo=v; if(v!=='custom'){ _cpSim.perDe=''; _cpSim.perAte=''; } _cpSimRerender(); setTimeout(_cpSimFocusNext,0); }
