@@ -9156,9 +9156,20 @@ function _cpSimResult(o){
     const st=acima?`<b>ACIMA do teto</b> (+${_cpBRL(-folga)}/${um} · ${_cpNum(pctT,1)}% acima)`:`dentro (folga ${_cpBRL(folga)}/${um} · ${_cpNum(pctT,1)}% abaixo)`; const stc=acima?'var(--danger)':'var(--success)';
     return `<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700"><span style="width:7px;height:7px;border-radius:50%;background:${stc};display:inline-block;flex-shrink:0"></span><span><span style="color:var(--text3);font-weight:600">Teto de custeio (${_cpBRL(custeioTeto)}/${um}):</span> <span style="color:${stc};font-weight:700">${st}</span></span></div>`; })():'';
   // HERÓI: a resposta (quanto comprar) + o custo + se é bom preço, em destaque.
+  // BASE DE CÁLCULO explícita (Diego): deixar claro se o volume já desconta o estoque atual e a partir de quando.
+  // 'ate'/'estoqueDias' descontam o estoque (qtd = consumo até o alvo − estoque); 'comprarDias' é consumo cheio.
+  const brDate=iso=>{ const p=String(iso||'').split('-'); return p.length>=3?p[2]+'/'+p[1]+'/'+p[0].slice(2):(iso||''); };
+  const cobreEst=(c.cd>0 && o.est>0)?Math.round(o.est/c.cd):0;
+  let baseNota='';
+  if(_cpSim.modo==='ate' || _cpSim.modo==='estoqueDias'){
+    if(o.est>0){ const alvo=(_cpSim.modo==='ate' && _cpSim.data)?` até <b style="color:var(--text2)">${brDate(_cpSim.data)}</b>`:''; baseNota=`<b style="color:var(--text2)">Já descontado o estoque atual.</b> As <b style="color:var(--text2)">${_cpNum(o.est,0)} ${um}</b> que já temos cobrem${cobreEst>0?` até <b style="color:var(--text2)">${_cpDataFim(cobreEst)}</b>`:''}; esta compra cobre de lá em diante${alvo}.`; }
+    else { baseNota='Sem estoque atual — este volume vale a partir de hoje.'; }
+  } else if(_cpSim.modo==='comprarDias'){ baseNota='Consumo cheio do período — <b style="color:var(--text2)">não</b> desconta o estoque atual.'; }
+  const baseLine = baseNota?`<div style="font-size:11px;color:var(--text3);margin-top:5px;line-height:1.5">${baseNota}</div>`:'';
   const hero=`<div style="background:var(--bg2);border-radius:11px;padding:12px 14px;margin-bottom:12px">
     <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)">Comprar</div>
     <div style="font-size:23px;font-weight:800;color:var(--text);line-height:1.15;margin-top:1px">${_cpNum(c.qtd,0)} <span style="font-size:14px;font-weight:700;color:var(--text3)">${um}</span>${qt?` <span style="font-size:13px;font-weight:600;color:var(--text3)">· ${qt}</span>`:''}</div>
+    ${baseLine}
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><span style="font-size:12px;color:var(--text3)">Custo total</span><span style="font-size:16.5px;font-weight:800;color:var(--text)">${_cpBRL(c.custo)}</span></div>
     <div style="margin-top:7px;display:flex;flex-direction:column;gap:5px">${tetoLine}${cmpLine('vs última compra', c.precoRef)}${cmpLine('vs média 3 meses', media3)}</div>
   </div>`;
