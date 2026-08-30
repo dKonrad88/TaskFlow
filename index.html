@@ -9103,28 +9103,29 @@ function _cpSimFefoData(o,c){
   let sim=null, perdaTot=0, bEst=null, wEst=0, gaps=[];
   const batches=[]; if(o.est>0) batches.push({arr:0,exp:valDias,qty:o.est,_i:-1});
   ent.forEach((iso,i)=>{ if(temData(iso)){ const off=Math.max(0,_cpDiasEntre(today,iso)); batches.push({arr:off,exp:off+valDias,qty:qtys[i],_i:i}); } });
-  if(batches.length && consDia>0){ sim=_cpFefoSim(batches,consDia); perdaTot=sim.reduce((a,b)=>a+b.waste,0); bEst=sim.find(x=>x._i===-1); wEst=bEst?bEst.waste:0; if(cronoFilled) gaps=sim.gaps||[]; }
+  if(batches.length && consDia>0){ sim=_cpFefoSim(batches,consDia); perdaTot=sim.reduce((a,b)=>a+b.waste,0); bEst=sim.find(x=>x._i===-1); wEst=bEst?bEst.waste:0; gaps=sim.gaps||[]; }
   return {consMes,valM,isCargas,N,ent,consDia,valDias,qtys,cronoFilled,sim,perdaTot,bEst,wEst,gaps,totalKg:o.est+c.qtd,um:o.um||''};
 }
 function _cpSimRowInfo(b,um){ if(!b) return ''; const dura=(b.esgotaT!=null)?`<span style="font-size:11px;color:var(--text3)">dura até <b style="color:var(--text2)">${_cpDataFim(b.esgotaT)}</b></span> `:''; const w=b.waste; const wtxt=(w>0.5)?`<span style="color:var(--danger);font-weight:700;font-size:11.5px">vence ${_cpNum(w,0)} ${um}</span>`:`<span style="color:var(--success);font-size:11.5px"><i class="ti ti-check"></i> ok</span>`; return dura+wtxt; }
+// Aviso(s) de RUPTURA que pertencem à carga i (Diego: mostrar embaixo da própria carga, na hora, não só no fim).
+function _cpSimRowGaps(i,gaps){ const gs=(gaps||[]).filter(g=>g.by===i); if(!gs.length) return ''; return gs.map(g=>`<div style="margin:5px 0 3px;padding:7px 10px;border-radius:9px;background:color-mix(in srgb, var(--danger) 10%, transparent);border:1px solid color-mix(in srgb, var(--danger) 32%, transparent);font-size:11.5px;color:var(--danger);font-weight:700;line-height:1.4"><i class="ti ti-alert-triangle"></i> Fica SEM estoque de <b>${_cpDataFim(g.ini)}</b> a <b>${_cpDataFim(g.fim)}</b> · ~${g.fim-g.ini+1} dias. Antecipe esta carga.</div>`).join(''); }
 function _cpSimCronoExtra(o,c,fd){
   const um=fd.um;
-  // Avisos de RUPTURA (sem estoque entre lotes) — prioridade máxima (Diego: não pode ficar sem produto).
-  const gapsBloco=(fd.cronoFilled && fd.gaps.length)?fd.gaps.map(g=>`<div style="margin-top:6px;padding:8px 11px;border-radius:9px;background:color-mix(in srgb, var(--danger) 10%, transparent);border:1px solid color-mix(in srgb, var(--danger) 32%, transparent);font-size:11.5px;color:var(--danger);font-weight:700;line-height:1.4"><i class="ti ti-alert-triangle"></i> Fica SEM estoque de <b>${_cpDataFim(g.ini)}</b> a <b>${_cpDataFim(g.fim)}</b> · ~${g.fim-g.ini+1} dias. Antecipe a chegada de uma carga.</div>`).join(''):'';
-  const okAll=fd.perdaTot<=0.5, wCargas=fd.perdaTot-fd.wEst, temRuptura=fd.cronoFilled&&fd.gaps.length>0;
-  const dica=!fd.cronoFilled?`<i class="ti ti-calendar" style="color:var(--blue-mid)"></i> Preencha a data de chegada de cada ${fd.isCargas?'carga':'entrega'}.`
-    :temRuptura?`<i class="ti ti-alert-triangle"></i> <b>Você fica sem produto</b> nos períodos acima — não dá pra ficar sem estoque. Antecipe as chegadas até fechar os buracos.`
+  // Os avisos de RUPTURA agora saem INLINE, embaixo de cada carga (via _cpSimRowGaps). Aqui só o resumo/dica.
+  const temRuptura=fd.gaps.length>0, okAll=fd.perdaTot<=0.5, wCargas=fd.perdaTot-fd.wEst;
+  const dica=temRuptura?`<i class="ti ti-alert-triangle"></i> <b>Antecipe as chegadas marcadas em vermelho</b> — você não pode ficar sem estoque.`
+    :!fd.cronoFilled?`<i class="ti ti-calendar" style="color:var(--blue-mid)"></i> Preencha a data de chegada de cada ${fd.isCargas?'carga':'entrega'}.`
     :okAll?`<i class="ti ti-circle-check"></i> Cobertura contínua e nada vence — sem ruptura e dentro da validade.`
     :(wCargas<=0.5 && fd.wEst>0.5)?`<i class="ti ti-alert-triangle"></i> ~<b>${_cpNum(fd.perdaTot,0)} ${um}</b> vence — mas é do <b>estoque atual</b>${fd.bEst&&fd.bEst.esgotaT!=null?` (passa da validade ~${_cpDataFim(fd.bEst.esgotaT)})`:''}. A compra em si cabe toda; consuma/realoque o estoque antes.`
     :`<i class="ti ti-alert-triangle"></i> ~<b>${_cpNum(fd.perdaTot,0)} ${um}</b> (${Math.round(fd.perdaTot/fd.totalKg*100)}%) vence · ≈ ${_cpBRL(fd.perdaTot*c.preco)} a descartar. ${fd.ent.length>1?'Empurre as chegadas para frente.':'Compre menos, ou parcele em mais entregas.'}`;
-  const dicaCor=!fd.cronoFilled?'var(--text2)':((temRuptura||!okAll)?'var(--danger)':'var(--success)');
+  const dicaCor=temRuptura?'var(--danger)':(!fd.cronoFilled?'var(--text2)':(okAll?'var(--success)':'var(--danger)'));
   const addBtn=(!fd.isCargas && fd.cronoFilled)?`<button onclick="_cpSimAddEntrega()" style="margin-top:7px;background:none;border:1px dashed var(--border);border-radius:7px;cursor:pointer;color:var(--blue-mid);font-size:11.5px;font-weight:600;padding:5px 10px;font-family:inherit"><i class="ti ti-plus"></i> dividir em outra entrega</button>`:'';
-  return `${gapsBloco}${addBtn}<div style="margin-top:9px;padding-top:9px;border-top:1px dashed var(--border);font-size:12px;font-weight:700;color:${dicaCor};line-height:1.5">${dica}</div>`;
+  return `${addBtn}<div style="margin-top:9px;padding-top:9px;border-top:1px dashed var(--border);font-size:12px;font-weight:700;color:${dicaCor};line-height:1.5">${dica}</div>`;
 }
 function _cpSimCronoTextos(){
   const o=(_cpItemSel&&_cpIdx()[_cpItemSel])||null; if(!o) return;
   const c=_cpSimCalc(o); const fd=_cpSimFefoData(o,c);
-  fd.ent.forEach((iso,i)=>{ const el=document.getElementById('cp-ci-'+i); if(el){ const b=fd.sim?fd.sim.find(x=>x._i===i):null; el.innerHTML=_cpSimRowInfo(b,fd.um); } });
+  fd.ent.forEach((iso,i)=>{ const el=document.getElementById('cp-ci-'+i); if(el){ const b=fd.sim?fd.sim.find(x=>x._i===i):null; el.innerHTML=_cpSimRowInfo(b,fd.um); } const g=document.getElementById('cp-cg-'+i); if(g) g.innerHTML=_cpSimRowGaps(i,fd.gaps); });
   const est=document.getElementById('cp-ci-est'); if(est) est.innerHTML=fd.bEst?_cpSimRowInfo(fd.bEst,fd.um):'';
   const ex=document.getElementById('cp-crono-extra'); if(ex) ex.innerHTML=_cpSimCronoExtra(o,c,fd);
 }
@@ -9159,6 +9160,8 @@ function _cpFefoSim(batches, consDia){
     B.forEach(b=>{ if(b._cheg && b.esgotaT==null && b.r<=1e-9) b.esgotaT=t; });
   }
   if(curGap) gaps.push(curGap);
+  // Cada buraco "pertence" à entrega que chega LOGO APÓS ele (a que chegou atrasada) — p/ mostrar o aviso embaixo dela.
+  gaps.forEach(g=>{ const arr=B.find(b=>b.arr===g.fim+1); g.by=arr?arr._i:null; });
   // Ignora buracos de 1 dia (borda: estoque zera num dia e a carga chega no seguinte = praticamente contínuo) — evita falso-alarme.
   B.gaps=gaps.filter(g=>(g.fim-g.ini+1)>=2);
   return B;
@@ -9272,7 +9275,7 @@ function _cpSimResult(o){
       else if(i===ent.length-1){ qtyCell=`<b style="color:var(--text2)">${_cpNum(qtys[i],0)}</b> ${um} <span style="font-size:10px;color:var(--text3)">(resto)</span>`; }
       else { qtyCell=`<input type="text" inputmode="numeric" value="${escapeAttr(_cpNum(qtys[i],0))}" onchange="_cpSimSetEntregaQtd(${i},this.value)" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:66px;font-size:12px"> ${um}`; }
       const rot=delLbl?`${delLbl} ${i+1} · ${qtyCell}`:qtyCell;
-      return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap"><span style="font-size:12px;color:var(--text2);${minW}">${rot}</span><span style="font-size:11px;color:var(--text3)">chega em</span>${dinput}<span id="cp-ci-${i}">${_cpSimRowInfo(b,um)}</span>${del}</div>`;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap"><span style="font-size:12px;color:var(--text2);${minW}">${rot}</span><span style="font-size:11px;color:var(--text3)">chega em</span>${dinput}<span id="cp-ci-${i}">${_cpSimRowInfo(b,um)}</span>${del}</div><div id="cp-cg-${i}">${_cpSimRowGaps(i,fd.gaps)}</div>`;
     }).join('');
     // Estoque ATUAL como 1ª linha (o FEFO consome ele primeiro). Info (dura até/vence) atualiza em-lugar.
     const estRow=(o.est>0)?`<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap;opacity:.9"><span style="font-size:12px;color:var(--text2);${minW}">Estoque atual · ${_cpNum(o.est,0)} ${um}</span><span style="font-size:11px;color:var(--text3)">já em estoque</span><span id="cp-ci-est">${_cpSimRowInfo(bEst,um)}</span></div>`:'';
