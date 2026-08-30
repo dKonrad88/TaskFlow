@@ -9329,7 +9329,7 @@ function _cpFichaResumo(o){
   // TOPO: 2 gráficos lado a lado (Consumo · Preço médio) acima do restante.
   const graficos=`<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px">
       ${graf('Consumo por mês','em '+(um||'un')+' (2025–26) · '+_cpLegPrev,_cpBarChart(_cpSerieComPrev(o,serie),'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN,45,'prev'))}
-      ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpPrecoMedLine(o,{h:66,pt:8,pb:26,fixedH:72}))}
+      ${graf('Preço médio de compra <span style="font-weight:500;color:var(--text3);font-size:11.5px">(preço bruto)</span>','R$/'+(um||'un')+' por mês · valor da nota, com impostos (não é o net)',_cpPrecoMedLine(o,{h:66,pt:8,pb:26,fixedH:72}))}
     </div>`;
   // 3 colunas: [macro + indicadores] · [últimas compras] · [simulador + OCs em aberto]. Macro só p/ item com dado (ex. Amendoim).
   // Indicadores em ~metade da largura; o espaço liberado vai p/ Últimas compras (col 2). Simulador (col 3) inalterado.
@@ -9748,7 +9748,7 @@ function _cpFichaGraficos(o){
     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:4px">
       ${graf('Consumo por mês','em '+(um||'un')+' (2025–26) · '+_cpLegPrev,_cpBarChart(_cpSerieComPrev(o,serie),'consumo',v=>_cpNum(v,0)+' '+um,'color-mix(in srgb, var(--blue-mid) 40%, var(--card))',_cpAbrevN,undefined,'prev'))}
       ${graf('Valor comprado por mês','R$ por mês',_cpBarChart(serie,'valor',v=>_cpBRL(v),undefined,_cpAbrevN))}
-      ${graf('Preço médio de compra','R$/'+(um||'un')+' por mês',_cpPrecoMedLine(o,{onClick:'_cpItemSetMes',selYm:true}))}
+      ${graf('Preço médio de compra <span style="font-weight:500;color:var(--text3);font-size:11.5px">(preço bruto)</span>','R$/'+(um||'un')+' por mês · valor da nota, com impostos (não é o net)',_cpPrecoMedLine(o,{onClick:'_cpItemSetMes',selYm:true}))}
     </div>`;
 }
 // View "Histórico" (sub-navbar): a planilha completa de compras do item (saiu da view Gráfico).
