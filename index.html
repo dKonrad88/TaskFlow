@@ -8812,10 +8812,16 @@ function _comprasEstoqueHTML(){
 
 // ════════ INSUMOS — ficha do item ════════
 let _cpItemSel=null;
-function _cpAbrirItem(cod){ _cpItemSel=cod; _cpItemMes=null; _cpFichaView='resumo'; _cpFichaFornSel=null; _cpSimReset(); comprasView='insumos';
+// Tela de ONDE o usuário abriu a ficha (Planejamento/Estoque/Insumos/Painel/…) — o "Voltar" retorna p/ ela.
+let _cpItemOrigem='insumos';
+function _cpVoltarLabel(){ const M={painel:'ao painel',planejamento:'ao planejamento',necessidade:'à necessidade da semana',estoque:'ao estoque',insumos:'aos insumos',fornecedores:'aos fornecedores',ordens:'às ordens de compra'}; return M[_cpItemOrigem]||'aos insumos'; }
+function _cpAbrirItem(cod){
+  // grava a origem só ao abrir de uma LISTA (item→item dentro da ficha mantém _cpItemSel != null).
+  if(_cpItemSel==null) _cpItemOrigem=comprasView;
+  _cpItemSel=cod; _cpItemMes=null; _cpFichaView='resumo'; _cpFichaFornSel=null; _cpSimReset(); comprasView='insumos';
   try{ document.body.classList.remove('cp-focus'); }catch(e){} // abre NÃO-EXPANDIDO (sub-navbar, estilo Reunião); ⛶ expande p/ tela cheia
   renderSidebar(); renderCompras(); window.scrollTo(0,0); }
-function _cpVoltarItens(){ _cpItemSel=null; _cpItemMes=null; try{document.body.classList.remove('cp-focus');}catch(e){} renderCompras(); }
+function _cpVoltarItens(){ _cpItemSel=null; _cpItemMes=null; try{document.body.classList.remove('cp-focus');}catch(e){} comprasView=_cpItemOrigem||'insumos'; renderSidebar(); renderCompras(); window.scrollTo(0,0); }
 // Categoria do insumo — DERIVADA do nome por palavra-chave (o ERP não exporta o campo família).
 let _cpCatFiltro='todas';  // vestígio (persistido na rota); o filtro de Insumos usa _cpCatSel
 const _CP_CATS=['Matéria-prima','Embalagens','Manutenção','Limpeza & higiene','Outros'];
@@ -9859,7 +9865,7 @@ function _cpFichaItemHTML(o){
     ? `<button class="cp-exp-btn2" onclick="_cpToggleFoco()" title="Reduzir"><i class="ti ti-arrows-minimize"></i> Reduzir</button>`
     : `<button class="cp-exp-btn2" onclick="_cpToggleFoco()" title="Abrir em tela cheia"><i class="ti ti-arrows-maximize"></i> Tela cheia</button>`;
   return `${_cpCSS()}<div class="cp-painel-wrap">
-    <button class="cp-back-link" onclick="_cpVoltarItens()"><i class="ti ti-arrow-left"></i> Voltar aos insumos</button>
+    <button class="cp-back-link" onclick="_cpVoltarItens()"><i class="ti ti-arrow-left"></i> Voltar ${_cpVoltarLabel()}</button>
     <div style="display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;margin-bottom:2px">
       <h1 style="font-size:23px;font-weight:800;letter-spacing:-.02em;color:var(--text);margin:0">${escapeHTML(o.nome)}</h1>
       <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--success);background:var(--success-bg);padding:3px 9px;border-radius:999px">cód. ${escapeHTML(o.cod)}</span>
@@ -10116,6 +10122,7 @@ function _cpPlanTbodyHTML(){
 }
 function _cpPlanRefresh(){ const tb=document.getElementById('cp-plan-tbody'); if(tb) tb.innerHTML=_cpPlanTbodyHTML(); const c=document.getElementById('cp-plan-count'); if(c) c.textContent=_cpPlanRowsView().length; }
 function _cpPlanPeriodo(v){ _cpPlan.periodo=v; if(v!=='custom'){ _cpPlan.perDe=''; _cpPlan.perAte=''; } renderCompras(); }
+function _cpPlanSetPer(campo,val){ _cpPlan[campo]=val; renderCompras(); }
 function _cpPlanBuscaToggle(){ _cpPlan.buscaAberta=!_cpPlan.buscaAberta; if(!_cpPlan.buscaAberta) _cpPlan.busca=''; renderCompras(); if(_cpPlan.buscaAberta) setTimeout(function(){ var el=document.getElementById('cp-plan-busca'); if(el) el.focus(); },30); }
 function _cpPlanBuscaInput(el){ _cpPlan.busca=el.value; _cpPlanRefresh(); }
 function _cpPlanFiltrosToggle(){ _cpPlan.filtrosAberto=!_cpPlan.filtrosAberto; renderCompras(); }
@@ -10126,8 +10133,9 @@ function _comprasPlanejamentoHTML(){
   const rows=_cpPlanRows();
   const nAgora=rows.filter(o=>_cpPlanCov(o).key==='agora').length, nBreve=rows.filter(o=>_cpPlanCov(o).key==='breve').length;
   const nRuptura=rows.filter(o=>_cpPlanCov(o).disp<=0).length;
-  const PERIODOS=[['1','Último mês'],['2','Últimos 2 meses'],['3','Últimos 3 meses'],['4','Últimos 4 meses'],['6','Últimos 6 meses'],['9','Últimos 9 meses'],['12','Últimos 12 meses']];
-  const selPer=`<span style="font-size:11.5px;color:var(--text3)">Média do período</span><select onchange="_cpPlanPeriodo(this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px;font-weight:600">${PERIODOS.map(p=>`<option value="${p[0]}"${_cpPlan.periodo===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>`;
+  const PERIODOS=[['1','Último mês'],['2','Últimos 2 meses'],['3','Últimos 3 meses'],['4','Últimos 4 meses'],['6','Últimos 6 meses'],['9','Últimos 9 meses'],['12','Últimos 12 meses'],['custom','Escolher datas…']];
+  const dinp=(campo)=>`<input type="date" value="${escapeAttr(_cpPlan[campo]||'')}" onchange="_cpPlanSetPer('${campo}',this.value)" class="modal-input" style="width:auto;padding:5px 8px;font-size:12px">`;
+  const selPer=`<span style="font-size:11.5px;color:var(--text3)">Média do período</span><select onchange="_cpPlanPeriodo(this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px;font-weight:600">${PERIODOS.map(p=>`<option value="${p[0]}"${_cpPlan.periodo===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>${_cpPlan.periodo==='custom'?`<span style="font-size:11.5px;color:var(--text3)">de</span>${dinp('perDe')}<span style="font-size:11.5px;color:var(--text3)">até</span>${dinp('perAte')}`:''}`;
   const todos=_cpItens().filter(o=>o.est>0||o.consMed>0); const cont={}; _CP_CATS.forEach(c=>cont[c]=0); todos.forEach(o=>{const c=_cpCategoria(o.nome); cont[c]=(cont[c]||0)+1;});
   const catPanel=_cpPlan.filtrosAberto?`<div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:236px;max-height:300px;overflow:auto;padding:6px">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px 7px"><span style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)">Categoria</span>${_cpPlan.catSel.length?`<button onclick="_cpPlanCatAll()" style="border:none;background:none;color:var(--blue-mid);font-size:11.5px;cursor:pointer;font-family:inherit">Limpar</button>`:''}</div>
