@@ -9438,8 +9438,10 @@ function _cpSimModo(m){ _cpSim.modo=m; _cpSim.dias=''; _cpSim.data=''; _cpSim.qt
 function _cpSimSetCargaEsc(nc){ _cpSim.cargaEscolhida=(String(_cpSim.cargaEscolhida)===String(nc))?'':nc; _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); }
 // PERÍODO (passo 0): trocar limpa as datas custom se sair de "personalizado"; NÃO zera o modo (dá pra
 // comparar períodos sem refazer tudo). Ao escolher, já pula o foco pro próximo passo ("Calcular por").
-function _cpSimPeriodo(v){ _cpSim.periodo=v; if(v!=='custom'){ _cpSim.perDe=''; _cpSim.perAte=''; } _cpSimRerender(); setTimeout(_cpSimFocusNext,0); }
-function _cpSimSetPer(campo,val){ _cpSim[campo]=val; _cpSimRerender(); setTimeout(_cpSimFocusNext,0); }
+// Trocar o PERÍODO muda a média mensal → muda a quantidade a comprar. Por isso RESETA a carga escolhida
+// (senão a escolha "N cargas" de um período fica presa e trava a qtd — bug do Diego) e o cronograma de entregas.
+function _cpSimPeriodo(v){ _cpSim.periodo=v; if(v!=='custom'){ _cpSim.perDe=''; _cpSim.perAte=''; } _cpSim.cargaEscolhida=''; _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); setTimeout(_cpSimFocusNext,0); }
+function _cpSimSetPer(campo,val){ _cpSim[campo]=val; _cpSim.cargaEscolhida=''; _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); setTimeout(_cpSimFocusNext,0); }
 // ENTER comita o campo atual (blur → dispara o onchange/rerender do próprio campo) e, no fim, pula pro
 // próximo campo AINDA VAZIO do wizard (na ordem do DOM) = o passo recém-revelado.
 function _cpSimKey(e){ if(!e || e.key!=='Enter') return; e.preventDefault(); const a=document.activeElement; if(a && typeof a.blur==='function') a.blur(); _cpSimRerender(); setTimeout(_cpSimFocusNext,0); }
