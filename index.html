@@ -8614,7 +8614,10 @@ function _cpIdx(){
   });
   window.__cpIdx=m; return m;
 }
-function _cpItens(){ const m=_cpIdx(); return Object.keys(m).map(k=>m[k]); }
+// ESCOPO do comprador de Compras (Diego 31/08): SÓ Matéria-prima e Embalagens em TODAS as abas.
+// Manutenção/Limpeza/Outros (produtos acabados, brindes, manutenção) têm OUTRO comprador → ficam de fora.
+function _cpEscComprador(nome){ const c=_cpCategoria(nome); return c==='Matéria-prima' || c==='Embalagens'; }
+function _cpItens(){ const m=_cpIdx(); return Object.keys(m).map(k=>m[k]).filter(o=>_cpEscComprador(o.nome)); }
 // Semáforo de cobertura (dias). Sem consumo → cinza (não dá p/ opinar).
 // Estados operacionais do estoque por COBERTURA (dias). "Sem movimento" (semMov alto) é filtro à parte.
 // <10 comprar agora · <30 em breve · 30–120 saudável · >120 excesso (capital parado) · null sem dados.
@@ -8844,7 +8847,7 @@ function _cpAbrirItem(cod){
 function _cpVoltarItens(){ _cpItemSel=null; _cpItemMes=null; try{document.body.classList.remove('cp-focus');}catch(e){} comprasView=_cpItemOrigem||'insumos'; renderSidebar(); renderCompras(); window.scrollTo(0,0); }
 // Categoria do insumo — DERIVADA do nome por palavra-chave (o ERP não exporta o campo família).
 let _cpCatFiltro='todas';  // vestígio (persistido na rota); o filtro de Insumos usa _cpCatSel
-const _CP_CATS=['Matéria-prima','Embalagens','Manutenção','Limpeza & higiene','Outros'];
+const _CP_CATS=['Matéria-prima','Embalagens'];  // só as categorias do comprador (ver _cpEscComprador)
 // (ago/2026, Diego) Categoria virou botão "Filtros" (checklist multi-seleção) + busca — igual à Necessidade.
 let _cpCatSel=[], _cpInsFiltrosAberto=false, _cpInsBusca='', _cpInsBuscaAberta=false;
 function _cpInsBuscaToggle(){ _cpInsBuscaAberta=!_cpInsBuscaAberta; if(!_cpInsBuscaAberta) _cpInsBusca=''; renderCompras(); if(_cpInsBuscaAberta) setTimeout(function(){ var el=document.getElementById('cp-ins-busca'); if(el) el.focus(); },30); }
@@ -9346,7 +9349,7 @@ function _cpSimResult(o){
 // Cai no Meu Dia / Minhas Tarefas do usuário logado (em produção = o comprador), com o resumo da compra
 // na descrição. O toast oferece "Desfazer" (remove a tarefa) caso tenha sido sem querer.
 function _cpSimCriarTarefa(cod){
-  const o=_cpItens().find(x=>x.cod===cod);
+  const o=(_cpIdx()||{})[cod];
   if(!o){ toast('Item não encontrado'); return; }
   const c=_cpSimCalc(o), um=o.um||'';
   if(!(c.qtd>0)){ toast('Nada a comprar com esses parâmetros — ajuste a simulação'); return; }
@@ -10010,6 +10013,7 @@ function _cpFornAgg(escopo){
   const lim=_cpLimiteMeses(_cpFornMeses);
   const m={};
   _cpLinhas().forEach(l=>{
+    if(!_cpEscComprador(l.item[1])) return;   // só MP/embalagens (Manutenção = outro comprador)
     if(escopo!=='T' && l.cls!==escopo) return;
     if(lim && l.data<lim) return;
     const k=l.forn[0]||l.forn[1];
@@ -10495,6 +10499,7 @@ function _cpFiltradas(){
   if(f.meses>0){ const d=new Date(); d.setMonth(d.getMonth()-f.meses);
     lim=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
   return _cpLinhas().filter(l=>{
+    if(!_cpEscComprador(l.item[1])) return false;   // só MP/embalagens (Manutenção = outro comprador)
     if(f.escopo!=='T' && l.cls!==f.escopo) return false;
     if(lim && l.data<lim) return false;
     if(q && (l.item[1]+' '+l.forn[1]+' '+l.nf+' '+l.item[0]).toLowerCase().indexOf(q)<0) return false;
