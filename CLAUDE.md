@@ -422,6 +422,12 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-08-30 (c) — PC da Empresa — Planejamento: faixas de cor da Cobertura PERSONALIZÁVEIS + rótulo do período acima
+Pedido do Diego. **Commit `9a1de86f`, pushado; `main == origin`; working tree limpo.** Verificado por DOM (:8899): 0 erros.
+- ⭐ **Ícone de PALETA** (`ti-palette`) no cabeçalho → popover p/ definir as **faixas de cor da Cobertura por MESES** (ex.: até 1 mês vermelho, 1–2 âmbar, acima verde). Editar o limite (input), escolher cor (6 swatches do tema `CP_CORES`), adicionar/remover faixa, restaurar. Persiste em **`taskflow_plan_covbands`** (`{max,cor}[]`, max=null=última). Helpers `_cpPlanBands*`/`_cpPlanBandFor`.
+- ⚠️ **MUDANÇA DE LÓGICA:** a Cobertura (cor da pílula) e a **classificação dos KPIs** agora vêm das FAIXAS, não do lead time. `_cpPlanCov`: `_cpPlanBandFor(covMes)` → cor + key (**faixa 0 = "Comprar agora", faixa 1 = "Comprar em breve", resto = ok**). O **lead time** virou só coluna/tooltip informativo (não classifica mais). "Em ruptura" segue = disponível≤0.
+- **"Média do período"**: rótulo movido p/ **ACIMA** do seletor (era ao lado); o bloco virou coluna (label em cima, dropdown+datas embaixo); `acao` alinha em `flex-end`.
+
 ### 2026-08-30 (b) — PC da Empresa — Planejamento: refinamentos (cards clicáveis, alfabético, período por datas, "Voltar" p/ origem, popup de Demanda + check diário)
 Leva de pedidos do Diego sobre a aba nova. **Commits `01b93cd4`…`e3987ce0`, pushados; `main == origin`; working tree limpo.** Verificado por DOM (:8899): 0 erros de JS.
 - **Ordem alfabética** (era por urgência). **Cards Comprar agora/em breve/Em ruptura CLICÁVEIS** → filtram a tabela (`_cpPlan.status`; contagens vêm da BASE p/ alternar; card ativo com ×). **Média do período** ganhou **"Escolher datas…"** (de/até) além dos presets (reusa `_cpConsMedPer(o,'custom',perDe,perAte)`).
