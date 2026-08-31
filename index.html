@@ -9039,8 +9039,8 @@ function _cpToggleFoco(){ _cpSetFoco(!document.body.classList.contains('cp-focus
 // modo='' começa VAZIO (fluxo passo-a-passo: primeiro escolhe "Calcular por"); os campos do modo
 // começam vazios p/ o usuário preencher (é o gatilho que libera as premissas). usarCarga: item vem em
 // carga fechada (caminhão) — desligável p/ itens de volume pequeno. entregas: cronograma de chegada.
-let _cpSim={periodo:'', perDe:'', perAte:'', modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', usarCarga:true, cargaEscolhida:'', entregas:[], entregasQtd:[]};
-function _cpSimReset(){ _cpSim={periodo:'', perDe:'', perAte:'', modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', usarCarga:true, cargaEscolhida:'', entregas:[], entregasQtd:[]}; }
+let _cpSim={periodo:'', perDe:'', perAte:'', modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', icms:'', usarCarga:true, cargaEscolhida:'', entregas:[], entregasQtd:[]};
+function _cpSimReset(){ _cpSim={periodo:'', perDe:'', perAte:'', modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', icms:'', usarCarga:true, cargaEscolhida:'', entregas:[], entregasQtd:[]}; }
 // ── PERÍODO de referência do consumo (Diego): 1º passo do wizard (antes de "Calcular por"). O comprador
 // escolhe sobre qual janela calcular o CONSUMO MENSAL médio — presets (1,2,3,4,6,9,12 meses) ou intervalo
 // de datas. Vira a base de TODO o cálculo (qtd, cobertura, cronograma). Média simples dos meses COM consumo.
@@ -9250,7 +9250,11 @@ function _cpSimResult(o){
   </div>`;
   // linhas de apoio (compactas, sem borda por linha)
   const linha=(lab,val)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0"><span style="font-size:12.5px;color:var(--text3)">${lab}</span><span style="font-size:13px;font-weight:700;color:var(--text);text-align:right">${val}</span></div>`;
-  const rows=linha('Preço unitário',_cpBRL(c.preco)+'/'+um+(c.descPct>0?` <span style="color:var(--success);font-weight:600;font-size:11.5px">−${c.descPct}%</span>`:''))
+  // ICMS informado no simulador (opcional) → preço unitário NET = bruto − ICMS (crédito recuperável).
+  const icmsN=_cpNumParse(_cpSim.icms);
+  const precoNet=(icmsN>0)?c.preco*(1-icmsN/100):null;
+  const rows=linha('Preço unitário (bruto)',_cpBRL(c.preco)+'/'+um+(c.descPct>0?` <span style="color:var(--success);font-weight:600;font-size:11.5px">−${c.descPct}%</span>`:''))
+    +(precoNet!=null?linha('Preço unitário (net)', `${_cpBRL(precoNet)}/${um} <span style="color:var(--text3);font-weight:500;font-size:11px">− ${_cpNum(icmsN, Number.isInteger(icmsN)?0:1)}% ICMS</span>`):'')
     +linha('Cobertura após a compra', c.cobDepois!=null?`${c.cobDepois} dias <span style="color:var(--text3);font-weight:500">· até ${_cpDataFim(c.cobDepois)}</span>`:`${_cpNum(c.estDepois,0)} ${um}`);
   // SELETOR de CARGA FECHADA — só quando o item USA carga e não está no modo "cargas". Usa qtdBase (antes do
   // override) p/ calcular piso/teto. Diego: poder CLICAR em 5 ou 6 cargas aqui; a escolha vira a compra + cronograma.
@@ -9399,6 +9403,10 @@ function _cpSimHTML(o){
   if(s.modo!=='desconto') steps.push([()=>_cpSimPremOK(s.preco), premRow('Preço de compra', `${uSpan('R$')}${inpS('preco',s.preco,_cpNum(precoRef,2),'text','58px')}${uSpan('/'+um)}${refChips}`)]);
   if(cargaOK) steps.push([()=>_cpSimPremOK(s.cargaTon), premRow('Tamanho da carga', `${inpS('cargaTon',s.cargaTon,'35','number','48px','min="0" step="0.5"')}${uSpan('t')}`)]);
   steps.push([()=>_cpSimPremOK(s.validadeMeses), premRow('Validade', `${inpS('validadeMeses',s.validadeMeses,'6','number','44px','min="0" step="1"')}${uSpan('meses')}`)]);
+  // ICMS (%) — opcional: informa a alíquota p/ ver o preço unitário NET (líquido de ICMS) no resumo.
+  // Placeholder = alíquota da última compra (ex.: Amendoim 12%). Não bloqueia o resultado (não entra em _cpSimPremsFilled).
+  const _icmsUlt=(o.compras && o.compras.length && o.compras[0] && o.compras[0].aliq!=null)?String(o.compras[0].aliq):'';
+  steps.push([()=>_cpSimPremOK(s.icms), premRow('ICMS', `${inpS('icms',s.icms,_icmsUlt,'number','44px','min="0" max="100" step="0.5"')}${uSpan('%')}${_icmsUlt!==''?`<span style="font-size:10px;color:var(--text3)">últ. ${_icmsUlt}%</span>`:''}`)]);
   let premHTML='';
   if(s.modo && filled){ for(let i=0;i<steps.length;i++){ premHTML+=steps[i][1]; if(!steps[i][0]()) break; } }
   const premBlock = premHTML?`<div style="margin-bottom:14px;padding-top:8px;border-top:1px dashed var(--border)">${premHTML}</div>`:'';
@@ -9417,7 +9425,7 @@ function _cpSimHTML(o){
 }
 // Trocar de MODO zera o wizard inteiro (valor do modo + premissas + cronograma) — assim SEMPRE recomeça
 // um a um, independente do que foi preenchido no modo anterior (pedido do Diego).
-function _cpSimModo(m){ _cpSim.modo=m; _cpSim.dias=''; _cpSim.data=''; _cpSim.qtd=''; _cpSim.cargas=''; _cpSim.preco=''; _cpSim.cargaTon=''; _cpSim.validadeMeses=''; _cpSim.cargaEscolhida=''; _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); setTimeout(_cpSimFocusNext,0); }
+function _cpSimModo(m){ _cpSim.modo=m; _cpSim.dias=''; _cpSim.data=''; _cpSim.qtd=''; _cpSim.cargas=''; _cpSim.preco=''; _cpSim.cargaTon=''; _cpSim.validadeMeses=''; _cpSim.icms=''; _cpSim.cargaEscolhida=''; _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); setTimeout(_cpSimFocusNext,0); }
 // CARGA ESCOLHIDA (Diego): em modo não-cargas comprando carga fechada, arredonda a compra p/ N cargas
 // inteiras (piso/teto). Clicar de novo na mesma desmarca. Muda o nº de cargas → zera as datas do cronograma.
 function _cpSimSetCargaEsc(nc){ _cpSim.cargaEscolhida=(String(_cpSim.cargaEscolhida)===String(nc))?'':nc; _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); }
