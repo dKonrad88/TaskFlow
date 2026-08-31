@@ -9577,7 +9577,6 @@ function _cpUltimasComprasCard(o){
     <div style="overflow-x:auto"><table class="cp-tbl cp-tbl-sm" style="font-size:11px">
       <thead><tr><th>Data</th><th>Fornecedor</th><th class="r">Preço</th><th class="r">Qtde</th><th class="r">ICMS</th><th class="r" title="Preço líquido do ICMS">Preço Net</th><th class="r">Prazo</th></tr></thead>
       <tbody>${linhas}</tbody></table></div>
-    <div style="font-size:10.5px;color:var(--text3);padding:6px 2px 0">Prazo (pagamento/entrega) — a cadastrar; não vem no export do ERP.</div>
   </div>`;
 }
 // ── OCs EM ABERTO (pedidos de compra emitidos, ainda não entregues) — card da view Resumo ──
@@ -9617,7 +9616,6 @@ function _cpOCsCard(o){
   return `<div class="cp-card" style="padding:15px 17px 8px">
     <div class="cp-card-title"><span>OCs em aberto</span>${ocs.length?`<span class="sub">${ocs.length} · ${_cpNum(totalSaldo,0)} ${escapeHTML(um)} a caminho</span>`:''}</div>
     ${corpo}
-    <div style="font-size:10.5px;color:var(--text3);padding:6px 2px 0">Exemplo — os pedidos em aberto virão do export do ERP (a definir com a TI).</div>
   </div>`;
 }
 // ══════════ NOTÍCIAS DE MERCADO por item (view Notícias + Tendência do Resumo) ══════════
