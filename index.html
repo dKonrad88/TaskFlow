@@ -8649,6 +8649,7 @@ function _cpCSS(){ return `<style>
   .cp-tbl th,.cp-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
   .cp-tbl.cp-tbl-sm th,.cp-tbl.cp-tbl-sm td{padding:5px 6px}
   .cp-tbl thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:700;background:var(--bg2);position:sticky;top:0;z-index:1}
+  .cp-tbl thead th .cp-hsub{font-size:0.82em;font-style:italic;font-weight:400;opacity:.7;letter-spacing:0}
   .cp-tbl th.r,.cp-tbl td.cp-n{text-align:right;font-variant-numeric:tabular-nums}
   .cp-tbl tbody tr:hover{background:var(--bg2)}
   .cp-tbl tbody tr.cp-row-sel{background:color-mix(in srgb,var(--blue-mid) 11%,transparent)}
@@ -10166,7 +10167,7 @@ let __cpOcSaldo=null;
 function _cpOcSaldo(cod){ if(!__cpOcSaldo){ __cpOcSaldo={}; _CP_OCABERTO.forEach(p=>{ __cpOcSaldo[p.cod]=(__cpOcSaldo[p.cod]||0)+(p.qtd||0); }); } return __cpOcSaldo[cod]||0; }
 let _cpPlan={periodo:'2', perDe:'', perAte:'', busca:'', buscaAberta:false, catSel:[], filtrosAberto:false, status:'', coresAberto:false};
 // Filtro por status (cards clicáveis): '' = todos · 'agora'/'breve' = cobertura · 'ruptura' = disponível<=0.
-function _cpPlanStatusMatch(o){ const st=_cpPlan.status; if(!st) return true; if(st==='naovisto') return !_cpVistoTem(o.cod); const cv=_cpPlanCov(o); return st==='ruptura'?(cv.disp<=0):(cv.key===st); }
+function _cpPlanStatusMatch(o){ const st=_cpPlan.status; if(!st) return true; if(st==='naovisto') return !_cpVistoTem(o.cod); const cv=_cpPlanCov(o); return st==='ruptura'?(o.est<=0):(cv.key===st); }
 function _cpPlanSetStatus(k){ _cpPlan.status=(_cpPlan.status===k?'':k); renderCompras(); }
 // ── Faixas de cor da COBERTURA — PERSONALIZÁVEIS (ícone paleta). max em MESES; última faixa (max=null) = "acima".
 // A 1ª faixa = "Comprar agora", a 2ª = "Comprar em breve", o resto = ok (os KPIs seguem as faixas).
@@ -10186,10 +10187,13 @@ function _cpPlanCoresToggle(){ _cpPlan.coresAberto=!_cpPlan.coresAberto; _cpPlan
 function _cpPlanCov(o){ const C=window.__cpPlanCache||(window.__cpPlanCache={}); if(C[o.cod]) return C[o.cod];
   const medPer=_cpConsMedPer(o,_cpPlan.periodo,_cpPlan.perDe,_cpPlan.perAte);
   const disp=o.est + _cpOcSaldo(o.cod);
-  const covMes = medPer>0 ? disp/medPer : null, covDias = covMes!=null ? covMes*30 : null, lead=_cpLeadTime(o);
+  // Cobertura = SÓ o estoque FÍSICO (Diego, 31/08) ÷ média. O disponível (físico+OC) serve p/ a coluna "Dura até (c/ OC)".
+  const covMes = medPer>0 ? o.est/medPer : null, covDias = covMes!=null ? covMes*30 : null;
+  const covMesOC = medPer>0 ? disp/medPer : null, covDiasOC = covMesOC!=null ? covMesOC*30 : null;
+  const lead=_cpLeadTime(o);
   let key='semdados', cor='var(--text3)';
-  if(covMes!=null){ const bf=_cpPlanBandFor(covMes); cor=bf.cor; key=bf.i===0?'agora':(bf.i===1?'breve':'ok'); } // cor+classe pelas FAIXAS personalizáveis
-  const r={medPer,disp,covMes,covDias,lead,key,cor}; C[o.cod]=r; return r;
+  if(covMes!=null){ const bf=_cpPlanBandFor(covMes); cor=bf.cor; key=bf.i===0?'agora':(bf.i===1?'breve':'ok'); } // cor+classe pelas FAIXAS (sobre o FÍSICO)
+  const r={medPer,disp,covMes,covDias,covMesOC,covDiasOC,lead,key,cor}; C[o.cod]=r; return r;
 }
 function _cpPlanRows(){
   const q=(_cpPlan.busca||'').trim().toLowerCase();
@@ -10204,17 +10208,16 @@ function _cpPlanRowsView(){ return _cpPlanRows().filter(_cpPlanStatusMatch); }
 function _cpPlanTbodyHTML(){
   const rows=_cpPlanRowsView(), TETO=300;
   const out=rows.slice(0,TETO).map(o=>{ const cv=_cpPlanCov(o), oc=_cpOcSaldo(o.cod), um=o.um||'';
-    // "Dura até" em 2 colunas: só pelo estoque FÍSICO, e pelo FÍSICO+OC (disponível). Sem OC → traço na 2ª.
-    const covMesFis=cv.medPer>0?o.est/cv.medPer:null;
-    const corFis=covMesFis==null?'var(--text3)':_cpPlanBandFor(covMesFis).cor;
-    const duraFis=covMesFis!=null?_cpDataFim(Math.round(covMesFis*30)):'—';
-    const duraOC=oc>0?(cv.covDias!=null?_cpDataFim(Math.round(cv.covDias)):'—'):'—';
+    // Cobertura = física; "Dura até (físico)" = a própria cobertura em data; "Dura até (c/ OC)" = físico+OC. Sem OC → traço.
+    const corOC=(oc>0&&cv.covMesOC!=null)?_cpPlanBandFor(cv.covMesOC).cor:'var(--text3)';
+    const duraFis=cv.covDias!=null?_cpDataFim(Math.round(cv.covDias)):'—';
+    const duraOC=oc>0?(cv.covDiasOC!=null?_cpDataFim(Math.round(cv.covDiasOC)):'—'):'—';
     const un=`<span class="cp-un">${escapeHTML(um)}</span>`;
     return `<tr class="cp-clic" onclick="_cpPlanRowClick('${escapeAttr(o.cod)}', event)">
       <td style="text-align:center;width:34px"><input type="checkbox" data-cod="${escapeAttr(o.cod)}" ${_cpVistoTem(o.cod)?'checked':''} onclick="event.stopPropagation();_cpVistoToggle('${escapeAttr(o.cod)}')" title="Marcar que já vi este item hoje" style="cursor:pointer;width:15px;height:15px;vertical-align:middle"></td>
-      <td><span class="cp-pill" style="color:${cv.cor};background:color-mix(in srgb,${cv.cor} 14%,transparent)" title="${cv.covDias!=null?('≈ '+_cpNum(cv.covDias,0)+' dias'+(oc>0?' (inclui '+_cpNum(oc,0)+' em OC)':'')):'sem consumo p/ calcular'}">${cv.covMes==null?'—':_cpNum(cv.covMes,1)+' '+(cv.covMes>=2?'meses':'mês')}</span></td>
-      <td class="cp-mono" style="color:${corFis}" title="quando o estoque FÍSICO acaba">${duraFis}</td>
-      <td class="cp-mono" style="color:${oc>0?cv.cor:'var(--text3)'}" title="${oc>0?'quando o estoque + OC a receber acaba':'sem OC a receber'}">${duraOC}</td>
+      <td><span class="cp-pill" style="color:${cv.cor};background:color-mix(in srgb,${cv.cor} 14%,transparent)" title="${cv.covDias!=null?('≈ '+_cpNum(cv.covDias,0)+' dias — só estoque físico'):'sem consumo p/ calcular'}">${cv.covMes==null?'—':_cpNum(cv.covMes,1)+' '+(cv.covMes>=2?'meses':'mês')}</span></td>
+      <td class="cp-mono" style="color:${cv.cor}" title="quando o estoque FÍSICO acaba">${duraFis}</td>
+      <td class="cp-mono" style="color:${corOC}" title="${oc>0?'quando o estoque + OC a receber acaba':'sem OC a receber'}">${duraOC}</td>
       <td class="cp-mono">${escapeHTML(o.cod)}</td>
       <td class="cp-item" title="${escapeAttr(o.nome)}">${escapeHTML(o.nome)}</td>
       <td class="cp-n">${_cpNum(o.est,0)} ${un}</td>
@@ -10286,7 +10289,7 @@ function _comprasPlanejamentoHTML(){
   window.__cpPlanCache={};                 // zera o cache de cobertura a cada render (o período pode ter mudado)
   const rows=_cpPlanRows();
   const nAgora=rows.filter(o=>_cpPlanCov(o).key==='agora').length, nBreve=rows.filter(o=>_cpPlanCov(o).key==='breve').length;
-  const nRuptura=rows.filter(o=>_cpPlanCov(o).disp<=0).length;
+  const nRuptura=rows.filter(o=>o.est<=0).length;   // ruptura = sem estoque FÍSICO (Diego: cobertura é física)
   const PERIODOS=[['1','Último mês'],['2','Últimos 2 meses'],['3','Últimos 3 meses'],['4','Últimos 4 meses'],['6','Últimos 6 meses'],['9','Últimos 9 meses'],['12','Últimos 12 meses'],['custom','Escolher datas…']];
   const dinp=(campo)=>`<input type="date" value="${escapeAttr(_cpPlan[campo]||'')}" onchange="_cpPlanSetPer('${campo}',this.value)" class="modal-input" style="width:auto;padding:5px 8px;font-size:12px">`;
   const selPer=`<div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px"><span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);text-align:center">Média do período</span><div style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap"><select onchange="_cpPlanPeriodo(this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px;font-weight:600">${PERIODOS.map(p=>`<option value="${p[0]}"${_cpPlan.periodo===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>${_cpPlan.periodo==='custom'?`<span style="font-size:11.5px;color:var(--text3)">de</span>${dinp('perDe')}<span style="font-size:11.5px;color:var(--text3)">até</span>${dinp('perAte')}`:''}</div></div>`;
@@ -10319,7 +10322,7 @@ function _comprasPlanejamentoHTML(){
   return _cpTela('Planejamento de compras','Cockpit diário do comprador — estoque, cobertura e o que precisa comprar. Clique num item para abrir a ficha e simular.',
     kpisHTML+
     `<div class="cp-card cp-noscroll" style="overflow:auto;max-height:calc(100vh - 320px)"><table class="cp-tbl">
-      <thead><tr><th style="width:34px;text-align:center" title="Marcar/desmarcar todos os visíveis como visto"><input type="checkbox" ${allVisto?'checked':''} onclick="_cpVistoTodos(this.checked)" style="cursor:pointer;width:15px;height:15px;vertical-align:middle"></th><th>Cobertura</th><th title="Quando o estoque físico acaba">Dura até (físico)</th><th title="Quando o estoque + OC a receber acaba">Dura até (c/ OC)</th><th>Cód.</th><th>Produto</th><th class="r">Estoque físico</th><th class="r">Estoque disponível</th><th class="r">Média de consumo</th><th class="r">Média do período</th><th class="r">Tempo de entrega</th></tr></thead>
+      <thead><tr><th style="width:34px;text-align:center" title="Marcar/desmarcar todos os visíveis como visto"><input type="checkbox" ${allVisto?'checked':''} onclick="_cpVistoTodos(this.checked)" style="cursor:pointer;width:15px;height:15px;vertical-align:middle"></th><th title="Cobertura pelo estoque físico ÷ média">Cobertura <span class="cp-hsub">(físico)</span></th><th title="Quando o estoque físico acaba">Dura até <span class="cp-hsub">(físico)</span></th><th title="Quando o estoque + OC a receber acaba">Dura até <span class="cp-hsub">(c/ OC)</span></th><th>Cód.</th><th>Produto</th><th class="r">Estoque físico</th><th class="r">Estoque disponível</th><th class="r">Média de consumo</th><th class="r">Média do período</th><th class="r">Tempo de entrega</th></tr></thead>
       <tbody id="cp-plan-tbody">${_cpPlanTbodyHTML()}</tbody></table></div>`,
     undefined, acao);
 }
