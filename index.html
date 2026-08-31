@@ -8616,8 +8616,15 @@ function _cpIdx(){
 }
 // ESCOPO do comprador de Compras (Diego 31/08): SÓ Matéria-prima e Embalagens em TODAS as abas.
 // Manutenção/Limpeza/Outros (produtos acabados, brindes, manutenção) têm OUTRO comprador → ficam de fora.
-function _cpEscComprador(nome){ const c=_cpCategoria(nome); return c==='Matéria-prima' || c==='Embalagens'; }
-function _cpItens(){ const m=_cpIdx(); return Object.keys(m).map(k=>m[k]).filter(o=>_cpEscComprador(o.nome)); }
+function _cpEscComprador(nome, cod){
+  const c=_cpCategoria(nome); if(!(c==='Matéria-prima' || c==='Embalagens')) return false;
+  const n=(nome||'').trim().toLowerCase();
+  if(n.indexOf('mistura')===0) return false;      // nomes que começam com "Mistura" (Diego 31/08)
+  if(n.indexOf('industrializ')>=0) return false;  // "Serviço de Industrialização - Moagem Gritz/Milho"
+  if(String(cod)==='200134') return false;        // Cobertura de Chocolate Liquido - Meio Amargo
+  return true;
+}
+function _cpItens(){ const m=_cpIdx(); return Object.keys(m).map(k=>m[k]).filter(o=>_cpEscComprador(o.nome,o.cod)); }
 // Semáforo de cobertura (dias). Sem consumo → cinza (não dá p/ opinar).
 // Estados operacionais do estoque por COBERTURA (dias). "Sem movimento" (semMov alto) é filtro à parte.
 // <10 comprar agora · <30 em breve · 30–120 saudável · >120 excesso (capital parado) · null sem dados.
@@ -10013,7 +10020,7 @@ function _cpFornAgg(escopo){
   const lim=_cpLimiteMeses(_cpFornMeses);
   const m={};
   _cpLinhas().forEach(l=>{
-    if(!_cpEscComprador(l.item[1])) return;   // só MP/embalagens (Manutenção = outro comprador)
+    if(!_cpEscComprador(l.item[1],l.item[0])) return;   // só MP/embalagens (Manutenção = outro comprador)
     if(escopo!=='T' && l.cls!==escopo) return;
     if(lim && l.data<lim) return;
     const k=l.forn[0]||l.forn[1];
@@ -10499,7 +10506,7 @@ function _cpFiltradas(){
   if(f.meses>0){ const d=new Date(); d.setMonth(d.getMonth()-f.meses);
     lim=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
   return _cpLinhas().filter(l=>{
-    if(!_cpEscComprador(l.item[1])) return false;   // só MP/embalagens (Manutenção = outro comprador)
+    if(!_cpEscComprador(l.item[1],l.item[0])) return false;   // só MP/embalagens (Manutenção = outro comprador)
     if(f.escopo!=='T' && l.cls!==f.escopo) return false;
     if(lim && l.data<lim) return false;
     if(q && (l.item[1]+' '+l.forn[1]+' '+l.nf+' '+l.item[0]).toLowerCase().indexOf(q)<0) return false;
