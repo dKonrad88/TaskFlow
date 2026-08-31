@@ -10082,17 +10082,31 @@ function _cpLeadTime(o){ const map={'Matéria-prima':20,'Embalagens':25,'Manuten
 // ⚠️ EXEMPLO: saldo em Ordem de Compra a receber (_CP_OCABERTO). Disponível = estoque físico + este saldo.
 let __cpOcSaldo=null;
 function _cpOcSaldo(cod){ if(!__cpOcSaldo){ __cpOcSaldo={}; _CP_OCABERTO.forEach(p=>{ __cpOcSaldo[p.cod]=(__cpOcSaldo[p.cod]||0)+(p.qtd||0); }); } return __cpOcSaldo[cod]||0; }
-let _cpPlan={periodo:'2', perDe:'', perAte:'', busca:'', buscaAberta:false, catSel:[], filtrosAberto:false, status:''};
+let _cpPlan={periodo:'2', perDe:'', perAte:'', busca:'', buscaAberta:false, catSel:[], filtrosAberto:false, status:'', coresAberto:false};
 // Filtro por status (cards clicáveis): '' = todos · 'agora'/'breve' = cobertura · 'ruptura' = disponível<=0.
 function _cpPlanStatusMatch(o){ const st=_cpPlan.status; if(!st) return true; if(st==='naovisto') return !_cpVistoTem(o.cod); const cv=_cpPlanCov(o); return st==='ruptura'?(cv.disp<=0):(cv.key===st); }
 function _cpPlanSetStatus(k){ _cpPlan.status=(_cpPlan.status===k?'':k); renderCompras(); }
+// ── Faixas de cor da COBERTURA — PERSONALIZÁVEIS (ícone paleta). max em MESES; última faixa (max=null) = "acima".
+// A 1ª faixa = "Comprar agora", a 2ª = "Comprar em breve", o resto = ok (os KPIs seguem as faixas).
+const LS_PLAN_BANDS='taskflow_plan_covbands';
+const CP_CORES=['var(--danger)','var(--amber)','var(--success)','var(--blue-mid)','var(--purple)','var(--text3)'];
+function _cpPlanBandsDefault(){ return [{max:1,cor:'var(--danger)'},{max:2,cor:'var(--amber)'},{max:null,cor:'var(--success)'}]; }
+function _cpPlanBands(){ const a=safeJSON(LS_PLAN_BANDS,null); return (Array.isArray(a)&&a.length>=2)?a:_cpPlanBandsDefault(); }
+function _cpPlanBandsSave(b){ try{ safeSetItem(LS_PLAN_BANDS,JSON.stringify(b)); }catch(e){} }
+function _cpPlanBandFor(m){ const B=_cpPlanBands(); for(let i=0;i<B.length;i++){ if(B[i].max==null || m<=B[i].max) return {i,cor:B[i].cor}; } const last=B[B.length-1]; return {i:B.length-1,cor:last.cor}; }
+function _cpPlanBandSetMax(i,val){ const B=_cpPlanBands(); if(B[i]){ const n=parseFloat(String(val).replace(',','.')); if(isFinite(n)&&n>0) B[i].max=n; _cpPlanBandsSave(B); renderCompras(); } }
+function _cpPlanBandSetCor(i,cor){ const B=_cpPlanBands(); if(B[i]){ B[i].cor=cor; _cpPlanBandsSave(B); renderCompras(); } }
+function _cpPlanBandAdd(){ const B=_cpPlanBands(); const prev=B.length>=2?(B[B.length-2].max||1):1; B.splice(B.length-1,0,{max:prev+1,cor:CP_CORES[Math.min(B.length-1,CP_CORES.length-1)]}); _cpPlanBandsSave(B); renderCompras(); }
+function _cpPlanBandDel(i){ const B=_cpPlanBands(); if(B.length>2 && i>=0 && i<B.length-1){ B.splice(i,1); _cpPlanBandsSave(B); renderCompras(); } }
+function _cpPlanBandReset(){ _cpPlanBandsSave(_cpPlanBandsDefault()); renderCompras(); }
+function _cpPlanCoresToggle(){ _cpPlan.coresAberto=!_cpPlan.coresAberto; renderCompras(); }
 // Cobertura de um item no período escolhido (cache por render p/ não recalcular no sort + nas linhas).
 function _cpPlanCov(o){ const C=window.__cpPlanCache||(window.__cpPlanCache={}); if(C[o.cod]) return C[o.cod];
   const medPer=_cpConsMedPer(o,_cpPlan.periodo,_cpPlan.perDe,_cpPlan.perAte);
   const disp=o.est + _cpOcSaldo(o.cod);
   const covMes = medPer>0 ? disp/medPer : null, covDias = covMes!=null ? covMes*30 : null, lead=_cpLeadTime(o);
   let key='semdados', cor='var(--text3)';
-  if(covDias!=null){ if(covDias<=lead){key='agora';cor='var(--danger)';} else if(covDias<=lead+30){key='breve';cor='var(--amber)';} else {key='ok';cor='var(--success)';} }
+  if(covMes!=null){ const bf=_cpPlanBandFor(covMes); cor=bf.cor; key=bf.i===0?'agora':(bf.i===1?'breve':'ok'); } // cor+classe pelas FAIXAS personalizáveis
   const r={medPer,disp,covMes,covDias,lead,key,cor}; C[o.cod]=r; return r;
 }
 function _cpPlanRows(){
@@ -10174,14 +10188,26 @@ function _comprasPlanejamentoHTML(){
   const nRuptura=rows.filter(o=>_cpPlanCov(o).disp<=0).length;
   const PERIODOS=[['1','Último mês'],['2','Últimos 2 meses'],['3','Últimos 3 meses'],['4','Últimos 4 meses'],['6','Últimos 6 meses'],['9','Últimos 9 meses'],['12','Últimos 12 meses'],['custom','Escolher datas…']];
   const dinp=(campo)=>`<input type="date" value="${escapeAttr(_cpPlan[campo]||'')}" onchange="_cpPlanSetPer('${campo}',this.value)" class="modal-input" style="width:auto;padding:5px 8px;font-size:12px">`;
-  const selPer=`<span style="font-size:11.5px;color:var(--text3)">Média do período</span><select onchange="_cpPlanPeriodo(this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px;font-weight:600">${PERIODOS.map(p=>`<option value="${p[0]}"${_cpPlan.periodo===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>${_cpPlan.periodo==='custom'?`<span style="font-size:11.5px;color:var(--text3)">de</span>${dinp('perDe')}<span style="font-size:11.5px;color:var(--text3)">até</span>${dinp('perAte')}`:''}`;
+  const selPer=`<div style="display:inline-flex;flex-direction:column;gap:3px"><span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text3)">Média do período</span><div style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap"><select onchange="_cpPlanPeriodo(this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px;font-weight:600">${PERIODOS.map(p=>`<option value="${p[0]}"${_cpPlan.periodo===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>${_cpPlan.periodo==='custom'?`<span style="font-size:11.5px;color:var(--text3)">de</span>${dinp('perDe')}<span style="font-size:11.5px;color:var(--text3)">até</span>${dinp('perAte')}`:''}</div></div>`;
   const todos=_cpItens().filter(o=>o.est>0||o.consMed>0); const cont={}; _CP_CATS.forEach(c=>cont[c]=0); todos.forEach(o=>{const c=_cpCategoria(o.nome); cont[c]=(cont[c]||0)+1;});
   const catPanel=_cpPlan.filtrosAberto?`<div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:236px;max-height:300px;overflow:auto;padding:6px">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px 7px"><span style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)">Categoria</span>${_cpPlan.catSel.length?`<button onclick="_cpPlanCatAll()" style="border:none;background:none;color:var(--blue-mid);font-size:11.5px;cursor:pointer;font-family:inherit">Limpar</button>`:''}</div>
       ${_CP_CATS.map(c=>{const on=_cpPlan.catSel.indexOf(c)>=0;return `<div onclick="_cpPlanCatToggle('${escapeAttr(c)}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;color:var(--text)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'"><i class="ti ${on?'ti-square-check-filled':'ti-square'}" style="font-size:17px;color:${on?'var(--blue-mid)':'var(--text3)'}"></i><span style="flex:1;min-width:0">${escapeHTML(c)} <span style="color:var(--text3)">${cont[c]||0}</span></span></div>`;}).join('')}
     </div>`:'';
   const filtrosBtn=`<div style="position:relative"><button onclick="_cpPlanFiltrosToggle()" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:20px;border:1px solid ${_cpPlan.catSel.length?'var(--blue-mid)':'var(--border)'};background:${_cpPlan.catSel.length?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--card)'};color:${_cpPlan.catSel.length?'var(--blue-mid)':'var(--text2)'};cursor:pointer;font-family:inherit"><i class="ti ti-filter" style="font-size:13px"></i> Filtros${_cpPlan.catSel.length?` · ${_cpPlan.catSel.length}`:''} <i class="ti ti-chevron-${_cpPlan.filtrosAberto?'up':'down'}" style="font-size:12px"></i></button>${catPanel}</div>`;
-  const acao=`<div style="display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap">${selPer}${filtrosBtn}${_cpLupa(_cpPlan.buscaAberta,_cpPlan.busca,'_cpPlanBuscaToggle','_cpPlanBuscaInput','cp-plan-busca','Buscar item…')}</div>`;
+  const bands=_cpPlanBands();
+  const coresPanel=_cpPlan.coresAberto?`<div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:298px;padding:10px 12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)">Cores da cobertura</span><button onclick="_cpPlanBandReset()" style="border:none;background:none;color:var(--blue-mid);font-size:11.5px;cursor:pointer;font-family:inherit">Restaurar</button></div>
+      ${bands.map((b,i)=>{ const isLast=b.max==null; return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;${i?'border-top:1px solid var(--border)':''}">
+          <div style="min-width:106px;font-size:12px;color:var(--text2);white-space:nowrap">${isLast?'<b style="color:var(--text)">acima</b>':`até <input type="number" value="${b.max}" min="0.5" step="0.5" onchange="_cpPlanBandSetMax(${i},this.value)" class="cp-sim-inp" style="width:42px;text-align:center"> ${b.max==1?'mês':'meses'}`}</div>
+          <div style="display:flex;gap:5px;flex:1">${CP_CORES.map(c=>`<button onclick="_cpPlanBandSetCor(${i},'${c}')" title="usar esta cor" style="width:19px;height:19px;border-radius:50%;background:${c};border:2px solid ${b.cor===c?'var(--text)':'transparent'};cursor:pointer;padding:0;flex:none"></button>`).join('')}</div>
+          ${(!isLast && bands.length>2)?`<button onclick="_cpPlanBandDel(${i})" title="remover faixa" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;flex:none"><i class="ti ti-x" style="font-size:14px"></i></button>`:'<span style="width:18px;flex:none"></span>'}
+        </div>`; }).join('')}
+      <button onclick="_cpPlanBandAdd()" style="margin-top:9px;background:none;border:1px dashed var(--border);border-radius:7px;cursor:pointer;color:var(--blue-mid);font-size:11.5px;font-weight:600;padding:5px 10px;font-family:inherit;width:100%"><i class="ti ti-plus"></i> adicionar faixa</button>
+      <div style="font-size:10px;color:var(--text3);margin-top:7px;line-height:1.4">A cor da coluna <b>Cobertura</b> segue estas faixas. A 1ª faixa = "Comprar agora", a 2ª = "Comprar em breve".</div>
+    </div>`:'';
+  const coresBtn=`<div style="position:relative"><button onclick="_cpPlanCoresToggle()" title="Personalizar as cores da cobertura" style="background:var(--card);border:1px solid ${_cpPlan.coresAberto?'var(--blue-mid)':'var(--border)'};border-radius:9px;cursor:pointer;color:${_cpPlan.coresAberto?'var(--blue-mid)':'var(--text2)'};width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-palette" style="font-size:17px"></i></button>${coresPanel}</div>`;
+  const acao=`<div style="display:inline-flex;align-items:flex-end;gap:10px;flex-wrap:wrap">${selPer}${filtrosBtn}${coresBtn}${_cpLupa(_cpPlan.buscaAberta,_cpPlan.busca,'_cpPlanBuscaToggle','_cpPlanBuscaInput','cp-plan-busca','Buscar item…')}</div>`;
   // KPIs: os 3 acionáveis (Comprar agora/em breve/Em ruptura) são CLICÁVEIS → filtram a tabela (clicar de novo limpa).
   // Contagens vêm da BASE (categoria+busca, sem status) p/ o usuário poder alternar entre eles.
   const kpiCard=(lab,val,cor,key)=>{ const act=key&&_cpPlan.status===key, clk=!!key;
