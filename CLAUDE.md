@@ -422,6 +422,11 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-08-31 (g) — PC da Empresa — Estoque: enxuga KPIs (só Excesso + Valor, menores) + filtros secundários em ícone
+Pedido do Diego. **Commit `8ddd34c2`, pushado; `main == origin`; working tree limpo.** Verificado por DOM (:8899): cards 240px, filtro Excesso=168, ícone azul quando ativo, 0 erros.
+- **Cards enxutos:** removidos **Comprar agora / Comprar em breve / Sem dados**; sobram **Excesso — capital parado** e **Valor em estoque**, agora em cards de **240px `flex:none` alinhados à esquerda** (não ocupam a largura toda — era `_cpKPIcards` auto-fit full-width). `_cpEstCorpo` (~8777).
+- **Filtros secundários em ÍCONE:** os chips **Excesso · Sem movimento · Sem dados** saíram da barra e viraram um **ícone `ti-filter` + popover** ao lado da lupa (`_comprasEstoqueHTML`); chips que ficam = **Todos · Comprar agora · Comprar em breve · Saudáveis**. Ícone fica **azul quando um filtro do popover está ativo** (`_cpEst.so ∈ {excesso,semmov,semdados}`); fecha ao clicar fora (`.cp-pop-wrap` + `_cpComprasCloseFiltros`, que ganhou o reset de `_cpEst.filtrosAberto`). Novos: `_cpEst.filtrosAberto`, `_cpEstFiltrosToggle`, `_cpEstFiltro(v)` (seleção com re-render completo — chips E popover usam). ⚠️ Quando um filtro do popover está ativo, **nenhum chip fica aceso** (o ícone azul sinaliza) — é intencional.
+
 ### 2026-08-31 (f) — PC da Empresa — Sidebar: nome comprido de subitem quebra em 2 linhas (não corta mais)
 Pedido do Diego (Compras: "Planejamento de compras" e "Necessidade da semana" apareciam com "..."; ele não quis encurtar os nomes nem mexer no recuo). **Commit `7c303baf`, pushado; `main == origin`; working tree limpo.** Verificado por DOM (:8899): os 2 labels `cortado:false`, 2 linhas cada.
 - **`.sbnav-subitem .sbnav-label`** ganhou `white-space:normal` (era `nowrap`+ellipsis herdado de `.sbnav-label`, ~1706) → o nome inteiro aparece em **2 linhas**. `.sbnav-subitem{align-items:flex-start}` + `i{margin-top:2px}` p/ o ícone alinhar ao topo com 2 linhas. **Vale p/ TODAS as áreas** (é o CSS genérico do subitem), mas só afeta itens longos; os de 1 linha seguem idênticos. Sem tocar em fonte/recuo/largura da sidebar.
