@@ -9326,30 +9326,37 @@ function _cpSimCriarTarefa(cod){
   const tTon=(um==='KG'&&c.qtd>=1000)?' · '+_cpNum(c.qtd/1000,1)+' t':'';
   const ent=(_cpSim.entregas||[]).filter(Boolean);
   const teto=_cpNumParse(_cpGetCusteio(o.cod));
+  const icmsN=_cpNumParse(_cpSim.icms);
   const linhas=[
     `Comprar: ${_cpNum(c.qtd,0)} ${um}${tTon}`,
     `Item: ${o.nome} (cód ${o.cod})`,
-    `Preço: ${_cpBRL(c.preco)}/${um}${c.descPct>0?' (−'+_cpNum(c.descPct,1)+'%)':''}`,
-    `Custo total: ${_cpBRL(c.custo)}`
+    `Preço (bruto): ${_cpBRL(c.preco)}/${um}${c.descPct>0?' (−'+_cpNum(c.descPct,1)+'%)':''}`
   ];
+  if(icmsN>0) linhas.push(`Preço (net, −${_cpNum(icmsN,Number.isInteger(icmsN)?0:1)}% ICMS): ${_cpBRL(c.preco*(1-icmsN/100))}/${um}`);
+  linhas.push(`Custo total: ${_cpBRL(c.custo)}`);
   if(c.cobDepois!=null) linhas.push(`Cobertura após a compra: ${c.cobDepois} dias (até ${_cpDataFim(c.cobDepois)})`);
   if(ent.length) linhas.push(`Entrega${ent.length>1?'s':''}: ${ent.map(_cpDt).join(', ')}`);
   if(teto>0) linhas.push(`Teto de custeio: ${_cpBRL(teto)}/${um} — ${c.preco>teto+0.005?'ACIMA do teto':'dentro do teto'}`);
-  const t={ id:Date.now()+Math.floor(Math.random()*9999),
-    title:`Comprar ${_cpNum(c.qtd,0)} ${um} de ${o.nome}`,
-    desc:linhas.join('\n'),
-    prio:'alta', date:today, done:false, escopo:'klain',
-    executor:uid, solicitante:uid, people:[uid], createdAt:today, subtasks:[], kanbanCol:'todo',
-    projectProId:null, projectProFaseId:null, projectProGrupoId:null,
-    origem:'compra', cpCod:String(o.cod) };
-  tasks.push(t);
-  try{ if(typeof logHistory==='function') logHistory(t.id,'criado',null,t.title); }catch(e){}
-  try{ saveTask_db(t); }catch(e){}
-  try{ updateStats && updateStats(); }catch(e){}
-  toast('📋 Tarefa de compra criada — em Meu Dia / Minhas Tarefas', { undoFn:()=>{
-    try{ deleteTask_db(t.id); }catch(e){}
+  const title=`Comprar ${_cpNum(c.qtd,0)} ${um} de ${o.nome}`;
+  const desc=linhas.join('\n');
+  // RESUMO + confirmação ANTES de criar (pedido do Diego). O modal mostra o que vai virar a tarefa; só cria no "Criar tarefa".
+  // HTML numa linha só (o container do confirmModal usa white-space:pre-line — quebras viriam de <br>, não do fonte).
+  const preview=`<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:3px">Título da tarefa</div><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:11px">${escapeHTML(title)}</div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:4px">Descrição</div><div style="background:var(--bg2);border-radius:9px;padding:10px 12px;font-size:12px;color:var(--text2);line-height:1.7">${linhas.map(escapeHTML).join('<br>')}</div><div style="margin-top:11px;font-size:11.5px;color:var(--text3)">Prioridade <b style="color:var(--danger)">Alta</b> · vence <b style="color:var(--text2)">hoje (${_cpDt(today)})</b> · cai em Meu Dia / Minhas Tarefas</div></div>`;
+  confirmModal({ title:'Criar tarefa de compra', message:preview, confirmLabel:'Criar tarefa', cancelLabel:'Cancelar', icon:'ti-clipboard-plus', onConfirm:()=>{
+    const t={ id:Date.now()+Math.floor(Math.random()*9999), title, desc,
+      prio:'alta', date:today, done:false, escopo:'klain',
+      executor:uid, solicitante:uid, people:[uid], createdAt:today, subtasks:[], kanbanCol:'todo',
+      projectProId:null, projectProFaseId:null, projectProGrupoId:null,
+      origem:'compra', cpCod:String(o.cod) };
+    tasks.push(t);
+    try{ if(typeof logHistory==='function') logHistory(t.id,'criado',null,t.title); }catch(e){}
+    try{ saveTask_db(t); }catch(e){}
     try{ updateStats && updateStats(); }catch(e){}
-    toast('Tarefa removida');
+    toast('📋 Tarefa de compra criada — em Meu Dia / Minhas Tarefas', { undoFn:()=>{
+      try{ deleteTask_db(t.id); }catch(e){}
+      try{ updateStats && updateStats(); }catch(e){}
+      toast('Tarefa removida');
+    }});
   }});
 }
 function _cpSimHTML(o){
