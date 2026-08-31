@@ -8528,7 +8528,7 @@ function renderCompras(){
   const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
-  const telas={ painel:_comprasPainelHTML, necessidade:_comprasNecessidadeHTML, estoque:_comprasEstoqueHTML, insumos:_comprasInsumosHTML,
+  const telas={ painel:_comprasPainelHTML, planejamento:_comprasPlanejamentoHTML, necessidade:_comprasNecessidadeHTML, estoque:_comprasEstoqueHTML, insumos:_comprasInsumosHTML,
                 fornecedores:_comprasFornecedoresHTML, historico:_comprasHistoricoHTML,
                 ordens:_comprasOrdensHTML, orcamentos:_comprasOrcamentosHTML };
   main.innerHTML = telas[comprasView] ? telas[comprasView]() : _comprasScaffoldHTML(comprasView);
@@ -10056,6 +10056,92 @@ function _comprasOrdensHTML(){
     `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead><tr><th>Cód.</th><th>Item</th><th class="r">Valor</th><th class="r">Quantidade comprada</th><th>Fornecedor</th><th>Prazo de pagamento</th><th>Emissão</th><th>Previsão de entrega</th><th>Compra anterior</th><th class="r">Preço</th><th>Última compra</th><th class="r">Preço</th><th class="r">Variação</th><th class="r">Impacto R$</th></tr></thead>
       <tbody id="cp-ord-tbody">${_cpOrdRowsHTML()}</tbody></table></div>`, undefined, acao);
+}
+
+// ════════ PLANEJAMENTO DE COMPRAS — cockpit diário do comprador (espelha a tela do ERP) ════════
+// Tabela com TODOS os itens: estoque físico, disponível (físico + OC), tempo de entrega, média de consumo,
+// média do PERÍODO escolhido e COBERTURA (disponível ÷ média) — a "conta de cabeça" do comprador já pronta.
+// Clicar num item abre a ficha (painel) p/ ver o geral e simular a compra.
+// Média mensal no período escolhido (genérico; espelha _cpConsMesSel mas com params).
+function _cpConsMedPer(o, per, de, ate){
+  const serie=_cpConsSerie(o); if(!serie.length) return o.consMed||0;
+  let sel;
+  if(per==='custom'){ if(!(de&&ate)) return o.consMed||0; const d=de.slice(0,7), a=ate.slice(0,7); sel=serie.filter(x=>x.ym>=d && x.ym<=a); }
+  else { const n=parseInt(per,10); if(!(n>0)) return o.consMed||0; sel=serie.slice(-n); }
+  if(!sel.length) return 0;
+  return sel.reduce((a,x)=>a+(x.consumo||0),0)/sel.length;
+}
+// ⚠️ EXEMPLO: tempo de entrega (lead time) NÃO vem no export do ERP — virá de cadastro por item/fornecedor.
+function _cpLeadTime(o){ const map={'Matéria-prima':20,'Embalagens':25,'Manutenção':10,'Limpeza & higiene':7,'Outros':15}; return map[_cpCategoria(o.nome)]||15; }
+// ⚠️ EXEMPLO: saldo em Ordem de Compra a receber (_CP_OCABERTO). Disponível = estoque físico + este saldo.
+let __cpOcSaldo=null;
+function _cpOcSaldo(cod){ if(!__cpOcSaldo){ __cpOcSaldo={}; _CP_OCABERTO.forEach(p=>{ __cpOcSaldo[p.cod]=(__cpOcSaldo[p.cod]||0)+(p.qtd||0); }); } return __cpOcSaldo[cod]||0; }
+let _cpPlan={periodo:'2', perDe:'', perAte:'', busca:'', buscaAberta:false, catSel:[], filtrosAberto:false};
+// Cobertura de um item no período escolhido (cache por render p/ não recalcular no sort + nas linhas).
+function _cpPlanCov(o){ const C=window.__cpPlanCache||(window.__cpPlanCache={}); if(C[o.cod]) return C[o.cod];
+  const medPer=_cpConsMedPer(o,_cpPlan.periodo,_cpPlan.perDe,_cpPlan.perAte);
+  const disp=o.est + _cpOcSaldo(o.cod);
+  const covMes = medPer>0 ? disp/medPer : null, covDias = covMes!=null ? covMes*30 : null, lead=_cpLeadTime(o);
+  let key='semdados', cor='var(--text3)';
+  if(covDias!=null){ if(covDias<=lead){key='agora';cor='var(--danger)';} else if(covDias<=lead+30){key='breve';cor='var(--amber)';} else {key='ok';cor='var(--success)';} }
+  const r={medPer,disp,covMes,covDias,lead,key,cor}; C[o.cod]=r; return r;
+}
+function _cpPlanRows(){
+  const q=(_cpPlan.busca||'').trim().toLowerCase();
+  return _cpItens().filter(o=>o.est>0 || o.consMed>0 || _cpOcSaldo(o.cod)>0).filter(o=>{
+    if(_cpPlan.catSel.length && _cpPlan.catSel.indexOf(_cpCategoria(o.nome))<0) return false;
+    if(q && ((o.nome||'')+' '+o.cod).toLowerCase().indexOf(q)<0) return false;
+    return true;
+  }).sort((a,b)=>{ const A=_cpPlanCov(a).covDias, B=_cpPlanCov(b).covDias; return (A==null?1e9:A)-(B==null?1e9:B); });
+}
+function _cpPlanTbodyHTML(){
+  const rows=_cpPlanRows(), TETO=300;
+  const out=rows.slice(0,TETO).map(o=>{ const cv=_cpPlanCov(o), oc=_cpOcSaldo(o.cod), um=o.um||'';
+    return `<tr class="cp-clic" onclick="_cpAbrirItem('${escapeAttr(o.cod)}')">
+      <td class="cp-mono">${escapeHTML(o.cod)}</td>
+      <td class="cp-item" title="${escapeAttr(o.nome)}">${escapeHTML(o.nome)}</td>
+      <td class="cp-n">${_cpNum(o.est,0)} <span class="cp-un">${escapeHTML(um)}</span></td>
+      <td class="cp-n">${_cpNum(cv.disp,0)} <span class="cp-un">${escapeHTML(um)}</span>${oc>0?` <span style="color:var(--blue-mid);font-size:10px" title="em ordem de compra a receber">+${_cpNum(oc,0)} OC</span>`:''}</td>
+      <td class="cp-n" style="color:var(--text3)">${cv.lead} d</td>
+      <td class="cp-n">${o.consMed>0?_cpNum(o.consMed,0):'—'}</td>
+      <td class="cp-n">${cv.medPer>0?_cpNum(cv.medPer,0):'—'}</td>
+      <td class="cp-n"><span class="cp-pill" style="color:${cv.cor};background:color-mix(in srgb,${cv.cor} 14%,transparent)" title="${cv.covDias!=null?('≈ '+_cpNum(cv.covDias,0)+' dias · entrega em '+cv.lead+' d'):'sem consumo p/ calcular'}">${cv.covMes==null?'—':_cpNum(cv.covMes,1)+' '+(cv.covMes>=2?'meses':'mês')}</span></td>
+    </tr>`;}).join('');
+  return out || `<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Nenhum item para esse filtro.</td></tr>`;
+}
+function _cpPlanRefresh(){ const tb=document.getElementById('cp-plan-tbody'); if(tb) tb.innerHTML=_cpPlanTbodyHTML(); const c=document.getElementById('cp-plan-count'); if(c) c.textContent=_cpPlanRows().length; }
+function _cpPlanPeriodo(v){ _cpPlan.periodo=v; if(v!=='custom'){ _cpPlan.perDe=''; _cpPlan.perAte=''; } renderCompras(); }
+function _cpPlanBuscaToggle(){ _cpPlan.buscaAberta=!_cpPlan.buscaAberta; if(!_cpPlan.buscaAberta) _cpPlan.busca=''; renderCompras(); if(_cpPlan.buscaAberta) setTimeout(function(){ var el=document.getElementById('cp-plan-busca'); if(el) el.focus(); },30); }
+function _cpPlanBuscaInput(el){ _cpPlan.busca=el.value; _cpPlanRefresh(); }
+function _cpPlanFiltrosToggle(){ _cpPlan.filtrosAberto=!_cpPlan.filtrosAberto; renderCompras(); }
+function _cpPlanCatToggle(c){ const i=_cpPlan.catSel.indexOf(c); if(i>=0) _cpPlan.catSel.splice(i,1); else _cpPlan.catSel.push(c); renderCompras(); }
+function _cpPlanCatAll(){ _cpPlan.catSel=[]; renderCompras(); }
+function _comprasPlanejamentoHTML(){
+  window.__cpPlanCache={};                 // zera o cache de cobertura a cada render (o período pode ter mudado)
+  const rows=_cpPlanRows();
+  const nAgora=rows.filter(o=>_cpPlanCov(o).key==='agora').length, nBreve=rows.filter(o=>_cpPlanCov(o).key==='breve').length;
+  const nRuptura=rows.filter(o=>_cpPlanCov(o).disp<=0).length;
+  const PERIODOS=[['1','Último mês'],['2','Últimos 2 meses'],['3','Últimos 3 meses'],['4','Últimos 4 meses'],['6','Últimos 6 meses'],['9','Últimos 9 meses'],['12','Últimos 12 meses']];
+  const selPer=`<span style="font-size:11.5px;color:var(--text3)">Média do período</span><select onchange="_cpPlanPeriodo(this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px;font-weight:600">${PERIODOS.map(p=>`<option value="${p[0]}"${_cpPlan.periodo===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>`;
+  const todos=_cpItens().filter(o=>o.est>0||o.consMed>0); const cont={}; _CP_CATS.forEach(c=>cont[c]=0); todos.forEach(o=>{const c=_cpCategoria(o.nome); cont[c]=(cont[c]||0)+1;});
+  const catPanel=_cpPlan.filtrosAberto?`<div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:236px;max-height:300px;overflow:auto;padding:6px">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px 7px"><span style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)">Categoria</span>${_cpPlan.catSel.length?`<button onclick="_cpPlanCatAll()" style="border:none;background:none;color:var(--blue-mid);font-size:11.5px;cursor:pointer;font-family:inherit">Limpar</button>`:''}</div>
+      ${_CP_CATS.map(c=>{const on=_cpPlan.catSel.indexOf(c)>=0;return `<div onclick="_cpPlanCatToggle('${escapeAttr(c)}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;color:var(--text)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'"><i class="ti ${on?'ti-square-check-filled':'ti-square'}" style="font-size:17px;color:${on?'var(--blue-mid)':'var(--text3)'}"></i><span style="flex:1;min-width:0">${escapeHTML(c)} <span style="color:var(--text3)">${cont[c]||0}</span></span></div>`;}).join('')}
+    </div>`:'';
+  const filtrosBtn=`<div style="position:relative"><button onclick="_cpPlanFiltrosToggle()" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:20px;border:1px solid ${_cpPlan.catSel.length?'var(--blue-mid)':'var(--border)'};background:${_cpPlan.catSel.length?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--card)'};color:${_cpPlan.catSel.length?'var(--blue-mid)':'var(--text2)'};cursor:pointer;font-family:inherit"><i class="ti ti-filter" style="font-size:13px"></i> Filtros${_cpPlan.catSel.length?` · ${_cpPlan.catSel.length}`:''} <i class="ti ti-chevron-${_cpPlan.filtrosAberto?'up':'down'}" style="font-size:12px"></i></button>${catPanel}</div>`;
+  const acao=`<div style="display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap">${selPer}${filtrosBtn}${_cpLupa(_cpPlan.buscaAberta,_cpPlan.busca,'_cpPlanBuscaToggle','_cpPlanBuscaInput','cp-plan-busca','Buscar item…')}</div>`;
+  return _cpTela('Planejamento de compras','Cockpit diário do comprador — estoque, cobertura e o que precisa comprar. Clique num item para abrir a ficha e simular.',
+    _cpKPIcards([
+      _cpKPI('Itens', _cpNum(rows.length)),
+      _cpKPI('Comprar agora', _cpNum(nAgora), nAgora?'var(--danger)':''),
+      _cpKPI('Comprar em breve', _cpNum(nBreve), nBreve?'var(--amber)':''),
+      _cpKPI('Em ruptura', _cpNum(nRuptura), nRuptura?'var(--danger)':'')
+    ])+
+    `<div class="cp-card cp-noscroll" style="overflow:auto;max-height:calc(100vh - 320px)"><table class="cp-tbl">
+      <thead><tr><th>Cód.</th><th>Produto</th><th class="r">Estoque físico</th><th class="r">Estoque disponível</th><th class="r">Tempo de entrega</th><th class="r">Média de consumo</th><th class="r">Média do período</th><th class="r">Cobertura</th></tr></thead>
+      <tbody id="cp-plan-tbody">${_cpPlanTbodyHTML()}</tbody></table></div>
+    <div style="font-size:11.5px;color:var(--text3);margin-top:10px;display:flex;gap:6px;align-items:baseline"><i class="ti ti-info-circle"></i><span><b><span id="cp-plan-count">${rows.length}</span> itens</b> · ordenado por urgência (menor cobertura primeiro). <b>Cobertura</b> = estoque disponível ÷ média do período (vermelho = acaba antes da entrega chegar). ⚠️ <b>Estoque disponível</b> (o que está em OC) e <b>tempo de entrega</b> são exemplo — virão do ERP.</span></div>`,
+    undefined, acao);
 }
 
 // ════════ PAINEL — o cockpit ════════
@@ -12414,6 +12500,7 @@ function renderSidebar(){
   const areasHTML = hubGroupDivider('ÁREAS')
     + grupo('compras','ti-shopping-cart','Compras',
         _areaItem('compras',_cv,'painel','ti-layout-dashboard','Painel','setComprasView') +
+        _areaItem('compras',_cv,'planejamento','ti-clipboard-check','Planejamento de compras','setComprasView') +
         _areaItem('compras',_cv,'necessidade','ti-calendar-week','Necessidade da semana','setComprasView') +
         _areaItem('compras',_cv,'estoque','ti-packages','Estoque','setComprasView') +
         _areaItem('compras',_cv,'insumos','ti-cube','Insumos','setComprasView') +
