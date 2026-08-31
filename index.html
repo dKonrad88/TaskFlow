@@ -8753,15 +8753,19 @@ function _cpFiltroIcon(toggleFn, count){ count=count||0;
 const _cpVazio=t=>`<div style="text-align:center;color:var(--text3);padding:30px">${t}</div>`;
 
 // ════════ ESTOQUE ════════
-let _cpEst={busca:'',so:'todos',buscaAberta:false};
+let _cpEst={busca:'',so:'todos',buscaAberta:false,filtrosAberto:false};
 function _cpEstSet(k,v){ _cpEst[k]=v; const el=document.getElementById('cp-est-corpo'); if(el) el.innerHTML=_cpEstCorpo(); const s=document.getElementById('cp-est-seg'); if(s) s.innerHTML=_cpEstSegHTML(); }
+// Filtros "secundários" (Excesso / Sem movimento / Sem dados) num ÍCONE ao lado da lupa (Diego).
+function _cpEstFiltrosToggle(){ _cpEst.filtrosAberto=!_cpEst.filtrosAberto; renderCompras(); }
+// Selecionar filtro (chip OU popover): re-render completo p/ o ícone/chips refletirem o estado; fecha o popover.
+function _cpEstFiltro(v){ _cpEst.so=v; _cpEst.filtrosAberto=false; renderCompras(); }
 // Busca vira LUPA no canto superior direito (Diego): fechada = só o ícone; aberta = campo + X.
 function _cpEstToggleBusca(){ _cpEst.buscaAberta=!_cpEst.buscaAberta; if(!_cpEst.buscaAberta) _cpEst.busca=''; renderCompras(); if(_cpEst.buscaAberta) setTimeout(function(){ var el=document.getElementById('cp-est-busca'); if(el) el.focus(); },30); }
 function _cpEstSegHTML(){
   const base=_cpItens().filter(o=>o.est>0 || o.consMed>0);
   const cnt=k=>base.filter(o=>_cpEstStatus(o).key===k).length;
-  const segs=[['todos','Todos',base.length,''],['agora','Comprar agora',cnt('agora'),'var(--danger)'],['breve','Comprar em breve',cnt('breve'),'var(--amber)'],['saudavel','Saudáveis',cnt('saudavel'),'var(--success)'],['excesso','Excesso',cnt('excesso'),'var(--purple)'],['semmov','Sem movimento',base.filter(o=>(o.semMov||0)>=90&&o.est>0).length,'var(--text3)'],['semdados','Sem dados',cnt('semdados'),'var(--text3)']];
-  return segs.map(([v,l,n,cor])=>`<button class="cp-catchip${_cpEst.so===v?' on':''}" onclick="_cpEstSet('so','${v}')">${cor?`<span style="width:8px;height:8px;border-radius:50%;background:${cor};display:inline-block;flex-shrink:0"></span>`:''}${l} <span class="cp-catn">${n}</span></button>`).join('');
+  const segs=[['todos','Todos',base.length,''],['agora','Comprar agora',cnt('agora'),'var(--danger)'],['breve','Comprar em breve',cnt('breve'),'var(--amber)'],['saudavel','Saudáveis',cnt('saudavel'),'var(--success)']];
+  return segs.map(([v,l,n,cor])=>`<button class="cp-catchip${_cpEst.so===v?' on':''}" onclick="_cpEstFiltro('${v}')">${cor?`<span style="width:8px;height:8px;border-radius:50%;background:${cor};display:inline-block;flex-shrink:0"></span>`:''}${l} <span class="cp-catn">${n}</span></button>`).join('');
 }
 function _cpEstLista(){
   const q=_cpEst.busca.trim().toLowerCase();
@@ -8778,8 +8782,6 @@ function _cpEstCorpo(){
   const L=_cpEstLista();
   const base=_cpItens().filter(o=>o.est>0 || o.consMed>0); // KPIs sobre a base TODA (não o filtro)
   const totV=base.reduce((a,o)=>a+o.valor,0);
-  const cntK=k=>base.filter(o=>_cpEstStatus(o).key===k).length;
-  const nAgora=cntK('agora'), nBreve=cntK('breve'), nSemDados=cntK('semdados');
   const excessoR=base.filter(o=>_cpEstStatus(o).key==='excesso').reduce((a,o)=>a+o.valor,0);
   const TETO=300;
   const linhas=L.slice(0,TETO).map(o=>{
@@ -8798,13 +8800,10 @@ function _cpEstCorpo(){
       <td>${o.ultForn?escapeHTML(o.ultForn.slice(0,26)):'—'}</td>
       <td class="cp-n">${o.semMov===null?'—':o.semMov+' d'}</td>
     </tr>`;}).join('');
-  return _cpKPIcards([
-      _cpKPI('Comprar agora',_cpNum(nAgora),nAgora?'var(--danger)':''),
-      _cpKPI('Comprar em breve',_cpNum(nBreve),nBreve?'var(--amber)':''),
-      _cpKPI('Excesso — capital parado',_cpBRL(excessoR),excessoR?'var(--purple)':''),
-      _cpKPI('Sem dados',_cpNum(nSemDados),nSemDados?'var(--text3)':''),
-      _cpKPI('Valor em estoque',_cpBRL(totV))
-    ])+
+  return `<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+      <div class="cp-card" style="padding:13px 16px;flex:none;width:240px">${_cpKPI('Excesso — capital parado',_cpBRL(excessoR),excessoR?'var(--purple)':'')}</div>
+      <div class="cp-card" style="padding:13px 16px;flex:none;width:240px">${_cpKPI('Valor em estoque',_cpBRL(totV))}</div>
+    </div>`+
     `<div class="cp-card cp-noscroll" style="overflow:auto;max-height:calc(100vh - 320px)"><table class="cp-tbl">
       <thead><tr><th>Cód.</th><th>Categoria</th><th>Item</th><th class="r">Valor</th><th class="r">Custo médio</th><th class="r">Em estoque</th><th class="r">Consumo/mês</th><th class="r">Cobertura</th><th class="r">Termina em</th><th class="r">Últ. compra</th><th>Fornecedor</th><th class="r">Sem mov.</th></tr></thead>
       <tbody>${linhas||`<tr><td colspan="12">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`}</tbody>
@@ -8812,9 +8811,21 @@ function _cpEstCorpo(){
     ${L.length>TETO?`<div style="text-align:center;color:var(--text3);font-size:12.5px;margin-top:10px">Mostrando ${TETO} de ${_cpNum(L.length)} — use a busca para afunilar.</div>`:''}`;
 }
 function _comprasEstoqueHTML(){
-  const acao = _cpEst.buscaAberta
+  // Filtros secundários (Excesso / Sem movimento / Sem dados) num ÍCONE ao lado da lupa (Diego).
+  const _b=_cpItens().filter(o=>o.est>0 || o.consMed>0);
+  const _cnt=k=>_b.filter(o=>_cpEstStatus(o).key===k).length;
+  const fOpts=[['excesso','Excesso',_cnt('excesso'),'var(--purple)'],['semmov','Sem movimento',_b.filter(o=>(o.semMov||0)>=90&&o.est>0).length,'var(--text3)'],['semdados','Sem dados',_cnt('semdados'),'var(--text3)']];
+  const fAtivo=['excesso','semmov','semdados'].indexOf(_cpEst.so)>=0;
+  const filtroBtn=`<button onclick="_cpEstFiltrosToggle()" title="Mais filtros (Excesso · Sem movimento · Sem dados)" style="background:var(--card);border:1px solid ${fAtivo||_cpEst.filtrosAberto?'var(--blue-mid)':'var(--border)'};border-radius:9px;cursor:pointer;color:${fAtivo||_cpEst.filtrosAberto?'var(--blue-mid)':'var(--text2)'};width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-filter" style="font-size:17px"></i></button>`;
+  const filtroPop=_cpEst.filtrosAberto?`<div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:206px;padding:6px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3);padding:5px 8px 7px">Filtrar por</div>
+      ${fOpts.map(([v,l,n,cor])=>`<button onclick="_cpEstFiltro('${_cpEst.so===v?'todos':v}')" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:${_cpEst.so===v?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'none'};border:none;border-radius:7px;cursor:pointer;padding:7px 9px;font-family:inherit;font-size:12.5px;color:${_cpEst.so===v?'var(--blue-mid)':'var(--text2)'}"><span style="width:8px;height:8px;border-radius:50%;background:${cor};flex-shrink:0"></span>${l}<span style="margin-left:auto;color:var(--text3);font-size:11px">${n}</span></button>`).join('')}
+    </div>`:'';
+  const filtroWrap=`<div class="cp-pop-wrap" style="position:relative">${filtroBtn}${filtroPop}</div>`;
+  const busca = _cpEst.buscaAberta
     ? `<div style="display:inline-flex;align-items:center;gap:6px"><input id="cp-est-busca" value="${escapeAttr(_cpEst.busca)}" oninput="_cpEstSet('busca',this.value)" placeholder="Buscar item…" class="modal-input" style="width:220px;padding:6px 11px;font-size:12.5px"><button onclick="_cpEstToggleBusca()" title="Fechar busca" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;display:inline-flex"><i class="ti ti-x" style="font-size:16px"></i></button></div>`
     : `<button onclick="_cpEstToggleBusca()" title="Buscar item" style="background:var(--card);border:1px solid var(--border);border-radius:9px;cursor:pointer;color:var(--text2);width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-search" style="font-size:17px"></i></button>`;
+  const acao=`<div style="display:inline-flex;align-items:center;gap:8px">${filtroWrap}${busca}</div>`;
   return _cpTela('Estoque','O que você tem hoje, cobertura e o que comprar.',
     `<div id="cp-est-seg" class="cp-catbar" style="margin-bottom:14px">${_cpEstSegHTML()}</div>
     <div id="cp-est-corpo">${_cpEstCorpo()}</div>`,undefined,acao);
@@ -10251,6 +10262,7 @@ function _cpComprasCloseFiltros(e){
   let ch=false;
   try{ if(typeof _cpPlan!=='undefined' && _cpPlan){ if(_cpPlan.filtrosAberto){_cpPlan.filtrosAberto=false;ch=true;} if(_cpPlan.coresAberto){_cpPlan.coresAberto=false;ch=true;} } }catch(e2){}
   try{ if(typeof _cpInsFiltrosAberto!=='undefined' && _cpInsFiltrosAberto){ _cpInsFiltrosAberto=false; ch=true; } }catch(e2){}
+  try{ if(typeof _cpEst!=='undefined' && _cpEst && _cpEst.filtrosAberto){ _cpEst.filtrosAberto=false; ch=true; } }catch(e2){}
   try{ if(typeof _necFiltrosAberto!=='undefined' && _necFiltrosAberto){ _necFiltrosAberto=false; ch=true; } }catch(e2){}
   if(ch && typeof hubView!=='undefined' && hubView==='compras' && typeof renderCompras==='function') renderCompras();
 }
