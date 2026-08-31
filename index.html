@@ -9302,10 +9302,51 @@ function _cpSimResult(o){
   // Ordem: PRIMEIRO o card "Comprar/Custo total"; DEPOIS o cronograma "Quando o item chega".
   // Respiro entre os blocos (Diego: estava amontoado) com um divider SUTIL (bem apagado, não chama atenção).
   const sdiv='<div style="border-top:1px solid color-mix(in srgb, var(--border) 45%, transparent);margin:14px 0"></div>';
+  // CTA: criar uma TAREFA de compra (cai no Meu Dia / Minhas Tarefas) p/ o comprador não esquecer de emitir o pedido.
+  const ctaTarefa=`<div style="margin-top:14px"><button onclick="_cpSimCriarTarefa('${escapeAttr(o.cod)}')" style="width:100%;padding:10px 14px;border:none;border-radius:10px;background:var(--blue-mid);color:#fff;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><i class="ti ti-clipboard-plus" style="font-size:16px"></i> Criar tarefa desta compra</button><div style="font-size:10.5px;color:var(--text3);text-align:center;margin-top:5px">Vira uma tarefa em Meu Dia / Minhas Tarefas com o resumo da compra.</div></div>`;
   return hero
     + `<div style="padding:1px 2px 0">${rows}</div>`
     + (cargasBloco ? sdiv + `<div style="padding:0 2px">${cargasBloco}</div>` : '')
-    + cronoBloco;
+    + cronoBloco
+    + ctaTarefa;
+}
+// Cria uma TAREFA de compra a partir da simulação atual (AÇÃO explícita — nunca no render).
+// Cai no Meu Dia / Minhas Tarefas do usuário logado (em produção = o comprador), com o resumo da compra
+// na descrição. O toast oferece "Desfazer" (remove a tarefa) caso tenha sido sem querer.
+function _cpSimCriarTarefa(cod){
+  const o=_cpItens().find(x=>x.cod===cod);
+  if(!o){ toast('Item não encontrado'); return; }
+  const c=_cpSimCalc(o), um=o.um||'';
+  if(!(c.qtd>0)){ toast('Nada a comprar com esses parâmetros — ajuste a simulação'); return; }
+  const uid=CURRENT_USER_ID;
+  const tTon=(um==='KG'&&c.qtd>=1000)?' · '+_cpNum(c.qtd/1000,1)+' t':'';
+  const ent=(_cpSim.entregas||[]).filter(Boolean);
+  const teto=_cpNumParse(_cpGetCusteio(o.cod));
+  const linhas=[
+    `Comprar: ${_cpNum(c.qtd,0)} ${um}${tTon}`,
+    `Item: ${o.nome} (cód ${o.cod})`,
+    `Preço: ${_cpBRL(c.preco)}/${um}${c.descPct>0?' (−'+_cpNum(c.descPct,1)+'%)':''}`,
+    `Custo total: ${_cpBRL(c.custo)}`
+  ];
+  if(c.cobDepois!=null) linhas.push(`Cobertura após a compra: ${c.cobDepois} dias (até ${_cpDataFim(c.cobDepois)})`);
+  if(ent.length) linhas.push(`Entrega${ent.length>1?'s':''}: ${ent.map(_cpDt).join(', ')}`);
+  if(teto>0) linhas.push(`Teto de custeio: ${_cpBRL(teto)}/${um} — ${c.preco>teto+0.005?'ACIMA do teto':'dentro do teto'}`);
+  const t={ id:Date.now()+Math.floor(Math.random()*9999),
+    title:`Comprar ${_cpNum(c.qtd,0)} ${um} de ${o.nome}`,
+    desc:linhas.join('\n'),
+    prio:'alta', date:today, done:false, escopo:'klain',
+    executor:uid, solicitante:uid, people:[uid], createdAt:today, subtasks:[], kanbanCol:'todo',
+    projectProId:null, projectProFaseId:null, projectProGrupoId:null,
+    origem:'compra', cpCod:String(o.cod) };
+  tasks.push(t);
+  try{ if(typeof logHistory==='function') logHistory(t.id,'criado',null,t.title); }catch(e){}
+  try{ saveTask_db(t); }catch(e){}
+  try{ updateStats && updateStats(); }catch(e){}
+  toast('📋 Tarefa de compra criada — em Meu Dia / Minhas Tarefas', { undoFn:()=>{
+    try{ deleteTask_db(t.id); }catch(e){}
+    try{ updateStats && updateStats(); }catch(e){}
+    toast('Tarefa removida');
+  }});
 }
 function _cpSimHTML(o){
   const s=_cpSim, um=o.um||'';
