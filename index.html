@@ -10092,7 +10092,7 @@ function _cpPlanRows(){
     if(_cpPlan.catSel.length && _cpPlan.catSel.indexOf(_cpCategoria(o.nome))<0) return false;
     if(q && ((o.nome||'')+' '+o.cod).toLowerCase().indexOf(q)<0) return false;
     return true;
-  }).sort((a,b)=>{ const A=_cpPlanCov(a).covDias, B=_cpPlanCov(b).covDias; return (A==null?1e9:A)-(B==null?1e9:B); });
+  }).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'}));
 }
 function _cpPlanTbodyHTML(){
   const rows=_cpPlanRows(), TETO=300;
@@ -10140,7 +10140,7 @@ function _comprasPlanejamentoHTML(){
     `<div class="cp-card cp-noscroll" style="overflow:auto;max-height:calc(100vh - 320px)"><table class="cp-tbl">
       <thead><tr><th>Cód.</th><th>Produto</th><th class="r">Estoque físico</th><th class="r">Estoque disponível</th><th class="r">Tempo de entrega</th><th class="r">Média de consumo</th><th class="r">Média do período</th><th class="r">Cobertura</th></tr></thead>
       <tbody id="cp-plan-tbody">${_cpPlanTbodyHTML()}</tbody></table></div>
-    <div style="font-size:11.5px;color:var(--text3);margin-top:10px;display:flex;gap:6px;align-items:baseline"><i class="ti ti-info-circle"></i><span><b><span id="cp-plan-count">${rows.length}</span> itens</b> · ordenado por urgência (menor cobertura primeiro). <b>Cobertura</b> = estoque disponível ÷ média do período (vermelho = acaba antes da entrega chegar). ⚠️ <b>Estoque disponível</b> (o que está em OC) e <b>tempo de entrega</b> são exemplo — virão do ERP.</span></div>`,
+    <div style="font-size:11.5px;color:var(--text3);margin-top:10px;display:flex;gap:6px;align-items:baseline"><i class="ti ti-info-circle"></i><span><b><span id="cp-plan-count">${rows.length}</span> itens</b> · ordem alfabética. <b>Cobertura</b> = estoque disponível ÷ média do período (vermelho = acaba antes da entrega chegar). ⚠️ <b>Estoque disponível</b> (o que está em OC) e <b>tempo de entrega</b> são exemplo — virão do ERP.</span></div>`,
     undefined, acao);
 }
 
