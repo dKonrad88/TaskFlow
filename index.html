@@ -8888,10 +8888,10 @@ function _comprasInsumosHTML(){
   const filtrosBtn=`<div class="cp-pop-wrap" style="position:relative">${_cpFiltroIcon('_cpInsFiltrosToggle',_cpCatSel.length)}${catPanel}</div>`;
   const rows=_cpInsRows();
   return _cpTela('Insumos','A ficha de cada item comprado — consumo, preço e fornecedores.',
-    `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
+    `<div class="cp-card" style="display:inline-block;max-width:100%;vertical-align:top"><table class="cp-tbl" style="width:auto">
       <thead><tr><th>Código</th><th>Categoria</th><th>Item</th></tr></thead>
       <tbody id="cp-ins-tbody">${_cpInsTbodyHTML()}</tbody></table>
-      <div style="font-size:10.5px;color:var(--text3);padding:8px 14px"><span id="cp-ins-count">${rows.length}</span> itens · ordenado por nome. ⚠️ Categoria derivada do nome (o ERP não exporta o campo família).</div>
+      <div style="font-size:10.5px;color:var(--text3);padding:8px 14px;max-width:640px"><span id="cp-ins-count">${rows.length}</span> itens · ordenado por nome. ⚠️ Categoria derivada do nome (o ERP não exporta o campo família).</div>
     </div>`, undefined, filtrosBtn+_cpLupa(_cpInsBuscaAberta,_cpInsBusca,'_cpInsBuscaToggle','_cpInsBuscaInput','cp-ins-busca','Buscar item…'));
 }
 // ── Painel do item (ficha) — tela cheia estilo Reunião/Projeto: rail + header + conteúdo ──
