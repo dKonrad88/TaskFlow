@@ -10149,12 +10149,12 @@ let __cpVisto=null;
 function _cpVistoObj(){ if(__cpVisto && __cpVisto.d===today) return __cpVisto; let o=safeJSON(LS_PLAN_VISTO,null); if(!o||o.d!==today){ o={d:today,c:[]}; try{safeSetItem(LS_PLAN_VISTO,JSON.stringify(o));}catch(e){} } __cpVisto=o; return o; }
 function _cpVistoSave(){ try{ safeSetItem(LS_PLAN_VISTO,JSON.stringify(_cpVistoObj())); }catch(e){} }
 function _cpVistoTem(cod){ return _cpVistoObj().c.indexOf(String(cod))>=0; }
-function _cpVistoMark(cod){ const o=_cpVistoObj(); if(o.c.indexOf(String(cod))<0){ o.c.push(String(cod)); _cpVistoSave(); } }
 function _cpVistoToggle(cod){ const o=_cpVistoObj(); const i=o.c.indexOf(String(cod)); if(i>=0) o.c.splice(i,1); else o.c.push(String(cod)); _cpVistoSave(); _cpPlanUpdateVistoKPI(); if(_cpPlan.status==='naovisto') _cpPlanRefresh(); }
 function _cpPlanFaltam(){ const vis=_cpVistoObj().c; return _cpPlanRows().filter(o=>vis.indexOf(String(o.cod))<0).length; }
 function _cpPlanUpdateVistoKPI(){ const el=document.getElementById('cp-plan-faltam'); if(el) el.textContent=_cpNum(_cpPlanFaltam()); }
-// Clique na linha: marca "visto hoje" (auto) + abre a demanda por mês num popup na ponta do mouse.
-function _cpPlanRowClick(cod, ev){ _cpVistoMark(cod); const cb=document.querySelector('#cp-plan-tbody input[data-cod="'+cod+'"]'); if(cb) cb.checked=true; _cpPlanUpdateVistoKPI(); _cpPlanDemandaPopup(cod, ev); }
+// Clique na linha: abre a demanda por mês num popup na ponta do mouse. NÃO marca o "visto" —
+// o check só é marcado clicando DENTRO do próprio checkbox (Diego, ago/2026).
+function _cpPlanRowClick(cod, ev){ _cpPlanDemandaPopup(cod, ev); }
 let _cpPlanPopEl=null;
 function _cpPlanFecharPop(){ if(_cpPlanPopEl){ _cpPlanPopEl.remove(); _cpPlanPopEl=null; document.removeEventListener('mousedown',_cpPlanPopOutside,true); } }
 function _cpPlanPopOutside(e){ if(_cpPlanPopEl && !_cpPlanPopEl.contains(e.target)) _cpPlanFecharPop(); }
