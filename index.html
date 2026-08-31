@@ -9102,7 +9102,15 @@ function _cpSimSetEntregaQtd(i,val){ if(!Array.isArray(_cpSim.entregasQtd)) _cpS
 function _cpSimEntregaLive(i,val){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; _cpSim.entregas[i]=val; _cpSimCronoTextos(); }
 // onchange (commit) da data da entrega: se o comprador digitou só 2 dígitos no ANO (ex.: 26/27), o <input type=date>
 // guarda como 0026/0027 → aqui normaliza p/ 2026/2027. Atualiza só os textos (sem rebuild, p/ não perder foco/calendário).
+// [dead code — substituído pelo campo de TEXTO dd/mm/aa abaixo; mantido só por segurança]
 function _cpSimEntregaCommit(i,el){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; let v=el?String(el.value||''):''; const m=v.match(/^(\d{1,4})-(\d{2})-(\d{2})$/); if(m){ let y=parseInt(m[1],10); if(y>0 && y<100){ y+=2000; v=String(y).padStart(4,'0')+'-'+m[2]+'-'+m[3]; if(el) el.value=v; } } _cpSim.entregas[i]=v; _cpSimCronoTextos(); }
+// ── Data da carga em dd/mm/aa (ano de 2 dígitos) — Diego quer DIGITAR e VER só os 2 últimos dígitos do ano.
+// O <input type=date> nativo força 4 dígitos, então o cronograma usa um campo de TEXTO com máscara. Guarda ISO (20aa) em _cpSim.entregas.
+function _cpParseDataCurta(txt){ const d=String(txt==null?'':txt).replace(/[^\d]/g,''); if(d.length<6) return ''; const dd=d.slice(0,2), mm=d.slice(2,4), yr=d.slice(4,8); const D=+dd, M=+mm; const Y=yr.length<=2?2000+parseInt(yr.slice(0,2),10):parseInt(yr.slice(0,4),10); if(!(D>=1&&D<=31&&M>=1&&M<=12&&Y>=2000&&Y<=2100)) return ''; return String(Y).padStart(4,'0')+'-'+mm+'-'+dd; }
+// oninput: formata dd/mm/aa ao vivo + parseia (data incompleta → '' → o FEFO ignora, sem bagunçar as outras cargas).
+function _cpSimEntregaTextoLive(i,el){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; let d=String(el.value||'').replace(/[^\d]/g,'').slice(0,8); let disp=d; if(d.length>4) disp=d.slice(0,2)+'/'+d.slice(2,4)+'/'+d.slice(4); else if(d.length>2) disp=d.slice(0,2)+'/'+d.slice(2); if(el.value!==disp) el.value=disp; _cpSim.entregas[i]=_cpParseDataCurta(d); _cpSimCronoTextos(); }
+// blur: normaliza a exibição p/ dd/mm/aa limpo (ou vazio se inválido).
+function _cpSimEntregaTextoBlur(i,el){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; const iso=_cpParseDataCurta(el?el.value:''); _cpSim.entregas[i]=iso; if(el) el.value=iso?_cpDt(iso):''; _cpSimCronoTextos(); }
 function _cpSimDateKey(e){ if(!e || e.key!=='Enter') return; e.preventDefault(); if(e.target && e.target.blur) e.target.blur(); setTimeout(_cpSimFocusNext,0); }
 function _cpSimFefoData(o,c){
   const consMes=_cpConsMesSel(o)||o.consMed||(o.consDia?o.consDia*30:0);
@@ -9288,7 +9296,7 @@ function _cpSimResult(o){
     const minW=`min-width:${delLbl?(editaQtd?'165px':'110px'):'70px'};display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap`;
     const rowsCrono=ent.map((iso,i)=>{
       const b=sim?sim.find(x=>x._i===i):null;
-      const dinput=`<input type="date" value="${escapeAttr(iso||'')}" oninput="_cpSimEntregaLive(${i},this.value)" onchange="_cpSimEntregaCommit(${i},this)" onkeydown="_cpSimDateKey(event)" class="cp-sim-inp js-sim-field" style="width:130px;font-size:12px" title="Ano pode ser 2 dígitos (26 = 2026)">`;
+      const dinput=`<input type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aa" value="${escapeAttr(iso?_cpDt(iso):'')}" oninput="_cpSimEntregaTextoLive(${i},this)" onblur="_cpSimEntregaTextoBlur(${i},this)" onkeydown="_cpSimDateKey(event)" class="cp-sim-inp js-sim-field" style="width:96px;font-size:12px;text-align:center" title="Data de chegada — dd/mm/aa (ano com 2 dígitos, ex.: 10/10/26)">`;
       const del=(!isCargas && ent.length>1)?`<button onclick="_cpSimDelEntrega(${i})" title="Remover entrega" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;display:inline-flex"><i class="ti ti-x" style="font-size:13px"></i></button>`:'';
       let qtyCell;
       if(!editaQtd){ qtyCell=`${_cpNum(qtys[i],0)} ${um}`; }
