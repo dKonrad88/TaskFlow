@@ -10204,19 +10204,26 @@ function _cpPlanRowsView(){ return _cpPlanRows().filter(_cpPlanStatusMatch); }
 function _cpPlanTbodyHTML(){
   const rows=_cpPlanRowsView(), TETO=300;
   const out=rows.slice(0,TETO).map(o=>{ const cv=_cpPlanCov(o), oc=_cpOcSaldo(o.cod), um=o.um||'';
+    // "Dura até" em 2 colunas: só pelo estoque FÍSICO, e pelo FÍSICO+OC (disponível). Sem OC → traço na 2ª.
+    const covMesFis=cv.medPer>0?o.est/cv.medPer:null;
+    const corFis=covMesFis==null?'var(--text3)':_cpPlanBandFor(covMesFis).cor;
+    const duraFis=covMesFis!=null?_cpDataFim(Math.round(covMesFis*30)):'—';
+    const duraOC=oc>0?(cv.covDias!=null?_cpDataFim(Math.round(cv.covDias)):'—'):'—';
+    const un=`<span class="cp-un">${escapeHTML(um)}</span>`;
     return `<tr class="cp-clic" onclick="_cpPlanRowClick('${escapeAttr(o.cod)}', event)">
       <td style="text-align:center;width:34px"><input type="checkbox" data-cod="${escapeAttr(o.cod)}" ${_cpVistoTem(o.cod)?'checked':''} onclick="event.stopPropagation();_cpVistoToggle('${escapeAttr(o.cod)}')" title="Marcar que já vi este item hoje" style="cursor:pointer;width:15px;height:15px;vertical-align:middle"></td>
       <td><span class="cp-pill" style="color:${cv.cor};background:color-mix(in srgb,${cv.cor} 14%,transparent)" title="${cv.covDias!=null?('≈ '+_cpNum(cv.covDias,0)+' dias'+(oc>0?' (inclui '+_cpNum(oc,0)+' em OC)':'')):'sem consumo p/ calcular'}">${cv.covMes==null?'—':_cpNum(cv.covMes,1)+' '+(cv.covMes>=2?'meses':'mês')}</span></td>
-      <td class="cp-mono" style="color:${cv.cor}">${cv.covDias!=null?_cpDataFim(Math.round(cv.covDias)):'—'}</td>
+      <td class="cp-mono" style="color:${corFis}" title="quando o estoque FÍSICO acaba">${duraFis}</td>
+      <td class="cp-mono" style="color:${oc>0?cv.cor:'var(--text3)'}" title="${oc>0?'quando o estoque + OC a receber acaba':'sem OC a receber'}">${duraOC}</td>
       <td class="cp-mono">${escapeHTML(o.cod)}</td>
       <td class="cp-item" title="${escapeAttr(o.nome)}">${escapeHTML(o.nome)}</td>
-      <td class="cp-n">${_cpNum(o.est,0)} <span class="cp-un">${escapeHTML(um)}</span></td>
-      <td class="cp-n">${_cpNum(cv.disp,0)} <span class="cp-un">${escapeHTML(um)}</span>${oc>0?` <span style="color:var(--blue-mid);font-size:10px" title="inclui ${_cpNum(oc,0)} em ordem de compra a receber">+${_cpNum(oc,0)} OC</span>`:''}</td>
-      <td class="cp-n">${o.consMed>0?_cpNum(o.consMed,0):'—'}</td>
-      <td class="cp-n">${cv.medPer>0?_cpNum(cv.medPer,0):'—'}</td>
+      <td class="cp-n">${_cpNum(o.est,0)} ${un}</td>
+      <td class="cp-n">${_cpNum(cv.disp,0)} ${un}${oc>0?` <span style="color:var(--blue-mid);font-size:10px" title="inclui ${_cpNum(oc,0)} em ordem de compra a receber">+${_cpNum(oc,0)} OC</span>`:''}</td>
+      <td class="cp-n">${o.consMed>0?_cpNum(o.consMed,0)+' '+un:'—'}</td>
+      <td class="cp-n">${cv.medPer>0?_cpNum(cv.medPer,0)+' '+un:'—'}</td>
       <td class="cp-n" style="color:var(--text3)">${cv.lead} d</td>
     </tr>`;}).join('');
-  return out || `<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px">Nenhum item para esse filtro.</td></tr>`;
+  return out || `<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:20px">Nenhum item para esse filtro.</td></tr>`;
 }
 function _cpPlanRefresh(){ const tb=document.getElementById('cp-plan-tbody'); if(tb) tb.innerHTML=_cpPlanTbodyHTML(); const c=document.getElementById('cp-plan-count'); if(c) c.textContent=_cpPlanRowsView().length; }
 function _cpPlanPeriodo(v){ _cpPlan.periodo=v; if(v!=='custom'){ _cpPlan.perDe=''; _cpPlan.perAte=''; } renderCompras(); }
@@ -10312,7 +10319,7 @@ function _comprasPlanejamentoHTML(){
   return _cpTela('Planejamento de compras','Cockpit diário do comprador — estoque, cobertura e o que precisa comprar. Clique num item para abrir a ficha e simular.',
     kpisHTML+
     `<div class="cp-card cp-noscroll" style="overflow:auto;max-height:calc(100vh - 320px)"><table class="cp-tbl">
-      <thead><tr><th style="width:34px;text-align:center" title="Marcar/desmarcar todos os visíveis como visto"><input type="checkbox" ${allVisto?'checked':''} onclick="_cpVistoTodos(this.checked)" style="cursor:pointer;width:15px;height:15px;vertical-align:middle"></th><th>Cobertura</th><th>Dura até</th><th>Cód.</th><th>Produto</th><th class="r">Estoque físico</th><th class="r">Estoque disponível</th><th class="r">Média de consumo</th><th class="r">Média do período</th><th class="r">Tempo de entrega</th></tr></thead>
+      <thead><tr><th style="width:34px;text-align:center" title="Marcar/desmarcar todos os visíveis como visto"><input type="checkbox" ${allVisto?'checked':''} onclick="_cpVistoTodos(this.checked)" style="cursor:pointer;width:15px;height:15px;vertical-align:middle"></th><th>Cobertura</th><th title="Quando o estoque físico acaba">Dura até (físico)</th><th title="Quando o estoque + OC a receber acaba">Dura até (c/ OC)</th><th>Cód.</th><th>Produto</th><th class="r">Estoque físico</th><th class="r">Estoque disponível</th><th class="r">Média de consumo</th><th class="r">Média do período</th><th class="r">Tempo de entrega</th></tr></thead>
       <tbody id="cp-plan-tbody">${_cpPlanTbodyHTML()}</tbody></table></div>`,
     undefined, acao);
 }
