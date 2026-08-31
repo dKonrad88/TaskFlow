@@ -422,6 +422,14 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-08-31 (d) — PC da Empresa — Compras: ícone único de Filtros (todas as abas) + Planejamento (marcar tudo, popovers fecham fora, check só no checkbox, colunas reordenadas)
+Leva de refinamentos do Diego, autônomo. **Commits `c2fe1577`…`1f2239a6`, pushados; `main == origin`; working tree limpo.** Verificado por DOM (:8899): 0 erros de JS (só o `ERR_CONNECTION_TIMED_OUT` do Supabase/proxy).
+- ⭐ **Botão "Filtros" virou ÍCONE em TODAS as abas de Compras** (`c2fe1577`+`a0738dd0`) — novo helper **`_cpFiltroIcon(toggleFn, count)`** (botão 38×38 `ti-filter`, fica azul quando ativo, com badge de contagem), pra combinar com a lupa de busca (`_cpLupa`). Aplicado em **Planejamento, Insumos e Necessidade**. **Título "Média do período" centralizado e menor** no Planejamento.
+- ⭐ **Filtros (popovers) fecham ao clicar FORA** (`9e234d75`) — antes era preciso reapertar o ícone. `_cpComprasCloseFiltros(e)` registrado 1× em `renderCompras` (`window.__cpFiltrosCloser`, mousedown); os wrappers de popover levam `class="cp-pop-wrap"`.
+- **"Só insuficientes" (Necessidade) virou ÍCONE** e **rodapé do Planejamento removido** (`28eea1b7`).
+- **Check "visto" (Planejamento) só marca ao clicar NO PRÓPRIO checkbox** (`c2fe1577`) — clicar na linha abre só o popup de Demanda (`_cpPlanRowClick` → `_cpPlanDemandaPopup`), não marca mais. Header tem **"marcar tudo"** (`_cpVistoTodos`) e KPI clicável "Faltam ver hoje".
+- ⭐ **Colunas do Planejamento REORDENADAS** (`1f2239a6`, pedido do Diego): **Check · Cobertura · Cód · Produto · Estoque físico · Média de consumo · Média do período · Estoque dura até · Tempo de entrega**. Nova coluna **"Estoque dura até"** = a DATA em que o estoque acaba (`_cpDataFim(covDias)`), na cor da faixa de cobertura. **Removida a "Estoque disponível"**; o saldo em OC segue como badge **"+N OC"** no Estoque físico e **continua entrando na cobertura** (disp = est + OC). Verificado: ruptura (-1,0 mês) mostra "dura até 31/07/26" (passado, vermelho); cobertura alta empurra a data pro futuro. ⚠️ Se o Diego sentir falta da coluna "disponível" (que mostrava est+OC explícito), é fácil repor — a info do OC virou o badge.
+
 ### 2026-08-30 (c) — PC da Empresa — Planejamento: faixas de cor da Cobertura PERSONALIZÁVEIS + rótulo do período acima
 Pedido do Diego. **Commit `9a1de86f`, pushado; `main == origin`; working tree limpo.** Verificado por DOM (:8899): 0 erros.
 - ⭐ **Ícone de PALETA** (`ti-palette`) no cabeçalho → popover p/ definir as **faixas de cor da Cobertura por MESES** (ex.: até 1 mês vermelho, 1–2 âmbar, acima verde). Editar o limite (input), escolher cor (6 swatches do tema `CP_CORES`), adicionar/remover faixa, restaurar. Persiste em **`taskflow_plan_covbands`** (`{max,cor}[]`, max=null=última). Helpers `_cpPlanBands*`/`_cpPlanBandFor`.
