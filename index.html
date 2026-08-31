@@ -8485,7 +8485,7 @@ function renderMarketing(){
 // OC/NF continuam no ERP). v1 = CASCA: cada aba abre um placeholder do que
 // vai vir. Ver o blueprint (debate de 21/07). Preenchemos aba por aba.
 // ===== DADOS REAIS KLAIN (export de Entradas / NFs do ERP) =====
-// BASE COMPLETA: as 17.123 linhas do ERP (nov/24 a jul/26) = R$ 69.799.949,18.
+// BASE COMPLETA: 18.192 linhas do ERP (jan/25 a ago/26; export atualizado 31/08/26). Compra+Despesa (exclui Retorno).
 // Insumos 4.148 (R$ 42.463.863,03) + Despesas 12.975 (R$ 27.336.086,15).
 // Dicionarios (_CP_IT itens, _CP_FO fornecedores, _CP_TP tipos, _CP_DV divisoes)
 // p/ nao inchar o arquivo. cls: I=insumo, D=despesa/servico.
@@ -8922,7 +8922,7 @@ function _cpItemSerie(o){
     const ym=y+'-'+String(m).padStart(2,'0');
     const comp=o.compras.filter(l=>l.data.slice(0,7)===ym);
     const valor=comp.reduce((a,l)=>a+l.tot,0), qtd=comp.reduce((a,l)=>a+l.qtd,0);
-    const consumo=(y===anoCons && m>=1 && m<=7 && o.cons) ? o.cons[m-1]
+    const consumo=(y===anoCons && o.cons && m>=1 && m<=o.cons.length) ? o.cons[m-1]
                  : (y===2025 && o.cons25) ? o.cons25[m-1]
                  : null;
     out.push({ym,y,m,lbl:_cpMesLbl(y,m),valor,qtd,precoKg:qtd>0?valor/qtd:null,consumo,nCompras:comp.length});
@@ -9541,7 +9541,7 @@ function _cpIndicadoresCard(o){
     ['Necessidade atual', necVal],
     ['Em estoque', _cpNum(o.est,2)+' '+um],
     ['Estoque disponível', _cpNum(o.est+ocSaldo,2)+' '+um, ocSaldo>0?('físico + '+_cpNum(ocSaldo,0)+' OC'):'físico + em ordem de compra'],
-    ['Consumo/mês', o.consMed?_cpNum(o.consMed,0)+' '+um:'—', 'jan–jul/26'],
+    ['Consumo/mês', o.consMed?_cpNum(o.consMed,0)+' '+um:'—', (_CP_MESES[0]+'–'+_CP_MESES[_CP_MESES.length-1]+'/26')],
     ['Cobertura', cob],
     ['Estoque mínimo', pend],
     ['Ponto de ressuprimento', pend],
