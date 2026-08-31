@@ -6536,7 +6536,7 @@ function _necFiltrosAcao(){
       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px 7px"><span style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)">Divisão</span>${_necDivSel.length?`<button onclick="_necDivAll()" style="border:none;background:none;color:var(--blue-mid);font-size:11.5px;cursor:pointer;font-family:inherit">Limpar</button>`:''}</div>
       ${_necDivs().map(d=>{const on=_necDivSel.indexOf(d)>=0;return `<div onclick="_necDivToggle('${escapeAttr(d)}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;color:var(--text)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'"><i class="ti ${on?'ti-square-check-filled':'ti-square'}" style="font-size:17px;color:${on?'var(--blue-mid)':'var(--text3)'}"></i><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(d)}</span></div>`;}).join('')}
     </div>`:'';
-  const filtrosBtn=`<div style="position:relative">${_cpFiltroIcon('_necFiltrosToggle',_necDivSel.length)}${divPanel}</div>`;
+  const filtrosBtn=`<div class="cp-pop-wrap" style="position:relative">${_cpFiltroIcon('_necFiltrosToggle',_necDivSel.length)}${divPanel}</div>`;
   const soInsuf=`<button onclick="_necToggleFalta()" title="Só itens insuficientes (ruptura)" style="background:${_necFalta?'var(--danger-bg)':'var(--card)'};border:1px solid ${_necFalta?'var(--danger)':'var(--border)'};border-radius:9px;cursor:pointer;color:${_necFalta?'var(--danger)':'var(--text2)'};width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-alert-triangle" style="font-size:17px"></i></button>`;
   return filtrosBtn+soInsuf+_cpLupa(_necBuscaAberta,_necBusca,'_necBuscaToggle','_necBuscaInput','nec-busca','Buscar material…');
 }
@@ -8528,6 +8528,7 @@ function renderCompras(){
   const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
+  if(!window.__cpFiltrosCloser){ window.__cpFiltrosCloser=true; document.addEventListener('mousedown', _cpComprasCloseFiltros, true); } // fecha popovers de filtro ao clicar fora
   const telas={ painel:_comprasPainelHTML, planejamento:_comprasPlanejamentoHTML, necessidade:_comprasNecessidadeHTML, estoque:_comprasEstoqueHTML, insumos:_comprasInsumosHTML,
                 fornecedores:_comprasFornecedoresHTML, historico:_comprasHistoricoHTML,
                 ordens:_comprasOrdensHTML, orcamentos:_comprasOrcamentosHTML };
@@ -8869,7 +8870,7 @@ function _comprasInsumosHTML(){
       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px 7px"><span style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)">Categoria</span>${_cpCatSel.length?`<button onclick="_cpCatAll()" style="border:none;background:none;color:var(--blue-mid);font-size:11.5px;cursor:pointer;font-family:inherit">Limpar</button>`:''}</div>
       ${_CP_CATS.map(c=>{const on=_cpCatSel.indexOf(c)>=0;return `<div onclick="_cpCatToggle('${escapeAttr(c)}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;color:var(--text)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'"><i class="ti ${on?'ti-square-check-filled':'ti-square'}" style="font-size:17px;color:${on?'var(--blue-mid)':'var(--text3)'}"></i><span style="flex:1;min-width:0">${escapeHTML(c)} <span style="color:var(--text3)">${cont[c]||0}</span></span></div>`;}).join('')}
     </div>`:'';
-  const filtrosBtn=`<div style="position:relative">${_cpFiltroIcon('_cpInsFiltrosToggle',_cpCatSel.length)}${catPanel}</div>`;
+  const filtrosBtn=`<div class="cp-pop-wrap" style="position:relative">${_cpFiltroIcon('_cpInsFiltrosToggle',_cpCatSel.length)}${catPanel}</div>`;
   const rows=_cpInsRows();
   return _cpTela('Insumos','A ficha de cada item comprado — consumo, preço e fornecedores.',
     `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
@@ -10103,7 +10104,7 @@ function _cpPlanBandSetCor(i,cor){ const B=_cpPlanBands(); if(B[i]){ B[i].cor=co
 function _cpPlanBandAdd(){ const B=_cpPlanBands(); const prev=B.length>=2?(B[B.length-2].max||1):1; B.splice(B.length-1,0,{max:prev+1,cor:CP_CORES[Math.min(B.length-1,CP_CORES.length-1)]}); _cpPlanBandsSave(B); renderCompras(); }
 function _cpPlanBandDel(i){ const B=_cpPlanBands(); if(B.length>2 && i>=0 && i<B.length-1){ B.splice(i,1); _cpPlanBandsSave(B); renderCompras(); } }
 function _cpPlanBandReset(){ _cpPlanBandsSave(_cpPlanBandsDefault()); renderCompras(); }
-function _cpPlanCoresToggle(){ _cpPlan.coresAberto=!_cpPlan.coresAberto; renderCompras(); }
+function _cpPlanCoresToggle(){ _cpPlan.coresAberto=!_cpPlan.coresAberto; _cpPlan.filtrosAberto=false; renderCompras(); }
 // Cobertura de um item no período escolhido (cache por render p/ não recalcular no sort + nas linhas).
 function _cpPlanCov(o){ const C=window.__cpPlanCache||(window.__cpPlanCache={}); if(C[o.cod]) return C[o.cod];
   const medPer=_cpConsMedPer(o,_cpPlan.periodo,_cpPlan.perDe,_cpPlan.perAte);
@@ -10144,7 +10145,7 @@ function _cpPlanPeriodo(v){ _cpPlan.periodo=v; if(v!=='custom'){ _cpPlan.perDe='
 function _cpPlanSetPer(campo,val){ _cpPlan[campo]=val; renderCompras(); }
 function _cpPlanBuscaToggle(){ _cpPlan.buscaAberta=!_cpPlan.buscaAberta; if(!_cpPlan.buscaAberta) _cpPlan.busca=''; renderCompras(); if(_cpPlan.buscaAberta) setTimeout(function(){ var el=document.getElementById('cp-plan-busca'); if(el) el.focus(); },30); }
 function _cpPlanBuscaInput(el){ _cpPlan.busca=el.value; _cpPlanRefresh(); }
-function _cpPlanFiltrosToggle(){ _cpPlan.filtrosAberto=!_cpPlan.filtrosAberto; renderCompras(); }
+function _cpPlanFiltrosToggle(){ _cpPlan.filtrosAberto=!_cpPlan.filtrosAberto; _cpPlan.coresAberto=false; renderCompras(); }
 function _cpPlanCatToggle(c){ const i=_cpPlan.catSel.indexOf(c); if(i>=0) _cpPlan.catSel.splice(i,1); else _cpPlan.catSel.push(c); renderCompras(); }
 function _cpPlanCatAll(){ _cpPlan.catSel=[]; renderCompras(); }
 // ── "Visto hoje" (check diário por item — zera todo dia) + popup de Demanda por mês ──
@@ -10154,6 +10155,17 @@ function _cpVistoObj(){ if(__cpVisto && __cpVisto.d===today) return __cpVisto; l
 function _cpVistoSave(){ try{ safeSetItem(LS_PLAN_VISTO,JSON.stringify(_cpVistoObj())); }catch(e){} }
 function _cpVistoTem(cod){ return _cpVistoObj().c.indexOf(String(cod))>=0; }
 function _cpVistoToggle(cod){ const o=_cpVistoObj(); const i=o.c.indexOf(String(cod)); if(i>=0) o.c.splice(i,1); else o.c.push(String(cod)); _cpVistoSave(); _cpPlanUpdateVistoKPI(); if(_cpPlan.status==='naovisto') _cpPlanRefresh(); }
+// Marcar/desmarcar TODOS os itens VISÍVEIS (a lista filtrada) — o "marcar tudo" do cabeçalho.
+function _cpVistoTodos(marcar){ const o=_cpVistoObj(), view=_cpPlanRowsView(); if(marcar){ view.forEach(it=>{ if(o.c.indexOf(String(it.cod))<0) o.c.push(String(it.cod)); }); } else { const s={}; view.forEach(it=>s[String(it.cod)]=1); o.c=o.c.filter(c=>!s[c]); } _cpVistoSave(); renderCompras(); }
+// Fecha os popovers de filtro/cores de Compras ao clicar FORA deles (mousedown no document, fase de captura).
+function _cpComprasCloseFiltros(e){
+  const t=e&&e.target; if(t && t.closest && t.closest('.cp-pop-wrap')) return; // clique dentro do popover/seu botão → o toggle cuida
+  let ch=false;
+  try{ if(typeof _cpPlan!=='undefined' && _cpPlan){ if(_cpPlan.filtrosAberto){_cpPlan.filtrosAberto=false;ch=true;} if(_cpPlan.coresAberto){_cpPlan.coresAberto=false;ch=true;} } }catch(e2){}
+  try{ if(typeof _cpInsFiltrosAberto!=='undefined' && _cpInsFiltrosAberto){ _cpInsFiltrosAberto=false; ch=true; } }catch(e2){}
+  try{ if(typeof _necFiltrosAberto!=='undefined' && _necFiltrosAberto){ _necFiltrosAberto=false; ch=true; } }catch(e2){}
+  if(ch && typeof hubView!=='undefined' && hubView==='compras' && typeof renderCompras==='function') renderCompras();
+}
 function _cpPlanFaltam(){ const vis=_cpVistoObj().c; return _cpPlanRows().filter(o=>vis.indexOf(String(o.cod))<0).length; }
 function _cpPlanUpdateVistoKPI(){ const el=document.getElementById('cp-plan-faltam'); if(el) el.textContent=_cpNum(_cpPlanFaltam()); }
 // Clique na linha: abre a demanda por mês num popup na ponta do mouse. NÃO marca o "visto" —
@@ -10198,7 +10210,7 @@ function _comprasPlanejamentoHTML(){
       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px 7px"><span style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)">Categoria</span>${_cpPlan.catSel.length?`<button onclick="_cpPlanCatAll()" style="border:none;background:none;color:var(--blue-mid);font-size:11.5px;cursor:pointer;font-family:inherit">Limpar</button>`:''}</div>
       ${_CP_CATS.map(c=>{const on=_cpPlan.catSel.indexOf(c)>=0;return `<div onclick="_cpPlanCatToggle('${escapeAttr(c)}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;color:var(--text)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'"><i class="ti ${on?'ti-square-check-filled':'ti-square'}" style="font-size:17px;color:${on?'var(--blue-mid)':'var(--text3)'}"></i><span style="flex:1;min-width:0">${escapeHTML(c)} <span style="color:var(--text3)">${cont[c]||0}</span></span></div>`;}).join('')}
     </div>`:'';
-  const filtrosBtn=`<div style="position:relative">${_cpFiltroIcon('_cpPlanFiltrosToggle',_cpPlan.catSel.length)}${catPanel}</div>`;
+  const filtrosBtn=`<div class="cp-pop-wrap" style="position:relative">${_cpFiltroIcon('_cpPlanFiltrosToggle',_cpPlan.catSel.length)}${catPanel}</div>`;
   const bands=_cpPlanBands();
   const coresPanel=_cpPlan.coresAberto?`<div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:298px;padding:10px 12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)">Cores da cobertura</span><button onclick="_cpPlanBandReset()" style="border:none;background:none;color:var(--blue-mid);font-size:11.5px;cursor:pointer;font-family:inherit">Restaurar</button></div>
@@ -10210,18 +10222,19 @@ function _comprasPlanejamentoHTML(){
       <button onclick="_cpPlanBandAdd()" style="margin-top:9px;background:none;border:1px dashed var(--border);border-radius:7px;cursor:pointer;color:var(--blue-mid);font-size:11.5px;font-weight:600;padding:5px 10px;font-family:inherit;width:100%"><i class="ti ti-plus"></i> adicionar faixa</button>
       <div style="font-size:10px;color:var(--text3);margin-top:7px;line-height:1.4">A cor da coluna <b>Cobertura</b> segue estas faixas. A 1ª faixa = "Comprar agora", a 2ª = "Comprar em breve".</div>
     </div>`:'';
-  const coresBtn=`<div style="position:relative"><button onclick="_cpPlanCoresToggle()" title="Personalizar as cores da cobertura" style="background:var(--card);border:1px solid ${_cpPlan.coresAberto?'var(--blue-mid)':'var(--border)'};border-radius:9px;cursor:pointer;color:${_cpPlan.coresAberto?'var(--blue-mid)':'var(--text2)'};width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-palette" style="font-size:17px"></i></button>${coresPanel}</div>`;
+  const coresBtn=`<div class="cp-pop-wrap" style="position:relative"><button onclick="_cpPlanCoresToggle()" title="Personalizar as cores da cobertura" style="background:var(--card);border:1px solid ${_cpPlan.coresAberto?'var(--blue-mid)':'var(--border)'};border-radius:9px;cursor:pointer;color:${_cpPlan.coresAberto?'var(--blue-mid)':'var(--text2)'};width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-palette" style="font-size:17px"></i></button>${coresPanel}</div>`;
   const acao=`<div style="display:inline-flex;align-items:flex-end;gap:10px;flex-wrap:wrap">${selPer}${filtrosBtn}${coresBtn}${_cpLupa(_cpPlan.buscaAberta,_cpPlan.busca,'_cpPlanBuscaToggle','_cpPlanBuscaInput','cp-plan-busca','Buscar item…')}</div>`;
   // KPIs: os 3 acionáveis (Comprar agora/em breve/Em ruptura) são CLICÁVEIS → filtram a tabela (clicar de novo limpa).
   // Contagens vêm da BASE (categoria+busca, sem status) p/ o usuário poder alternar entre eles.
   const kpiCard=(lab,val,cor,key)=>{ const act=key&&_cpPlan.status===key, clk=!!key;
     return `<div class="cp-card" style="padding:13px 16px;${clk?'cursor:pointer;transition:box-shadow .12s;':''}${act?`box-shadow:0 0 0 2px ${cor||'var(--blue-mid)'} inset;`:''}"${clk?` onclick="_cpPlanSetStatus('${key}')" title="${act?'Mostrar todos':'Ver só '+lab.toLowerCase()}"`:''}><div class="cp-kpi"><s>${lab}${act?' <i class="ti ti-x" style="font-size:10px;vertical-align:1px"></i>':''}</s><b${cor?` style="color:${cor}"`:''}>${val}</b></div></div>`; };
   const _visArr=_cpVistoObj().c, nFaltam=rows.filter(o=>_visArr.indexOf(String(o.cod))<0).length;
+  const _view=_cpPlanRowsView(), allVisto=_view.length>0 && _view.every(o=>_visArr.indexOf(String(o.cod))>=0); // p/ o "marcar tudo" do cabeçalho
   const kpisHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">${kpiCard('Itens',_cpNum(rows.length),'','')}${kpiCard('Faltam ver hoje',`<span id="cp-plan-faltam">${_cpNum(nFaltam)}</span>`,nFaltam?'var(--blue-mid)':'var(--success)','naovisto')}${kpiCard('Comprar agora',_cpNum(nAgora),nAgora?'var(--danger)':'','agora')}${kpiCard('Comprar em breve',_cpNum(nBreve),nBreve?'var(--amber)':'','breve')}${kpiCard('Em ruptura',_cpNum(nRuptura),nRuptura?'var(--danger)':'','ruptura')}</div>`;
   return _cpTela('Planejamento de compras','Cockpit diário do comprador — estoque, cobertura e o que precisa comprar. Clique num item para abrir a ficha e simular.',
     kpisHTML+
     `<div class="cp-card cp-noscroll" style="overflow:auto;max-height:calc(100vh - 320px)"><table class="cp-tbl">
-      <thead><tr><th style="width:34px;text-align:center" title="Visto hoje"><i class="ti ti-check" style="font-size:13px"></i></th><th>Cód.</th><th>Produto</th><th class="r">Estoque físico</th><th class="r">Estoque disponível</th><th class="r">Tempo de entrega</th><th class="r">Média de consumo</th><th class="r">Média do período</th><th class="r">Cobertura</th></tr></thead>
+      <thead><tr><th style="width:34px;text-align:center" title="Marcar/desmarcar todos os visíveis como visto"><input type="checkbox" ${allVisto?'checked':''} onclick="_cpVistoTodos(this.checked)" style="cursor:pointer;width:15px;height:15px;vertical-align:middle"></th><th>Cód.</th><th>Produto</th><th class="r">Estoque físico</th><th class="r">Estoque disponível</th><th class="r">Tempo de entrega</th><th class="r">Média de consumo</th><th class="r">Média do período</th><th class="r">Cobertura</th></tr></thead>
       <tbody id="cp-plan-tbody">${_cpPlanTbodyHTML()}</tbody></table></div>`,
     undefined, acao);
 }
