@@ -10320,6 +10320,10 @@ function _comprasPlanejamentoHTML(){
     </div>`:'';
   const filtrosBtn=`<div class="cp-pop-wrap" style="position:relative">${_cpFiltroIcon('_cpPlanFiltrosToggle',_cpPlan.catSel.length)}${catPanel}</div>`;
   const bands=_cpPlanBands();
+  // Rótulo curto do período (vai no header "Média do período", entre parênteses).
+  const _perLbl = _cpPlan.periodo==='custom'
+    ? ((_cpPlan.perDe && _cpPlan.perAte) ? (_cpDt(_cpPlan.perDe)+'–'+_cpDt(_cpPlan.perAte)) : 'personalizado')
+    : (_cpPlan.periodo==='1' ? 'último mês' : 'últimos '+_cpPlan.periodo+' meses');
   const coresPanel=_cpPlan.coresAberto?`<div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:298px;padding:10px 12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)">Cores da cobertura</span><button onclick="_cpPlanBandReset()" style="border:none;background:none;color:var(--blue-mid);font-size:11.5px;cursor:pointer;font-family:inherit">Restaurar</button></div>
       ${bands.map((b,i)=>{ const isLast=b.max==null; return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;${i?'border-top:1px solid var(--border)':''}">
@@ -10342,7 +10346,7 @@ function _comprasPlanejamentoHTML(){
   return _cpTela('Planejamento de compras','Cockpit diário do comprador — estoque, cobertura e o que precisa comprar. Clique num item para abrir a ficha e simular.',
     kpisHTML+
     `<div class="cp-card cp-noscroll" style="overflow:auto;max-height:calc(100vh - 320px)"><table class="cp-tbl">
-      <thead><tr><th style="width:34px;text-align:center" title="Marcar/desmarcar todos os visíveis como visto"><input type="checkbox" ${allVisto?'checked':''} onclick="_cpVistoTodos(this.checked)" style="cursor:pointer;width:15px;height:15px;vertical-align:middle"></th><th title="Cobertura pelo estoque físico ÷ média">Cobertura <span class="cp-hsub">(físico)</span></th><th title="Quando o estoque físico acaba">Dura até <span class="cp-hsub">(físico)</span></th><th title="Quando o estoque + OC a receber acaba">Dura até <span class="cp-hsub">(c/ OC)</span></th><th>Cód.</th><th>Produto</th><th class="r">Estoque físico</th><th class="r">Estoque disponível</th><th class="r">Média de consumo</th><th class="r">Média do período</th><th class="r">Tempo de entrega</th></tr></thead>
+      <thead><tr><th style="width:34px;text-align:center" title="Marcar/desmarcar todos os visíveis como visto"><input type="checkbox" ${allVisto?'checked':''} onclick="_cpVistoTodos(this.checked)" style="cursor:pointer;width:15px;height:15px;vertical-align:middle"></th><th title="Cobertura pelo estoque físico ÷ média">Cobertura <span class="cp-hsub">(físico)</span></th><th title="Quando o estoque físico acaba">Dura até <span class="cp-hsub">(físico)</span></th><th title="Quando o estoque + OC a receber acaba">Dura até <span class="cp-hsub">(c/ OC)</span></th><th>Cód.</th><th>Produto</th><th class="r">Estoque físico</th><th class="r">Estoque disponível</th><th class="r">Média de consumo</th><th class="r">Média do período <span class="cp-hsub">(${_perLbl})</span></th><th class="r">Tempo de entrega</th></tr></thead>
       <tbody id="cp-plan-tbody">${_cpPlanTbodyHTML()}</tbody></table></div>`,
     undefined, acao);
 }
