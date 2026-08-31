@@ -9462,7 +9462,7 @@ function _cpIndicadoresCard(o){
     ['Preço médio compra', o.precoCompra?_cpBRL(o.precoCompra):'—'],
     ['Último preço de compra', o.ultPreco?_cpBRL(o.ultPreco):'—'],
     ['Custo médio s/ imp.', o.cmu?_cpBRL(o.cmu):'—'],
-    ['Preço de custeio', `R$ <input type="text" inputmode="decimal" value="${escapeAttr(_cpGetCusteio(o.cod))}" placeholder="a cadastrar" onchange="_cpSetCusteio('${escapeAttr(o.cod)}',this.value)" onclick="event.stopPropagation()" style="width:64px;text-align:right;background:transparent;border:none;border-bottom:1px dashed var(--border);border-radius:0;padding:1px 2px;font-size:12.5px;font-weight:600;color:var(--text);font-family:inherit">`, 'manual · teto no simulador'],
+    ['Preço de custeio', `<span style="white-space:nowrap">R$ <input type="text" inputmode="decimal" value="${escapeAttr(_cpGetCusteio(o.cod))}" placeholder="a cadastrar" onchange="_cpSetCusteio('${escapeAttr(o.cod)}',this.value)" onclick="event.stopPropagation()" title="Preço de custeio manual — vira o teto no simulador" style="width:82px;text-align:right;background:transparent;border:none;border-bottom:1px dashed var(--border);border-radius:0;padding:1px 2px;font-size:12.5px;font-weight:600;color:var(--text);font-family:inherit"></span>`],
     ['Valor em estoque', o.valor?_cpBRL(o.valor):'—'],
     ['Compras no período', _cpNum(o.compras.length)]
   ];
