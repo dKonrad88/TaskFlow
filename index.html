@@ -10076,7 +10076,10 @@ function _cpLeadTime(o){ const map={'Matéria-prima':20,'Embalagens':25,'Manuten
 // ⚠️ EXEMPLO: saldo em Ordem de Compra a receber (_CP_OCABERTO). Disponível = estoque físico + este saldo.
 let __cpOcSaldo=null;
 function _cpOcSaldo(cod){ if(!__cpOcSaldo){ __cpOcSaldo={}; _CP_OCABERTO.forEach(p=>{ __cpOcSaldo[p.cod]=(__cpOcSaldo[p.cod]||0)+(p.qtd||0); }); } return __cpOcSaldo[cod]||0; }
-let _cpPlan={periodo:'2', perDe:'', perAte:'', busca:'', buscaAberta:false, catSel:[], filtrosAberto:false};
+let _cpPlan={periodo:'2', perDe:'', perAte:'', busca:'', buscaAberta:false, catSel:[], filtrosAberto:false, status:''};
+// Filtro por status (cards clicáveis): '' = todos · 'agora'/'breve' = cobertura · 'ruptura' = disponível<=0.
+function _cpPlanStatusMatch(o){ const st=_cpPlan.status; if(!st) return true; const cv=_cpPlanCov(o); return st==='ruptura'?(cv.disp<=0):(cv.key===st); }
+function _cpPlanSetStatus(k){ _cpPlan.status=(_cpPlan.status===k?'':k); renderCompras(); }
 // Cobertura de um item no período escolhido (cache por render p/ não recalcular no sort + nas linhas).
 function _cpPlanCov(o){ const C=window.__cpPlanCache||(window.__cpPlanCache={}); if(C[o.cod]) return C[o.cod];
   const medPer=_cpConsMedPer(o,_cpPlan.periodo,_cpPlan.perDe,_cpPlan.perAte);
@@ -10094,8 +10097,10 @@ function _cpPlanRows(){
     return true;
   }).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'}));
 }
+// Linhas visíveis = base (categoria+busca) + filtro de status dos cards clicáveis.
+function _cpPlanRowsView(){ return _cpPlanRows().filter(_cpPlanStatusMatch); }
 function _cpPlanTbodyHTML(){
-  const rows=_cpPlanRows(), TETO=300;
+  const rows=_cpPlanRowsView(), TETO=300;
   const out=rows.slice(0,TETO).map(o=>{ const cv=_cpPlanCov(o), oc=_cpOcSaldo(o.cod), um=o.um||'';
     return `<tr class="cp-clic" onclick="_cpAbrirItem('${escapeAttr(o.cod)}')">
       <td class="cp-mono">${escapeHTML(o.cod)}</td>
@@ -10109,7 +10114,7 @@ function _cpPlanTbodyHTML(){
     </tr>`;}).join('');
   return out || `<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Nenhum item para esse filtro.</td></tr>`;
 }
-function _cpPlanRefresh(){ const tb=document.getElementById('cp-plan-tbody'); if(tb) tb.innerHTML=_cpPlanTbodyHTML(); const c=document.getElementById('cp-plan-count'); if(c) c.textContent=_cpPlanRows().length; }
+function _cpPlanRefresh(){ const tb=document.getElementById('cp-plan-tbody'); if(tb) tb.innerHTML=_cpPlanTbodyHTML(); const c=document.getElementById('cp-plan-count'); if(c) c.textContent=_cpPlanRowsView().length; }
 function _cpPlanPeriodo(v){ _cpPlan.periodo=v; if(v!=='custom'){ _cpPlan.perDe=''; _cpPlan.perAte=''; } renderCompras(); }
 function _cpPlanBuscaToggle(){ _cpPlan.buscaAberta=!_cpPlan.buscaAberta; if(!_cpPlan.buscaAberta) _cpPlan.busca=''; renderCompras(); if(_cpPlan.buscaAberta) setTimeout(function(){ var el=document.getElementById('cp-plan-busca'); if(el) el.focus(); },30); }
 function _cpPlanBuscaInput(el){ _cpPlan.busca=el.value; _cpPlanRefresh(); }
@@ -10130,17 +10135,17 @@ function _comprasPlanejamentoHTML(){
     </div>`:'';
   const filtrosBtn=`<div style="position:relative"><button onclick="_cpPlanFiltrosToggle()" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:20px;border:1px solid ${_cpPlan.catSel.length?'var(--blue-mid)':'var(--border)'};background:${_cpPlan.catSel.length?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'var(--card)'};color:${_cpPlan.catSel.length?'var(--blue-mid)':'var(--text2)'};cursor:pointer;font-family:inherit"><i class="ti ti-filter" style="font-size:13px"></i> Filtros${_cpPlan.catSel.length?` · ${_cpPlan.catSel.length}`:''} <i class="ti ti-chevron-${_cpPlan.filtrosAberto?'up':'down'}" style="font-size:12px"></i></button>${catPanel}</div>`;
   const acao=`<div style="display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap">${selPer}${filtrosBtn}${_cpLupa(_cpPlan.buscaAberta,_cpPlan.busca,'_cpPlanBuscaToggle','_cpPlanBuscaInput','cp-plan-busca','Buscar item…')}</div>`;
+  // KPIs: os 3 acionáveis (Comprar agora/em breve/Em ruptura) são CLICÁVEIS → filtram a tabela (clicar de novo limpa).
+  // Contagens vêm da BASE (categoria+busca, sem status) p/ o usuário poder alternar entre eles.
+  const kpiCard=(lab,val,cor,key)=>{ const act=key&&_cpPlan.status===key, clk=!!key;
+    return `<div class="cp-card" style="padding:13px 16px;${clk?'cursor:pointer;transition:box-shadow .12s;':''}${act?`box-shadow:0 0 0 2px ${cor||'var(--blue-mid)'} inset;`:''}"${clk?` onclick="_cpPlanSetStatus('${key}')" title="${act?'Mostrar todos':'Ver só '+lab.toLowerCase()}"`:''}><div class="cp-kpi"><s>${lab}${act?' <i class="ti ti-x" style="font-size:10px;vertical-align:1px"></i>':''}</s><b${cor?` style="color:${cor}"`:''}>${val}</b></div></div>`; };
+  const kpisHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">${kpiCard('Itens',_cpNum(rows.length),'','')}${kpiCard('Comprar agora',_cpNum(nAgora),nAgora?'var(--danger)':'','agora')}${kpiCard('Comprar em breve',_cpNum(nBreve),nBreve?'var(--amber)':'','breve')}${kpiCard('Em ruptura',_cpNum(nRuptura),nRuptura?'var(--danger)':'','ruptura')}</div>`;
   return _cpTela('Planejamento de compras','Cockpit diário do comprador — estoque, cobertura e o que precisa comprar. Clique num item para abrir a ficha e simular.',
-    _cpKPIcards([
-      _cpKPI('Itens', _cpNum(rows.length)),
-      _cpKPI('Comprar agora', _cpNum(nAgora), nAgora?'var(--danger)':''),
-      _cpKPI('Comprar em breve', _cpNum(nBreve), nBreve?'var(--amber)':''),
-      _cpKPI('Em ruptura', _cpNum(nRuptura), nRuptura?'var(--danger)':'')
-    ])+
+    kpisHTML+
     `<div class="cp-card cp-noscroll" style="overflow:auto;max-height:calc(100vh - 320px)"><table class="cp-tbl">
       <thead><tr><th>Cód.</th><th>Produto</th><th class="r">Estoque físico</th><th class="r">Estoque disponível</th><th class="r">Tempo de entrega</th><th class="r">Média de consumo</th><th class="r">Média do período</th><th class="r">Cobertura</th></tr></thead>
       <tbody id="cp-plan-tbody">${_cpPlanTbodyHTML()}</tbody></table></div>
-    <div style="font-size:11.5px;color:var(--text3);margin-top:10px;display:flex;gap:6px;align-items:baseline"><i class="ti ti-info-circle"></i><span><b><span id="cp-plan-count">${rows.length}</span> itens</b> · ordem alfabética. <b>Cobertura</b> = estoque disponível ÷ média do período (vermelho = acaba antes da entrega chegar). ⚠️ <b>Estoque disponível</b> (o que está em OC) e <b>tempo de entrega</b> são exemplo — virão do ERP.</span></div>`,
+    <div style="font-size:11.5px;color:var(--text3);margin-top:10px;display:flex;gap:6px;align-items:baseline"><i class="ti ti-info-circle"></i><span><b><span id="cp-plan-count">${_cpPlanRowsView().length}</span> itens</b> · ordem alfabética. <b>Cobertura</b> = estoque disponível ÷ média do período (vermelho = acaba antes da entrega chegar). ⚠️ <b>Estoque disponível</b> (o que está em OC) e <b>tempo de entrega</b> são exemplo — virão do ERP.</span></div>`,
     undefined, acao);
 }
 
