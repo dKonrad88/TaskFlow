@@ -6497,40 +6497,35 @@ function _necRows(){
 }
 function _necTbodyHTML(){
   const rows=_necRows();
-  if(!rows.length) return `<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--text3);font-size:12.5px;font-style:italic">Nenhum item com esse filtro.</td></tr>`;
+  if(!rows.length) return `<tr><td colspan="7">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`;
   return rows.map(o=>{
     const falta=o.fim<0, c=falta?'var(--danger)':'var(--text)', cc=falta?'var(--danger)':'var(--text3)';
     const cob=o.util>0?Math.round(o.est/o.util*7):null;  // dias que o estoque atual ainda dura (consumo = "a utilizar" da semana)
     const cobCor=cob==null?'var(--text3)':(cob<10?'var(--danger)':(cob<30?'var(--amber)':'var(--text2)'));
-    return `<tr onclick="_cpAbrirItem('${escapeAttr(o.cod)}')" onmouseover="this.style.boxShadow='inset 3px 0 0 var(--blue-mid)'" onmouseout="this.style.boxShadow=''" title="Abrir a ficha deste item no Insumos" style="border-top:1px solid var(--border);cursor:pointer;${falta?'background:var(--danger-bg);':''}">
-      <td style="padding:8px 10px;font-size:12px;color:${cc}">${escapeHTML(o.cod)}</td>
-      <td style="padding:8px 10px;font-size:11.5px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o.div)}</td>
-      <td style="padding:8px 10px;font-size:12.5px;color:${c};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o.nome)}</td>
-      <td style="padding:8px 10px;font-size:12.5px;text-align:right;color:${c};white-space:nowrap">${_necFmt(o.est)}</td>
-      <td style="padding:8px 10px;font-size:12.5px;text-align:right;color:${c};white-space:nowrap">${_necFmt(o.util)}</td>
-      <td style="padding:8px 10px;font-size:12.5px;text-align:right;font-weight:${falta?'700':'400'};color:${c};white-space:nowrap">${o.fim<0?'−'+_necFmt(-o.fim):_necFmt(o.fim)}</td>
-      <td style="padding:8px 10px;font-size:12.5px;text-align:right;font-weight:600;white-space:nowrap;color:${cobCor}">${cob==null?'—':cob+' d'}</td>
+    return `<tr class="cp-clic" onclick="_cpAbrirItem('${escapeAttr(o.cod)}')" title="Abrir a ficha deste item no Insumos" style="${falta?'background:var(--danger-bg);':''}">
+      <td class="cp-mono"${falta?` style="color:${cc}"`:''}>${escapeHTML(o.cod)}</td>
+      <td style="color:var(--text3);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o.div)}</td>
+      <td class="cp-item"${falta?` style="color:${c}"`:''}>${escapeHTML(o.nome)}</td>
+      <td class="cp-n" style="color:${c};white-space:nowrap">${_necFmt(o.est)}</td>
+      <td class="cp-n" style="color:${c};white-space:nowrap">${_necFmt(o.util)}</td>
+      <td class="cp-n" style="font-weight:${falta?'700':'400'};color:${c};white-space:nowrap">${o.fim<0?'−'+_necFmt(-o.fim):_necFmt(o.fim)}</td>
+      <td class="cp-n" style="white-space:nowrap"><span class="cp-pill" style="color:${cobCor};background:color-mix(in srgb,${cobCor} 13%,transparent)">${cob==null?'—':cob+' d'}</span></td>
     </tr>`;
   }).join('');
 }
 function _prodNecessidadeHTML(){
   const segBtn=(i,lab,on)=>`<button onclick="_necSetSemana(${i})" style="border:${on?'1px solid var(--border)':'none'};background:${on?'var(--card)':'transparent'};padding:7px 14px;border-radius:8px;font-size:12.5px;color:${on?'var(--text)':'var(--text2)'};cursor:pointer;font-family:inherit;font-weight:600">${lab}</button>`;
   const seg=`<div style="display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:2px;flex-wrap:wrap">`+[0,1].map(i=>segBtn(i,`Semana ${i+1} · ${_prodRange(_prodDias(i))}`,prodSemana===i)).join('')+`</div>`;
-  const tabela=`<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface-painel)">
-    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;table-layout:fixed;min-width:728px">
+  // ⚠️ Usa a classe .cp-tbl da área (header em caixa alta/sticky, zebra, th.r + td.cp-n) — antes esta
+  // tabela montava os estilos na mão e destoava visivelmente das vizinhas de Compras.
+  const tabela=`<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl" style="table-layout:fixed;min-width:728px">
       <colgroup><col style="width:66px"><col style="width:150px"><col><col style="width:86px"><col style="width:90px"><col style="width:94px"><col style="width:96px"></colgroup>
-      <thead><tr style="background:var(--bg2)">
-        <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text3)">Cód.</th>
-        <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text3)">Divisão</th>
-        <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text3)">Item</th>
-        <th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">Estoque</th>
-        <th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">A utilizar</th>
-        <th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">Est. final</th>
-        <th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">Cobertura</th>
+      <thead><tr>
+        <th>Cód.</th><th>Divisão</th><th>Item</th>
+        <th class="r">Estoque</th><th class="r">A utilizar</th><th class="r">Est. final</th><th class="r">Cobertura</th>
       </tr></thead>
       <tbody id="nec-tbody">${_necTbodyHTML()}</tbody>
-    </table></div>
-  </div>`;
+    </table></div>`;
   const nota=`<div style="margin-top:10px;font-size:12px;color:var(--text3);display:flex;align-items:flex-start;gap:6px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i><span>Clique num item para abrir a <b>ficha no Insumos</b>. Linhas em vermelho = o estoque não cobre a semana. O <b>a utilizar</b> é exemplo — no Oficial vem da programação × ficha técnica de cada produto.</span></div>`;
   return `<div style="margin-bottom:14px">${seg}</div>${tabela}${nota}`;
 }
@@ -8509,12 +8504,6 @@ const _CP_CONS=JSON.parse('[["1000","Cacau Black","KG",[137.6278,103.6581,388.23
 const _CP_CONS_25=JSON.parse('[["20017","Amendoim","KG",[21200,10640,26515,21825,26400,28715,28640,28720,34720,26640,24880,18160]],["30515","Caixa de Papelão - Modelo 9 ( Pão de mel,  Amendoins 25 far)","UN",[13842.13,11310.02,15299.65,16896.63,19894.01,19255.67,24843.35,15917.89,null,null,null,null]],["20228","Caixa de Papelão - 001 (Amendoins) 250g","UN",[null,null,null,null,null,null,null,1919.98,15221.45,12918.47,10631.03,8972.38]],["30265","Etiquetas - Suspirolandia Amendoim Chocolate 300g","UN",[1500,1800,1500,1050,2250,1200,1800,1800,2250,510,null,null]],["35035","Selo Alumínio Com Impressão - Pasta de Amendoim","UN",[794,722,2114,1376,981,774,992,733,1573,945,873,227]],["20168","Amendoim Torra Média Especial - Pasta de Amendoim","KG",[472.95,1564.11,1025.05,622.39,952.85,617.19,808.05,219.86,1109.64,634.1,525.49,148.12]],["30552","Pote - Pasta de Amendoim Tradicional 450g","UN",[530,null,1139,530,180,565,240,210,722,291,570,null]],["30555","Tampa - Pasta de Amendoim Tradicional 450g","UN",[530,null,1139,530,180,565,240,210,722,291,570,null]],["30009","Bobina - Amendoim Chocolate","KG",[345.91,256.51,254.09,366.01,411.39,401.56,414.88,425.36,455.85,362.15,302.35,235.55]],["30554","Pote - Pasta de Amendoim Cacau 450g","UN",[264,299,564,510,477,209,392,228,594,303,150,227]],["30557","Tampa - Pasta de Amendoim Cacau 450g","UN",[264,299,564,510,477,209,392,228,594,303,150,227]],["30594","Amendoim Torra Amarelo Escuro - Paçoquinha","KG",[null,null,null,464.37,371.3,504.83,405.92,682.64,510.49,564.3,193.23,208.27]],["30010","Bobina - Broa de Amendoim","KG",[226.16,177.77,257.42,253.33,298.96,292.83,329.93,302.61,305.12,313.34,209.62,243.6]],["30553","Pote - Pasta de Amendoim Crunchy 450g","UN",[null,423,411,336,324,null,360,295,257,351,153,null]],["30556","Tampa - Pasta de Amendoim Crunchy 450g","UN",[null,423,411,336,324,null,360,295,257,351,153,null]],["35036","Caixa de Papelão - Modelo 21 (Pasta Amendoim)","UN",[132.33,120.33,352.32,229.32,163.49,128.99,165.33,122.16,262.16,157.49,145.49,37.83]],["20204","Display - Alfajor Premium Pasta de Amendoim","UN",[null,null,null,null,null,null,null,261.19,507.25,216.75,166.69,105.62]],["200202","Mistura para amendoim (pó)","UN",[null,null,null,null,null,null,null,null,260,333,312,227]],["30336","Bobina - Amendoim Chocolate Branco","KG",[64.32,47.27,53.51,72.97,76.44,73.66,76.64,85.92,116.59,69.05,94.88,40.72]],["30559","Etiqueta - Pasta de Amendoim Crunchy 1,010kg","UN",[115,250,null,null,null,null,null,null,null,null,null,null]],["30527","Bobina - Monodose Amendoim Chocolate 44g","KG",[8.6,3.57,2.87,7.57,null,8.07,3.34,6.34,null,7.63,9.32,null]],["20199","Bobina - Alfajor Pasta de Amendoim 38g (22,5 x 0,043)","KG",[null,null,null,null,null,null,null,6.4,11.45,4.48,3.92,3.29]],["30528","Bobina - Monodose Broa Amendoim 38g","KG",[3.78,null,3.04,6.43,null,3.66,null,3.17,0.71,6.27,2.42,null]]]');
 
 let comprasView='painel';
-function switchToCompras(){
-  hubView='compras';
-  comprasView='painel';
-  const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
-  renderSidebar(); render();
-}
 function setComprasView(v){
   hubView='compras'; window._sbOrigemLixCfg=null;
   comprasView=v;
@@ -8535,29 +8524,17 @@ function renderCompras(){
   if(!window.__cpFiltrosCloser){ window.__cpFiltrosCloser=true; document.addEventListener('mousedown', _cpComprasCloseFiltros, true); } // fecha popovers de filtro ao clicar fora
   const telas={ painel:_comprasPainelHTML, planejamento:_comprasPlanejamentoHTML, necessidade:_comprasNecessidadeHTML, estoque:_comprasEstoqueHTML, insumos:_comprasInsumosHTML,
                 fornecedores:_comprasFornecedoresHTML, historico:_comprasHistoricoHTML,
-                ordens:_comprasOrdensHTML, orcamentos:_comprasOrcamentosHTML };
+                ordens:_comprasOrdensHTML };
   main.innerHTML = telas[comprasView] ? telas[comprasView]() : _comprasScaffoldHTML(comprasView);
 }
+// Placeholder das telas ainda não montadas. ⚠️ Só o que NÃO está no dispatch `telas` chega aqui —
+// hoje, a aba Notícias (as demais entradas do mapa antigo eram dados mortos e saíram na faxina).
 function _comprasScaffoldHTML(v){
   const T={
-    painel:['Painel','A porta de entrada da área — os alertas de todas as telas reunidos num lugar.',
-      ['KPIs de compras do mês','Alertas de reposição (o que comprar agora)','Itens que subiram de preço','Resumo rápido de gasto']],
-    estoque:['Estoque','O que você tem hoje, de relance.',
-      ['Quantidade e valor em estoque','Consumo mensal','Dias em estoque','Última compra e fornecedor','Gráfico de posição (qtd e valor)']],
-    insumos:['Insumos — ficha do item','A página de cada item comprado — a lente do “o quê”.',
-      ['Consumo e custo médio','Estoque em R$ e em quantidade','Dados técnicos e divisão','Histórico de preço','Fornecedores que fornecem o item']],
-    fornecedores:['Fornecedores — ficha do fornecedor','A página de cada fornecedor — a lente do “quem”.',
-      ['Gasto total (curva ABC)','O que compramos dele num período (pré-reunião)','Prazo de pagamento acordado','Prazo de entrega','Itens que fornece e orçamentos']],
-    historico:['Histórico de compras','O livro de NFs — a espinha de dados da área.',
-      ['Planilha: NF, produto, data, qtd, valor unit, custo médio, ICMS…','Gráficos de volume e quantidade','Valor por kg — por compra e mês a mês']],
-    ordens:['Ordens de compra','As OCs, com foco no que importa pra decisão.',
-      ['OCs abertas','Comparação da OC atual com a anterior (subiu/caiu quantos %)','Acompanhamento de entrega']],
-    orcamentos:['Orçamentos','Cotações e negociação — reaproveitando o que já existe hoje na Manutenção.',
-      ['Comparação de cotações lado a lado','Simulador de negociação','Cadastro de fornecedores']],
-    noticias:['Notícias e relevantes','Espaço reservado — montamos o conteúdo depois.',
-      ['Notícias dos itens que acompanhamos','(a definir)']],
+    noticias:['Notícias','Panorama de mercado dos insumos que acompanhamos.',
+      ['Notícias e preço de mercado por item','Hoje isso já existe DENTRO da ficha do item (aba Notícias) — aqui vai a visão consolidada','Alertas de preço fora da curva']],
   };
-  const d=T[v]||T.painel;
+  const d=T[v]||['Em construção','Esta tela ainda não foi montada.',['(a definir)']];
   const itens=d[2].map(i=>`<li>${i}</li>`).join('');
   return `<div style="padding:20px 4px 60px; max-width:920px;">
     ${hubHead(d[0], d[1])}
@@ -8648,12 +8625,6 @@ function _cpCSS(){ return `<style>
   /* Compras em LARGURA CHEIA: enquanto uma tela de Compras está montada (este CSS presente), o .main
      perde o teto de 1500px. Some ao navegar p/ fora (o CSS sai junto com o conteúdo). */
   .main{max-width:none !important}
-  .cp-catbar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
-  .cp-catchip{border:1px solid var(--border);background:var(--card);color:var(--text2);border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
-  .cp-catchip:hover{border-color:var(--blue-mid)}
-  .cp-catchip.on{background:color-mix(in srgb,var(--blue-mid) 12%,transparent);border-color:var(--blue-mid);color:var(--blue-mid)}
-  .cp-catn{font-size:11px;font-weight:700;color:var(--text3);background:var(--bg2);border-radius:999px;padding:1px 7px}
-  .cp-catchip.on .cp-catn{color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 18%,transparent)}
   .cp-cattag{color:var(--text3);white-space:nowrap}
   .cp-tbl{width:100%;border-collapse:collapse;font-size:13px}
   .cp-tbl th,.cp-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
@@ -8681,25 +8652,10 @@ function _cpCSS(){ return `<style>
   .cp-kpi{flex:1;min-width:132px}
   .cp-kpi b{display:block;font-size:19px;font-weight:800;color:var(--text);margin-top:2px}
   .cp-kpi s{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);text-decoration:none}
-  .cp-bar{height:7px;border-radius:4px;background:var(--bg2);overflow:hidden}
-  .cp-bar i{display:block;height:100%;background:var(--blue-mid)}
-  .cp-seg button{padding:6px 13px;border:1px solid var(--border);font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
   /* input discreto do simulador: sem fundo, só uma linha embaixo */
   .cp-sim-inp{background:transparent;border:none;border-bottom:1.5px solid var(--border);border-radius:0;padding:2px 4px;font-family:inherit;font-size:14px;font-weight:700;color:var(--text);text-align:center}
   .cp-sim-inp:focus{outline:none;border-bottom-color:var(--blue-mid)}
   select.cp-sim-inp{padding:2px 2px}
-  /* ── PAINEL do item (ficha) — rail + header + corpo, estilo Reunião/Projeto ── */
-  .cp-painel{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:12px;overflow:hidden;min-height:520px}
-  .cp-painel-rail{flex:0 0 78px;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:stretch}
-  .cp-painel-rail button{border:none;background:transparent;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:3px;padding:12px 4px;font-size:10px;font-weight:600;color:var(--text2);border-left:3px solid transparent;transition:background .12s,color .12s}
-  .cp-painel-rail button i{font-size:20px}
-  .cp-painel-rail button:hover{background:var(--bg2)}
-  .cp-painel-rail button.on{color:var(--blue-mid);background:var(--bg2);border-left-color:var(--blue-mid)}
-  .cp-painel-rail .cp-rail-back{color:var(--text3)}
-  .cp-painel-rail .cp-rail-sp{flex:1}
-  .cp-painel-main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
-  .cp-painel-head{padding:15px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-shrink:0;background:var(--card)}
-  .cp-painel-body{flex:1;overflow:auto;padding:20px 22px;min-height:0}
   /* Não-expandido: centraliza com largura máxima (respiro nas laterais), igual ao Painel de Reunião. */
   .cp-painel-wrap{max-width:1500px;margin:0 auto;padding:6px 0 40px}
   /* Não-expandido estilo Reunião: link Voltar + sub-navbar horizontal (o rail vertical fica só na tela cheia). */
@@ -8734,49 +8690,51 @@ function hubHead(titulo, sub, acao){
     ${acao?`<div style="flex-shrink:0;display:flex;align-items:center;gap:8px">${acao}</div>`:''}
   </div>`;
 }
-function _cpTela(titulo, sub, corpo, larg, acao){
+// voltar = {fn, label} → renderiza o link "← Voltar …" ACIMA do título, no MESMO formato da ficha do
+// item (.cp-back-link). É o padrão de "voltar" da área: link discreto no topo, nunca botão no corpo.
+function _cpTela(titulo, sub, corpo, larg, acao, voltar){
   // (ago/2026, Diego) Compras usa a LARGURA CHEIA (até perto do FAB) em todas as abas: sem teto por
   // padrão aqui, e o _cpCSS remove o max-width do .main enquanto uma tela de Compras está aberta.
   return `<div style="padding:20px 4px 60px;max-width:${larg?larg+'px':'none'}">
     ${_cpCSS()}
+    ${voltar?`<button class="cp-back-link" onclick="${voltar.fn}"><i class="ti ti-arrow-left"></i> ${voltar.label}</button>`:''}
     ${hubHead(titulo, sub, acao)}
     ${corpo}
   </div>`;
 }
 const _cpKPI=(lab,val,cor)=>`<div class="cp-kpi"><s>${lab}</s><b${cor?` style="color:${cor}"`:''}>${val}</b></div>`;
-// (ago/2026, Diego) Cada indicador em CARD separado (formato do Estoque) — vale p/ todas as telas de
-// Compras que usam _cpKPIrow (Fornecedores, Ordens de compra, Histórico, Orçamentos…). Agora == _cpKPIcards.
-const _cpKPIrow=arr=>`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">${arr.map(k=>`<div class="cp-card" style="padding:13px 16px">${k}</div>`).join('')}</div>`;
-// Variante em CARDS separados (cada indicador no seu card) — usada na tela de Estoque (Diego).
+// (ago/2026, Diego) Cada indicador em CARD separado — padrão de KPI de TODA a área de Compras.
+// Monte a linha com _cpKPIcards([_cpKPI(rótulo, valor, cor?), ...]).
 const _cpKPIcards=arr=>`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">${arr.map(k=>`<div class="cp-card" style="padding:13px 16px">${k}</div>`).join('')}</div>`;
+const _cpKPIrow=_cpKPIcards;   // alias legado (eram duplicatas byte a byte); use _cpKPIcards nas telas novas
+// Rótulo padrão do seletor de período no header (mesmo formato do "Média do período" do Planejamento).
+const _cpSelPeriodo=(rot,sel)=>`<div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px"><span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text3)">${rot}</span>${sel}</div>`;
 // Lupa de busca padrão de Compras (modelo do Estoque): fechada = ícone no canto; aberta = campo + X.
 // Vai no slot `acao` do _cpTela (canto sup. direito). extra = HTML opcional à esquerda do campo (ex.: filtro de período).
 function _cpLupa(aberta, valor, toggleFn, inputFn, inputId, ph, extra){
   return aberta
-    ? `<div style="display:inline-flex;align-items:center;gap:6px">${extra||''}<input id="${inputId}" value="${escapeAttr(valor||'')}" oninput="${inputFn}(this)" placeholder="${escapeAttr(ph||'Buscar…')}" class="modal-input" style="width:220px;padding:6px 11px;font-size:12.5px"><button onclick="${toggleFn}()" title="Fechar busca" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;display:inline-flex"><i class="ti ti-x" style="font-size:16px"></i></button></div>`
-    : `<div style="display:inline-flex;align-items:center;gap:6px">${extra||''}<button onclick="${toggleFn}()" title="Buscar" style="background:var(--card);border:1px solid var(--border);border-radius:9px;cursor:pointer;color:var(--text2);width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-search" style="font-size:17px"></i></button></div>`;
+    ? `<div style="display:inline-flex;align-items:flex-end;gap:8px">${extra||''}<input id="${inputId}" value="${escapeAttr(valor||'')}" oninput="${inputFn}(this)" placeholder="${escapeAttr(ph||'Buscar…')}" class="modal-input" style="width:220px;padding:6px 11px;font-size:12.5px"><button onclick="${toggleFn}()" title="Fechar busca" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;display:inline-flex"><i class="ti ti-x" style="font-size:16px"></i></button></div>`
+    : `<div style="display:inline-flex;align-items:flex-end;gap:8px">${extra||''}<button onclick="${toggleFn}()" title="Buscar" style="background:var(--card);border:1px solid var(--border);border-radius:9px;cursor:pointer;color:var(--text2);width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-search" style="font-size:17px"></i></button></div>`;
 }
 // Botão de FILTROS em ícone (mesmo formato 38×38 da lupa) — azul quando há filtro ativo, com contador.
 // O popover fica FORA (o caller envolve num <div position:relative> com o painel). `count` = nº de filtros ativos.
 function _cpFiltroIcon(toggleFn, count){ count=count||0;
   return `<button onclick="${toggleFn}()" title="Filtros" style="position:relative;background:var(--card);border:1px solid ${count?'var(--blue-mid)':'var(--border)'};border-radius:9px;cursor:pointer;color:${count?'var(--blue-mid)':'var(--text2)'};width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-filter" style="font-size:17px"></i>${count?`<span style="position:absolute;top:-5px;right:-5px;background:var(--blue-mid);color:#fff;font-size:9px;font-weight:700;min-width:15px;height:15px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 3px">${count}</span>`:''}</button>`; }
-const _cpVazio=t=>`<div style="text-align:center;color:var(--text3);padding:30px">${t}</div>`;
+// Estado-vazio ÚNICO da área (cinza, centrado, itálico). Usar SEMPRE este helper — antes cada tabela
+// montava o seu ("com esse filtro" × "para esse filtro", com/sem itálico, paddings diferentes).
+const _cpVazio=t=>`<div style="text-align:center;color:var(--text3);font-size:12.5px;font-style:italic;padding:22px">${t}</div>`;
 
 // ════════ ESTOQUE ════════
 let _cpEst={busca:'',so:'todos',buscaAberta:false,filtrosAberto:false};
-function _cpEstSet(k,v){ _cpEst[k]=v; const el=document.getElementById('cp-est-corpo'); if(el) el.innerHTML=_cpEstCorpo(); const s=document.getElementById('cp-est-seg'); if(s) s.innerHTML=_cpEstSegHTML(); }
+function _cpEstSet(k,v){ _cpEst[k]=v; const el=document.getElementById('cp-est-corpo'); if(el) el.innerHTML=_cpEstCorpo(); }
 // Filtros "secundários" (Excesso / Sem movimento / Sem dados) num ÍCONE ao lado da lupa (Diego).
 function _cpEstFiltrosToggle(){ _cpEst.filtrosAberto=!_cpEst.filtrosAberto; renderCompras(); }
 // Selecionar filtro (chip OU popover): re-render completo p/ o ícone/chips refletirem o estado; fecha o popover.
 function _cpEstFiltro(v){ _cpEst.so=v; _cpEst.filtrosAberto=false; renderCompras(); }
 // Busca vira LUPA no canto superior direito (Diego): fechada = só o ícone; aberta = campo + X.
 function _cpEstToggleBusca(){ _cpEst.buscaAberta=!_cpEst.buscaAberta; if(!_cpEst.buscaAberta) _cpEst.busca=''; renderCompras(); if(_cpEst.buscaAberta) setTimeout(function(){ var el=document.getElementById('cp-est-busca'); if(el) el.focus(); },30); }
-function _cpEstSegHTML(){
-  const base=_cpItens().filter(o=>o.est>0 || o.consMed>0);
-  const cnt=k=>base.filter(o=>_cpEstStatus(o).key===k).length;
-  const segs=[['todos','Todos',base.length,''],['agora','Comprar agora',cnt('agora'),'var(--danger)'],['breve','Comprar em breve',cnt('breve'),'var(--amber)'],['saudavel','Saudáveis',cnt('saudavel'),'var(--success)']];
-  return segs.map(([v,l,n,cor])=>`<button class="cp-catchip${_cpEst.so===v?' on':''}" onclick="_cpEstFiltro('${v}')">${cor?`<span style="width:8px;height:8px;border-radius:50%;background:${cor};display:inline-block;flex-shrink:0"></span>`:''}${l} <span class="cp-catn">${n}</span></button>`).join('');
-}
+// _cpLupa chama o handler passando o ELEMENTO (padrão da área); _cpEstSet espera (chave, valor).
+function _cpEstBuscaInput(el){ _cpEstSet('busca', el.value); }
 function _cpEstLista(){
   const q=_cpEst.busca.trim().toLowerCase();
   let L=_cpItens().filter(o=>o.est>0 || o.consMed>0);
@@ -8803,11 +8761,11 @@ function _cpEstCorpo(){
       <td class="cp-n">${o.valor?_cpBRL(o.valor):'—'}</td>
       <td class="cp-n">${o.cmu?_cpBRL(o.cmu):'—'}</td>
       <td class="cp-n">${_cpNum(o.est,2)} <span class="cp-un">${escapeHTML(o.um||'')}</span></td>
-      <td class="cp-n">${o.consMed?_cpNum(o.consMed,0):'<span style="color:var(--text3)">—</span>'}</td>
+      <td class="cp-n">${o.consMed?`${_cpNum(o.consMed,0)} <span class="cp-un">${escapeHTML(o.um||'')}</span>`:'<span style="color:var(--text3)">—</span>'}</td>
       <td class="cp-n"><span class="cp-pill" style="color:${c};background:${bg}">${o.dias===null?'—':o.dias+' d'}</span></td>
       <td class="cp-mono">${o.dias==null?'—':_cpDataFim(o.dias)}</td>
       <td class="cp-mono">${o.ultCompra?_cpDt(o.ultCompra):'—'}</td>
-      <td>${o.ultForn?escapeHTML(o.ultForn.slice(0,26)):'—'}</td>
+      <td class="cp-item" style="font-weight:400;max-width:210px" title="${escapeAttr(o.ultForn?_cpForn(o.ultForn):'')}">${o.ultForn?escapeHTML(_cpForn(o.ultForn)):'—'}</td>
       <td class="cp-n">${o.semMov===null?'—':o.semMov+' d'}</td>
     </tr>`;}).join('');
   return `<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
@@ -8815,7 +8773,7 @@ function _cpEstCorpo(){
       <div class="cp-card" style="padding:13px 16px;flex:none;width:240px">${_cpKPI('Valor em estoque',_cpBRL(totV))}</div>
     </div>`+
     `<div class="cp-card cp-noscroll" style="overflow:auto;max-height:calc(100vh - 320px)"><table class="cp-tbl">
-      <thead><tr><th>Cód.</th><th>Categoria</th><th>Item</th><th class="r">Valor</th><th class="r">Custo médio</th><th class="r">Em estoque</th><th class="r">Consumo/mês</th><th class="r">Cobertura</th><th class="r">Termina em</th><th class="r">Últ. compra</th><th>Fornecedor</th><th class="r">Sem mov.</th></tr></thead>
+      <thead><tr><th>Cód.</th><th>Categoria</th><th>Item</th><th class="r">Valor</th><th class="r">Custo médio</th><th class="r">Em estoque</th><th class="r">Consumo/mês</th><th class="r">Cobertura</th><th>Termina em</th><th>Últ. compra</th><th>Fornecedor</th><th class="r">Sem mov.</th></tr></thead>
       <tbody>${linhas||`<tr><td colspan="12">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`}</tbody>
     </table></div>
     ${L.length>TETO?`<div style="text-align:center;color:var(--text3);font-size:12.5px;margin-top:10px">Mostrando ${TETO} de ${_cpNum(L.length)} — use a busca para afunilar.</div>`:''}`;
@@ -8826,16 +8784,13 @@ function _comprasEstoqueHTML(){
   const _cnt=k=>_b.filter(o=>_cpEstStatus(o).key===k).length;
   const fOpts=[['todos','Todos',_b.length,''],['agora','Comprar agora',_cnt('agora'),'var(--danger)'],['breve','Comprar em breve',_cnt('breve'),'var(--amber)'],['saudavel','Saudáveis',_cnt('saudavel'),'var(--success)'],['excesso','Excesso',_cnt('excesso'),'var(--purple)'],['semmov','Sem movimento',_b.filter(o=>(o.semMov||0)>=90&&o.est>0).length,'var(--text3)'],['semdados','Sem dados',_cnt('semdados'),'var(--text3)']];
   const fAtivo=_cpEst.so!=='todos';
-  const filtroBtn=`<button onclick="_cpEstFiltrosToggle()" title="Filtrar por status do estoque" style="background:var(--card);border:1px solid ${fAtivo||_cpEst.filtrosAberto?'var(--blue-mid)':'var(--border)'};border-radius:9px;cursor:pointer;color:${fAtivo||_cpEst.filtrosAberto?'var(--blue-mid)':'var(--text2)'};width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-filter" style="font-size:17px"></i></button>`;
+  const filtroBtn=_cpFiltroIcon('_cpEstFiltrosToggle', fAtivo?1:0);   // padrão da área: ícone 38×38, azul + badge quando há filtro ativo
   const filtroPop=_cpEst.filtrosAberto?`<div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:206px;padding:6px">
       <div style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3);padding:5px 8px 7px">Filtrar por</div>
       ${fOpts.map(([v,l,n,cor])=>`<button onclick="_cpEstFiltro('${_cpEst.so===v?'todos':v}')" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:${_cpEst.so===v?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'none'};border:none;border-radius:7px;cursor:pointer;padding:7px 9px;font-family:inherit;font-size:12.5px;color:${_cpEst.so===v?'var(--blue-mid)':'var(--text2)'}"><span style="width:8px;height:8px;border-radius:50%;background:${cor};flex-shrink:0"></span>${l}<span style="margin-left:auto;color:var(--text3);font-size:11px">${n}</span></button>`).join('')}
     </div>`:'';
   const filtroWrap=`<div class="cp-pop-wrap" style="position:relative">${filtroBtn}${filtroPop}</div>`;
-  const busca = _cpEst.buscaAberta
-    ? `<div style="display:inline-flex;align-items:center;gap:6px"><input id="cp-est-busca" value="${escapeAttr(_cpEst.busca)}" oninput="_cpEstSet('busca',this.value)" placeholder="Buscar item…" class="modal-input" style="width:220px;padding:6px 11px;font-size:12.5px"><button onclick="_cpEstToggleBusca()" title="Fechar busca" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;display:inline-flex"><i class="ti ti-x" style="font-size:16px"></i></button></div>`
-    : `<button onclick="_cpEstToggleBusca()" title="Buscar item" style="background:var(--card);border:1px solid var(--border);border-radius:9px;cursor:pointer;color:var(--text2);width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-search" style="font-size:17px"></i></button>`;
-  const acao=`<div style="display:inline-flex;align-items:center;gap:8px">${filtroWrap}${busca}</div>`;
+  const acao=`<div style="display:inline-flex;align-items:center;gap:8px">${filtroWrap}${_cpLupa(_cpEst.buscaAberta,_cpEst.busca,'_cpEstToggleBusca','_cpEstBuscaInput','cp-est-busca','Buscar item…')}</div>`;
   return _cpTela('Estoque','O que você tem hoje, cobertura e o que comprar.',
     `<div id="cp-est-corpo">${_cpEstCorpo()}</div>`,undefined,acao);
 }
@@ -8853,7 +8808,6 @@ function _cpAbrirItem(cod){
   renderSidebar(); renderCompras(); window.scrollTo(0,0); }
 function _cpVoltarItens(){ _cpItemSel=null; _cpItemMes=null; try{document.body.classList.remove('cp-focus');}catch(e){} comprasView=_cpItemOrigem||'insumos'; renderSidebar(); renderCompras(); window.scrollTo(0,0); }
 // Categoria do insumo — DERIVADA do nome por palavra-chave (o ERP não exporta o campo família).
-let _cpCatFiltro='todas';  // vestígio (persistido na rota); o filtro de Insumos usa _cpCatSel
 const _CP_CATS=['Matéria-prima','Embalagens'];  // só as categorias do comprador (ver _cpEscComprador)
 // (ago/2026, Diego) Categoria virou botão "Filtros" (checklist multi-seleção) + busca — igual à Necessidade.
 let _cpCatSel=[], _cpInsFiltrosAberto=false, _cpInsBusca='', _cpInsBuscaAberta=false;
@@ -8876,7 +8830,7 @@ function _cpInsTbodyHTML(){
       <td class="cp-mono">${escapeHTML(o.cod)}</td>
       <td><span class="cp-cattag">${escapeHTML(_cpCategoria(o.nome))}</span></td>
       <td class="cp-item">${escapeHTML(o.nome)}</td>
-    </tr>`;}).join('') || `<tr><td colspan="3" style="padding:16px;text-align:center;color:var(--text3);font-style:italic">Nenhum item com esse filtro.</td></tr>`;
+    </tr>`;}).join('') || `<tr><td colspan="3">${_cpVazio("Nenhum item para esse filtro.")}</td></tr>`;
 }
 function _cpCategoria(nome){
   const s=' '+(nome||'').toLowerCase()+' '; const has=(...ks)=>ks.some(k=>s.indexOf(k)>=0);
@@ -8899,7 +8853,7 @@ function _comprasInsumosHTML(){
   const rows=_cpInsRows();
   return _cpTela('Insumos','A ficha de cada item comprado — consumo, preço e fornecedores.',
     `<div class="cp-card" style="display:inline-block;max-width:100%;vertical-align:top"><table class="cp-tbl" style="width:auto">
-      <thead><tr><th>Código</th><th>Categoria</th><th>Item</th></tr></thead>
+      <thead><tr><th>Cód.</th><th>Categoria</th><th>Item</th></tr></thead>
       <tbody id="cp-ins-tbody">${_cpInsTbodyHTML()}</tbody></table>
       <div style="font-size:10.5px;color:var(--text3);padding:8px 14px;max-width:640px"><span id="cp-ins-count">${rows.length}</span> itens · ordenado por nome. ⚠️ Categoria derivada do nome (o ERP não exporta o campo família).</div>
     </div>`, undefined, filtrosBtn+_cpLupa(_cpInsBuscaAberta,_cpInsBusca,'_cpInsBuscaToggle','_cpInsBuscaInput','cp-ins-busca','Buscar item…'));
@@ -8918,7 +8872,10 @@ let _cpFichaView='resumo';    // 'resumo' | 'graficos'
 let _cpNotView='panorama';    // sub-navbar interna da aba Notícias: 'panorama'|'noticias'|'analise'|'recomendacao'
 
 function _cpItemSerie(o){
-  const anoCons=2026;
+  // Ano a que se refere _CP_CONS — DERIVADO da data da posição do export (não fixo). O `m<=7` já foi
+  // parametrizado em 31/08; o ano era o último resto: quando o export virar 2027, o consumo seguiria
+  // sendo plotado em 2026. Agora os dois se ajustam sozinhos ao trocar os dados.
+  const anoCons=parseInt(String(_CP_POSDATA||'').slice(0,4),10)||2026;
   const set=new Set();
   o.compras.forEach(l=>set.add(l.data.slice(0,7)));
   if(o.cons) o.cons.forEach((v,i)=>set.add(anoCons+'-'+String(i+1).padStart(2,'0')));
@@ -8952,10 +8909,13 @@ function _cpSerieComPrev(o,serie){
   if(reais.length<2) return serie;
   const avg=reais.reduce((a,s)=>a+s.consumo,0)/reais.length;
   const last=serie.filter(s=>s.consumo!=null).slice(-1)[0]; if(!last) return serie;
-  const mult=[1.05,0.95,1.10,1.18,1.28,1.00]; // ago..jan — fábrica de doces/salgados sobe no fim do ano
+  // Sazonalidade indexada pelo MÊS DE CALENDÁRIO (jan..dez) — fábrica de doces/salgados sobe no fim do
+  // ano. ⚠️ Antes era uma lista relativa ("ago..jan") aplicada a partir do último mês com dado: a cada
+  // export novo o pico de dezembro deslizava um mês. Agora o mês manda, não a posição.
+  const SAZ=[1.00,0.92,0.98,0.96,1.00,1.02,1.05,1.05,0.95,1.10,1.18,1.28]; // jan..dez
   let y=last.y, m=last.m; const out=serie.slice();
-  for(let i=0;i<mult.length;i++){ m++; if(m>12){m=1;y++;}
-    out.push({ym:y+'-'+String(m).padStart(2,'0'), y:y, m:m, lbl:_cpMesLbl(y,m), consumo:null, valor:0, qtd:0, precoKg:null, nCompras:0, prev:Math.round(avg*mult[i]/100)*100});
+  for(let i=0;i<6;i++){ m++; if(m>12){m=1;y++;}
+    out.push({ym:y+'-'+String(m).padStart(2,'0'), y:y, m:m, lbl:_cpMesLbl(y,m), consumo:null, valor:0, qtd:0, precoKg:null, nCompras:0, prev:Math.round(avg*SAZ[m-1]/100)*100});
   }
   return out;
 }
@@ -9052,7 +9012,7 @@ function _cpNotSetView(v){ _cpNotView=v; const el=document.getElementById('cp-fi
 function _cpFichaSetView(v){
   _cpFichaView=v;
   const el=document.getElementById('cp-ficha-main');
-  if(el && _cpItemSel && _cpIdx()[_cpItemSel]){ el.innerHTML=_cpFichaMainHTML(_cpIdx()[_cpItemSel]); el.scrollTop=0; el.classList.toggle('cp-body-wide', v==='resumo'||v==='graficos'||v==='fornecedores'); }
+  if(el && _cpItemSel && _cpIdx()[_cpItemSel]){ el.innerHTML=_cpFichaMainHTML(_cpIdx()[_cpItemSel]); el.scrollTop=0; }
   // Atualiza o estado ativo tanto do rail vertical (tela cheia) quanto da sub-navbar horizontal (não-expandido).
   document.querySelectorAll('[onclick^="_cpFichaSetView"]').forEach(b=>b.classList.toggle('on', b.getAttribute('onclick').indexOf("'"+v+"'")>=0));
 }
@@ -9104,9 +9064,6 @@ function _cpSimToggleCarga(){ _cpSim.usarCarga=!_cpSim.usarCarga; if(!_cpSim.usa
 function _cpDiasEntre(isoA,isoB){ const a=new Date(isoA+'T00:00:00'), b=new Date(isoB+'T00:00:00'); return Math.round((b-a)/86400000); }
 function _cpSimEntregas(n){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; const e=_cpSim.entregas; if(n<1) n=1; for(let i=0;i<n;i++){ if(e[i]==null) e[i]=''; } e.length=n; return e; }
 function _cpSimRefreshResult(){ const el=document.getElementById('cp-sim-result'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.innerHTML=_cpSimResult(_cpIdx()[_cpItemSel]); }
-function _cpSimSetEntrega(i,val){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; _cpSim.entregas[i]=val; _cpSimRefreshResult(); }
-// RAW: só guarda a data da entrega enquanto o usuário digita (sem refresh/rebuild, p/ não travar o ano no <input type=date>). O refresh vem no blur via _cpSimSetEntrega.
-function _cpSimSetEntregaRaw(i,val){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; _cpSim.entregas[i]=val; }
 function _cpSimAddEntrega(){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[today]; _cpSim.entregas.push(today); _cpSim.entregasQtd=[]; _cpSimRefreshResult(); }
 function _cpSimDelEntrega(i){ if(Array.isArray(_cpSim.entregas) && _cpSim.entregas.length>1){ _cpSim.entregas.splice(i,1); _cpSim.entregasQtd=[]; _cpSimRefreshResult(); } }
 // Quantidade por entrega (modos NÃO-cargas): o usuário digita as N-1 primeiras; a ÚLTIMA completa o total (resto).
@@ -9121,14 +9078,6 @@ function _cpSimQtds(total, N){
   return arr;
 }
 function _cpSimSetEntregaQtd(i,val){ if(!Array.isArray(_cpSim.entregasQtd)) _cpSim.entregasQtd=[]; _cpSim.entregasQtd[i]=val; _cpSimRefreshResult(); }
-// ── Cronograma: atualização EM-LUGAR (Diego): campos de data NÃO podem ser recriados enquanto se digita/seleciona
-// (recriar mata o foco e o picker → "preenche sozinho / cai fora"). Ao mudar uma data, recalculamos o FEFO e
-// trocamos SÓ os textos (dura até / aviso / ruptura), nunca os <input type=date>. As linhas aparecem todas juntas.
-function _cpSimEntregaLive(i,val){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; _cpSim.entregas[i]=val; _cpSimCronoTextos(); }
-// onchange (commit) da data da entrega: se o comprador digitou só 2 dígitos no ANO (ex.: 26/27), o <input type=date>
-// guarda como 0026/0027 → aqui normaliza p/ 2026/2027. Atualiza só os textos (sem rebuild, p/ não perder foco/calendário).
-// [dead code — substituído pelo campo de TEXTO dd/mm/aa abaixo; mantido só por segurança]
-function _cpSimEntregaCommit(i,el){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; let v=el?String(el.value||''):''; const m=v.match(/^(\d{1,4})-(\d{2})-(\d{2})$/); if(m){ let y=parseInt(m[1],10); if(y>0 && y<100){ y+=2000; v=String(y).padStart(4,'0')+'-'+m[2]+'-'+m[3]; if(el) el.value=v; } } _cpSim.entregas[i]=v; _cpSimCronoTextos(); }
 // ── Data da carga em dd/mm/aa (ano de 2 dígitos) — Diego quer DIGITAR e VER só os 2 últimos dígitos do ano.
 // O <input type=date> nativo força 4 dígitos, então o cronograma usa um campo de TEXTO com máscara. Guarda ISO (20aa) em _cpSim.entregas.
 function _cpParseDataCurta(txt){ const d=String(txt==null?'':txt).replace(/[^\d]/g,''); if(d.length<6) return ''; const dd=d.slice(0,2), mm=d.slice(2,4), yr=d.slice(4,8); const D=+dd, M=+mm; const Y=yr.length<=2?2000+parseInt(yr.slice(0,2),10):parseInt(yr.slice(0,4),10); if(!(D>=1&&D<=31&&M>=1&&M<=12&&Y>=2000&&Y<=2100)) return ''; return String(Y).padStart(4,'0')+'-'+mm+'-'+dd; }
@@ -9308,7 +9257,7 @@ function _cpSimResult(o){
       ? `<div style="font-size:11.5px;color:var(--text3)"><i class="ti ti-truck" style="color:var(--blue-mid)"></i> Fecha exatamente <b style="color:var(--text)">${piso} carga${piso===1?'':'s'}</b> cheia${piso===1?'':'s'} (1 = ${cLbl} t).</div>`
       : `<div style="font-size:11.5px;color:var(--text3)"><div><i class="ti ti-truck" style="color:var(--blue-mid)"></i> Carga fechada (1 = ${cLbl} t) — dá ${_cpNum(frac,1)}. <b style="color:var(--text2)">Escolha quantas comprar:</b></div>${piso>=1?optLine(piso):''}${optLine(teto)}</div>`;
   }
-  // CRONOGRAMA DE ENTREGAS + validade via FEFO. Datas mudam SÓ os textos (via _cpSimEntregaLive → _cpSimCronoTextos),
+  // CRONOGRAMA DE ENTREGAS + validade via FEFO. Datas mudam SÓ os textos (via _cpSimEntregaTextoLive/Blur → _cpSimCronoTextos),
   // NUNCA recriam os <input type=date> (evita o bug de "preencher sozinho / cai fora" no meio da seleção).
   // Todas as linhas aparecem juntas (o reveal 1-a-1 era o que forçava o rebuild no meio da digitação).
   const consMes=_cpConsMesSel(o)||o.consMed||(o.consDia?o.consDia*30:0);
@@ -9581,11 +9530,11 @@ function _cpUltimasComprasCard(o){
     <td class="cp-n">${l.aliq!=null?_cpNum(l.aliq,0)+'%':'—'}</td>
     <td class="cp-n">${(l.vun&&l.aliq!=null)?_cpBRL(l.vun*(1-l.aliq/100)):'—'}</td>
     <td class="cp-n" style="color:var(--text3)">—</td>
-  </tr>`).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:16px">Sem compras.</td></tr>`;
+  </tr>`).join('') || `<tr><td colspan="7">${_cpVazio("Sem compras.")}</td></tr>`;
   return `<div class="cp-card" style="padding:15px 17px 8px">
     <div class="cp-card-title"><span>Últimas compras</span></div>
     <div style="overflow-x:auto"><table class="cp-tbl cp-tbl-sm" style="font-size:11px">
-      <thead><tr><th>Data</th><th>Fornecedor</th><th class="r">Preço</th><th class="r">Qtde</th><th class="r">ICMS</th><th class="r" title="Preço líquido do ICMS">Preço Net</th><th class="r">Prazo</th></tr></thead>
+      <thead><tr><th>Data</th><th>Fornecedor</th><th class="r">Vlr unit.</th><th class="r">Qtde</th><th class="r">ICMS %</th><th class="r" title="Preço líquido do ICMS">Vlr net</th><th class="r">Prazo</th></tr></thead>
       <tbody>${linhas}</tbody></table></div>
   </div>`;
 }
@@ -9594,7 +9543,11 @@ function _cpUltimasComprasCard(o){
 // como EXEMPLO só p/ demonstrar o FORMATO ao Guilherme; o dado real virá do export de "pedidos em
 // aberto" do ERP (item nº 1 da lista a decidir com a TI — ver BACKLOG "COMPRAS v4" no CLAUDE.md).
 const _CP_OC=JSON.parse('{"20233":[{"oc":"OC-8975","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-01-19","prevista":"2026-01-22","qtd":2600,"entregue":2413},{"oc":"OC-9411","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-03-18","prevista":"2026-03-20","qtd":3000,"entregue":0},{"oc":"OC-10203","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-07-24","prevista":"2026-07-29","qtd":5000,"entregue":4908},{"oc":"OC-10396","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-08-17","prevista":"2026-08-21","qtd":6000,"entregue":0}],"20037":[{"oc":"OC-9070","forn":"GFB FERRONATO MOAGEM E FAB DE POLENTAS E DERIVADOS LTDA","emissao":"2026-02-02","prevista":"2026-02-05","qtd":1700,"entregue":0},{"oc":"OC-9172","forn":"GFB FERRONATO MOAGEM E FAB DE POLENTAS E DERIVADOS LTDA","emissao":"2026-02-13","prevista":"2026-02-19","qtd":1190,"entregue":0},{"oc":"OC-9270","forn":"GFB FERRONATO MOAGEM E FAB DE POLENTAS E DERIVADOS LTDA","emissao":"2026-02-27","prevista":"2026-03-05","qtd":1700,"entregue":0},{"oc":"OC-10470","forn":"GFB FERRONATO MOAGEM E FAB DE POLENTAS E DERIVADOS LTDA","emissao":"2026-08-27","prevista":"2026-09-01","qtd":1700,"entregue":0}],"20017":[{"oc":"OC-9341","forn":"JOE LORENZATO","emissao":"2026-03-10","prevista":"2026-04-16","qtd":36000,"entregue":0},{"oc":"OC-9342","forn":"JOE LORENZATO","emissao":"2026-03-10","prevista":"2026-05-22","qtd":36000,"entregue":0},{"oc":"OC-10461","forn":"ALMEIDA & ALMEIDA IMPORTACAO E EXPORTACAO LTDA","emissao":"2026-08-27","prevista":"2026-09-21","qtd":30000,"entregue":0}],"20236":[{"oc":"OC-9411","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-03-18","prevista":"2026-03-20","qtd":2600,"entregue":2550},{"oc":"OC-9816","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-05-26","prevista":"2026-05-29","qtd":2600,"entregue":0},{"oc":"OC-9974","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-06-23","prevista":"2026-06-29","qtd":3000,"entregue":0},{"oc":"OC-10136","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-07-16","prevista":"2026-07-20","qtd":3000,"entregue":2750},{"oc":"OC-10211","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-07-24","prevista":"2026-07-31","qtd":2600,"entregue":2575},{"oc":"OC-10396","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-08-17","prevista":"2026-08-21","qtd":2600,"entregue":0}],"20231":[{"oc":"OC-9411","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-03-18","prevista":"2026-03-20","qtd":1300,"entregue":1297},{"oc":"OC-9974","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-06-23","prevista":"2026-06-29","qtd":3000,"entregue":2865}],"20042":[{"oc":"OC-9418","forn":"DEKEL AGRO INDUSTRIA LIMITADA","emissao":"2026-03-18","prevista":"2026-04-20","qtd":35000,"entregue":0},{"oc":"OC-10140","forn":"ALLOILS BRASIL S.A.","emissao":"2026-07-16","prevista":"2026-08-31","qtd":40000,"entregue":0},{"oc":"OC-10141","forn":"ALLOILS BRASIL S.A.","emissao":"2026-07-16","prevista":"2026-09-28","qtd":40000,"entregue":0},{"oc":"OC-10142","forn":"ALLOILS BRASIL S.A.","emissao":"2026-07-16","prevista":"2026-10-26","qtd":40000,"entregue":0},{"oc":"OC-10143","forn":"ALLOILS BRASIL S.A.","emissao":"2026-07-16","prevista":"2026-11-23","qtd":40000,"entregue":0},{"oc":"OC-10144","forn":"ALLOILS BRASIL S.A.","emissao":"2026-07-16","prevista":"2026-12-30","qtd":40000,"entregue":0}],"20016":[{"oc":"OC-9433","forn":"Mastersense Ingredientes Alimenticios Ltda","emissao":"2026-03-23","prevista":"2026-03-23","qtd":48,"entregue":0},{"oc":"OC-9699","forn":"CARGILL AGRICOLA SA","emissao":"2026-05-07","prevista":"2026-06-05","qtd":26000,"entregue":0},{"oc":"OC-9702","forn":"CARGILL AGRICOLA SA","emissao":"2026-05-07","prevista":"2026-09-08","qtd":26000,"entregue":0}],"20019":[{"oc":"OC-9443","forn":"BORTOLOTI & VAZ LTDA","emissao":"2026-03-25","prevista":"2026-09-30","qtd":14000,"entregue":0}],"30207":[{"oc":"OC-9457","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-03-27","prevista":"2026-03-27","qtd":2000,"entregue":1642},{"oc":"OC-9491","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-04-02","prevista":"2026-04-07","qtd":1300,"entregue":0}],"20001":[{"oc":"OC-9463","forn":"J. Roberto Comercio Atacadista de Acucar Ltda","emissao":"2026-03-30","prevista":"2026-04-07","qtd":40000,"entregue":0},{"oc":"OC-9464","forn":"J. Roberto Comercio Atacadista de Acucar Ltda","emissao":"2026-03-30","prevista":"2026-04-07","qtd":40000,"entregue":0},{"oc":"OC-9465","forn":"J. Roberto Comercio Atacadista de Acucar Ltda","emissao":"2026-03-30","prevista":"2026-04-14","qtd":40000,"entregue":0}],"20063":[{"oc":"OC-9488","forn":"Horst Agronegocios Eireli","emissao":"2026-04-02","prevista":"2026-04-06","qtd":600,"entregue":0},{"oc":"OC-10430","forn":"Horst Agronegocios Eireli","emissao":"2026-08-21","prevista":"2026-08-24","qtd":600,"entregue":0}],"1146":[{"oc":"OC-9565","forn":"ALLOILS BRASIL S.A.","emissao":"2026-04-13","prevista":"2026-04-30","qtd":5520,"entregue":0}],"30157":[{"oc":"OC-9747","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-05-15","prevista":"2026-05-19","qtd":2600,"entregue":2508},{"oc":"OC-9962","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-06-19","prevista":"2026-06-25","qtd":3000,"entregue":2998},{"oc":"OC-10211","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-07-24","prevista":"2026-07-31","qtd":2600,"entregue":2332}],"20228":[{"oc":"OC-9746","forn":"PAMPARAFIA IND E COM DE EMBALAGENS LTDA","emissao":"2026-05-14","prevista":"2026-05-22","qtd":1700,"entregue":0},{"oc":"OC-9816","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-05-26","prevista":"2026-05-29","qtd":2500,"entregue":0},{"oc":"OC-10079","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-07-08","prevista":"2026-07-13","qtd":1300,"entregue":0},{"oc":"OC-10211","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-07-24","prevista":"2026-07-31","qtd":2600,"entregue":2425}],"20230":[{"oc":"OC-9767","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-05-19","prevista":"2026-05-22","qtd":10000,"entregue":9575},{"oc":"OC-9816","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-05-26","prevista":"2026-05-29","qtd":7230,"entregue":0},{"oc":"OC-9974","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-06-23","prevista":"2026-06-29","qtd":5000,"entregue":4936},{"oc":"OC-10046","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-07-03","prevista":"2026-07-08","qtd":10000,"entregue":7487},{"oc":"OC-10199","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-07-23","prevista":"2026-07-27","qtd":6000,"entregue":5975}],"20232":[{"oc":"OC-9767","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-05-19","prevista":"2026-05-22","qtd":2600,"entregue":2585},{"oc":"OC-10091","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-07-09","prevista":"2026-07-10","qtd":1500,"entregue":0},{"oc":"OC-10434","forn":"PRIMO TEDESCO S/A","emissao":"2026-08-21","prevista":"2026-09-04","qtd":4000,"entregue":0}],"20234":[{"oc":"OC-9816","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-05-26","prevista":"2026-05-29","qtd":4280,"entregue":0}],"383":[{"oc":"OC-9816","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-05-26","prevista":"2026-05-29","qtd":1418,"entregue":0},{"oc":"OC-9839","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-05-29","prevista":"2026-06-02","qtd":2000,"entregue":0}],"20227":[{"oc":"OC-9839","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-05-29","prevista":"2026-06-02","qtd":3000,"entregue":2965},{"oc":"OC-9962","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-06-19","prevista":"2026-06-25","qtd":3000,"entregue":0}],"20261":[{"oc":"OC-9839","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-05-29","prevista":"2026-06-02","qtd":1300,"entregue":200}],"703":[{"oc":"OC-9870","forn":"PRATIKA MIX FAB DE COMPOSTO ALIMENT LTDA","emissao":"2026-06-03","prevista":"2026-07-29","qtd":4000,"entregue":2000},{"oc":"OC-10264","forn":"Cleo Inacio Gonzaga","emissao":"2026-07-31","prevista":"2026-08-28","qtd":2500,"entregue":2000}],"1040":[{"oc":"OC-9924","forn":"LA TROPILHA INDUSTRIA E COMERCIO LTDA","emissao":"2026-06-11","prevista":"2026-06-26","qtd":25000,"entregue":0}],"20146":[{"oc":"OC-9971","forn":"Cooperativa Agricola Mixta Sao Roque Ltda","emissao":"2026-06-23","prevista":"2026-08-17","qtd":17500,"entregue":0},{"oc":"OC-10474","forn":"MOINHO REDENTOR LTDA","emissao":"2026-08-28","prevista":"2026-09-03","qtd":15000,"entregue":0}],"20297":[{"oc":"OC-10000","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-06-26","prevista":"2026-07-10","qtd":1000,"entregue":994},{"oc":"OC-10487","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-08-31","prevista":"2026-09-03","qtd":1000,"entregue":0}],"20059":[{"oc":"OC-9995","forn":"Riberpan Com. de Alimentos Ltda - Matriz","emissao":"2026-06-25","prevista":"2026-08-20","qtd":900,"entregue":0}],"20009":[{"oc":"OC-10042","forn":"GENCAU SAO PAULO - INDUSTRIA E COMERCIO DE INGREDIENTES ALIM","emissao":"2026-07-03","prevista":"2026-09-23","qtd":5000,"entregue":0},{"oc":"OC-10043","forn":"GENCAU SAO PAULO - INDUSTRIA E COMERCIO DE INGREDIENTES ALIM","emissao":"2026-07-03","prevista":"2026-10-21","qtd":5000,"entregue":0},{"oc":"OC-10044","forn":"GENCAU SAO PAULO - INDUSTRIA E COMERCIO DE INGREDIENTES ALIM","emissao":"2026-07-03","prevista":"2026-11-18","qtd":5000,"entregue":0},{"oc":"OC-10045","forn":"GENCAU SAO PAULO - INDUSTRIA E COMERCIO DE INGREDIENTES ALIM","emissao":"2026-07-03","prevista":"2026-12-16","qtd":5000,"entregue":0}],"20251":[{"oc":"OC-10046","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-07-03","prevista":"2026-07-08","qtd":1000,"entregue":991}],"30519":[{"oc":"OC-10085","forn":"Sopasta S/A Industria e Comercio","emissao":"2026-07-08","prevista":"2026-07-17","qtd":8000,"entregue":0},{"oc":"OC-10484","forn":"PRIMO TEDESCO S/A","emissao":"2026-08-31","prevista":"2026-10-02","qtd":8000,"entregue":0}],"20147":[{"oc":"OC-10095","forn":"Cooperativa Agricola Mixta Sao Roque Ltda","emissao":"2026-07-10","prevista":"2026-07-16","qtd":17500,"entregue":14000},{"oc":"OC-10463","forn":"Cooperativa Agricola Mixta Sao Roque Ltda","emissao":"2026-08-27","prevista":"2026-09-01","qtd":17500,"entregue":0}],"20180":[{"oc":"OC-10102","forn":"TRADICAO GOURMET IND E COM DE CHOCOLATES LTDA","emissao":"2026-07-10","prevista":"2026-07-10","qtd":650,"entregue":0},{"oc":"OC-10102","forn":"TRADICAO GOURMET IND E COM DE CHOCOLATES LTDA","emissao":"2026-07-10","prevista":"2026-07-10","qtd":850,"entregue":0}],"30572":[{"oc":"OC-10119","forn":"MILHAO INDUSTRIA E COMERCIO DE INGREDIENTES E CEREAIS S.A","emissao":"2026-07-14","prevista":"2026-07-27","qtd":8750,"entregue":7375}],"30594":[{"oc":"OC-10179","forn":"CENTRAL DE AMENDOIM LTDA","emissao":"2026-07-20","prevista":"2026-07-22","qtd":800,"entregue":0},{"oc":"OC-10473","forn":"CENTRAL DE AMENDOIM LTDA","emissao":"2026-08-28","prevista":"2026-08-28","qtd":800,"entregue":0}],"30573":[{"oc":"OC-10259","forn":"MASTERGOLD INDUSTRIA E COMERCIO DE MILHO LTDA","emissao":"2026-07-30","prevista":"2026-08-05","qtd":500,"entregue":250}],"20203":[{"oc":"OC-10354","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-08-11","prevista":"2026-08-14","qtd":1000,"entregue":825},{"oc":"OC-10425","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-08-19","prevista":"2026-08-24","qtd":1000,"entregue":909}],"20314":[{"oc":"OC-10410","forn":"DUAS RODAS INDUSTRIAL SA","emissao":"2026-08-18","prevista":"2026-08-28","qtd":210,"entregue":0}],"20312":[{"oc":"OC-10411","forn":"DUAS RODAS INDUSTRIAL SA","emissao":"2026-08-18","prevista":"2026-09-04","qtd":200,"entregue":0}],"19012":[{"oc":"OC-10418","forn":"Biscoitos Roseila Ltda","emissao":"2026-08-19","prevista":"2026-09-01","qtd":550,"entregue":0}],"19013":[{"oc":"OC-10418","forn":"Biscoitos Roseila Ltda","emissao":"2026-08-19","prevista":"2026-09-01","qtd":250,"entregue":0}],"30063":[{"oc":"OC-10413","forn":"Pamplastic Industria e Comercio de Embalagens Plasticas Eire","emissao":"2026-08-18","prevista":"2026-10-22","qtd":100000,"entregue":0}],"20104":[{"oc":"OC-10414","forn":"DUAS RODAS INDUSTRIAL SA","emissao":"2026-08-18","prevista":"2026-09-18","qtd":500,"entregue":0}],"30570":[{"oc":"OC-10414","forn":"DUAS RODAS INDUSTRIAL SA","emissao":"2026-08-18","prevista":"2026-09-18","qtd":100,"entregue":0}],"20278":[{"oc":"OC-10415","forn":"DUAS RODAS INDUSTRIAL SA","emissao":"2026-08-18","prevista":"2026-09-18","qtd":125,"entregue":0}],"20279":[{"oc":"OC-10415","forn":"DUAS RODAS INDUSTRIAL SA","emissao":"2026-08-18","prevista":"2026-09-18","qtd":170,"entregue":0}],"20277":[{"oc":"OC-10415","forn":"DUAS RODAS INDUSTRIAL SA","emissao":"2026-08-18","prevista":"2026-09-18","qtd":500,"entregue":0}],"20111":[{"oc":"OC-10421","forn":"DUAS RODAS INDUSTRIAL SA","emissao":"2026-08-19","prevista":"2026-09-22","qtd":51,"entregue":0}],"20051":[{"oc":"OC-10441","forn":"Beiruth Ind. de Produtos Alimenticios Ltda","emissao":"2026-08-24","prevista":"2026-09-02","qtd":10000,"entregue":0}],"20144":[{"oc":"OC-10442","forn":"LPA LABORATORIOS PRODS. AROMATICOS LTDA","emissao":"2026-08-24","prevista":"2026-09-02","qtd":200,"entregue":0}],"20145":[{"oc":"OC-10442","forn":"LPA LABORATORIOS PRODS. AROMATICOS LTDA","emissao":"2026-08-24","prevista":"2026-09-02","qtd":150,"entregue":0}],"20010":[{"oc":"OC-10457","forn":"PALSGAARD CANDON S/A","emissao":"2026-08-26","prevista":"2026-09-25","qtd":600,"entregue":0}],"20065":[{"oc":"OC-10458","forn":"SOLAR COM E AGROINDUSTRIA LTDA","emissao":"2026-08-26","prevista":"2026-09-24","qtd":400,"entregue":0}],"20143":[{"oc":"OC-10472","forn":"AGROINDUSTRIA DE LATICINIOS FIORE D\' LATTE LTDA","emissao":"2026-08-28","prevista":"2026-09-04","qtd":100,"entregue":0}],"20168":[{"oc":"OC-10473","forn":"CENTRAL DE AMENDOIM LTDA","emissao":"2026-08-28","prevista":"2026-08-28","qtd":800,"entregue":0}],"20101":[{"oc":"OC-10475","forn":"DUAS RODAS INDUSTRIAL SA","emissao":"2026-08-28","prevista":"2026-09-11","qtd":100,"entregue":0}],"20062":[{"oc":"OC-10475","forn":"DUAS RODAS INDUSTRIAL SA","emissao":"2026-08-28","prevista":"2026-09-11","qtd":60,"entregue":0}],"20315":[{"oc":"OC-10485","forn":"OCTO IND DE EMBALAGENS LTDA","emissao":"2026-08-31","prevista":"2026-09-08","qtd":1500,"entregue":0}],"20316":[{"oc":"OC-10485","forn":"OCTO IND DE EMBALAGENS LTDA","emissao":"2026-08-31","prevista":"2026-09-08","qtd":1500,"entregue":0}],"20296":[{"oc":"OC-10487","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-08-31","prevista":"2026-09-03","qtd":1000,"entregue":0}],"20298":[{"oc":"OC-10487","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-08-31","prevista":"2026-09-03","qtd":1000,"entregue":0}],"20299":[{"oc":"OC-10487","forn":"NEW PACK EMBALAGENS INDUSTRIAIS LTDA","emissao":"2026-08-31","prevista":"2026-09-03","qtd":1000,"entregue":0}],"19009":[{"oc":"OC-10488","forn":"Panificadora Closs Ltda","emissao":"2026-08-31","prevista":"2026-09-14","qtd":900,"entregue":0}]}');
-function _cpOCsItem(o){ return (_CP_OC[o.cod]||[]).filter(_cpOcViva).map(p=>({...p, saldo:Math.max(0,(p.qtd||0)-(p.entregue||0))})); }
+// ⚠️ _CP_OC (mapa por item, qtd = pedido total) e _CP_OCABERTO (lista, qtd = saldo a entregar) são
+// gerados do MESMO export, mas com semânticas de quantidade diferentes. O `saldo>0` abaixo garante
+// que uma OC já entregue por completo não engorde o contador do card ("N · X a caminho") enquanto
+// o "Estoque disponível" (via _cpOcSaldo) a ignora — os dois números ficam contando a mesma coisa.
+function _cpOCsItem(o){ return (_CP_OC[o.cod]||[]).filter(_cpOcViva).map(p=>({...p, saldo:Math.max(0,(p.qtd||0)-(p.entregue||0))})).filter(p=>p.saldo>0); }
 function _cpOCsCard(o){
   const um=o.um||'';
   const ocs=_cpOCsItem(o);
@@ -9868,7 +9821,7 @@ function _cpFichaFornecedores(o){
     <td class="cp-mono">${_cpDt(f.ult)}</td></tr>`;}).join('');
   const tabela=`<div class="cp-card" style="overflow:hidden"><table class="cp-tbl cp-forn-mini">
       <colgroup><col style="width:25%"><col style="width:17%"><col style="width:8%"><col style="width:9%"><col style="width:15%"><col style="width:13%"><col style="width:13%"></colgroup>
-      <thead><tr><th>Fornecedor</th><th class="r">Comprado</th><th class="r">%</th><th class="r">Compras</th><th class="r">Qtde total</th><th class="r">Últ. preço</th><th class="r">Últ. compra</th></tr></thead>
+      <thead><tr><th>Fornecedor</th><th class="r">Total</th><th class="r">%</th><th class="r">Compras</th><th class="r">Qtde</th><th class="r">Últ. preço</th><th>Últ. compra</th></tr></thead>
       <tbody>${linhas}</tbody></table>
       <div style="font-size:11.5px;color:var(--text3);padding:8px 14px"><i class="ti ti-hand-finger"></i> Clique num fornecedor para ver a ficha dele ao lado.</div></div>`;
   const detalhe=_cpFichaFornSel ? _cpFornDetalheInline(_cpFichaFornSel)
@@ -9877,8 +9830,12 @@ function _cpFichaFornecedores(o){
 }
 // Ficha do fornecedor COMPACTA (coluna direita) — reusa a lógica da ficha completa, sem o wrapper de tela.
 function _cpFornDetalheInline(cod){
-  const f=_cpFornAgg('T').find(x=>x.cod===cod);
-  if(!f) return `<div class="cp-card" style="padding:24px;text-align:center;color:var(--text3)">Sem compras deste fornecedor no período (${_cpFornMeses?('últimos '+_cpFornMeses+' meses'):'tudo'}).</div>`;
+  // ⚠️ HISTÓRICO COMPLETO (meses=0), não o filtro da tela Fornecedores: a tabela ao lado (que lista
+  // os fornecedores DESTE item) agrega o.compras sem limite de período. Com a janela de 12 meses,
+  // um fornecedor antigo aparecia na lista e o detalhe caía em "sem compras no período", e os totais
+  // esquerda × direita divergiam sem nada explicar.
+  const f=_cpFornAgg('I',0).find(x=>x.cod===cod);
+  if(!f) return `<div class="cp-card" style="padding:24px;text-align:center;color:var(--text3)">Sem compras deste fornecedor.</div>`;
   const it={};
   f.linhas.forEach(l=>{ const k=l.item[0]; if(!it[k]) it[k]={nome:l.item[1],cod:k,total:0,qtd:0,um:l.um,ult:l.data,preco:l.vun};
     it[k].total+=l.tot; it[k].qtd+=l.qtd; if(l.data>it[k].ult){it[k].ult=l.data;it[k].preco=l.vun;} });
@@ -9892,7 +9849,7 @@ function _cpFornDetalheInline(cod){
       <td class="cp-mono">${_cpDt(i.ult)}</td></tr>`).join('');
   const ultimas=f.linhas.slice().sort((a,b)=>a.data<b.data?1:-1).slice(0,20).map(l=>
     `<tr><td class="cp-mono">${_cpDt(l.data)}</td><td class="cp-mono">${escapeHTML(String(l.nf))}</td>
-     <td class="cp-mono">${escapeHTML(String(l.item[0]))}</td><td class="cp-item">${escapeHTML(l.item[1])}</td><td class="cp-n">${_cpNum(l.qtd,2)}</td>
+     <td class="cp-mono">${escapeHTML(String(l.item[0]))}</td><td class="cp-item">${escapeHTML(l.item[1])}</td><td class="cp-n">${_cpNum(l.qtd,2)} <span class="cp-un">${escapeHTML(l.um||"")}</span></td>
      <td class="cp-n">${_cpBRL(l.vun)}</td><td class="cp-n">${_cpBRL(l.tot)}</td></tr>`).join('');
   return `<div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:11px">
@@ -9908,7 +9865,7 @@ function _cpFornDetalheInline(cod){
     <div style="font-size:11px;color:var(--text3);margin:-4px 2px 12px;line-height:1.45"><i class="ti ti-info-circle"></i> Prazo de pagamento/entrega não vêm no export do ERP — entram aqui quando tivermos. Período: ${_cpFornMeses?('últimos '+_cpFornMeses+' meses'):'tudo'}.</div>
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:0 2px 6px">Itens fornecidos</div>
     <div class="cp-card" style="overflow-x:auto;margin-bottom:12px"><table class="cp-tbl" style="font-size:12px">
-      <thead><tr><th>Cód.</th><th>Item</th><th class="r">Qtde total</th><th class="r">Últ. preço</th><th class="r">Total</th><th class="r">Últ. compra</th></tr></thead>
+      <thead><tr><th>Cód.</th><th>Item</th><th class="r">Qtde</th><th class="r">Últ. preço</th><th class="r">Total</th><th>Últ. compra</th></tr></thead>
       <tbody>${linhasIt}</tbody></table></div>
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:0 2px 6px">Últimas entradas</div>
     <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl" style="font-size:12px">
@@ -9936,8 +9893,8 @@ function _cpFichaHistorico(o){
   const linha=l=>{ const base=l.med3||0, dif=base>0?((l.vun-base)/base*100):null;
     let dc='var(--text3)',db='transparent';
     if(dif!==null){ if(dif>10){dc='var(--danger)';db='var(--danger-bg)';} else if(dif>3){dc='var(--amber)';db='var(--amber-bg)';} else if(dif<-3){dc='var(--success)';db='var(--success-bg)';} }
-    return `<tr><td class="cp-mono">${_cpDt(l.data)}</td><td>${escapeHTML(l.forn[1])}</td><td class="cp-mono">${escapeHTML(String(l.nf))}</td>
-      <td class="cp-n">${_cpNum(l.qtd,2)}</td><td class="cp-n">${_cpBRL(l.vun)}</td>
+    return `<tr><td class="cp-mono">${_cpDt(l.data)}</td><td class="cp-item" style="font-weight:400;max-width:200px" title="${escapeAttr(_cpForn(l.forn[1]))}">${escapeHTML(_cpForn(l.forn[1]))}</td><td class="cp-mono">${escapeHTML(String(l.nf))}</td>
+      <td class="cp-n">${_cpNum(l.qtd,2)} <span class="cp-un">${escapeHTML(l.um||'')}</span></td><td class="cp-n">${_cpBRL(l.vun)}</td>
       <td class="cp-n"><span class="cp-pill" style="color:${dc};background:${db}">${dif===null?'—':(dif>0?'+':'')+dif.toFixed(1)+'%'}</span></td>
       <td class="cp-n">${_cpBRL(l.tot)}</td></tr>`; };
   const tab=comprasMes.map(linha).join('');
@@ -9989,7 +9946,7 @@ let _cpFornSel=null, _cpFornMeses=12, _cpFornBusca='', _cpFornBuscaAberta=false;
 function _cpFornBuscaToggle(){ _cpFornBuscaAberta=!_cpFornBuscaAberta; if(!_cpFornBuscaAberta) _cpFornBusca=''; renderCompras(); if(_cpFornBuscaAberta) setTimeout(function(){ var el=document.getElementById('cp-forn-busca'); if(el) el.focus(); },30); }
 function _cpFornBuscaInput(el){ _cpFornBusca=el.value; const tb=document.getElementById('cp-forn-tbody'); if(tb) tb.innerHTML=_cpFornRowsHTML(); }
 function _cpFornRowsHTML(){
-  const L=_cpFornAgg('T'); const tot=L.reduce((a,f)=>a+f.total,0);
+  const L=_cpFornAgg('I'); const tot=L.reduce((a,f)=>a+f.total,0);
   const q=(_cpFornBusca||'').trim().toLowerCase(); let acc=0; const out=[];
   L.slice(0,300).forEach((f,i)=>{
     acc+=f.total; const pAcc=tot?acc/tot*100:0;
@@ -10006,16 +9963,23 @@ function _cpFornRowsHTML(){
       <td class="cp-n">${Object.keys(f.nfs).length}</td><td class="cp-n">${Object.keys(f.itens).length}</td>
     </tr>`);
   });
-  return out.join('') || `<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Nenhum fornecedor com esse nome.</td></tr>`;
+  return out.join('') || `<tr><td colspan="9">${_cpVazio("Nenhum fornecedor para esse filtro.")}</td></tr>`;
 }
-function _cpAbrirForn(cod){ _cpFornSel=cod; try{document.body.classList.remove('cp-focus');}catch(e){} comprasView='fornecedores'; renderSidebar(); renderCompras(); window.scrollTo(0,0); }
+// ⚠️ Zera _cpItemSel: sem isso, sair da ficha de um item p/ a ficha do fornecedor e de lá abrir outro
+// item deixava _cpItemOrigem preso na tela de onde o PRIMEIRO item foi aberto — e o "Voltar" levava
+// pra tela errada (a regra é "Voltar volta p/ a tela de ORIGEM").
+function _cpAbrirForn(cod){ _cpFornSel=cod; _cpItemSel=null; _cpItemOrigem='fornecedores'; try{document.body.classList.remove('cp-focus');}catch(e){} comprasView='fornecedores'; renderSidebar(); renderCompras(); window.scrollTo(0,0); }
 function _cpVoltarForns(){ _cpFornSel=null; renderCompras(); }
 function _cpFornSetMeses(v){ _cpFornMeses=Number(v); renderCompras(); }
-function _cpFornAgg(escopo){
-  const lim=_cpLimiteMeses(_cpFornMeses);
+// meses: janela em meses (default = o filtro da tela Fornecedores). Passe 0 para "tudo".
+function _cpFornAgg(escopo, meses){
+  const lim=_cpLimiteMeses(meses===undefined?_cpFornMeses:meses);
   const m={};
   _cpLinhas().forEach(l=>{
     if(!_cpEscComprador(l.item[1],l.item[0])) return;   // só MP/embalagens (Manutenção = outro comprador)
+    // Todos os callers passam 'I' (insumos): é o mesmo escopo do Histórico (_cpHist.escopo='I') e das
+    // compras da ficha do item (_cpIdx filtra cls==='I'). Sem isso, linhas de Despesa entravam na
+    // curva ABC e na ficha do fornecedor mas não no Histórico — os três totais divergiam.
     if(escopo!=='T' && l.cls!==escopo) return;
     if(lim && l.data<lim) return;
     const k=l.forn[0]||l.forn[1];
@@ -10024,14 +9988,20 @@ function _cpFornAgg(escopo){
   });
   return Object.keys(m).map(k=>m[k]).sort((a,b)=>b.total-a.total);
 }
-function _cpLimiteMeses(n){ if(!n) return ''; const d=new Date(); d.setMonth(d.getMonth()-n);
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+// Data de corte "últimos N meses". Ancorada em `today` (não em new Date()) p/ acompanhar o tick da
+// meia-noite como o resto do bloco, e com o dia CLAMPADO ao último dia do mês de destino — senão
+// 31/mai − 3 meses viraria 02-03/mar (setMonth transborda) e o corte pulava alguns dias.
+function _cpLimiteMeses(n){ if(!n) return '';
+  const base=new Date(today+'T00:00:00'); let y=base.getFullYear(), m=base.getMonth()-n;
+  while(m<0){ m+=12; y--; }
+  const ultDia=new Date(y,m+1,0).getDate();
+  return y+'-'+String(m+1).padStart(2,'0')+'-'+String(Math.min(base.getDate(),ultDia)).padStart(2,'0'); }
 function _comprasFornecedoresHTML(){
   if(_cpFornSel) return _cpFichaFornHTML(_cpFornSel);
-  const L=_cpFornAgg('T');
+  const L=_cpFornAgg('I');
   const tot=L.reduce((a,f)=>a+f.total,0);
   const nA=(()=>{let a=0,n=0;for(const f of L){a+=f.total;n++;if(tot&&a/tot>=0.8)break;}return n;})();
-  const periodo=`<select onchange="_cpFornSetMeses(this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px">${[[3,'Últimos 3 meses'],[6,'Últimos 6 meses'],[12,'Últimos 12 meses'],[0,'Tudo']].map(o=>`<option value="${o[0]}"${_cpFornMeses===o[0]?' selected':''}>${o[1]}</option>`).join('')}</select>`;
+  const periodo=_cpSelPeriodo('Período',`<select onchange="_cpFornSetMeses(this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px">${[[3,'Últimos 3 meses'],[6,'Últimos 6 meses'],[12,'Últimos 12 meses'],[0,'Tudo']].map(o=>`<option value="${o[0]}"${_cpFornMeses===o[0]?' selected':''}>${o[1]}</option>`).join('')}</select>`);
   const acao=_cpLupa(_cpFornBuscaAberta,_cpFornBusca,'_cpFornBuscaToggle','_cpFornBuscaInput','cp-forn-busca','Buscar fornecedor…',periodo);
   return _cpTela('Fornecedores','Curva ABC por valor comprado — onde a negociação vale.',
     _cpKPIcards([
@@ -10041,12 +10011,13 @@ function _comprasFornecedoresHTML(){
       _cpKPI('Período',_cpFornMeses?('últimos '+_cpFornMeses+' meses'):'tudo')
     ])+
     `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
-      <thead><tr><th class="r">#</th><th>Fornecedor</th><th class="r">Comprado</th><th class="r">% do total</th><th class="r">% acum.</th><th class="r">Prazo de pagamento</th><th class="r">ABC</th><th class="r">NFs</th><th class="r">Itens</th></tr></thead>
+      <thead><tr><th class="r">#</th><th>Fornecedor</th><th class="r">Total</th><th class="r">% do total</th><th class="r">% acum.</th><th class="r">Prazo de pagamento</th><th class="r">ABC</th><th class="r">NFs</th><th class="r">Itens</th></tr></thead>
       <tbody id="cp-forn-tbody">${_cpFornRowsHTML()}</tbody></table></div>`, undefined, acao);
 }
 function _cpFichaFornHTML(cod){
-  const f=_cpFornAgg('T').find(x=>x.cod===cod);
-  if(!f) return _cpTela('Fornecedor','Fornecedor não encontrado no período.', `<button onclick="_cpVoltarForns()" class="btn-modal-cancel">← Voltar</button>`);
+  const f=_cpFornAgg('I').find(x=>x.cod===cod);
+  if(!f) return _cpTela('Fornecedor','Fornecedor não encontrado no período.', _cpVazio('Sem dados para este fornecedor no período selecionado.'),
+    undefined, undefined, {fn:'_cpVoltarForns()', label:'Voltar aos fornecedores'});
   // itens comprados dele
   const it={};
   f.linhas.forEach(l=>{ const k=l.item[0]; if(!it[k]) it[k]={nome:l.item[1],cod:k,total:0,qtd:0,um:l.um,ult:l.data,preco:l.vun};
@@ -10061,11 +10032,10 @@ function _cpFichaFornHTML(cod){
       <td class="cp-mono">${_cpDt(i.ult)}</td></tr>`).join('');
   const ultimas=f.linhas.slice().sort((a,b)=>a.data<b.data?1:-1).slice(0,25).map(l=>
     `<tr><td class="cp-mono">${_cpDt(l.data)}</td><td class="cp-mono">${escapeHTML(String(l.nf))}</td>
-     <td class="cp-mono">${escapeHTML(String(l.item[0]))}</td><td class="cp-item">${escapeHTML(l.item[1])}</td><td class="cp-n">${_cpNum(l.qtd,2)}</td>
+     <td class="cp-mono">${escapeHTML(String(l.item[0]))}</td><td class="cp-item">${escapeHTML(l.item[1])}</td><td class="cp-n">${_cpNum(l.qtd,2)} <span class="cp-un">${escapeHTML(l.um||"")}</span></td>
      <td class="cp-n">${_cpBRL(l.vun)}</td><td class="cp-n">${_cpBRL(l.tot)}</td></tr>`).join('');
-  return _cpTela(f.nome,'O que compramos deste fornecedor no período — leve para a reunião.',
-    `<div style="margin-bottom:14px"><button onclick="_cpVoltarForns()" class="btn-modal-cancel" style="padding:6px 12px;font-size:12.5px">← Todos os fornecedores</button></div>
-    ${_cpKPIrow([
+  return _cpTela(escapeHTML(_cpForn(f.nome)),'O que compramos deste fornecedor no período — leve para a reunião.',
+    `${_cpKPIcards([
       _cpKPI('Comprado',_cpBRL(f.total)),
       _cpKPI('Notas fiscais',_cpNum(Object.keys(f.nfs).length)),
       _cpKPI('Itens diferentes',_cpNum(itens.length)),
@@ -10073,12 +10043,13 @@ function _cpFichaFornHTML(cod){
     ])}
     <div style="font-size:12px;color:var(--text3);margin:-6px 2px 14px"><i class="ti ti-info-circle"></i> O prazo de pagamento e o de entrega não vêm neste export do ERP — quando tivermos, entram aqui ao lado do gasto.</div>
     <div class="cp-card" style="overflow-x:auto;margin-bottom:14px"><table class="cp-tbl">
-      <thead><tr><th>Cód.</th><th>Item fornecido</th><th class="r">Qtde total</th><th class="r">Últ. preço</th><th class="r">Total comprado</th><th class="r">Últ. compra</th></tr></thead>
+      <thead><tr><th>Cód.</th><th>Item</th><th class="r">Qtde</th><th class="r">Últ. preço</th><th class="r">Total</th><th>Últ. compra</th></tr></thead>
       <tbody>${linhasIt}</tbody></table></div>
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:0 2px 8px">Últimas entradas</div>
     <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead><tr><th>Data</th><th>NF</th><th>Cód.</th><th>Item</th><th class="r">Qtde</th><th class="r">Vlr unit.</th><th class="r">Total</th></tr></thead>
-      <tbody>${ultimas}</tbody></table></div>`);
+      <tbody>${ultimas}</tbody></table></div>`,
+    undefined, undefined, {fn:'_cpVoltarForns()', label:'Voltar aos fornecedores'});
 }
 
 // ════════ ORDENS DE COMPRA EM ABERTO (pedido do Diego, ago/2026) ════════
@@ -10093,7 +10064,7 @@ function _cpOrdBuscaInput(el){ _cpOrdBusca=el.value; const tb=document.getElemen
 function _cpOrdRowsHTML(){
   const q=(_cpOrdBusca||'').trim().toLowerCase();
   const L=_CP_OCABERTO.filter(p=>_cpOcViva(p) && (!q || (p.nome||'').toLowerCase().indexOf(q)>=0 || _cpForn(p.forn).toLowerCase().indexOf(q)>=0 || (p.oc||'').toLowerCase().indexOf(q)>=0))
-    .slice().sort((a,b)=>(a.prevista||'').localeCompare(b.prevista||''));  // entrega mais próxima primeiro
+    .slice().sort((a,b)=>(a.prevista||'9999').localeCompare(b.prevista||'9999'));  // entrega mais próxima primeiro (sem previsão vai p/ o fim, não p/ o topo)
   const IDX=_cpIdx();
   const out=L.map(p=>{
     const atras = p.prevista && p.prevista < today;
@@ -10124,7 +10095,7 @@ function _cpOrdRowsHTML(){
       <td class="cp-mono" style="${atras?'color:var(--danger);font-weight:600':''}">${p.prevista?_cpDt(p.prevista)+(atras?' ⚠':''):'—'}</td>
       ${cmpCells}
     </tr>`;}).join('');
-  return out || `<tr><td colspan="14" style="text-align:center;color:var(--text3);padding:20px">Nenhuma ordem em aberto com esse filtro.</td></tr>`;
+  return out || `<tr><td colspan="14">${_cpVazio("Nenhuma ordem para esse filtro.")}</td></tr>`;
 }
 function _comprasOrdensHTML(){
   const L=_CP_OCABERTO.filter(_cpOcViva);
@@ -10132,7 +10103,7 @@ function _comprasOrdensHTML(){
   const nAtras=L.filter(p=>p.prevista && p.prevista<today).length;
   const nForn=new Set(L.map(p=>p.forn)).size;
   const acao=_cpLupa(_cpOrdBuscaAberta,_cpOrdBusca,'_cpOrdBuscaToggle','_cpOrdBuscaInput','cp-ord-busca','Buscar item, fornecedor ou OC…');
-  return _cpTela('Ordens de compra em aberto','Pedidos emitidos que ainda não chegaram — a NF não deu entrada no contábil.',
+  return _cpTela('Ordens de compra','Pedidos emitidos que ainda não chegaram — a NF não deu entrada no contábil.',
     _cpKPIrow([
       _cpKPI('Ordens em aberto',_cpNum(L.length)),
       _cpKPI('Valor em aberto',_cpBRL(valAb)),
@@ -10140,7 +10111,7 @@ function _comprasOrdensHTML(){
       _cpKPI('Entrega atrasada',_cpNum(nAtras),nAtras?'var(--danger)':'')
     ])+
     `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
-      <thead><tr><th>Cód.</th><th>Item</th><th class="r">Valor</th><th class="r">Quantidade comprada</th><th>Fornecedor</th><th>Prazo de pagamento</th><th>Emissão</th><th>Previsão de entrega</th><th>Compra anterior</th><th class="r">Preço</th><th>Última compra</th><th class="r">Preço</th><th class="r">Variação</th><th class="r">Impacto R$</th></tr></thead>
+      <thead><tr><th>Cód.</th><th>Item</th><th class="r">Valor</th><th class="r">Qtde a receber</th><th>Fornecedor</th><th>Prazo de pagamento</th><th>Emissão</th><th>Previsão de entrega</th><th>Compra anterior</th><th class="r">Vlr unit.</th><th>Últ. compra</th><th class="r">Vlr unit.</th><th class="r">Variação</th><th class="r">Impacto R$</th></tr></thead>
       <tbody id="cp-ord-tbody">${_cpOrdRowsHTML()}</tbody></table></div>`, undefined, acao);
 }
 
@@ -10163,8 +10134,11 @@ function _cpLeadTime(o){ const map={'Matéria-prima':20,'Embalagens':25,'Manuten
 // OC "viva": previsão a partir de UMA SEMANA ATRÁS (hoje−7). Mais velha que isso = pedido morto → fora (Diego 01/09).
 function _cpOcCut(){ const d=new Date(today+'T00:00:00'); d.setDate(d.getDate()-7); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function _cpOcViva(p){ return !p.prevista || p.prevista>=_cpOcCut(); }
-let __cpOcSaldo=null;
-function _cpOcSaldo(cod){ if(!__cpOcSaldo){ __cpOcSaldo={}; _CP_OCABERTO.forEach(p=>{ if(!_cpOcViva(p)) return; __cpOcSaldo[p.cod]=(__cpOcSaldo[p.cod]||0)+(p.qtd||0); }); } return __cpOcSaldo[cod]||0; }
+// ⚠️ O cache é KEYADO PELA DATA DE CORTE: _cpOcViva depende de `today` (hoje−7), e `today` avança
+// no tick da meia-noite. Sem essa chave, o app aberto virando o dia manteria OCs mortas no
+// "estoque disponível"/"Dura até (c/ OC)" enquanto a aba Ordens (que filtra ao vivo) já as descartava.
+let __cpOcSaldo=null, __cpOcSaldoCut='';
+function _cpOcSaldo(cod){ const cut=_cpOcCut(); if(!__cpOcSaldo || __cpOcSaldoCut!==cut){ __cpOcSaldo={}; __cpOcSaldoCut=cut; _CP_OCABERTO.forEach(p=>{ if(!_cpOcViva(p)) return; __cpOcSaldo[p.cod]=(__cpOcSaldo[p.cod]||0)+(p.qtd||0); }); } return __cpOcSaldo[cod]||0; }
 let _cpPlan={periodo:'2', perDe:'', perAte:'', busca:'', buscaAberta:false, catSel:[], filtrosAberto:false, status:'', coresAberto:false};
 // Filtro por status (cards clicáveis): '' = todos · 'agora'/'breve' = cobertura · 'ruptura' = disponível<=0.
 function _cpPlanStatusMatch(o){ const st=_cpPlan.status; if(!st) return true; if(st==='naovisto') return !_cpVistoTem(o.cod); const cv=_cpPlanCov(o); return st==='ruptura'?(o.est<=0):(cv.key===st); }
@@ -10175,7 +10149,11 @@ const LS_PLAN_BANDS='taskflow_plan_covbands';
 const CP_CORES=['var(--danger)','var(--amber)','var(--success)','var(--blue-mid)','var(--purple)','var(--text3)'];
 function _cpPlanBandsDefault(){ return [{max:1,cor:'var(--danger)'},{max:2,cor:'var(--amber)'},{max:null,cor:'var(--success)'}]; }
 function _cpPlanBands(){ const a=safeJSON(LS_PLAN_BANDS,null); return (Array.isArray(a)&&a.length>=2)?a:_cpPlanBandsDefault(); }
-function _cpPlanBandsSave(b){ try{ safeSetItem(LS_PLAN_BANDS,JSON.stringify(b)); }catch(e){} }
+// ⚠️ ORDENA por limite antes de salvar. _cpPlanBandFor devolve a 1ª faixa cujo max cobre o valor;
+// com faixas fora de ordem (ex.: "até 5" antes de "até 2") a segunda nunca seria atingida e os KPIs
+// "Comprar agora/em breve" — que saem da posição da faixa — contariam errado, sem aviso nenhum.
+function _cpPlanBandsSave(b){ const fim=b.filter(x=>x.max==null), fin=b.filter(x=>x.max!=null).sort((x,y)=>x.max-y.max);
+  try{ safeSetItem(LS_PLAN_BANDS,JSON.stringify(fin.concat(fim))); }catch(e){} }
 function _cpPlanBandFor(m){ const B=_cpPlanBands(); for(let i=0;i<B.length;i++){ if(B[i].max==null || m<=B[i].max) return {i,cor:B[i].cor}; } const last=B[B.length-1]; return {i:B.length-1,cor:last.cor}; }
 function _cpPlanBandSetMax(i,val){ const B=_cpPlanBands(); if(B[i]){ const n=parseFloat(String(val).replace(',','.')); if(isFinite(n)&&n>0) B[i].max=n; _cpPlanBandsSave(B); renderCompras(); } }
 function _cpPlanBandSetCor(i,cor){ const B=_cpPlanBands(); if(B[i]){ B[i].cor=cor; _cpPlanBandsSave(B); renderCompras(); } }
@@ -10226,11 +10204,17 @@ function _cpPlanTbodyHTML(){
       <td class="cp-n">${cv.medPer>0?_cpNum(cv.medPer,0)+' '+un:'—'}</td>
       <td class="cp-n" style="color:var(--text3)">${cv.lead} d</td>
     </tr>`;}).join('');
-  return out || `<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:20px">Nenhum item para esse filtro.</td></tr>`;
+  return out || `<tr><td colspan="11">${_cpVazio("Nenhum item para esse filtro.")}</td></tr>`;
 }
-function _cpPlanRefresh(){ const tb=document.getElementById('cp-plan-tbody'); if(tb) tb.innerHTML=_cpPlanTbodyHTML(); const c=document.getElementById('cp-plan-count'); if(c) c.textContent=_cpPlanRowsView().length; }
+// Re-render pontual da tabela (usado pela busca, p/ não perder o foco do campo). Os KPIs também
+// são recalculados aqui porque as contagens saem da mesma base filtrada — sem isso os cards
+// ficavam defasados em relação à tabela enquanto se digitava.
+function _cpPlanRefresh(){ const tb=document.getElementById('cp-plan-tbody'); if(tb) tb.innerHTML=_cpPlanTbodyHTML(); const k=document.getElementById('cp-plan-kpis'); if(k) k.innerHTML=_cpPlanKPIsHTML(); }
 function _cpPlanPeriodo(v){ _cpPlan.periodo=v; if(v!=='custom'){ _cpPlan.perDe=''; _cpPlan.perAte=''; } renderCompras(); }
-function _cpPlanSetPer(campo,val){ _cpPlan[campo]=val; renderCompras(); }
+// Guarda sem re-renderizar (enquanto digita). Ano incompleto (< 2000) é tratado como vazio,
+// senão a média do período seria calculada contra uma data no ano 0002.
+function _cpPlanSetPerRaw(campo,val){ _cpPlan[campo]=(val && val.slice(0,4)>='2000')?val:''; }
+function _cpPlanSetPer(campo,val){ _cpPlanSetPerRaw(campo,val); renderCompras(); }
 function _cpPlanBuscaToggle(){ _cpPlan.buscaAberta=!_cpPlan.buscaAberta; if(!_cpPlan.buscaAberta) _cpPlan.busca=''; renderCompras(); if(_cpPlan.buscaAberta) setTimeout(function(){ var el=document.getElementById('cp-plan-busca'); if(el) el.focus(); },30); }
 function _cpPlanBuscaInput(el){ _cpPlan.busca=el.value; _cpPlanRefresh(); }
 function _cpPlanFiltrosToggle(){ _cpPlan.filtrosAberto=!_cpPlan.filtrosAberto; _cpPlan.coresAberto=false; renderCompras(); }
@@ -10239,7 +10223,11 @@ function _cpPlanCatAll(){ _cpPlan.catSel=[]; renderCompras(); }
 // ── "Visto hoje" (check diário por item — zera todo dia) + popup de Demanda por mês ──
 const LS_PLAN_VISTO='taskflow_plan_visto';
 let __cpVisto=null;
-function _cpVistoObj(){ if(__cpVisto && __cpVisto.d===today) return __cpVisto; let o=safeJSON(LS_PLAN_VISTO,null); if(!o||o.d!==today){ o={d:today,c:[]}; try{safeSetItem(LS_PLAN_VISTO,JSON.stringify(o));}catch(e){} } __cpVisto=o; return o; }
+// ⚠️ LEITURA PURA — NUNCA gravar aqui. Esta função é chamada de dentro do RENDER
+// (_comprasPlanejamentoHTML e _cpVistoTem, uma vez por linha da tabela), e render que grava
+// no banco é o P0 nº 1 desta base. O reset do dia é só em memória; quem persiste é _cpVistoSave,
+// chamado pelas AÇÕES (_cpVistoToggle / _cpVistoTodos).
+function _cpVistoObj(){ if(__cpVisto && __cpVisto.d===today) return __cpVisto; let o=safeJSON(LS_PLAN_VISTO,null); if(!o||o.d!==today) o={d:today,c:[]}; __cpVisto=o; return o; }
 function _cpVistoSave(){ try{ safeSetItem(LS_PLAN_VISTO,JSON.stringify(_cpVistoObj())); }catch(e){} }
 function _cpVistoTem(cod){ return _cpVistoObj().c.indexOf(String(cod))>=0; }
 function _cpVistoToggle(cod){ const o=_cpVistoObj(); const i=o.c.indexOf(String(cod)); if(i>=0) o.c.splice(i,1); else o.c.push(String(cod)); _cpVistoSave(); _cpPlanUpdateVistoKPI(); if(_cpPlan.status==='naovisto') _cpPlanRefresh(); }
@@ -10286,14 +10274,28 @@ function _cpPlanDemandaPopup(cod, ev){
   el.style.left=Math.max(8,left)+'px'; el.style.top=Math.max(8,top)+'px';
   setTimeout(()=>document.addEventListener('mousedown',_cpPlanPopOutside,true),0);
 }
-function _comprasPlanejamentoHTML(){
-  window.__cpPlanCache={};                 // zera o cache de cobertura a cada render (o período pode ter mudado)
-  const rows=_cpPlanRows();
+// KPIs: os 3 acionáveis (Comprar agora/em breve/Em ruptura) + "Em dia" são CLICÁVEIS → filtram a
+// tabela (clicar de novo limpa). Fora do render principal porque a busca os re-renderiza sozinho
+// (_cpPlanRefresh) — sem isso os cards ficavam defasados em relação à tabela enquanto se digitava.
+function _cpPlanKpiCard(lab,val,cor,key){ const act=key&&_cpPlan.status===key, clk=!!key;
+  return `<div class="cp-card" style="padding:13px 16px;${clk?'cursor:pointer;transition:box-shadow .12s;':''}${act?`box-shadow:0 0 0 2px ${cor||'var(--blue-mid)'} inset;`:''}"${clk?` onclick="_cpPlanSetStatus('${key}')" title="${act?'Mostrar todos':'Ver só '+lab.toLowerCase()}"`:''}><div class="cp-kpi"><s>${lab}${act?' <i class="ti ti-x" style="font-size:10px;vertical-align:1px"></i>':''}</s><b${cor?` style="color:${cor}"`:''}>${val}</b></div></div>`; }
+// Contagens vêm da BASE (categoria+busca, sem o filtro de status) p/ o usuário poder alternar entre eles.
+function _cpPlanKPIsHTML(){
+  const kpiCard=_cpPlanKpiCard, rows=_cpPlanRows();
   const nAgora=rows.filter(o=>_cpPlanCov(o).key==='agora').length, nBreve=rows.filter(o=>_cpPlanCov(o).key==='breve').length;
   const nRuptura=rows.filter(o=>o.est<=0).length;   // ruptura = sem estoque FÍSICO (Diego: cobertura é física)
   const nOk=rows.filter(o=>_cpPlanCov(o).key==='ok').length;   // "Em dia" = cobertura saudável (acima das faixas de compra)
+  const _visArr=_cpVistoObj().c, nFaltam=rows.filter(o=>_visArr.indexOf(String(o.cod))<0).length;
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">${kpiCard('Itens',_cpNum(rows.length),'','')}${kpiCard('Faltam ver hoje',`<span id="cp-plan-faltam">${_cpNum(nFaltam)}</span>`,nFaltam?'var(--blue-mid)':'var(--success)','naovisto')}${kpiCard('Comprar agora',_cpNum(nAgora),nAgora?'var(--danger)':'','agora')}${kpiCard('Comprar em breve',_cpNum(nBreve),nBreve?'var(--amber)':'','breve')}${kpiCard('Em dia',_cpNum(nOk),nOk?'var(--success)':'','ok')}${kpiCard('Em ruptura',_cpNum(nRuptura),nRuptura?'var(--danger)':'','ruptura')}</div>`;
+}
+function _comprasPlanejamentoHTML(){
+  window.__cpPlanCache={};                 // zera o cache de cobertura a cada render (o período pode ter mudado)
+  const rows=_cpPlanRows();
   const PERIODOS=[['1','Último mês'],['2','Últimos 2 meses'],['3','Últimos 3 meses'],['4','Últimos 4 meses'],['6','Últimos 6 meses'],['9','Últimos 9 meses'],['12','Últimos 12 meses'],['custom','Escolher datas…']];
-  const dinp=(campo)=>`<input type="date" value="${escapeAttr(_cpPlan[campo]||'')}" onchange="_cpPlanSetPer('${campo}',this.value)" class="modal-input" style="width:auto;padding:5px 8px;font-size:12px">`;
+  // ⚠️ <input type=date> dispara change com valor PARCIAL enquanto se digita o ano ("2" vira 0002).
+  // Re-renderizar aí recria o input e o foco some → trava o ano (mesmo bug já corrigido no simulador).
+  // Por isso: oninput/onchange só GUARDAM; o re-render (que recalcula as médias) acontece no blur.
+  const dinp=(campo)=>`<input type="date" value="${escapeAttr(_cpPlan[campo]||'')}" oninput="_cpPlanSetPerRaw('${campo}',this.value)" onchange="_cpPlanSetPerRaw('${campo}',this.value)" onblur="_cpPlanSetPer('${campo}',this.value)" class="modal-input" style="width:auto;padding:5px 8px;font-size:12px">`;
   const selPer=`<div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px"><span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);text-align:center">Média do período</span><div style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap"><select onchange="_cpPlanPeriodo(this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px;font-weight:600">${PERIODOS.map(p=>`<option value="${p[0]}"${_cpPlan.periodo===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>${_cpPlan.periodo==='custom'?`<span style="font-size:11.5px;color:var(--text3)">de</span>${dinp('perDe')}<span style="font-size:11.5px;color:var(--text3)">até</span>${dinp('perAte')}`:''}</div></div>`;
   const todos=_cpItens().filter(o=>o.est>0||o.consMed>0); const cont={}; _CP_CATS.forEach(c=>cont[c]=0); todos.forEach(o=>{const c=_cpCategoria(o.nome); cont[c]=(cont[c]||0)+1;});
   const catPanel=_cpPlan.filtrosAberto?`<div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:236px;max-height:300px;overflow:auto;padding:6px">
@@ -10320,15 +10322,13 @@ function _comprasPlanejamentoHTML(){
   const acao=`<div style="display:inline-flex;align-items:flex-end;gap:10px;flex-wrap:wrap">${selPer}${filtrosBtn}${coresBtn}${_cpLupa(_cpPlan.buscaAberta,_cpPlan.busca,'_cpPlanBuscaToggle','_cpPlanBuscaInput','cp-plan-busca','Buscar item…')}</div>`;
   // KPIs: os 3 acionáveis (Comprar agora/em breve/Em ruptura) são CLICÁVEIS → filtram a tabela (clicar de novo limpa).
   // Contagens vêm da BASE (categoria+busca, sem status) p/ o usuário poder alternar entre eles.
-  const kpiCard=(lab,val,cor,key)=>{ const act=key&&_cpPlan.status===key, clk=!!key;
-    return `<div class="cp-card" style="padding:13px 16px;${clk?'cursor:pointer;transition:box-shadow .12s;':''}${act?`box-shadow:0 0 0 2px ${cor||'var(--blue-mid)'} inset;`:''}"${clk?` onclick="_cpPlanSetStatus('${key}')" title="${act?'Mostrar todos':'Ver só '+lab.toLowerCase()}"`:''}><div class="cp-kpi"><s>${lab}${act?' <i class="ti ti-x" style="font-size:10px;vertical-align:1px"></i>':''}</s><b${cor?` style="color:${cor}"`:''}>${val}</b></div></div>`; };
-  const _visArr=_cpVistoObj().c, nFaltam=rows.filter(o=>_visArr.indexOf(String(o.cod))<0).length;
-  const _view=_cpPlanRowsView(), allVisto=_view.length>0 && _view.every(o=>_visArr.indexOf(String(o.cod))>=0); // p/ o "marcar tudo" do cabeçalho
-  const kpisHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">${kpiCard('Itens',_cpNum(rows.length),'','')}${kpiCard('Faltam ver hoje',`<span id="cp-plan-faltam">${_cpNum(nFaltam)}</span>`,nFaltam?'var(--blue-mid)':'var(--success)','naovisto')}${kpiCard('Comprar agora',_cpNum(nAgora),nAgora?'var(--danger)':'','agora')}${kpiCard('Comprar em breve',_cpNum(nBreve),nBreve?'var(--amber)':'','breve')}${kpiCard('Em dia',_cpNum(nOk),nOk?'var(--success)':'','ok')}${kpiCard('Em ruptura',_cpNum(nRuptura),nRuptura?'var(--danger)':'','ruptura')}</div>`;
+  const _view=_cpPlanRowsView(), _visArr=_cpVistoObj().c;
+  const allVisto=_view.length>0 && _view.every(o=>_visArr.indexOf(String(o.cod))>=0); // p/ o "marcar tudo" do cabeçalho
+  const kpisHTML=`<div id="cp-plan-kpis">${_cpPlanKPIsHTML()}</div>`;
   return _cpTela('Planejamento de compras','Cockpit diário do comprador — estoque, cobertura e o que precisa comprar. Clique num item para abrir a ficha e simular.',
     kpisHTML+
     `<div class="cp-card cp-noscroll" style="overflow:auto;max-height:calc(100vh - 320px)"><table class="cp-tbl">
-      <thead><tr><th style="width:34px;text-align:center" title="Marcar/desmarcar todos os visíveis como visto"><input type="checkbox" ${allVisto?'checked':''} onclick="_cpVistoTodos(this.checked)" style="cursor:pointer;width:15px;height:15px;vertical-align:middle"></th><th title="Cobertura pelo estoque físico ÷ média">Cobertura <span class="cp-hsub">(físico)</span></th><th title="Quando o estoque físico acaba">Dura até <span class="cp-hsub">(físico)</span></th><th title="Quando o estoque + OC a receber acaba">Dura até <span class="cp-hsub">(c/ OC)</span></th><th>Cód.</th><th>Produto</th><th class="r">Estoque físico</th><th class="r">Estoque disponível</th><th class="r">Média de consumo</th><th class="r">Média <span class="cp-hsub">(${_perLbl})</span></th><th class="r">Tempo de entrega</th></tr></thead>
+      <thead><tr><th style="width:34px;text-align:center" title="Marcar/desmarcar todos os visíveis como visto"><input type="checkbox" ${allVisto?'checked':''} onclick="_cpVistoTodos(this.checked)" style="cursor:pointer;width:15px;height:15px;vertical-align:middle"></th><th title="Cobertura pelo estoque físico ÷ média">Cobertura <span class="cp-hsub">(físico)</span></th><th title="Quando o estoque físico acaba">Dura até <span class="cp-hsub">(físico)</span></th><th title="Quando o estoque + OC a receber acaba">Dura até <span class="cp-hsub">(c/ OC)</span></th><th>Cód.</th><th>Item</th><th class="r">Estoque físico</th><th class="r">Estoque disponível</th><th class="r">Média de consumo</th><th class="r">Média <span class="cp-hsub">(${_perLbl})</span></th><th class="r">Tempo de entrega</th></tr></thead>
       <tbody id="cp-plan-tbody">${_cpPlanTbodyHTML()}</tbody></table></div>`,
     undefined, acao);
 }
@@ -10401,19 +10401,19 @@ function _comprasPainelHTML(){
       return `<tr onclick="_cpAbrirItem('${escapeAttr(o[0])}')" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''" title="Abrir a ficha deste item no Insumos" style="border-top:1px solid var(--border);cursor:pointer">
         <td style="padding:6px 8px;font-size:11.5px;color:var(--text3);white-space:nowrap">${escapeHTML(o[0])}</td>
         <td style="padding:6px 8px;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o[1])}</td>
-        <td style="padding:6px 8px;font-size:12px;font-weight:700;text-align:right;white-space:nowrap;color:${cor}">${formatDate(o[4])}</td>
+        <td style="padding:6px 8px;font-size:12px;font-weight:700;text-align:right;white-space:nowrap;color:${cor}">${_cpDt(o[4])}</td>
         <td style="padding:6px 8px;font-size:12.5px;color:var(--text);text-align:right;white-space:nowrap">${escapeHTML(o[2])} ${escapeHTML(o[3])}</td>
         <td style="padding:6px 8px;font-size:12px;color:var(--text2);text-align:right;white-space:nowrap">${escapeHTML(o[5])} ${escapeHTML(o[3])}/mês</td>
-        <td style="padding:6px 8px;font-size:12px;text-align:right;white-space:nowrap;color:${risco?'var(--amber)':'var(--text3)'}">${fim?formatDate(fim):'—'}${risco?` <i class="ti ti-alert-triangle" title="Não usa a tempo — vai perder parte antes de vencer" style="font-size:11px;vertical-align:-1px"></i>`:''}</td>
+        <td style="padding:6px 8px;font-size:12px;text-align:right;white-space:nowrap;color:${risco?'var(--amber)':'var(--text3)'}">${fim?_cpDt(fim):"—"}${risco?` <i class="ti ti-alert-triangle" title="Não usa a tempo — vai perder parte antes de vencer" style="font-size:11px;vertical-align:-1px"></i>`:''}</td>
       </tr>`;
     }).join('');
     return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;table-layout:fixed;min-width:520px">
       <colgroup><col style="width:44px"><col><col style="width:88px"><col style="width:64px"><col style="width:84px"><col style="width:96px"></colgroup>
-      <thead><tr>${th('Cód')}${th('Item')}${th(lab,1)}${th('Qtd',1)}${th('Consumo',1)}${th('Termina em',1)}</tr></thead>
+      <thead><tr>${th('Cód.')}${th('Item')}${th(lab,1)}${th('Qtde',1)}${th('Consumo',1)}${th('Termina em',1)}</tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
   };
-  return _cpTela('Painel de Compras','O que precisa de decisão hoje — estoque, consumo e compras.',
+  return _cpTela('Painel de compras','O que precisa de decisão hoje — estoque, consumo e compras.',
     necBanner+_cpKPIcards([
       _cpKPI('Valor em estoque',_cpBRL(valorEst)),
       _cpKPI('Precisa comprar',_cpNum(comprar.length),comprar.length?'var(--amber)':''),
@@ -10436,25 +10436,6 @@ function _comprasPainelHTML(){
     </div>`);
 }
 
-// ════════ ORÇAMENTOS — ponte p/ o módulo que já existe ════════
-function _comprasOrcamentosHTML(){
-  const n=(typeof orcamentos!=='undefined'&&orcamentos)?orcamentos.length:0;
-  const nf=(typeof fornecedores!=='undefined'&&fornecedores)?fornecedores.length:0;
-  return _cpTela('Orçamentos','Cotações e negociação — reaproveitados da Manutenção.',
-    `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
-      <div class="cp-card" style="padding:20px">
-        <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:6px">Orçamentos <span style="color:var(--text3);font-weight:600">(${n})</span></div>
-        <p style="font-size:13px;color:var(--text2);margin:0 0 14px">Compare cotações item a item e simule desconto, prazo e parcelas.</p>
-        <button onclick="setManutencaoView('orcamentos')" class="btn-modal-save" style="padding:8px 14px;font-size:13px">Abrir orçamentos →</button>
-      </div>
-      <div class="cp-card" style="padding:20px">
-        <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:6px">Fornecedores <span style="color:var(--text3);font-weight:600">(${nf})</span></div>
-        <p style="font-size:13px;color:var(--text2);margin:0 0 14px">Cadastro com categoria, produtos e contatos.</p>
-        <button onclick="setManutencaoView('fornecedores')" class="btn-modal-save" style="padding:8px 14px;font-size:13px">Abrir cadastro →</button>
-      </div>
-    </div>
-    <div style="font-size:12.5px;color:var(--text3);margin-top:16px"><i class="ti ti-info-circle"></i> Para ver <b>quanto já compramos</b> de cada fornecedor (curva ABC), use a aba <b>Fornecedores</b> aqui de Compras — ela roda sobre as notas fiscais reais.</div>`);
-}
 
 // ── Histórico de compras: o "livro de NFs", espinha da área ────────────
 // Roda sobre os DADOS REAIS (_CP_NF). Escopo Insumos/Despesas/Tudo: as telas
@@ -10488,9 +10469,7 @@ function _cpLinhas(){
 }
 function _cpFiltradas(){
   const f=_cpHist, q=(f.busca||'').trim().toLowerCase();
-  let lim='';
-  if(f.meses>0){ const d=new Date(); d.setMonth(d.getMonth()-f.meses);
-    lim=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  const lim=_cpLimiteMeses(f.meses>0?f.meses:0);   // mesmo corte de período do resto da área
   return _cpLinhas().filter(l=>{
     if(!_cpEscComprador(l.item[1],l.item[0])) return false;   // só MP/embalagens (Manutenção = outro comprador)
     if(f.escopo!=='T' && l.cls!==f.escopo) return false;
@@ -10504,17 +10483,16 @@ function _cpSet(k,v){ _cpHist[k]=(k==='meses')?Number(v):v; _cpHistRefresh(); }
 function _cpHistRefresh(){
   const el=document.getElementById('cp-hist-corpo'); if(el) el.innerHTML=_cpHistCorpoHTML();
 }
-// Cobertura real do ERP x o que está embutido aqui (p/ a tela não mentir).
-const _CP_META={insL:4148,insV:42463863.03,desL:12975,desV:27336086.15,erpL:17123,erpV:69799949.18};
 const _cpBRL=n=>'R$ '+Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const _cpNum=(n,d)=>Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:d||0,maximumFractionDigits:d||0});
 const _cpDt=iso=>{const p=String(iso).split('-');return p.length===3?(p[2]+'/'+p[1]+'/'+p[0].slice(2)):iso;};
 function _cpHistCorpoHTML(){
   const L=_cpFiltradas();
   const totV=L.reduce((a,l)=>a+l.tot,0), totI=L.reduce((a,l)=>a+l.icms,0);
-  const nNF=new Set(L.map(l=>l.nf)).size, nIt=new Set(L.map(l=>l.item[0])).size;
+  // O nº da NF é único por EMISSOR, não globalmente — sem o fornecedor na chave, dois fornecedores
+  // com a mesma numeração colapsavam em 1 e o KPI subestimava.
+  const nNF=new Set(L.map(l=>(l.forn[0]||l.forn[1])+'·'+l.nf)).size, nIt=new Set(L.map(l=>l.item[0])).size;
   const TETO=250, mostrar=L.slice(0,TETO);
-  const kpi=(lab,val)=>`<div style="flex:1;min-width:140px"><div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">${lab}</div><div style="font-size:19px;font-weight:800;color:var(--text);margin-top:2px">${val}</div></div>`;
   const linhas=mostrar.map(l=>{
     return `<tr>
       <td class="cp-mono">${escapeHTML(String(l.nf))}</td>
@@ -10527,21 +10505,21 @@ function _cpHistCorpoHTML(){
       <td class="cp-n">${_cpBRL(l.tot)}</td>
       <td class="cp-n">${_cpNum(l.aliq,0)}%</td>
     </tr>`;}).join('');
-  return `${_cpKPIcards([kpi('Linhas',_cpNum(L.length)),kpi('Notas fiscais',_cpNum(nNF)),kpi('Itens',_cpNum(nIt)),kpi('Valor total',_cpBRL(totV)),kpi('ICMS',_cpBRL(totI))])}
+  return `${_cpKPIcards([_cpKPI("Linhas",_cpNum(L.length)),_cpKPI("Notas fiscais",_cpNum(nNF)),_cpKPI("Itens",_cpNum(nIt)),_cpKPI("Valor total",_cpBRL(totV)),_cpKPI("ICMS",_cpBRL(totI))])}
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow-x:auto">
       <table class="cp-tbl">
         <thead><tr>
-          <th>NF</th><th>Data</th><th>Cód.</th><th>Produto</th><th>Fornecedor</th>
+          <th>NF</th><th>Data</th><th>Cód.</th><th>Item</th><th>Fornecedor</th>
           <th class="r">Vlr unit.</th><th class="r">Qtde</th><th class="r">Total</th><th class="r">ICMS %</th>
         </tr></thead>
-        <tbody>${linhas||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:26px">Nenhuma linha para esse filtro.</td></tr>'}</tbody>
+        <tbody>${linhas||`<tr><td colspan="9">${_cpVazio('Nenhuma linha para esse filtro.')}</td></tr>`}</tbody>
       </table>
     </div>
     ${L.length>TETO?`<div style="text-align:center;color:var(--text3);font-size:12.5px;margin-top:10px">Mostrando as ${TETO} mais recentes de ${_cpNum(L.length)} — use a busca ou o período para afunilar.</div>`:''}`;
 }
 function _comprasHistoricoHTML(){
   const opt=(v,lab)=>`<option value="${v}"${_cpHist.meses===v?' selected':''}>${lab}</option>`;
-  const periodo=`<select onchange="_cpSet('meses',this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px">${opt(3,'Últimos 3 meses')}${opt(6,'Últimos 6 meses')}${opt(12,'Últimos 12 meses')}${opt(0,'Tudo')}</select>`;
+  const periodo=_cpSelPeriodo('Período',`<select onchange="_cpSet('meses',this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px">${opt(3,'Últimos 3 meses')}${opt(6,'Últimos 6 meses')}${opt(12,'Últimos 12 meses')}${opt(0,'Tudo')}</select>`);
   const acao=_cpLupa(_cpHist.buscaAberta,_cpHist.busca,'_cpHistBuscaToggle','_cpHistBuscaInput','cp-busca','Buscar item, fornecedor ou NF…',periodo);
   return _cpTela('Histórico de compras','O livro de notas fiscais de entrada — a base de dados da área.',
     `<div id="cp-hist-corpo">${_cpHistCorpoHTML()}</div>`, undefined, acao);
@@ -38207,7 +38185,10 @@ function _tfSaveRoute(){
   try{
     localStorage.setItem('tf_route', JSON.stringify({
       hubView:hubView, currentTab:currentTab,
-      comprasView:comprasView, cpItemSel:_cpItemSel, cpFichaView:_cpFichaView, cpNotView:_cpNotView, cpCatFiltro:_cpCatFiltro,
+      // cpItemOrigem/cpFornSel entram aqui p/ o F5 não quebrar a regra "Voltar volta p/ a tela de ORIGEM"
+      // (sem eles, recarregar numa ficha aberta pelo Planejamento fazia o botão virar "Voltar aos insumos").
+      comprasView:comprasView, cpItemSel:_cpItemSel, cpFichaView:_cpFichaView, cpNotView:_cpNotView,
+      cpItemOrigem:_cpItemOrigem, cpFornSel:_cpFornSel,
       manutencaoView:manutencaoView, producaoView:producaoView, qualidadeView:qualidadeView, marketingView:marketingView, rhView:(typeof rhView!=='undefined'?rhView:'organograma'),
       meuDiaSetor:meuDiaSetor, prodAba:prodAba
     }));
@@ -38222,7 +38203,8 @@ function _tfRestoreRoute(){
     if(r.hubView==='compras'){
       hubView='compras'; comprasView=r.comprasView||'painel';
       _cpItemSel=r.cpItemSel||null; _cpFichaView=r.cpFichaView||'resumo';
-      if(r.cpNotView) _cpNotView=r.cpNotView; if(r.cpCatFiltro) _cpCatFiltro=r.cpCatFiltro;
+      _cpItemOrigem=r.cpItemOrigem||'insumos'; _cpFornSel=r.cpFornSel||null;
+      if(r.cpNotView) _cpNotView=r.cpNotView;
       renderSidebar(); renderCompras(); return true;
     }
     if(r.hubView==='manutencao'){ hubView='manutencao'; manutencaoView=r.manutencaoView||'ordens'; renderSidebar(); renderManutencao(); return true; }
