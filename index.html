@@ -8667,6 +8667,16 @@ function _cpCSS(){ return `<style>
   /* Não-expandido estilo Reunião: link Voltar + sub-navbar horizontal (o rail vertical fica só na tela cheia). */
   .cp-back-link{background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;padding:0;font-family:inherit;margin-bottom:8px}
   .cp-back-link:hover{text-decoration:underline}
+  /* Cronograma do simulador. ⚠️ Este bloco vive DENTRO de um template literal — nada de crase aqui.
+     2 colunas (o quê | quando) e a info na LINHA DE BAIXO, à direita: com as 3 lado a lado, numa
+     coluna estreita como a do simulador (~300px) o rótulo era espremido a 9px pela coluna da info,
+     que reservava largura mesmo vazia. O seletor :empty some com ela enquanto a carga não tem data. */
+  .cp-crono-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;align-items:center;padding:6px 0;border-bottom:1px dashed color-mix(in srgb,var(--border) 70%,transparent)}
+  .cp-crono-row:last-child{border-bottom:none}
+  .cp-crono-lab{font-size:12px;color:var(--text2);min-width:0}
+  .cp-crono-quando{display:inline-flex;align-items:center;gap:6px;justify-self:end;white-space:nowrap}
+  .cp-crono-info{grid-column:1/-1;font-size:11px;text-align:right;white-space:nowrap}
+  .cp-crono-info:empty{display:none}
   /* Comparação A × B: lado | diferenças | lado. Abaixo de 780px empilha (o "X" do meio vira faixa). */
   .cp-cmp-grid{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:18px;align-items:stretch}
   @media(max-width:780px){ .cp-cmp-grid{grid-template-columns:minmax(0,1fr);gap:12px} }
@@ -9321,22 +9331,25 @@ function _cpSimResult(o){
     else { baseNota='Sem estoque atual — este volume vale a partir de hoje.'; }
   } else if(_cpSim.modo==='comprarDias'){ baseNota='Consumo cheio do período — <b style="color:var(--text2)">não</b> desconta o estoque atual.'; }
   const baseLine = baseNota?`<div style="font-size:11px;color:var(--text3);margin-top:5px;line-height:1.5">${baseNota}</div>`:'';
-  const hero=`<div style="background:var(--bg2);border-radius:11px;padding:12px 14px;margin-bottom:12px">
-    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)">Comprar</div>
-    <div style="font-size:23px;font-weight:800;color:var(--text);line-height:1.15;margin-top:1px">${_cpNum(c.qtd,0)} <span style="font-size:14px;font-weight:700;color:var(--text3)">${um}</span>${qt?` <span style="font-size:13px;font-weight:600;color:var(--text3)">· ${qt}</span>`:''}</div>
+  // Os 3 blocos do resultado usam o MESMO card e o MESMO título (Diego: "estava meio atirado").
+  const bloco=(ic,tit,corpo,extra)=>`<div style="background:var(--bg2);border-radius:11px;padding:12px 14px;margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:9px;padding-bottom:7px;border-bottom:1px solid var(--border)"><i class="ti ${ic}" style="font-size:13px;color:var(--blue-mid)"></i>${tit}${extra?`<span style="margin-left:auto;font-weight:600;letter-spacing:0;text-transform:none;font-size:10.5px">${extra}</span>`:''}</div>
+    ${corpo}</div>`;
+  const hero=bloco('ti-shopping-cart','O que comprar',
+    `<div style="font-size:23px;font-weight:800;color:var(--text);line-height:1.15">${_cpNum(c.qtd,0)} <span style="font-size:14px;font-weight:700;color:var(--text3)">${um}</span>${qt?` <span style="font-size:13px;font-weight:600;color:var(--text3)">· ${qt}</span>`:''}</div>
     ${baseLine}
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><span style="font-size:12px;color:var(--text3)">Custo total</span><span style="font-size:16.5px;font-weight:800;color:var(--text)">${_cpBRL(c.custo)}</span></div>
-    <div style="margin-top:7px;display:flex;flex-direction:column;gap:5px">${tetoLine}${cmpLine('vs última compra', c.precoRef)}${cmpLine('vs média 3 meses', media3)}</div>
-  </div>`;
+    <div style="margin-top:7px;display:flex;flex-direction:column;gap:5px">${tetoLine}${cmpLine('vs última compra', c.precoRef)}${cmpLine('vs média 3 meses', media3)}</div>`);
   // linhas de apoio (compactas, sem borda por linha)
   const linha=(lab,val)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0"><span style="font-size:12.5px;color:var(--text3)">${lab}</span><span style="font-size:13px;font-weight:700;color:var(--text);text-align:right">${val}</span></div>`;
   // ICMS informado no simulador (opcional) → preço unitário NET = bruto − ICMS (crédito recuperável).
   const icmsN=_cpNumParse(_cpSim.icms);
   const precoNet=(icmsN>0)?c.preco*(1-icmsN/100):null;
-  const rows=linha('Preço unitário (bruto)',_cpBRL(c.preco)+'/'+um+(c.descPct>0?` <span style="color:var(--success);font-weight:600;font-size:11.5px">−${c.descPct}%</span>`:''))
+  const rows=bloco('ti-tag','Preço e cobertura',
+    linha('Preço unitário (bruto)',_cpBRL(c.preco)+'/'+um+(c.descPct>0?` <span style="color:var(--success);font-weight:600;font-size:11.5px">−${c.descPct}%</span>`:''))
     +(precoNet!=null?linha('Preço unitário (net)', `${_cpBRL(precoNet)}/${um} <span style="color:var(--text3);font-weight:500;font-size:11px">− ${_cpNum(icmsN, Number.isInteger(icmsN)?0:1)}% ICMS</span>`):'')
     +linha(`Cobertura após a compra${c.cobDepoisOC!=null?' <span style="color:var(--text3);font-weight:400;font-style:italic;font-size:11px">(físico)</span>':''}`, c.cobDepois!=null?`${c.cobDepois} dias <span style="color:var(--text3);font-weight:500">· até ${_cpDataFim(c.cobDepois)}</span>`:`${_cpNum(c.estDepois,0)} ${um}`)
-    +(c.cobDepoisOC!=null?linha('Cobertura após a compra <span style="color:var(--text3);font-weight:400;font-style:italic;font-size:11px">(físico + OC)</span>', `${c.cobDepoisOC} dias <span style="color:var(--text3);font-weight:500">· até ${_cpDataFim(c.cobDepoisOC)}</span>`):'');
+    +(c.cobDepoisOC!=null?linha('Cobertura após a compra <span style="color:var(--text3);font-weight:400;font-style:italic;font-size:11px">(físico + OC)</span>', `${c.cobDepoisOC} dias <span style="color:var(--text3);font-weight:500">· até ${_cpDataFim(c.cobDepoisOC)}</span>`):''));
   // SELETOR de CARGA FECHADA — só quando o item USA carga e não está no modo "cargas". Usa qtdBase (antes do
   // override) p/ calcular piso/teto. Diego: poder CLICAR em 5 ou 6 cargas aqui; a escolha vira a compra + cronograma.
   let cargasBloco='';
@@ -9371,21 +9384,28 @@ function _cpSimResult(o){
       else if(i===ent.length-1){ qtyCell=`<b style="color:var(--text2)">${_cpNum(qtys[i],0)}</b> ${um} <span style="font-size:10px;color:var(--text3)">(resto)</span>`; }
       else { qtyCell=`<input type="text" inputmode="numeric" value="${escapeAttr(_cpNum(qtys[i],0))}" onchange="_cpSimSetEntregaQtd(${i},this.value)" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:66px;font-size:12px"> ${um}`; }
       const rot=delLbl?`${delLbl} ${i+1} · ${qtyCell}`:qtyCell;
-      return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap"><span style="font-size:12px;color:var(--text2);${minW}">${rot}</span><span style="font-size:11px;color:var(--text3)">chega em</span>${dinput}<span id="cp-ci-${i}">${_cpSimRowInfo(b,um)}</span>${del}</div><div id="cp-cg-${i}">${_cpSimRowGaps(i,fd.gaps)}</div>`;
+      return `<div class="cp-crono-row"><span class="cp-crono-lab">${rot}</span><span class="cp-crono-quando"><span style="font-size:11px;color:var(--text3)">chega em</span>${dinput}${del}</span><span class="cp-crono-info" id="cp-ci-${i}">${_cpSimRowInfo(b,um)}</span></div><div id="cp-cg-${i}">${_cpSimRowGaps(i,fd.gaps)}</div>`;
     }).join('');
     // Estoque ATUAL como 1ª linha (o FEFO consome ele primeiro). Info (dura até/vence) atualiza em-lugar.
-    const estRow=(o.est>0)?`<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap;opacity:.9"><span style="font-size:12px;color:var(--text2);${minW}">Estoque atual · ${_cpNum(o.est,0)} ${um}</span><span style="font-size:11px;color:var(--text3)">já em estoque</span><span id="cp-ci-est">${_cpSimRowInfo(fd.bEst,um)}</span></div>`:'';
-    // Linha da OC JÁ EMITIDA: o que está a caminho antes de qualquer compra nova.
-    const ocRow=(fd.ocSaldo>0)?`<div style="display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap;opacity:.9"><span style="font-size:12px;color:var(--text2);${minW}"><i class="ti ti-truck" style="font-size:12px;color:var(--blue-mid)"></i> OC em aberto · ${_cpNum(fd.ocSaldo,0)} ${um}</span><span style="font-size:11px;color:var(--text3)">já pedido</span><span id="cp-ci-oc">${_cpSimRowInfo(fd.bOC,um)}</span></div>`:'';
+    // Linha do que JÁ TENHO (estoque e OC): mesma grade das cargas, mas sem campo de data.
+    const linhaTenho=(ic,rot,qtd,tag,id,b)=>`<div class="cp-crono-row">
+        <span class="cp-crono-lab">${ic?`<i class="ti ${ic}" style="font-size:12px;color:var(--blue-mid)"></i> `:''}${rot} · <b style="color:var(--text)">${_cpNum(qtd,0)}</b> ${um}</span>
+        <span class="cp-crono-quando" style="color:var(--text3);font-size:11px;font-style:italic">${tag}</span>
+        <span class="cp-crono-info" id="${id}">${_cpSimRowInfo(b,um)}</span></div>`;
+    const estRow=(o.est>0)?linhaTenho('','Estoque atual',o.est,'já em estoque','cp-ci-est',fd.bEst):'';
+    const ocRow=(fd.ocSaldo>0)?linhaTenho('ti-truck','OC em aberto',fd.ocSaldo,'já pedido','cp-ci-oc',fd.bOC):'';
     // Base do "dura até": o consumo do PERÍODO escolhido aqui no simulador — que pode ser diferente da
     // média do card Indicadores (jan–ago). Dizer isso na tela evita a dúvida de "por que 04/11 e não 11/11".
     const baseRow=`<div style="font-size:10.5px;color:var(--text3);margin:6px 0 8px;font-style:italic">As datas usam o consumo de <b style="color:var(--text2);font-style:normal">${_cpNum(consMes,0)} ${um}/mês</b>${_cpConsMesInfo(o).lab?(' ('+_cpConsMesInfo(o).lab+')'):''} — o período escolhido acima.</div>`;
-    const header=isCargas?'Quando cada carga chega':(ent.length>1?'Quando cada entrega chega':'Quando o item chega');
-    cronoBloco=`<div style="margin-top:12px;padding:12px 14px;background:var(--bg2);border-radius:10px">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:8px"><i class="ti ti-truck-delivery" style="color:var(--blue-mid)"></i> ${header}</div>
-      ${baseRow}${estRow}${ocRow}${rowsCrono}
-      <div id="cp-crono-extra">${_cpSimCronoExtra(o,c,fd)}</div>
-    </div>`;
+    const header=isCargas?'Cronograma de chegada':(ent.length>1?'Cronograma de entregas':'Quando o item chega');
+    // Duas seções: o que JÁ TENHO (estoque + OC emitida) e o que VOU COMPRAR. Antes tudo vinha numa
+    // pilha só de linhas coladas e não dava p/ separar o que é fato do que é simulação.
+    const subT=t=>`<div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:9px 0 3px">${t}</div>`;
+    const temTenho=!!(estRow||ocRow);
+    cronoBloco=bloco('ti-truck-delivery', header, `${baseRow}
+      ${temTenho?subT('Já tenho')+estRow+ocRow:''}
+      ${subT(temTenho?('Vou comprar · '+_cpNum(c.qtd,0)+' '+um):'Vou comprar')}${rowsCrono}
+      <div id="cp-crono-extra">${_cpSimCronoExtra(o,c,fd)}</div>`);
   } else if(c.qtd>0 && valM<=0){
     cronoBloco=`<div style="margin-top:9px;font-size:10.5px;color:var(--text3)"><i class="ti ti-info-circle"></i> Informe a <b>validade (meses)</b> para checar risco de vencimento.</div>`;
   }
