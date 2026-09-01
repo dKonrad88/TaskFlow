@@ -8667,6 +8667,9 @@ function _cpCSS(){ return `<style>
   /* Não-expandido estilo Reunião: link Voltar + sub-navbar horizontal (o rail vertical fica só na tela cheia). */
   .cp-back-link{background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;padding:0;font-family:inherit;margin-bottom:8px}
   .cp-back-link:hover{text-decoration:underline}
+  /* Comparação A × B: lado | diferenças | lado. Abaixo de 780px empilha (o "X" do meio vira faixa). */
+  .cp-cmp-grid{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:18px;align-items:stretch}
+  @media(max-width:780px){ .cp-cmp-grid{grid-template-columns:minmax(0,1fr);gap:12px} }
   .cp-subnav-wrap{display:flex;align-items:flex-end;gap:8px;margin:2px 0 0;border-bottom:1px solid var(--border)}
   .cp-subnav{display:flex;gap:2px;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden}
   .cp-subtab{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text3);padding:8px 13px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;transition:color .15s,border-color .15s}
@@ -9091,7 +9094,9 @@ function _cpFichaSetView(v){
   document.querySelectorAll('[onclick^="_cpFichaSetView"]').forEach(b=>b.classList.toggle('on', b.getAttribute('onclick').indexOf("'"+v+"'")>=0));
 }
 // Foco = tela cheia. Re-renderiza a ficha (o layout/ícone mudam).
-function _cpSetFoco(on){ document.body.classList.toggle('cp-focus', on); if(_cpItemSel && _cpIdx()[_cpItemSel]) renderCompras(); window.scrollTo(0,0); }
+function _cpSetFoco(on){ document.body.classList.toggle('cp-focus', on);
+  if((_cpItemSel && _cpIdx()[_cpItemSel]) || _cpFornSel) renderCompras();   // vale p/ as 2 fichas (item e fornecedor)
+  window.scrollTo(0,0); }
 function _cpToggleFoco(){ _cpSetFoco(!document.body.classList.contains('cp-focus')); }
 // ── SIMULADOR DE COMPRA (card da view Resumo). Roda sobre estoque/consumo/preço do item. ──
 // Tamanho de uma CARGA fechada (caminhão) é EDITÁVEL no simulador (_cpSim.cargaTon, em toneladas) — varia por item/fornecedor.
@@ -10035,6 +10040,11 @@ let _cpFornSel=null, _cpFornMeses=12, _cpFornBusca='', _cpFornBuscaAberta=false;
 // ══════ FICHA DO FORNECEDOR — comparação de 2 PERÍODOS (material de negociação) ══════
 // A ficha trabalha sobre o histórico COMPLETO do fornecedor e recorta dois períodos (A = o atual,
 // B = o de comparação). Os itens, os indicadores de crescimento e o simulador saem desse recorte.
+let _cpFornView='resumo';                                  // aba do painel do fornecedor
+// Fundo que identifica cada período — vale nos blocos de comparação E nas colunas da tabela, p/ o
+// olho ligar "esta coluna é do período A" sem ler o cabeçalho.
+const CP_BG_A='color-mix(in srgb,var(--blue-mid) 8%,transparent)';
+const CP_BG_B='color-mix(in srgb,var(--text3) 9%,transparent)';
 let _cpFornSort={campo:'totA', dir:-1};                    // ordenação da tabela de itens
 let _cpFornItBusca='', _cpFornItBuscaAberta=false;         // busca dentro dos itens comprados
 let _cpFornPerA={p:'ano', de:'', ate:''};                  // período A — default: este ano
@@ -10091,6 +10101,12 @@ function _cpVar(novo, velho){ if(!(velho>0)) return null; return (novo-velho)/ve
 function _cpVarPill(v, casas){ if(v==null) return '<span style="color:var(--text3)">—</span>';
   const cor=v>0.5?'var(--blue-mid)':(v<-0.5?'var(--amber)':'var(--text2)');
   return `<span style="color:${cor};font-weight:700">${v>0?'+':''}${_cpNum(v,casas==null?1:casas)}%</span>`; }
+function _cpFornSetView(v){ _cpFornView=v;
+  const el=document.getElementById('cp-fornficha-main');
+  if(el && _cpFornSel) el.innerHTML=_cpFornMainHTML(_cpFornSel);
+  document.querySelectorAll('[onclick^="_cpFornSetView"]').forEach(b=>b.classList.toggle('on', b.getAttribute('onclick').indexOf("'"+v+"'")>=0));
+  window.scrollTo(0,0);
+}
 function _cpFornSetSort(campo){ if(_cpFornSort.campo===campo) _cpFornSort.dir*=-1; else _cpFornSort={campo, dir:(campo==='cod'||campo==='nome')?1:-1}; renderCompras(); }
 function _cpFornItBuscaToggle(){ _cpFornItBuscaAberta=!_cpFornItBuscaAberta; if(!_cpFornItBuscaAberta) _cpFornItBusca=''; renderCompras();
   if(_cpFornItBuscaAberta) setTimeout(function(){ var el=document.getElementById('cp-fi-busca'); if(el) el.focus(); },30); }
@@ -10124,7 +10140,7 @@ function _cpFornRowsHTML(){
 // ⚠️ Zera _cpItemSel: sem isso, sair da ficha de um item p/ a ficha do fornecedor e de lá abrir outro
 // item deixava _cpItemOrigem preso na tela de onde o PRIMEIRO item foi aberto — e o "Voltar" levava
 // pra tela errada (a regra é "Voltar volta p/ a tela de ORIGEM").
-function _cpAbrirForn(cod){ _cpFornSel=cod; _cpItemSel=null; _cpItemOrigem='fornecedores'; try{document.body.classList.remove('cp-focus');}catch(e){} comprasView='fornecedores'; renderSidebar(); renderCompras(); window.scrollTo(0,0); }
+function _cpAbrirForn(cod){ _cpFornSel=cod; _cpFornView='resumo'; _cpItemSel=null; _cpItemOrigem='fornecedores'; _cpFornItBusca=''; _cpFornItBuscaAberta=false; try{document.body.classList.remove('cp-focus');}catch(e){} comprasView='fornecedores'; renderSidebar(); renderCompras(); window.scrollTo(0,0); }
 function _cpVoltarForns(){ _cpFornSel=null; renderCompras(); }
 function _cpFornSetMeses(v){ _cpFornMeses=Number(v); renderCompras(); }
 // meses: janela em meses (default = o filtro da tela Fornecedores). Passe 0 para "tudo".
@@ -10216,10 +10232,10 @@ function _cpFornItTbodyHTML(cod){
       <td class="cp-mono">${escapeHTML(i.cod)}</td>
       <td class="cp-item">${escapeHTML(i.nome)}</td>
       <td class="cp-n">${_cpBRL(i.preco)}</td>
-      <td class="cp-n">${i.qtdA?_cpNum(i.qtdA,0)+' '+un(i.um):'<span style="color:var(--text3)">—</span>'}</td>
-      <td class="cp-n">${i.totA?_cpBRL(i.totA):'<span style="color:var(--text3)">—</span>'}</td>
-      <td class="cp-n" style="background:color-mix(in srgb,var(--text3) 7%,transparent)">${i.qtdB?_cpNum(i.qtdB,0)+' '+un(i.um):'<span style="color:var(--text3)">—</span>'}</td>
-      <td class="cp-n" style="background:color-mix(in srgb,var(--text3) 7%,transparent)">${i.totB?_cpBRL(i.totB):'<span style="color:var(--text3)">—</span>'}</td>
+      <td class="cp-n" style="background:${CP_BG_A}">${i.qtdA?_cpNum(i.qtdA,0)+' '+un(i.um):'<span style="color:var(--text3)">—</span>'}</td>
+      <td class="cp-n" style="background:${CP_BG_A}">${i.totA?_cpBRL(i.totA):'<span style="color:var(--text3)">—</span>'}</td>
+      <td class="cp-n" style="background:${CP_BG_B}">${i.qtdB?_cpNum(i.qtdB,0)+' '+un(i.um):'<span style="color:var(--text3)">—</span>'}</td>
+      <td class="cp-n" style="background:${CP_BG_B}">${i.totB?_cpBRL(i.totB):'<span style="color:var(--text3)">—</span>'}</td>
       <td class="cp-n">${_cpVarPill(i.delta)}</td>
       <td class="cp-mono">${_cpDt(i.ult)}</td></tr>`).join('');
 }
@@ -10234,111 +10250,186 @@ function _cpFornItTfootHTML(cod){
   return `<tr style="border-top:2px solid var(--border);font-weight:700">
       <td colspan="2" style="color:var(--text2)">${_cpFornItBusca?`Total do filtro (${L.length} ${L.length===1?'item':'itens'})`:`Total (${L.length} itens)`}</td>
       <td></td>
-      <td class="cp-n">${_cpNum(qA,0)} ${un}</td><td class="cp-n">${_cpBRL(sA)}</td>
-      <td class="cp-n" style="background:color-mix(in srgb,var(--text3) 7%,transparent)">${_cpNum(qB,0)} ${un}</td>
-      <td class="cp-n" style="background:color-mix(in srgb,var(--text3) 7%,transparent)">${_cpBRL(sB)}</td>
+      <td class="cp-n" style="background:${CP_BG_A}">${_cpNum(qA,0)} ${un}</td><td class="cp-n" style="background:${CP_BG_A}">${_cpBRL(sA)}</td>
+      <td class="cp-n" style="background:${CP_BG_B}">${_cpNum(qB,0)} ${un}</td>
+      <td class="cp-n" style="background:${CP_BG_B}">${_cpBRL(sB)}</td>
       <td class="cp-n">${_cpVarPill(_cpVar(sA,sB))}</td><td></td></tr>`;
 }
-// Simulador: "se eu aumentar o volume X%, quanto isso vira de volume e de dinheiro pro fornecedor".
-// Base = o período A, ao preço médio praticado nele (o argumento que se leva pra mesa).
+// ══════ SIMULADOR "e se eu aumentar o volume X%" ══════
+// Base = o período A, ao preço médio praticado nele. É a alavanca que se leva pra mesa:
+// "cresço X% com você — quanto isso vira de desconto?".
 function _cpFornSimOutHTML(cod){
   const c=_cpFornCtx(cod); if(!c) return '';
   const pct=parseFloat(String(_cpFornSimPct).replace(',','.'))||0;
   const qA=c.A.qtd, vA=c.A.total;
-  if(!(vA>0)) return `<div style="font-size:12.5px;color:var(--text3)">Sem compras no período A para simular.</div>`;
+  if(!(vA>0)) return `<div style="font-size:12.5px;color:var(--text3);font-style:italic">Sem compras no período A para simular.</div>`;
   const dq=qA*pct/100, dv=vA*pct/100;
   const un=c.umsMistas?'un.':(c.um||'un');
-  const linha=(lab,at,depois,mais)=>`<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:12px;color:var(--text3)">${lab}</span>
-      <span style="font-size:12.5px;text-align:right"><span style="color:var(--text3)">${at}</span> <i class="ti ti-arrow-right" style="font-size:11px;color:var(--text3)"></i> <b style="color:var(--text)">${depois}</b> <span style="color:var(--blue-mid);font-weight:700;white-space:nowrap">${mais}</span></span></div>`;
-  return `${linha('Volume', _cpNum(qA,0)+' '+un, _cpNum(qA+dq,0)+' '+un, '+'+_cpNum(dq,0))}
-    ${linha('Valor', _cpBRL(vA), _cpBRL(vA+dv), '+'+_cpBRL(dv))}
-    <div style="font-size:11.5px;color:var(--text3);margin-top:8px;line-height:1.45">Sobre o período <b>${escapeHTML(c.rA.label)}</b>, ao preço médio praticado nele. É o argumento da mesa: <b>+${_cpBRL(dv)}</b> de faturamento para ele — quanto ele devolve em desconto?</div>`;
+  const bloco=(rot,de,para,mais)=>`<div style="flex:1 1 210px;min-width:0">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:4px">${rot}</div>
+      <div style="font-size:12px;color:var(--text3);text-decoration:line-through">${de}</div>
+      <div style="font-size:19px;font-weight:800;color:var(--text);line-height:1.15;margin:1px 0 2px">${para}</div>
+      <div style="font-size:12.5px;font-weight:700;color:var(--blue-mid)">${mais}</div>
+    </div>`;
+  return `<div style="display:flex;gap:22px;flex-wrap:wrap">
+      ${bloco('Volume', _cpNum(qA,0)+' '+un, _cpNum(qA+dq,0)+' '+un, '+'+_cpNum(dq,0)+' '+un)}
+      ${bloco('Valor', _cpBRL(vA), _cpBRL(vA+dv), '+'+_cpBRL(dv))}
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-top:10px;padding-top:9px;border-top:1px solid var(--border);line-height:1.5">
+      Sobre o período <b style="color:var(--text2)">${escapeHTML(c.rA.label)}</b>, ao preço médio praticado nele.<br>
+      São <b style="color:var(--blue-mid)">+${_cpBRL(dv)}</b> de faturamento para ele — <b>quanto ele devolve em desconto?</b></div>`;
 }
-function _cpFichaFornHTML(cod){
-  const c=_cpFornCtx(cod);
-  if(!c) return _cpTela('Fornecedor','Fornecedor não encontrado.', _cpVazio('Sem compras deste fornecedor.'),
-    undefined, undefined, {fn:'_cpVoltarForns()', label:'Voltar aos fornecedores'});
+// Card do simulador (usado no Resumo e na aba Comparar).
+function _cpFornSimCard(cod){
+  return `<div class="cp-card" style="padding:15px 17px">
+    <div class="cp-card-title"><span>E se eu aumentar o volume</span></div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;margin-top:10px">
+      <div style="flex:0 0 auto;text-align:center">
+        <span style="display:inline-flex;align-items:baseline;gap:3px"><input type="text" inputmode="decimal" value="${escapeAttr(_cpFornSimPct)}" oninput="_cpFornSimSet(this.value)" class="cp-sim-inp" style="width:62px;text-align:center;font-size:24px;font-weight:800"><b style="font-size:19px;color:var(--text2)">%</b></span>
+        <div style="font-size:10.5px;color:var(--text3);margin-top:2px">a mais que hoje</div>
+      </div>
+      <div id="cp-forn-sim-out" style="flex:1 1 380px;min-width:0">${_cpFornSimOutHTML(cod)}</div>
+    </div></div>`;
+}
+// ══════ BLOCO DE COMPARAÇÃO A × B ══════
+// Período A de um lado, B do outro e as diferenças NO MEIO (pedido do Diego). Cada lado carrega o
+// próprio seletor + os próprios números, p/ não sobrar dúvida de qual número é de qual período.
+function _cpFornCompHTML(cod){
+  const c=_cpFornCtx(cod); if(!c) return '';
+  const varVol=_cpVar(c.A.qtd,c.B.qtd), varVal=_cpVar(c.A.total,c.B.total), varNF=_cpVar(Object.keys(c.A.nfs).length,Object.keys(c.B.nfs).length);
+  const un=c.umsMistas?'un. mistas':(c.um||'un');
+  const dinp=(qual,campo)=>{ const o=(qual==='A')?_cpFornPerA:_cpFornPerB;
+    return `<input type="date" value="${escapeAttr(o[campo]||'')}" oninput="_cpFornSetPerData('${qual}','${campo}',this.value)" onchange="_cpFornSetPerData('${qual}','${campo}',this.value)" onblur="_cpFornSetPerDataCommit('${qual}','${campo}',this.value)" class="modal-input" style="width:auto;padding:4px 7px;font-size:11.5px">`; };
+  const lado=(qual,per,dados,bg)=>{ const o=(qual==='A')?_cpFornPerA:_cpFornPerB;
+    return `<div style="background:${bg};border-radius:11px;padding:13px 15px;min-width:0">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:6px">Período ${qual}</div>
+      <select onchange="_cpFornSetPer('${qual}',this.value)" class="modal-input" style="width:100%;max-width:230px;padding:5px 9px;font-size:12.5px;font-weight:600">${_CP_FORN_PER.map(p=>`<option value="${p[0]}"${o.p===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>
+      ${o.p==='custom'?`<div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">${dinp(qual,'de')}${dinp(qual,'ate')}</div>`:''}
+      <div style="font-size:11.5px;color:var(--text3);margin:7px 0 9px;font-style:italic">${escapeHTML(per.label)}</div>
+      <div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.02em;line-height:1.1">${_cpBRL(dados.total)}</div>
+      <div style="font-size:13px;font-weight:600;color:var(--text2);margin-top:3px">${_cpNum(dados.qtd,0)} <span style="color:var(--text3);font-size:11px">${escapeHTML(un)}</span></div>
+      <div style="font-size:11.5px;color:var(--text3);margin-top:3px">${_cpNum(Object.keys(dados.nfs).length)} ${Object.keys(dados.nfs).length===1?'nota':'notas'} · ${_cpNum(Object.keys(dados.porItem).length)} itens</div>
+    </div>`; };
+  const dif=(rot,v)=>`<div style="text-align:center"><div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">${rot}</div><div style="font-size:16px;line-height:1.25">${_cpVarPill(v)}</div></div>`;
+  return `<div class="cp-card" style="padding:16px 18px">
+    <div class="cp-card-title"><span>Comparação de períodos</span><span class="sub">A × B — o que muda de um para o outro</span></div>
+    <div class="cp-cmp-grid" style="margin-top:12px">
+      ${lado('A',c.rA,c.A,CP_BG_A)}
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;padding:4px 2px">
+        <div style="width:34px;height:34px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex:none"><i class="ti ti-x" style="font-size:16px;color:var(--text3)"></i></div>
+        ${dif('Valor',varVal)}${dif('Volume',varVol)}${dif('Notas',varNF)}
+      </div>
+      ${lado('B',c.rB,c.B,CP_BG_B)}
+    </div>
+    <div style="font-size:11.5px;color:var(--text3);margin-top:11px;line-height:1.5"><i class="ti ti-info-circle"></i> A variação compara <b>A contra B</b> (A é o período de referência). Estes períodos valem também para a aba <b>Itens</b>.</div>
+  </div>`;
+}
+// ══════ ABAS DO PAINEL ══════
+function _cpFornResumoHTML(cod){
+  const c=_cpFornCtx(cod); if(!c) return '';
   const f=c.f, um=c.um;
-  // ── indicadores ──
-  const varVol=_cpVar(c.A.qtd,c.B.qtd), varVal=_cpVar(c.A.total,c.B.total);
-  // Tendência mês a mês = média dos últimos 3 meses FECHADOS × os 3 anteriores (menos ruidosa que
-  // mês contra mês seco). ⚠️ O mês corrente fica de fora: com 1 dia de dados ele derrubaria a média.
+  // Tendência = média dos últimos 3 meses FECHADOS × os 3 anteriores (menos ruidosa que mês/mês seco).
+  // ⚠️ O mês corrente fica de fora: com poucos dias de nota ele derrubaria a média.
   const S=c.serie, Sf=S.filter(s=>!s.parcial), u3=Sf.slice(-3), p3=Sf.slice(-6,-3);
   const md=a=>a.length?a.reduce((x,s)=>x+s.valor,0)/a.length:0;
   const tend=(u3.length&&p3.length)?_cpVar(md(u3),md(p3)):null;
   const temParcial=S.some(s=>s.parcial);
-  // ── gráficos ──
-  const umLbl=c.umsMistas?'unidades mistas':('em '+(um||'un'));
-  const graf=(t,sub,g)=>`<div class="cp-card" style="padding:14px 16px;flex:1 1 320px;min-width:0">
+  const umLbl=c.umsMistas?'unidades mistas ⚠':('em '+(um||'un'));
+  const notaParcial=temParcial?`<div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">* ${_cpMesLbl(+today.slice(0,4),+today.slice(5,7))} ainda está em curso — mês parcial, fora da tendência.</div>`:'';
+  const graf=(t,sub,g)=>`<div class="cp-card" style="padding:14px 16px;flex:1 1 340px;min-width:0">
     <div class="cp-card-title"><span>${t}</span>${sub?`<span class="sub">${sub}</span>`:''}</div>
     <div style="margin-top:8px">${g}</div></div>`;
-  const notaParcial=temParcial?`<div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">* ${_cpMesLbl(+today.slice(0,4),+today.slice(5,7))} ainda está em curso — o mês é parcial e não entra na tendência.</div>`:'';
-  const grafs=`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">
-    ${graf('Volume comprado por mês', umLbl+(c.umsMistas?' ⚠':''), (S.length?_cpBarChart(S,'qtd',v=>_cpNum(v,0)+' '+(um||''),undefined,_cpAbrevN,72):_cpVazio('Sem histórico.'))+notaParcial)}
-    ${graf('Valor comprado por mês','R$ por mês', (S.length?_cpBarChart(S,'valor',v=>_cpBRL(v),undefined,_cpAbrevN,72):_cpVazio('Sem histórico.'))+notaParcial)}
-  </div>`;
-  // ── seletores de período (valem p/ os indicadores A×B, a tabela e o simulador) ──
-  const dinp=(qual,campo)=>{ const o=(qual==='A')?_cpFornPerA:_cpFornPerB;
-    return `<input type="date" value="${escapeAttr(o[campo]||'')}" oninput="_cpFornSetPerData('${qual}','${campo}',this.value)" onchange="_cpFornSetPerData('${qual}','${campo}',this.value)" onblur="_cpFornSetPerDataCommit('${qual}','${campo}',this.value)" class="modal-input" style="width:auto;padding:4px 7px;font-size:11.5px">`; };
-  const selPer=(qual)=>{ const o=(qual==='A')?_cpFornPerA:_cpFornPerB;
-    return _cpSelPeriodo('Período '+qual, `<span style="display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap"><select onchange="_cpFornSetPer('${qual}',this.value)" class="modal-input" style="width:auto;padding:5px 9px;font-size:12px;font-weight:600">${_CP_FORN_PER.map(p=>`<option value="${p[0]}"${o.p===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>${o.p==='custom'?`${dinp(qual,'de')}${dinp(qual,'ate')}`:''}</span>`); };
-  // ── tabela de itens ──
-  const S_=_cpFornSort;
-  const seta=k=>S_.campo===k?`<i class="ti ti-arrow-${S_.dir>0?'up':'down'}" style="font-size:11px;margin-left:2px;vertical-align:-1px"></i>`:'';
-  const th=(k,lab,dir,extra)=>`<th${dir?' class="r"':''} onclick="_cpFornSetSort('${k}')" style="cursor:pointer;user-select:none;${extra||''}" title="Ordenar por ${lab.replace(/<[^>]+>/g,'')}">${lab}${seta(k)}</th>`;
-  const bgB='background:color-mix(in srgb,var(--text3) 7%,transparent)';
-  const tabelaItens=`<div class="cp-card" style="overflow-x:auto;margin-bottom:14px"><table class="cp-tbl">
-      <thead>
-        <tr><th colspan="3"></th>
-          <th colspan="2" class="r" style="border-bottom:1px solid var(--border)">Período A <span class="cp-hsub">(${escapeHTML(c.rA.label)})</span></th>
-          <th colspan="2" class="r" style="${bgB};border-bottom:1px solid var(--border)">Período B <span class="cp-hsub">(${escapeHTML(c.rB.label)})</span></th>
-          <th colspan="2"></th></tr>
-        <tr>${th('cod','Cód.')}${th('nome','Item')}${th('preco','Últ. preço',1)}
-          ${th('qtdA','Qtde',1)}${th('totA','Total',1)}
-          ${th('qtdB','Qtde',1,bgB)}${th('totB','Total',1,bgB)}
-          ${th('delta','Var. %',1)}${th('ult','Últ. compra')}</tr>
-      </thead>
-      <tbody id="cp-fi-tbody">${_cpFornItTbodyHTML(cod)}</tbody>
-      <tfoot id="cp-fi-tfoot">${_cpFornItTfootHTML(cod)}</tfoot></table></div>`;
-  const ultimas=f.linhas.slice().sort((a,b)=>a.data<b.data?1:-1).slice(0,25).map(l=>
-    `<tr><td class="cp-mono">${_cpDt(l.data)}</td><td class="cp-mono">${escapeHTML(String(l.nf))}</td>
-     <td class="cp-mono">${escapeHTML(String(l.item[0]))}</td><td class="cp-item">${escapeHTML(l.item[1])}</td><td class="cp-n">${_cpNum(l.qtd,2)} <span class="cp-un">${escapeHTML(l.um||"")}</span></td>
-     <td class="cp-n">${_cpBRL(l.vun)}</td><td class="cp-n">${_cpBRL(l.tot)}</td></tr>`).join('');
-  return _cpTela(escapeHTML(_cpForn(f.nome)),'O que compramos deste fornecedor, com a comparação entre dois períodos — leve para a negociação.',
-    `${_cpKPIcards([
+  return `${_cpKPIcards([
       _cpKPI('Comprado (tudo)',_cpBRL(f.total)),
       _cpKPI('Notas fiscais',_cpNum(Object.keys(f.nfs).length)),
       _cpKPI('Itens diferentes',_cpNum(c.itens.length)),
       _cpKPI('Tendência mês a mês',_cpVarPill(tend))
     ])}
     <div style="font-size:12px;color:var(--text3);margin:-6px 2px 14px;line-height:1.5"><i class="ti ti-info-circle"></i> <b>Tendência</b> = média dos últimos 3 meses fechados contra os 3 anteriores. O prazo de pagamento e o de entrega não vêm neste export do ERP.</div>
-    ${grafs}
-    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 2px 8px">
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">
+      ${graf('Volume comprado por mês', umLbl, (S.length?_cpBarChart(S,'qtd',v=>_cpNum(v,0)+' '+(um||''),undefined,_cpAbrevN,72):_cpVazio('Sem histórico.'))+notaParcial)}
+      ${graf('Valor comprado por mês','R$ por mês', (S.length?_cpBarChart(S,'valor',v=>_cpBRL(v),undefined,_cpAbrevN,72):_cpVazio('Sem histórico.'))+notaParcial)}
+    </div>
+    ${_cpFornCompHTML(cod)}`;
+}
+function _cpFornCompararHTML(cod){
+  return `${_cpFornCompHTML(cod)}
+    <div style="height:14px"></div>
+    ${_cpFornSimCard(cod)}`;
+}
+function _cpFornItensHTML(cod){
+  const c=_cpFornCtx(cod); if(!c) return '';
+  const S_=_cpFornSort;
+  const seta=k=>S_.campo===k?`<i class="ti ti-arrow-${S_.dir>0?'up':'down'}" style="font-size:11px;margin-left:2px;vertical-align:-1px"></i>`:'';
+  const th=(k,lab,dir,extra)=>`<th${dir?' class="r"':''} onclick="_cpFornSetSort('${k}')" style="cursor:pointer;user-select:none;${extra||''}" title="Ordenar por ${lab.replace(/<[^>]+>/g,'')}">${lab}${seta(k)}</th>`;
+  // seletores compactos: os mesmos do bloco de comparação, aqui à mão de quem está lendo a tabela
+  const selPer=(qual)=>{ const o=(qual==='A')?_cpFornPerA:_cpFornPerB;
+    return _cpSelPeriodo('Período '+qual, `<select onchange="_cpFornSetPer('${qual}',this.value)" class="modal-input" style="width:auto;padding:5px 9px;font-size:12px;font-weight:600">${_CP_FORN_PER.map(p=>`<option value="${p[0]}"${o.p===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>`); };
+  return `<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 2px 10px">
       <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Itens comprados</span>
       <div style="display:inline-flex;align-items:flex-end;gap:10px;flex-wrap:wrap">${selPer('A')}${selPer('B')}${_cpLupa(_cpFornItBuscaAberta,_cpFornItBusca,'_cpFornItBuscaToggle','_cpFornItBuscaInput','cp-fi-busca','Buscar item…')}</div>
     </div>
-    ${_cpKPIcards([
-      _cpKPI('Volume · A × B',_cpVarPill(varVol), null),
-      _cpKPI('Valor · A × B',_cpVarPill(varVal), null),
-      _cpKPI('Comprado no período A',_cpBRL(c.A.total)),
-      _cpKPI('Comprado no período B',_cpBRL(c.B.total))
-    ])}
-    <div class="cp-card" style="padding:13px 16px;margin-bottom:12px;display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">
-      <div style="flex:0 0 auto">
-        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:5px">E se eu aumentar o volume</div>
-        <span style="display:inline-flex;align-items:baseline;gap:4px"><input type="text" inputmode="decimal" value="${escapeAttr(_cpFornSimPct)}" oninput="_cpFornSimSet(this.value)" class="cp-sim-inp" style="width:52px;text-align:center;font-size:16px;font-weight:700"><b style="font-size:15px">%</b></span>
-      </div>
-      <div id="cp-forn-sim-out" style="flex:1 1 320px;min-width:0">${_cpFornSimOutHTML(cod)}</div>
-    </div>
-    ${tabelaItens}
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:0 2px 8px">Últimas entradas</div>
     <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
-      <thead><tr><th>Data</th><th>NF</th><th>Cód.</th><th>Item</th><th class="r">Qtde</th><th class="r">Vlr unit.</th><th class="r">Total</th></tr></thead>
-      <tbody>${ultimas}</tbody></table></div>`,
-    undefined, undefined, {fn:'_cpVoltarForns()', label:'Voltar aos fornecedores'});
+      <thead>
+        <tr><th colspan="3"></th>
+          <th colspan="2" class="r" style="background:${CP_BG_A};border-bottom:1px solid var(--border)">Período A <span class="cp-hsub">(${escapeHTML(c.rA.label)})</span></th>
+          <th colspan="2" class="r" style="background:${CP_BG_B};border-bottom:1px solid var(--border)">Período B <span class="cp-hsub">(${escapeHTML(c.rB.label)})</span></th>
+          <th colspan="2"></th></tr>
+        <tr>${th('cod','Cód.')}${th('nome','Item')}${th('preco','Últ. preço',1)}
+          ${th('qtdA','Qtde',1,'background:'+CP_BG_A)}${th('totA','Total',1,'background:'+CP_BG_A)}
+          ${th('qtdB','Qtde',1,'background:'+CP_BG_B)}${th('totB','Total',1,'background:'+CP_BG_B)}
+          ${th('delta','Var. %',1)}${th('ult','Últ. compra')}</tr>
+      </thead>
+      <tbody id="cp-fi-tbody">${_cpFornItTbodyHTML(cod)}</tbody>
+      <tfoot id="cp-fi-tfoot">${_cpFornItTfootHTML(cod)}</tfoot></table></div>`;
 }
-
+function _cpFornEntradasHTML(cod){
+  const c=_cpFornCtx(cod); if(!c) return '';
+  const linhas=c.f.linhas.slice().sort((a,b)=>a.data<b.data?1:-1).slice(0,60).map(l=>
+    `<tr><td class="cp-mono">${_cpDt(l.data)}</td><td class="cp-mono">${escapeHTML(String(l.nf))}</td>
+     <td class="cp-mono">${escapeHTML(String(l.item[0]))}</td><td class="cp-item">${escapeHTML(l.item[1])}</td><td class="cp-n">${_cpNum(l.qtd,2)} <span class="cp-un">${escapeHTML(l.um||"")}</span></td>
+     <td class="cp-n">${_cpBRL(l.vun)}</td><td class="cp-n">${_cpBRL(l.tot)}</td></tr>`).join('')
+    || `<tr><td colspan="7">${_cpVazio('Sem entradas.')}</td></tr>`;
+  return `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
+      <thead><tr><th>Data</th><th>NF</th><th>Cód.</th><th>Item</th><th class="r">Qtde</th><th class="r">Vlr unit.</th><th class="r">Total</th></tr></thead>
+      <tbody>${linhas}</tbody></table></div>
+    <div style="font-size:12px;color:var(--text3);margin-top:9px;font-style:italic">Mostrando as 60 entradas mais recentes de ${_cpNum(c.f.linhas.length)}.</div>`;
+}
+function _cpFornMainHTML(cod){
+  if(_cpFornView==='comparar') return _cpFornCompararHTML(cod);
+  if(_cpFornView==='itens') return _cpFornItensHTML(cod);
+  if(_cpFornView==='entradas') return _cpFornEntradasHTML(cod);
+  return _cpFornResumoHTML(cod);
+}
+// PAINEL do fornecedor — mesmo formato da ficha do item (voltar + título + sub-navbar + tela cheia).
+function _cpFichaFornHTML(cod){
+  const c=_cpFornCtx(cod);
+  if(!c) return _cpTela('Fornecedor','Fornecedor não encontrado.', _cpVazio('Sem compras deste fornecedor.'),
+    undefined, undefined, {fn:'_cpVoltarForns()', label:'Voltar aos fornecedores'});
+  const foco=(typeof document!=='undefined') && document.body.classList.contains('cp-focus');
+  const tb=(v,ic,lab)=>`<button class="cp-subtab ${_cpFornView===v?'on':''}" onclick="_cpFornSetView('${v}')"><i class="ti ${ic}"></i>${lab}</button>`;
+  const btnFoco=foco
+    ? `<button class="cp-exp-btn2" onclick="_cpToggleFoco()" title="Reduzir"><i class="ti ti-arrows-minimize"></i> Reduzir</button>`
+    : `<button class="cp-exp-btn2" onclick="_cpToggleFoco()" title="Abrir em tela cheia"><i class="ti ti-arrows-maximize"></i> Tela cheia</button>`;
+  return `${_cpCSS()}<div class="cp-painel-wrap">
+    <button class="cp-back-link" onclick="_cpVoltarForns()"><i class="ti ti-arrow-left"></i> Voltar aos fornecedores</button>
+    <div style="display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;margin-bottom:2px">
+      <h1 style="font-size:23px;font-weight:800;letter-spacing:-.02em;color:var(--text);margin:0">${escapeHTML(_cpForn(c.f.nome))}</h1>
+      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 14%,transparent);padding:3px 9px;border-radius:999px">${_cpNum(c.itens.length)} itens · ${_cpBRL(c.f.total)}</span>
+    </div>
+    <div style="font-size:12.5px;color:var(--text3);margin-bottom:10px">O que compramos deste fornecedor, com a comparação entre dois períodos — leve para a negociação.</div>
+    <div class="cp-subnav-wrap">
+      <div class="cp-subnav">
+        ${tb('resumo','ti-clipboard-data','Resumo')}
+        ${tb('comparar','ti-arrows-left-right','Comparar')}
+        ${tb('itens','ti-cube','Itens')}
+        ${tb('entradas','ti-receipt','Entradas')}
+      </div>
+      ${btnFoco}
+    </div>
+    <div id="cp-fornficha-main" style="margin-top:18px">${_cpFornMainHTML(cod)}</div>
+  </div>`;
+}
 // ════════ ORDENS DE COMPRA EM ABERTO (pedido do Diego, ago/2026) ════════
 // ⚠️ PROTÓTIPO: pedidos em aberto NÃO vêm dos exports atuais do ERP (NF/estoque/consumo).
 // `_CP_OCABERTO` é EXEMPLO (códigos e fornecedores reais; quantidades/datas/prazos fictícios) só p/
