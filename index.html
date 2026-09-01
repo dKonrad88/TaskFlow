@@ -10491,14 +10491,19 @@ function _cpFornCompHTML(cod){
   // número sempre quer dizer "evolução no tempo" — pôr o ano passado no lado A não inverte o sinal.
   const O=_cpFornOrdem(c);
   const varVol=_cpVar(O.novo.qtd,O.base.qtd), varVal=_cpVar(O.novo.total,O.base.total),
-        varNF=_cpVar(Object.keys(O.novo.nfs).length,Object.keys(O.base.nfs).length);
+        varNF=_cpVar(Object.keys(O.novo.nfs).length,Object.keys(O.base.nfs).length),
+        // itens DIFERENTES comprados: mostra se a carteira com o fornecedor abriu ou encolheu
+        varIt=_cpVar(Object.keys(O.novo.porItem).length,Object.keys(O.base.porItem).length);
   const un=c.umsMistas?'un. mistas':(c.um||'un');
   const dinp=(qual,campo)=>{ const o=(qual==='A')?_cpFornPerA:_cpFornPerB;
     return `<input type="date" value="${escapeAttr(o[campo]||'')}" oninput="_cpFornSetPerData('${qual}','${campo}',this.value)" onchange="_cpFornSetPerData('${qual}','${campo}',this.value)" onblur="_cpFornSetPerDataCommit('${qual}','${campo}',this.value)" class="modal-input" style="width:auto;padding:4px 7px;font-size:11.5px">`; };
   // Quadro do ANO INTEIRO ao lado dos números do período: ano passado = fato consumado; ano corrente
   // = projeção pelo crescimento já observado. É o número que se leva pra mesa ("no ano você faturou X;
   // neste, no ritmo de agora, fecha em Y").
-  const anoBox=(per)=>{
+  // `lado` = de que lado do card o quadro do ano fica. No período A ele vai à ESQUERDA (com o divider
+  // à direita) e no B à DIREITA — assim os dois quadros de ano ficam nas PONTAS do card e os números
+  // dos períodos, no miolo, perto do X (pedido do Diego).
+  const anoBox=(per, lado)=>{
     const ano=_cpFornAnoDoPer(per,c.f.linhas), A=_cpFornAno(c.f.linhas,ano);
     if(A.total==null) return '';
     const cobreAno=per.ini && per.fim && per.ini.slice(0,4)==String(ano) && per.ini.slice(5)==='01-01'
@@ -10510,7 +10515,10 @@ function _cpFornCompHTML(cod){
       : (A.metodo==='yoy'
           ? `no ritmo de agora (+${_cpNum((A.fator-1)*100,1)}% sobre ${ano-1})`
           : 'projetado pelo tempo decorrido');
-    return `<div style="flex:0 0 auto;text-align:right;border-left:1px solid var(--border);padding-left:14px;margin-left:14px;min-width:132px">
+    const esq=(lado==='esq');
+    const div=esq ? 'border-right:1px solid var(--border);padding-right:14px;margin-right:14px'
+                  : 'border-left:1px solid var(--border);padding-left:14px;margin-left:14px';
+    return `<div style="flex:0 0 auto;text-align:${esq?'left':'right'};${div};min-width:132px">
       <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:5px">${escapeHTML(tit)}</div>
       <div style="font-size:17px;font-weight:800;color:var(--text2);letter-spacing:-.01em;line-height:1.15">${_cpBRL(A.total)}${A.fechado?'':'<span style="font-size:11px;font-weight:600;color:var(--text3)"> est.</span>'}</div>
       ${A.qtd!=null?`<div style="font-size:11.5px;font-weight:600;color:var(--text3);margin-top:2px">${_cpNum(A.qtd,0)} ${escapeHTML(un)}</div>`:''}
@@ -10530,14 +10538,14 @@ function _cpFornCompHTML(cod){
         <div style="font-size:11.5px;color:var(--text3);font-style:italic">${escapeHTML(per.label)}</div>
         ${datas?`<div style="font-size:12px;font-weight:600;color:var(--text2);margin-top:1px"><i class="ti ti-calendar" style="font-size:11px;color:var(--text3)"></i> ${escapeHTML(datas)}</div>`:''}
       </div>
-      <div style="display:flex;align-items:flex-start;flex-wrap:wrap">
-        <div style="flex:1 1 auto;min-width:0">
+      ${(()=>{ const nums=`<div style="flex:1 1 auto;min-width:0${qual==='A'?';text-align:right':''}">
           <div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.02em;line-height:1.1">${_cpBRL(dados.total)}</div>
           <div style="font-size:13px;font-weight:600;color:var(--text2);margin-top:3px">${_cpNum(dados.qtd,0)} <span style="color:var(--text3);font-size:11px">${escapeHTML(un)}</span></div>
           <div style="font-size:11.5px;color:var(--text3);margin-top:3px">${_cpNum(Object.keys(dados.nfs).length)} ${Object.keys(dados.nfs).length===1?'nota':'notas'} · ${_cpNum(Object.keys(dados.porItem).length)} itens</div>
-        </div>
-        ${anoBox(per)}
-      </div>
+        </div>`;
+        // A = [ano fechado | números do período]  ·  B = [números do período | projeção do ano]
+        const box=anoBox(per, qual==='A'?'esq':'dir');
+        return `<div style="display:flex;align-items:flex-start;flex-wrap:wrap">${qual==='A'?(box+nums):(nums+box)}</div>`; })()}
     </div>`; };
   const dif=(rot,v)=>`<div style="text-align:center"><div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">${rot}</div><div style="font-size:16px;line-height:1.25">${_cpVarPill(v)}</div></div>`;
   const seta=(O.novoLado==='A')?'ti-arrow-left':'ti-arrow-right';   // aponta do período BASE p/ o mais recente
@@ -10547,11 +10555,10 @@ function _cpFornCompHTML(cod){
       ${lado('A',c.rA,c.A,CP_BG_A)}
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;padding:4px 2px">
         <div style="width:34px;height:34px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex:none" title="A variação vai do período mais antigo para o mais recente"><i class="ti ${seta}" style="font-size:16px;color:var(--blue-mid)"></i></div>
-        ${dif('Valor',varVal)}${dif('Volume',varVol)}${dif('Notas',varNF)}
+        ${dif('Valor',varVal)}${dif('Volume',varVol)}${dif('Itens',varIt)}${dif('Notas',varNF)}
       </div>
       ${lado('B',c.rB,c.B,CP_BG_B)}
     </div>
-    <div style="font-size:11.5px;color:var(--text3);margin-top:11px;line-height:1.5"><i class="ti ti-info-circle"></i> A variação é sempre a <b>evolução no tempo</b>: do período mais antigo (<b>${escapeHTML(O.baseR.label)}</b>) para o mais recente (<b>${escapeHTML(O.novoR.label)}</b>) — tanto faz em qual lado cada um está. Estes períodos valem também para a aba <b>Itens</b>.</div>
   </div>`;
 }
 // ══════ ABAS DO PAINEL ══════
@@ -10588,7 +10595,6 @@ function _cpFornResumoHTML(cod){
       _cpKPI('Itens diferentes',_cpNum(c.itens.length)),
       _cpKPI('Ritmo · últ. 3 meses', tendVal)
     ])}
-    <div style="font-size:12px;color:var(--text3);margin:-6px 2px 14px;line-height:1.55"><i class="ti ti-info-circle"></i> <b>Ritmo</b> = média dos <b>3 últimos meses fechados</b> contra os 3 anteriores — é a velocidade de agora, dentro do próprio ano. Não confunda com o <b>A × B</b> lá embaixo, que compara períodos inteiros: dá para estar <b>acima do ano passado</b> e, ao mesmo tempo, <b>desacelerando</b> nos últimos meses. O prazo de pagamento e o de entrega não vêm neste export do ERP.</div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">
       ${graf('Volume comprado por mês', umLbl, (S.length?_cpBarChart(S,'qtd',v=>_cpNum(v,0)+' '+(um||''),undefined,_cpAbrevN,72):_cpVazio('Sem histórico.'))+notaParcial)}
       ${graf('Valor comprado por mês','R$ por mês', (S.length?_cpBarChart(S,'valor',v=>_cpBRL(v),undefined,_cpAbrevN,72):_cpVazio('Sem histórico.'))+notaParcial)}
@@ -10612,8 +10618,8 @@ function _cpFornItensHTML(cod){
     <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead>
         <tr><th colspan="3"></th>
-          <th colspan="2" class="r" style="background:${CP_BG_A};border-bottom:1px solid var(--border)">Período A <span class="cp-hsub">(${escapeHTML(c.rA.label)})</span></th>
-          <th colspan="2" class="r" style="background:${CP_BG_B};border-bottom:1px solid var(--border)">Período B <span class="cp-hsub">(${escapeHTML(c.rB.label)})</span></th>
+          <th colspan="2" style="text-align:center;background:${CP_BG_A};border-bottom:1px solid var(--border)">Período A <span class="cp-hsub">(${escapeHTML(c.rA.label)})</span></th>
+          <th colspan="2" style="text-align:center;background:${CP_BG_B};border-bottom:1px solid var(--border)">Período B <span class="cp-hsub">(${escapeHTML(c.rB.label)})</span></th>
           <th colspan="2"></th></tr>
         <tr>${_cpTh('fcomp','cod','Cód.')}${_cpTh('fcomp','nome','Item')}${_cpTh('fcomp','preco','Últ. preço',1)}
           ${_cpTh('fcomp','qtdA','Qtde',1,'background:'+CP_BG_A)}${_cpTh('fcomp','totA','Total',1,'background:'+CP_BG_A)}
