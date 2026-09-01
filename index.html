@@ -6464,8 +6464,8 @@ const _NEC_SEED=[
   ['82','Caixa de Papelão - Modelo 5 (Rosquinha 500g)','Caixas Klain',0,800,2.00],
   ['777','Caixa de Papelão - Pacotão Econômico','Caixas Klain',226,3100,1.90],
   ['565','Caixa de Papelão - Batatas','Caixas Klain',10207,1727,2.75],
-  ['393','Chapa Preta 4,75 mm','Embalagens diversas',0,120,9.00],
-  ['394','Cantoneira 1 x 3/16','Embalagens diversas',0,90,88.00],
+  ['20229','Caixa de Papelão - 009 (Folhado Doce) 250g','Caixas Klain',0,120,2.02],
+  ['4162','Saco alvejado 48cm x61cm branco','Sacos e fardos',0,90,6.51],
   ['681','Fardo - 50 X 60 X 008','Embalagens diversas',0,5460,0.40],
   ['806','Sacolas Klain de Papel G','Embalagens diversas',0,900,2.84],
   ['682','Bisnaga Impressa p/ Recheio 1,01kg','Embalagens diversas',48973,3100,0.75],
@@ -6485,7 +6485,12 @@ const _NEC_SEED=[
 function _necFator(){ return prodSemana===0?1:1.15; }   // variação leve por semana (exemplo determinístico)
 function _necFmt(n){ return Number(Math.round(n)).toLocaleString('pt-BR'); }
 function _necDivs(){ const s=[]; _NEC_SEED.forEach(r=>{ if(s.indexOf(r[2])<0) s.push(r[2]); }); return s; }
-function _necCalc(){ const f=_necFator(); return _NEC_SEED.map(r=>{ const util=Math.round(r[4]*f); const fim=r[3]-util; return {cod:r[0],nome:r[1],div:r[2],est:r[3],util:util,fim:fim,preco:r[5],falta:fim<0?-fim:0}; }); }
+// ⚠️ Filtra pelo ESCOPO DO COMPRADOR (Matéria-prima + Embalagens). Item de Manutenção tem outro
+// comprador: não pode virar tarefa daqui (_necGerarTarefas) nem abrir uma ficha que não existe nas
+// listas — Insumos/Estoque/Planejamento saem todos de _cpItens(), que já é escopado.
+function _necCalc(){ const f=_necFator();
+  return _NEC_SEED.filter(r=>_cpEscComprador(r[1],r[0]))
+    .map(r=>{ const util=Math.round(r[4]*f); const fim=r[3]-util; return {cod:r[0],nome:r[1],div:r[2],est:r[3],util:util,fim:fim,preco:r[5],falta:fim<0?-fim:0}; }); }
 function _necRows(){
   const q=_necBusca.trim().toLowerCase();
   return _necCalc().filter(o=>{
@@ -6502,7 +6507,7 @@ function _necTbodyHTML(){
     const falta=o.fim<0, c=falta?'var(--danger)':'var(--text)', cc=falta?'var(--danger)':'var(--text3)';
     const cob=o.util>0?Math.round(o.est/o.util*7):null;  // dias que o estoque atual ainda dura (consumo = "a utilizar" da semana)
     const cobCor=cob==null?'var(--text3)':(cob<10?'var(--danger)':(cob<30?'var(--amber)':'var(--text2)'));
-    return `<tr class="cp-clic" onclick="_cpAbrirItem('${escapeAttr(o.cod)}')" title="Abrir a ficha deste item no Insumos" style="${falta?'background:var(--danger-bg);':''}">
+    return `<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(o.cod)}')" title="Abrir a ficha deste item no Insumos" style="${falta?'background:var(--danger-bg);':''}">
       <td class="cp-mono"${falta?` style="color:${cc}"`:''}>${escapeHTML(o.cod)}</td>
       <td style="color:var(--text3);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o.div)}</td>
       <td class="cp-item"${falta?` style="color:${c}"`:''}>${escapeHTML(o.nome)}</td>
@@ -6533,7 +6538,7 @@ function _prodNecessidadeHTML(){
 function _necFiltrosAcao(){
   const divPanel=_necFiltrosAberto?`<div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:252px;max-height:300px;overflow:auto;padding:6px">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px 7px"><span style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)">Divisão</span>${_necDivSel.length?`<button onclick="_necDivAll()" style="border:none;background:none;color:var(--blue-mid);font-size:11.5px;cursor:pointer;font-family:inherit">Limpar</button>`:''}</div>
-      ${_necDivs().map(d=>{const on=_necDivSel.indexOf(d)>=0;return `<div onclick="_necDivToggle('${escapeAttr(d)}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;color:var(--text)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'"><i class="ti ${on?'ti-square-check-filled':'ti-square'}" style="font-size:17px;color:${on?'var(--blue-mid)':'var(--text3)'}"></i><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(d)}</span></div>`;}).join('')}
+      ${_necDivs().map(d=>{const on=_necDivSel.indexOf(d)>=0;return `<div onclick="_necDivToggle('${_cpJs(d)}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;color:var(--text)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'"><i class="ti ${on?'ti-square-check-filled':'ti-square'}" style="font-size:17px;color:${on?'var(--blue-mid)':'var(--text3)'}"></i><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(d)}</span></div>`;}).join('')}
     </div>`:'';
   const filtrosBtn=`<div class="cp-pop-wrap" style="position:relative">${_cpFiltroIcon('_necFiltrosToggle',_necDivSel.length)}${divPanel}</div>`;
   const soInsuf=`<button onclick="_necToggleFalta()" title="Só itens insuficientes (ruptura)" style="background:${_necFalta?'var(--danger-bg)':'var(--card)'};border:1px solid ${_necFalta?'var(--danger)':'var(--border)'};border-radius:9px;cursor:pointer;color:${_necFalta?'var(--danger)':'var(--text2)'};width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-alert-triangle" style="font-size:17px"></i></button>`;
@@ -8599,6 +8604,7 @@ function _cpEscComprador(nome, cod){
   if(n.indexOf('mistura')===0) return false;      // nomes que começam com "Mistura" (Diego 31/08)
   if(n.indexOf('industrializ')>=0) return false;  // "Serviço de Industrialização - Moagem Gritz/Milho"
   if(String(cod)==='200134') return false;        // Cobertura de Chocolate Liquido - Meio Amargo
+  if(n.indexOf('ativo imobilizado')>=0) return false; // máquina/investimento, nunca insumo do comprador
   return true;
 }
 function _cpItens(){ const m=_cpIdx(); return Object.keys(m).map(k=>m[k]).filter(o=>_cpEscComprador(o.nome,o.cod)); }
@@ -8720,6 +8726,11 @@ function _cpLupa(aberta, valor, toggleFn, inputFn, inputId, ph, extra){
 // O popover fica FORA (o caller envolve num <div position:relative> com o painel). `count` = nº de filtros ativos.
 function _cpFiltroIcon(toggleFn, count){ count=count||0;
   return `<button onclick="${toggleFn}()" title="Filtros" style="position:relative;background:var(--card);border:1px solid ${count?'var(--blue-mid)':'var(--border)'};border-radius:9px;cursor:pointer;color:${count?'var(--blue-mid)':'var(--text2)'};width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-filter" style="font-size:17px"></i>${count?`<span style="position:absolute;top:-5px;right:-5px;background:var(--blue-mid);color:#fff;font-size:9px;font-weight:700;min-width:15px;height:15px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 3px">${count}</span>`:''}</button>`; }
+// Valor de STRING dentro de onclick inline: onclick="fn('${_cpJs(v)}')".
+// ⚠️ escapeAttr NÃO serve aqui: ele vira ' em &#39;, mas o parser HTML DECODIFICA a entidade ANTES de
+// o JS ser lido — um apóstrofo no valor fecharia a string mesmo assim. Aqui a aspa e a barra são
+// escapadas p/ o JS (\' \\) e só depois o texto é escapado p/ o atributo HTML.
+const _cpJs=v=>escapeAttr(String(v==null?'':v).replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
 // Estado-vazio ÚNICO da área (cinza, centrado, itálico). Usar SEMPRE este helper — antes cada tabela
 // montava o seu ("com esse filtro" × "para esse filtro", com/sem itálico, paddings diferentes).
 const _cpVazio=t=>`<div style="text-align:center;color:var(--text3);font-size:12.5px;font-style:italic;padding:22px">${t}</div>`;
@@ -8754,7 +8765,7 @@ function _cpEstCorpo(){
   const TETO=300;
   const linhas=L.slice(0,TETO).map(o=>{
     const [c,bg]=_cpCorDias(o.dias);
-    return `<tr class="cp-clic" onclick="_cpAbrirItem('${o.cod}')">
+    return `<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(o.cod)}')">
       <td class="cp-mono">${escapeHTML(o.cod)}</td>
       <td><span class="cp-cattag">${escapeHTML(_cpCategoria(o.nome))}</span></td>
       <td class="cp-item" title="${escapeAttr(o.nome)}">${escapeHTML(o.nome)}</td>
@@ -8826,7 +8837,7 @@ function _cpInsRows(){
 }
 function _cpInsTbodyHTML(){
   return _cpInsRows().map(o=>{
-    return `<tr class="cp-clic" onclick="_cpAbrirItem('${o.cod}')">
+    return `<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(o.cod)}')">
       <td class="cp-mono">${escapeHTML(o.cod)}</td>
       <td><span class="cp-cattag">${escapeHTML(_cpCategoria(o.nome))}</span></td>
       <td class="cp-item">${escapeHTML(o.nome)}</td>
@@ -8834,10 +8845,17 @@ function _cpInsTbodyHTML(){
 }
 function _cpCategoria(nome){
   const s=' '+(nome||'').toLowerCase()+' '; const has=(...ks)=>ks.some(k=>s.indexOf(k)>=0);
-  if(has('bobina','etiqueta','caixa de papel','caixa papel','rótulo','rotulo','sacola',' saco ','pote ','bandeja','filme','lacre','fardo','papelão','papelao',' bopp','ribbon','embalagem','cartela','blister')) return 'Embalagens';
+  // Termos INEQUÍVOCOS de manutenção testados ANTES, porque colidem com palavras de embalagem/MP
+  // (ex.: "Sensor Fim de FILME" e "CABO Para Sensor Fim de Filme" caíam em Embalagens por "filme").
+  if(has('sensor','cabo para','cabo p/','inversor','contatora','solenoide','solenóide')) return 'Manutenção';
+  if(has('bobina','etiqueta','caixa de papel','caixa papel','rótulo','rotulo','sacola',' saco ','pote ','bandeja','filme','lacre','fardo','papelão','papelao',' bopp','ribbon','embalagem','cartela','blister','display')) return 'Embalagens';
   if(has('parafuso','porca ','rolamento','conexão','conexao','disjuntor','plugue','cantoneira','célula','celula','resistência','resistencia','válvula','valvula','mangueira','correia','arruela','abraçadeira','abracadeira','vedação','vedacao','veda rosca','lâmpada','lampada','rebolo','eletrodo','cartucho','contator','fusível','fusivel',' graxa','lubrificante','mancal','retentor',' bucha',' pino ','chaveta','engrenagem',' polia','broca',' lima ',' chapa ','registro de','disco de')) return 'Manutenção';
   if(has('detergente','sabonete','desengraxante','desengordurante','handclean','álcool','alcool',' cloro','sanitizante','desinfetante',' luva','touca','máscara descart','mascara descart','papel toalha','hipoclorito','soda cáustica','soda caustica')) return 'Limpeza & higiene';
-  if(has('amendoim','açúcar','acucar',' óleo',' oleo','gordura','cacau','chocolate','choc.','choc ',' leite','aroma','tempero','mistura','farinha','amido',' sal ','glucose','glicose','lecitina','essência','essencia','corante','flocos','suspiro','trufa','recheio',' coco','castanha','avelã','avela',' mel ','glacê','glace','cobertura','banana','morango','xarope','malto','manteiga',' creme','fermento','baunilha')) return 'Matéria-prima';
+  // ⚠️ (set/2026) Termos acrescentados na auditoria: eram ALIMENTOS/embalagens reais que a heurística
+  // jogava em "Outros" e, por isso, sumiam de Insumos/Estoque/Planejamento (o escopo do comprador sai
+  // de _cpEscComprador). "pellet" vai qualificado (fritura/tortilho) p/ não pegar pellet de caldeira.
+  if(has('amendoim','açúcar','acucar',' óleo',' oleo','gordura','cacau','chocolate','choc.','choc ',' leite','aroma','tempero','mistura','farinha','amido',' sal ','glucose','glicose','lecitina','essência','essencia','corante','flocos','suspiro','trufa','recheio',' coco','castanha','avelã','avela',' mel ','glacê','glace','cobertura','banana','morango','xarope','malto','manteiga',' creme','fermento','baunilha',
+         'gema','fubá','fuba','fecomix','milho para pipoca','mignon','pellet fritura','pellet tortilho','melhorador de massa','clara de ovo','realçador','realcador',' pgpr')) return 'Matéria-prima';
   return 'Outros';
 }
 function _comprasInsumosHTML(){
@@ -8847,7 +8865,7 @@ function _comprasInsumosHTML(){
   todos.forEach(o=>{ const c=_cpCategoria(o.nome); cont[c]=(cont[c]||0)+1; });
   const catPanel=_cpInsFiltrosAberto?`<div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:236px;max-height:300px;overflow:auto;padding:6px">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px 7px"><span style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)">Categoria</span>${_cpCatSel.length?`<button onclick="_cpCatAll()" style="border:none;background:none;color:var(--blue-mid);font-size:11.5px;cursor:pointer;font-family:inherit">Limpar</button>`:''}</div>
-      ${_CP_CATS.map(c=>{const on=_cpCatSel.indexOf(c)>=0;return `<div onclick="_cpCatToggle('${escapeAttr(c)}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;color:var(--text)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'"><i class="ti ${on?'ti-square-check-filled':'ti-square'}" style="font-size:17px;color:${on?'var(--blue-mid)':'var(--text3)'}"></i><span style="flex:1;min-width:0">${escapeHTML(c)} <span style="color:var(--text3)">${cont[c]||0}</span></span></div>`;}).join('')}
+      ${_CP_CATS.map(c=>{const on=_cpCatSel.indexOf(c)>=0;return `<div onclick="_cpCatToggle('${_cpJs(c)}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;color:var(--text)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'"><i class="ti ${on?'ti-square-check-filled':'ti-square'}" style="font-size:17px;color:${on?'var(--blue-mid)':'var(--text3)'}"></i><span style="flex:1;min-width:0">${escapeHTML(c)} <span style="color:var(--text3)">${cont[c]||0}</span></span></div>`;}).join('')}
     </div>`:'';
   const filtrosBtn=`<div class="cp-pop-wrap" style="position:relative">${_cpFiltroIcon('_cpInsFiltrosToggle',_cpCatSel.length)}${catPanel}</div>`;
   const rows=_cpInsRows();
@@ -9811,7 +9829,7 @@ function _cpFichaFornecedores(o){
   const tot=fs.reduce((a,f)=>a+f.total,0);
   if(_cpFichaFornSel && !fs.some(f=>f.cod===_cpFichaFornSel)) _cpFichaFornSel=null;
   const linhas=fs.map(f=>{ const sel=_cpFichaFornSel===f.cod;
-    return `<tr class="cp-clic${sel?' cp-row-sel':''}" onclick="_cpFichaFornSet('${escapeAttr(f.cod)}')">
+    return `<tr class="cp-clic${sel?' cp-row-sel':''}" onclick="_cpFichaFornSet('${_cpJs(f.cod)}')">
     <td class="cp-item">${escapeHTML(_cpForn(f.nome))}</td>
     <td class="cp-n">${_cpBRL(f.total)}</td>
     <td class="cp-n">${(tot?f.total/tot*100:0).toFixed(1)}%</td>
@@ -9840,7 +9858,7 @@ function _cpFornDetalheInline(cod){
   f.linhas.forEach(l=>{ const k=l.item[0]; if(!it[k]) it[k]={nome:l.item[1],cod:k,total:0,qtd:0,um:l.um,ult:l.data,preco:l.vun};
     it[k].total+=l.tot; it[k].qtd+=l.qtd; if(l.data>it[k].ult){it[k].ult=l.data;it[k].preco=l.vun;} });
   const itens=Object.keys(it).map(k=>it[k]).sort((a,b)=>b.total-a.total);
-  const linhasIt=itens.map(i=>`<tr class="cp-clic" onclick="_cpAbrirItem('${i.cod}')">
+  const linhasIt=itens.map(i=>`<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(i.cod)}')">
       <td class="cp-mono">${escapeHTML(i.cod)}</td>
       <td class="cp-item">${escapeHTML(i.nome)}</td>
       <td class="cp-n">${_cpNum(i.qtd,2)} <span class="cp-un">${escapeHTML(i.um||'')}</span></td>
@@ -9854,7 +9872,7 @@ function _cpFornDetalheInline(cod){
   return `<div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:11px">
       <h2 style="font-size:17px;font-weight:800;color:var(--text);margin:0">${escapeHTML(_cpForn(f.nome))}</h2>
-      <button onclick="_cpAbrirForn('${escapeAttr(cod)}')" class="btn-modal-cancel" style="margin-left:auto;padding:5px 11px;font-size:12px" title="Abrir a ficha completa em tela cheia">abrir completa <i class="ti ti-external-link" style="font-size:12px"></i></button>
+      <button onclick="_cpAbrirForn('${_cpJs(cod)}')" class="btn-modal-cancel" style="margin-left:auto;padding:5px 11px;font-size:12px" title="Abrir a ficha completa em tela cheia">abrir completa <i class="ti ti-external-link" style="font-size:12px"></i></button>
     </div>
     ${_cpKPIrow([
       _cpKPI('Comprado',_cpBRL(f.total)),
@@ -9954,7 +9972,7 @@ function _cpFornRowsHTML(){
     const cor=classe==='A'?'var(--danger)':(classe==='B'?'var(--amber)':'var(--text3)');
     const nome=_cpForn(f.nome);
     if(q && nome.toLowerCase().indexOf(q)<0) return;
-    out.push(`<tr class="cp-clic" onclick="_cpAbrirForn('${escapeAttr(f.cod)}')">
+    out.push(`<tr class="cp-clic" onclick="_cpAbrirForn('${_cpJs(f.cod)}')">
       <td class="cp-n">${i+1}</td><td class="cp-item">${escapeHTML(nome)}</td>
       <td class="cp-n">${_cpBRL(f.total)}</td><td class="cp-n">${(tot?f.total/tot*100:0).toFixed(1)}%</td>
       <td class="cp-n">${pAcc.toFixed(1)}%</td>
@@ -10023,7 +10041,7 @@ function _cpFichaFornHTML(cod){
   f.linhas.forEach(l=>{ const k=l.item[0]; if(!it[k]) it[k]={nome:l.item[1],cod:k,total:0,qtd:0,um:l.um,ult:l.data,preco:l.vun};
     it[k].total+=l.tot; it[k].qtd+=l.qtd; if(l.data>it[k].ult){it[k].ult=l.data;it[k].preco=l.vun;} });
   const itens=Object.keys(it).map(k=>it[k]).sort((a,b)=>b.total-a.total);
-  const linhasIt=itens.map(i=>`<tr class="cp-clic" onclick="_cpAbrirItem('${i.cod}')">
+  const linhasIt=itens.map(i=>`<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(i.cod)}')">
       <td class="cp-mono">${escapeHTML(i.cod)}</td>
       <td class="cp-item">${escapeHTML(i.nome)}</td>
       <td class="cp-n">${_cpNum(i.qtd,2)} <span class="cp-un">${escapeHTML(i.um||'')}</span></td>
@@ -10084,7 +10102,7 @@ function _cpOrdRowsHTML(){
     } else {
       cmpCells=`<td class="cp-mono">—</td><td class="cp-n">—</td><td class="cp-mono">—</td><td class="cp-n">—</td><td class="cp-n">—</td><td class="cp-n">—</td>`;
     }
-    return `<tr class="cp-clic" onclick="_cpAbrirItem('${escapeAttr(p.cod)}')">
+    return `<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(p.cod)}')">
       <td class="cp-mono">${escapeHTML(p.cod)}</td>
       <td class="cp-item">${escapeHTML(p.nome)}</td>
       <td class="cp-n">${p.valor?_cpBRL(p.valor):'—'}</td>
@@ -10265,7 +10283,7 @@ function _cpPlanDemandaPopup(cod, ev){
     </div>
     <table style="width:100%;border-collapse:collapse">${linhas||'<tr><td style="padding:12px;color:var(--text3);font-size:12px">Sem histórico de consumo.</td></tr>'}</table>
     ${serie.length?`<div style="display:flex;justify-content:space-between;padding:6px 12px;border-top:1px solid var(--border);font-size:11.5px"><span style="color:var(--text3)">Total (${serie.length} m)</span><b style="color:var(--text)">${_cpNum(total,0)} ${escapeHTML(um)}</b></div><div style="display:flex;justify-content:space-between;padding:2px 12px 8px;font-size:11.5px"><span style="color:var(--text3)">Média (${serie.length} m)</span><b style="color:var(--text)">${_cpNum(total/serie.length,0)} ${escapeHTML(um)}</b></div>`:''}
-    <div style="padding:9px 12px"><button onclick="_cpPlanFecharPop();_cpAbrirItem('${escapeAttr(cod)}')" style="width:100%;padding:8px 10px;font-size:12.5px;background:var(--blue-mid);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i class="ti ti-external-link"></i> Abrir painel / simular</button></div>`;
+    <div style="padding:9px 12px"><button onclick="_cpPlanFecharPop();_cpAbrirItem('${_cpJs(cod)}')" style="width:100%;padding:8px 10px;font-size:12.5px;background:var(--blue-mid);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i class="ti ti-external-link"></i> Abrir painel / simular</button></div>`;
   document.body.appendChild(el); _cpPlanPopEl=el;
   const px=(ev&&ev.clientX)||120, py=(ev&&ev.clientY)||120, w=262, h=el.offsetHeight||320;
   let left=px+14, top=py-10;
@@ -10300,7 +10318,7 @@ function _comprasPlanejamentoHTML(){
   const todos=_cpItens().filter(o=>o.est>0||o.consMed>0); const cont={}; _CP_CATS.forEach(c=>cont[c]=0); todos.forEach(o=>{const c=_cpCategoria(o.nome); cont[c]=(cont[c]||0)+1;});
   const catPanel=_cpPlan.filtrosAberto?`<div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:236px;max-height:300px;overflow:auto;padding:6px">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px 7px"><span style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)">Categoria</span>${_cpPlan.catSel.length?`<button onclick="_cpPlanCatAll()" style="border:none;background:none;color:var(--blue-mid);font-size:11.5px;cursor:pointer;font-family:inherit">Limpar</button>`:''}</div>
-      ${_CP_CATS.map(c=>{const on=_cpPlan.catSel.indexOf(c)>=0;return `<div onclick="_cpPlanCatToggle('${escapeAttr(c)}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;color:var(--text)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'"><i class="ti ${on?'ti-square-check-filled':'ti-square'}" style="font-size:17px;color:${on?'var(--blue-mid)':'var(--text3)'}"></i><span style="flex:1;min-width:0">${escapeHTML(c)} <span style="color:var(--text3)">${cont[c]||0}</span></span></div>`;}).join('')}
+      ${_CP_CATS.map(c=>{const on=_cpPlan.catSel.indexOf(c)>=0;return `<div onclick="_cpPlanCatToggle('${_cpJs(c)}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;color:var(--text)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'"><i class="ti ${on?'ti-square-check-filled':'ti-square'}" style="font-size:17px;color:${on?'var(--blue-mid)':'var(--text3)'}"></i><span style="flex:1;min-width:0">${escapeHTML(c)} <span style="color:var(--text3)">${cont[c]||0}</span></span></div>`;}).join('')}
     </div>`:'';
   const filtrosBtn=`<div class="cp-pop-wrap" style="position:relative">${_cpFiltroIcon('_cpPlanFiltrosToggle',_cpPlan.catSel.length)}${catPanel}</div>`;
   const bands=_cpPlanBands();
@@ -10352,7 +10370,7 @@ function _comprasPainelHTML(){
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">${tit}</div>
       <div style="font-size:12px;color:var(--text3);margin:2px 0 12px">${sub}</div>${corpo}</div>`;
   const linhaItem=o=>{const [c]=_cpCorDias(o.dias);
-    return `<div class="cp-clic" onclick="_cpAbrirItem('${o.cod}')" style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
+    return `<div class="cp-clic" onclick="_cpAbrirItem('${_cpJs(o.cod)}')" style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:11.5px;color:var(--text3);flex:none;min-width:40px">${escapeHTML(o.cod)}</span>
       <span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o.nome)}</span>
       <span style="color:${c};font-weight:700;font-size:12px;flex:none;white-space:nowrap">${o.dias} d</span></div>`;};
@@ -10369,7 +10387,7 @@ function _comprasPainelHTML(){
       </div>
       ${_necRup.map(o=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--border)">
         <span style="font-size:11.5px;color:var(--text3);flex:none;min-width:40px">${escapeHTML(o.cod)}</span>
-        <span onclick="_cpAbrirItem('${escapeAttr(o.cod)}')" style="flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" title="Abrir ficha no Insumos">${escapeHTML(o.nome)}</span>
+        <span onclick="_cpAbrirItem('${_cpJs(o.cod)}')" style="flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" title="Abrir ficha no Insumos">${escapeHTML(o.nome)}</span>
         <span style="font-size:12px;color:var(--danger);font-weight:700;flex:none;white-space:nowrap">faltam ${_necFmt(o.falta)}</span></div>`).join('')}
     </div>`:'';
   // ⚠️ SIMULAÇÃO (Diego pediu p/ ver como fica): validade/lotes NÃO vêm do export atual do ERP —
@@ -10398,7 +10416,7 @@ function _comprasPainelHTML(){
       const qtd=parseFloat(String(o[2]).replace(',','.'))||0, cons=parseFloat(String(o[5]).replace(',','.'))||0;
       const fim=cons>0?_diasCorr(today,Math.round(qtd/cons*30)):null;
       const risco=aVencer && fim && fim>o[4];  // termina DEPOIS de vencer → não usa a tempo (perda)
-      return `<tr onclick="_cpAbrirItem('${escapeAttr(o[0])}')" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''" title="Abrir a ficha deste item no Insumos" style="border-top:1px solid var(--border);cursor:pointer">
+      return `<tr onclick="_cpAbrirItem('${_cpJs(o[0])}')" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''" title="Abrir a ficha deste item no Insumos" style="border-top:1px solid var(--border);cursor:pointer">
         <td style="padding:6px 8px;font-size:11.5px;color:var(--text3);white-space:nowrap">${escapeHTML(o[0])}</td>
         <td style="padding:6px 8px;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o[1])}</td>
         <td style="padding:6px 8px;font-size:12px;font-weight:700;text-align:right;white-space:nowrap;color:${cor}">${_cpDt(o[4])}</td>
@@ -10425,7 +10443,7 @@ function _comprasPainelHTML(){
       ${bloco('⚠️ Comprar agora','Cobertura abaixo de 10 dias','var(--danger)',lista(criticos.slice(0,10),linhaItem))}
       ${bloco('🕐 Ficar de olho','Cobertura entre 10 e 20 dias','var(--amber)',lista(comprar.filter(o=>o.dias>=10).slice(0,10),linhaItem))}
       ${bloco('🧊 Estoque parado','Sem movimento há 180 dias ou mais','var(--text3)',
-        lista(parados.slice(0,10),o=>`<div class="cp-clic" onclick="_cpAbrirItem('${o.cod}')" style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
+        lista(parados.slice(0,10),o=>`<div class="cp-clic" onclick="_cpAbrirItem('${_cpJs(o.cod)}')" style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
           <span style="font-size:11.5px;color:var(--text3);flex:none;min-width:40px">${escapeHTML(o.cod)}</span>
           <span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o.nome)}</span>
           <span style="font-size:12px;color:var(--text3);flex:none;white-space:nowrap">${_cpBRL(o.valor)} · ${o.semMov}d</span></div>`))}
