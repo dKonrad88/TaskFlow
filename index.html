@@ -8982,8 +8982,11 @@ function _cpBarChart(serie,campo,fmt,corBase,labFmt,hBar,prevCampo){
   // referência do "normal" e os dois extremos que se lê de fato — em vez de 26 rótulos ilegíveis.
   // ⚠️ Nada de linha no máximo: seria o mesmo número do rótulo do pico e, no gráfico baixo do
   // Resumo (H=45), as duas guias se sobrepõem.
+  // ⚠️ ponto com `parcial` (mês em curso) fica FORA da média/pico/último: com poucos dias de dados
+  // ele seria lido como despencada e roubaria o rótulo do último mês fechado. A barra continua
+  // desenhada, só que apagada — o dado existe, mas não é comparável com um mês inteiro.
   const cabeTudo=serie.length<=13;
-  const reais=serie.map((s,i)=>({i,v:s[campo]})).filter(p=>p.v!=null&&!isNaN(p.v)&&p.v>0);
+  const reais=serie.map((s,i)=>({i,v:s[campo],parcial:!!s.parcial})).filter(p=>p.v!=null&&!isNaN(p.v)&&p.v>0&&!p.parcial);
   const media=reais.length?reais.reduce((a,p)=>a+p.v,0)/reais.length:0;
   const iPico=reais.length?reais.reduce((a,p)=>p.v>a.v?p:a,reais[0]).i:-1;
   const iUlt=reais.length?reais[reais.length-1].i:-1;
@@ -9000,11 +9003,11 @@ function _cpBarChart(serie,campo,fmt,corBase,labFmt,hBar,prevCampo){
       const sel=(_cpItemMes===s.ym) && !isPrev;
       const cor=sel?'var(--blue-mid)':(corBase||'color-mix(in srgb, var(--blue-mid) 50%, var(--card))');
       // barra real = preenchida; previsão = só a borda verde pontilhada (transparente por dentro).
-      const barStyle=isPrev?`background:color-mix(in srgb, var(--success) 22%, transparent);border-top:2.5px solid var(--success);box-sizing:border-box`:`background:${cor};${sel?'box-shadow:0 0 0 2px var(--blue-mid)':''}`;
+      const barStyle=isPrev?`background:color-mix(in srgb, var(--success) 22%, transparent);border-top:2.5px solid var(--success);box-sizing:border-box`:`background:${cor};${s.parcial?'opacity:.45;':''}${sel?'box-shadow:0 0 0 2px var(--blue-mid)':''}`;
       const lab=(labFmt && val!=null && val>0)?`<div style="font-size:8px;font-weight:600;color:${isPrev?'var(--success)':(sel?'var(--text)':'var(--text3)')};line-height:1;margin-bottom:2px;white-space:nowrap">${labFmt(val)}</div>`:'';
-      const tt=isPrev?(_cpMesLongo(s.ym)+': ~'+fmt(pv)+' · previsão'):(_cpMesLongo(s.ym)+': '+(has?fmt(v):'sem dado'));
+      const tt=isPrev?(_cpMesLongo(s.ym)+': ~'+fmt(pv)+' · previsão'):(_cpMesLongo(s.ym)+': '+(has?fmt(v):'sem dado')+(s.parcial?' · mês em curso (parcial)':''));
       // série longa: rótulo só no pico e no último mês real (ambos em destaque, sobre a barra)
-      const destaque=!cabeTudo && (i===iPico || i===iUlt) && has && v>0;
+      const destaque=!cabeTudo && (i===iPico || i===iUlt) && has && v>0 && !s.parcial;
       const labDest=destaque?`<div style="font-size:9px;font-weight:800;color:var(--text2);line-height:1;margin-bottom:2px;white-space:nowrap">${labFmt?labFmt(v):fmt(v)}</div>`:'';
       return `<div class="cp-clic" onclick="_cpItemSetMes('${s.ym}')" title="${tt}" style="flex:1 1 0;min-width:0;text-align:center">
         <div style="height:${H+13}px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end">${cabeTudo?lab:labDest}<div style="width:78%;height:${h}px;border-radius:3px 3px 0 0;${barStyle}"></div></div>
@@ -10028,6 +10031,74 @@ if(typeof window!=='undefined' && !window._cpFocoEsc){ window._cpFocoEsc=true;
 
 // ════════ FORNECEDORES — curva ABC + ficha ════════
 let _cpFornSel=null, _cpFornMeses=12, _cpFornBusca='', _cpFornBuscaAberta=false;
+
+// ══════ FICHA DO FORNECEDOR — comparação de 2 PERÍODOS (material de negociação) ══════
+// A ficha trabalha sobre o histórico COMPLETO do fornecedor e recorta dois períodos (A = o atual,
+// B = o de comparação). Os itens, os indicadores de crescimento e o simulador saem desse recorte.
+let _cpFornSort={campo:'totA', dir:-1};                    // ordenação da tabela de itens
+let _cpFornItBusca='', _cpFornItBuscaAberta=false;         // busca dentro dos itens comprados
+let _cpFornPerA={p:'ano', de:'', ate:''};                  // período A — default: este ano
+let _cpFornPerB={p:'yoy', de:'', ate:''};                  // período B — default: mesmo período do ano passado
+let _cpFornSimPct='5';                                     // simulador "e se eu aumentar X%"
+const _CP_FORN_PER=[['ult3','Últimos 3 meses'],['ult6','Últimos 6 meses'],['ult12','Últimos 12 meses'],
+  ['ano','Este ano'],['anoAnt','Ano passado'],['yoy','Mesmo período, ano passado'],['tudo','Tudo'],['custom','Escolher datas…']];
+// Resolve um preset em {ini,fim,label} (ISO, ambos inclusive; '' = sem limite).
+// `ref` = range do período A, usado só pelo preset 'yoy' (desloca A um ano p/ trás).
+function _cpFornRange(sel, ref){
+  const hoje=today, Y=+hoje.slice(0,4), M=+hoje.slice(5,7);
+  const menosMeses=n=>{ let y=Y, m=M-n; while(m<1){ m+=12; y--; } return y+'-'+String(m).padStart(2,'0')+'-01'; };
+  const desloca=(iso,anos)=>iso?((+iso.slice(0,4)-anos)+iso.slice(4)):'';
+  switch(sel.p){
+    case 'ult3':   return {ini:menosMeses(2),  fim:hoje, label:'últ. 3 meses'};
+    case 'ult6':   return {ini:menosMeses(5),  fim:hoje, label:'últ. 6 meses'};
+    case 'ult12':  return {ini:menosMeses(11), fim:hoje, label:'últ. 12 meses'};
+    case 'ano':    return {ini:Y+'-01-01', fim:hoje, label:String(Y)};
+    case 'anoAnt': return {ini:(Y-1)+'-01-01', fim:(Y-1)+'-12-31', label:String(Y-1)};
+    case 'yoy':    { const r=ref||{ini:Y+'-01-01',fim:hoje};
+                     return {ini:desloca(r.ini,1), fim:desloca(r.fim,1), label:'mesmo período de '+((+String(r.fim||hoje).slice(0,4))-1)}; }
+    case 'custom': return {ini:sel.de||'', fim:sel.ate||'', label:(sel.de&&sel.ate)?(_cpDt(sel.de)+'–'+_cpDt(sel.ate)):'personalizado'};
+    default:       return {ini:'', fim:'', label:'tudo'};
+  }
+}
+// Agrega as linhas de NF do fornecedor dentro de um range → totais + mapa por item.
+function _cpFornPeriodo(linhas, r){
+  const out={qtd:0, total:0, nfs:{}, porItem:{}};
+  linhas.forEach(l=>{
+    if(r.ini && l.data<r.ini) return;
+    if(r.fim && l.data>r.fim) return;
+    out.qtd+=l.qtd; out.total+=l.tot; out.nfs[l.nf]=1;
+    const k=l.item[0];
+    if(!out.porItem[k]) out.porItem[k]={qtd:0,total:0};
+    out.porItem[k].qtd+=l.qtd; out.porItem[k].total+=l.tot;
+  });
+  return out;
+}
+// Série MENSAL do fornecedor (volume e valor) p/ os 2 gráficos do topo.
+// ⚠️ O mês CORRENTE é parcial (hoje pode ser dia 1º) — vem marcado com `parcial` p/ não ser lido
+// como queda no gráfico nem contaminar a tendência.
+function _cpFornSerie(linhas){
+  const m={}, ymHoje=today.slice(0,7);
+  linhas.forEach(l=>{ const ym=l.data.slice(0,7); if(!m[ym]) m[ym]={ym, qtd:0, valor:0, y:+ym.slice(0,4), mes:+ym.slice(5,7)};
+    m[ym].qtd+=l.qtd; m[ym].valor+=l.tot; });
+  return Object.keys(m).sort().map(k=>{ const o=m[k]; o.m=o.mes; o.parcial=(o.ym===ymHoje);
+    o.lbl=_cpMesLbl(o.y,o.mes)+(o.parcial?'*':''); return o; });
+}
+// Variação % entre dois valores (null quando não há base p/ comparar).
+function _cpVar(novo, velho){ if(!(velho>0)) return null; return (novo-velho)/velho*100; }
+// ⚠️ Cor NEUTRA de direção (azul = subiu, âmbar = caiu), não de julgamento. Aqui a variação é de
+// VOLUME/VALOR comprado: crescer não é bom nem ruim — é o fato que se leva pra mesa. (Verde/vermelho
+// ficaria dizendo que crescer com o fornecedor é "ruim", que é a leitura errada nesta tela.)
+function _cpVarPill(v, casas){ if(v==null) return '<span style="color:var(--text3)">—</span>';
+  const cor=v>0.5?'var(--blue-mid)':(v<-0.5?'var(--amber)':'var(--text2)');
+  return `<span style="color:${cor};font-weight:700">${v>0?'+':''}${_cpNum(v,casas==null?1:casas)}%</span>`; }
+function _cpFornSetSort(campo){ if(_cpFornSort.campo===campo) _cpFornSort.dir*=-1; else _cpFornSort={campo, dir:(campo==='cod'||campo==='nome')?1:-1}; renderCompras(); }
+function _cpFornItBuscaToggle(){ _cpFornItBuscaAberta=!_cpFornItBuscaAberta; if(!_cpFornItBuscaAberta) _cpFornItBusca=''; renderCompras();
+  if(_cpFornItBuscaAberta) setTimeout(function(){ var el=document.getElementById('cp-fi-busca'); if(el) el.focus(); },30); }
+function _cpFornItBuscaInput(el){ _cpFornItBusca=el.value; _cpFornItRefresh(); }
+function _cpFornSetPer(qual,v){ const o=(qual==='A')?_cpFornPerA:_cpFornPerB; o.p=v; if(v!=='custom'){ o.de=''; o.ate=''; } renderCompras(); }
+function _cpFornSetPerData(qual,campo,val){ const o=(qual==='A')?_cpFornPerA:_cpFornPerB; o[campo]=(val && val.slice(0,4)>='2000')?val:''; }
+function _cpFornSetPerDataCommit(qual,campo,val){ _cpFornSetPerData(qual,campo,val); renderCompras(); }
+function _cpFornSimSet(v){ _cpFornSimPct=v; const el=document.getElementById('cp-forn-sim-out'); if(el && _cpFornSel) el.innerHTML=_cpFornSimOutHTML(_cpFornSel); }
 function _cpFornBuscaToggle(){ _cpFornBuscaAberta=!_cpFornBuscaAberta; if(!_cpFornBuscaAberta) _cpFornBusca=''; renderCompras(); if(_cpFornBuscaAberta) setTimeout(function(){ var el=document.getElementById('cp-forn-busca'); if(el) el.focus(); },30); }
 function _cpFornBuscaInput(el){ _cpFornBusca=el.value; const tb=document.getElementById('cp-forn-tbody'); if(tb) tb.innerHTML=_cpFornRowsHTML(); }
 function _cpFornRowsHTML(){
@@ -10099,37 +10170,168 @@ function _comprasFornecedoresHTML(){
       <thead><tr><th class="r">#</th><th>Fornecedor</th><th class="r">Total</th><th class="r">% do total</th><th class="r">% acum.</th><th class="r">Prazo de pagamento</th><th class="r">ABC</th><th class="r">NFs</th><th class="r">Itens</th></tr></thead>
       <tbody id="cp-forn-tbody">${_cpFornRowsHTML()}</tbody></table></div>`, undefined, acao);
 }
-function _cpFichaFornHTML(cod){
-  const f=_cpFornAgg('I').find(x=>x.cod===cod);
-  if(!f) return _cpTela('Fornecedor','Fornecedor não encontrado no período.', _cpVazio('Sem dados para este fornecedor no período selecionado.'),
-    undefined, undefined, {fn:'_cpVoltarForns()', label:'Voltar aos fornecedores'});
-  // itens comprados dele
+// Contexto da ficha do fornecedor: histórico completo + os dois recortes de período.
+// ⚠️ meses=0 (tudo): o período B pode ser antigo e não pode ficar fora da janela da tela de lista.
+function _cpFornCtx(cod){
+  const f=_cpFornAgg('I',0).find(x=>x.cod===cod); if(!f) return null;
+  const rA=_cpFornRange(_cpFornPerA), rB=_cpFornRange(_cpFornPerB, rA);
+  const A=_cpFornPeriodo(f.linhas,rA), B=_cpFornPeriodo(f.linhas,rB);
+  // ficha de cada item: nome/UM/último preço saem do histórico todo; qtde e total, de cada período
   const it={};
-  f.linhas.forEach(l=>{ const k=l.item[0]; if(!it[k]) it[k]={nome:l.item[1],cod:k,total:0,qtd:0,um:l.um,ult:l.data,preco:l.vun};
-    it[k].total+=l.tot; it[k].qtd+=l.qtd; if(l.data>it[k].ult){it[k].ult=l.data;it[k].preco=l.vun;} });
-  const itens=Object.keys(it).map(k=>it[k]).sort((a,b)=>b.total-a.total);
-  const linhasIt=itens.map(i=>`<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(i.cod)}')">
+  f.linhas.forEach(l=>{ const k=l.item[0];
+    if(!it[k]) it[k]={cod:k, nome:l.item[1], um:l.um, ult:l.data, preco:l.vun};
+    if(l.data>it[k].ult){ it[k].ult=l.data; it[k].preco=l.vun; } });
+  const itens=Object.keys(it).map(k=>{ const o=it[k], a=A.porItem[k]||{qtd:0,total:0}, b=B.porItem[k]||{qtd:0,total:0};
+    return {...o, qtdA:a.qtd, totA:a.total, qtdB:b.qtd, totB:b.total, delta:_cpVar(a.total,b.total)}; });
+  // unidade dos volumes: se o fornecedor entrega em mais de uma UM, somar quantidade é impreciso
+  const ums=[...new Set(f.linhas.map(l=>l.um).filter(Boolean))];
+  return {f, rA, rB, A, B, itens, um:ums.length===1?ums[0]:'', umsMistas:ums.length>1, serie:_cpFornSerie(f.linhas)};
+}
+// Linhas da tabela de itens (busca + ordenação aplicadas). Sai daqui p/ o refresh da busca reusar.
+function _cpFornItRows(cod){
+  const c=_cpFornCtx(cod); if(!c) return [];
+  const q=(_cpFornItBusca||'').trim().toLowerCase();
+  let L=c.itens.filter(i=>(i.qtdA||i.qtdB||i.totA||i.totB));   // esconde item sem movimento nos 2 períodos
+  if(q) L=L.filter(i=>(i.nome+' '+i.cod).toLowerCase().indexOf(q)>=0);
+  const s=_cpFornSort, campo=s.campo, dir=s.dir;
+  return L.sort((a,b)=>{
+    let x=a[campo], y=b[campo];
+    // nome: localeCompare pt-BR (senão "Papelao" viria antes de "Papelão" — comparação binária).
+    // cod/data: comparação simples serve (numérico em texto e ISO ordenam bem).
+    if(campo==='nome') return String(x||'').localeCompare(String(y||''),'pt-BR')*dir;
+    if(campo==='cod'||campo==='ult'){ x=String(x||''); y=String(y||''); return x<y?-dir:(x>y?dir:0); }
+    x=(x==null)?-Infinity:x; y=(y==null)?-Infinity:y;      // Δ% sem base vai p/ o fim
+    return (x-y)*dir;
+  });
+}
+function _cpFornItRefresh(){ if(!_cpFornSel) return;
+  const tb=document.getElementById('cp-fi-tbody'); if(tb) tb.innerHTML=_cpFornItTbodyHTML(_cpFornSel);
+  const tf=document.getElementById('cp-fi-tfoot'); if(tf) tf.innerHTML=_cpFornItTfootHTML(_cpFornSel); }
+function _cpFornItTbodyHTML(cod){
+  const c=_cpFornCtx(cod); if(!c) return '';
+  const L=_cpFornItRows(cod);
+  if(!L.length) return `<tr><td colspan="9">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`;
+  const un=u=>`<span class="cp-un">${escapeHTML(u||'')}</span>`;
+  return L.map(i=>`<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(i.cod)}')">
       <td class="cp-mono">${escapeHTML(i.cod)}</td>
       <td class="cp-item">${escapeHTML(i.nome)}</td>
-      <td class="cp-n">${_cpNum(i.qtd,2)} <span class="cp-un">${escapeHTML(i.um||'')}</span></td>
       <td class="cp-n">${_cpBRL(i.preco)}</td>
-      <td class="cp-n">${_cpBRL(i.total)}</td>
+      <td class="cp-n">${i.qtdA?_cpNum(i.qtdA,0)+' '+un(i.um):'<span style="color:var(--text3)">—</span>'}</td>
+      <td class="cp-n">${i.totA?_cpBRL(i.totA):'<span style="color:var(--text3)">—</span>'}</td>
+      <td class="cp-n" style="background:color-mix(in srgb,var(--text3) 7%,transparent)">${i.qtdB?_cpNum(i.qtdB,0)+' '+un(i.um):'<span style="color:var(--text3)">—</span>'}</td>
+      <td class="cp-n" style="background:color-mix(in srgb,var(--text3) 7%,transparent)">${i.totB?_cpBRL(i.totB):'<span style="color:var(--text3)">—</span>'}</td>
+      <td class="cp-n">${_cpVarPill(i.delta)}</td>
       <td class="cp-mono">${_cpDt(i.ult)}</td></tr>`).join('');
+}
+// Rodapé: soma o que está VISÍVEL na tabela — responde "quanto compramos deste conjunto de itens"
+// (com a busca vazia é o fornecedor inteiro; com busca, só o recorte que interessa à negociação).
+function _cpFornItTfootHTML(cod){
+  const c=_cpFornCtx(cod); if(!c) return '';
+  const L=_cpFornItRows(cod);
+  const sA=L.reduce((a,i)=>a+i.totA,0), sB=L.reduce((a,i)=>a+i.totB,0);
+  const qA=L.reduce((a,i)=>a+i.qtdA,0), qB=L.reduce((a,i)=>a+i.qtdB,0);
+  const un=c.umsMistas?'<span class="cp-un" title="Este fornecedor entrega em mais de uma unidade — a soma de quantidade é aproximada">un. mistas</span>':`<span class="cp-un">${escapeHTML(c.um||'')}</span>`;
+  return `<tr style="border-top:2px solid var(--border);font-weight:700">
+      <td colspan="2" style="color:var(--text2)">${_cpFornItBusca?`Total do filtro (${L.length} ${L.length===1?'item':'itens'})`:`Total (${L.length} itens)`}</td>
+      <td></td>
+      <td class="cp-n">${_cpNum(qA,0)} ${un}</td><td class="cp-n">${_cpBRL(sA)}</td>
+      <td class="cp-n" style="background:color-mix(in srgb,var(--text3) 7%,transparent)">${_cpNum(qB,0)} ${un}</td>
+      <td class="cp-n" style="background:color-mix(in srgb,var(--text3) 7%,transparent)">${_cpBRL(sB)}</td>
+      <td class="cp-n">${_cpVarPill(_cpVar(sA,sB))}</td><td></td></tr>`;
+}
+// Simulador: "se eu aumentar o volume X%, quanto isso vira de volume e de dinheiro pro fornecedor".
+// Base = o período A, ao preço médio praticado nele (o argumento que se leva pra mesa).
+function _cpFornSimOutHTML(cod){
+  const c=_cpFornCtx(cod); if(!c) return '';
+  const pct=parseFloat(String(_cpFornSimPct).replace(',','.'))||0;
+  const qA=c.A.qtd, vA=c.A.total;
+  if(!(vA>0)) return `<div style="font-size:12.5px;color:var(--text3)">Sem compras no período A para simular.</div>`;
+  const dq=qA*pct/100, dv=vA*pct/100;
+  const un=c.umsMistas?'un.':(c.um||'un');
+  const linha=(lab,at,depois,mais)=>`<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:12px;color:var(--text3)">${lab}</span>
+      <span style="font-size:12.5px;text-align:right"><span style="color:var(--text3)">${at}</span> <i class="ti ti-arrow-right" style="font-size:11px;color:var(--text3)"></i> <b style="color:var(--text)">${depois}</b> <span style="color:var(--blue-mid);font-weight:700;white-space:nowrap">${mais}</span></span></div>`;
+  return `${linha('Volume', _cpNum(qA,0)+' '+un, _cpNum(qA+dq,0)+' '+un, '+'+_cpNum(dq,0))}
+    ${linha('Valor', _cpBRL(vA), _cpBRL(vA+dv), '+'+_cpBRL(dv))}
+    <div style="font-size:11.5px;color:var(--text3);margin-top:8px;line-height:1.45">Sobre o período <b>${escapeHTML(c.rA.label)}</b>, ao preço médio praticado nele. É o argumento da mesa: <b>+${_cpBRL(dv)}</b> de faturamento para ele — quanto ele devolve em desconto?</div>`;
+}
+function _cpFichaFornHTML(cod){
+  const c=_cpFornCtx(cod);
+  if(!c) return _cpTela('Fornecedor','Fornecedor não encontrado.', _cpVazio('Sem compras deste fornecedor.'),
+    undefined, undefined, {fn:'_cpVoltarForns()', label:'Voltar aos fornecedores'});
+  const f=c.f, um=c.um;
+  // ── indicadores ──
+  const varVol=_cpVar(c.A.qtd,c.B.qtd), varVal=_cpVar(c.A.total,c.B.total);
+  // Tendência mês a mês = média dos últimos 3 meses FECHADOS × os 3 anteriores (menos ruidosa que
+  // mês contra mês seco). ⚠️ O mês corrente fica de fora: com 1 dia de dados ele derrubaria a média.
+  const S=c.serie, Sf=S.filter(s=>!s.parcial), u3=Sf.slice(-3), p3=Sf.slice(-6,-3);
+  const md=a=>a.length?a.reduce((x,s)=>x+s.valor,0)/a.length:0;
+  const tend=(u3.length&&p3.length)?_cpVar(md(u3),md(p3)):null;
+  const temParcial=S.some(s=>s.parcial);
+  // ── gráficos ──
+  const umLbl=c.umsMistas?'unidades mistas':('em '+(um||'un'));
+  const graf=(t,sub,g)=>`<div class="cp-card" style="padding:14px 16px;flex:1 1 320px;min-width:0">
+    <div class="cp-card-title"><span>${t}</span>${sub?`<span class="sub">${sub}</span>`:''}</div>
+    <div style="margin-top:8px">${g}</div></div>`;
+  const notaParcial=temParcial?`<div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">* ${_cpMesLbl(+today.slice(0,4),+today.slice(5,7))} ainda está em curso — o mês é parcial e não entra na tendência.</div>`:'';
+  const grafs=`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">
+    ${graf('Volume comprado por mês', umLbl+(c.umsMistas?' ⚠':''), (S.length?_cpBarChart(S,'qtd',v=>_cpNum(v,0)+' '+(um||''),undefined,_cpAbrevN,72):_cpVazio('Sem histórico.'))+notaParcial)}
+    ${graf('Valor comprado por mês','R$ por mês', (S.length?_cpBarChart(S,'valor',v=>_cpBRL(v),undefined,_cpAbrevN,72):_cpVazio('Sem histórico.'))+notaParcial)}
+  </div>`;
+  // ── seletores de período (valem p/ os indicadores A×B, a tabela e o simulador) ──
+  const dinp=(qual,campo)=>{ const o=(qual==='A')?_cpFornPerA:_cpFornPerB;
+    return `<input type="date" value="${escapeAttr(o[campo]||'')}" oninput="_cpFornSetPerData('${qual}','${campo}',this.value)" onchange="_cpFornSetPerData('${qual}','${campo}',this.value)" onblur="_cpFornSetPerDataCommit('${qual}','${campo}',this.value)" class="modal-input" style="width:auto;padding:4px 7px;font-size:11.5px">`; };
+  const selPer=(qual)=>{ const o=(qual==='A')?_cpFornPerA:_cpFornPerB;
+    return _cpSelPeriodo('Período '+qual, `<span style="display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap"><select onchange="_cpFornSetPer('${qual}',this.value)" class="modal-input" style="width:auto;padding:5px 9px;font-size:12px;font-weight:600">${_CP_FORN_PER.map(p=>`<option value="${p[0]}"${o.p===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>${o.p==='custom'?`${dinp(qual,'de')}${dinp(qual,'ate')}`:''}</span>`); };
+  // ── tabela de itens ──
+  const S_=_cpFornSort;
+  const seta=k=>S_.campo===k?`<i class="ti ti-arrow-${S_.dir>0?'up':'down'}" style="font-size:11px;margin-left:2px;vertical-align:-1px"></i>`:'';
+  const th=(k,lab,dir,extra)=>`<th${dir?' class="r"':''} onclick="_cpFornSetSort('${k}')" style="cursor:pointer;user-select:none;${extra||''}" title="Ordenar por ${lab.replace(/<[^>]+>/g,'')}">${lab}${seta(k)}</th>`;
+  const bgB='background:color-mix(in srgb,var(--text3) 7%,transparent)';
+  const tabelaItens=`<div class="cp-card" style="overflow-x:auto;margin-bottom:14px"><table class="cp-tbl">
+      <thead>
+        <tr><th colspan="3"></th>
+          <th colspan="2" class="r" style="border-bottom:1px solid var(--border)">Período A <span class="cp-hsub">(${escapeHTML(c.rA.label)})</span></th>
+          <th colspan="2" class="r" style="${bgB};border-bottom:1px solid var(--border)">Período B <span class="cp-hsub">(${escapeHTML(c.rB.label)})</span></th>
+          <th colspan="2"></th></tr>
+        <tr>${th('cod','Cód.')}${th('nome','Item')}${th('preco','Últ. preço',1)}
+          ${th('qtdA','Qtde',1)}${th('totA','Total',1)}
+          ${th('qtdB','Qtde',1,bgB)}${th('totB','Total',1,bgB)}
+          ${th('delta','Var. %',1)}${th('ult','Últ. compra')}</tr>
+      </thead>
+      <tbody id="cp-fi-tbody">${_cpFornItTbodyHTML(cod)}</tbody>
+      <tfoot id="cp-fi-tfoot">${_cpFornItTfootHTML(cod)}</tfoot></table></div>`;
   const ultimas=f.linhas.slice().sort((a,b)=>a.data<b.data?1:-1).slice(0,25).map(l=>
     `<tr><td class="cp-mono">${_cpDt(l.data)}</td><td class="cp-mono">${escapeHTML(String(l.nf))}</td>
      <td class="cp-mono">${escapeHTML(String(l.item[0]))}</td><td class="cp-item">${escapeHTML(l.item[1])}</td><td class="cp-n">${_cpNum(l.qtd,2)} <span class="cp-un">${escapeHTML(l.um||"")}</span></td>
      <td class="cp-n">${_cpBRL(l.vun)}</td><td class="cp-n">${_cpBRL(l.tot)}</td></tr>`).join('');
-  return _cpTela(escapeHTML(_cpForn(f.nome)),'O que compramos deste fornecedor no período — leve para a reunião.',
+  return _cpTela(escapeHTML(_cpForn(f.nome)),'O que compramos deste fornecedor, com a comparação entre dois períodos — leve para a negociação.',
     `${_cpKPIcards([
-      _cpKPI('Comprado',_cpBRL(f.total)),
+      _cpKPI('Comprado (tudo)',_cpBRL(f.total)),
       _cpKPI('Notas fiscais',_cpNum(Object.keys(f.nfs).length)),
-      _cpKPI('Itens diferentes',_cpNum(itens.length)),
-      _cpKPI('Prazo de pagamento','a cadastrar')
+      _cpKPI('Itens diferentes',_cpNum(c.itens.length)),
+      _cpKPI('Tendência mês a mês',_cpVarPill(tend))
     ])}
-    <div style="font-size:12px;color:var(--text3);margin:-6px 2px 14px"><i class="ti ti-info-circle"></i> O prazo de pagamento e o de entrega não vêm neste export do ERP — quando tivermos, entram aqui ao lado do gasto.</div>
-    <div class="cp-card" style="overflow-x:auto;margin-bottom:14px"><table class="cp-tbl">
-      <thead><tr><th>Cód.</th><th>Item</th><th class="r">Qtde</th><th class="r">Últ. preço</th><th class="r">Total</th><th>Últ. compra</th></tr></thead>
-      <tbody>${linhasIt}</tbody></table></div>
+    <div style="font-size:12px;color:var(--text3);margin:-6px 2px 14px;line-height:1.5"><i class="ti ti-info-circle"></i> <b>Tendência</b> = média dos últimos 3 meses fechados contra os 3 anteriores. O prazo de pagamento e o de entrega não vêm neste export do ERP.</div>
+    ${grafs}
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 2px 8px">
+      <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Itens comprados</span>
+      <div style="display:inline-flex;align-items:flex-end;gap:10px;flex-wrap:wrap">${selPer('A')}${selPer('B')}${_cpLupa(_cpFornItBuscaAberta,_cpFornItBusca,'_cpFornItBuscaToggle','_cpFornItBuscaInput','cp-fi-busca','Buscar item…')}</div>
+    </div>
+    ${_cpKPIcards([
+      _cpKPI('Volume · A × B',_cpVarPill(varVol), null),
+      _cpKPI('Valor · A × B',_cpVarPill(varVal), null),
+      _cpKPI('Comprado no período A',_cpBRL(c.A.total)),
+      _cpKPI('Comprado no período B',_cpBRL(c.B.total))
+    ])}
+    <div class="cp-card" style="padding:13px 16px;margin-bottom:12px;display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">
+      <div style="flex:0 0 auto">
+        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:5px">E se eu aumentar o volume</div>
+        <span style="display:inline-flex;align-items:baseline;gap:4px"><input type="text" inputmode="decimal" value="${escapeAttr(_cpFornSimPct)}" oninput="_cpFornSimSet(this.value)" class="cp-sim-inp" style="width:52px;text-align:center;font-size:16px;font-weight:700"><b style="font-size:15px">%</b></span>
+      </div>
+      <div id="cp-forn-sim-out" style="flex:1 1 320px;min-width:0">${_cpFornSimOutHTML(cod)}</div>
+    </div>
+    ${tabelaItens}
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:0 2px 8px">Últimas entradas</div>
     <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead><tr><th>Data</th><th>NF</th><th>Cód.</th><th>Item</th><th class="r">Qtde</th><th class="r">Vlr unit.</th><th class="r">Total</th></tr></thead>
