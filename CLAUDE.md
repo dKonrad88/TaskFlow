@@ -422,6 +422,60 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐⭐ 2026-09-01 (b) — PC da Empresa — AUDITORIA COMPLETA da área COMPRAS: 16 bugs + faxina de código morto + PADRÃO ÚNICO documentado
+Pedido do Diego: "revise todo o setor compras atrás de bugs, melhorias, erros, códigos mortos; veja se existe os padrões necessários (código do item nas tabelas, nomenclatura, ícones, posições); deixe tudo bem alinhado; e no final sugira melhorias que façam sentido". **Commits `ce089cd5` (bugs+morto+padrão) · `a638c645` (escape/escopo/categorias) + docs, pushados; `main == origin`.** Verificado por DOM (:8899): 9 telas + as 2 fichas renderizam, **0 erros de console**, **0 divergências de alinhamento th×td** nas 9 tabelas. Backup em `backups/index.pre-auditcompras-*.html`.
+- **MÉTODO:** workflow de 6 lentes paralelas (pipeline de dados · telas/handlers · código morto · padrão de tabelas · headers/ícones · consistência entre telas) → **77 achados**; a fase de verificação adversarial morreu no limite de uso, então **verifiquei cada achado no código à mão** antes de corrigir. Achados brutos ficaram em `scratchpad/achados.md` (não versionado).
+
+**🐞 BUGS CORRIGIDOS (16)**
+| Grav. | O quê |
+|---|---|
+| P0 | **`_cpVistoObj` gravava no localStorage DENTRO do render** (é o P0 nº1 desta base). Agora só LÊ; quem persiste são as ações (`_cpVistoToggle`/`_cpVistoTodos`). |
+| P2 | **`__cpOcSaldo` nunca invalidava** mas depende de `today` (corte hoje−7) → app aberto virando o dia deixava o "estoque disponível" divergindo da aba Ordens. Cache **keyado pela data de corte**. |
+| P2 | **Período personalizado do Planejamento:** `<input type=date>` com `onchange→renderCompras` recriava o campo com ano parcial (0002) e matava o foco. Agora `oninput/onchange` só guardam (`_cpPlanSetPerRaw`, ignora ano < 2000) e o render vem no **blur**. |
+| P2 | **Ficha do item › Fornecedores:** a tabela somava o histórico TODO e o detalhe inline aplicava o corte de 12 meses da OUTRA tela → números divergentes lado a lado e "sem compras no período" ao clicar. `_cpFornAgg` ganhou parâmetro `meses`; o detalhe usa `0` (tudo). |
+| P2 | **KPIs do Planejamento não acompanhavam a busca** — `_cpPlanRefresh` atualizava `#cp-plan-count`, id que **não existe** no HTML. Extraídos p/ `_cpPlanKPIsHTML()` + `<div id="cp-plan-kpis">`, re-renderizados junto do tbody. |
+| P2 | **`_cpFornAgg` incluía linhas de DESPESA** (todos os callers passavam `'T'`) enquanto Histórico e ficha do item filtram `cls==='I'` → 3 totais diferentes p/ o mesmo fornecedor. Callers passam `'I'`. |
+| P3 | KPI "Notas fiscais" do Histórico contava NF **só pelo número** (que é único por emissor, não global) → chave `forn+nf`. |
+| P3 | `_cpLimiteMeses` usava `new Date()` + `setMonth` com **overflow de fim de mês** (31/mai − 3m → 02/mar). Ancorado em `today`, com o dia clampado; `_cpFiltradas` passou a reusar o helper. |
+| P3 | `_cpAbrirForn` não limpava `_cpItemSel` → "Voltar" da ficha ia p/ a tela errada. |
+| P3 | Ordens: OC **sem previsão ia p/ o TOPO** do sort "entrega mais próxima" (`''` ordena antes de qualquer ISO). |
+| P3 | **Faixas de cor da cobertura não eram reordenadas** ao salvar → limite fora de ordem classificava errado e contaminava os KPIs "Comprar agora/em breve". `_cpPlanBandsSave` ordena. |
+| P3 | `anoCons=2026` **fixo** em `_cpItemSerie` → derivado de `_CP_POSDATA` (o `m<=7` já tinha sido parametrizado em 31/08; o ano era o último resto). |
+| P3 | **Sazonalidade da previsão** era relativa ao último mês com dado → o pico de dezembro **deslizava um mês a cada export novo**. Indexada pelo mês de calendário (`SAZ[m-1]`). |
+| P3 | `_cpOCsItem` não filtrava `saldo>0` → OC já entregue inflava o contador "N · X a caminho" do card. |
+| P3 | Rota (F5) não persistia `_cpItemOrigem`/`_cpFornSel` → "Voltar" quebrava depois de recarregar. |
+| P3 | **`escapeAttr` NÃO protege apóstrofo dentro de `onclick`** (o parser HTML decodifica `&#39;` ANTES de o JS ser lido). Novo helper **`_cpJs(v)`** aplicado nos **18** onclicks que interpolam código de item/fornecedor/categoria — vários **não tinham escape nenhum**. |
+
+**🧟 CÓDIGO MORTO REMOVIDO** (0 referências vivas, confirmado por grep no arquivo inteiro): `_cpEstSegHTML` + o no-op `#cp-est-seg` em `_cpEstSet` · `_cpSimSetEntrega` · `_cpSimSetEntregaRaw` · `_cpSimEntregaLive` · `_cpSimEntregaCommit` (+ o comentário que apontava p/ o fluxo morto) · `_CP_META` · `_cpCatFiltro` (e o par grava/restaura da rota) · `switchToCompras` · toggle no-op de `cp-body-wide` · **tela Orçamentos** (inalcançável desde que saiu da sidebar — recuperável do git; hoje cai no scaffold "em construção") · 7 entradas mortas do mapa do scaffold · CSS `.cp-catbar`/`.cp-catchip`/`.cp-catn`/`.cp-bar`/`.cp-seg` e o bloco `.cp-painel`/`-rail`/`-main`/`-head`/`-body`.
+- ⚠️ **ERRO MEU, pego e corrigido antes do commit:** ao deletar `switchToCompras` por número de linha levei junto a linha `let comprasView='painel';` (o estado da área). Restaurada na hora. **Lição: apagar bloco por range de linha exige reler as bordas depois.**
+
+**📐 PADRÃO — agora documentado NO CÓDIGO** (bloco de comentário logo antes de `_cpLupa`, ~8715: cabeçalho · indicadores · tabela · onclick · escopo · regra do render). O que foi alinhado:
+- **Nomes de coluna unificados:** `Cód.` · `Item` · `Qtde` · `Vlr unit.` · `Total` · `Últ. compra` · `ICMS %`. Saíram "Código", "Cód", "Produto", "Item fornecido", "Qtd", "Qtde total", "Quantidade comprada" (que ainda por cima **mentia** — mostra o saldo a entregar, virou "Qtde a receber"), "Preço", "Preço Net"→"Vlr net", "Comprado"/"Total comprado", "Última compra", "ICMS".
+- **Alinhamento:** colunas de DATA com header à ESQUERDA (a célula `.cp-mono` já era) — havia `th class="r"` com `td` à esquerda no Estoque e nas 2 fichas de fornecedor. Conferido por script: **0 divergências th×td** em todas as tabelas.
+- **Unidade de medida** junto de toda quantidade (faltava em Consumo/mês do Estoque, "Últimas entradas" das 2 fichas de fornecedor e no Histórico da ficha do item).
+- **Fornecedor sempre por `_cpForn`** — o Estoque, o Histórico da ficha e o **TÍTULO da ficha do fornecedor** mostravam o nome CRU do ERP (**980 dos 1.320** fornecedores estão em CAIXA ALTA no export).
+- **Estado-vazio único** (`_cpVazio`, agora itálico): eram **6 variações** de texto/estilo ("com esse filtro" × "para esse filtro", com/sem itálico, 4 paddings).
+- **Estoque** passou a usar `_cpLupa`/`_cpFiltroIcon` (montava os dois à mão, e o filtro era o único **sem badge de contagem**).
+- **Necessidade da semana** migrada p/ `.cp-tbl` (era a única com estilos inline: header sem caixa alta, sem sticky, sem zebra) + pílula na cobertura.
+- **Seletor de período com rótulo** (`_cpSelPeriodo`) em Fornecedores e Histórico — eram `<select>` nus, sem dizer o que filtravam.
+- **"Voltar" unificado** no topo via `_cpTela(...,voltar)` — a ficha do fornecedor usava botão cinza no corpo, com 3 textos diferentes.
+- **KPIs:** `_cpKPIrow` virou **alias** de `_cpKPIcards` (eram duplicatas byte a byte); o Histórico tinha um `kpi` local duplicando `_cpKPI`.
+- **Títulos:** "Painel de compras" (sentence case) e **"Ordens de compra"** batendo com o nome na sidebar (a tela dizia "…em aberto").
+
+**🏷️ CATEGORIA / ESCOPO — 13 itens REAIS voltaram às telas** (`_cpCategoria`): Display (Alfajor/Paçoca), Gema Pasteurizada, Fubá/Fecomix/Gritz/Sêmola, Milho Para Pipoca, Mignon Granel, Pellet Fritura/Tortilhos, Melhorador de Massa, Clara de Ovos, Realçador, PGPR — todos alimentos/embalagem que a heurística jogava em "Outros" e por isso **sumiam** de Insumos/Estoque/Planejamento. `pellet` entrou **qualificado** (fritura/tortilho) p/ não pegar pellet de caldeira; termos inequívocos de manutenção (`sensor`, `cabo para`, `inversor`, `contatora`, `solenoide`) passaram a ser testados **ANTES** de Embalagens ("Sensor Fim de **FILME**" caía em Embalagens pela palavra filme); `_cpEscComprador` exclui "ativo imobilizado". **Escopo 567 → 583 itens** (276 MP + 307 embalagens) e as **OCs de item fora do escopo caíram de 3 para 0** → a aba Ordens e as listas de item passaram a falar do mesmo conjunto.
+- **Necessidade da semana** agora filtra por `_cpEscComprador`: "Chapa Preta" e "Cantoneira" (categoria Manutenção) **geravam tarefa de compra** p/ o comprador de MP/embalagem e abriam ficha de item que não existe em lista nenhuma. Os 2 itens do seed viraram embalagens reais e no escopo (20229, 4162).
+
+**❗ NÃO mexido de propósito — precisa DECISÃO do Diego (são os tópicos de melhoria que levei a ele):**
+1. ⭐ **4 definições diferentes de "comprar agora/em breve"** convivem: Estoque (`<10d` / `<30d`), Painel (`<20d`, e "ficar de olho" 10–20d), card Indicadores da ficha (cor `<10/<20` mas o status "Necessidade atual" usa 30d — **discordam dentro da MESMA ficha**) e Planejamento (faixas em MESES sobre a média do período). Os KPIs dessas telas **nunca vão bater** enquanto isso não for unificado. "Ruptura" também diverge (Estoque `dias<=0` × Planejamento `est<=0`).
+2. ⭐ **`_cpConsMedPer` = "últimos N meses COM registro", não N meses de calendário.** Item cujo consumo só existe em 2025 tem a cobertura calculada contra demanda de 1½ ano atrás, sem aviso; meses de buraco no meio são pulados e inflam a média. Mudar isso **muda TODOS os números de cobertura** — por isso não toquei sozinho.
+3. **"Dura até" com bases diferentes:** Estoque projeta pela média fixa de 8 meses; Planejamento pela média do período (default 2 meses) → datas divergentes p/ o mesmo item, e só o Planejamento mostra qual janela usou.
+4. **"vs últ. 3" com 2 fórmulas:** `_cpMedia3` (simulador) = 3 últimos MESES com compra; a coluna do Histórico da ficha = 3 últimas NOTAS. Rótulos quase iguais, bases diferentes.
+5. **KPI × filtro:** Estoque/Planejamento/Ordens contam sobre a base cheia; o **Histórico** conta sobre o resultado filtrado (inclui a busca digitada). Pode ser desejável ali, mas não está documentado.
+6. **7 semi-acabados/acabados no escopo** ("Suspiro/Mignon/Biscoito Palito **Granel**", "Pé de Moça/Chocomoça (**Pote** 960g)"). Os "Granel" têm consumo real e podem ser insumo interno legítimo; os "(Pote)" parecem produto acabado vazando pela palavra "pote".
+7. `_necGerarTarefas` deduplica por **string humana** da semana (`"07 set – 12 set"`); se o formato do rótulo mudar, as tarefas duplicam. E `prodSemana` é global compartilhado com a Produção: trocar de semana e reabrir a aba gera tarefa de outra semana.
+8. `_cpMacroCard` segue com `return ''` no topo (~20 linhas inalcançáveis) — desativação deliberada do Diego em 29/08; `_cpMacroFase` está morta por transitividade. Não removi porque o card pode voltar.
+
+
 ### ⭐ 2026-09-01 — PC da Empresa — OCs em aberto REAIS (fecha a pendência da entrada 08-31 (h))
 O Diego mandou o export das **Ordens de Compra**. Regerei `_CP_OCABERTO` (109 OCs abertas, **R$ 5,0mi**, 35 fornecedores) + `_CP_OC` (60 itens) do zero e injetei. **Commit `c44aef74`, pushado; `main == origin`.** Verificado por DOM (:8899): app boota, aba Ordens 109 linhas, disponível=est+OC ok (Caixa 20233: 7.735+9.279=17.014), **0 erros de JS**. Backup em `backups/index.pre-oc-*.html`.
 - **Filtro "aberto":** `Saldo a Entregar Estoque (col 23) > 0` **E** status não-cancelado — exclui "Entregue Total" (saldo 0), "Cancelada" e "Entregue Parcial e Cancelada"; mantém "Não Entregue" + "Entregue Parcial". Das 913 linhas → **109 abertas**.

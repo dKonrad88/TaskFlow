@@ -8717,6 +8717,39 @@ const _cpKPIrow=_cpKPIcards;   // alias legado (eram duplicatas byte a byte); us
 const _cpSelPeriodo=(rot,sel)=>`<div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px"><span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text3)">${rot}</span>${sel}</div>`;
 // Lupa de busca padrão de Compras (modelo do Estoque): fechada = ícone no canto; aberta = campo + X.
 // Vai no slot `acao` do _cpTela (canto sup. direito). extra = HTML opcional à esquerda do campo (ex.: filtro de período).
+/* ══════════════════════════════════════════════════════════════════════════════════════
+   PADRÃO DA ÁREA COMPRAS — seguir ao criar/editar QUALQUER tela daqui (auditoria set/2026).
+
+   CABEÇALHO   _cpTela(titulo, sub, corpo, larg, acao, voltar)
+               · título em sentence case ("Painel de compras", não "Painel de Compras") e
+                 IGUAL ao nome do item na sidebar; subtítulo curto, uma frase, com ponto final.
+               · acao  = controles no canto superior direito, nesta ordem:
+                         [período (_cpSelPeriodo)] [filtros (_cpFiltroIcon)] [busca (_cpLupa)]
+               · voltar = {fn,label} → link "← Voltar …" acima do título (nunca botão no corpo).
+
+   INDICADORES _cpKPIcards([ _cpKPI(rótulo, valor, cor?) , … ])  — 1 card por indicador.
+               Contagem sai da BASE filtrada (categoria+busca), sem o filtro de status, p/ o
+               usuário poder alternar entre os cards. Se a busca re-renderiza só o tbody,
+               re-renderize os KPIs junto (ver _cpPlanRefresh).
+
+   TABELA      <table class="cp-tbl"> — header já sai em CAIXA ALTA/sticky pelo CSS.
+               Colunas na ordem: Cód. · Item · (…) · números à direita.
+               NOMES fixos: "Cód." · "Item" · "Qtde" · "Vlr unit." · "Total" · "Últ. compra"
+                            · "Fornecedor" · "ICMS %"   (nada de Código/Produto/Qtd/Preço)
+               · Cód.  → <td class="cp-mono">          · Item → <td class="cp-item">
+               · número → <th class="r"> + <td class="cp-n">, sempre com a unidade:
+                          ${_cpNum(v,2)} <span class="cp-un">${escapeHTML(um)}</span>
+               · data  → SEMPRE _cpDt (dd/mm/aa), header À ESQUERDA (a célula .cp-mono é)
+               · status/cobertura → <span class="cp-pill">
+               · fornecedor → SEMPRE _cpForn(nome) (o ERP manda em CAIXA ALTA)
+               · linha clicável → <tr class="cp-clic" onclick="…">
+               · vazio → <tr><td colspan="N">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>
+                         (N = nº REAL de colunas)
+
+   ONCLICK     string interpolada em onclick usa _cpJs(v), nunca escapeAttr (ver _cpJs).
+   ESCOPO      listas de item saem de _cpItens() (já filtrado por _cpEscComprador).
+   RENDER      função *HTML() NUNCA grava (safeSetItem/saveTask_db/push) — é o P0 nº1 da base.
+   ══════════════════════════════════════════════════════════════════════════════════════ */
 function _cpLupa(aberta, valor, toggleFn, inputFn, inputId, ph, extra){
   return aberta
     ? `<div style="display:inline-flex;align-items:flex-end;gap:8px">${extra||''}<input id="${inputId}" value="${escapeAttr(valor||'')}" oninput="${inputFn}(this)" placeholder="${escapeAttr(ph||'Buscar…')}" class="modal-input" style="width:220px;padding:6px 11px;font-size:12.5px"><button onclick="${toggleFn}()" title="Fechar busca" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;display:inline-flex"><i class="ti ti-x" style="font-size:16px"></i></button></div>`
