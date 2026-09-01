@@ -10529,45 +10529,43 @@ function _cpFornCompHTML(cod){
       : (A.metodo==='yoy'
           ? `no ritmo de agora (+${_cpNum((A.fator-1)*100,1)}% sobre ${ano-1})`
           : 'projetado pelo tempo decorrido');
-    const esq=(lado==='esq');
-    const div=esq ? 'border-right:1px solid var(--border);padding-right:14px;margin-right:14px'
-                  : 'border-left:1px solid var(--border);padding-left:14px;margin-left:14px';
-    return `<div style="flex:0 0 auto;text-align:${esq?'left':'right'};${div};min-width:132px">
-      <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:5px">${escapeHTML(tit)}</div>
+    // Metade do lado, com a MESMA anatomia da metade do período (rótulo · número · detalhe · nota),
+    // largura igual (flex:1 1 0) e conteúdo centrado — é o que deixa o par simétrico.
+    return `<div style="flex:1 1 0;min-width:0;text-align:center;padding:2px 4px">
+      <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:6px">${escapeHTML(tit)}</div>
       <div style="font-size:17px;font-weight:800;color:var(--text2);letter-spacing:-.01em;line-height:1.15">${_cpBRL(A.total)}${A.fechado?'':'<span style="font-size:11px;font-weight:600;color:var(--text3)"> est.</span>'}</div>
-      ${A.qtd!=null?`<div style="font-size:11.5px;font-weight:600;color:var(--text3);margin-top:2px">${_cpNum(A.qtd,0)} ${escapeHTML(un)}</div>`:''}
-      <div style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.35;font-style:italic">${escapeHTML(nota)}</div>
+      ${A.qtd!=null?`<div style="font-size:11.5px;font-weight:600;color:var(--text3);margin-top:3px">${_cpNum(A.qtd,0)} ${escapeHTML(un)}</div>`:''}
+      <div style="font-size:10px;color:var(--text3);margin-top:5px;line-height:1.35;font-style:italic">${escapeHTML(nota)}</div>
     </div>`; };
   const lado=(qual,per,dados,bg)=>{ const o=(qual==='A')?_cpFornPerA:_cpFornPerB;
     const datas=_cpFornRangeDatas(per,c.f.linhas);
     const ehNovo=(O.novoLado===qual);
-    // ESPELHO: no lado A o bloco inteiro (título, seletores, datas e números) vai p/ a DIREITA, com o
-    // quadro do ano na ponta esquerda; no B é o contrário. Antes só os números espelhavam e o
-    // controle ficava à esquerda nos dois lados, o que quebrava a simetria (Diego).
-    const dir=(qual==='A');
-    const miolo=`<div style="flex:1 1 auto;min-width:0;text-align:${dir?'right':'left'}">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;justify-content:${dir?'flex-end':'flex-start'}">
-        <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3)">Período ${qual}</span>
+    // Cada lado = DUAS metades de largura igual (flex:1 1 0), com a mesma anatomia e o conteúdo
+    // CENTRADO, separadas por um divider: [ano] | [período] no A e [período] | [ano] no B.
+    // Antes as duas metades tinham larguras e alinhamentos diferentes e o miolo ficava tumultuado.
+    const dir=(qual==='A');   // A fica com o quadro do ano na esquerda
+    const miolo=`<div style="flex:1 1 0;min-width:0;text-align:center;padding:2px 4px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;justify-content:center">
+        <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Período ${qual}</span>
         <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);background:var(--bg2);border-radius:999px;padding:1px 7px">${ehNovo?'mais recente':'base'}</span>
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:${dir?'flex-end':'flex-start'}">
-        <select onchange="_cpFornSetPer('${qual}',this.value)" class="modal-input" style="flex:0 1 auto;min-width:0;max-width:172px;padding:5px 8px;font-size:12px;font-weight:600">${_cpFornPerOptions(o.p)}</select>
-        ${_cpFornUsaAno(o.p)?`<select onchange="_cpFornSetAno('${qual}',this.value)" title="Ano do recorte" class="modal-input" style="flex:0 0 auto;padding:5px 6px;font-size:12px;font-weight:700">${_cpFornAnos(c.f.linhas).map(y=>`<option value="${y}"${(+o.ano||+today.slice(0,4))===y?' selected':''}>${y}</option>`).join('')}</select>`:''}
+      <div style="display:flex;gap:5px;align-items:center;justify-content:center;flex-wrap:wrap">
+        <select onchange="_cpFornSetPer('${qual}',this.value)" class="modal-input" style="flex:0 1 auto;min-width:0;max-width:158px;padding:4px 7px;font-size:11.5px;font-weight:600">${_cpFornPerOptions(o.p)}</select>
+        ${_cpFornUsaAno(o.p)?`<select onchange="_cpFornSetAno('${qual}',this.value)" title="Ano do recorte" class="modal-input" style="flex:0 0 auto;width:70px;padding:4px 4px;font-size:11.5px;font-weight:700">${_cpFornAnos(c.f.linhas).map(y=>`<option value="${y}"${(+o.ano||+today.slice(0,4))===y?' selected':''}>${y}</option>`).join('')}</select>`:''}
       </div>
-      ${o.p==='custom'?`<div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;justify-content:${dir?'flex-end':'flex-start'}">${dinp(qual,'de')}${dinp(qual,'ate')}</div>`:''}
-      <div style="margin:7px 0 9px">
-        <div style="font-size:11.5px;color:var(--text3);font-style:italic">${escapeHTML(per.label)}</div>
-        ${datas?`<div style="font-size:12px;font-weight:600;color:var(--text2);margin-top:1px"><i class="ti ti-calendar" style="font-size:11px;color:var(--text3)"></i> ${escapeHTML(datas)}</div>`:''}
+      ${o.p==='custom'?`<div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;justify-content:center">${dinp(qual,'de')}${dinp(qual,'ate')}</div>`:''}
+      <div style="margin:7px 0 8px">
+        <div style="font-size:11px;color:var(--text3);font-style:italic">${escapeHTML(per.label)}</div>
+        ${datas?`<div style="font-size:11.5px;font-weight:600;color:var(--text2);margin-top:1px">${escapeHTML(datas)}</div>`:''}
       </div>
-      <div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.02em;line-height:1.1">${_cpBRL(dados.total)}</div>
-      <div style="font-size:13px;font-weight:600;color:var(--text2);margin-top:3px">${_cpNum(dados.qtd,0)} <span style="color:var(--text3);font-size:11px">${escapeHTML(un)}</span></div>
-      <div style="font-size:11.5px;color:var(--text3);margin-top:3px">${_cpNum(Object.keys(dados.nfs).length)} ${Object.keys(dados.nfs).length===1?'nota':'notas'} · ${_cpNum(Object.keys(dados.porItem).length)} itens</div>
+      <div style="font-size:21px;font-weight:800;color:var(--text);letter-spacing:-.02em;line-height:1.1">${_cpBRL(dados.total)}</div>
+      <div style="font-size:12.5px;font-weight:600;color:var(--text2);margin-top:3px">${_cpNum(dados.qtd,0)} <span style="color:var(--text3);font-size:11px">${escapeHTML(un)}</span></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:3px">${_cpNum(Object.keys(dados.nfs).length)} ${Object.keys(dados.nfs).length===1?'nota':'notas'} · ${_cpNum(Object.keys(dados.porItem).length)} itens</div>
     </div>`;
-    // ⚠️ nowrap + min-width:0 no miolo: com wrap, o 2º seletor (ano) alargava o miolo e empurrava o
-    // quadro do ano para a linha de baixo, desmontando o par lado-a-lado.
-    const box=anoBox(per, dir?'esq':'dir');
-    return `<div style="background:${bg};border-radius:11px;padding:13px 15px;min-width:0">
-      <div style="display:flex;align-items:flex-start;flex-wrap:nowrap;gap:0">${dir?(box+miolo):(miolo+box)}</div>
+    const box=anoBox(per);
+    const divider=box?`<div style="flex:0 0 1px;align-self:stretch;background:var(--border);margin:0 12px"></div>`:'';
+    return `<div style="background:${bg};border-radius:11px;padding:13px 12px;min-width:0">
+      <div style="display:flex;align-items:center;flex-wrap:nowrap">${dir?(box+divider+miolo):(miolo+divider+box)}</div>
     </div>`; };
   const dif=(rot,v)=>`<div style="text-align:center"><div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">${rot}</div><div style="font-size:16px;line-height:1.25">${_cpVarPill(v)}</div></div>`;
   const seta=(O.novoLado==='A')?'ti-arrow-left':'ti-arrow-right';   // aponta do período BASE p/ o mais recente
