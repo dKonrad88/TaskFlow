@@ -10069,10 +10069,11 @@ const CP_BG_A='color-mix(in srgb,var(--blue-mid) 8%,transparent)';
 const CP_BG_B='color-mix(in srgb,var(--text3) 9%,transparent)';
 let _cpFornSort={campo:'totA', dir:-1};                    // ordenação da tabela de itens
 let _cpFornItBusca='', _cpFornItBuscaAberta=false;         // busca dentro dos itens comprados
-let _cpFornPerA={p:'ano', de:'', ate:''};                  // período A — default: este ano
-let _cpFornPerB={p:'yoy', de:'', ate:''};                  // período B — default: mesmo período do ano passado
+// Defaults (Diego): A = o passado, B = o presente — lê-se da esquerda p/ a direita como a linha do tempo.
+let _cpFornPerA={p:'yoy', de:'', ate:''};                  // período A — mesmo período do ano passado
+let _cpFornPerB={p:'ano', de:'', ate:''};                  // período B — este ano
 let _cpFornSimPct='5';                                     // simulador "e se eu aumentar X%"
-let _cpFornSimBase='A';                                    // sobre qual período o simulador roda (A ou B)
+let _cpFornSimBase='B';   // período base do simulador — B (o presente), já que A passou a ser o passado
 // Presets agrupados. Os trimestres/semestres são do ANO CORRENTE — para comparar com o mesmo
 // recorte do ano anterior, use "Mesmo período, ano passado" no outro lado (ele desloca 1 ano).
 const _CP_FORN_PER_GRUPOS=[
@@ -10304,7 +10305,13 @@ function _comprasFornecedoresHTML(){
 // ⚠️ meses=0 (tudo): o período B pode ser antigo e não pode ficar fora da janela da tela de lista.
 function _cpFornCtx(cod){
   const f=_cpFornAgg('I',0).find(x=>x.cod===cod); if(!f) return null;
-  const rA=_cpFornRange(_cpFornPerA), rB=_cpFornRange(_cpFornPerB, rA);
+  // ⚠️ O preset "yoy" (mesmo período, ano passado) se define a partir do OUTRO lado, então o lado que
+  // NÃO é yoy tem de ser resolvido PRIMEIRO — seja ele o A ou o B. Antes o A era sempre resolvido sem
+  // referência: com A=yoy e B="últimos 3 meses", o A viraria "este ano deslocado" em vez de
+  // "últimos 3 meses deslocados". Com os dois em yoy, cada um cai no seu default.
+  let rA, rB;
+  if(_cpFornPerA.p==='yoy' && _cpFornPerB.p!=='yoy'){ rB=_cpFornRange(_cpFornPerB); rA=_cpFornRange(_cpFornPerA, rB); }
+  else { rA=_cpFornRange(_cpFornPerA); rB=_cpFornRange(_cpFornPerB, rA); }
   const A=_cpFornPeriodo(f.linhas,rA), B=_cpFornPeriodo(f.linhas,rB);
   // ficha de cada item: nome/UM/último preço saem do histórico todo; qtde e total, de cada período
   const it={};
