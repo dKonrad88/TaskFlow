@@ -10458,16 +10458,18 @@ function _cpFornSimOutHTML(cod){
   // ouvir o ano inteiro. Projeta o ano corrente pelo crescimento já observado e aplica o mesmo +X%.
   // ⚠️ O ano vem do PERÍODO BASE, não de `today`. Antes era fixo no ano corrente: trocar o lado A/B
   // ou o período não mexia neste bloco, e o número parecia travado (bug apontado pelo Diego).
+  // ⚠️ O resultado é o ANO SEGUINTE, não o ano da base. 2026 vai fechar na projeção (R$ 1,48mi) —
+  // o +X% é a meta para 2027 sobre esse número. O rótulo dizia "Fecha 2026 em: 1,48 → 1,70mi", o que
+  // afirmava que 2026 fecharia em 1,70mi (Diego). A conta era a mesma; o que estava errado era o nome.
   const anoY=_cpFornAnoDoPer(baseR, c.f.linhas), projAno=_cpFornAno(c.f.linhas, anoY);
   let blocoAno='';
   if(projAno && projAno.total>0){
-    const pv=projAno.total;
-    const tit=projAno.fechado?`${anoY} fechou em`:`Fecha ${anoY} em`;
-    const nota=projAno.fechado
-      ? 'ano civil inteiro, já realizado'
-      : `projeção do ano inteiro${projAno.metodo==='yoy'?` · ritmo de +${_cpNum((projAno.fator-1)*100,1)}% sobre ${anoY-1}`:' · pelo tempo decorrido'}`;
-    blocoAno=bloco(tit, _cpBRL(pv), _cpBRL(pv*(1+pct/100)), '+'+_cpBRL(pv*pct/100))
-      .replace('</div>', `<div style="font-size:10px;color:var(--text3);font-style:italic;margin-top:3px">${nota}</div></div>`);
+    const pv=projAno.total, pctTxt=_cpNum(pct, Number.isInteger(pct)?0:1);
+    const baseTxt=projAno.fechado
+      ? `${anoY} fechado · ${_cpBRL(pv)}`
+      : `${anoY} projetado · ${_cpBRL(pv)}${projAno.metodo==='yoy'?` (ritmo de +${_cpNum((projAno.fator-1)*100,1)}% sobre ${anoY-1})`:''}`;
+    blocoAno=bloco(`${anoY+1} com +${pctTxt}%`, _cpBRL(pv), _cpBRL(pv*(1+pct/100)), '+'+_cpBRL(pv*pct/100))
+      .replace('</div>', `<div style="font-size:10px;color:var(--text3);font-style:italic;margin-top:3px">sobre o ano ${escapeHTML(baseTxt)}</div></div>`);
   }
   return `<div style="display:flex;gap:16px;flex-wrap:wrap">
       ${bloco('Volume', _cpNum(qA,0)+' '+un, _cpNum(qA+dq,0)+' '+un, '+'+_cpNum(dq,0)+' '+un)}
@@ -10476,7 +10478,7 @@ function _cpFornSimOutHTML(cod){
     </div>
     <div style="font-size:12px;color:var(--text3);margin-top:10px;padding-top:9px;border-top:1px solid var(--border);line-height:1.5">
       Sobre o período <b style="color:var(--text2)">${_cpFornSimBase}</b> — <b style="color:var(--text2)">${escapeHTML(baseR.label)}</b>, ao preço médio praticado nele.<br>
-      São <b style="color:var(--blue-mid)">+${_cpBRL(dv)}</b> de faturamento para ele${blocoAno?` no período, ou <b style="color:var(--blue-mid)">+${_cpBRL(projAno.total*pct/100)}</b> no ano fechado`:''} — <b>quanto ele devolve em desconto?</b></div>`;
+      São <b style="color:var(--blue-mid)">+${_cpBRL(dv)}</b> de faturamento para ele${blocoAno?` no período, ou <b style="color:var(--blue-mid)">+${_cpBRL(projAno.total*pct/100)}</b> no ano cheio de ${anoY+1}`:''} — <b>quanto ele devolve em desconto?</b></div>`;
 }
 // Card do simulador (usado no Resumo e na aba Comparar).
 function _cpFornSimCard(cod){
