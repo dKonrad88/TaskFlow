@@ -6501,7 +6501,7 @@ function _necRows(){
   });
 }
 function _necTbodyHTML(){
-  const rows=_necRows();
+  const rows=_cpSortArr('nec', _necRows(), {cob:o=>(o.util>0?o.est/o.util*7:null)}, 'nome', 1);
   if(!rows.length) return `<tr><td colspan="7">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`;
   return rows.map(o=>{
     const falta=o.fim<0, c=falta?'var(--danger)':'var(--text)', cc=falta?'var(--danger)':'var(--text3)';
@@ -6526,8 +6526,8 @@ function _prodNecessidadeHTML(){
   const tabela=`<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl" style="table-layout:fixed;min-width:728px">
       <colgroup><col style="width:66px"><col style="width:150px"><col><col style="width:86px"><col style="width:90px"><col style="width:94px"><col style="width:96px"></colgroup>
       <thead><tr>
-        <th>Cód.</th><th>Divisão</th><th>Item</th>
-        <th class="r">Estoque</th><th class="r">A utilizar</th><th class="r">Est. final</th><th class="r">Cobertura</th>
+        ${_cpTh('nec','cod','Cód.')}${_cpTh('nec','div','Divisão')}${_cpTh('nec','nome','Item')}
+        ${_cpTh('nec','est','Estoque',1)}${_cpTh('nec','util','A utilizar',1)}${_cpTh('nec','fim','Est. final',1,'',1)}${_cpTh('nec','cob','Cobertura',1,'',1)}
       </tr></thead>
       <tbody id="nec-tbody">${_necTbodyHTML()}</tbody>
     </table></div>`;
@@ -8772,6 +8772,44 @@ function _cpLupa(aberta, valor, toggleFn, inputFn, inputId, ph, extra){
 // O popover fica FORA (o caller envolve num <div position:relative> com o painel). `count` = nº de filtros ativos.
 function _cpFiltroIcon(toggleFn, count){ count=count||0;
   return `<button onclick="${toggleFn}()" title="Filtros" style="position:relative;background:var(--card);border:1px solid ${count?'var(--blue-mid)':'var(--border)'};border-radius:9px;cursor:pointer;color:${count?'var(--blue-mid)':'var(--text2)'};width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-filter" style="font-size:17px"></i>${count?`<span style="position:absolute;top:-5px;right:-5px;background:var(--blue-mid);color:#fff;font-size:9px;font-weight:700;min-width:15px;height:15px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 3px">${count}</span>`:''}</button>`; }
+/* ══════ ORDENAÇÃO CLICÁVEL — motor único de TODAS as tabelas de Compras (Diego, set/2026) ══════
+   Uso em 3 passos, em qualquer tabela:
+     1. cabeçalho:  ${_cpTh('estoque','dias','Cobertura',1)}      (1 = coluna numérica, alinha à direita)
+     2. dados:      const L=_cpSortArr('estoque', lista, ACC, 'dias', 1);
+     3. ACC (opcional) = { campo: o=>valor } só para colunas CALCULADAS; sem acessor usa o[campo].
+   `tab` é uma chave livre por tabela (a ordenação de cada uma é independente e sobrevive ao render).
+   O 1º clique ordena pelo sentido natural da coluna (texto A→Z, número do maior p/ o menor); o 2º inverte. */
+const _cpSort={};                                   // {tab: {campo, dir}} — dir 1 = crescente
+function _cpSortGet(tab, defCampo, defDir){ if(!_cpSort[tab] && defCampo) _cpSort[tab]={campo:defCampo, dir:defDir||1}; return _cpSort[tab]||{campo:'',dir:1}; }
+function _cpSortSet(tab, campo, natural){
+  const s=_cpSort[tab];
+  if(s && s.campo===campo) s.dir*=-1; else _cpSort[tab]={campo, dir:(natural||1)};
+  renderCompras();
+}
+// Cabeçalho clicável. `dir` = coluna numérica (th class="r"); `nat` = sentido do 1º clique (default:
+// texto 1 crescente, número -1 decrescente — o maior primeiro é o que se quer ver numa tabela de compras).
+function _cpTh(tab, campo, label, dir, extra, nat){
+  const s=_cpSortGet(tab), on=s.campo===campo;
+  const natural=(nat!=null)?nat:(dir?-1:1);
+  const seta=on?`<i class="ti ti-arrow-${s.dir>0?'up':'down'}" style="font-size:11px;margin-left:2px;vertical-align:-1px"></i>`:'';
+  const txt=String(label).replace(/<[^>]+>/g,'').trim();
+  return `<th${dir?' class="r"':''} onclick="_cpSortSet('${tab}','${campo}',${natural})" style="cursor:pointer;user-select:none;${on?'color:var(--text2);':''}${extra||''}" title="Ordenar por ${escapeAttr(txt)}">${label}${seta}</th>`;
+}
+// Ordena uma cópia do array. Texto usa localeCompare pt-BR (senão "Papelao" vem antes de "Papelão");
+// vazio/null vai sempre p/ o FIM, nos dois sentidos — item sem dado não deve disputar o topo.
+function _cpSortArr(tab, arr, acc, defCampo, defDir){
+  const s=_cpSortGet(tab, defCampo, defDir); if(!s.campo) return arr;
+  const get=o=>{ const f=acc&&acc[s.campo]; return f?f(o):o[s.campo]; };
+  const vazio=v=>(v==null || v==='' || (typeof v==='number' && !isFinite(v)));
+  return arr.slice().sort((a,b)=>{
+    const x=get(a), y=get(b);
+    if(vazio(x)&&vazio(y)) return 0;
+    if(vazio(x)) return 1;                       // sem dado sempre no fim
+    if(vazio(y)) return -1;
+    if(typeof x==='number' && typeof y==='number') return (x-y)*s.dir;
+    return String(x).localeCompare(String(y),'pt-BR',{numeric:true})*s.dir;
+  });
+}
 // Valor de STRING dentro de onclick inline: onclick="fn('${_cpJs(v)}')".
 // ⚠️ escapeAttr NÃO serve aqui: ele vira ' em &#39;, mas o parser HTML DECODIFICA a entidade ANTES de
 // o JS ser lido — um apóstrofo no valor fecharia a string mesmo assim. Aqui a aspa e a barra são
@@ -8804,7 +8842,8 @@ function _cpEstLista(){
   return L.sort((a,b)=>{const A=a.dias===null?99999:a.dias,B=b.dias===null?99999:b.dias;return A-B||b.valor-a.valor;});
 }
 function _cpEstCorpo(){
-  const L=_cpEstLista();
+  // "Termina em" é função monotônica de `dias` → ordenar por dias dá a mesma ordem da data.
+  const L=_cpSortArr('est', _cpEstLista(), {cat:o=>_cpCategoria(o.nome), fim:o=>o.dias, forn:o=>(o.ultForn?_cpForn(o.ultForn):'')});
   const base=_cpItens().filter(o=>o.est>0 || o.consMed>0); // KPIs sobre a base TODA (não o filtro)
   const totV=base.reduce((a,o)=>a+o.valor,0);
   const excessoR=base.filter(o=>_cpEstStatus(o).key==='excesso').reduce((a,o)=>a+o.valor,0);
@@ -8830,7 +8869,7 @@ function _cpEstCorpo(){
       <div class="cp-card" style="padding:13px 16px;flex:none;width:240px">${_cpKPI('Valor em estoque',_cpBRL(totV))}</div>
     </div>`+
     `<div class="cp-card cp-noscroll" style="overflow:auto;max-height:calc(100vh - 320px)"><table class="cp-tbl">
-      <thead><tr><th>Cód.</th><th>Categoria</th><th>Item</th><th class="r">Valor</th><th class="r">Custo médio</th><th class="r">Em estoque</th><th class="r">Consumo/mês</th><th class="r">Cobertura</th><th>Termina em</th><th>Últ. compra</th><th>Fornecedor</th><th class="r">Sem mov.</th></tr></thead>
+      <thead><tr>${_cpTh('est','cod','Cód.')}${_cpTh('est','cat','Categoria')}${_cpTh('est','nome','Item')}${_cpTh('est','valor','Valor',1)}${_cpTh('est','cmu','Custo médio',1)}${_cpTh('est','est','Em estoque',1)}${_cpTh('est','consMed','Consumo/mês',1)}${_cpTh('est','dias','Cobertura',1,'',1)}${_cpTh('est','fim','Termina em','',' ',1)}${_cpTh('est','ultCompra','Últ. compra')}${_cpTh('est','forn','Fornecedor')}${_cpTh('est','semMov','Sem mov.',1)}</tr></thead>
       <tbody>${linhas||`<tr><td colspan="12">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`}</tbody>
     </table></div>
     ${L.length>TETO?`<div style="text-align:center;color:var(--text3);font-size:12.5px;margin-top:10px">Mostrando ${TETO} de ${_cpNum(L.length)} — use a busca para afunilar.</div>`:''}`;
@@ -8879,10 +8918,10 @@ function _cpInsRows(){
     if(_cpCatSel.length && _cpCatSel.indexOf(_cpCategoria(o.nome))<0) return false;
     if(q && !((o.nome||'').toLowerCase().includes(q) || String(o.cod).indexOf(q)>=0)) return false;
     return true;
-  }).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'}));
+  });
 }
 function _cpInsTbodyHTML(){
-  return _cpInsRows().map(o=>{
+  return _cpSortArr('ins', _cpInsRows(), {cat:o=>_cpCategoria(o.nome)}, 'nome', 1).map(o=>{
     return `<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(o.cod)}')">
       <td class="cp-mono">${escapeHTML(o.cod)}</td>
       <td><span class="cp-cattag">${escapeHTML(_cpCategoria(o.nome))}</span></td>
@@ -8917,7 +8956,7 @@ function _comprasInsumosHTML(){
   const rows=_cpInsRows();
   return _cpTela('Insumos','A ficha de cada item comprado — consumo, preço e fornecedores.',
     `<div class="cp-card" style="display:inline-block;max-width:100%;vertical-align:top"><table class="cp-tbl" style="width:auto">
-      <thead><tr><th>Cód.</th><th>Categoria</th><th>Item</th></tr></thead>
+      <thead><tr>${_cpTh('ins','cod','Cód.')}${_cpTh('ins','cat','Categoria')}${_cpTh('ins','nome','Item')}</tr></thead>
       <tbody id="cp-ins-tbody">${_cpInsTbodyHTML()}</tbody></table>
       <div style="font-size:10.5px;color:var(--text3);padding:8px 14px;max-width:640px"><span id="cp-ins-count">${rows.length}</span> itens · ordenado por nome. ⚠️ Categoria derivada do nome (o ERP não exporta o campo família).</div>
     </div>`, undefined, filtrosBtn+_cpLupa(_cpInsBuscaAberta,_cpInsBusca,'_cpInsBuscaToggle','_cpInsBuscaInput','cp-ins-busca','Buscar item…'));
@@ -9658,7 +9697,7 @@ function _cpIndicadoresCard(o){
 }
 function _cpUltimasComprasCard(o){
   const um=o.um||'';
-  const linhas=o.compras.slice(0,10).map(l=>`<tr>
+  const linhas=_cpSortArr('ultc', o.compras, {forn:l=>_cpForn(l.forn[1]), net:l=>((l.vun&&l.aliq!=null)?l.vun*(1-l.aliq/100):null)}, 'data', -1).slice(0,10).map(l=>`<tr>
     <td class="cp-mono">${_cpDt(l.data)}</td>
     <td style="white-space:normal;line-height:1.3;font-weight:600;color:var(--text);min-width:120px" title="${escapeAttr(_cpForn(l.forn[1]))}">${escapeHTML(_cpForn(l.forn[1]))}</td>
     <td class="cp-n">${_cpBRL(l.vun)}</td>
@@ -9670,7 +9709,7 @@ function _cpUltimasComprasCard(o){
   return `<div class="cp-card" style="padding:15px 17px 8px">
     <div class="cp-card-title"><span>Últimas compras</span></div>
     <div style="overflow-x:auto"><table class="cp-tbl cp-tbl-sm" style="font-size:11px">
-      <thead><tr><th>Data</th><th>Fornecedor</th><th class="r">Vlr unit.</th><th class="r">Qtde</th><th class="r">ICMS %</th><th class="r" title="Preço líquido do ICMS">Vlr net</th><th class="r">Prazo</th></tr></thead>
+      <thead><tr>${_cpTh('ultc','data','Data','','',-1)}${_cpTh('ultc','forn','Fornecedor')}${_cpTh('ultc','vun','Vlr unit.',1)}${_cpTh('ultc','qtd','Qtde',1)}${_cpTh('ultc','aliq','ICMS %',1)}${_cpTh('ultc','net','Vlr net',1)}<th class="r">Prazo</th></tr></thead>
       <tbody>${linhas}</tbody></table></div>
   </div>`;
 }
@@ -9694,7 +9733,7 @@ function _cpOCsCard(o){
   if(!ocs.length){
     corpo=`<div style="overflow-x:auto"><table class="cp-tbl cp-tbl-sm" style="font-size:11px"><tbody><tr><td>${_cpVazio('Nenhuma OC em aberto.')}</td></tr></tbody></table></div>`;
   } else {
-    const linhas=ocs.map(p=>{
+    const linhas=_cpSortArr('ocit', ocs, {forn:p=>_cpForn(p.forn)}, 'prevista', 1).map(p=>{
       const atras = p.prevista && p.prevista < today;
       return `<tr>
         <td class="cp-mono">${escapeHTML(p.oc)}${p.entregue>0?'<span style="color:var(--text3)"> · parcial</span>':''}</td>
@@ -9703,7 +9742,7 @@ function _cpOCsCard(o){
         <td class="cp-mono"${atras?' style="color:var(--danger)"':''}>${p.prevista?(_cpDt(p.prevista)+(atras?' ⚠':'')):'—'}</td>
       </tr>`; }).join('');
     corpo=`<div style="overflow-x:auto"><table class="cp-tbl cp-tbl-sm" style="font-size:11px">
-      <thead><tr><th>OC</th><th>Fornecedor</th><th class="r">Saldo</th><th>Previsão</th></tr></thead>
+      <thead><tr>${_cpTh('ocit','oc','OC')}${_cpTh('ocit','forn','Fornecedor')}${_cpTh('ocit','saldo','Saldo',1)}${_cpTh('ocit','prevista','Previsão','','',1)}</tr></thead>
       <tbody>${linhas}</tbody></table></div>`;
   }
   return `<div class="cp-card" style="padding:15px 17px 8px">
@@ -9942,7 +9981,7 @@ function _cpFichaFornecedores(o){
     if(!agg[k]) agg[k]={cod:k,nome:l.forn[1],total:0,n:0,ult:'',preco:0,qtd:0};
     agg[k].total+=l.tot; agg[k].n++; agg[k].qtd+=l.qtd;
     if(l.data>agg[k].ult){ agg[k].ult=l.data; agg[k].preco=l.vun; } });
-  const fs=Object.keys(agg).map(k=>agg[k]).sort((a,b)=>b.total-a.total);
+  const fs=_cpSortArr('itforn', Object.keys(agg).map(k=>agg[k]), {nomeN:f=>_cpForn(f.nome), pct:f=>f.total}, 'total', -1);
   const tot=fs.reduce((a,f)=>a+f.total,0);
   if(_cpFichaFornSel && !fs.some(f=>f.cod===_cpFichaFornSel)) _cpFichaFornSel=null;
   const linhas=fs.map(f=>{ const sel=_cpFichaFornSel===f.cod;
@@ -9956,7 +9995,7 @@ function _cpFichaFornecedores(o){
     <td class="cp-mono">${_cpDt(f.ult)}</td></tr>`;}).join('');
   const tabela=`<div class="cp-card" style="overflow:hidden"><table class="cp-tbl cp-forn-mini">
       <colgroup><col style="width:25%"><col style="width:17%"><col style="width:8%"><col style="width:9%"><col style="width:15%"><col style="width:13%"><col style="width:13%"></colgroup>
-      <thead><tr><th>Fornecedor</th><th class="r">Total</th><th class="r">%</th><th class="r">Compras</th><th class="r">Qtde</th><th class="r">Últ. preço</th><th>Últ. compra</th></tr></thead>
+      <thead><tr>${_cpTh("itforn","nomeN","Fornecedor")}${_cpTh("itforn","total","Total",1)}${_cpTh("itforn","pct","%",1)}${_cpTh("itforn","n","Compras",1)}${_cpTh("itforn","qtd","Qtde",1)}${_cpTh("itforn","preco","Últ. preço",1)}${_cpTh("itforn","ult","Últ. compra","","",-1)}</tr></thead>
       <tbody>${linhas}</tbody></table>
       <div style="font-size:11.5px;color:var(--text3);padding:8px 14px"><i class="ti ti-hand-finger"></i> Clique num fornecedor para ver a ficha dele ao lado.</div></div>`;
   const detalhe=_cpFichaFornSel ? _cpFornDetalheInline(_cpFichaFornSel)
@@ -9974,7 +10013,7 @@ function _cpFornDetalheInline(cod){
   const it={};
   f.linhas.forEach(l=>{ const k=l.item[0]; if(!it[k]) it[k]={nome:l.item[1],cod:k,total:0,qtd:0,um:l.um,ult:l.data,preco:l.vun};
     it[k].total+=l.tot; it[k].qtd+=l.qtd; if(l.data>it[k].ult){it[k].ult=l.data;it[k].preco=l.vun;} });
-  const itens=Object.keys(it).map(k=>it[k]).sort((a,b)=>b.total-a.total);
+  const itens=_cpSortArr("fitens", Object.keys(it).map(k=>it[k]), null, "total", -1);
   const linhasIt=itens.map(i=>`<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(i.cod)}')">
       <td class="cp-mono">${escapeHTML(i.cod)}</td>
       <td class="cp-item">${escapeHTML(i.nome)}</td>
@@ -10000,7 +10039,7 @@ function _cpFornDetalheInline(cod){
     <div style="font-size:11px;color:var(--text3);margin:-4px 2px 12px;line-height:1.45"><i class="ti ti-info-circle"></i> Prazo de pagamento/entrega não vêm no export do ERP — entram aqui quando tivermos. Período: ${_cpFornMeses?('últimos '+_cpFornMeses+' meses'):'tudo'}.</div>
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:0 2px 6px">Itens fornecidos</div>
     <div class="cp-card" style="overflow-x:auto;margin-bottom:12px"><table class="cp-tbl" style="font-size:12px">
-      <thead><tr><th>Cód.</th><th>Item</th><th class="r">Qtde</th><th class="r">Últ. preço</th><th class="r">Total</th><th>Últ. compra</th></tr></thead>
+      <thead><tr>${_cpTh("fitens","cod","Cód.")}${_cpTh("fitens","nome","Item")}${_cpTh("fitens","qtd","Qtde",1)}${_cpTh("fitens","preco","Últ. preço",1)}${_cpTh("fitens","total","Total",1)}${_cpTh("fitens","ult","Últ. compra","","",-1)}</tr></thead>
       <tbody>${linhasIt}</tbody></table></div>
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:0 2px 6px">Últimas entradas</div>
     <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl" style="font-size:12px">
@@ -10032,11 +10071,11 @@ function _cpFichaHistorico(o){
       <td class="cp-n">${_cpNum(l.qtd,2)} <span class="cp-un">${escapeHTML(l.um||'')}</span></td><td class="cp-n">${_cpBRL(l.vun)}</td>
       <td class="cp-n"><span class="cp-pill" style="color:${dc};background:${db}">${dif===null?'—':(dif>0?'+':'')+dif.toFixed(1)+'%'}</span></td>
       <td class="cp-n">${_cpBRL(l.tot)}</td></tr>`; };
-  const tab=comprasMes.map(linha).join('');
+  const tab=_cpSortArr('ithist', comprasMes, {forn:l=>_cpForn(l.forn[1]), dif:l=>(l.med3>0?((l.vun-l.med3)/l.med3*100):null)}, 'data', -1).map(linha).join('');
   return `${_cpItemMes?`<div style="font-size:12.5px;color:var(--text2);margin-bottom:10px">Filtrado por <b>${_cpMesLongo(_cpItemMes)}</b> · <button onclick="_cpItemSetMes('${_cpItemMes}')" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;padding:0">limpar filtro</button></div>`:''}
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:2px 2px 8px">Compras${_cpItemMes?(' — '+_cpMesLongo(_cpItemMes)):''} <span style="font-weight:400">(${comprasMes.length})</span></div>
     <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
-      <thead><tr><th>Data</th><th>Fornecedor</th><th>NF</th><th class="r">Qtde</th><th class="r">Vlr unit.</th><th class="r">vs últ. 3</th><th class="r">Total</th></tr></thead>
+      <thead><tr>${_cpTh("ithist","data","Data","","",-1)}${_cpTh("ithist","forn","Fornecedor")}${_cpTh("ithist","nf","NF")}${_cpTh("ithist","qtd","Qtde",1)}${_cpTh("ithist","vun","Vlr unit.",1)}${_cpTh("ithist","dif","vs últ. 3",1)}${_cpTh("ithist","tot","Total",1)}</tr></thead>
       <tbody>${tab||`<tr><td colspan="7">${_cpVazio('Sem compras.')}</td></tr>`}</tbody>
     </table></div>`;
 }
@@ -10087,7 +10126,6 @@ let _cpFornView='resumo';                                  // aba do painel do f
 // olho ligar "esta coluna é do período A" sem ler o cabeçalho.
 const CP_BG_A='color-mix(in srgb,var(--blue-mid) 8%,transparent)';
 const CP_BG_B='color-mix(in srgb,var(--text3) 9%,transparent)';
-let _cpFornSort={campo:'totA', dir:-1};                    // ordenação da tabela de itens
 let _cpFornItBusca='', _cpFornItBuscaAberta=false;         // busca dentro dos itens comprados
 // Defaults (Diego): A = o passado, B = o presente — lê-se da esquerda p/ a direita como a linha do tempo.
 let _cpFornPerA={p:'yoy', de:'', ate:''};                  // período A — mesmo período do ano passado
@@ -10237,7 +10275,6 @@ function _cpFornSetView(v){ _cpFornView=v;
   document.querySelectorAll('[onclick^="_cpFornSetView"]').forEach(b=>b.classList.toggle('on', b.getAttribute('onclick').indexOf("'"+v+"'")>=0));
   window.scrollTo(0,0);
 }
-function _cpFornSetSort(campo){ if(_cpFornSort.campo===campo) _cpFornSort.dir*=-1; else _cpFornSort={campo, dir:(campo==='cod'||campo==='nome')?1:-1}; renderCompras(); }
 function _cpFornItBuscaToggle(){ _cpFornItBuscaAberta=!_cpFornItBuscaAberta; if(!_cpFornItBuscaAberta) _cpFornItBusca=''; renderCompras();
   if(_cpFornItBuscaAberta) setTimeout(function(){ var el=document.getElementById('cp-fi-busca'); if(el) el.focus(); },30); }
 function _cpFornItBuscaInput(el){ _cpFornItBusca=el.value; _cpFornItRefresh(); }
@@ -10254,22 +10291,24 @@ function _cpFornBuscaToggle(){ _cpFornBuscaAberta=!_cpFornBuscaAberta; if(!_cpFo
 function _cpFornBuscaInput(el){ _cpFornBusca=el.value; const tb=document.getElementById('cp-forn-tbody'); if(tb) tb.innerHTML=_cpFornRowsHTML(); }
 function _cpFornRowsHTML(){
   const L=_cpFornAgg('I'); const tot=L.reduce((a,f)=>a+f.total,0);
-  const q=(_cpFornBusca||'').trim().toLowerCase(); let acc=0; const out=[];
-  L.slice(0,300).forEach((f,i)=>{
-    acc+=f.total; const pAcc=tot?acc/tot*100:0;
-    const classe=pAcc<=80?'A':(pAcc<=95?'B':'C');
-    const cor=classe==='A'?'var(--danger)':(classe==='B'?'var(--amber)':'var(--text3)');
-    const nome=_cpForn(f.nome);
-    if(q && nome.toLowerCase().indexOf(q)<0) return;
-    out.push(`<tr class="cp-clic" onclick="_cpAbrirForn('${_cpJs(f.cod)}')">
-      <td class="cp-n">${i+1}</td><td class="cp-item">${escapeHTML(nome)}</td>
-      <td class="cp-n">${_cpBRL(f.total)}</td><td class="cp-n">${(tot?f.total/tot*100:0).toFixed(1)}%</td>
-      <td class="cp-n">${pAcc.toFixed(1)}%</td>
+  const q=(_cpFornBusca||'').trim().toLowerCase();
+  // ⚠️ A curva ABC (posição, % acumulado e classe) SEMPRE sai da ordem por valor — é a definição dela.
+  // Só depois as linhas são reordenadas para exibição, senão ordenar por outra coluna daria um ABC falso.
+  let acc=0;
+  const base=L.slice(0,300).map((f,i)=>{ acc+=f.total; const pAcc=tot?acc/tot*100:0;
+    return {f, pos:i+1, nome:_cpForn(f.nome), total:f.total, pct:tot?f.total/tot*100:0, pAcc,
+      abc:pAcc<=80?'A':(pAcc<=95?'B':'C'), nfs:Object.keys(f.nfs).length, itens:Object.keys(f.itens).length}; })
+    .filter(r=>!q || r.nome.toLowerCase().indexOf(q)>=0);
+  const out=_cpSortArr('forn', base, null, 'pos', 1).map(r=>{
+    const cor=r.abc==='A'?'var(--danger)':(r.abc==='B'?'var(--amber)':'var(--text3)');
+    return `<tr class="cp-clic" onclick="_cpAbrirForn('${_cpJs(r.f.cod)}')">
+      <td class="cp-n">${r.pos}</td><td class="cp-item">${escapeHTML(r.nome)}</td>
+      <td class="cp-n">${_cpBRL(r.total)}</td><td class="cp-n">${r.pct.toFixed(1)}%</td>
+      <td class="cp-n">${r.pAcc.toFixed(1)}%</td>
       <td class="cp-n" style="color:var(--text3)">a cadastrar</td>
-      <td class="cp-n"><span class="cp-pill" style="color:${cor};background:var(--bg2)">${classe}</span></td>
-      <td class="cp-n">${Object.keys(f.nfs).length}</td><td class="cp-n">${Object.keys(f.itens).length}</td>
-    </tr>`);
-  });
+      <td class="cp-n"><span class="cp-pill" style="color:${cor};background:var(--bg2)">${r.abc}</span></td>
+      <td class="cp-n">${r.nfs}</td><td class="cp-n">${r.itens}</td>
+    </tr>`; });
   return out.join('') || `<tr><td colspan="9">${_cpVazio("Nenhum fornecedor para esse filtro.")}</td></tr>`;
 }
 // ⚠️ Zera _cpItemSel: sem isso, sair da ficha de um item p/ a ficha do fornecedor e de lá abrir outro
@@ -10318,7 +10357,7 @@ function _comprasFornecedoresHTML(){
       _cpKPI('Período',_cpFornMeses?('últimos '+_cpFornMeses+' meses'):'tudo')
     ])+
     `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
-      <thead><tr><th class="r">#</th><th>Fornecedor</th><th class="r">Total</th><th class="r">% do total</th><th class="r">% acum.</th><th class="r">Prazo de pagamento</th><th class="r">ABC</th><th class="r">NFs</th><th class="r">Itens</th></tr></thead>
+      <thead><tr>${_cpTh('forn','pos','#',1,'',1)}${_cpTh('forn','nome','Fornecedor')}${_cpTh('forn','total','Total',1)}${_cpTh('forn','pct','% do total',1)}${_cpTh('forn','pAcc','% acum.',1,'',1)}<th class="r">Prazo de pagamento</th>${_cpTh('forn','abc','ABC',1,'',1)}${_cpTh('forn','nfs','NFs',1)}${_cpTh('forn','itens','Itens',1)}</tr></thead>
       <tbody id="cp-forn-tbody">${_cpFornRowsHTML()}</tbody></table></div>`, undefined, acao);
 }
 // Contexto da ficha do fornecedor: histórico completo + os dois recortes de período.
@@ -10355,16 +10394,7 @@ function _cpFornItRows(cod){
   const q=(_cpFornItBusca||'').trim().toLowerCase();
   let L=c.itens.filter(i=>(i.qtdA||i.qtdB||i.totA||i.totB));   // esconde item sem movimento nos 2 períodos
   if(q) L=L.filter(i=>(i.nome+' '+i.cod).toLowerCase().indexOf(q)>=0);
-  const s=_cpFornSort, campo=s.campo, dir=s.dir;
-  return L.sort((a,b)=>{
-    let x=a[campo], y=b[campo];
-    // nome: localeCompare pt-BR (senão "Papelao" viria antes de "Papelão" — comparação binária).
-    // cod/data: comparação simples serve (numérico em texto e ISO ordenam bem).
-    if(campo==='nome') return String(x||'').localeCompare(String(y||''),'pt-BR')*dir;
-    if(campo==='cod'||campo==='ult'){ x=String(x||''); y=String(y||''); return x<y?-dir:(x>y?dir:0); }
-    x=(x==null)?-Infinity:x; y=(y==null)?-Infinity:y;      // Δ% sem base vai p/ o fim
-    return (x-y)*dir;
-  });
+  return _cpSortArr('fcomp', L, null, 'totA', -1);
 }
 function _cpFornItRefresh(){ if(!_cpFornSel) return;
   const tb=document.getElementById('cp-fi-tbody'); if(tb) tb.innerHTML=_cpFornItTbodyHTML(_cpFornSel);
@@ -10572,9 +10602,6 @@ function _cpFornCompararHTML(cod){
 }
 function _cpFornItensHTML(cod){
   const c=_cpFornCtx(cod); if(!c) return '';
-  const S_=_cpFornSort;
-  const seta=k=>S_.campo===k?`<i class="ti ti-arrow-${S_.dir>0?'up':'down'}" style="font-size:11px;margin-left:2px;vertical-align:-1px"></i>`:'';
-  const th=(k,lab,dir,extra)=>`<th${dir?' class="r"':''} onclick="_cpFornSetSort('${k}')" style="cursor:pointer;user-select:none;${extra||''}" title="Ordenar por ${lab.replace(/<[^>]+>/g,'')}">${lab}${seta(k)}</th>`;
   // seletores compactos: os mesmos do bloco de comparação, aqui à mão de quem está lendo a tabela
   const selPer=(qual)=>{ const o=(qual==='A')?_cpFornPerA:_cpFornPerB;
     return _cpSelPeriodo('Período '+qual, `<select onchange="_cpFornSetPer('${qual}',this.value)" class="modal-input" style="width:auto;padding:5px 9px;font-size:12px;font-weight:600">${_cpFornPerOptions(o.p)}</select>`); };
@@ -10588,23 +10615,23 @@ function _cpFornItensHTML(cod){
           <th colspan="2" class="r" style="background:${CP_BG_A};border-bottom:1px solid var(--border)">Período A <span class="cp-hsub">(${escapeHTML(c.rA.label)})</span></th>
           <th colspan="2" class="r" style="background:${CP_BG_B};border-bottom:1px solid var(--border)">Período B <span class="cp-hsub">(${escapeHTML(c.rB.label)})</span></th>
           <th colspan="2"></th></tr>
-        <tr>${th('cod','Cód.')}${th('nome','Item')}${th('preco','Últ. preço',1)}
-          ${th('qtdA','Qtde',1,'background:'+CP_BG_A)}${th('totA','Total',1,'background:'+CP_BG_A)}
-          ${th('qtdB','Qtde',1,'background:'+CP_BG_B)}${th('totB','Total',1,'background:'+CP_BG_B)}
-          ${th('delta','Var. %',1)}${th('ult','Últ. compra')}</tr>
+        <tr>${_cpTh('fcomp','cod','Cód.')}${_cpTh('fcomp','nome','Item')}${_cpTh('fcomp','preco','Últ. preço',1)}
+          ${_cpTh('fcomp','qtdA','Qtde',1,'background:'+CP_BG_A)}${_cpTh('fcomp','totA','Total',1,'background:'+CP_BG_A)}
+          ${_cpTh('fcomp','qtdB','Qtde',1,'background:'+CP_BG_B)}${_cpTh('fcomp','totB','Total',1,'background:'+CP_BG_B)}
+          ${_cpTh('fcomp','delta','Var. %',1)}${_cpTh('fcomp','ult','Últ. compra','','',-1)}</tr>
       </thead>
       <tbody id="cp-fi-tbody">${_cpFornItTbodyHTML(cod)}</tbody>
       <tfoot id="cp-fi-tfoot">${_cpFornItTfootHTML(cod)}</tfoot></table></div>`;
 }
 function _cpFornEntradasHTML(cod){
   const c=_cpFornCtx(cod); if(!c) return '';
-  const linhas=c.f.linhas.slice().sort((a,b)=>a.data<b.data?1:-1).slice(0,60).map(l=>
+  const linhas=_cpSortArr('fentr', c.f.linhas, {cod:l=>l.item[0], nome:l=>l.item[1]}, 'data', -1).slice(0,60).map(l=>
     `<tr><td class="cp-mono">${_cpDt(l.data)}</td><td class="cp-mono">${escapeHTML(String(l.nf))}</td>
      <td class="cp-mono">${escapeHTML(String(l.item[0]))}</td><td class="cp-item">${escapeHTML(l.item[1])}</td><td class="cp-n">${_cpNum(l.qtd,2)} <span class="cp-un">${escapeHTML(l.um||"")}</span></td>
      <td class="cp-n">${_cpBRL(l.vun)}</td><td class="cp-n">${_cpBRL(l.tot)}</td></tr>`).join('')
     || `<tr><td colspan="7">${_cpVazio('Sem entradas.')}</td></tr>`;
   return `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
-      <thead><tr><th>Data</th><th>NF</th><th>Cód.</th><th>Item</th><th class="r">Qtde</th><th class="r">Vlr unit.</th><th class="r">Total</th></tr></thead>
+      <thead><tr>${_cpTh("fentr","data","Data","","",-1)}${_cpTh("fentr","nf","NF")}${_cpTh("fentr","cod","Cód.")}${_cpTh("fentr","nome","Item")}${_cpTh("fentr","qtd","Qtde",1)}${_cpTh("fentr","vun","Vlr unit.",1)}${_cpTh("fentr","tot","Total",1)}</tr></thead>
       <tbody>${linhas}</tbody></table></div>
     <div style="font-size:12px;color:var(--text3);margin-top:9px;font-style:italic">Mostrando as 60 entradas mais recentes de ${_cpNum(c.f.linhas.length)}.</div>`;
 }
@@ -10654,9 +10681,15 @@ function _cpOrdBuscaToggle(){ _cpOrdBuscaAberta=!_cpOrdBuscaAberta; if(!_cpOrdBu
 function _cpOrdBuscaInput(el){ _cpOrdBusca=el.value; const tb=document.getElementById('cp-ord-tbody'); if(tb) tb.innerHTML=_cpOrdRowsHTML(); }
 function _cpOrdRowsHTML(){
   const q=(_cpOrdBusca||'').trim().toLowerCase();
-  const L=_CP_OCABERTO.filter(p=>_cpOcViva(p) && (!q || (p.nome||'').toLowerCase().indexOf(q)>=0 || _cpForn(p.forn).toLowerCase().indexOf(q)>=0 || (p.oc||'').toLowerCase().indexOf(q)>=0))
-    .slice().sort((a,b)=>(a.prevista||'9999').localeCompare(b.prevista||'9999'));  // entrega mais próxima primeiro (sem previsão vai p/ o fim, não p/ o topo)
   const IDX=_cpIdx();
+  // Acessores das colunas do comparativo de preço (calculadas a partir do histórico do item).
+  const _c2=p=>{ const o=IDX[p.cod]; return (o&&o.compras&&o.compras.length>=2)?o.compras:null; };
+  const ACC={ forn:p=>_cpForn(p.forn), antData:p=>{const c=_c2(p);return c?c[1].data:null;}, antVun:p=>{const c=_c2(p);return c?c[1].vun:null;},
+    ultData:p=>{const c=_c2(p);return c?c[0].data:null;}, ultVun:p=>{const c=_c2(p);return c?c[0].vun:null;},
+    dif:p=>{const c=_c2(p);return (c&&c[1].vun>0)?((c[0].vun-c[1].vun)/c[1].vun*100):null;},
+    impacto:p=>{const c=_c2(p);return c?((c[0].vun-c[1].vun)*c[0].qtd):null;} };
+  const L=_cpSortArr('ord', _CP_OCABERTO.filter(p=>_cpOcViva(p) && (!q || (p.nome||'').toLowerCase().indexOf(q)>=0 || _cpForn(p.forn).toLowerCase().indexOf(q)>=0 || (p.oc||'').toLowerCase().indexOf(q)>=0)),
+    ACC, 'prevista', 1);   // default: entrega mais próxima primeiro (sem previsão vai p/ o fim)
   const out=L.map(p=>{
     const atras = p.prevista && p.prevista < today;
     // Histórico de preço do item (última × anterior) — dados REAIS de _CP_NF
@@ -10702,7 +10735,7 @@ function _comprasOrdensHTML(){
       _cpKPI('Entrega atrasada',_cpNum(nAtras),nAtras?'var(--danger)':'')
     ])+
     `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
-      <thead><tr><th>Cód.</th><th>Item</th><th class="r">Valor</th><th class="r">Qtde a receber</th><th>Fornecedor</th><th>Prazo de pagamento</th><th>Emissão</th><th>Previsão de entrega</th><th>Compra anterior</th><th class="r">Vlr unit.</th><th>Últ. compra</th><th class="r">Vlr unit.</th><th class="r">Variação</th><th class="r">Impacto R$</th></tr></thead>
+      <thead><tr>${_cpTh('ord','cod','Cód.')}${_cpTh('ord','nome','Item')}${_cpTh('ord','valor','Valor',1)}${_cpTh('ord','qtd','Qtde a receber',1)}${_cpTh('ord','forn','Fornecedor')}<th>Prazo de pagamento</th>${_cpTh('ord','emissao','Emissão','','',-1)}${_cpTh('ord','prevista','Previsão de entrega','','',1)}${_cpTh('ord','antData','Compra anterior','','',-1)}${_cpTh('ord','antVun','Vlr unit.',1)}${_cpTh('ord','ultData','Últ. compra','','',-1)}${_cpTh('ord','ultVun','Vlr unit.',1)}${_cpTh('ord','dif','Variação',1)}${_cpTh('ord','impacto','Impacto R$',1)}</tr></thead>
       <tbody id="cp-ord-tbody">${_cpOrdRowsHTML()}</tbody></table></div>`, undefined, acao);
 }
 
@@ -10770,10 +10803,13 @@ function _cpPlanRows(){
     if(_cpPlan.catSel.length && _cpPlan.catSel.indexOf(_cpCategoria(o.nome))<0) return false;
     if(q && ((o.nome||'')+' '+o.cod).toLowerCase().indexOf(q)<0) return false;
     return true;
-  }).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'}));
+  });
 }
 // Linhas visíveis = base (categoria+busca) + filtro de status dos cards clicáveis.
-function _cpPlanRowsView(){ return _cpPlanRows().filter(_cpPlanStatusMatch); }
+// Acessores das colunas CALCULADAS do Planejamento (as demais saem direto do item).
+const _CP_PLAN_ACC={ visto:o=>(_cpVistoTem(o.cod)?1:0), cob:o=>_cpPlanCov(o).covMes, fisico:o=>_cpPlanCov(o).covDias,
+  comOC:o=>_cpPlanCov(o).covDiasOC, disp:o=>o.est+_cpOcSaldo(o.cod), medPer:o=>_cpPlanCov(o).medPer, lead:o=>_cpLeadTime(o) };
+function _cpPlanRowsView(){ return _cpSortArr('plan', _cpPlanRows().filter(_cpPlanStatusMatch), _CP_PLAN_ACC, 'nome', 1); }
 function _cpPlanTbodyHTML(){
   const rows=_cpPlanRowsView(), TETO=300;
   const out=rows.slice(0,TETO).map(o=>{ const cv=_cpPlanCov(o), oc=_cpOcSaldo(o.cod), um=o.um||'';
@@ -10919,7 +10955,7 @@ function _comprasPlanejamentoHTML(){
   return _cpTela('Planejamento de compras','Cockpit diário do comprador — estoque, cobertura e o que precisa comprar. Clique num item para abrir a ficha e simular.',
     kpisHTML+
     `<div class="cp-card cp-noscroll" style="overflow:auto;max-height:calc(100vh - 320px)"><table class="cp-tbl">
-      <thead><tr><th style="width:34px;text-align:center" title="Marcar/desmarcar todos os visíveis como visto"><input type="checkbox" ${allVisto?'checked':''} onclick="_cpVistoTodos(this.checked)" style="cursor:pointer;width:15px;height:15px;vertical-align:middle"></th><th title="Cobertura pelo estoque físico ÷ média">Cobertura <span class="cp-hsub">(físico)</span></th><th title="Quando o estoque físico acaba">Dura até <span class="cp-hsub">(físico)</span></th><th title="Quando o estoque + OC a receber acaba">Dura até <span class="cp-hsub">(c/ OC)</span></th><th>Cód.</th><th>Item</th><th class="r">Estoque físico</th><th class="r">Estoque disponível</th><th class="r">Média de consumo</th><th class="r">Média <span class="cp-hsub">(${_perLbl})</span></th><th class="r">Tempo de entrega</th></tr></thead>
+      <thead><tr><th style="width:34px;text-align:center" title="Marcar/desmarcar todos os visíveis como visto"><input type="checkbox" ${allVisto?'checked':''} onclick="_cpVistoTodos(this.checked)" style="cursor:pointer;width:15px;height:15px;vertical-align:middle"></th>${_cpTh('plan','cob','Cobertura <span class="cp-hsub">(físico)</span>','','',1)}${_cpTh('plan','fisico','Dura até <span class="cp-hsub">(físico)</span>','','',1)}${_cpTh('plan','comOC','Dura até <span class="cp-hsub">(c/ OC)</span>','','',1)}${_cpTh('plan','cod','Cód.')}${_cpTh('plan','nome','Item')}${_cpTh('plan','est','Estoque físico',1)}${_cpTh('plan','disp','Estoque disponível',1)}${_cpTh('plan','consMed','Média de consumo',1)}${_cpTh('plan','medPer',`Média <span class="cp-hsub">(${_perLbl})</span>`,1)}${_cpTh('plan','lead','Tempo de entrega',1)}</tr></thead>
       <tbody id="cp-plan-tbody">${_cpPlanTbodyHTML()}</tbody></table></div>`,
     undefined, acao);
 }
@@ -10982,10 +11018,17 @@ function _comprasPainelHTML(){
   const _vencidos=_CP_VALIDADE.filter(o=>o[4]<today).sort((a,b)=>a[4]<b[4]?-1:1);
   const _aVencer=_CP_VALIDADE.filter(o=>o[4]>=today).sort((a,b)=>a[4]<b[4]?-1:1);
   const _diasCorr=(iso,n)=>{ const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
-  const _valTabela=(arr,cor,lab,aVencer)=>{
+  const _valTabela=(arr,cor,lab,aVencer,tab)=>{
     if(!arr.length) return `<div style="color:var(--text3);font-size:13px;padding:6px 0">Nada por aqui. 👍</div>`;
-    const th=(t,r,pl)=>`<th style="padding:6px ${pl?'8px 6px 22px':'8px'};font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);text-align:${r?'right':'left'};white-space:nowrap">${t}</th>`;
-    const rows=arr.map(o=>{
+    // Cabeçalho clicável (mesmo motor das demais tabelas). Estas 2 tabelas não usam .cp-tbl — decisão
+    // do Diego em 28/08 — então o <th> é montado aqui, mas o comportamento de ordenação é o mesmo.
+    const s=_cpSortGet(tab,'venc',1);
+    const th=(t,r,pl,campo,nat)=>{ const on=campo&&s.campo===campo;
+      const seta=on?`<i class="ti ti-arrow-${s.dir>0?'up':'down'}" style="font-size:10px;margin-left:2px;vertical-align:-1px"></i>`:'';
+      return `<th${campo?` onclick="_cpSortSet('${tab}','${campo}',${nat||1})" title="Ordenar por ${escapeAttr(t)}"`:''} style="padding:6px ${pl?'8px 6px 22px':'8px'};font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);text-align:${r?'right':'left'};white-space:nowrap;${campo?'cursor:pointer;user-select:none;':''}${on?'color:var(--text2);':''}">${t}${seta}</th>`; };
+    const _q=o=>parseFloat(String(o[2]).replace(',','.'))||0, _c=o=>parseFloat(String(o[5]).replace(',','.'))||0;
+    const rows=_cpSortArr(tab, arr, {cod:o=>o[0], nome:o=>o[1], venc:o=>o[4], qtd:_q, cons:_c,
+        fim:o=>(_c(o)>0?Math.round(_q(o)/_c(o)*30):null)}, 'venc', 1).map(o=>{
       const qtd=parseFloat(String(o[2]).replace(',','.'))||0, cons=parseFloat(String(o[5]).replace(',','.'))||0;
       const fim=cons>0?_diasCorr(today,Math.round(qtd/cons*30)):null;
       const risco=aVencer && fim && fim>o[4];  // termina DEPOIS de vencer → não usa a tempo (perda)
@@ -11000,7 +11043,7 @@ function _comprasPainelHTML(){
     }).join('');
     return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;table-layout:fixed;min-width:520px">
       <colgroup><col style="width:44px"><col><col style="width:88px"><col style="width:64px"><col style="width:84px"><col style="width:96px"></colgroup>
-      <thead><tr>${th('Cód.')}${th('Item')}${th(lab,1)}${th('Qtde',1)}${th('Consumo',1)}${th('Termina em',1)}</tr></thead>
+      <thead><tr>${th('Cód.',0,0,'cod')}${th('Item',0,0,'nome')}${th(lab,1,0,'venc',1)}${th('Qtde',1,0,'qtd',-1)}${th('Consumo',1,0,'cons',-1)}${th('Termina em',1,0,'fim',1)}</tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
   };
@@ -11022,8 +11065,8 @@ function _comprasPainelHTML(){
           <span style="font-size:12px;color:var(--text3);flex:none;white-space:nowrap">${_cpBRL(o.valor)} · ${o.semMov}d</span></div>`))}
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-top:14px">
-      ${bloco('⛔ Itens vencidos','Passaram da validade — segregar/descartar','var(--danger)',_valTabela(_vencidos,'var(--danger)','Vencido em',false))}
-      ${bloco('⌛ Itens a vencer','Validade próxima — priorizar consumo (FEFO)','var(--amber)',_valTabela(_aVencer,'var(--amber)','Vence em',true))}
+      ${bloco('⛔ Itens vencidos','Passaram da validade — segregar/descartar','var(--danger)',_valTabela(_vencidos,'var(--danger)','Vencido em',false,'valv'))}
+      ${bloco('⌛ Itens a vencer','Validade próxima — priorizar consumo (FEFO)','var(--amber)',_valTabela(_aVencer,'var(--amber)','Vence em',true,'valav'))}
     </div>`);
 }
 
@@ -11083,7 +11126,8 @@ function _cpHistCorpoHTML(){
   // O nº da NF é único por EMISSOR, não globalmente — sem o fornecedor na chave, dois fornecedores
   // com a mesma numeração colapsavam em 1 e o KPI subestimava.
   const nNF=new Set(L.map(l=>(l.forn[0]||l.forn[1])+'·'+l.nf)).size, nIt=new Set(L.map(l=>l.item[0])).size;
-  const TETO=250, mostrar=L.slice(0,TETO);
+  // ⚠️ Ordena ANTES de cortar no teto: senão o "mais caro" seria só o mais caro entre as 250 primeiras.
+  const TETO=250, mostrar=_cpSortArr('hist', L, {cod:l=>l.item[0], nome:l=>l.item[1], forn:l=>_cpForn(l.forn[1])}, 'data', -1).slice(0,TETO);
   const linhas=mostrar.map(l=>{
     return `<tr>
       <td class="cp-mono">${escapeHTML(String(l.nf))}</td>
@@ -11100,8 +11144,8 @@ function _cpHistCorpoHTML(){
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow-x:auto">
       <table class="cp-tbl">
         <thead><tr>
-          <th>NF</th><th>Data</th><th>Cód.</th><th>Item</th><th>Fornecedor</th>
-          <th class="r">Vlr unit.</th><th class="r">Qtde</th><th class="r">Total</th><th class="r">ICMS %</th>
+          ${_cpTh('hist','nf','NF')}${_cpTh('hist','data','Data','','',-1)}${_cpTh('hist','cod','Cód.')}${_cpTh('hist','nome','Item')}${_cpTh('hist','forn','Fornecedor')}
+          ${_cpTh('hist','vun','Vlr unit.',1)}${_cpTh('hist','qtd','Qtde',1)}${_cpTh('hist','tot','Total',1)}${_cpTh('hist','aliq','ICMS %',1)}
         </tr></thead>
         <tbody>${linhas||`<tr><td colspan="9">${_cpVazio('Nenhuma linha para esse filtro.')}</td></tr>`}</tbody>
       </table>
