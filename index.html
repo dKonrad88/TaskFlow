@@ -10435,10 +10435,23 @@ function _cpFornResumoHTML(cod){
   const f=c.f, um=c.um;
   // Tendência = média dos últimos 3 meses FECHADOS × os 3 anteriores (menos ruidosa que mês/mês seco).
   // ⚠️ O mês corrente fica de fora: com poucos dias de nota ele derrubaria a média.
-  const S=c.serie, Sf=S.filter(s=>!s.parcial), u3=Sf.slice(-3), p3=Sf.slice(-6,-3);
-  const md=a=>a.length?a.reduce((x,s)=>x+s.valor,0)/a.length:0;
-  const tend=(u3.length&&p3.length)?_cpVar(md(u3),md(p3)):null;
-  const temParcial=S.some(s=>s.parcial);
+  const S=c.serie, temParcial=S.some(s=>s.parcial);
+  // ⚠️ RITMO por meses de CALENDÁRIO, não pelos últimos 3 REGISTROS da série. A série só tem os meses
+  // COM compra: num fornecedor esporádico, slice(-3) comparava "mai–ago/26 × jun/25–abr/26" (4 meses
+  // contra 11) e chamava isso de ritmo. Agora a janela é fixa a partir do último mês fechado e mês sem
+  // compra vale 0 — que é o certo: não comprar É desacelerar.
+  // Também é pergunta DIFERENTE do A × B (períodos inteiros): dá para estar acima do ano passado e
+  // desacelerando agora. Por isso os meses comparados aparecem na tela.
+  const valDoMes={}; S.forEach(s=>{ valDoMes[s.ym]=s.valor; });
+  const ymMenos=(ym,n)=>{ let y=+ym.slice(0,4), m=+ym.slice(5,7)-n; while(m<1){ m+=12; y--; } return y+'-'+String(m).padStart(2,'0'); };
+  const ymAtual=today.slice(0,7), ancora=ymMenos(ymAtual,1);            // último mês FECHADO
+  const janela=(off)=>[2,1,0].map(k=>ymMenos(ancora,off+k));            // 3 meses, do mais antigo p/ o mais novo
+  const jU=janela(0), jP=janela(3);
+  const soma=a=>a.reduce((x,ym)=>x+(valDoMes[ym]||0),0);
+  const lblYm=ym=>_cpMesLbl(+ym.slice(0,4), +ym.slice(5,7));
+  const tend=_cpVar(soma(jU)/3, soma(jP)/3);
+  const tendJanela=`${lblYm(jU[0])}–${lblYm(jU[2])} × ${lblYm(jP[0])}–${lblYm(jP[2])}`;
+  const tendVal=_cpVarPill(tend)+`<span style="display:block;font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0;margin-top:1px">${escapeHTML(tendJanela)}</span>`;
   const umLbl=c.umsMistas?'unidades mistas ⚠':('em '+(um||'un'));
   const notaParcial=temParcial?`<div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">* ${_cpMesLbl(+today.slice(0,4),+today.slice(5,7))} ainda está em curso — mês parcial, fora da tendência.</div>`:'';
   const graf=(t,sub,g)=>`<div class="cp-card" style="padding:14px 16px;flex:1 1 340px;min-width:0">
@@ -10448,9 +10461,9 @@ function _cpFornResumoHTML(cod){
       _cpKPI('Comprado (tudo)',_cpBRL(f.total)),
       _cpKPI('Notas fiscais',_cpNum(Object.keys(f.nfs).length)),
       _cpKPI('Itens diferentes',_cpNum(c.itens.length)),
-      _cpKPI('Tendência mês a mês',_cpVarPill(tend))
+      _cpKPI('Ritmo · últ. 3 meses', tendVal)
     ])}
-    <div style="font-size:12px;color:var(--text3);margin:-6px 2px 14px;line-height:1.5"><i class="ti ti-info-circle"></i> <b>Tendência</b> = média dos últimos 3 meses fechados contra os 3 anteriores. O prazo de pagamento e o de entrega não vêm neste export do ERP.</div>
+    <div style="font-size:12px;color:var(--text3);margin:-6px 2px 14px;line-height:1.55"><i class="ti ti-info-circle"></i> <b>Ritmo</b> = média dos <b>3 últimos meses fechados</b> contra os 3 anteriores — é a velocidade de agora, dentro do próprio ano. Não confunda com o <b>A × B</b> lá embaixo, que compara períodos inteiros: dá para estar <b>acima do ano passado</b> e, ao mesmo tempo, <b>desacelerando</b> nos últimos meses. O prazo de pagamento e o de entrega não vêm neste export do ERP.</div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">
       ${graf('Volume comprado por mês', umLbl, (S.length?_cpBarChart(S,'qtd',v=>_cpNum(v,0)+' '+(um||''),undefined,_cpAbrevN,72):_cpVazio('Sem histórico.'))+notaParcial)}
       ${graf('Valor comprado por mês','R$ por mês', (S.length?_cpBarChart(S,'valor',v=>_cpBRL(v),undefined,_cpAbrevN,72):_cpVazio('Sem histórico.'))+notaParcial)}
