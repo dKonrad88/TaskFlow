@@ -8975,7 +8975,24 @@ function _cpBarChart(serie,campo,fmt,corBase,labFmt,hBar,prevCampo){
   const vals=[]; serie.forEach(s=>{ const a=s[campo]; if(a!=null&&!isNaN(a))vals.push(a); if(prevCampo){ const p=s[prevCampo]; if(p!=null&&!isNaN(p))vals.push(p); } });
   const max=vals.length?Math.max.apply(null,vals):1;
   const H=hBar||96;
-  return `<div style="display:flex;gap:2px;align-items:flex-end;overflow-x:hidden;padding-bottom:2px">`+
+  // ── VOLUME LEGÍVEL SEM POLUIR (Diego, set/2026) ──────────────────────────────────────
+  // Até 13 barras cabe um rótulo em cada (comportamento antigo). Acima disso os rótulos sumiam e o
+  // gráfico virava só silhueta. Agora, com série longa: UMA linha tracejada na MÉDIA dos meses reais
+  // (com o valor na ponta esquerda) + rótulo no PICO e no ÚLTIMO mês com dado. São 3 números — a
+  // referência do "normal" e os dois extremos que se lê de fato — em vez de 26 rótulos ilegíveis.
+  // ⚠️ Nada de linha no máximo: seria o mesmo número do rótulo do pico e, no gráfico baixo do
+  // Resumo (H=45), as duas guias se sobrepõem.
+  const cabeTudo=serie.length<=13;
+  const reais=serie.map((s,i)=>({i,v:s[campo]})).filter(p=>p.v!=null&&!isNaN(p.v)&&p.v>0);
+  const media=reais.length?reais.reduce((a,p)=>a+p.v,0)/reais.length:0;
+  const iPico=reais.length?reais.reduce((a,p)=>p.v>a.v?p:a,reais[0]).i:-1;
+  const iUlt=reais.length?reais[reais.length-1].i:-1;
+  const guia=(v,txt,tracejada)=>{ if(!(v>0)||!(max>0)) return '';
+    const topo=13+Math.round(H-(v/max*H));
+    return `<div style="position:absolute;left:0;right:0;top:${topo}px;height:0;border-top:1px ${tracejada?'dashed':'solid'} color-mix(in srgb,var(--text3) 32%,transparent);pointer-events:none">
+      <span style="position:absolute;left:0;top:-13px;font-size:8.5px;font-weight:600;color:var(--text3);background:var(--surface-painel);padding:0 3px;border-radius:3px;white-space:nowrap">${txt}</span></div>`; };
+  const guias=cabeTudo?'':guia(media,'méd '+(labFmt?labFmt(media):fmt(media)),true);
+  return `<div style="position:relative">${guias}<div style="display:flex;gap:2px;align-items:flex-end;overflow-x:hidden;padding-bottom:2px">`+
     serie.map((s,i)=>{ const v=s[campo], has=(v!=null && !isNaN(v));
       const pv=prevCampo?s[prevCampo]:null, isPrev=!has && (pv!=null && !isNaN(pv));
       const val=has?v:(isPrev?pv:null);
@@ -8986,11 +9003,14 @@ function _cpBarChart(serie,campo,fmt,corBase,labFmt,hBar,prevCampo){
       const barStyle=isPrev?`background:color-mix(in srgb, var(--success) 22%, transparent);border-top:2.5px solid var(--success);box-sizing:border-box`:`background:${cor};${sel?'box-shadow:0 0 0 2px var(--blue-mid)':''}`;
       const lab=(labFmt && val!=null && val>0)?`<div style="font-size:8px;font-weight:600;color:${isPrev?'var(--success)':(sel?'var(--text)':'var(--text3)')};line-height:1;margin-bottom:2px;white-space:nowrap">${labFmt(val)}</div>`:'';
       const tt=isPrev?(_cpMesLongo(s.ym)+': ~'+fmt(pv)+' · previsão'):(_cpMesLongo(s.ym)+': '+(has?fmt(v):'sem dado'));
+      // série longa: rótulo só no pico e no último mês real (ambos em destaque, sobre a barra)
+      const destaque=!cabeTudo && (i===iPico || i===iUlt) && has && v>0;
+      const labDest=destaque?`<div style="font-size:9px;font-weight:800;color:var(--text2);line-height:1;margin-bottom:2px;white-space:nowrap">${labFmt?labFmt(v):fmt(v)}</div>`:'';
       return `<div class="cp-clic" onclick="_cpItemSetMes('${s.ym}')" title="${tt}" style="flex:1 1 0;min-width:0;text-align:center">
-        <div style="height:${H+13}px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end">${serie.length<=13?lab:''}<div style="width:78%;height:${h}px;border-radius:3px 3px 0 0;${barStyle}"></div></div>
+        <div style="height:${H+13}px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end">${cabeTudo?lab:labDest}<div style="width:78%;height:${h}px;border-radius:3px 3px 0 0;${barStyle}"></div></div>
         <div style="height:26px;position:relative;margin-top:1px"><span style="position:absolute;top:1px;right:50%;font-size:8px;color:${sel?'var(--text)':'var(--text3)'};font-weight:${sel?700:400};white-space:nowrap;transform:rotate(-45deg);transform-origin:100% 0">${s.lbl}</span></div>
       </div>`;
-    }).join('')+`</div>`;
+    }).join('')+`</div></div>`;
 }
 function _cpLine(serie,campo,fmt,opts){
   opts=opts||{};
@@ -9542,22 +9562,36 @@ function _cpNecessidade(o){
 function _cpIndicadoresCard(o){
   const um=escapeHTML(o.um||'');
   const ocSaldo=_cpOcSaldo(o.cod);
-  const covCor=o.dias==null?'var(--text)':(o.dias<10?'var(--danger)':(o.dias<20?'var(--amber)':'var(--text)'));
   const pend='<span style="color:var(--text3);font-style:italic;font-weight:400">a cadastrar</span>';
-  const cob=o.dias==null?'—':`<span style="color:${covCor}">${o.dias} dias</span> <span style="color:var(--text3);font-size:11px;font-weight:400">(~${_cpDataFim(o.dias)})</span>`;
+  // Cobertura em DUAS leituras (mesmo par do Planejamento): pelo estoque FÍSICO e somando o saldo das
+  // OCs vivas. A data em que acaba vai junto, em itálico. Sem OC, a 2ª linha fica "—".
+  const _cor=d=>d==null?'var(--text)':(d<10?'var(--danger)':(d<20?'var(--amber)':'var(--text)'));
+  const _cob=d=>d==null?'—':`<span style="color:${_cor(d)}">${_cpNum(d)} dias</span> <span style="color:var(--text3);font-size:11px;font-weight:400;font-style:italic">~${_cpDataFim(d)}</span>`;
+  const diasOC=(o.consDia>0 && ocSaldo>0)?Math.round((o.est+ocSaldo)/o.consDia):null;
+  // Período coberto pelo preço médio (média ponderada de TODAS as compras embutidas) — o comprador
+  // precisa saber de quanto tempo é a média antes de comparar com o preço de hoje.
+  const _perMes=(iso)=>{ const p=String(iso||'').split('-'); return p.length>1?_cpMesLbl(+p[0],+p[1]):''; };
+  const _ini=o.compras.length?_perMes(o.compras[o.compras.length-1].data):'';
+  const _fim=o.compras.length?_perMes(o.compras[0].data):'';
+  const perCompras=(_ini&&_fim)?(_ini===_fim?_ini:(_ini+'–'+_fim)):'';
+  // ⚠️ o.cmu NÃO é média de período: é o CMU (custo de estoque do ERP) da ÚLTIMA nota — por isso a
+  // nota aqui é a DATA dessa nota, não um intervalo (ver _cpIdx).
+  const perCMU=o.ultCompra?('últ. nota · '+_cpDt(o.ultCompra)):'';
+  const anoCons=String(_CP_POSDATA||'').slice(2,4);   // "26" a partir de 2026-08-30 (era fixo)
   const nec=_cpNecessidade(o);
   const necVal=`<span style="color:${nec.cor};font-weight:800">${nec.status}</span>`;
   const rows=[
     ['Necessidade atual', necVal],
     ['Em estoque', _cpNum(o.est,2)+' '+um],
     ['Estoque disponível', _cpNum(o.est+ocSaldo,2)+' '+um, ocSaldo>0?('físico + '+_cpNum(ocSaldo,0)+' OC'):'físico + em ordem de compra'],
-    ['Consumo/mês', o.consMed?_cpNum(o.consMed,0)+' '+um:'—', (_CP_MESES[0]+'–'+_CP_MESES[_CP_MESES.length-1]+'/26')],
-    ['Cobertura', cob],
+    ['Consumo/mês', o.consMed?_cpNum(o.consMed,0)+' '+um:'—', (_CP_MESES[0]+'–'+_CP_MESES[_CP_MESES.length-1]+'/'+anoCons)],
+    ['Cobertura', _cob(o.dias), '(físico)'],
+    ['Cobertura', _cob(diasOC), '(físico + OC)'],
     ['Estoque mínimo', pend],
     ['Ponto de ressuprimento', pend],
-    ['Preço médio compra', o.precoCompra?_cpBRL(o.precoCompra):'—'],
+    ['Preço médio compra', o.precoCompra?_cpBRL(o.precoCompra):'—', perCompras],
     ['Último preço de compra', o.ultPreco?_cpBRL(o.ultPreco):'—'],
-    ['Custo médio s/ imp.', o.cmu?_cpBRL(o.cmu):'—'],
+    ['Custo médio s/ imp.', o.cmu?_cpBRL(o.cmu):'—', perCMU],
     ['Preço de custeio', `<span style="white-space:nowrap">R$ <input type="text" inputmode="decimal" value="${escapeAttr(_cpGetCusteio(o.cod))}" placeholder="a cadastrar" onchange="_cpSetCusteio('${escapeAttr(o.cod)}',this.value)" onclick="event.stopPropagation()" title="Preço de custeio manual — vira o teto no simulador" style="width:82px;text-align:right;background:transparent;border:none;border-bottom:1px dashed var(--border);border-radius:0;padding:1px 2px;font-size:12.5px;font-weight:600;color:var(--text);font-family:inherit"></span>`],
     ['Valor em estoque', o.valor?_cpBRL(o.valor):'—'],
     ['Compras no período', _cpNum(o.compras.length)]
