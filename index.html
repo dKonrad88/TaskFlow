@@ -10440,6 +10440,10 @@ function _cpFornItTfootHTML(cod){
 // ══════ SIMULADOR "e se eu aumentar o volume X%" ══════
 // Base = o período A, ao preço médio praticado nele. É a alavanca que se leva pra mesa:
 // "cresço X% com você — quanto isso vira de desconto?".
+// ⚠️ CADA LINHA DIZ O QUE É. Antes o bloco era só 3 números empilhados (riscado / grande / azul) sem
+// rótulo: não dava p/ saber de que período era o riscado nem o que o azul representava (Diego).
+// Agora todo número vem com a legenda em cima — e cada bloco carrega a PRÓPRIA base, porque a do 3º
+// (ano cheio projetado) é diferente da dos outros dois (o período A/B escolhido).
 function _cpFornSimOutHTML(cod){
   const c=_cpFornCtx(cod); if(!c) return '';
   const pct=parseFloat(String(_cpFornSimPct).replace(',','.'))||0;
@@ -10448,35 +10452,38 @@ function _cpFornSimOutHTML(cod){
   if(!(vA>0)) return `<div style="font-size:12.5px;color:var(--text3);font-style:italic">Sem compras no período ${_cpFornSimBase} para simular.</div>`;
   const dq=qA*pct/100, dv=vA*pct/100;
   const un=c.umsMistas?'un.':(c.um||'un');
-  const bloco=(rot,de,para,mais)=>`<div style="flex:1 1 160px;min-width:0">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:4px">${rot}</div>
-      <div style="font-size:12px;color:var(--text3);text-decoration:line-through">${de}</div>
+  const pctTxt=_cpNum(pct, Number.isInteger(pct)?0:1);
+  // rot = o que o bloco mede · deLab/de = de onde parte (riscado) · paraLab/para = onde chega · mais = a diferença
+  const bloco=(rot,deLab,de,paraLab,para,mais,tip)=>`<div style="flex:1 1 170px;min-width:0">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:7px">${rot}</div>
+      <div title="${escapeAttr(tip||'')}" style="font-size:9.5px;color:var(--text3);letter-spacing:.02em;${tip?'cursor:help':''}">${deLab}</div>
+      <div style="font-size:12px;color:var(--text3);text-decoration:line-through;margin-bottom:7px">${de}</div>
+      <div style="font-size:9.5px;font-weight:700;letter-spacing:.02em;color:var(--blue-mid)">${paraLab}</div>
       <div style="font-size:19px;font-weight:800;color:var(--text);line-height:1.15;margin:1px 0 2px">${para}</div>
-      <div style="font-size:12.5px;font-weight:700;color:var(--blue-mid)">${mais}</div>
+      <div style="font-size:12.5px;font-weight:700;color:var(--blue-mid)">${mais} <span style="font-weight:600;color:var(--text3)">a mais</span></div>
     </div>`;
+  const perTxt=baseR.label||'tudo', datas=_cpFornRangeDatas(baseR, c.f.linhas);
+  const dePer=`período ${_cpFornSimBase} · ${perTxt}`, tipPer=datas?('De '+datas):'';
+  const comPct=`com +${pctTxt}%`;
   // 3º bloco: FECHAMENTO DO ANO. O período base costuma ser um recorte (jan–ago); o fornecedor quer
   // ouvir o ano inteiro. Projeta o ano corrente pelo crescimento já observado e aplica o mesmo +X%.
   // ⚠️ O ano vem do PERÍODO BASE, não de `today`. Antes era fixo no ano corrente: trocar o lado A/B
   // ou o período não mexia neste bloco, e o número parecia travado (bug apontado pelo Diego).
-  // ⚠️ O resultado é o ANO SEGUINTE, não o ano da base. 2026 vai fechar na projeção (R$ 1,48mi) —
-  // o +X% é a meta para 2027 sobre esse número. O rótulo dizia "Fecha 2026 em: 1,48 → 1,70mi", o que
-  // afirmava que 2026 fecharia em 1,70mi (Diego). A conta era a mesma; o que estava errado era o nome.
+  // ⚠️ O resultado é o ANO SEGUINTE, não o ano da base: 2026 vai fechar na projeção (riscado) e o
+  // +X% é a meta para 2027 sobre esse número — por isso os rótulos dizem "2026 projetado" → "2027 com +X%".
   const anoY=_cpFornAnoDoPer(baseR, c.f.linhas), projAno=_cpFornAno(c.f.linhas, anoY);
   let blocoAno='';
   if(projAno && projAno.total>0){
-    const pv=projAno.total, pctTxt=_cpNum(pct, Number.isInteger(pct)?0:1);
-    // Nota enxuta (Diego): só de que ano é a base. O valor de partida já aparece riscado logo abaixo,
-    // e o como-foi-projetado está no quadro do ano, no card de comparação — repetir aqui só poluía.
-    const baseTxt=`${anoY} ${projAno.fechado?'fechado':'projetado'}`;
+    const pv=projAno.total;
     const tipAno=projAno.fechado
       ? `Base: soma de todas as compras de ${anoY} (${_cpBRL(pv)}).`
       : `Base: projeção de ${anoY} (${_cpBRL(pv)})${projAno.metodo==='yoy'?` — ${anoY} acumula +${_cpNum((projAno.fator-1)*100,1)}% sobre o mesmo trecho de ${anoY-1}, ritmo aplicado ao ano cheio`:' pelo tempo decorrido'}.`;
-    blocoAno=bloco(`${anoY+1} com +${pctTxt}%`, _cpBRL(pv), _cpBRL(pv*(1+pct/100)), '+'+_cpBRL(pv*pct/100))
-      .replace('</div>', `<div title="${escapeAttr(tipAno)}" style="font-size:10px;color:var(--text3);font-style:italic;margin-top:3px;cursor:help">sobre o ano ${escapeHTML(baseTxt)}</div></div>`);
+    blocoAno=bloco('Ano cheio', `${anoY} ${projAno.fechado?'fechado':'projetado'}`, _cpBRL(pv),
+                   `${anoY+1} ${comPct}`, _cpBRL(pv*(1+pct/100)), '+'+_cpBRL(pv*pct/100), tipAno);
   }
   return `<div style="display:flex;gap:16px;flex-wrap:wrap">
-      ${bloco('Volume', _cpNum(qA,0)+' '+un, _cpNum(qA+dq,0)+' '+un, '+'+_cpNum(dq,0)+' '+un)}
-      ${bloco('Valor', _cpBRL(vA), _cpBRL(vA+dv), '+'+_cpBRL(dv))}
+      ${bloco('Volume', dePer, _cpNum(qA,0)+' '+un, comPct, _cpNum(qA+dq,0)+' '+un, '+'+_cpNum(dq,0)+' '+un, tipPer)}
+      ${bloco('Valor', dePer, _cpBRL(vA), comPct, _cpBRL(vA+dv), '+'+_cpBRL(dv), tipPer)}
       ${blocoAno}
     </div>
     `;   // sem rodapé de texto (Diego): os 3 blocos já dizem período, valor e ano — a frase repetia tudo
@@ -10490,7 +10497,7 @@ function _cpFornSimCard(cod){
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-top:10px">
       <div style="flex:0 0 auto;text-align:center">
         <span style="display:inline-flex;align-items:baseline;gap:3px"><input type="text" inputmode="decimal" value="${escapeAttr(_cpFornSimPct)}" oninput="_cpFornSimSet(this.value)" class="cp-sim-inp" style="width:62px;text-align:center;font-size:24px;font-weight:800"><b style="font-size:19px;color:var(--text2)">%</b></span>
-        <div style="font-size:10.5px;color:var(--text3);margin-top:2px">a mais que hoje</div>
+        <div style="font-size:10.5px;color:var(--text3);margin-top:2px">de aumento</div>
         <div style="display:inline-flex;gap:3px;margin-top:8px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:2px">
           ${['A','B'].map(q=>`<button onclick="_cpFornSimBaseSet('${q}')" title="Simular sobre o período ${q}" style="border:none;cursor:pointer;font-family:inherit;font-size:11.5px;font-weight:700;padding:4px 11px;border-radius:6px;background:${_cpFornSimBase===q?'var(--card)':'transparent'};color:${_cpFornSimBase===q?'var(--blue-mid)':'var(--text3)'}">${q}</button>`).join('')}
         </div>
