@@ -10231,6 +10231,37 @@ function _cpFornAnoDoPer(r, linhas){
   if(linhas && linhas.length){ const ds=linhas.map(l=>l.data).sort(); return +ds[ds.length-1].slice(0,4); }
   return +today.slice(0,4);
 }
+// ══════ CRESCIMENTO MÉDIO MÊS A MÊS (histórico inteiro) ══════
+// Substituiu o "Ritmo · últ. 3 meses" (2 janelas de 3 meses): o Diego quis a média do histórico
+// TODO, de jan/25 até o mês atual, e não um recorte curto.
+// ⚠️ NÃO é a média aritmética das variações mês/mês. Com compra em lote ela é inútil: um mês pequeno
+// seguido de um grande dá +800%, e a queda de volta só pode chegar a −100% — a assimetria infla tudo.
+// Medido na base real: Duas Rodas daria +342%/mês, Joe Lorenzato +310%, New Pack +66%. Sem sentido.
+// ⚠️ Também NÃO é o CAGR entre o 1º e o último mês: olha só as duas pontas, então um último mês fraco
+// derruba o número inteiro — New Pack dava CAGR −0,1%/mês sendo um fornecedor que está +22,2% no ano.
+// É a INCLINAÇÃO DA RETA (mínimos quadrados) sobre TODOS os meses, expressa em % do mês médio: usa
+// cada mês do histórico, então nenhuma ponta manda sozinha no resultado.
+// Mês SEM compra entra como ZERO (não comprar é desacelerar) e o mês em curso fica de fora (parcial).
+function _cpFornCresc(c){
+  const S=(c.serie||[]).filter(s=>!s.parcial);
+  if(S.length<2) return null;
+  const val={}; S.forEach(s=>{ val[s.ym]=s.valor; });
+  const ini=S[0].ym, fim=S[S.length-1].ym;
+  const meses=[]; let y=+ini.slice(0,4), m=+ini.slice(5,7);
+  for(let guard=0; guard<600; guard++){                       // preenche os buracos do calendário
+    const ym=y+'-'+String(m).padStart(2,'0');
+    meses.push(val[ym]||0);
+    if(ym===fim) break;
+    if(++m>12){ m=1; y++; }
+  }
+  const n=meses.length; if(n<3) return null;                  // com 2 meses "tendência" não significa nada
+  let sx=0, sy=0, sxy=0, sxx=0;
+  meses.forEach((v,i)=>{ sx+=i; sy+=v; sxy+=i*v; sxx+=i*i; });
+  const den=n*sxx-sx*sx, media=sy/n;
+  if(!den || !(media>0)) return null;
+  const slope=(n*sxy-sx*sy)/den;                              // R$ que o mês médio ganha a cada mês
+  return {pct:slope/media*100, slope, media, n, ini, fim};
+}
 function _cpFornOrdem(c){
   const fA=c.rA.fim||'9999-99-99', fB=c.rB.fim||'9999-99-99';
   const iA=c.rA.ini||'0000-00-00', iB=c.rB.ini||'0000-00-00';
@@ -10604,25 +10635,16 @@ function _cpFornCompHTML(cod){
 function _cpFornResumoHTML(cod){
   const c=_cpFornCtx(cod); if(!c) return '';
   const f=c.f, um=c.um;
-  // Tendência = média dos últimos 3 meses FECHADOS × os 3 anteriores (menos ruidosa que mês/mês seco).
-  // ⚠️ O mês corrente fica de fora: com poucos dias de nota ele derrubaria a média.
+  // ⚠️ O mês corrente fica de fora de tudo que é tendência: com poucos dias de nota ele derrubaria a média.
   const S=c.serie, temParcial=S.some(s=>s.parcial);
-  // ⚠️ RITMO por meses de CALENDÁRIO, não pelos últimos 3 REGISTROS da série. A série só tem os meses
-  // COM compra: num fornecedor esporádico, slice(-3) comparava "mai–ago/26 × jun/25–abr/26" (4 meses
-  // contra 11) e chamava isso de ritmo. Agora a janela é fixa a partir do último mês fechado e mês sem
-  // compra vale 0 — que é o certo: não comprar É desacelerar.
-  // Também é pergunta DIFERENTE do A × B (períodos inteiros): dá para estar acima do ano passado e
-  // desacelerando agora. Por isso os meses comparados aparecem na tela.
-  const valDoMes={}; S.forEach(s=>{ valDoMes[s.ym]=s.valor; });
-  const ymMenos=(ym,n)=>{ let y=+ym.slice(0,4), m=+ym.slice(5,7)-n; while(m<1){ m+=12; y--; } return y+'-'+String(m).padStart(2,'0'); };
-  const ymAtual=today.slice(0,7), ancora=ymMenos(ymAtual,1);            // último mês FECHADO
-  const janela=(off)=>[2,1,0].map(k=>ymMenos(ancora,off+k));            // 3 meses, do mais antigo p/ o mais novo
-  const jU=janela(0), jP=janela(3);
-  const soma=a=>a.reduce((x,ym)=>x+(valDoMes[ym]||0),0);
   const lblYm=ym=>_cpMesLbl(+ym.slice(0,4), +ym.slice(5,7));
-  const tend=_cpVar(soma(jU)/3, soma(jP)/3);
-  const tendJanela=`${lblYm(jU[0])}–${lblYm(jU[2])} × ${lblYm(jP[0])}–${lblYm(jP[2])}`;
-  const tendVal=_cpVarPill(tend)+`<span style="display:block;font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0;margin-top:1px">${escapeHTML(tendJanela)}</span>`;
+  // CRESCIMENTO MÉDIO MÊS A MÊS sobre o histórico inteiro (ver _cpFornCresc p/ o porquê da reta).
+  // Pergunta DIFERENTE do A × B (períodos inteiros) e da projeção do ano: aqui é a inclinação do
+  // histórico todo. Por isso o período medido aparece embaixo do número — pedido do Diego.
+  const cr=_cpFornCresc(c);
+  const crescVal=cr
+    ? _cpVarPill(cr.pct)+`<span style="display:block;font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0;margin-top:1px" title="${escapeAttr(`Inclinação da reta ajustada aos ${cr.n} meses (mínimos quadrados), em % do mês médio de ${_cpBRL(cr.media)} — o mês médio ganha ${(cr.slope>=0?'+':'')}${_cpBRL(cr.slope)} a cada mês que passa. Mês sem compra conta como zero; o mês em curso fica de fora.`)}">${escapeHTML(lblYm(cr.ini)+' – '+lblYm(cr.fim)+' · '+cr.n+' meses')}</span>`
+    : `<span style="color:var(--text3)">—</span><span style="display:block;font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0;margin-top:1px">histórico curto demais</span>`;
   const umLbl=c.umsMistas?'unidades mistas ⚠':('em '+(um||'un'));
   const notaParcial=temParcial?`<div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">* ${_cpMesLbl(+today.slice(0,4),+today.slice(5,7))} ainda está em curso — mês parcial, fora da tendência.</div>`:'';
   const graf=(t,sub,g)=>`<div class="cp-card" style="padding:14px 16px;flex:1 1 340px;min-width:0">
@@ -10633,7 +10655,7 @@ function _cpFornResumoHTML(cod){
       _cpKPI('Comprado (tudo)',_cpBRL(f.total)+`<span style="display:block;font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0;margin-top:1px">${escapeHTML(_cpFornRangeDatas({ini:'',fim:''},f.linhas))}</span>`),
       _cpKPI('Notas fiscais',_cpNum(Object.keys(f.nfs).length)),
       _cpKPI('Itens diferentes',_cpNum(c.itens.length)),
-      _cpKPI('Ritmo · últ. 3 meses', tendVal)
+      _cpKPI('Crescimento médio/mês', crescVal)
     ])}
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">
       ${graf('Volume comprado por mês', umLbl, (S.length?_cpBarChart(S,'qtd',v=>_cpNum(v,0)+' '+(um||''),undefined,_cpAbrevN,72):_cpVazio('Sem histórico.'))+notaParcial)}
