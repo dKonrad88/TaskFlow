@@ -10465,20 +10465,21 @@ function _cpFornSimOutHTML(cod){
   let blocoAno='';
   if(projAno && projAno.total>0){
     const pv=projAno.total, pctTxt=_cpNum(pct, Number.isInteger(pct)?0:1);
-    const baseTxt=projAno.fechado
-      ? `${anoY} fechado · ${_cpBRL(pv)}`
-      : `${anoY} projetado · ${_cpBRL(pv)}${projAno.metodo==='yoy'?` (ritmo de +${_cpNum((projAno.fator-1)*100,1)}% sobre ${anoY-1})`:''}`;
+    // Nota enxuta (Diego): só de que ano é a base. O valor de partida já aparece riscado logo abaixo,
+    // e o como-foi-projetado está no quadro do ano, no card de comparação — repetir aqui só poluía.
+    const baseTxt=`${anoY} ${projAno.fechado?'fechado':'projetado'}`;
+    const tipAno=projAno.fechado
+      ? `Base: soma de todas as compras de ${anoY} (${_cpBRL(pv)}).`
+      : `Base: projeção de ${anoY} (${_cpBRL(pv)})${projAno.metodo==='yoy'?` — ${anoY} acumula +${_cpNum((projAno.fator-1)*100,1)}% sobre o mesmo trecho de ${anoY-1}, ritmo aplicado ao ano cheio`:' pelo tempo decorrido'}.`;
     blocoAno=bloco(`${anoY+1} com +${pctTxt}%`, _cpBRL(pv), _cpBRL(pv*(1+pct/100)), '+'+_cpBRL(pv*pct/100))
-      .replace('</div>', `<div style="font-size:10px;color:var(--text3);font-style:italic;margin-top:3px">sobre o ano ${escapeHTML(baseTxt)}</div></div>`);
+      .replace('</div>', `<div title="${escapeAttr(tipAno)}" style="font-size:10px;color:var(--text3);font-style:italic;margin-top:3px;cursor:help">sobre o ano ${escapeHTML(baseTxt)}</div></div>`);
   }
   return `<div style="display:flex;gap:16px;flex-wrap:wrap">
       ${bloco('Volume', _cpNum(qA,0)+' '+un, _cpNum(qA+dq,0)+' '+un, '+'+_cpNum(dq,0)+' '+un)}
       ${bloco('Valor', _cpBRL(vA), _cpBRL(vA+dv), '+'+_cpBRL(dv))}
       ${blocoAno}
     </div>
-    <div style="font-size:12px;color:var(--text3);margin-top:10px;padding-top:9px;border-top:1px solid var(--border);line-height:1.5">
-      Sobre o período <b style="color:var(--text2)">${_cpFornSimBase}</b> — <b style="color:var(--text2)">${escapeHTML(baseR.label)}</b>, ao preço médio praticado nele.<br>
-      São <b style="color:var(--blue-mid)">+${_cpBRL(dv)}</b> de faturamento para ele${blocoAno?` no período, ou <b style="color:var(--blue-mid)">+${_cpBRL(projAno.total*pct/100)}</b> no ano cheio de ${anoY+1}`:''} — <b>quanto ele devolve em desconto?</b></div>`;
+    `;   // sem rodapé de texto (Diego): os 3 blocos já dizem período, valor e ano — a frase repetia tudo
 }
 // Card do simulador (usado no Resumo e na aba Comparar).
 function _cpFornSimCard(cod){
