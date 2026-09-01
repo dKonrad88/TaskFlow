@@ -10072,18 +10072,53 @@ let _cpFornItBusca='', _cpFornItBuscaAberta=false;         // busca dentro dos i
 let _cpFornPerA={p:'ano', de:'', ate:''};                  // período A — default: este ano
 let _cpFornPerB={p:'yoy', de:'', ate:''};                  // período B — default: mesmo período do ano passado
 let _cpFornSimPct='5';                                     // simulador "e se eu aumentar X%"
-const _CP_FORN_PER=[['ult3','Últimos 3 meses'],['ult6','Últimos 6 meses'],['ult12','Últimos 12 meses'],
-  ['ano','Este ano'],['anoAnt','Ano passado'],['yoy','Mesmo período, ano passado'],['tudo','Tudo'],['custom','Escolher datas…']];
+let _cpFornSimBase='A';                                    // sobre qual período o simulador roda (A ou B)
+// Presets agrupados. Os trimestres/semestres são do ANO CORRENTE — para comparar com o mesmo
+// recorte do ano anterior, use "Mesmo período, ano passado" no outro lado (ele desloca 1 ano).
+const _CP_FORN_PER_GRUPOS=[
+  ['Recentes', [['ult3','Últimos 3 meses'],['ult6','Últimos 6 meses'],['ult12','Últimos 12 meses']]],
+  ['Trimestres', [['triAtual','Este trimestre'],['triAnt','Trimestre passado'],
+                  ['t1','1º trimestre'],['t2','2º trimestre'],['t3','3º trimestre'],['t4','4º trimestre']]],
+  ['Semestres', [['semAtual','Este semestre'],['semAnt','Semestre passado'],['s1','1º semestre'],['s2','2º semestre']]],
+  ['Anos', [['ano','Este ano'],['anoAnt','Ano passado']]],
+  ['Comparação', [['yoy','Mesmo período, ano passado']]],
+  ['', [['tudo','Tudo'],['custom','Escolher datas…']]]
+];
+const _CP_FORN_PER=_CP_FORN_PER_GRUPOS.reduce((a,g)=>a.concat(g[1]),[]);   // lista plana (compat)
+// <option>s com <optgroup>, na ordem acima.
+function _cpFornPerOptions(sel){
+  return _CP_FORN_PER_GRUPOS.map(g=>{
+    const ops=g[1].map(p=>`<option value="${p[0]}"${sel===p[0]?' selected':''}>${p[1]}</option>`).join('');
+    return g[0]?`<optgroup label="${g[0]}">${ops}</optgroup>`:ops;
+  }).join('');
+}
 // Resolve um preset em {ini,fim,label} (ISO, ambos inclusive; '' = sem limite).
 // `ref` = range do período A, usado só pelo preset 'yoy' (desloca A um ano p/ trás).
 function _cpFornRange(sel, ref){
   const hoje=today, Y=+hoje.slice(0,4), M=+hoje.slice(5,7);
   const menosMeses=n=>{ let y=Y, m=M-n; while(m<1){ m+=12; y--; } return y+'-'+String(m).padStart(2,'0')+'-01'; };
   const desloca=(iso,anos)=>iso?((+iso.slice(0,4)-anos)+iso.slice(4)):'';
+  const ultDia=(y,m)=>new Date(y,m,0).getDate();                       // m 1-based
+  const faixa=(y,mIni,mFim)=>({ini:y+'-'+String(mIni).padStart(2,'0')+'-01',
+                               fim:y+'-'+String(mFim).padStart(2,'0')+'-'+String(ultDia(y,mFim)).padStart(2,'0')});
+  const tri=n=>faixa(Y,(n-1)*3+1,n*3), sem=n=>faixa(Y,(n-1)*6+1,n*6);
+  const triHoje=Math.ceil(M/3), semHoje=Math.ceil(M/6);
   switch(sel.p){
     case 'ult3':   return {ini:menosMeses(2),  fim:hoje, label:'últ. 3 meses'};
     case 'ult6':   return {ini:menosMeses(5),  fim:hoje, label:'últ. 6 meses'};
     case 'ult12':  return {ini:menosMeses(11), fim:hoje, label:'últ. 12 meses'};
+    // Trimestre/semestre EM CURSO param em `hoje` (o resto do período ainda não aconteceu — somar até o
+    // fim do trimestre faria o total parecer menor do que é ao comparar com um período fechado).
+    case 'triAtual': { const r=tri(triHoje); return {ini:r.ini, fim:hoje, label:triHoje+'º tri/'+String(Y).slice(2)+' (em curso)'}; }
+    case 'triAnt':   { const n=triHoje-1; if(n>=1){ const r=tri(n); return {...r, label:n+'º tri/'+String(Y).slice(2)}; }
+                       const r=faixa(Y-1,10,12); return {...r, label:'4º tri/'+String(Y-1).slice(2)}; }
+    case 't1': case 't2': case 't3': case 't4': { const n=+sel.p.slice(1); const r=tri(n);
+                       return {ini:r.ini, fim:(n===triHoje?hoje:r.fim), label:n+'º tri/'+String(Y).slice(2)+(n===triHoje?' (em curso)':'')}; }
+    case 'semAtual': { const r=sem(semHoje); return {ini:r.ini, fim:hoje, label:semHoje+'º sem/'+String(Y).slice(2)+' (em curso)'}; }
+    case 'semAnt':   { const n=semHoje-1; if(n>=1){ const r=sem(n); return {...r, label:n+'º sem/'+String(Y).slice(2)}; }
+                       const r=faixa(Y-1,7,12); return {...r, label:'2º sem/'+String(Y-1).slice(2)}; }
+    case 's1': case 's2': { const n=+sel.p.slice(1); const r=sem(n);
+                       return {ini:r.ini, fim:(n===semHoje?hoje:r.fim), label:n+'º sem/'+String(Y).slice(2)+(n===semHoje?' (em curso)':'')}; }
     case 'ano':    return {ini:Y+'-01-01', fim:hoje, label:String(Y)};
     case 'anoAnt': return {ini:(Y-1)+'-01-01', fim:(Y-1)+'-12-31', label:String(Y-1)};
     case 'yoy':    { const r=ref||{ini:Y+'-01-01',fim:hoje};
@@ -10091,6 +10126,26 @@ function _cpFornRange(sel, ref){
     case 'custom': return {ini:sel.de||'', fim:sel.ate||'', label:(sel.de&&sel.ate)?(_cpDt(sel.de)+'–'+_cpDt(sel.ate)):'personalizado'};
     default:       return {ini:'', fim:'', label:'tudo'};
   }
+}
+// "01/01/26 – 01/09/26" — o período CONCRETO, p/ não restar dúvida do que cada lado está somando.
+// Sem limite (preset "Tudo"), usa as datas da 1ª e da última compra do fornecedor.
+function _cpFornRangeDatas(r, linhas){
+  let ini=r.ini, fim=r.fim;
+  if((!ini || !fim) && linhas && linhas.length){ const ds=linhas.map(l=>l.data).sort();
+    if(!ini) ini=ds[0]; if(!fim) fim=ds[ds.length-1]; }
+  if(!ini || !fim) return '';
+  return _cpDt(ini)+' – '+_cpDt(fim);
+}
+// ⚠️ ORDEM CRONOLÓGICA da comparação. A variação tem que significar SEMPRE "evolução no tempo":
+// do período mais ANTIGO para o mais RECENTE, não importa em qual lado (A ou B) cada um foi posto.
+// Sem isso, escolher A = ano passado e B = este ano mostrava QUEDA num fornecedor que cresceu.
+function _cpFornOrdem(c){
+  const fA=c.rA.fim||'9999-99-99', fB=c.rB.fim||'9999-99-99';
+  const iA=c.rA.ini||'0000-00-00', iB=c.rB.ini||'0000-00-00';
+  const aEhNovo=(fA>fB)||(fA===fB && iA>=iB);
+  return aEhNovo
+    ? {novoLado:'A', baseLado:'B', novoR:c.rA, baseR:c.rB, novo:c.A, base:c.B}
+    : {novoLado:'B', baseLado:'A', novoR:c.rB, baseR:c.rA, novo:c.B, base:c.A};
 }
 // Agrega as linhas de NF do fornecedor dentro de um range → totais + mapa por item.
 function _cpFornPeriodo(linhas, r){
@@ -10137,6 +10192,11 @@ function _cpFornSetPer(qual,v){ const o=(qual==='A')?_cpFornPerA:_cpFornPerB; o.
 function _cpFornSetPerData(qual,campo,val){ const o=(qual==='A')?_cpFornPerA:_cpFornPerB; o[campo]=(val && val.slice(0,4)>='2000')?val:''; }
 function _cpFornSetPerDataCommit(qual,campo,val){ _cpFornSetPerData(qual,campo,val); renderCompras(); }
 function _cpFornSimSet(v){ _cpFornSimPct=v; const el=document.getElementById('cp-forn-sim-out'); if(el && _cpFornSel) el.innerHTML=_cpFornSimOutHTML(_cpFornSel); }
+// Troca o período base do simulador (A ou B) — re-renderiza só o card, p/ não perder o scroll.
+function _cpFornSimBaseSet(q){ _cpFornSimBase=q;
+  const card=document.getElementById('cp-forn-sim-card');
+  if(card && _cpFornSel) card.outerHTML=_cpFornSimCard(_cpFornSel);
+  else if(_cpFornSel) renderCompras(); }
 function _cpFornBuscaToggle(){ _cpFornBuscaAberta=!_cpFornBuscaAberta; if(!_cpFornBuscaAberta) _cpFornBusca=''; renderCompras(); if(_cpFornBuscaAberta) setTimeout(function(){ var el=document.getElementById('cp-forn-busca'); if(el) el.focus(); },30); }
 function _cpFornBuscaInput(el){ _cpFornBusca=el.value; const tb=document.getElementById('cp-forn-tbody'); if(tb) tb.innerHTML=_cpFornRowsHTML(); }
 function _cpFornRowsHTML(){
@@ -10219,11 +10279,16 @@ function _cpFornCtx(cod){
   f.linhas.forEach(l=>{ const k=l.item[0];
     if(!it[k]) it[k]={cod:k, nome:l.item[1], um:l.um, ult:l.data, preco:l.vun};
     if(l.data>it[k].ult){ it[k].ult=l.data; it[k].preco=l.vun; } });
+  // ⚠️ A variação por item segue a mesma ORDEM CRONOLÓGICA dos indicadores (mais novo contra mais
+  // velho), senão a coluna Var. % diria o contrário do bloco de comparação logo acima.
+  const _fA=rA.fim||'9999-99-99', _fB=rB.fim||'9999-99-99', _iA=rA.ini||'0000-00-00', _iB=rB.ini||'0000-00-00';
+  const aEhNovo=(_fA>_fB)||(_fA===_fB && _iA>=_iB);
   const itens=Object.keys(it).map(k=>{ const o=it[k], a=A.porItem[k]||{qtd:0,total:0}, b=B.porItem[k]||{qtd:0,total:0};
-    return {...o, qtdA:a.qtd, totA:a.total, qtdB:b.qtd, totB:b.total, delta:_cpVar(a.total,b.total)}; });
+    return {...o, qtdA:a.qtd, totA:a.total, qtdB:b.qtd, totB:b.total,
+      delta: aEhNovo?_cpVar(a.total,b.total):_cpVar(b.total,a.total)}; });
   // unidade dos volumes: se o fornecedor entrega em mais de uma UM, somar quantidade é impreciso
   const ums=[...new Set(f.linhas.map(l=>l.um).filter(Boolean))];
-  return {f, rA, rB, A, B, itens, um:ums.length===1?ums[0]:'', umsMistas:ums.length>1, serie:_cpFornSerie(f.linhas)};
+  return {f, rA, rB, A, B, itens, aEhNovo, um:ums.length===1?ums[0]:'', umsMistas:ums.length>1, serie:_cpFornSerie(f.linhas)};
 }
 // Linhas da tabela de itens (busca + ordenação aplicadas). Sai daqui p/ o refresh da busca reusar.
 function _cpFornItRows(cod){
@@ -10283,8 +10348,9 @@ function _cpFornItTfootHTML(cod){
 function _cpFornSimOutHTML(cod){
   const c=_cpFornCtx(cod); if(!c) return '';
   const pct=parseFloat(String(_cpFornSimPct).replace(',','.'))||0;
-  const qA=c.A.qtd, vA=c.A.total;
-  if(!(vA>0)) return `<div style="font-size:12.5px;color:var(--text3);font-style:italic">Sem compras no período A para simular.</div>`;
+  const base=(_cpFornSimBase==='B')?c.B:c.A, baseR=(_cpFornSimBase==='B')?c.rB:c.rA;
+  const qA=base.qtd, vA=base.total;
+  if(!(vA>0)) return `<div style="font-size:12.5px;color:var(--text3);font-style:italic">Sem compras no período ${_cpFornSimBase} para simular.</div>`;
   const dq=qA*pct/100, dv=vA*pct/100;
   const un=c.umsMistas?'un.':(c.um||'un');
   const bloco=(rot,de,para,mais)=>`<div style="flex:1 1 210px;min-width:0">
@@ -10298,17 +10364,21 @@ function _cpFornSimOutHTML(cod){
       ${bloco('Valor', _cpBRL(vA), _cpBRL(vA+dv), '+'+_cpBRL(dv))}
     </div>
     <div style="font-size:12px;color:var(--text3);margin-top:10px;padding-top:9px;border-top:1px solid var(--border);line-height:1.5">
-      Sobre o período <b style="color:var(--text2)">${escapeHTML(c.rA.label)}</b>, ao preço médio praticado nele.<br>
+      Sobre o período <b style="color:var(--text2)">${_cpFornSimBase}</b> — <b style="color:var(--text2)">${escapeHTML(baseR.label)}</b>, ao preço médio praticado nele.<br>
       São <b style="color:var(--blue-mid)">+${_cpBRL(dv)}</b> de faturamento para ele — <b>quanto ele devolve em desconto?</b></div>`;
 }
 // Card do simulador (usado no Resumo e na aba Comparar).
 function _cpFornSimCard(cod){
-  return `<div class="cp-card" style="padding:15px 17px">
+  return `<div class="cp-card" id="cp-forn-sim-card" style="padding:15px 17px">
     <div class="cp-card-title"><span>E se eu aumentar o volume</span></div>
     <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;margin-top:10px">
       <div style="flex:0 0 auto;text-align:center">
         <span style="display:inline-flex;align-items:baseline;gap:3px"><input type="text" inputmode="decimal" value="${escapeAttr(_cpFornSimPct)}" oninput="_cpFornSimSet(this.value)" class="cp-sim-inp" style="width:62px;text-align:center;font-size:24px;font-weight:800"><b style="font-size:19px;color:var(--text2)">%</b></span>
         <div style="font-size:10.5px;color:var(--text3);margin-top:2px">a mais que hoje</div>
+        <div style="display:inline-flex;gap:3px;margin-top:8px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:2px">
+          ${['A','B'].map(q=>`<button onclick="_cpFornSimBaseSet('${q}')" title="Simular sobre o período ${q}" style="border:none;cursor:pointer;font-family:inherit;font-size:11.5px;font-weight:700;padding:4px 11px;border-radius:6px;background:${_cpFornSimBase===q?'var(--card)':'transparent'};color:${_cpFornSimBase===q?'var(--blue-mid)':'var(--text3)'}">${q}</button>`).join('')}
+        </div>
+        <div style="font-size:9.5px;color:var(--text3);margin-top:3px">período base</div>
       </div>
       <div id="cp-forn-sim-out" style="flex:1 1 380px;min-width:0">${_cpFornSimOutHTML(cod)}</div>
     </div></div>`;
@@ -10318,32 +10388,45 @@ function _cpFornSimCard(cod){
 // próprio seletor + os próprios números, p/ não sobrar dúvida de qual número é de qual período.
 function _cpFornCompHTML(cod){
   const c=_cpFornCtx(cod); if(!c) return '';
-  const varVol=_cpVar(c.A.qtd,c.B.qtd), varVal=_cpVar(c.A.total,c.B.total), varNF=_cpVar(Object.keys(c.A.nfs).length,Object.keys(c.B.nfs).length);
+  // ⚠️ Variação em ORDEM CRONOLÓGICA (mais recente contra mais antigo), não "A contra B": assim o
+  // número sempre quer dizer "evolução no tempo" — pôr o ano passado no lado A não inverte o sinal.
+  const O=_cpFornOrdem(c);
+  const varVol=_cpVar(O.novo.qtd,O.base.qtd), varVal=_cpVar(O.novo.total,O.base.total),
+        varNF=_cpVar(Object.keys(O.novo.nfs).length,Object.keys(O.base.nfs).length);
   const un=c.umsMistas?'un. mistas':(c.um||'un');
   const dinp=(qual,campo)=>{ const o=(qual==='A')?_cpFornPerA:_cpFornPerB;
     return `<input type="date" value="${escapeAttr(o[campo]||'')}" oninput="_cpFornSetPerData('${qual}','${campo}',this.value)" onchange="_cpFornSetPerData('${qual}','${campo}',this.value)" onblur="_cpFornSetPerDataCommit('${qual}','${campo}',this.value)" class="modal-input" style="width:auto;padding:4px 7px;font-size:11.5px">`; };
   const lado=(qual,per,dados,bg)=>{ const o=(qual==='A')?_cpFornPerA:_cpFornPerB;
+    const datas=_cpFornRangeDatas(per,c.f.linhas);
+    const ehNovo=(O.novoLado===qual);
     return `<div style="background:${bg};border-radius:11px;padding:13px 15px;min-width:0">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:6px">Período ${qual}</div>
-      <select onchange="_cpFornSetPer('${qual}',this.value)" class="modal-input" style="width:100%;max-width:230px;padding:5px 9px;font-size:12.5px;font-weight:600">${_CP_FORN_PER.map(p=>`<option value="${p[0]}"${o.p===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3)">Período ${qual}</span>
+        <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);background:var(--bg2);border-radius:999px;padding:1px 7px">${ehNovo?'mais recente':'base'}</span>
+      </div>
+      <select onchange="_cpFornSetPer('${qual}',this.value)" class="modal-input" style="width:100%;max-width:230px;padding:5px 9px;font-size:12.5px;font-weight:600">${_cpFornPerOptions(o.p)}</select>
       ${o.p==='custom'?`<div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">${dinp(qual,'de')}${dinp(qual,'ate')}</div>`:''}
-      <div style="font-size:11.5px;color:var(--text3);margin:7px 0 9px;font-style:italic">${escapeHTML(per.label)}</div>
+      <div style="margin:7px 0 9px">
+        <div style="font-size:11.5px;color:var(--text3);font-style:italic">${escapeHTML(per.label)}</div>
+        ${datas?`<div style="font-size:12px;font-weight:600;color:var(--text2);margin-top:1px"><i class="ti ti-calendar" style="font-size:11px;color:var(--text3)"></i> ${escapeHTML(datas)}</div>`:''}
+      </div>
       <div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.02em;line-height:1.1">${_cpBRL(dados.total)}</div>
       <div style="font-size:13px;font-weight:600;color:var(--text2);margin-top:3px">${_cpNum(dados.qtd,0)} <span style="color:var(--text3);font-size:11px">${escapeHTML(un)}</span></div>
       <div style="font-size:11.5px;color:var(--text3);margin-top:3px">${_cpNum(Object.keys(dados.nfs).length)} ${Object.keys(dados.nfs).length===1?'nota':'notas'} · ${_cpNum(Object.keys(dados.porItem).length)} itens</div>
     </div>`; };
   const dif=(rot,v)=>`<div style="text-align:center"><div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">${rot}</div><div style="font-size:16px;line-height:1.25">${_cpVarPill(v)}</div></div>`;
+  const seta=(O.novoLado==='A')?'ti-arrow-left':'ti-arrow-right';   // aponta do período BASE p/ o mais recente
   return `<div class="cp-card" style="padding:16px 18px">
-    <div class="cp-card-title"><span>Comparação de períodos</span><span class="sub">A × B — o que muda de um para o outro</span></div>
+    <div class="cp-card-title"><span>Comparação de períodos</span><span class="sub">${escapeHTML(O.baseR.label)} → ${escapeHTML(O.novoR.label)}</span></div>
     <div class="cp-cmp-grid" style="margin-top:12px">
       ${lado('A',c.rA,c.A,CP_BG_A)}
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;padding:4px 2px">
-        <div style="width:34px;height:34px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex:none"><i class="ti ti-x" style="font-size:16px;color:var(--text3)"></i></div>
+        <div style="width:34px;height:34px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex:none" title="A variação vai do período mais antigo para o mais recente"><i class="ti ${seta}" style="font-size:16px;color:var(--blue-mid)"></i></div>
         ${dif('Valor',varVal)}${dif('Volume',varVol)}${dif('Notas',varNF)}
       </div>
       ${lado('B',c.rB,c.B,CP_BG_B)}
     </div>
-    <div style="font-size:11.5px;color:var(--text3);margin-top:11px;line-height:1.5"><i class="ti ti-info-circle"></i> A variação compara <b>A contra B</b> (A é o período de referência). Estes períodos valem também para a aba <b>Itens</b>.</div>
+    <div style="font-size:11.5px;color:var(--text3);margin-top:11px;line-height:1.5"><i class="ti ti-info-circle"></i> A variação é sempre a <b>evolução no tempo</b>: do período mais antigo (<b>${escapeHTML(O.baseR.label)}</b>) para o mais recente (<b>${escapeHTML(O.novoR.label)}</b>) — tanto faz em qual lado cada um está. Estes períodos valem também para a aba <b>Itens</b>.</div>
   </div>`;
 }
 // ══════ ABAS DO PAINEL ══════
@@ -10386,7 +10469,7 @@ function _cpFornItensHTML(cod){
   const th=(k,lab,dir,extra)=>`<th${dir?' class="r"':''} onclick="_cpFornSetSort('${k}')" style="cursor:pointer;user-select:none;${extra||''}" title="Ordenar por ${lab.replace(/<[^>]+>/g,'')}">${lab}${seta(k)}</th>`;
   // seletores compactos: os mesmos do bloco de comparação, aqui à mão de quem está lendo a tabela
   const selPer=(qual)=>{ const o=(qual==='A')?_cpFornPerA:_cpFornPerB;
-    return _cpSelPeriodo('Período '+qual, `<select onchange="_cpFornSetPer('${qual}',this.value)" class="modal-input" style="width:auto;padding:5px 9px;font-size:12px;font-weight:600">${_CP_FORN_PER.map(p=>`<option value="${p[0]}"${o.p===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>`); };
+    return _cpSelPeriodo('Período '+qual, `<select onchange="_cpFornSetPer('${qual}',this.value)" class="modal-input" style="width:auto;padding:5px 9px;font-size:12px;font-weight:600">${_cpFornPerOptions(o.p)}</select>`); };
   return `<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 2px 10px">
       <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Itens comprados</span>
       <div style="display:inline-flex;align-items:flex-end;gap:10px;flex-wrap:wrap">${selPer('A')}${selPer('B')}${_cpLupa(_cpFornItBuscaAberta,_cpFornItBusca,'_cpFornItBuscaToggle','_cpFornItBuscaInput','cp-fi-busca','Buscar item…')}</div>
