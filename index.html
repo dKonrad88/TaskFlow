@@ -10433,6 +10433,9 @@ function _cpFornCtx(cod){
   const aEhNovo=(_fA>_fB)||(_fA===_fB && _iA>=_iB);
   const itens=Object.keys(it).map(k=>{ const o=it[k], a=A.porItem[k]||{qtd:0,total:0}, b=B.porItem[k]||{qtd:0,total:0};
     return {...o, qtdA:a.qtd, totA:a.total, qtdB:b.qtd, totB:b.total,
+      // PREÇO MÉDIO PAGO no período (total ÷ qtde), não o preço de uma nota: é o número que se leva
+      // pra mesa ("paguei X no ano passado, Y neste"). null quando não houve compra no período.
+      pmA: a.qtd>0 ? a.total/a.qtd : null, pmB: b.qtd>0 ? b.total/b.qtd : null,
       delta: aEhNovo?_cpVar(a.total,b.total):_cpVar(b.total,a.total)}; });
   // unidade dos volumes: se o fornecedor entrega em mais de uma UM, somar quantidade é impreciso
   const ums=[...new Set(f.linhas.map(l=>l.um).filter(Boolean))];
@@ -10452,16 +10455,19 @@ function _cpFornItRefresh(){ if(!_cpFornSel) return;
 function _cpFornItTbodyHTML(cod){
   const c=_cpFornCtx(cod); if(!c) return '';
   const L=_cpFornItRows(cod);
-  if(!L.length) return `<tr><td colspan="9">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`;
+  if(!L.length) return `<tr><td colspan="11">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`;
   const un=u=>`<span class="cp-un">${escapeHTML(u||'')}</span>`;
+  const vaz='<span style="color:var(--text3)">—</span>';   // item sem compra NAQUELE período
   return L.map(i=>`<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(i.cod)}')">
       <td class="cp-mono">${escapeHTML(i.cod)}</td>
       <td class="cp-item">${escapeHTML(i.nome)}</td>
       <td class="cp-n">${_cpBRL(i.preco)}</td>
-      <td class="cp-n" style="background:${CP_BG_A}">${i.qtdA?_cpNum(i.qtdA,0)+' '+un(i.um):'<span style="color:var(--text3)">—</span>'}</td>
-      <td class="cp-n" style="background:${CP_BG_A}">${i.totA?_cpBRL(i.totA):'<span style="color:var(--text3)">—</span>'}</td>
-      <td class="cp-n" style="background:${CP_BG_B}">${i.qtdB?_cpNum(i.qtdB,0)+' '+un(i.um):'<span style="color:var(--text3)">—</span>'}</td>
-      <td class="cp-n" style="background:${CP_BG_B}">${i.totB?_cpBRL(i.totB):'<span style="color:var(--text3)">—</span>'}</td>
+      <td class="cp-n" style="background:${CP_BG_A}">${i.qtdA?_cpNum(i.qtdA,0)+' '+un(i.um):vaz}</td>
+      <td class="cp-n" style="background:${CP_BG_A}">${i.pmA!=null?_cpBRL(i.pmA):vaz}</td>
+      <td class="cp-n" style="background:${CP_BG_A}">${i.totA?_cpBRL(i.totA):vaz}</td>
+      <td class="cp-n" style="background:${CP_BG_B}">${i.qtdB?_cpNum(i.qtdB,0)+' '+un(i.um):vaz}</td>
+      <td class="cp-n" style="background:${CP_BG_B}">${i.pmB!=null?_cpBRL(i.pmB):vaz}</td>
+      <td class="cp-n" style="background:${CP_BG_B}">${i.totB?_cpBRL(i.totB):vaz}</td>
       <td class="cp-n">${_cpVarPill(i.delta)}</td>
       <td class="cp-mono">${_cpDt(i.ult)}</td></tr>`).join('');
 }
@@ -10473,11 +10479,18 @@ function _cpFornItTfootHTML(cod){
   const sA=L.reduce((a,i)=>a+i.totA,0), sB=L.reduce((a,i)=>a+i.totB,0);
   const qA=L.reduce((a,i)=>a+i.qtdA,0), qB=L.reduce((a,i)=>a+i.qtdB,0);
   const un=c.umsMistas?'<span class="cp-un" title="Este fornecedor entrega em mais de uma unidade — a soma de quantidade é aproximada">un. mistas</span>':`<span class="cp-un">${escapeHTML(c.um||'')}</span>`;
+  // ⚠️ Preço médio do CONJUNTO só existe se tudo estiver na MESMA unidade: dividir reais por uma soma
+  // de KG com UN não dá preço nenhum. Com unidades mistas a célula fica vazia (a linha de cada item,
+  // essa sim, tem preço — lá a unidade é a do próprio item).
+  const pmT=(s,q)=>(c.umsMistas||!(q>0))?'' :_cpBRL(s/q);
   return `<tr style="border-top:2px solid var(--border);font-weight:700">
       <td colspan="2" style="color:var(--text2)">${_cpFornItBusca?`Total do filtro (${L.length} ${L.length===1?'item':'itens'})`:`Total (${L.length} itens)`}</td>
       <td></td>
-      <td class="cp-n" style="background:${CP_BG_A}">${_cpNum(qA,0)} ${un}</td><td class="cp-n" style="background:${CP_BG_A}">${_cpBRL(sA)}</td>
+      <td class="cp-n" style="background:${CP_BG_A}">${_cpNum(qA,0)} ${un}</td>
+      <td class="cp-n" style="background:${CP_BG_A}">${pmT(sA,qA)}</td>
+      <td class="cp-n" style="background:${CP_BG_A}">${_cpBRL(sA)}</td>
       <td class="cp-n" style="background:${CP_BG_B}">${_cpNum(qB,0)} ${un}</td>
+      <td class="cp-n" style="background:${CP_BG_B}">${pmT(sB,qB)}</td>
       <td class="cp-n" style="background:${CP_BG_B}">${_cpBRL(sB)}</td>
       <td class="cp-n">${_cpVarPill(_cpVar(sA,sB))}</td><td></td></tr>`;
 }
@@ -10700,12 +10713,12 @@ function _cpFornItensHTML(cod){
     <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead>
         <tr><th colspan="3"></th>
-          <th colspan="2" style="text-align:center;background:${CP_BG_A};border-bottom:1px solid var(--border);padding-bottom:7px">Período A<br>${selPer('A')}</th>
-          <th colspan="2" style="text-align:center;background:${CP_BG_B};border-bottom:1px solid var(--border);padding-bottom:7px">Período B<br>${selPer('B')}</th>
+          <th colspan="3" style="text-align:center;background:${CP_BG_A};border-bottom:1px solid var(--border);padding-bottom:7px">Período A<br>${selPer('A')}</th>
+          <th colspan="3" style="text-align:center;background:${CP_BG_B};border-bottom:1px solid var(--border);padding-bottom:7px">Período B<br>${selPer('B')}</th>
           <th colspan="2"></th></tr>
         <tr>${_cpTh('fcomp','cod','Cód.')}${_cpTh('fcomp','nome','Item')}${_cpTh('fcomp','preco','Últ. preço',1)}
-          ${_cpTh('fcomp','qtdA','Qtde',1,'background:'+CP_BG_A)}${_cpTh('fcomp','totA','Total',1,'background:'+CP_BG_A)}
-          ${_cpTh('fcomp','qtdB','Qtde',1,'background:'+CP_BG_B)}${_cpTh('fcomp','totB','Total',1,'background:'+CP_BG_B)}
+          ${_cpTh('fcomp','qtdA','Qtde',1,'background:'+CP_BG_A)}${_cpTh('fcomp','pmA','Preço méd.',1,'background:'+CP_BG_A)}${_cpTh('fcomp','totA','Total',1,'background:'+CP_BG_A)}
+          ${_cpTh('fcomp','qtdB','Qtde',1,'background:'+CP_BG_B)}${_cpTh('fcomp','pmB','Preço méd.',1,'background:'+CP_BG_B)}${_cpTh('fcomp','totB','Total',1,'background:'+CP_BG_B)}
           ${_cpTh('fcomp','delta','Var. %',1)}${_cpTh('fcomp','ult','Últ. compra','','',-1)}</tr>
       </thead>
       <tbody id="cp-fi-tbody">${_cpFornItTbodyHTML(cod)}</tbody>
