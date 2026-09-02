@@ -10446,6 +10446,9 @@ function _cpFornCtx(cod){
       // viraria "−100%" (é o que acontece — corretamente — na variação de VALOR ao lado, onde zerar
       // a compra É uma queda de 100%; já um preço não "caiu a zero", ele simplesmente não existe).
       deltaPm: (a.qtd>0 && b.qtd>0) ? (aEhNovo?_cpVar(a.total/a.qtd,b.total/b.qtd):_cpVar(b.total/b.qtd,a.total/a.qtd)) : null,
+      // Variação de VOLUME: aqui zerar a compra vale −100% mesmo (parei de comprar), igual à de valor
+      // e ao contrário da de preço. As três se decompõem: volume + preço ≈ valor.
+      deltaVol: aEhNovo?_cpVar(a.qtd,b.qtd):_cpVar(b.qtd,a.qtd),
       delta: aEhNovo?_cpVar(a.total,b.total):_cpVar(b.total,a.total)}; });
   // unidade dos volumes: se o fornecedor entrega em mais de uma UM, somar quantidade é impreciso
   const ums=[...new Set(f.linhas.map(l=>l.um).filter(Boolean))];
@@ -10465,7 +10468,7 @@ function _cpFornItRefresh(){ if(!_cpFornSel) return;
 function _cpFornItTbodyHTML(cod){
   const c=_cpFornCtx(cod); if(!c) return '';
   const L=_cpFornItRows(cod);
-  if(!L.length) return `<tr><td colspan="12">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`;
+  if(!L.length) return `<tr><td colspan="13">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`;
   const un=u=>`<span class="cp-un">${escapeHTML(u||'')}</span>`;
   const vaz='<span style="color:var(--text3)">—</span>';   // item sem compra NAQUELE período
   return L.map(i=>`<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(i.cod)}')">
@@ -10480,6 +10483,7 @@ function _cpFornItTbodyHTML(cod){
       <td class="cp-n" style="background:${CP_BG_B}">${i.totB?_cpBRL(i.totB):vaz}</td>
       <td class="cp-n">${_cpVarPill(i.delta)}</td>
       <td class="cp-n">${_cpVarPrecoPill(i.deltaPm)}</td>
+      <td class="cp-n">${_cpVarPill(i.deltaVol)}</td>
       <td class="cp-mono">${_cpDt(i.ult)}</td></tr>`).join('');
 }
 // Rodapé: soma o que está VISÍVEL na tabela — responde "quanto compramos deste conjunto de itens"
@@ -10508,6 +10512,7 @@ function _cpFornItTfootHTML(cod){
       <td class="cp-n" style="background:${CP_BG_B}">${_cpBRL(sB)}</td>
       <td class="cp-n">${_cpVarPill(c.aEhNovo?_cpVar(sA,sB):_cpVar(sB,sA))}</td>
       <td class="cp-n">${(c.umsMistas||!(qA>0)||!(qB>0))?'':_cpVarPrecoPill(c.aEhNovo?_cpVar(sA/qA,sB/qB):_cpVar(sB/qB,sA/qA))}</td>
+      <td class="cp-n">${_cpVarPill(c.aEhNovo?_cpVar(qA,qB):_cpVar(qB,qA))}</td>
       <td></td></tr>`;
 }
 // ══════ SIMULADOR "e se eu aumentar o volume X%" ══════
@@ -10740,7 +10745,7 @@ function _cpFornItensHTML(cod){
         <tr>${_cpTh('fcomp','cod','Cód.')}${_cpTh('fcomp','nome','Item')}${_cpTh('fcomp','preco','Últ. preço',1)}
           ${_cpTh('fcomp','qtdA','Qtde',1,'background:'+CP_BG_A)}${_cpTh('fcomp','pmA','Preço méd.',1,'background:'+CP_BG_A)}${_cpTh('fcomp','totA','Total',1,'background:'+CP_BG_A)}
           ${_cpTh('fcomp','qtdB','Qtde',1,'background:'+CP_BG_B)}${_cpTh('fcomp','pmB','Preço méd.',1,'background:'+CP_BG_B)}${_cpTh('fcomp','totB','Total',1,'background:'+CP_BG_B)}
-          ${_cpTh('fcomp','delta','Var. valor',1)}${_cpTh('fcomp','deltaPm','Var. preço',1)}${_cpTh('fcomp','ult','Últ. compra','','',-1)}</tr>
+          ${_cpTh('fcomp','delta','Var. valor',1)}${_cpTh('fcomp','deltaPm','Var. preço',1)}${_cpTh('fcomp','deltaVol','Var. volume',1)}${_cpTh('fcomp','ult','Últ. compra','','',-1)}</tr>
       </thead>
       <tbody id="cp-fi-tbody">${_cpFornItTbodyHTML(cod)}</tbody>
       <tfoot id="cp-fi-tfoot">${_cpFornItTfootHTML(cod)}</tfoot></table></div>`;
