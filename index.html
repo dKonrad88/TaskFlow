@@ -6502,13 +6502,12 @@ function _necRows(){
 }
 function _necTbodyHTML(){
   const rows=_cpSortArr('nec', _necRows(), {cob:o=>(o.util>0?o.est/o.util*7:null)}, 'nome', 1);
-  if(!rows.length) return `<tr><td colspan="8">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`;
+  if(!rows.length) return `<tr><td colspan="7">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`;
   return rows.map(o=>{
     const falta=o.fim<0, c=falta?'var(--danger)':'var(--text)', cc=falta?'var(--danger)':'var(--text3)';
     const cob=o.util>0?Math.round(o.est/o.util*7):null;  // dias que o estoque atual ainda dura (consumo = "a utilizar" da semana)
     const cobCor=cob==null?'var(--text3)':(cob<10?'var(--danger)':(cob<30?'var(--amber)':'var(--text2)'));
     return `<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(o.cod)}')" title="Abrir a ficha deste item no Insumos" style="${falta?'background:var(--danger-bg);':''}">
-      ${_cpSelTd('nec', o.cod)}
       <td class="cp-mono"${falta?` style="color:${cc}"`:''}>${escapeHTML(o.cod)}</td>
       <td style="color:var(--text3);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o.div)}</td>
       <td class="cp-item"${falta?` style="color:${c}"`:''}>${escapeHTML(o.nome)}</td>
@@ -6525,15 +6524,15 @@ function _prodNecessidadeHTML(){
   // ⚠️ Usa a classe .cp-tbl da área (header em caixa alta/sticky, zebra, th.r + td.cp-n) — antes esta
   // tabela montava os estilos na mão e destoava visivelmente das vizinhas de Compras.
   const tabela=`<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl" style="table-layout:fixed;min-width:728px">
-      <colgroup><col style="width:34px"><col style="width:66px"><col style="width:150px"><col><col style="width:86px"><col style="width:90px"><col style="width:94px"><col style="width:96px"></colgroup>
+      <colgroup><col style="width:66px"><col style="width:150px"><col><col style="width:86px"><col style="width:90px"><col style="width:94px"><col style="width:96px"></colgroup>
       <thead><tr>
-        ${_cpSelTh('nec', _necRows().map(function(o){return o.cod;}))}${_cpTh('nec','cod','Cód.')}${_cpTh('nec','div','Divisão')}${_cpTh('nec','nome','Item')}
+        ${_cpTh('nec','cod','Cód.')}${_cpTh('nec','div','Divisão')}${_cpTh('nec','nome','Item')}
         ${_cpTh('nec','est','Estoque',1)}${_cpTh('nec','util','A utilizar',1)}${_cpTh('nec','fim','Est. final',1,'',1)}${_cpTh('nec','cob','Cobertura',1,'',1)}
       </tr></thead>
       <tbody id="nec-tbody">${_necTbodyHTML()}</tbody>
     </table></div>`;
   const nota=`<div style="margin-top:10px;font-size:12px;color:var(--text3);display:flex;align-items:flex-start;gap:6px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i><span>Clique num item para abrir a <b>ficha no Insumos</b>. Linhas em vermelho = o estoque não cobre a semana. O <b>a utilizar</b> é exemplo — no Oficial vem da programação × ficha técnica de cada produto.</span></div>`;
-  return `<div style="margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">${seg}${_cpSelNota("nec")}</div>${tabela}${nota}`;
+  return `<div style="margin-bottom:14px">${seg}</div>${tabela}${nota}`;
 }
 // Controles do header da Necessidade (padrão de Compras): Filtros (divisão) + Só insuficientes + busca (lupa).
 function _necFiltrosAcao(){
@@ -8914,16 +8913,13 @@ function _cpEstLista(){
 function _cpEstCorpo(){
   // "Termina em" é função monotônica de `dias` → ordenar por dias dá a mesma ordem da data.
   const L=_cpSortArr('est', _cpEstLista(), {cat:o=>_cpCategoria(o.nome), fim:o=>o.dias, forn:o=>(o.ultForn?_cpForn(o.ultForn):'')});
-  // KPIs sobre a base TODA (não o filtro) — salvo quando há linhas MARCADAS: aí a pergunta passa a
-  // ser "quanto vale ESTE conjunto", e é o recorte que responde.
-  const base=_cpSelTem('est') ? _cpSelFiltra('est', _cpItens(), o=>o.cod) : _cpItens().filter(o=>o.est>0 || o.consMed>0);
+  const base=_cpItens().filter(o=>o.est>0 || o.consMed>0); // KPIs sobre a base TODA (não o filtro)
   const totV=base.reduce((a,o)=>a+o.valor,0);
   const excessoR=base.filter(o=>_cpEstStatus(o).key==='excesso').reduce((a,o)=>a+o.valor,0);
   const TETO=300;
   const linhas=L.slice(0,TETO).map(o=>{
     const [c,bg]=_cpCorDias(o.dias);
     return `<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(o.cod)}')">
-      ${_cpSelTd('est', o.cod)}
       <td class="cp-mono">${escapeHTML(o.cod)}</td>
       <td><span class="cp-cattag">${escapeHTML(_cpCategoria(o.nome))}</span></td>
       <td class="cp-item" title="${escapeAttr(o.nome)}">${escapeHTML(o.nome)}</td>
@@ -8937,14 +8933,13 @@ function _cpEstCorpo(){
       <td class="cp-item" style="font-weight:400;max-width:210px" title="${escapeAttr(o.ultForn?_cpForn(o.ultForn):'')}">${o.ultForn?escapeHTML(_cpForn(o.ultForn)):'—'}</td>
       <td class="cp-n">${o.semMov===null?'—':o.semMov+' d'}</td>
     </tr>`;}).join('');
-  return `<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+  return `<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
       <div class="cp-card" style="padding:13px 16px;flex:none;width:240px">${_cpKPI('Excesso — capital parado',_cpBRL(excessoR),excessoR?'var(--purple)':'')}</div>
       <div class="cp-card" style="padding:13px 16px;flex:none;width:240px">${_cpKPI('Valor em estoque',_cpBRL(totV))}</div>
-      ${_cpSelNota('est')}
     </div>`+
     `<div class="cp-card cp-noscroll" style="overflow:auto;max-height:calc(100vh - 320px)"><table class="cp-tbl">
-      <thead><tr>${_cpSelTh('est', L.slice(0,TETO).map(function(o){return o.cod;}))}${_cpTh('est','cod','Cód.')}${_cpTh('est','cat','Categoria')}${_cpTh('est','nome','Item')}${_cpTh('est','valor','Valor',1)}${_cpTh('est','cmu','Custo médio',1)}${_cpTh('est','est','Em estoque',1)}${_cpTh('est','consMed','Consumo/mês',1)}${_cpTh('est','dias','Cobertura',1,'',1)}${_cpTh('est','fim','Termina em','',' ',1)}${_cpTh('est','ultCompra','Últ. compra')}${_cpTh('est','forn','Fornecedor')}${_cpTh('est','semMov','Sem mov.',1)}</tr></thead>
-      <tbody>${linhas||`<tr><td colspan="13">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`}</tbody>
+      <thead><tr>${_cpTh('est','cod','Cód.')}${_cpTh('est','cat','Categoria')}${_cpTh('est','nome','Item')}${_cpTh('est','valor','Valor',1)}${_cpTh('est','cmu','Custo médio',1)}${_cpTh('est','est','Em estoque',1)}${_cpTh('est','consMed','Consumo/mês',1)}${_cpTh('est','dias','Cobertura',1,'',1)}${_cpTh('est','fim','Termina em','',' ',1)}${_cpTh('est','ultCompra','Últ. compra')}${_cpTh('est','forn','Fornecedor')}${_cpTh('est','semMov','Sem mov.',1)}</tr></thead>
+      <tbody>${linhas||`<tr><td colspan="12">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`}</tbody>
     </table></div>
     ${L.length>TETO?`<div style="text-align:center;color:var(--text3);font-size:12.5px;margin-top:10px">Mostrando ${TETO} de ${_cpNum(L.length)} — use a busca para afunilar.</div>`:''}`;
 }
@@ -8997,11 +8992,10 @@ function _cpInsRows(){
 function _cpInsTbodyHTML(){
   return _cpSortArr('ins', _cpInsRows(), {cat:o=>_cpCategoria(o.nome)}, 'nome', 1).map(o=>{
     return `<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(o.cod)}')">
-      ${_cpSelTd('ins', o.cod)}
       <td class="cp-mono">${escapeHTML(o.cod)}</td>
       <td><span class="cp-cattag">${escapeHTML(_cpCategoria(o.nome))}</span></td>
       <td class="cp-item">${escapeHTML(o.nome)}</td>
-    </tr>`;}).join('') || `<tr><td colspan="4">${_cpVazio("Nenhum item para esse filtro.")}</td></tr>`;
+    </tr>`;}).join('') || `<tr><td colspan="3">${_cpVazio("Nenhum item para esse filtro.")}</td></tr>`;
 }
 function _cpCategoria(nome){
   const s=' '+(nome||'').toLowerCase()+' '; const has=(...ks)=>ks.some(k=>s.indexOf(k)>=0);
@@ -9030,8 +9024,8 @@ function _comprasInsumosHTML(){
   const filtrosBtn=`<div class="cp-pop-wrap" style="position:relative">${_cpFiltroIcon('_cpInsFiltrosToggle',_cpCatSel.length)}${catPanel}</div>`;
   const rows=_cpInsRows();
   return _cpTela('Insumos','A ficha de cada item comprado — consumo, preço e fornecedores.',
-    _cpSelNota("ins")+`<div class="cp-card" style="display:inline-block;max-width:100%;vertical-align:top;margin-top:6px"><table class="cp-tbl" style="width:auto">
-      <thead><tr>${_cpSelTh('ins', _cpInsRows().map(function(o){return o.cod;}))}${_cpTh('ins','cod','Cód.')}${_cpTh('ins','cat','Categoria')}${_cpTh('ins','nome','Item')}</tr></thead>
+    `<div class="cp-card" style="display:inline-block;max-width:100%;vertical-align:top"><table class="cp-tbl" style="width:auto">
+      <thead><tr>${_cpTh('ins','cod','Cód.')}${_cpTh('ins','cat','Categoria')}${_cpTh('ins','nome','Item')}</tr></thead>
       <tbody id="cp-ins-tbody">${_cpInsTbodyHTML()}</tbody></table>
       <div style="font-size:10.5px;color:var(--text3);padding:8px 14px;max-width:640px"><span id="cp-ins-count">${rows.length}</span> itens · ordenado por nome. ⚠️ Categoria derivada do nome (o ERP não exporta o campo família).</div>
     </div>`, undefined, filtrosBtn+_cpLupa(_cpInsBuscaAberta,_cpInsBusca,'_cpInsBuscaToggle','_cpInsBuscaInput','cp-ins-busca','Buscar item…'));
@@ -10424,9 +10418,6 @@ function _cpFornSimBaseSet(q){ _cpFornSimBase=q;
   else if(_cpFornSel) renderCompras(); }
 function _cpFornBuscaToggle(){ _cpFornBuscaAberta=!_cpFornBuscaAberta; if(!_cpFornBuscaAberta) _cpFornBusca=''; renderCompras(); if(_cpFornBuscaAberta) setTimeout(function(){ var el=document.getElementById('cp-forn-busca'); if(el) el.focus(); },30); }
 function _cpFornBuscaInput(el){ _cpFornBusca=el.value; const tb=document.getElementById('cp-forn-tbody'); if(tb) tb.innerHTML=_cpFornRowsHTML(); }
-// Ids dos fornecedores exibidos agora (respeita a busca) — alimenta o check "marcar todos".
-function _cpFornVisiveisIds(){ const q=(_cpFornBusca||'').trim().toLowerCase();
-  return _cpFornAgg('I').filter(f=>!q || _cpForn(f.nome).toLowerCase().indexOf(q)>=0).map(f=>f.cod); }
 function _cpFornRowsHTML(){
   const L=_cpFornAgg('I'); const tot=L.reduce((a,f)=>a+f.total,0);
   const q=(_cpFornBusca||'').trim().toLowerCase();
@@ -10440,7 +10431,6 @@ function _cpFornRowsHTML(){
   const out=_cpSortArr('forn', base, null, 'pos', 1).map(r=>{
     const cor=r.abc==='A'?'var(--danger)':(r.abc==='B'?'var(--amber)':'var(--text3)');
     return `<tr class="cp-clic" onclick="_cpAbrirForn('${_cpJs(r.f.cod)}')">
-      ${_cpSelTd('forn', r.f.cod)}
       <td class="cp-n">${r.pos}</td><td class="cp-item">${escapeHTML(r.nome)}</td>
       <td class="cp-n">${_cpBRL(r.total)}</td><td class="cp-n">${r.pct.toFixed(1)}%</td>
       <td class="cp-n">${r.pAcc.toFixed(1)}%</td>
@@ -10483,9 +10473,7 @@ function _cpLimiteMeses(n){ if(!n) return '';
   return y+'-'+String(m+1).padStart(2,'0')+'-'+String(Math.min(base.getDate(),ultDia)).padStart(2,'0'); }
 function _comprasFornecedoresHTML(){
   if(_cpFornSel) return _cpFichaFornHTML(_cpFornSel);
-  // ⚠️ Os KPIs (e só eles) respondem à seleção: se o recorte filtrasse as LINHAS, o fornecedor
-  // desmarcado sumiria da tabela e não haveria como desmarcá-lo. A lista continua inteira.
-  const L=_cpSelFiltra('forn', _cpFornAgg('I'), f=>f.cod);
+  const L=_cpFornAgg('I');
   const tot=L.reduce((a,f)=>a+f.total,0);
   const nA=(()=>{let a=0,n=0;for(const f of L){a+=f.total;n++;if(tot&&a/tot>=0.8)break;}return n;})();
   const periodo=_cpSelPeriodo('Período',`<select onchange="_cpFornSetMeses(this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px">${[[3,'Últimos 3 meses'],[6,'Últimos 6 meses'],[12,'Últimos 12 meses'],[0,'Tudo']].map(o=>`<option value="${o[0]}"${_cpFornMeses===o[0]?' selected':''}>${o[1]}</option>`).join('')}</select>`);
@@ -10496,9 +10484,9 @@ function _comprasFornecedoresHTML(){
       _cpKPI('Gasto total',_cpBRL(tot)),
       _cpKPI('Classe A (80%)',_cpNum(nA),'var(--danger)'),
       _cpKPI('Período',_cpFornMeses?('últimos '+_cpFornMeses+' meses'):'tudo')
-    ])+_cpSelNota('forn')+
+    ])+
     `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
-      <thead><tr>${_cpSelTh('forn', _cpFornVisiveisIds())}${_cpTh('forn','pos','#',1,'',1)}${_cpTh('forn','nome','Fornecedor')}${_cpTh('forn','total','Total',1)}${_cpTh('forn','pct','% do total',1)}${_cpTh('forn','pAcc','% acum.',1,'',1)}<th class="r">Prazo de pagamento</th>${_cpTh('forn','abc','ABC',1,'',1)}${_cpTh('forn','nfs','NFs',1)}${_cpTh('forn','itens','Itens',1)}</tr></thead>
+      <thead><tr>${_cpTh('forn','pos','#',1,'',1)}${_cpTh('forn','nome','Fornecedor')}${_cpTh('forn','total','Total',1)}${_cpTh('forn','pct','% do total',1)}${_cpTh('forn','pAcc','% acum.',1,'',1)}<th class="r">Prazo de pagamento</th>${_cpTh('forn','abc','ABC',1,'',1)}${_cpTh('forn','nfs','NFs',1)}${_cpTh('forn','itens','Itens',1)}</tr></thead>
       <tbody id="cp-forn-tbody">${_cpFornRowsHTML()}</tbody></table></div>`, undefined, acao);
 }
 // Contexto da ficha do fornecedor: histórico completo + os dois recortes de período.
@@ -10906,10 +10894,6 @@ const _CP_OCABERTO=JSON.parse('[{"cod":"20233","nome":"Caixa de Papelão - 100 (
 let _cpOrdBusca='', _cpOrdBuscaAberta=false;
 function _cpOrdBuscaToggle(){ _cpOrdBuscaAberta=!_cpOrdBuscaAberta; if(!_cpOrdBuscaAberta) _cpOrdBusca=''; renderCompras(); if(_cpOrdBuscaAberta) setTimeout(function(){ var el=document.getElementById('cp-ord-busca'); if(el) el.focus(); },30); }
 function _cpOrdBuscaInput(el){ _cpOrdBusca=el.value; const tb=document.getElementById('cp-ord-tbody'); if(tb) tb.innerHTML=_cpOrdRowsHTML(); }
-// Ids das OCs exibidas agora (respeita a busca) — alimenta o check "marcar todos" do cabeçalho.
-function _cpOrdIds(){ const q=(_cpOrdBusca||'').trim().toLowerCase();
-  return _CP_OCABERTO.filter(p=>_cpOcViva(p) && (!q || (p.nome||'').toLowerCase().indexOf(q)>=0 || _cpForn(p.forn).toLowerCase().indexOf(q)>=0 || String(p.cod).indexOf(q)>=0))
-    .map(p=>p.oc+'·'+p.cod); }
 function _cpOrdRowsHTML(){
   const q=(_cpOrdBusca||'').trim().toLowerCase();
   const IDX=_cpIdx();
@@ -10940,7 +10924,6 @@ function _cpOrdRowsHTML(){
       cmpCells=`<td class="cp-mono">—</td><td class="cp-n">—</td><td class="cp-mono">—</td><td class="cp-n">—</td><td class="cp-n">—</td><td class="cp-n">—</td>`;
     }
     return `<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(p.cod)}')">
-      ${_cpSelTd('ord', p.oc+'·'+p.cod)}
       <td class="cp-mono">${escapeHTML(p.cod)}</td>
       <td class="cp-item">${escapeHTML(p.nome)}</td>
       <td class="cp-n">${p.valor?_cpBRL(p.valor):'—'}</td>
@@ -10951,11 +10934,10 @@ function _cpOrdRowsHTML(){
       <td class="cp-mono" style="${atras?'color:var(--danger);font-weight:600':''}">${p.prevista?_cpDt(p.prevista)+(atras?' ⚠':''):'—'}</td>
       ${cmpCells}
     </tr>`;}).join('');
-  return out || `<tr><td colspan="15">${_cpVazio("Nenhuma ordem para esse filtro.")}</td></tr>`;
+  return out || `<tr><td colspan="14">${_cpVazio("Nenhuma ordem para esse filtro.")}</td></tr>`;
 }
 function _comprasOrdensHTML(){
-  // KPIs sobre as OCs vivas — ou só as MARCADAS, quando há seleção.
-  const L=_cpSelFiltra('ord', _CP_OCABERTO.filter(_cpOcViva), p=>p.oc+'·'+p.cod);
+  const L=_CP_OCABERTO.filter(_cpOcViva);
   const valAb=L.reduce((a,p)=>a+(p.valor||0),0);
   const nAtras=L.filter(p=>p.prevista && p.prevista<today).length;
   const nForn=new Set(L.map(p=>p.forn)).size;
@@ -10966,9 +10948,9 @@ function _comprasOrdensHTML(){
       _cpKPI('Valor em aberto',_cpBRL(valAb)),
       _cpKPI('Fornecedores',_cpNum(nForn)),
       _cpKPI('Entrega atrasada',_cpNum(nAtras),nAtras?'var(--danger)':'')
-    ])+_cpSelNota('ord')+
+    ])+
     `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
-      <thead><tr>${_cpSelTh('ord', _cpOrdIds())}${_cpTh('ord','cod','Cód.')}${_cpTh('ord','nome','Item')}${_cpTh('ord','valor','Valor',1)}${_cpTh('ord','qtd','Qtde a receber',1)}${_cpTh('ord','forn','Fornecedor')}<th>Prazo de pagamento</th>${_cpTh('ord','emissao','Emissão','','',-1)}${_cpTh('ord','prevista','Previsão de entrega','','',1)}${_cpTh('ord','antData','Compra anterior','','',-1)}${_cpTh('ord','antVun','Vlr unit.',1)}${_cpTh('ord','ultData','Últ. compra','','',-1)}${_cpTh('ord','ultVun','Vlr unit.',1)}${_cpTh('ord','dif','Variação',1)}${_cpTh('ord','impacto','Impacto R$',1)}</tr></thead>
+      <thead><tr>${_cpTh('ord','cod','Cód.')}${_cpTh('ord','nome','Item')}${_cpTh('ord','valor','Valor',1)}${_cpTh('ord','qtd','Qtde a receber',1)}${_cpTh('ord','forn','Fornecedor')}<th>Prazo de pagamento</th>${_cpTh('ord','emissao','Emissão','','',-1)}${_cpTh('ord','prevista','Previsão de entrega','','',1)}${_cpTh('ord','antData','Compra anterior','','',-1)}${_cpTh('ord','antVun','Vlr unit.',1)}${_cpTh('ord','ultData','Últ. compra','','',-1)}${_cpTh('ord','ultVun','Vlr unit.',1)}${_cpTh('ord','dif','Variação',1)}${_cpTh('ord','impacto','Impacto R$',1)}</tr></thead>
       <tbody id="cp-ord-tbody">${_cpOrdRowsHTML()}</tbody></table></div>`, undefined, acao);
 }
 
@@ -11354,20 +11336,15 @@ const _cpBRL=n=>'R$ '+Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits
 const _cpNum=(n,d)=>Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:d||0,maximumFractionDigits:d||0});
 const _cpDt=iso=>{const p=String(iso).split('-');return p.length===3?(p[2]+'/'+p[1]+'/'+p[0].slice(2)):iso;};
 function _cpHistCorpoHTML(){
-  // ⚠️ TODAS as linhas do filtro continuam na tabela (senão a linha desmarcada sumiria e não haveria
-  // como desmarcá-la); só os KPIs passam a contar o recorte marcado.
-  const TODAS=_cpFiltradas();
-  const idl=l=>l.nf+'·'+l.item[0]+'·'+l.data+'·'+l.tot;
-  const L=_cpSelFiltra('hist', TODAS, idl);
+  const L=_cpFiltradas();
   const totV=L.reduce((a,l)=>a+l.tot,0), totI=L.reduce((a,l)=>a+l.icms,0);
   // O nº da NF é único por EMISSOR, não globalmente — sem o fornecedor na chave, dois fornecedores
   // com a mesma numeração colapsavam em 1 e o KPI subestimava.
   const nNF=new Set(L.map(l=>(l.forn[0]||l.forn[1])+'·'+l.nf)).size, nIt=new Set(L.map(l=>l.item[0])).size;
   // ⚠️ Ordena ANTES de cortar no teto: senão o "mais caro" seria só o mais caro entre as 250 primeiras.
-  const TETO=250, mostrar=_cpSortArr('hist', TODAS, {cod:l=>l.item[0], nome:l=>l.item[1], forn:l=>_cpForn(l.forn[1])}, 'data', -1).slice(0,TETO);
+  const TETO=250, mostrar=_cpSortArr('hist', L, {cod:l=>l.item[0], nome:l=>l.item[1], forn:l=>_cpForn(l.forn[1])}, 'data', -1).slice(0,TETO);
   const linhas=mostrar.map(l=>{
     return `<tr>
-      ${_cpSelTd('hist', idl(l))}
       <td class="cp-mono">${escapeHTML(String(l.nf))}</td>
       <td class="cp-mono">${_cpDt(l.data)}</td>
       <td class="cp-mono">${escapeHTML(String(l.item[0]))}</td>
@@ -11378,14 +11355,14 @@ function _cpHistCorpoHTML(){
       <td class="cp-n">${_cpBRL(l.tot)}</td>
       <td class="cp-n">${_cpNum(l.aliq,0)}%</td>
     </tr>`;}).join('');
-  return `${_cpSelNota('hist')}${_cpKPIcards([_cpKPI("Linhas",_cpNum(L.length)),_cpKPI("Notas fiscais",_cpNum(nNF)),_cpKPI("Itens",_cpNum(nIt)),_cpKPI("Valor total",_cpBRL(totV)),_cpKPI("ICMS",_cpBRL(totI))])}
+  return `${_cpKPIcards([_cpKPI("Linhas",_cpNum(L.length)),_cpKPI("Notas fiscais",_cpNum(nNF)),_cpKPI("Itens",_cpNum(nIt)),_cpKPI("Valor total",_cpBRL(totV)),_cpKPI("ICMS",_cpBRL(totI))])}
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow-x:auto">
       <table class="cp-tbl">
         <thead><tr>
-          ${_cpSelTh('hist', mostrar.map(idl))}${_cpTh('hist','nf','NF')}${_cpTh('hist','data','Data','','',-1)}${_cpTh('hist','cod','Cód.')}${_cpTh('hist','nome','Item')}${_cpTh('hist','forn','Fornecedor')}
+          ${_cpTh('hist','nf','NF')}${_cpTh('hist','data','Data','','',-1)}${_cpTh('hist','cod','Cód.')}${_cpTh('hist','nome','Item')}${_cpTh('hist','forn','Fornecedor')}
           ${_cpTh('hist','vun','Vlr unit.',1)}${_cpTh('hist','qtd','Qtde',1)}${_cpTh('hist','tot','Total',1)}${_cpTh('hist','aliq','ICMS %',1)}
         </tr></thead>
-        <tbody>${linhas||`<tr><td colspan="10">${_cpVazio('Nenhuma linha para esse filtro.')}</td></tr>`}</tbody>
+        <tbody>${linhas||`<tr><td colspan="9">${_cpVazio('Nenhuma linha para esse filtro.')}</td></tr>`}</tbody>
       </table>
     </div>
     ${L.length>TETO?`<div style="text-align:center;color:var(--text3);font-size:12.5px;margin-top:10px">Mostrando as ${TETO} mais recentes de ${_cpNum(L.length)} — use a busca ou o período para afunilar.</div>`:''}`;
