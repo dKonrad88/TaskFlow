@@ -8810,6 +8810,46 @@ function _cpSortArr(tab, arr, acc, defCampo, defDir){
     return String(x).localeCompare(String(y),'pt-BR',{numeric:true})*s.dir;
   });
 }
+// ══════ SELEÇÃO DE LINHAS (check por linha) ══════
+// Marcar linhas p/ analisar só elas: os totais/KPIs da tela passam a contar SÓ o que está marcado.
+// ⚠️ Regra central: NADA marcado = TUDO conta. A tela nasce idêntica ao que era e o check é opt-in —
+// sem isso, abrir a tela mostraria zero em tudo até o usuário marcar alguma coisa.
+// Estado por TABELA e em memória (não vai p/ o localStorage): é recorte de análise do momento, não
+// configuração. Mesmo `tab` do motor de ordenação, p/ as duas coisas falarem da mesma tabela.
+const _cpSelMap={};
+function _cpSelIds(tab){ if(!_cpSelMap[tab]) _cpSelMap[tab]=new Set(); return _cpSelMap[tab]; }
+function _cpSelTem(tab){ return _cpSelIds(tab).size>0; }
+function _cpSelOn(tab,id){ return _cpSelIds(tab).has(String(id)); }
+// Recorte p/ o agregado. `idf` extrai o id de cada linha; sem seleção devolve a lista inteira.
+function _cpSelFiltra(tab, arr, idf){ const S=_cpSelIds(tab); if(!S.size) return arr;
+  return arr.filter(x=>S.has(String(idf(x)))); }
+// Cada tabela registra COMO se repintar: assim marcar não perde o scroll (renderCompras redesenha
+// a tela toda). Sem registro, cai no render geral.
+const _CP_SEL_REPINTA={};
+function _cpSelRepinta(tab){ const fn=_CP_SEL_REPINTA[tab];
+  if(fn && typeof window[fn]==='function') window[fn](); else renderCompras(); }
+function _cpSelToggle(tab,id,ev){ if(ev) ev.stopPropagation();
+  const S=_cpSelIds(tab), k=String(id); if(S.has(k)) S.delete(k); else S.add(k); _cpSelRepinta(tab); }
+// Marca/desmarca os VISÍVEIS (a lista já filtrada por busca): se falta algum, marca todos; senão limpa.
+function _cpSelTodos(tab, ids){ const S=_cpSelIds(tab), L=ids.map(String);
+  if(L.some(i=>!S.has(i))) L.forEach(i=>S.add(i)); else L.forEach(i=>S.delete(i));
+  _cpSelRepinta(tab); }
+function _cpSelLimpar(tab){ _cpSelIds(tab).clear(); _cpSelRepinta(tab); }
+// Célula do check na linha. ⚠️ stopPropagation: a linha inteira costuma ser clicável (abre a ficha).
+function _cpSelTd(tab,id){ return `<td style="text-align:center;width:34px" onclick="event.stopPropagation()">
+  <input type="checkbox" ${_cpSelOn(tab,id)?'checked':''} onclick="_cpSelToggle('${_cpJs(tab)}','${_cpJs(id)}',event)"
+   title="Incluir este item na análise" style="cursor:pointer;width:15px;height:15px;vertical-align:middle"></td>`; }
+// Cabeçalho: marca/desmarca todos os visíveis. `ids` = os das linhas exibidas agora.
+function _cpSelTh(tab, ids){ const S=_cpSelIds(tab);
+  const todos=ids.length>0 && ids.every(i=>S.has(String(i)));
+  return `<th id="cp-selall-${tab}" style="width:34px;text-align:center" title="Marcar/desmarcar todos os visíveis">
+    <input type="checkbox" ${todos?'checked':''} onclick="_cpSelTodos('${_cpJs(tab)}',${JSON.stringify(ids.map(String)).replace(/"/g,'&quot;')})"
+     style="cursor:pointer;width:15px;height:15px;vertical-align:middle"></th>`; }
+// Aviso de que a tela está mostrando um RECORTE — sem ele o total menor parece erro de conta.
+function _cpSelNota(tab){ if(!_cpSelTem(tab)) return '';
+  const n=_cpSelIds(tab).size;
+  return `<span style="font-size:11px;font-weight:600;color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 13%,transparent);border-radius:999px;padding:3px 10px;white-space:nowrap">
+    ${n} ${n===1?'item selecionado':'itens selecionados'} · <button onclick="_cpSelLimpar('${_cpJs(tab)}')" style="border:none;background:none;padding:0;font:inherit;color:inherit;text-decoration:underline;cursor:pointer">limpar</button></span>`; }
 // Valor de STRING dentro de onclick inline: onclick="fn('${_cpJs(v)}')".
 // ⚠️ escapeAttr NÃO serve aqui: ele vira ' em &#39;, mas o parser HTML DECODIFICA a entidade ANTES de
 // o JS ser lido — um apóstrofo no valor fecharia a string mesmo assim. Aqui a aspa e a barra são
@@ -10462,16 +10502,24 @@ function _cpFornItRows(cod){
   if(q) L=L.filter(i=>(i.nome+' '+i.cod).toLowerCase().indexOf(q)>=0);
   return _cpSortArr('fcomp', L, null, 'totA', -1);
 }
+// Repinta só a tabela (tbody + rodapé + o check "todos" do cabeçalho) — marcar/desmarcar não pode
+// redesenhar a tela inteira e perder o scroll no meio de uma seleção de vários itens.
+_CP_SEL_REPINTA.fcomp='_cpFornItRefresh';
 function _cpFornItRefresh(){ if(!_cpFornSel) return;
+  const L=_cpFornItRows(_cpFornSel);
   const tb=document.getElementById('cp-fi-tbody'); if(tb) tb.innerHTML=_cpFornItTbodyHTML(_cpFornSel);
-  const tf=document.getElementById('cp-fi-tfoot'); if(tf) tf.innerHTML=_cpFornItTfootHTML(_cpFornSel); }
+  const tf=document.getElementById('cp-fi-tfoot'); if(tf) tf.innerHTML=_cpFornItTfootHTML(_cpFornSel);
+  const th=document.getElementById('cp-selall-fcomp');
+  if(th) th.outerHTML=_cpSelTh('fcomp', L.map(i=>i.cod));
+  const nt=document.getElementById('cp-selnota-fcomp'); if(nt) nt.innerHTML=_cpSelNota('fcomp'); }
 function _cpFornItTbodyHTML(cod){
   const c=_cpFornCtx(cod); if(!c) return '';
   const L=_cpFornItRows(cod);
-  if(!L.length) return `<tr><td colspan="13">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`;
+  if(!L.length) return `<tr><td colspan="14">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`;
   const un=u=>`<span class="cp-un">${escapeHTML(u||'')}</span>`;
   const vaz='<span style="color:var(--text3)">—</span>';   // item sem compra NAQUELE período
   return L.map(i=>`<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(i.cod)}')">
+      ${_cpSelTd('fcomp', i.cod)}
       <td class="cp-mono">${escapeHTML(i.cod)}</td>
       <td class="cp-item">${escapeHTML(i.nome)}</td>
       <td class="cp-n">${_cpBRL(i.preco)}</td>
@@ -10490,7 +10538,9 @@ function _cpFornItTbodyHTML(cod){
 // (com a busca vazia é o fornecedor inteiro; com busca, só o recorte que interessa à negociação).
 function _cpFornItTfootHTML(cod){
   const c=_cpFornCtx(cod); if(!c) return '';
-  const L=_cpFornItRows(cod);
+  // ⚠️ O rodapé soma o RECORTE em análise: as linhas visíveis (busca) e, se houver marcação, só as
+  // marcadas. É o que dá sentido ao check — marcar 3 itens e ler o total deles.
+  const L=_cpSelFiltra('fcomp', _cpFornItRows(cod), i=>i.cod);
   const sA=L.reduce((a,i)=>a+i.totA,0), sB=L.reduce((a,i)=>a+i.totB,0);
   const qA=L.reduce((a,i)=>a+i.qtdA,0), qB=L.reduce((a,i)=>a+i.qtdB,0);
   const un=c.umsMistas?'<span class="cp-un" title="Este fornecedor entrega em mais de uma unidade — a soma de quantidade é aproximada">un. mistas</span>':`<span class="cp-un">${escapeHTML(c.um||'')}</span>`;
@@ -10498,11 +10548,13 @@ function _cpFornItTfootHTML(cod){
   // de KG com UN não dá preço nenhum. Com unidades mistas a célula fica vazia (a linha de cada item,
   // essa sim, tem preço — lá a unidade é a do próprio item).
   const pmT=(s,q)=>(c.umsMistas||!(q>0))?'' :_cpBRL(s/q);
+  const rot=_cpSelTem('fcomp') ? `Selecionados (${L.length} ${L.length===1?'item':'itens'})`
+          : (_cpFornItBusca ? `Total do filtro (${L.length} ${L.length===1?'item':'itens'})` : `Total (${L.length} itens)`);
   // 🐞 As duas variações do rodapé seguem a ORDEM CRONOLÓGICA (c.aEhNovo), como as linhas acima.
   // Antes o total era _cpVar(sA,sB) fixo: com A=ano passado e B=este ano o rodapé dizia −18,2%
   // enquanto as linhas e o bloco de comparação diziam +22,2% — o mesmo bug já corrigido nas linhas.
   return `<tr style="border-top:2px solid var(--border);font-weight:700">
-      <td colspan="2" style="color:var(--text2)">${_cpFornItBusca?`Total do filtro (${L.length} ${L.length===1?'item':'itens'})`:`Total (${L.length} itens)`}</td>
+      <td colspan="3" style="color:var(--text2)">${rot}</td>
       <td></td>
       <td class="cp-n" style="background:${CP_BG_A}">${_cpNum(qA,0)} ${un}</td>
       <td class="cp-n" style="background:${CP_BG_A}">${pmT(sA,qA)}</td>
@@ -10733,16 +10785,19 @@ function _cpFornItensHTML(cod){
       ${_cpFornUsaAno(o.p)?`<select onchange="_cpFornSetAno('${qual}',this.value)" title="Ano do recorte" class="modal-input" style="width:auto;padding:3px 5px;font-size:11px;font-weight:700">${_cpFornAnos(c.f.linhas).map(y=>`<option value="${y}"${(+o.ano||+today.slice(0,4))===y?' selected':''}>${y}</option>`).join('')}</select>`:''}</span>
       ${datas?`<div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:none;letter-spacing:0;margin-top:3px">${escapeHTML(datas)}</div>`:''}`; };
   return `<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 2px 10px">
-      <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Itens comprados</span>
+      <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Itens comprados</span>
+        <span id="cp-selnota-fcomp">${_cpSelNota('fcomp')}</span>
+      </span>
       ${_cpLupa(_cpFornItBuscaAberta,_cpFornItBusca,'_cpFornItBuscaToggle','_cpFornItBuscaInput','cp-fi-busca','Buscar item…')}
     </div>
     <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead>
-        <tr><th colspan="3"></th>
+        <tr><th colspan="4"></th>
           <th colspan="3" style="text-align:center;background:${CP_BG_A};border-bottom:1px solid var(--border);padding-bottom:7px">Período A<br>${selPer('A')}</th>
           <th colspan="3" style="text-align:center;background:${CP_BG_B};border-bottom:1px solid var(--border);padding-bottom:7px">Período B<br>${selPer('B')}</th>
           <th colspan="2"></th></tr>
-        <tr>${_cpTh('fcomp','cod','Cód.')}${_cpTh('fcomp','nome','Item')}${_cpTh('fcomp','preco','Últ. preço',1)}
+        <tr>${_cpSelTh('fcomp', _cpFornItRows(cod).map(function(i){return i.cod;}))}${_cpTh('fcomp','cod','Cód.')}${_cpTh('fcomp','nome','Item')}${_cpTh('fcomp','preco','Últ. preço',1)}
           ${_cpTh('fcomp','qtdA','Qtde',1,'background:'+CP_BG_A)}${_cpTh('fcomp','pmA','Preço méd.',1,'background:'+CP_BG_A)}${_cpTh('fcomp','totA','Total',1,'background:'+CP_BG_A)}
           ${_cpTh('fcomp','qtdB','Qtde',1,'background:'+CP_BG_B)}${_cpTh('fcomp','pmB','Preço méd.',1,'background:'+CP_BG_B)}${_cpTh('fcomp','totB','Total',1,'background:'+CP_BG_B)}
           ${_cpTh('fcomp','delta','Var. valor',1)}${_cpTh('fcomp','deltaPm','Var. preço',1)}${_cpTh('fcomp','deltaVol','Var. volume',1)}${_cpTh('fcomp','ult','Últ. compra','','',-1)}</tr>
