@@ -10314,6 +10314,12 @@ function _cpVar(novo, velho){ if(!(velho>0)) return null; return (novo-velho)/ve
 function _cpVarPill(v, casas){ if(v==null) return '<span style="color:var(--text3)">—</span>';
   const cor=v>0.5?'var(--blue-mid)':(v<-0.5?'var(--amber)':'var(--text2)');
   return `<span style="color:${cor};font-weight:700">${v>0?'+':''}${_cpNum(v,casas==null?1:casas)}%</span>`; }
+// ⚠️ Variação de PREÇO usa cor de JULGAMENTO (vermelho subiu / verde caiu), ao contrário da pílula
+// acima. Não é incoerência: comprar mais volume não é bom nem ruim, mas pagar mais caro é ruim e
+// pagar menos é bom — é a mesma leitura do gráfico de preço da ficha do item.
+function _cpVarPrecoPill(v, casas){ if(v==null) return '<span style="color:var(--text3)">—</span>';
+  const cor=v>0.5?'var(--danger)':(v<-0.5?'var(--success)':'var(--text2)');
+  return `<span style="color:${cor};font-weight:700">${v>0?'+':''}${_cpNum(v,casas==null?1:casas)}%</span>`; }
 function _cpFornSetView(v){ _cpFornView=v;
   const el=document.getElementById('cp-fornficha-main');
   if(el && _cpFornSel) el.innerHTML=_cpFornMainHTML(_cpFornSel);
@@ -10436,6 +10442,10 @@ function _cpFornCtx(cod){
       // PREÇO MÉDIO PAGO no período (total ÷ qtde), não o preço de uma nota: é o número que se leva
       // pra mesa ("paguei X no ano passado, Y neste"). null quando não houve compra no período.
       pmA: a.qtd>0 ? a.total/a.qtd : null, pmB: b.qtd>0 ? b.total/b.qtd : null,
+      // ⚠️ Variação do PREÇO médio só existe com compra nos DOIS períodos. Sem isso "não comprei"
+      // viraria "−100%" (é o que acontece — corretamente — na variação de VALOR ao lado, onde zerar
+      // a compra É uma queda de 100%; já um preço não "caiu a zero", ele simplesmente não existe).
+      deltaPm: (a.qtd>0 && b.qtd>0) ? (aEhNovo?_cpVar(a.total/a.qtd,b.total/b.qtd):_cpVar(b.total/b.qtd,a.total/a.qtd)) : null,
       delta: aEhNovo?_cpVar(a.total,b.total):_cpVar(b.total,a.total)}; });
   // unidade dos volumes: se o fornecedor entrega em mais de uma UM, somar quantidade é impreciso
   const ums=[...new Set(f.linhas.map(l=>l.um).filter(Boolean))];
@@ -10455,7 +10465,7 @@ function _cpFornItRefresh(){ if(!_cpFornSel) return;
 function _cpFornItTbodyHTML(cod){
   const c=_cpFornCtx(cod); if(!c) return '';
   const L=_cpFornItRows(cod);
-  if(!L.length) return `<tr><td colspan="11">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`;
+  if(!L.length) return `<tr><td colspan="12">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`;
   const un=u=>`<span class="cp-un">${escapeHTML(u||'')}</span>`;
   const vaz='<span style="color:var(--text3)">—</span>';   // item sem compra NAQUELE período
   return L.map(i=>`<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(i.cod)}')">
@@ -10469,6 +10479,7 @@ function _cpFornItTbodyHTML(cod){
       <td class="cp-n" style="background:${CP_BG_B}">${i.pmB!=null?_cpBRL(i.pmB):vaz}</td>
       <td class="cp-n" style="background:${CP_BG_B}">${i.totB?_cpBRL(i.totB):vaz}</td>
       <td class="cp-n">${_cpVarPill(i.delta)}</td>
+      <td class="cp-n">${_cpVarPrecoPill(i.deltaPm)}</td>
       <td class="cp-mono">${_cpDt(i.ult)}</td></tr>`).join('');
 }
 // Rodapé: soma o que está VISÍVEL na tabela — responde "quanto compramos deste conjunto de itens"
@@ -10483,6 +10494,9 @@ function _cpFornItTfootHTML(cod){
   // de KG com UN não dá preço nenhum. Com unidades mistas a célula fica vazia (a linha de cada item,
   // essa sim, tem preço — lá a unidade é a do próprio item).
   const pmT=(s,q)=>(c.umsMistas||!(q>0))?'' :_cpBRL(s/q);
+  // 🐞 As duas variações do rodapé seguem a ORDEM CRONOLÓGICA (c.aEhNovo), como as linhas acima.
+  // Antes o total era _cpVar(sA,sB) fixo: com A=ano passado e B=este ano o rodapé dizia −18,2%
+  // enquanto as linhas e o bloco de comparação diziam +22,2% — o mesmo bug já corrigido nas linhas.
   return `<tr style="border-top:2px solid var(--border);font-weight:700">
       <td colspan="2" style="color:var(--text2)">${_cpFornItBusca?`Total do filtro (${L.length} ${L.length===1?'item':'itens'})`:`Total (${L.length} itens)`}</td>
       <td></td>
@@ -10492,7 +10506,9 @@ function _cpFornItTfootHTML(cod){
       <td class="cp-n" style="background:${CP_BG_B}">${_cpNum(qB,0)} ${un}</td>
       <td class="cp-n" style="background:${CP_BG_B}">${pmT(sB,qB)}</td>
       <td class="cp-n" style="background:${CP_BG_B}">${_cpBRL(sB)}</td>
-      <td class="cp-n">${_cpVarPill(_cpVar(sA,sB))}</td><td></td></tr>`;
+      <td class="cp-n">${_cpVarPill(c.aEhNovo?_cpVar(sA,sB):_cpVar(sB,sA))}</td>
+      <td class="cp-n">${(c.umsMistas||!(qA>0)||!(qB>0))?'':_cpVarPrecoPill(c.aEhNovo?_cpVar(sA/qA,sB/qB):_cpVar(sB/qB,sA/qA))}</td>
+      <td></td></tr>`;
 }
 // ══════ SIMULADOR "e se eu aumentar o volume X%" ══════
 // Base = o período A, ao preço médio praticado nele. É a alavanca que se leva pra mesa:
@@ -10719,7 +10735,7 @@ function _cpFornItensHTML(cod){
         <tr>${_cpTh('fcomp','cod','Cód.')}${_cpTh('fcomp','nome','Item')}${_cpTh('fcomp','preco','Últ. preço',1)}
           ${_cpTh('fcomp','qtdA','Qtde',1,'background:'+CP_BG_A)}${_cpTh('fcomp','pmA','Preço méd.',1,'background:'+CP_BG_A)}${_cpTh('fcomp','totA','Total',1,'background:'+CP_BG_A)}
           ${_cpTh('fcomp','qtdB','Qtde',1,'background:'+CP_BG_B)}${_cpTh('fcomp','pmB','Preço méd.',1,'background:'+CP_BG_B)}${_cpTh('fcomp','totB','Total',1,'background:'+CP_BG_B)}
-          ${_cpTh('fcomp','delta','Var. %',1)}${_cpTh('fcomp','ult','Últ. compra','','',-1)}</tr>
+          ${_cpTh('fcomp','delta','Var. valor',1)}${_cpTh('fcomp','deltaPm','Var. preço',1)}${_cpTh('fcomp','ult','Últ. compra','','',-1)}</tr>
       </thead>
       <tbody id="cp-fi-tbody">${_cpFornItTbodyHTML(cod)}</tbody>
       <tfoot id="cp-fi-tfoot">${_cpFornItTfootHTML(cod)}</tfoot></table></div>`;
