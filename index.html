@@ -10718,10 +10718,15 @@ function _cpFornItensHTML(cod){
   // ⚠️ Os seletores vivem DENTRO do cabeçalho de grupo da tabela, sobre as próprias colunas — só
   // assim ficam mesmo centralizados em cima do bloco a que pertencem. No cabeçalho do card eles
   // flutuavam à direita e não batiam com coluna nenhuma (Diego).
+  // Abaixo dos seletores, o período CONCRETO ("01/01/25 – 02/09/25") — o preset sozinho ("Ano todo",
+  // "Mesmo período de 2025") não diz até que dia soma, e o ano corrente para em HOJE. Mesma informação
+  // que o card de comparação já traz; sem ela a tabela obriga a voltar lá para saber o que está vendo.
   const selPer=(qual)=>{ const o=(qual==='A')?_cpFornPerA:_cpFornPerB;
+    const datas=_cpFornRangeDatas(qual==='A'?c.rA:c.rB, c.f.linhas);
     return `<span style="display:inline-flex;gap:4px;align-items:center;justify-content:center;margin-top:4px;text-transform:none;letter-spacing:0">
       <select onchange="_cpFornSetPer('${qual}',this.value)" class="modal-input" style="width:auto;max-width:168px;padding:3px 6px;font-size:11px;font-weight:600">${_cpFornPerOptions(o.p,_cpFornAnoYoy(c,qual))}</select>
-      ${_cpFornUsaAno(o.p)?`<select onchange="_cpFornSetAno('${qual}',this.value)" title="Ano do recorte" class="modal-input" style="width:auto;padding:3px 5px;font-size:11px;font-weight:700">${_cpFornAnos(c.f.linhas).map(y=>`<option value="${y}"${(+o.ano||+today.slice(0,4))===y?' selected':''}>${y}</option>`).join('')}</select>`:''}</span>`; };
+      ${_cpFornUsaAno(o.p)?`<select onchange="_cpFornSetAno('${qual}',this.value)" title="Ano do recorte" class="modal-input" style="width:auto;padding:3px 5px;font-size:11px;font-weight:700">${_cpFornAnos(c.f.linhas).map(y=>`<option value="${y}"${(+o.ano||+today.slice(0,4))===y?' selected':''}>${y}</option>`).join('')}</select>`:''}</span>
+      ${datas?`<div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:none;letter-spacing:0;margin-top:3px">${escapeHTML(datas)}</div>`:''}`; };
   return `<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 2px 10px">
       <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Itens comprados</span>
       ${_cpLupa(_cpFornItBuscaAberta,_cpFornItBusca,'_cpFornItBuscaToggle','_cpFornItBuscaInput','cp-fi-busca','Buscar item…')}
