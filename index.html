@@ -8858,6 +8858,28 @@ function _cpSelNota(tab){ if(!_cpSelTem(tab)) return '';
   const n=_cpSelIds(tab).size;
   return `<span style="font-size:11px;font-weight:600;color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 13%,transparent);border-radius:999px;padding:3px 10px;white-space:nowrap">
     ${n} ${n===1?'item selecionado':'itens selecionados'} · <button onclick="_cpSelLimpar('${_cpJs(tab)}')" style="border:none;background:none;padding:0;font:inherit;color:inherit;text-decoration:underline;cursor:pointer">limpar</button></span>`; }
+// ══════ COR POR PERCENTUAL (alíquotas) ══════
+// Mesma alíquota = mesma cor; alíquotas diferentes = cores diferentes. Serve p/ bater o olho na
+// coluna de imposto e achar na hora a linha que fugiu do padrão (uma NF a 17% no meio de 12%).
+// ⚠️ A cor sai da POSIÇÃO do valor entre os valores DISTINTOS da tabela, em ordem — NÃO de um hash
+// do número: hash colide, e dois percentuais diferentes com a mesma cor quebrariam a regra pedida.
+// Consequência aceita: a cor é relativa À TABELA (12% pode ser a 1ª cor num item e a 2ª noutro);
+// o que vale é a leitura dentro do que está na tela.
+const _CP_PCT_CORES=['var(--text2)','var(--blue-mid)','var(--amber)','var(--purple)','var(--success)','var(--danger)'];
+function _cpPctMapa(vals){
+  const d=[...new Set((vals||[]).filter(v=>v!=null && isFinite(v)))].sort((a,b)=>a-b);
+  const m={}; d.forEach((v,i)=>{ m[v]=_CP_PCT_CORES[i % _CP_PCT_CORES.length]; });
+  return m;
+}
+// ⚠️ Alíquota ÚNICA na tabela não ganha cor nem negrito: destacar quando não há o que comparar só
+// sugere um alerta que não existe. A cor aparece a partir do 2º valor distinto.
+function _cpPctCel(v, mapa, casas){
+  if(v==null || !isFinite(v)) return '<span style="color:var(--text3)">—</span>';
+  const uma=Object.keys(mapa||{}).length<2;
+  const cor=uma?'var(--text2)':((mapa&&mapa[v])||'var(--text2)');
+  const c=(casas==null)?(Number.isInteger(v)?0:2):casas;
+  return `<span style="color:${cor};font-weight:${uma?'400':'700'}" title="Alíquota ${_cpNum(v,c)}%">${_cpNum(v,c)}%</span>`;
+}
 // Valor de STRING dentro de onclick inline: onclick="fn('${_cpJs(v)}')".
 // ⚠️ escapeAttr NÃO serve aqui: ele vira ' em &#39;, mas o parser HTML DECODIFICA a entidade ANTES de
 // o JS ser lido — um apóstrofo no valor fecharia a string mesmo assim. Aqui a aspa e a barra são
@@ -9750,12 +9772,16 @@ function _cpIndicadoresCard(o){
 }
 function _cpUltimasComprasCard(o){
   const um=o.um||'';
-  const linhas=_cpSortArr('ultc', o.compras, {forn:l=>_cpForn(l.forn[1]), net:l=>((l.vun&&l.aliq!=null)?l.vun*(1-l.aliq/100):null)}, 'data', -1).slice(0,10).map(l=>`<tr>
+  // ⚠️ O mapa de cores sai das linhas EXIBIDAS (as 10 do recorte), não de todo o histórico: pintar
+  // por um conjunto maior deixaria cores "faltando" na tabela e a leitura ficaria arbitrária.
+  const mostra=_cpSortArr('ultc', o.compras, {forn:l=>_cpForn(l.forn[1]), net:l=>((l.vun&&l.aliq!=null)?l.vun*(1-l.aliq/100):null)}, 'data', -1).slice(0,10);
+  const mapaICMS=_cpPctMapa(mostra.map(l=>l.aliq));
+  const linhas=mostra.map(l=>`<tr>
     <td class="cp-mono">${_cpDt(l.data)}</td>
     <td style="white-space:normal;line-height:1.3;font-weight:600;color:var(--text);min-width:120px" title="${escapeAttr(_cpForn(l.forn[1]))}">${escapeHTML(_cpForn(l.forn[1]))}</td>
     <td class="cp-n">${_cpBRL(l.vun)}</td>
     <td class="cp-n">${_cpNum(l.qtd,0)} <span class="cp-un">${escapeHTML(um)}</span></td>
-    <td class="cp-n">${l.aliq!=null?_cpNum(l.aliq,0)+'%':'—'}</td>
+    <td class="cp-n">${_cpPctCel(l.aliq, mapaICMS)}</td>
     <td class="cp-n">${(l.vun&&l.aliq!=null)?_cpBRL(l.vun*(1-l.aliq/100)):'—'}</td>
     <td class="cp-n" style="color:var(--text3)">—</td>
   </tr>`).join('') || `<tr><td colspan="7">${_cpVazio("Sem compras.")}</td></tr>`;
