@@ -12098,8 +12098,8 @@ function _ofcSetTitulo(v){ _ofcEnsure().titulo=v; }
 // Digitação do título: guarda + atualiza a SUGESTÃO em-lugar (sem rebuild — senão o texto some e o clique se perde).
 function _ofcTituloInput(v){ _ofcEnsure().titulo=v; const s=_ofcSugestao(v); const el=document.getElementById('ofc-sug'); if(el) el.innerHTML = s?`<i class="ti ti-sparkles" style="color:var(--blue-mid)"></i> ${escapeHTML(s.why)}`:''; }
 function _ofcSetIntencao(k){ _ofcEnsure(); _ofc.intencao=(_ofc.intencao===k?'':k); renderOficina(); }
+// Título é OPCIONAL: clicar num método SEMPRE abre o wizard (pode nomear depois). Antes exigia título e travava.
 function _ofcUsar(metKey){ const tEl=document.getElementById('ofc-titulo'); const tit=((tEl?tEl.value:(_ofc&&_ofc.titulo))||'').trim();
-  if(!tit){ toast&&toast('Descreva primeiro o que você quer trabalhar.'); if(tEl) tEl.focus(); return; }
   _ofcEnsure(); _ofc.titulo=tit; _ofc.metodo=metKey; _ofc.step=0; _ofc.concluido=false; _ofcView='wizard'; _ofcUpsert(); renderOficina(); setTimeout(_ofcFocus,40); }
 function _ofcFocus2(){ const el=document.getElementById('ofc-titulo'); if(el){ try{ el.focus(); const n=el.value.length; el.setSelectionRange(n,n); }catch(e){} } }
 function _ofcResp(k,v){ if(_ofc){ _ofc.respostas[k]=v; } }
@@ -12201,7 +12201,7 @@ function _ofcWizardHTML(){
   return `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
       <button onclick="_ofcHome()" title="Voltar" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:6px 10px;font-family:inherit;font-size:12px"><i class="ti ti-arrow-left"></i></button>
-      <div><div style="font-size:15px;font-weight:800;color:var(--text)"><i class="ti ${m.ic}" style="color:var(--blue-mid)"></i> ${escapeHTML(m.nome)}</div><div style="font-size:12px;color:var(--text3)">${escapeHTML(_ofc.titulo||'')}</div></div>
+      <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:800;color:var(--text)"><i class="ti ${m.ic}" style="color:var(--blue-mid)"></i> ${escapeHTML(m.nome)}</div><input value="${escapeAttr(_ofc.titulo||'')}" oninput="_ofcSetTitulo(this.value)" placeholder="dê um nome a esta análise (opcional)" style="border:none;background:transparent;color:var(--text3);font-size:12px;font-family:inherit;padding:2px 0;width:100%;max-width:460px;border-bottom:1px dashed transparent;outline:none" onfocus="this.style.borderBottomColor='var(--border)'" onblur="this.style.borderBottomColor='transparent'"></div>
     </div>
     ${feitos}
     <div style="border:1px solid var(--blue-mid);border-radius:12px;padding:15px 16px;background:color-mix(in srgb,var(--blue-mid) 5%,var(--card))">
