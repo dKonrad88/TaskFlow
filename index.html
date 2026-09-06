@@ -12091,10 +12091,17 @@ function _ofcSugestao(t){ t=(t||'').toLowerCase();
 }
 
 // ── Ações do fluxo ─────────────────────────────────────────────────────────────────────────────
+// Garante um rascunho em memória SEM re-renderizar (evita apagar o que a pessoa está digitando).
+function _ofcEnsure(){ if(!_ofc) _ofc={id:'ofc_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), titulo:'', intencao:'', metodo:'', respostas:{}, step:0, concluido:false}; return _ofc; }
 function _ofcNovo(){ _ofc={id:'ofc_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), titulo:'', intencao:'', metodo:'', respostas:{}, step:0, concluido:false}; _ofcView='home'; renderOficina(); setTimeout(()=>{ const el=document.getElementById('ofc-titulo'); if(el) el.focus(); },30); }
-function _ofcSetTitulo(v){ if(_ofc) _ofc.titulo=v; }
-function _ofcSetIntencao(k){ if(!_ofc) return; _ofc.intencao=(_ofc.intencao===k?'':k); renderOficina(); }
-function _ofcUsar(metKey){ if(!_ofc){ _ofcNovo(); } const tEl=document.getElementById('ofc-titulo'); if(tEl) _ofc.titulo=tEl.value; if(!_ofc.titulo || !_ofc.titulo.trim()){ toast&&toast('Descreva primeiro o que você quer trabalhar.'); if(tEl) tEl.focus(); return; } _ofc.metodo=metKey; _ofc.step=0; _ofc.concluido=false; _ofcView='wizard'; _ofcUpsert(); renderOficina(); setTimeout(_ofcFocus,40); }
+function _ofcSetTitulo(v){ _ofcEnsure().titulo=v; }
+// Digitação do título: guarda + atualiza a SUGESTÃO em-lugar (sem rebuild — senão o texto some e o clique se perde).
+function _ofcTituloInput(v){ _ofcEnsure().titulo=v; const s=_ofcSugestao(v); const el=document.getElementById('ofc-sug'); if(el) el.innerHTML = s?`<i class="ti ti-sparkles" style="color:var(--blue-mid)"></i> ${escapeHTML(s.why)}`:''; }
+function _ofcSetIntencao(k){ _ofcEnsure(); _ofc.intencao=(_ofc.intencao===k?'':k); renderOficina(); }
+function _ofcUsar(metKey){ const tEl=document.getElementById('ofc-titulo'); const tit=((tEl?tEl.value:(_ofc&&_ofc.titulo))||'').trim();
+  if(!tit){ toast&&toast('Descreva primeiro o que você quer trabalhar.'); if(tEl) tEl.focus(); return; }
+  _ofcEnsure(); _ofc.titulo=tit; _ofc.metodo=metKey; _ofc.step=0; _ofc.concluido=false; _ofcView='wizard'; _ofcUpsert(); renderOficina(); setTimeout(_ofcFocus,40); }
+function _ofcFocus2(){ const el=document.getElementById('ofc-titulo'); if(el){ try{ el.focus(); const n=el.value.length; el.setSelectionRange(n,n); }catch(e){} } }
 function _ofcResp(k,v){ if(_ofc){ _ofc.respostas[k]=v; } }
 function _ofcAvancar(){ if(!_ofc) return; const m=_ofcMet(_ofc.metodo); if(!m) return;
   // guarda o valor do campo atual antes de avançar
@@ -12169,8 +12176,8 @@ function _ofcHomeHTML(){
   return `
     <div style="margin-bottom:18px">
       <div style="font-size:13px;color:var(--text2);margin-bottom:9px">O que você quer <b>planejar, entender ou melhorar</b>?</div>
-      <input id="ofc-titulo" value="${escapeAttr(editando.titulo||'')}" oninput="_ofcSetTitulo(this.value)" onchange="renderOficina()" placeholder="Ex.: melhorar nosso estande no evento de corrida" style="width:100%;box-sizing:border-box;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:14.5px;color:var(--text);font-family:inherit">
-      ${sug?`<div style="font-size:11.5px;color:var(--text3);margin-top:7px"><i class="ti ti-sparkles" style="color:var(--blue-mid)"></i> ${escapeHTML(sug.why)}</div>`:''}
+      <input id="ofc-titulo" value="${escapeAttr(editando.titulo||'')}" oninput="_ofcTituloInput(this.value)" placeholder="Ex.: melhorar nosso estande no evento de corrida" style="width:100%;box-sizing:border-box;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:14.5px;color:var(--text);font-family:inherit">
+      <div id="ofc-sug" style="font-size:11.5px;color:var(--text3);margin-top:7px;min-height:15px">${sug?`<i class="ti ti-sparkles" style="color:var(--blue-mid)"></i> ${escapeHTML(sug.why)}`:''}</div>
     </div>
     <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:8px">Qual o seu objetivo?</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">${chips}</div>
