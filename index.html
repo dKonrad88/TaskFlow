@@ -11978,6 +11978,262 @@ function renderProcessos(){
     ${corpo}
   </div>`;
 }
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// OFICINA DE IDEIAS (aba Gestão) — espaço para pensar/planejar/melhorar usando MÉTODOS guiados.
+// A pessoa traz uma situação → escolhe (ou é sugerido) um método → responde passo a passo → resumo.
+// Arquitetura: MÉTODO = DADO (config). Um motor único (_ofc*) renderiza qualquer método a partir da config.
+// Dados: taskflow_oficina (localStorage → espelha no Supabase como qualquer chave taskflow_*).
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+// Intenções (families) — alimentam o "recomendador" da 1ª tela.
+const OFC_INTENCOES = [
+  {k:'entender', lab:'Entender', ic:'ti-zoom-scan', dica:'Diagnosticar uma situação ou um problema'},
+  {k:'decidir',  lab:'Decidir',  ic:'ti-arrows-split', dica:'Escolher entre opções'},
+  {k:'melhorar', lab:'Melhorar', ic:'ti-trending-up', dica:'Rodar um ciclo de melhoria'},
+  {k:'revisar',  lab:'Revisar',  ic:'ti-history', dica:'Olhar pra algo que já aconteceu'}
+];
+
+// Cada método: passos (perguntas guiadas). `multi` = textarea (várias linhas). O ÚLTIMO passo costuma
+// ser a síntese/ação — assim o resumo já sai acionável. `resumo` opcional = visual próprio (ex.: SWOT em grade).
+const OFC_METODOS = [
+  {
+    key:'swot', nome:'SWOT (FOFA)', ic:'ti-layout-grid', intencao:['entender'],
+    linha:'Forças, Fraquezas, Oportunidades e Ameaças.',
+    quando:'Entender a situação atual de algo (produto, evento, área) antes de decidir os próximos passos.',
+    passos:[
+      {k:'f', label:'Forças', dica:'Interno e positivo: o que você faz bem, vantagens, o que deu certo.', ph:'Ex.: marca conhecida, equipe engajada, bom produto…', multi:true},
+      {k:'w', label:'Fraquezas', dica:'Interno e a melhorar: limitações, o que atrapalha por dentro.', ph:'Ex.: verba curta, estande pequeno, pouca gente…', multi:true},
+      {k:'o', label:'Oportunidades', dica:'Externo e a favor: tendências, parcerias, brechas do mercado.', ph:'Ex.: evento cresceu, público novo, clima bom…', multi:true},
+      {k:'a', label:'Ameaças', dica:'Externo e contra: concorrência, custos, riscos que não controlamos.', ph:'Ex.: concorrente ao lado, chuva, preço subindo…', multi:true},
+      {k:'acoes', label:'Ações prioritárias', dica:'Cruze: use FORÇAS p/ pegar OPORTUNIDADES e blindar AMEAÇAS; corrija FRAQUEZAS que travam. Liste as 3 principais.', ph:'1) …\n2) …\n3) …', multi:true}
+    ],
+    resumo:(r)=>{
+      const q=(t,v,cor)=>`<div style="background:color-mix(in srgb, ${cor} 8%, var(--card));border:1px solid color-mix(in srgb, ${cor} 26%, var(--border));border-radius:11px;padding:12px 14px">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:${cor};margin-bottom:6px">${t}</div>
+        <div style="font-size:13px;color:var(--text);white-space:pre-wrap;line-height:1.5">${escapeHTML(v||'—')}</div></div>`;
+      return `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+        ${q('Forças',r.f,'var(--success)')}${q('Fraquezas',r.w,'var(--danger)')}
+        ${q('Oportunidades',r.o,'var(--blue-mid)')}${q('Ameaças',r.a,'var(--amber)')}
+      </div>`;
+    }
+  },
+  {
+    key:'5porques', nome:'5 Porquês', ic:'ti-help-circle', intencao:['entender'],
+    linha:'Perguntar “por quê?” até achar a causa raiz.',
+    quando:'Um problema aconteceu e você quer a CAUSA de verdade, não só o sintoma.',
+    passos:[
+      {k:'problema', label:'Qual é o problema?', dica:'Descreva o fato, objetivo e mensurável.', ph:'Ex.: vendemos 30% menos que a meta no estande.'},
+      {k:'p1', label:'Por quê? (1)', dica:'Por que isso aconteceu?', ph:'Porque…'},
+      {k:'p2', label:'Por quê? (2)', dica:'E por que ISSO acontece?', ph:'Porque…'},
+      {k:'p3', label:'Por quê? (3)', dica:'Continue puxando o fio.', ph:'Porque…'},
+      {k:'p4', label:'Por quê? (4)', dica:'Quase lá.', ph:'Porque…'},
+      {k:'p5', label:'Por quê? (5) — causa raiz', dica:'Aqui costuma estar a causa que resolve de vez.', ph:'Porque…'},
+      {k:'acao', label:'Ação para atacar a causa raiz', dica:'O que muda para o problema não voltar?', ph:'Ex.: treinar equipe em abordagem + kit de degustação maior.', multi:true}
+    ],
+    resumo:(r)=>{
+      const chain=['p1','p2','p3','p4','p5'].map((k,i)=> r[k]?`<div style="display:flex;gap:8px;align-items:flex-start;padding:4px 0"><span style="font-size:11px;font-weight:800;color:var(--blue-mid);min-width:20px">${i+1}º</span><span style="font-size:13px;color:var(--text);white-space:pre-wrap;line-height:1.5">${escapeHTML(r[k])}</span></div>`:'').join('');
+      return `<div style="background:var(--card);border:1px solid var(--border);border-radius:11px;padding:12px 14px;margin-bottom:12px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;color:var(--text3);margin-bottom:4px">Problema</div><div style="font-size:13.5px;color:var(--text);white-space:pre-wrap;line-height:1.5">${escapeHTML(r.problema||'—')}</div></div>
+        <div style="border-left:2px solid var(--blue-mid);padding-left:12px;margin-bottom:12px">${chain||'<span style="color:var(--text3)">—</span>'}</div>`;
+    }
+  },
+  {
+    key:'pdca', nome:'PDCA', ic:'ti-refresh', intencao:['melhorar'],
+    linha:'Planejar → Fazer → Checar → Agir (ciclo de melhoria).',
+    quando:'Você quer melhorar um processo/resultado de forma organizada e repetível.',
+    passos:[
+      {k:'plan', label:'Planejar — o que e por quê', dica:'Qual a meta e o plano? Por que fazer?', ph:'Ex.: aumentar degustações no estande em 50% para gerar mais venda.', multi:true},
+      {k:'do', label:'Fazer — o que foi (ou será) feito', dica:'As ações concretas executadas.', ph:'Ex.: 2 pessoas só na degustação, banner na entrada…', multi:true},
+      {k:'check', label:'Checar — resultado vs esperado', dica:'O que os números/fatos mostraram?', ph:'Ex.: degustações +40%, mas conversão em venda caiu.', multi:true},
+      {k:'act', label:'Agir — padronizar ou ajustar', dica:'O que manter como padrão e o que corrigir na próxima?', ph:'Ex.: manter 2 pessoas; adicionar oferta na hora da degustação.', multi:true}
+    ]
+  },
+  {
+    key:'retro', nome:'Retrospectiva (Manter / Melhorar / Parar)', ic:'ti-clipboard-check', intencao:['revisar'],
+    linha:'Olhar pra algo que já aconteceu e tirar ações.',
+    quando:'Depois de um evento, projeto ou período — aprender e melhorar a próxima vez.',
+    passos:[
+      {k:'contexto', label:'O que foi?', dica:'Uma linha de contexto.', ph:'Ex.: estande no evento de corrida de 04/05.'},
+      {k:'manter', label:'Manter (o que deu certo)', dica:'O que funcionou e deve continuar.', ph:'Ex.: localização do estande, degustação…', multi:true},
+      {k:'melhorar', label:'Melhorar (o que dá pra fazer melhor)', dica:'O que foi ok mas pode evoluir.', ph:'Ex.: fila na degustação, sinalização…', multi:true},
+      {k:'parar', label:'Parar (o que não vale)', dica:'O que desperdiçou tempo/dinheiro e deve sair.', ph:'Ex.: brinde que ninguém quis…', multi:true},
+      {k:'acoes', label:'Ações para a próxima', dica:'Traduza em passos concretos (quem/quando se souber).', ph:'1) …\n2) …', multi:true}
+    ]
+  },
+  {
+    key:'proscontras', nome:'Prós e Contras', ic:'ti-scale', intencao:['decidir'],
+    linha:'Pesar os dois lados antes de decidir.',
+    quando:'Você precisa decidir entre fazer ou não algo (ou entre duas opções).',
+    passos:[
+      {k:'decisao', label:'Qual é a decisão?', dica:'A pergunta que precisa de um sim/não ou uma escolha.', ph:'Ex.: patrocinar de novo o evento de corrida em 2027?'},
+      {k:'pros', label:'Prós (a favor)', dica:'O que ganha se fizer.', ph:'Ex.: marca exposta, vendas no dia, público-alvo…', multi:true},
+      {k:'contras', label:'Contras (contra)', dica:'Custos, riscos, o que perde.', ph:'Ex.: custo alto, fim de semana da equipe…', multi:true},
+      {k:'decisaoFinal', label:'Decisão + porquê', dica:'Depois de pesar, qual a escolha e a razão principal?', ph:'Ex.: sim, mas negociar cota menor — o retorno de marca compensa.', multi:true}
+    ]
+  }
+];
+function _ofcMet(key){ return OFC_METODOS.find(m=>m.key===key); }
+
+// ── Estado do wizard em memória + persistência (histórico) ────────────────────────────────────
+let _ofc=null;              // análise sendo criada/editada
+let _ofcView='home';        // 'home' | 'wizard' | 'resumo'
+function _ofcAll(){ try{ return safeJSON('taskflow_oficina',[])||[]; }catch(e){ return []; } }
+function _ofcSaveAll(a){ try{ safeSetItem('taskflow_oficina', JSON.stringify(a)); }catch(e){} }
+function _ofcUpsert(){ if(!_ofc) return; const a=_ofcAll(); const i=a.findIndex(x=>x.id===_ofc.id); _ofc.atualizadoEm=Date.now(); if(i>=0) a[i]=JSON.parse(JSON.stringify(_ofc)); else { _ofc.criadoEm=Date.now(); a.unshift(JSON.parse(JSON.stringify(_ofc))); } _ofcSaveAll(a); }
+function _ofcDel(id){ if(!confirm('Excluir esta análise?')) return; _ofcSaveAll(_ofcAll().filter(x=>x.id!==id)); if(_ofc&&_ofc.id===id){ _ofc=null; _ofcView='home'; } renderOficina(); }
+
+// Sugestão leve por palavra-chave (protótipo; o "de verdade" fica no botão Pedir ajuda ao Claude).
+function _ofcSugestao(t){ t=(t||'').toLowerCase();
+  if(/\b(depois|passou|passado|aconteceu|evento|resultado do|retrospec)/.test(t)) return {int:'revisar', why:'parece algo que já aconteceu — uma retrospectiva ajuda a tirar ações.'};
+  if(/\b(decid|escolh|vale a pena|ou nao|ou não|comprar ou|entre)/.test(t)) return {int:'decidir', why:'parece uma escolha — prós e contras clareia.'};
+  if(/\b(problema|erro|falha|caiu|por que|porque|defeito|reclama)/.test(t)) return {int:'entender', why:'parece um problema — vale achar a causa (5 Porquês) ou mapear (SWOT).'};
+  if(/\b(melhor|aumentar|otimiz|processo|reduzir|ciclo)/.test(t)) return {int:'melhorar', why:'parece melhoria contínua — PDCA organiza.'};
+  return null;
+}
+
+// ── Ações do fluxo ─────────────────────────────────────────────────────────────────────────────
+function _ofcNovo(){ _ofc={id:'ofc_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), titulo:'', intencao:'', metodo:'', respostas:{}, step:0, concluido:false}; _ofcView='home'; renderOficina(); setTimeout(()=>{ const el=document.getElementById('ofc-titulo'); if(el) el.focus(); },30); }
+function _ofcSetTitulo(v){ if(_ofc) _ofc.titulo=v; }
+function _ofcSetIntencao(k){ if(!_ofc) return; _ofc.intencao=(_ofc.intencao===k?'':k); renderOficina(); }
+function _ofcUsar(metKey){ if(!_ofc){ _ofcNovo(); } const tEl=document.getElementById('ofc-titulo'); if(tEl) _ofc.titulo=tEl.value; if(!_ofc.titulo || !_ofc.titulo.trim()){ toast&&toast('Descreva primeiro o que você quer trabalhar.'); if(tEl) tEl.focus(); return; } _ofc.metodo=metKey; _ofc.step=0; _ofc.concluido=false; _ofcView='wizard'; _ofcUpsert(); renderOficina(); setTimeout(_ofcFocus,40); }
+function _ofcResp(k,v){ if(_ofc){ _ofc.respostas[k]=v; } }
+function _ofcAvancar(){ if(!_ofc) return; const m=_ofcMet(_ofc.metodo); if(!m) return;
+  // guarda o valor do campo atual antes de avançar
+  const cur=document.getElementById('ofc-campo'); if(cur){ _ofc.respostas[m.passos[_ofc.step].k]=cur.value; }
+  if(_ofc.step < m.passos.length-1){ _ofc.step++; _ofcUpsert(); renderOficina(); setTimeout(_ofcFocus,40); }
+  else { _ofc.concluido=true; _ofcView='resumo'; _ofcUpsert(); renderOficina(); }
+}
+function _ofcIrPasso(i){ if(!_ofc) return; const cur=document.getElementById('ofc-campo'); const m=_ofcMet(_ofc.metodo); if(cur&&m){ _ofc.respostas[m.passos[_ofc.step].k]=cur.value; } _ofc.step=i; _ofcView='wizard'; _ofcUpsert(); renderOficina(); setTimeout(_ofcFocus,40); }
+function _ofcVerResumo(){ if(!_ofc) return; const cur=document.getElementById('ofc-campo'); const m=_ofcMet(_ofc.metodo); if(cur&&m){ _ofc.respostas[m.passos[_ofc.step].k]=cur.value; } _ofc.concluido=true; _ofcView='resumo'; _ofcUpsert(); renderOficina(); }
+function _ofcAbrir(id){ const r=_ofcAll().find(x=>x.id===id); if(!r) return; _ofc=JSON.parse(JSON.stringify(r)); _ofcView=_ofc.concluido?'resumo':'wizard'; renderOficina(); setTimeout(_ofcFocus,40); }
+function _ofcHome(){ const cur=document.getElementById('ofc-campo'); const m=_ofc&&_ofcMet(_ofc.metodo); if(cur&&m){ _ofc.respostas[m.passos[_ofc.step].k]=cur.value; _ofcUpsert(); } _ofc=null; _ofcView='home'; renderOficina(); }
+function _ofcFocus(){ const el=document.getElementById('ofc-campo'); if(el){ try{ el.focus(); }catch(e){} } }
+function _ofcCampoKey(e){ if(e.key==='Enter' && !e.shiftKey && e.target && e.target.tagName!=='TEXTAREA'){ e.preventDefault(); _ofcAvancar(); } }
+
+// Texto plano do resumo (p/ copiar e p/ o prompt do Claude).
+function _ofcResumoTexto(){ if(!_ofc) return ''; const m=_ofcMet(_ofc.metodo); if(!m) return '';
+  let s=`【 ${m.nome} 】 ${_ofc.titulo||''}\n\n`;
+  m.passos.forEach(p=>{ s+=`• ${p.label}:\n${(_ofc.respostas[p.k]||'—')}\n\n`; });
+  return s.trim();
+}
+function _ofcCopiar(){ const t=_ofcResumoTexto(); _ofcClip(t, 'Resumo copiado.'); }
+function _ofcPedirClaude(){ const m=_ofcMet(_ofc.metodo);
+  const p=`Sou da Klain (fábrica de doces/salgados). Usei o método ${m?m.nome:''} na Oficina de Ideias para trabalhar: "${_ofc.titulo||''}".\n\nAqui está o que preenchi:\n\n${_ofcResumoTexto()}\n\nMe ajude a: (1) apontar pontos cegos ou respostas fracas; (2) sugerir melhorias concretas; (3) propor as 3 próximas ações mais importantes. Seja direto e crítico.`;
+  _ofcClip(p, 'Prompt copiado — cole no Claude.');
+}
+function _ofcClip(txt, ok){ try{ navigator.clipboard.writeText(txt).then(()=>toast&&toast(ok),()=>_ofcClipFallback(txt,ok)); }catch(e){ _ofcClipFallback(txt,ok); } }
+function _ofcClipFallback(txt,ok){ try{ const ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast&&toast(ok); }catch(e){ toast&&toast('Não consegui copiar.'); } }
+
+// ── Render ───────────────────────────────────────────────────────────────────────────────────
+function renderOficina(){
+  const main=document.getElementById('task-container'); if(!main) return;
+  const _st=document.getElementById('stats-box'); if(_st) _st.style.display='none';
+  const _pr=document.getElementById('progress-box'); if(_pr) _pr.style.display='none';
+  let corpo;
+  if(_ofcView==='wizard' && _ofc) corpo=_ofcWizardHTML();
+  else if(_ofcView==='resumo' && _ofc) corpo=_ofcResumoHTML();
+  else corpo=_ofcHomeHTML();
+  main.innerHTML=`<div style="padding:14px 4px 48px;max-width:920px;margin:0 auto">${corpo}</div>`;
+}
+
+function _ofcHomeHTML(){
+  const editando=_ofc||{titulo:'',intencao:'',metodo:''};
+  const sug=_ofcSugestao(editando.titulo);
+  const intSel=editando.intencao;
+  // chips de intenção
+  const chips=OFC_INTENCOES.map(it=>{ const on=intSel===it.k, hint=sug&&sug.int===it.k;
+    return `<button onclick="_ofcSetIntencao('${it.k}')" title="${escapeAttr(it.dica)}" style="display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:9px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;border:1px solid ${on?'var(--blue-mid)':(hint?'color-mix(in srgb,var(--blue-mid) 45%,var(--border))':'var(--border)')};background:${on?'color-mix(in srgb,var(--blue-mid) 13%,transparent)':'var(--card)'};color:${on?'var(--blue-mid)':'var(--text2)'}"><i class="ti ${it.ic}"></i>${it.lab}${hint&&!on?' <span style="font-size:9px;background:var(--blue-mid);color:#fff;border-radius:6px;padding:1px 5px">sugerido</span>':''}</button>`;
+  }).join('');
+  // métodos (filtra por intenção se escolhida)
+  const mets=OFC_METODOS.filter(m=>!intSel || m.intencao.includes(intSel));
+  const cards=mets.map(m=>`<div style="border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--card);display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:9px"><i class="ti ${m.ic}" style="font-size:20px;color:var(--blue-mid)"></i><span style="font-size:14.5px;font-weight:800;color:var(--text)">${escapeHTML(m.nome)}</span></div>
+      <div style="font-size:12.5px;color:var(--text2);line-height:1.5">${escapeHTML(m.linha)}</div>
+      <div style="font-size:11.5px;color:var(--text3);line-height:1.5"><i class="ti ti-info-circle" style="font-size:12px"></i> ${escapeHTML(m.quando)}</div>
+      <div style="margin-top:2px"><button onclick="_ofcUsar('${m.key}')" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Usar ${escapeHTML(m.nome.split(' (')[0])} →</button></div>
+    </div>`).join('');
+  const emBreve=`<div style="grid-column:1/-1;font-size:11.5px;color:var(--text3);padding:2px 2px">Em breve: Planejar (SMART/5W2H, hoje no app Metas) · Comunicar (LICOR, Feedback SBI) · mais métodos.</div>`;
+  // histórico
+  const hist=_ofcAll();
+  const histHTML = hist.length?`<div style="margin-top:26px">
+    <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:10px">Suas análises</div>
+    <div style="display:flex;flex-direction:column;gap:8px">${hist.map(r=>{ const m=_ofcMet(r.metodo);
+      return `<div style="display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:10px;padding:10px 13px;background:var(--card)">
+        <i class="ti ${m?m.ic:'ti-bulb'}" style="font-size:17px;color:var(--blue-mid);flex-shrink:0"></i>
+        <div style="flex:1;min-width:0;cursor:pointer" onclick="_ofcAbrir('${r.id}')">
+          <div style="font-size:13.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(r.titulo||'(sem título)')}</div>
+          <div style="font-size:11px;color:var(--text3)">${m?escapeHTML(m.nome):''} · ${r.concluido?'concluído':'rascunho'} · ${_ofcData(r.atualizadoEm||r.criadoEm)}</div>
+        </div>
+        <button onclick="_ofcAbrir('${r.id}')" style="background:none;border:1px solid var(--border);border-radius:7px;color:var(--text2);cursor:pointer;font-size:11.5px;font-weight:600;padding:5px 10px;font-family:inherit">Abrir</button>
+        <button onclick="_ofcDel('${r.id}')" title="Excluir" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px"><i class="ti ti-trash" style="font-size:15px"></i></button>
+      </div>`; }).join('')}</div></div>`:'';
+  return `
+    <div style="margin-bottom:18px">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:9px">O que você quer <b>planejar, entender ou melhorar</b>?</div>
+      <input id="ofc-titulo" value="${escapeAttr(editando.titulo||'')}" oninput="_ofcSetTitulo(this.value)" onchange="renderOficina()" placeholder="Ex.: melhorar nosso estande no evento de corrida" style="width:100%;box-sizing:border-box;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:14.5px;color:var(--text);font-family:inherit">
+      ${sug?`<div style="font-size:11.5px;color:var(--text3);margin-top:7px"><i class="ti ti-sparkles" style="color:var(--blue-mid)"></i> ${escapeHTML(sug.why)}</div>`:''}
+    </div>
+    <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:8px">Qual o seu objetivo?</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">${chips}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">${cards}${emBreve}</div>
+    ${histHTML}`;
+}
+
+function _ofcWizardHTML(){
+  const m=_ofcMet(_ofc.metodo); if(!m) return '';
+  const N=m.passos.length, step=Math.min(_ofc.step,N-1), p=m.passos[step];
+  // passos já respondidos (compactos, clicáveis)
+  const feitos=m.passos.slice(0,step).map((pp,i)=>`<div onclick="_ofcIrPasso(${i})" style="cursor:pointer;border:1px solid var(--border);border-radius:9px;padding:8px 12px;background:var(--card);margin-bottom:7px">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);display:flex;justify-content:space-between"><span>${escapeHTML(pp.label)}</span><i class="ti ti-pencil" style="font-size:12px"></i></div>
+      <div style="font-size:12.5px;color:var(--text);white-space:pre-wrap;line-height:1.45;margin-top:2px">${escapeHTML(_ofc.respostas[pp.k]||'—')}</div>
+    </div>`).join('');
+  const val=_ofc.respostas[p.k]||'';
+  const campo = p.multi
+    ? `<textarea id="ofc-campo" oninput="_ofcResp('${p.k}',this.value)" placeholder="${escapeAttr(p.ph||'')}" rows="4" style="width:100%;box-sizing:border-box;background:var(--card);border:1px solid var(--blue-mid);border-radius:10px;padding:11px 13px;font-size:14px;color:var(--text);font-family:inherit;resize:vertical;line-height:1.5">${escapeHTML(val)}</textarea>`
+    : `<input id="ofc-campo" value="${escapeAttr(val)}" oninput="_ofcResp('${p.k}',this.value)" onkeydown="_ofcCampoKey(event)" placeholder="${escapeAttr(p.ph||'')}" style="width:100%;box-sizing:border-box;background:var(--card);border:1px solid var(--blue-mid);border-radius:10px;padding:11px 13px;font-size:14px;color:var(--text);font-family:inherit">`;
+  const ultimo=step===N-1;
+  return `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <button onclick="_ofcHome()" title="Voltar" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:6px 10px;font-family:inherit;font-size:12px"><i class="ti ti-arrow-left"></i></button>
+      <div><div style="font-size:15px;font-weight:800;color:var(--text)"><i class="ti ${m.ic}" style="color:var(--blue-mid)"></i> ${escapeHTML(m.nome)}</div><div style="font-size:12px;color:var(--text3)">${escapeHTML(_ofc.titulo||'')}</div></div>
+    </div>
+    ${feitos}
+    <div style="border:1px solid var(--blue-mid);border-radius:12px;padding:15px 16px;background:color-mix(in srgb,var(--blue-mid) 5%,var(--card))">
+      <div style="font-size:11px;font-weight:700;color:var(--blue-mid);margin-bottom:2px">PASSO ${step+1} DE ${N}</div>
+      <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px">${escapeHTML(p.label)}</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.5">${escapeHTML(p.dica||'')}</div>
+      ${campo}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:10px">
+        <span style="font-size:11px;color:var(--text3)">${p.multi?'Shift+Enter quebra linha':'Enter avança'}</span>
+        <button onclick="_ofcAvancar()" style="background:var(--blue-mid);color:#fff;border:none;border-radius:9px;padding:9px 20px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit">${ultimo?'Ver resumo ✓':'Próximo →'}</button>
+      </div>
+    </div>`;
+}
+
+function _ofcResumoHTML(){
+  const m=_ofcMet(_ofc.metodo); if(!m) return '';
+  const corpo = m.resumo ? m.resumo(_ofc.respostas) : '';
+  // seções genéricas (sempre; a resumo() especial fica ACIMA como destaque visual)
+  const secoes = m.passos.map(p=>`<div style="border-bottom:1px solid var(--border);padding:11px 0">
+      <div style="font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);margin-bottom:4px">${escapeHTML(p.label)}</div>
+      <div style="font-size:13.5px;color:var(--text);white-space:pre-wrap;line-height:1.55">${escapeHTML(_ofc.respostas[p.k]||'—')}</div>
+    </div>`).join('');
+  return `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <button onclick="_ofcHome()" title="Voltar" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;padding:6px 10px;font-family:inherit;font-size:12px"><i class="ti ti-arrow-left"></i></button>
+      <div style="flex:1"><div style="font-size:16px;font-weight:800;color:var(--text)">${escapeHTML(_ofc.titulo||'')}</div><div style="font-size:12px;color:var(--text3)"><i class="ti ${m.ic}" style="color:var(--blue-mid)"></i> ${escapeHTML(m.nome)} · resumo</div></div>
+    </div>
+    ${corpo?`<div style="margin-bottom:16px">${corpo}</div>`:''}
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px 16px 12px">${secoes}</div>
+    <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:16px">
+      <button onclick="_ofcIrPasso(0)" style="background:none;border:1px solid var(--border);border-radius:9px;color:var(--text2);cursor:pointer;padding:9px 15px;font-size:12.5px;font-weight:600;font-family:inherit"><i class="ti ti-pencil"></i> Editar</button>
+      <button onclick="_ofcCopiar()" style="background:none;border:1px solid var(--border);border-radius:9px;color:var(--text2);cursor:pointer;padding:9px 15px;font-size:12.5px;font-weight:600;font-family:inherit"><i class="ti ti-copy"></i> Copiar resumo</button>
+      <button onclick="_ofcPedirClaude()" style="background:color-mix(in srgb,var(--blue-mid) 13%,transparent);border:1px solid var(--blue-mid);border-radius:9px;color:var(--blue-mid);cursor:pointer;padding:9px 15px;font-size:12.5px;font-weight:700;font-family:inherit"><i class="ti ti-sparkles"></i> Pedir ajuda ao Claude</button>
+      <button onclick="_ofcNovo()" style="background:none;border:1px solid var(--border);border-radius:9px;color:var(--text2);cursor:pointer;padding:9px 15px;font-size:12.5px;font-weight:600;font-family:inherit"><i class="ti ti-plus"></i> Nova análise</button>
+    </div>`;
+}
+
+function _ofcData(ts){ if(!ts) return ''; try{ const d=new Date(ts); return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'}); }catch(e){ return ''; } }
+
 function _procVazio(m){ return `<div style="grid-column:1/-1;color:var(--text3);font-size:13px;padding:24px;text-align:center">${escapeHTML(m)}</div>`; }
 function _procBibliotecaHTML(){
   const a=_procLoad(), runs=_procRuns();
@@ -13515,7 +13771,8 @@ function renderSidebar(){
     navSubItem('processos','ti-route','Processos') +
     navSubItem('reunioes','ti-microphone','Reuniões', {badge: reunHoje||null, badgeClass:'warn'}) +
     navSubItem('anotacoes','ti-notes','Notas') +
-    navSubItem('rotinas','ti-repeat','Rotinas')
+    navSubItem('rotinas','ti-repeat','Rotinas') +
+    navSubItem('oficina','ti-bulb','Oficina de Ideias')
   , 'var(--blue-mid)');
 
   // ── ÁREAS: separador + cada área é um GRUPO que expande inline (chama o setter da área,
@@ -18615,9 +18872,9 @@ function setTab(tab,el){
   if(el && el.classList) el.classList.add('active');
   renderSidebar();
   // Mapa de títulos e subtítulos para cada aba
-  const titles={dash:'📊 Painel',rotinas:'🔁 Rotinas',hoje:'📅 Tarefas de Hoje','minhas-tarefas':'👤 Minhas Tarefas',solicitadas:'📤 Solicitadas',equipe:'👥 Tarefas da Equipe',entrada:'📥 Organizar',someday:'💤 Lembrete',atrasadas:'🚨 Tarefas Atrasadas',amanha:'🌅 Tarefas de Amanhã',semana:'📆 Tarefas da Semana',pendentes:'⏰ Tarefas Pendentes','prox-semana':'📆 Próxima Semana',concluidas:'✅ Concluídas',todas:'📋 Todas as Tarefas',pessoas:'👤 Por Pessoa',anotacoes:'📝 Anotações',agenda:'🗓️ Agenda',projetos:'📁 Projetos',['projetos-pro']:'📁 Projetos',processos:'🧩 Processos',reunioes:'📅 Reuniões',analise:'📊 Análise',lixeira:'🗑️ Lixeira',ajuda:'❓ Ajuda',mural:'💡 Mural de Ideias'};
+  const titles={dash:'📊 Painel',rotinas:'🔁 Rotinas',hoje:'📅 Tarefas de Hoje','minhas-tarefas':'👤 Minhas Tarefas',solicitadas:'📤 Solicitadas',equipe:'👥 Tarefas da Equipe',entrada:'📥 Organizar',someday:'💤 Lembrete',atrasadas:'🚨 Tarefas Atrasadas',amanha:'🌅 Tarefas de Amanhã',semana:'📆 Tarefas da Semana',pendentes:'⏰ Tarefas Pendentes','prox-semana':'📆 Próxima Semana',concluidas:'✅ Concluídas',todas:'📋 Todas as Tarefas',pessoas:'👤 Por Pessoa',anotacoes:'📝 Anotações',agenda:'🗓️ Agenda',projetos:'📁 Projetos',['projetos-pro']:'📁 Projetos',processos:'🧩 Processos',reunioes:'📅 Reuniões',analise:'📊 Análise',lixeira:'🗑️ Lixeira',ajuda:'❓ Ajuda',mural:'💡 Mural de Ideias',oficina:'🧰 Oficina de Ideias'};
   const _fmtTab=x=>x.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit'}).replace('.','');
-  const subs={dash:'Visão geral de todas as suas tarefas',rotinas:'Tarefas que se repetem automaticamente',hoje:'Foque no que importa agora','minhas-tarefas':'Tarefas onde você é o executor',solicitadas:'Tarefas que você pediu a outras pessoas — e confirmações pendentes',equipe:'Atrasadas e de hoje — o que precisa da sua atenção agora',entrada:'Tarefas sem executor — classifique com calma',someday:'Tarefas sem urgência — sem data definida',atrasadas:'Tarefas com data vencida ainda não concluídas',amanha:'O que vem pela frente',semana:`Visão semanal — ${_fmtTab(_mon)} a ${_fmtTab(_sun)}`,pendentes:'Tarefas ainda não concluídas','prox-semana':`Visão da próxima semana — ${_fmtTab(_proxMon)} a ${_fmtTab(_proxSun)}`,concluidas:'Ótimo trabalho!',todas:'Visão completa',pessoas:'Selecione uma pessoa para filtrar',anotacoes:'Blocos rápidos para ideias, reuniões, lembretes e decisões',agenda:'Visualização por dias, estilo Notion',projetos:'Gerencie projetos e equipas',['projetos-pro']:'Projetos com fases, setores e tarefas vinculadas',processos:'Mini-fluxos reutilizáveis — rode avulso ou dentro de um projeto',reunioes:'Hub de reuniões — histórico, pauta e ATA',analise:'Pontualidade e gargalos — pessoal, equipe e reuniões',lixeira:'Itens excluídos — recuperáveis em 30 dias',ajuda:'Tudo o que você precisa saber para usar o sistema',mural:'Ideias e melhorias — vote, comente e acompanhe'};
+  const subs={dash:'Visão geral de todas as suas tarefas',rotinas:'Tarefas que se repetem automaticamente',hoje:'Foque no que importa agora','minhas-tarefas':'Tarefas onde você é o executor',solicitadas:'Tarefas que você pediu a outras pessoas — e confirmações pendentes',equipe:'Atrasadas e de hoje — o que precisa da sua atenção agora',entrada:'Tarefas sem executor — classifique com calma',someday:'Tarefas sem urgência — sem data definida',atrasadas:'Tarefas com data vencida ainda não concluídas',amanha:'O que vem pela frente',semana:`Visão semanal — ${_fmtTab(_mon)} a ${_fmtTab(_sun)}`,pendentes:'Tarefas ainda não concluídas','prox-semana':`Visão da próxima semana — ${_fmtTab(_proxMon)} a ${_fmtTab(_proxSun)}`,concluidas:'Ótimo trabalho!',todas:'Visão completa',pessoas:'Selecione uma pessoa para filtrar',anotacoes:'Blocos rápidos para ideias, reuniões, lembretes e decisões',agenda:'Visualização por dias, estilo Notion',projetos:'Gerencie projetos e equipas',['projetos-pro']:'Projetos com fases, setores e tarefas vinculadas',processos:'Mini-fluxos reutilizáveis — rode avulso ou dentro de um projeto',reunioes:'Hub de reuniões — histórico, pauta e ATA',analise:'Pontualidade e gargalos — pessoal, equipe e reuniões',lixeira:'Itens excluídos — recuperáveis em 30 dias',ajuda:'Tudo o que você precisa saber para usar o sistema',mural:'Ideias e melhorias — vote, comente e acompanhe',oficina:'Métodos guiados para pensar, planejar e melhorar'};
   document.getElementById('tab-title').textContent=titles[tab];
   document.getElementById('tab-title').style.display='';
   document.getElementById('tab-sub').style.display='';
@@ -18641,10 +18898,10 @@ function setTab(tab,el){
   const groupSel=document.getElementById('task-group-sel');
   if(groupSel) groupSel.style.display=tab==='pessoas'?'none':'';
   const viewToggle=document.getElementById('view-toggle');
-  if(viewToggle) viewToggle.classList.toggle('show',!['pessoas','anotacoes','agenda','projetos','projetos-pro','dash','rotinas','configuracoes','ajuda','reunioes','lixeira','entrada','someday','solicitadas','equipe'].includes(tab));
+  if(viewToggle) viewToggle.classList.toggle('show',!['pessoas','anotacoes','agenda','projetos','projetos-pro','dash','rotinas','configuracoes','ajuda','reunioes','lixeira','entrada','someday','solicitadas','equipe','oficina'].includes(tab));
   document.getElementById('note-add-btn').style.display='none'; // movido para sub-navbar
   const _taskBtn=document.getElementById('task-add-btn');
-  const _showTask=sidebarPersonId||!['dash','rotinas','projetos','projetos-pro','pessoas','anotacoes','agenda','reunioes','lixeira','ajuda','configuracoes','solicitadas','equipe'].includes(tab);
+  const _showTask=sidebarPersonId||!['dash','rotinas','projetos','projetos-pro','pessoas','anotacoes','agenda','reunioes','lixeira','ajuda','configuracoes','solicitadas','equipe','oficina'].includes(tab);
   // GUILHERME V3: 'minhas-tarefas' já está incluído por exclusão (não está na lista de tabs sem botão)
   if(_taskBtn) _taskBtn.style.display=_showTask?'':'none';
   closeTaskModalDirect();
@@ -19737,7 +19994,7 @@ function render(){
   updateStats();
   updateViewToggle();
   // sidebar pessoa tem prioridade sobre qualquer aba — exceto dash, rotinas e anotações
-  if(sidebarPersonId&&!['dash','rotinas','anotacoes','agenda','projetos'].includes(currentTab)){
+  if(sidebarPersonId&&!['dash','rotinas','anotacoes','agenda','projetos','oficina'].includes(currentTab)){
     renderPersonView(sidebarPersonId);
     return;
   }
@@ -19756,6 +20013,7 @@ function render(){
   if(currentTab==='pessoas'){renderFilterView('pessoas');return;}
   if(currentTab==='anotacoes'){renderNotes();return;}
   if(currentTab==='processos'){renderProcessos();return;}
+  if(currentTab==='oficina'){renderOficina();return;}
   // GUILHERME V3 (mai/2026): "Projetos" antigo foi removido — redireciona para Projetos Pro.
   if(currentTab==='projetos'){ currentTab='projetos-pro'; renderProjetosPro(); return; }
   if(currentTab==='projetos-pro'){renderProjetosPro();return;}
