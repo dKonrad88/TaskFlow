@@ -10827,8 +10827,7 @@ function _cpFornResumoHTML(cod){
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">
       ${graf('Volume comprado por mês', umLbl, (S.length?_cpBarChart(S,'qtd',v=>_cpNum(v,0)+' '+(um||''),undefined,_cpAbrevN,72):_cpVazio('Sem histórico.'))+notaParcial)}
       ${graf('Valor comprado por mês','R$ por mês', (S.length?_cpBarChart(S,'valor',v=>_cpBRL(v),undefined,_cpAbrevN,72):_cpVazio('Sem histórico.'))+notaParcial)}
-    </div>
-    ${_cpFornCompHTML(cod)}`;
+    </div>`;
 }
 function _cpFornCompararHTML(cod){
   return `${_cpFornCompHTML(cod)}
