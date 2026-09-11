@@ -10222,6 +10222,7 @@ let _cpFornPerA={p:'yoy', ano:null, de:'', ate:''};        // período A — mes
 let _cpFornPerB={p:'ano', ano:null, de:'', ate:''};        // período B — este ano (ano=null → o corrente)
 let _cpFornSimPct='5';                                     // simulador "e se eu aumentar X%"
 let _cpFornSimBase='B';   // período base do simulador — B (o presente), já que A passou a ser o passado
+let _cpFornCmpAEsc=false, _cpFornCmpBEsc=false, _cpFornCmpAReady=false, _cpFornCmpBReady=false, _cpFornCmpMostrar=false; // wizard da aba Comparar
 // ⚠️ O RECORTE e o ANO são DOIS controles (Diego): "1º trimestre" + ano 2025 de um lado e o mesmo
 // recorte + 2026 do outro resolve a comparação em 2 cliques. Antes os trimestres/semestres eram
 // fixos no ano corrente e comparar com o ano anterior exigia "Escolher datas".
@@ -10427,6 +10428,26 @@ function _cpFornSetPer(qual,v){ const o=(qual==='A')?_cpFornPerA:_cpFornPerB; o.
 function _cpFornSetAno(qual,v){ const o=(qual==='A')?_cpFornPerA:_cpFornPerB; o.ano=+v||null; renderCompras(); }
 function _cpFornSetPerData(qual,campo,val){ const o=(qual==='A')?_cpFornPerA:_cpFornPerB; o[campo]=(val && val.slice(0,4)>='2000')?val:''; }
 function _cpFornSetPerDataCommit(qual,campo,val){ _cpFornSetPerData(qual,campo,val); renderCompras(); }
+// Fluxo guiado da aba Comparar. Os setters normais acima continuam sendo usados depois que o
+// resultado aparece e também na aba Itens; estes setters cuidam apenas da revelação A → B → resultado.
+function _cpFornCmpSetPer(qual,v){
+  const o=(qual==='A')?_cpFornPerA:_cpFornPerB; o.p=v; o.de=''; o.ate='';
+  if(qual==='A'){ _cpFornCmpAEsc=true; _cpFornCmpBEsc=false; _cpFornCmpBReady=false; }
+  else _cpFornCmpBEsc=true;
+  if(_cpFornUsaAno(v)) o.ano=null; // o ano é a próxima pergunta, não vem respondido
+  const pronto=(v!=='custom'&&!_cpFornUsaAno(v));
+  if(qual==='A') _cpFornCmpAReady=pronto; else _cpFornCmpBReady=pronto;
+  _cpFornCmpMostrar=false; renderCompras();
+  setTimeout(function(){ const el=document.getElementById(_cpFornUsaAno(v)?('cp-cmp-'+qual.toLowerCase()+'-ano'):(qual==='A'&&_cpFornCmpAReady?'cp-cmp-b':(qual==='B'&&_cpFornCmpBReady?'cp-cmp-run':''))); if(el) el.focus(); },30);
+}
+function _cpFornCmpSetAno(qual,v){ const o=(qual==='A')?_cpFornPerA:_cpFornPerB; o.ano=+v||null; if(qual==='A') _cpFornCmpAReady=!!o.ano; else _cpFornCmpBReady=!!o.ano; _cpFornCmpMostrar=false; renderCompras(); setTimeout(function(){ const el=document.getElementById(qual==='A'?'cp-cmp-b':'cp-cmp-run'); if(el) el.focus(); },30); }
+function _cpFornCmpSetData(qual,campo,val){
+  const o=(qual==='A')?_cpFornPerA:_cpFornPerB; o[campo]=(val&&val.slice(0,4)>='2000')?val:'';
+  const pronto=!!(o.de&&o.ate&&o.de<=o.ate); if(qual==='A') _cpFornCmpAReady=pronto; else _cpFornCmpBReady=pronto;
+}
+function _cpFornCmpSetDataCommit(qual,campo,val){ _cpFornCmpSetData(qual,campo,val); _cpFornCmpMostrar=false; renderCompras(); setTimeout(function(){ const pronto=qual==='A'?_cpFornCmpAReady:_cpFornCmpBReady, el=document.getElementById(pronto?(qual==='A'?'cp-cmp-b':'cp-cmp-run'):('cp-cmp-'+qual.toLowerCase()+'-'+(campo==='de'?'ate':'de'))); if(el) el.focus(); },30); }
+function _cpFornCmpRun(){ if(!_cpFornCmpAReady||!_cpFornCmpBReady) return; _cpFornCmpMostrar=true; renderCompras(); window.scrollTo(0,0); }
+function _cpFornCmpNova(){ _cpFornCmpAEsc=false; _cpFornCmpBEsc=false; _cpFornCmpAReady=false; _cpFornCmpBReady=false; _cpFornCmpMostrar=false; _cpFornSimPct='5'; _cpFornSimBase='B'; renderCompras(); setTimeout(function(){ const el=document.getElementById('cp-cmp-a'); if(el) el.focus(); },30); }
 function _cpFornSimSet(v){ _cpFornSimPct=v; const el=document.getElementById('cp-forn-sim-out'); if(el && _cpFornSel) el.innerHTML=_cpFornSimOutHTML(_cpFornSel); }
 // Troca o período base do simulador (A ou B) — re-renderiza só o card, p/ não perder o scroll.
 function _cpFornSimBaseSet(q){ _cpFornSimBase=q;
@@ -10460,7 +10481,7 @@ function _cpFornRowsHTML(){
 // ⚠️ Zera _cpItemSel: sem isso, sair da ficha de um item p/ a ficha do fornecedor e de lá abrir outro
 // item deixava _cpItemOrigem preso na tela de onde o PRIMEIRO item foi aberto — e o "Voltar" levava
 // pra tela errada (a regra é "Voltar volta p/ a tela de ORIGEM").
-function _cpAbrirForn(cod){ _cpFornSel=cod; _cpFornView='resumo'; _cpItemSel=null; _cpItemOrigem='fornecedores'; _cpFornItBusca=''; _cpFornItBuscaAberta=false; try{document.body.classList.remove('cp-focus');}catch(e){} comprasView='fornecedores'; renderSidebar(); renderCompras(); window.scrollTo(0,0); }
+function _cpAbrirForn(cod){ _cpFornSel=cod; _cpFornView='resumo'; _cpItemSel=null; _cpItemOrigem='fornecedores'; _cpFornItBusca=''; _cpFornItBuscaAberta=false; _cpFornCmpAEsc=false; _cpFornCmpBEsc=false; _cpFornCmpAReady=false; _cpFornCmpBReady=false; _cpFornCmpMostrar=false; try{document.body.classList.remove('cp-focus');}catch(e){} comprasView='fornecedores'; renderSidebar(); renderCompras(); window.scrollTo(0,0); }
 function _cpVoltarForns(){
   // Se o fornecedor estiver expandido, sair da ficha também precisa encerrar o modo tela cheia.
   // Sem isso a lista volta dentro de #task-container fixo e continua escondendo cabeçalho/sidebar.
@@ -10892,8 +10913,27 @@ function _cpFornResumoHTML(cod){
       <div style="display:flex;flex-direction:column;gap:12px">${_cpFornResumoOCs(c,ocs)}${_cpFornResumoUltimas(c)}</div>
     </div>`;
 }
+function _cpFornCmpWizardHTML(cod){
+  const c=_cpFornCtx(cod); if(!c) return '';
+  const etapa=!_cpFornCmpAReady?1:(!_cpFornCmpBReady?2:3);
+  const passos=['Período A','Período B','Resultado'].map((t,i)=>{
+    const n=i+1, feito=n<etapa, ativo=n===etapa;
+    return `<div style="display:flex;align-items:center;gap:7px;color:${ativo?'var(--blue-mid)':(feito?'var(--success)':'var(--text3)')}"><span style="width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;background:${ativo?'color-mix(in srgb,var(--blue-mid) 14%,transparent)':(feito?'color-mix(in srgb,var(--success) 14%,transparent)':'var(--bg2)')};border:1px solid ${ativo?'var(--blue-mid)':(feito?'var(--success)':'var(--border)')}">${feito?'<i class="ti ti-check" style="font-size:13px"></i>':n}</span><b style="font-size:11.5px">${t}</b></div>`;
+  }).join('<span style="width:34px;height:1px;background:var(--border)"></span>');
+  const escolha=qual=>{
+    const o=qual==='A'?_cpFornPerA:_cpFornPerB, escolheu=qual==='A'?_cpFornCmpAEsc:_cpFornCmpBEsc, pronto=qual==='A'?_cpFornCmpAReady:_cpFornCmpBReady;
+    const anos=_cpFornAnos(c.f.linhas);
+    const opts=`<option value=""${escolheu?'':' selected'} disabled>— escolha o período ${qual} —</option>`+_CP_FORN_PER.map(p=>`<option value="${p[0]}"${escolheu&&o.p===p[0]?' selected':''}>${p[1]}</option>`).join('');
+    const ano=escolheu&&_cpFornUsaAno(o.p)?`<div style="margin-top:11px"><label style="display:block;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Qual ano?</label><select id="cp-cmp-${qual.toLowerCase()}-ano" onchange="_cpFornCmpSetAno('${qual}',this.value)" class="modal-input" style="width:100%;font-size:13px;font-weight:650"><option value=""${o.ano?'':' selected'} disabled>— escolha o ano —</option>${anos.map(y=>`<option value="${y}"${+o.ano===y?' selected':''}>${y}</option>`).join('')}</select></div>`:'';
+    const datas=escolheu&&o.p==='custom'?`<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:11px"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">De<input id="cp-cmp-${qual.toLowerCase()}-de" type="date" value="${escapeAttr(o.de||'')}" oninput="_cpFornCmpSetData('${qual}','de',this.value)" onblur="_cpFornCmpSetDataCommit('${qual}','de',this.value)" class="modal-input" style="display:block;width:100%;margin-top:5px;font-size:12px"></label><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Até<input id="cp-cmp-${qual.toLowerCase()}-ate" type="date" value="${escapeAttr(o.ate||'')}" oninput="_cpFornCmpSetData('${qual}','ate',this.value)" onblur="_cpFornCmpSetDataCommit('${qual}','ate',this.value)" class="modal-input" style="display:block;width:100%;margin-top:5px;font-size:12px"></label></div>`:'';
+    return `<div style="background:${qual==='A'?CP_BG_A:CP_BG_B};border:1px solid ${pronto?'color-mix(in srgb,var(--success) 45%,var(--border))':'var(--border)'};border-radius:11px;padding:15px 16px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:9px"><span style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Período ${qual}</span>${pronto?'<span style="font-size:10px;font-weight:750;color:var(--success)"><i class="ti ti-check"></i> definido</span>':''}</div><select id="cp-cmp-${qual.toLowerCase()}" onchange="_cpFornCmpSetPer('${qual}',this.value)" class="modal-input" style="width:100%;font-size:13px;font-weight:650">${opts}</select>${ano}${datas}</div>`;
+  };
+  return `<div class="cp-card" style="padding:18px 20px;max-width:780px"><div class="cp-card-title"><span>Monte a comparação</span><span class="sub">passo ${etapa} de 3</span></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0 17px">${passos}</div><div style="display:grid;grid-template-columns:${_cpFornCmpAReady?'repeat(2,minmax(0,1fr))':'minmax(0,1fr)'};gap:12px">${escolha('A')}${_cpFornCmpAReady?escolha('B'):''}</div>${_cpFornCmpAReady&&!_cpFornCmpBReady?'<div style="font-size:11.5px;color:var(--text3);margin-top:11px"><i class="ti ti-arrow-up-right"></i> Agora escolha o período B.</div>':''}${_cpFornCmpAReady&&_cpFornCmpBReady?`<div style="display:flex;justify-content:flex-end;margin-top:14px"><button id="cp-cmp-run" onclick="_cpFornCmpRun()" style="border:none;border-radius:9px;background:var(--blue-mid);color:#fff;padding:9px 16px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px"><i class="ti ti-arrows-left-right"></i> Comparar períodos</button></div>`:''}</div>`;
+}
 function _cpFornCompararHTML(cod){
-  return `${_cpFornCompHTML(cod)}
+  if(!_cpFornCmpMostrar) return _cpFornCmpWizardHTML(cod);
+  return `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 2px 10px"><span style="font-size:11.5px;color:var(--text3)"><i class="ti ti-circle-check" style="color:var(--success)"></i> Comparação pronta — você ainda pode ajustar os períodos abaixo.</span><button onclick="_cpFornCmpNova()" class="btn-modal-cancel" style="padding:6px 11px;font-size:11.5px"><i class="ti ti-refresh"></i> Nova comparação</button></div>
+    ${_cpFornCompHTML(cod)}
     <div style="height:14px"></div>
     ${_cpFornSimCard(cod)}`;
 }
