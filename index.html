@@ -6491,6 +6491,16 @@ function _necDivs(){ const s=[]; _NEC_SEED.forEach(r=>{ if(s.indexOf(r[2])<0) s.
 function _necCalc(){ const f=_necFator();
   return _NEC_SEED.filter(r=>_cpEscComprador(r[1],r[0]))
     .map(r=>{ const util=Math.round(r[4]*f); const fim=r[3]-util; return {cod:r[0],nome:r[1],div:r[2],est:r[3],util:util,fim:fim,preco:r[5],falta:fim<0?-fim:0}; }); }
+// Estado operacional da semana. Como o protótipo ainda não recebe estoque mínimo do ERP,
+// a margem de segurança adotada aqui é uma semana adicional do mesmo consumo previsto.
+function _necStatus(o){
+  const oc=(typeof _cpOcSaldo==='function')?_cpOcSaldo(o.cod):0;
+  const saldoOC=o.fim+oc;
+  if(o.fim<0 && oc>0 && saldoOC>=0) return {key:'transito',label:'Coberto por OC',cor:'var(--blue-mid)',bg:'color-mix(in srgb,var(--blue-mid) 9%,var(--card))',oc:oc,saldoOC:saldoOC};
+  if(saldoOC<0) return {key:'ruptura',label:'Não atende',cor:'var(--danger)',bg:'var(--danger-bg)',oc:oc,saldoOC:saldoOC};
+  if(o.fim<o.util) return {key:'atencao',label:'Abaixo do mínimo',cor:'var(--amber)',bg:'var(--amber-bg)',oc:oc,saldoOC:saldoOC};
+  return {key:'seguro',label:'Seguro',cor:'var(--success)',bg:'var(--success-bg)',oc:oc,saldoOC:saldoOC};
+}
 function _necRows(){
   const q=_necBusca.trim().toLowerCase();
   return _necCalc().filter(o=>{
@@ -6502,12 +6512,14 @@ function _necRows(){
 }
 function _necTbodyHTML(){
   const rows=_cpSortArr('nec', _necRows(), {cob:o=>(o.util>0?o.est/o.util*7:null)}, 'nome', 1);
-  if(!rows.length) return `<tr><td colspan="7">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`;
+  if(!rows.length) return `<tr><td colspan="8">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`;
   return rows.map(o=>{
-    const falta=o.fim<0, c=falta?'var(--danger)':'var(--text)', cc=falta?'var(--danger)':'var(--text3)';
+    const st=_necStatus(o), falta=st.key==='ruptura', c=falta?'var(--danger)':'var(--text)', cc=falta?'var(--danger)':'var(--text3)';
     const cob=o.util>0?Math.round(o.est/o.util*7):null;  // dias que o estoque atual ainda dura (consumo = "a utilizar" da semana)
     const cobCor=cob==null?'var(--text3)':(cob<10?'var(--danger)':(cob<30?'var(--amber)':'var(--text2)'));
-    return `<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(o.cod)}')" title="Abrir a ficha deste item no Insumos" style="${falta?'background:var(--danger-bg);':''}">
+    const stTitle=st.key==='transito'?`Estoque físico insuficiente; ${_necFmt(st.oc)} em OC deixa saldo projetado de ${_necFmt(st.saldoOC)}.`:(st.key==='atencao'?'Atende a programação, mas sobra menos de uma semana adicional.':(st.key==='seguro'?'Atende a programação e mantém ao menos uma semana adicional.':'Estoque e ordens de compra não cobrem a programação.'));
+    return `<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(o.cod)}')" title="${escapeAttr(stTitle)}" style="background:${st.bg}">
+      <td><span class="cp-pill" style="color:${st.cor};background:color-mix(in srgb,${st.cor} 13%,transparent);white-space:nowrap"><i class="ti ti-circle-filled" style="font-size:7px;vertical-align:1px;margin-right:5px"></i>${st.label}</span></td>
       <td class="cp-mono"${falta?` style="color:${cc}"`:''}>${escapeHTML(o.cod)}</td>
       <td style="color:var(--text3);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(o.div)}</td>
       <td class="cp-item"${falta?` style="color:${c}"`:''}>${escapeHTML(o.nome)}</td>
@@ -6521,18 +6533,23 @@ function _necTbodyHTML(){
 function _prodNecessidadeHTML(){
   const segBtn=(i,lab,on)=>`<button onclick="_necSetSemana(${i})" style="border:${on?'1px solid var(--border)':'none'};background:${on?'var(--card)':'transparent'};padding:7px 14px;border-radius:8px;font-size:12.5px;color:${on?'var(--text)':'var(--text2)'};cursor:pointer;font-family:inherit;font-weight:600">${lab}</button>`;
   const seg=`<div style="display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:2px;flex-wrap:wrap">`+[0,1].map(i=>segBtn(i,`Semana ${i+1} · ${_prodRange(_prodDias(i))}`,prodSemana===i)).join('')+`</div>`;
+  const estados=_necRows().map(_necStatus), qtd=k=>estados.filter(s=>s.key===k).length;
+  const legItem=(cor,lab,n)=>`<span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap"><i class="ti ti-circle-filled" style="font-size:8px;color:${cor}"></i><span>${lab}</span><b style="color:var(--text)">${n}</b></span>`;
+  const legenda=`<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:10px 0 14px;padding:9px 12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-size:11.5px;color:var(--text2)">
+    ${legItem('var(--success)','Seguro',qtd('seguro'))}${legItem('var(--amber)','Abaixo do mínimo',qtd('atencao'))}${legItem('var(--danger)','Não atende',qtd('ruptura'))}${legItem('var(--blue-mid)','Coberto por OC',qtd('transito'))}
+    <span style="color:var(--text3);margin-left:auto">Mínimo = 1 semana adicional</span></div>`;
   // ⚠️ Usa a classe .cp-tbl da área (header em caixa alta/sticky, zebra, th.r + td.cp-n) — antes esta
   // tabela montava os estilos na mão e destoava visivelmente das vizinhas de Compras.
-  const tabela=`<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl" style="table-layout:fixed;min-width:728px">
-      <colgroup><col style="width:66px"><col style="width:150px"><col><col style="width:86px"><col style="width:90px"><col style="width:94px"><col style="width:96px"></colgroup>
+  const tabela=`<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl" style="table-layout:fixed;min-width:870px">
+      <colgroup><col style="width:150px"><col style="width:66px"><col style="width:150px"><col><col style="width:86px"><col style="width:90px"><col style="width:94px"><col style="width:96px"></colgroup>
       <thead><tr>
-        ${_cpTh('nec','cod','Cód.')}${_cpTh('nec','div','Divisão')}${_cpTh('nec','nome','Item')}
+        <th>Status</th>${_cpTh('nec','cod','Cód.')}${_cpTh('nec','div','Divisão')}${_cpTh('nec','nome','Item')}
         ${_cpTh('nec','est','Estoque',1)}${_cpTh('nec','util','A utilizar',1)}${_cpTh('nec','fim','Est. final',1,'',1)}${_cpTh('nec','cob','Cobertura',1,'',1)}
       </tr></thead>
       <tbody id="nec-tbody">${_necTbodyHTML()}</tbody>
     </table></div>`;
   const nota=`<div style="margin-top:10px;font-size:12px;color:var(--text3);display:flex;align-items:flex-start;gap:6px"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0;margin-top:1px"></i><span>Clique num item para abrir a <b>ficha no Insumos</b>. Linhas em vermelho = o estoque não cobre a semana. O <b>a utilizar</b> é exemplo — no Oficial vem da programação × ficha técnica de cada produto.</span></div>`;
-  return `<div style="margin-bottom:14px">${seg}</div>${tabela}${nota}`;
+  return `<div style="margin-bottom:14px">${seg}</div>${legenda}${tabela}${nota}`;
 }
 // Controles do header da Necessidade (padrão de Compras): Filtros (divisão) + Só insuficientes + busca (lupa).
 function _necFiltrosAcao(){
