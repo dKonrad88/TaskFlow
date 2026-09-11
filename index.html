@@ -11039,7 +11039,8 @@ function _cpFornItensHTML(cod){
       ${datas?`<div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:none;letter-spacing:0;margin-top:3px">${escapeHTML(datas)}</div>`:''}`; };
   return `<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 2px 10px">
       <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Itens comprados</span>
-      ${_cpLupa(_cpFornItBuscaAberta,_cpFornItBusca,'_cpFornItBuscaToggle','_cpFornItBuscaInput','cp-fi-busca','Buscar item…')}
+      ${_cpLupa(_cpFornItBuscaAberta,_cpFornItBusca,'_cpFornItBuscaToggle','_cpFornItBuscaInput','cp-fi-busca','Buscar item…',
+        `<button onclick="_cpFornItPDF('${_cpJs(cod)}')" title="Gerar PDF desta tabela (respeita a busca e os itens marcados)" style="height:38px;padding:0 13px;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--text2);font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-file-download" style="font-size:16px"></i> Gerar PDF</button>`)}
     </div>
     <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead>
@@ -39502,7 +39503,89 @@ async function gerarPDFOrdem(id){
   _osPdfModal(pdfDoc, fileName);
 }
 
-function _osPdfModal(pdfDoc, fileName){
+// ══════ PDF da aba Itens da ficha do fornecedor (pedido do Diego) ══════
+// Exporta o que a tabela está mostrando: mesma busca, mesma ordenação e, se houver itens marcados,
+// só os marcados (a regra do check é "marcar = recortar a análise"). A4 deitado: são 13 colunas.
+// Reusa a pré-visualização da OS (_osPdfModal), com título próprio.
+async function _cpFornItPDF(cod){
+  try{
+    if(typeof ensurePdfMakeLoaded==='function') await ensurePdfMakeLoaded();
+    if(typeof pdfMake==='undefined'){ toast('⚠️ Biblioteca PDF não carregada. Tente novamente em alguns segundos.'); return; }
+  }catch(e){ console.error(e); toast('⚠️ Não foi possível carregar a biblioteca PDF.'); return; }
+  const c=_cpFornCtx(cod, true); if(!c){ toast('⚠️ Fornecedor não encontrado'); return; }
+  const sel=_cpSelTem('fcomp');
+  const rows=_cpSelFiltra('fcomp', _cpFornItRows(cod), i=>i.cod);
+  if(!rows.length){ toast('⚠️ Nenhum item para exportar com esse filtro.'); return; }
+  const nome=_cpForn(c.f.nome);
+  const perTxt=r=>{ const d=_cpFornRangeDatas(r,c.f.linhas); return (r.label||'')+(d?' · '+d:''); };
+  const qtdTxt=n=>`${n} ${n===1?'item':'itens'}`;
+  const recorte=sel ? `${rows.length} ${rows.length===1?'item selecionado':'itens selecionados'}`
+    : (_cpFornItBusca ? `busca "${_cpFornItBusca}" · ${qtdTxt(rows.length)}` : qtdTxt(rows.length));
+  // Mesmas cores da tela: valor/volume = azul subiu · âmbar caiu; preço = vermelho subiu · verde caiu.
+  const corVar=v=>v==null?'#999':(v>0.5?'#185FA5':(v<-0.5?'#B47C0A':'#555'));
+  const corPreco=v=>v==null?'#999':(v>0.5?'#A32D2D':(v<-0.5?'#3B6D11':'#555'));
+  const pc=v=>v==null?'—':((v>0?'+':'')+_cpNum(v,1)+'%');
+  const FUNDO='#EEF1F5';
+  const H=(t,al)=>({text:t,bold:true,fontSize:6.5,color:'#666',alignment:al||'right',fillColor:FUNDO});
+  const C=(t,o)=>Object.assign({text:t,fontSize:7.5,alignment:'right'},o||{});
+  const grp=t=>({text:t,colSpan:3,alignment:'center',bold:true,fontSize:7,color:'#0D3D6B',fillColor:FUNDO});
+  const body=[
+    [{text:'',colSpan:3,fillColor:FUNDO},{},{}, grp('PERÍODO A · '+perTxt(c.rA)),{},{}, grp('PERÍODO B · '+perTxt(c.rB)),{},{}, {text:'',colSpan:4,fillColor:FUNDO},{},{},{}],
+    [H('CÓD.','left'),H('ITEM','left'),H('ÚLT. PREÇO'),H('QTDE'),H('PREÇO MÉD.'),H('TOTAL'),H('QTDE'),H('PREÇO MÉD.'),H('TOTAL'),H('VAR. VALOR'),H('VAR. PREÇO'),H('VAR. VOLUME'),H('ÚLT. COMPRA','left')]
+  ];
+  rows.forEach(i=>{ const u=i.um?' '+i.um:'';
+    body.push([
+      C(String(i.cod),{alignment:'left',color:'#777'}), C(i.nome,{alignment:'left'}), C(_cpBRL(i.preco)),
+      C(i.qtdA?_cpNum(i.qtdA,0)+u:'—'), C(i.pmA!=null?_cpBRL(i.pmA):'—'), C(i.totA?_cpBRL(i.totA):'—'),
+      C(i.qtdB?_cpNum(i.qtdB,0)+u:'—'), C(i.pmB!=null?_cpBRL(i.pmB):'—'), C(i.totB?_cpBRL(i.totB):'—'),
+      C(pc(i.delta),{bold:true,color:corVar(i.delta)}), C(pc(i.deltaPm),{bold:true,color:corPreco(i.deltaPm)}),
+      C(pc(i.deltaVol),{bold:true,color:corVar(i.deltaVol)}), C(_cpDt(i.ult),{alignment:'left',color:'#777'})
+    ]); });
+  // Linha de total: a mesma conta do rodapé da tela (_cpFornItTfootHTML) — variação em ordem cronológica
+  // e preço médio do conjunto só quando tudo está na mesma unidade.
+  const ums=[...new Set(rows.map(i=>i.um).filter(Boolean))], mistas=ums.length>1, unT=mistas?' un. mistas':(ums[0]?' '+ums[0]:'');
+  const sA=rows.reduce((a,i)=>a+i.totA,0), sB=rows.reduce((a,i)=>a+i.totB,0), qA=rows.reduce((a,i)=>a+i.qtdA,0), qB=rows.reduce((a,i)=>a+i.qtdB,0);
+  const ord=(a,b)=>c.aEhNovo?_cpVar(a,b):_cpVar(b,a);
+  const vT=ord(sA,sB), vQ=ord(qA,qB), vP=(mistas||!(qA>0)||!(qB>0))?null:ord(sA/qA,sB/qB);
+  const pmT=(s,q)=>(mistas||!(q>0))?'':_cpBRL(s/q);
+  const T=(t,o)=>C(t,Object.assign({bold:true,fillColor:'#F6F7F9'},o||{}));
+  body.push([
+    T(sel?'Selecionados':'Total',{alignment:'left',colSpan:3}),{},{},
+    T(_cpNum(qA,0)+unT), T(pmT(sA,qA)), T(_cpBRL(sA)),
+    T(_cpNum(qB,0)+unT), T(pmT(sB,qB)), T(_cpBRL(sB)),
+    T(pc(vT),{color:corVar(vT)}), T(vP==null?'':pc(vP),{color:corPreco(vP)}), T(pc(vQ),{color:corVar(vQ)}), T('')
+  ]);
+  const agora=new Date();
+  const docDefinition={
+    pageSize:'A4', pageOrientation:'landscape', pageMargins:[28,50,28,38],
+    header:{ margin:[28,18,28,0], columns:[
+      {text:'KLA',color:'#185FA5',fontSize:13,bold:true,width:'auto'},
+      {text:'IN',color:'#A32D2D',fontSize:13,bold:true,width:'auto'},
+      {text:'COMPRAS · ITENS DO FORNECEDOR',alignment:'right',color:'#888',fontSize:9,margin:[0,2,0,0]}
+    ]},
+    footer:function(p,n){ return { margin:[28,0,28,16], columns:[
+      {text:`Gerado em ${agora.toLocaleDateString('pt-BR')} às ${agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`, color:'#aaa', fontSize:8},
+      {text:`${p} / ${n}`, alignment:'right', color:'#aaa', fontSize:8}
+    ]}; },
+    content:[
+      {text:nome, fontSize:15, bold:true, color:'#0D3D6B'},
+      {text:[{text:'Período A: ',bold:true,color:'#555'},perTxt(c.rA),'      ',{text:'Período B: ',bold:true,color:'#555'},perTxt(c.rB)], fontSize:8.5, color:'#333', margin:[0,4,0,2]},
+      {text:recorte+' · as variações vão do período mais antigo para o mais recente', fontSize:7.5, color:'#888', margin:[0,0,0,8]},
+      {table:{headerRows:2, dontBreakRows:true, widths:[34,'*',46,46,46,56,46,46,56,40,40,44,38], body},
+       layout:{ hLineWidth:(i,node)=>(i===0||i===node.table.body.length)?0:0.5, hLineColor:()=>'#DDE1E7', vLineWidth:()=>0,
+                paddingTop:()=>2.5, paddingBottom:()=>2.5, paddingLeft:()=>3, paddingRight:()=>3 }}
+    ],
+    defaultStyle:{ font:'Roboto', color:'#333' }
+  };
+  const slug=nome.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'').substring(0,40);
+  let pdfDoc;
+  try{ pdfDoc=pdfMake.createPdf(docDefinition); }
+  catch(err){ console.error('Erro ao gerar PDF dos itens:',err); toast('⚠️ Erro ao gerar PDF — verifique o console'); return; }
+  _osPdfModal(pdfDoc, `Itens_${slug||'fornecedor'}_${today}.pdf`, 'Pré-visualização — itens do fornecedor');
+}
+
+// `titulo` é opcional: sem ele continua "Pré-visualização da OS" (quem abriu primeiro foi a OS).
+function _osPdfModal(pdfDoc, fileName, titulo){
   const old=document.getElementById('osPdfOverlay'); if(old) old.remove();
   const ov=document.createElement('div');
   ov.id='osPdfOverlay';
@@ -39510,7 +39593,7 @@ function _osPdfModal(pdfDoc, fileName){
   ov.innerHTML=`
     <div style="background:var(--card,#fff); border-radius:14px; width:min(900px,96vw); height:min(92vh,1100px); display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.45);">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 18px; border-bottom:1px solid var(--border,#e5e7eb);">
-        <div style="font-size:15px; font-weight:700; color:var(--text,#111); display:flex; align-items:center; gap:8px;"><i class="ti ti-file-text"></i> Pré-visualização da OS</div>
+        <div style="font-size:15px; font-weight:700; color:var(--text,#111); display:flex; align-items:center; gap:8px;"><i class="ti ti-file-text"></i> ${escapeHTML(titulo||'Pré-visualização da OS')}</div>
         <div style="display:flex; gap:10px;">
           <button id="osPdfBaixar" style="background:var(--blue-mid,#185FA5); color:#fff; border:none; border-radius:9px; padding:9px 18px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;"><i class="ti ti-download"></i> Baixar PDF</button>
           <button id="osPdfFechar" style="background:none; border:1px solid var(--border,#ccc); color:var(--text2,#555); border-radius:9px; padding:9px 16px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;">Fechar</button>
