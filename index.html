@@ -10456,22 +10456,49 @@ function _cpFornSimBaseSet(q){ _cpFornSimBase=q;
   else if(_cpFornSel) renderCompras(); }
 function _cpFornBuscaToggle(){ _cpFornBuscaAberta=!_cpFornBuscaAberta; if(!_cpFornBuscaAberta) _cpFornBusca=''; renderCompras(); if(_cpFornBuscaAberta) setTimeout(function(){ var el=document.getElementById('cp-forn-busca'); if(el) el.focus(); },30); }
 function _cpFornBuscaInput(el){ _cpFornBusca=el.value; const tb=document.getElementById('cp-forn-tbody'); if(tb) tb.innerHTML=_cpFornRowsHTML(); }
+// ══════ CRESCIMENTO DO ANO por fornecedor (coluna da lista) ══════
+// Acumulado deste ano (01/01 → hoje) contra o MESMO trecho do ano passado (01/01 → mesmo dia).
+// ⚠️ NÃO segue o filtro de período da tela ("Últimos 12 meses" etc.): é sempre ano × ano, a mesma
+// régua do card "Fechamento do ano" da ficha — por isso o cabeçalho diz qual é a comparação.
+// Mesmo escopo da curva ABC (insumos de MP/embalagem). Os dados são embutidos, então o cache só
+// precisa mudar quando o dia vira.
+function _cpFornCrescMap(){
+  if(window.__cpFornCresc && window.__cpFornCresc.dia===today) return window.__cpFornCresc.m;
+  const Y=+today.slice(0,4), iniA=Y+'-01-01', iniB=(Y-1)+'-01-01', fimB=(Y-1)+today.slice(4);
+  const m={};
+  _cpLinhas().forEach(l=>{
+    if(l.cls!=='I' || !_cpEscComprador(l.item[1],l.item[0])) return;
+    const atual=l.data>=iniA && l.data<=today, ant=l.data>=iniB && l.data<=fimB;
+    if(!atual && !ant) return;
+    const k=l.forn[0]||l.forn[1], o=m[k]||(m[k]={atual:0,ant:0});
+    if(atual) o.atual+=l.tot; else o.ant+=l.tot;
+  });
+  window.__cpFornCresc={dia:today, m};
+  return m;
+}
 function _cpFornRowsHTML(){
   const L=_cpFornAgg('I'); const tot=L.reduce((a,f)=>a+f.total,0);
   const q=(_cpFornBusca||'').trim().toLowerCase();
+  const CR=_cpFornCrescMap(), Y=+today.slice(0,4);
   // ⚠️ A curva ABC (posição, % acumulado e classe) SEMPRE sai da ordem por valor — é a definição dela.
   // Só depois as linhas são reordenadas para exibição, senão ordenar por outra coluna daria um ABC falso.
   let acc=0;
   const base=L.slice(0,300).map((f,i)=>{ acc+=f.total; const pAcc=tot?acc/tot*100:0;
+    const cr=CR[f.cod]||{atual:0,ant:0};
     return {f, pos:i+1, nome:_cpForn(f.nome), total:f.total, pct:tot?f.total/tot*100:0, pAcc,
-      abc:pAcc<=80?'A':(pAcc<=95?'B':'C'), nfs:Object.keys(f.nfs).length, itens:Object.keys(f.itens).length}; })
+      abc:pAcc<=80?'A':(pAcc<=95?'B':'C'), nfs:Object.keys(f.nfs).length, itens:Object.keys(f.itens).length,
+      cresc:_cpVar(cr.atual,cr.ant), cr}; })
     .filter(r=>!q || r.nome.toLowerCase().indexOf(q)>=0);
   const out=_cpSortArr('forn', base, null, 'pos', 1).map(r=>{
     const cor=r.abc==='A'?'var(--danger)':(r.abc==='B'?'var(--amber)':'var(--text3)');
+    // sem compra no mesmo trecho do ano passado não há % — "novo no ano" se comprou este ano, senão "—"
+    const crTip=`${Y} até ${_cpDt(today)}: ${_cpBRL(r.cr.atual)} · mesmo período de ${Y-1}: ${_cpBRL(r.cr.ant)}`;
+    const crCel=r.cresc!=null?_cpVarPill(r.cresc):(r.cr.atual>0?'<span style="color:var(--text3);font-size:11.5px">novo no ano</span>':'<span style="color:var(--text3)">—</span>');
     return `<tr class="cp-clic" onclick="_cpAbrirForn('${_cpJs(r.f.cod)}')">
       <td class="cp-n">${r.pos}</td><td class="cp-item">${escapeHTML(r.nome)}</td>
       <td class="cp-n">${_cpBRL(r.total)}</td><td class="cp-n">${r.pct.toFixed(1)}%</td>
       <td class="cp-n">${r.pAcc.toFixed(1)}%</td>
+      <td class="cp-n" title="${escapeAttr(crTip)}">${crCel}</td>
       <td class="cp-n" style="color:var(--text3)">a cadastrar</td>
       <td class="cp-n"><span class="cp-pill" style="color:${cor};background:var(--bg2)">${r.abc}</span></td>
       <td class="cp-n">${r.nfs}</td><td class="cp-n">${r.itens}</td>
@@ -10530,7 +10557,7 @@ function _comprasFornecedoresHTML(){
       _cpKPI('Período',_cpFornMeses?('últimos '+_cpFornMeses+' meses'):'tudo')
     ])+
     `<div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
-      <thead><tr>${_cpTh('forn','pos','#',1,'',1)}${_cpTh('forn','nome','Fornecedor')}${_cpTh('forn','total','Total',1)}${_cpTh('forn','pct','% do total',1)}${_cpTh('forn','pAcc','% acum.',1,'',1)}<th class="r">Prazo de pagamento</th>${_cpTh('forn','abc','ABC',1,'',1)}${_cpTh('forn','nfs','NFs',1)}${_cpTh('forn','itens','Itens',1)}</tr></thead>
+      <thead><tr>${_cpTh('forn','pos','#',1,'',1)}${_cpTh('forn','nome','Fornecedor')}${_cpTh('forn','total','Total',1)}${_cpTh('forn','pct','% do total',1)}${_cpTh('forn','pAcc','% acum.',1,'',1)}${_cpTh('forn','cresc',`Crescimento <span class="cp-hsub" style="display:block;text-transform:none;margin-top:1px">${+today.slice(0,4)} × mesmo período ${+today.slice(0,4)-1}</span>`,1)}<th class="r">Prazo de pagamento</th>${_cpTh('forn','abc','ABC',1,'',1)}${_cpTh('forn','nfs','NFs',1)}${_cpTh('forn','itens','Itens',1)}</tr></thead>
       <tbody id="cp-forn-tbody">${_cpFornRowsHTML()}</tbody></table></div>`, undefined, acao);
 }
 // Contexto da ficha do fornecedor: histórico completo + os dois recortes de período.
