@@ -10878,16 +10878,17 @@ function _cpFornCompResumoHTML(cod){
   const O=_cpFornOrdem(c), valPct=_cpVar(O.novo.total,O.base.total), volPct=_cpVar(O.novo.qtd,O.base.qtd);
   const dv=O.novo.total-O.base.total;
   let frase;
-  if(valPct==null) frase='O período base não possui valor suficiente para calcular a variação.';
-  else if(Math.abs(valPct)<=0.5) frase='O valor comprado ficou praticamente estável entre os dois períodos.';
-  else frase=`Compramos ${_cpNum(Math.abs(valPct),1)}% ${valPct>0?'mais':'menos'} deste fornecedor: ${_cpBRL(Math.abs(dv))} ${valPct>0?'a mais':'a menos'}${(!c.umsMistas&&volPct!=null)?`, com ${_cpNum(Math.abs(volPct),1)}% ${volPct>0?'mais':'menos'} de volume`:''}.`;
-  // ══ UMA TABELA, UMA MÉTRICA POR LINHA (pedido do Diego, set/26) ══
-  // A 1ª versão tinha Base/Atual/Variação nas LINHAS e as métricas nas colunas: 8 linhas, unidade e "est."
-  // repetidos em toda célula e a variação em dois andares ("muita informação, ruim de achar"). Agora cada
-  // MÉTRICA é uma linha (Valor · Volume · Notas · Itens) e as comparações são COLUNAS lado a lado:
-  // [Base · Atual · Variação · Diferença] | [Ano passado · Este ano · Variação · Diferença].
-  // Nenhum dado saiu: período e datas foram para o cabeçalho, a unidade e o aviso de unidades mistas para
-  // o rótulo da linha, e o "estimado" para o cabeçalho do ano projetado (explicado na nota de rodapé).
+  // "No período selecionado": a frase fala dos períodos escolhidos acima, não do ano nem do histórico (Diego).
+  if(valPct==null) frase='No período selecionado, a base não possui valor suficiente para calcular a variação.';
+  else if(Math.abs(valPct)<=0.5) frase='No período selecionado, o valor comprado ficou praticamente estável.';
+  else frase=`No período selecionado, compramos ${_cpNum(Math.abs(valPct),1)}% ${valPct>0?'mais':'menos'} deste fornecedor: ${_cpBRL(Math.abs(dv))} ${valPct>0?'a mais':'a menos'}${(!c.umsMistas&&volPct!=null)?`, com ${_cpNum(Math.abs(volPct),1)}% ${volPct>0?'mais':'menos'} de volume`:''}.`;
+  // ══ DOIS CARDS, UMA MÉTRICA POR LINHA (pedido do Diego, set/26) ══
+  // São DUAS análises e cada uma tem o próprio card: (1) os períodos escolhidos na barra acima e (2) o
+  // fechamento do ano, que não depende dessa escolha. Nos dois, cada MÉTRICA é uma linha (Valor · Volume
+  // · Notas · Itens) e as comparações são colunas: Base · Atual · Variação · Diferença.
+  // (A 1ª versão tinha Base/Atual/Variação nas LINHAS: 8 linhas, unidade e "est." em toda célula —
+  // "muita informação, ruim de achar".) Período e datas ficam no cabeçalho; unidade e aviso de unidades
+  // mistas no rótulo da linha; o "estimado" no cabeçalho do ano projetado, explicado na nota do card.
   const nNf=d=>Object.keys(d.nfs).length, nIt=d=>Object.keys(d.porItem).length;
   const Y=+today.slice(0,4), ant=_cpFornAno(c.f.linhas,Y-1), atual=_cpFornAno(c.f.linhas,Y);
   // Notas e itens NÃO se projetam: no ano corrente ficam "—", e a variação delas também.
@@ -10903,41 +10904,45 @@ function _cpFornCompResumoHTML(cod){
   // Linhas de apoio dentro do cabeçalho (o th é caixa alta; o período e as datas não).
   const hsub=(t,cor)=>`<span style="display:block;text-transform:none;letter-spacing:0;font-weight:500;font-size:11px;color:var(--${cor||'text2'});margin-top:2px">${t}</span>`;
   const hdt=r=>hsub(escapeHTML(_cpFornRangeDatas(r,c.f.linhas)),'text3');
-  const SEP='border-left:1px solid var(--border);', TINT='background:color-mix(in srgb,var(--blue-mid) 5%,transparent);';
-  const COL=['','',TINT,TINT,SEP,'',TINT,TINT];   // colunas de resultado tingidas · divisória antes do ano
-  const th=(i,tit,extra)=>`<th class="r" style="vertical-align:top;${i===4?SEP:''}">${tit}${extra||''}</th>`;
-  const cab=`<thead>
-      <tr><th rowspan="2"></th>
-        <th colspan="4" style="text-align:center;border-bottom:1px solid var(--border)">Períodos comparados</th>
-        <th colspan="4" style="text-align:center;border-bottom:1px solid var(--border);${SEP}">Fechamento do ano <span style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--text3)">· mantendo o ritmo atual</span></th></tr>
-      <tr>${th(0,'Base',hsub(escapeHTML(O.baseR.label))+hdt(O.baseR))}${th(1,'Atual',hsub(escapeHTML(O.novoR.label))+hdt(O.novoR))}${th(2,'Variação')}${th(3,'Diferença',hsub('a mais / a menos','text3'))}${th(4,'Ano passado',hsub(`${Y-1} fechado`)+hdt({ini:(Y-1)+'-01-01',fim:(Y-1)+'-12-31'}))}${th(5,'Este ano',hsub(`${Y} projetado*`)+hdt({ini:Y+'-01-01',fim:Y+'-12-31'}))}${th(6,'Variação')}${th(7,'Diferença',hsub('a mais / a menos','text3'))}</tr>
-    </thead>`;
-  const linha=(rot,rotSub,cels)=>`<tr><td style="font-weight:700;color:var(--text)">${rot}${rotSub?`<span style="display:block;font-size:10.5px;font-weight:500;color:var(--text3);margin-top:1px">${rotSub}</span>`:''}</td>${cels.map((x,i)=>`<td class="cp-n" style="${COL[i]}">${x}</td>`).join('')}</tr>`;
+  const TINT='background:color-mix(in srgb,var(--blue-mid) 5%,transparent);';
+  const COL=['','',TINT,TINT];   // Variação e Diferença tingidas = as colunas de resultado
+  const th=(tit,extra)=>`<th class="r" style="vertical-align:top">${tit}${extra||''}</th>`;
+  const cabeca=(base,atu)=>`<thead><tr><th></th>${base}${atu}${th('Variação')}${th('Diferença',hsub('a mais / a menos','text3'))}</tr></thead>`;
   const unRot=c.umsMistas
     ? 'un. mistas <i class="ti ti-alert-triangle" title="Este fornecedor entrega em mais de uma unidade: a soma de volume é aproximada" style="color:var(--amber);cursor:help"></i>'
     : 'em '+escapeHTML(c.um||'un');
-  const corpo=
-     linha('Valor','',[_cpBRL(O.base.total), forte(_cpBRL(O.novo.total)), _cpVarPill(valPct), dif(dv,_cpBRL),
-       ano(_cpBRL(ant.total)), ano(forte(_cpBRL(atual.total))), ano(_cpVarPill(ap)), ano(dif(atual.total-ant.total,_cpBRL))])
-    +linha('Volume',unRot,[num(O.base.qtd), forte(num(O.novo.qtd)), _cpVarPill(volPct), dif(O.novo.qtd-O.base.qtd,num),
-       ano(num(ant.qtd)), ano(forte(num(atual.qtd))), ano(_cpVarPill(_cpVar(atual.qtd,ant.qtd))), ano(dif(atual.qtd-ant.qtd,num))])
-    +linha('Notas','',[num(nNf(O.base)), forte(num(nNf(O.novo))), _cpVarPill(_cpVar(nNf(O.novo),nNf(O.base))), dif(nNf(O.novo)-nNf(O.base),num),
-       ano(num(nfAnt)), nada, nada, nada])
-    +linha('Itens','diferentes',[num(nIt(O.base)), forte(num(nIt(O.novo))), _cpVarPill(_cpVar(nIt(O.novo),nIt(O.base))), dif(nIt(O.novo)-nIt(O.base),num),
-       ano(num(itAnt)), nada, nada, nada]);
+  const ROT=[['Valor',''],['Volume',unRot],['Notas',''],['Itens','diferentes']];
+  const tabela=(cab,linhas)=>`<div style="overflow-x:auto"><table class="cp-tbl">${cab}<tbody>${linhas.map((cels,r)=>`<tr><td style="font-weight:700;color:var(--text)">${ROT[r][0]}${ROT[r][1]?`<span style="display:block;font-size:10.5px;font-weight:500;color:var(--text3);margin-top:1px">${ROT[r][1]}</span>`:''}</td>${cels.map((x,i)=>`<td class="cp-n" style="${COL[i]}">${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  const card=(tit,sub,txt,corpo,nota)=>`<div class="cp-card" style="padding:15px 17px;min-width:0">
+      <div class="cp-card-title"><span>${tit}</span><span class="sub">${sub}</span></div>
+      <div style="font-size:15px;font-weight:700;color:var(--text);line-height:1.35;margin:12px 2px 11px">${escapeHTML(txt)}</div>
+      ${corpo}
+      ${nota?`<div style="font-size:10.5px;color:var(--text3);margin-top:8px;font-style:italic">${escapeHTML(nota)}</div>`:''}
+    </div>`;
+  const periodos=card('Períodos selecionados','escolhidos acima',frase,
+    tabela(cabeca(th('Base',hsub(escapeHTML(O.baseR.label))+hdt(O.baseR)), th('Atual',hsub(escapeHTML(O.novoR.label))+hdt(O.novoR))),[
+      [_cpBRL(O.base.total), forte(_cpBRL(O.novo.total)), _cpVarPill(valPct), dif(dv,_cpBRL)],
+      [num(O.base.qtd), forte(num(O.novo.qtd)), _cpVarPill(volPct), dif(O.novo.qtd-O.base.qtd,num)],
+      [num(nNf(O.base)), forte(num(nNf(O.novo))), _cpVarPill(_cpVar(nNf(O.novo),nNf(O.base))), dif(nNf(O.novo)-nNf(O.base),num)],
+      [num(nIt(O.base)), forte(num(nIt(O.novo))), _cpVarPill(_cpVar(nIt(O.novo),nIt(O.base))), dif(nIt(O.novo)-nIt(O.base),num)]]),'');
   // Fechamento do ano: ano anterior REAL contra a estimativa do ano corrente. _cpFornAno aplica ao ano
   // anterior cheio o crescimento observado jan→hoje contra o mesmo trecho (a sazonalidade entra).
-  const nota=!temAno
-    ? `* Ainda não há histórico suficiente para comparar ${Y-1} fechado com a projeção de ${Y}.`
+  const dAno=temAno?atual.total-ant.total:0;
+  const fraseAno=!temAno
+    ? `Ainda não há histórico suficiente para comparar ${Y-1} fechado com a projeção de ${Y}.`
+    : `Mantendo o ritmo atual, ${Y} deve fechar em ${_cpBRL(atual.total)}: ${_cpBRL(Math.abs(dAno))} ${dAno>=0?'a mais':'a menos'} que ${Y-1}.`;
+  const nota=!temAno ? ''
     : (atual.metodo==='yoy'
         ? `* ${Y} projetado: crescimento de ${ritmo>0?'+':''}${_cpNum(ritmo,1)}% do acumulado de ${Y} (até ${_cpDt(today)}) contra o mesmo trecho de ${Y-1}, aplicado sobre ${Y-1} fechado. Notas e itens não se projetam.`
         : `* ${Y} projetado pelo tempo decorrido do ano (sem o mesmo trecho de ${Y-1} para comparar). Notas e itens não se projetam.`);
-  return `<div class="cp-card" style="padding:15px 17px">
-    <div class="cp-card-title"><span>Resultado da comparação</span></div>
-    <div style="font-size:15px;font-weight:700;color:var(--text);line-height:1.35;margin:12px 2px 11px">${escapeHTML(frase)}</div>
-    <div style="overflow-x:auto"><table class="cp-tbl">${cab}<tbody>${corpo}</tbody></table></div>
-    <div style="font-size:10.5px;color:var(--text3);margin-top:8px;font-style:italic">${escapeHTML(nota)}</div>
-  </div>`;
+  const fechamento=card('Fechamento do ano','mantendo o ritmo atual',fraseAno,
+    tabela(cabeca(th('Ano passado',hsub(`${Y-1} fechado`)+hdt({ini:(Y-1)+'-01-01',fim:(Y-1)+'-12-31'})), th('Este ano',hsub(`${Y} projetado*`)+hdt({ini:Y+'-01-01',fim:Y+'-12-31'}))),[
+      [ano(_cpBRL(ant.total)), ano(forte(_cpBRL(atual.total))), ano(_cpVarPill(ap)), ano(dif(dAno,_cpBRL))],
+      [ano(num(ant.qtd)), ano(forte(num(atual.qtd))), ano(_cpVarPill(_cpVar(atual.qtd,ant.qtd))), ano(dif(atual.qtd-ant.qtd,num))],
+      [ano(num(nfAnt)), nada, nada, nada],
+      [ano(num(itAnt)), nada, nada, nada]]),nota);
+  // Lado a lado em tela larga; em tela estreita (menos de 2×640px) um card desce para baixo do outro.
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,640px),1fr));gap:12px">${periodos}${fechamento}</div>`;
 }
 function _cpFornCmpWizardHTML(cod){
   const c=_cpFornCtx(cod); if(!c) return '';
@@ -10958,16 +10963,27 @@ function _cpFornCmpWizardHTML(cod){
 }
 // Depois da primeira comparação, A e B ficam sempre à mão. A troca atualiza o resultado sem voltar
 // ao wizard; ele só reaparece quando o comprador escolhe explicitamente "Nova comparação".
+// ⚠️ Barra DISCRETA, sem card (pedido do Diego): é ajuste fino e não pode competir com o resultado.
+// Por isso os selects NÃO usam .modal-input (46px de altura, padding e cara de formulário). O fundo
+// é var(--bg) e não transparent: com transparent a lista aberta do select fica ilegível no tema escuro.
+// ⚠️ A classe cp-cmp-sel não tem CSS: ela só existe p/ tirar os campos da regra global
+// select:not([class]){height:40px !important}, que vence qualquer altura inline.
 function _cpFornCmpQuickHTML(cod){
   const c=_cpFornCtx(cod); if(!c) return '';
+  const est='height:auto;min-height:0;box-sizing:border-box;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text2);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer';
   const ctrl=qual=>{
     const o=qual==='A'?_cpFornPerA:_cpFornPerB;
-    const sel=`<select onchange="_cpFornSetPer('${qual}',this.value)" class="modal-input" style="flex:1 1 180px;min-width:0;padding:6px 8px;font-size:12px;font-weight:650">${_cpFornPerOptions(o.p,_cpFornAnoYoy(c,qual))}</select>`;
-    const ano=_cpFornUsaAno(o.p)?`<select onchange="_cpFornSetAno('${qual}',this.value)" title="Ano do período ${qual}" class="modal-input" style="flex:0 0 72px;width:72px;padding:6px 5px;font-size:12px;font-weight:700">${_cpFornAnos(c.f.linhas).map(y=>`<option value="${y}"${(+o.ano||+today.slice(0,4))===y?' selected':''}>${y}</option>`).join('')}</select>`:'';
-    const datas=o.p==='custom'?`<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:6px"><span style="font-size:10px;color:var(--text3)">de</span><input type="date" value="${escapeAttr(o.de||'')}" oninput="_cpFornSetPerData('${qual}','de',this.value)" onblur="_cpFornSetPerDataCommit('${qual}','de',this.value)" class="modal-input" style="width:128px;padding:5px 6px;font-size:11px"><span style="font-size:10px;color:var(--text3)">até</span><input type="date" value="${escapeAttr(o.ate||'')}" oninput="_cpFornSetPerData('${qual}','ate',this.value)" onblur="_cpFornSetPerDataCommit('${qual}','ate',this.value)" class="modal-input" style="width:128px;padding:5px 6px;font-size:11px"></div>`:'';
-    return `<div style="min-width:0"><div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:5px">Período ${qual}</div><div style="display:flex;align-items:center;gap:6px">${sel}${ano}</div>${datas}</div>`;
+    const sel=`<select class="cp-cmp-sel" onchange="_cpFornSetPer('${qual}',this.value)" title="Período ${qual}" style="${est}">${_cpFornPerOptions(o.p,_cpFornAnoYoy(c,qual))}</select>`;
+    const ano=_cpFornUsaAno(o.p)?`<select class="cp-cmp-sel" onchange="_cpFornSetAno('${qual}',this.value)" title="Ano do período ${qual}" style="${est}">${_cpFornAnos(c.f.linhas).map(y=>`<option value="${y}"${(+o.ano||+today.slice(0,4))===y?' selected':''}>${y}</option>`).join('')}</select>`:'';
+    const dt=campo=>`<input class="cp-cmp-sel" type="date" value="${escapeAttr(o[campo]||'')}" oninput="_cpFornSetPerData('${qual}','${campo}',this.value)" onblur="_cpFornSetPerDataCommit('${qual}','${campo}',this.value)" style="${est};cursor:text;width:124px">`;
+    const datas=o.p==='custom'?`${dt('de')}<span>até</span>${dt('ate')}`:'';
+    return `<span style="display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap">${sel}${ano}${datas}</span>`;
   };
-  return `<div class="cp-card" style="padding:12px 14px;margin-bottom:12px"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px"><div><div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--text2)">Alterar comparação</div><div style="font-size:10.5px;color:var(--text3);margin-top:2px">O resultado atualiza automaticamente e organiza Base → Atual.</div></div><button onclick="_cpFornCmpNova()" class="btn-modal-cancel" style="padding:6px 11px;font-size:11.5px;white-space:nowrap"><i class="ti ti-refresh"></i> Nova comparação</button></div><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">${ctrl('A')}${ctrl('B')}</div></div>`;
+  return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 2px 10px;font-size:12px;color:var(--text3)">
+    <i class="ti ti-arrows-left-right" style="font-size:14px;cursor:help" title="O resultado atualiza sozinho e organiza Base → Atual."></i>
+    <span>Comparando</span>${ctrl('A')}<span>com</span>${ctrl('B')}
+    <button onclick="_cpFornCmpNova()" title="Recomeçar pelo passo a passo" style="margin-left:auto;border:none;background:transparent;color:var(--text3);font-family:inherit;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:3px 4px"><i class="ti ti-refresh"></i> Nova comparação</button>
+  </div>`;
 }
 function _cpFornCompararHTML(cod){
   if(!_cpFornCmpMostrar) return _cpFornCmpWizardHTML(cod);
