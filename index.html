@@ -10461,7 +10461,13 @@ function _cpFornRowsHTML(){
 // item deixava _cpItemOrigem preso na tela de onde o PRIMEIRO item foi aberto — e o "Voltar" levava
 // pra tela errada (a regra é "Voltar volta p/ a tela de ORIGEM").
 function _cpAbrirForn(cod){ _cpFornSel=cod; _cpFornView='resumo'; _cpItemSel=null; _cpItemOrigem='fornecedores'; _cpFornItBusca=''; _cpFornItBuscaAberta=false; try{document.body.classList.remove('cp-focus');}catch(e){} comprasView='fornecedores'; renderSidebar(); renderCompras(); window.scrollTo(0,0); }
-function _cpVoltarForns(){ _cpFornSel=null; renderCompras(); }
+function _cpVoltarForns(){
+  // Se o fornecedor estiver expandido, sair da ficha também precisa encerrar o modo tela cheia.
+  // Sem isso a lista volta dentro de #task-container fixo e continua escondendo cabeçalho/sidebar.
+  _cpFornSel=null;
+  try{ document.body.classList.remove('cp-focus'); }catch(e){}
+  renderSidebar(); renderCompras(); window.scrollTo(0,0);
+}
 function _cpFornSetMeses(v){ _cpFornMeses=Number(v); renderCompras(); }
 // meses: janela em meses (default = o filtro da tela Fornecedores). Passe 0 para "tudo".
 function _cpFornAgg(escopo, meses){
