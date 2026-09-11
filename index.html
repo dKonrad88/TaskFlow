@@ -10229,7 +10229,7 @@ let _cpFornCmpAEsc=false, _cpFornCmpBEsc=false, _cpFornCmpAReady=false, _cpFornC
 // A lista é PLANA e curta de propósito: com optgroups e 17 itens o <select> nativo abria com barra
 // de rolagem (o navegador desenha a barra, não dá p/ estilizar) — 13 opções cabem sem rolar.
 const _CP_FORN_PER=[
-  ['ano','Ano todo'],
+  ['ano','Ano atual'],
   ['t1','1º trimestre'],['t2','2º trimestre'],['t3','3º trimestre'],['t4','4º trimestre'],
   ['s1','1º semestre'],['s2','2º semestre'],
   ['ult3','Últimos 3 meses'],['ult6','Últimos 6 meses'],['ult12','Últimos 12 meses'],
@@ -10669,62 +10669,22 @@ function _cpFornItTfootHTML(cod){
 function _cpFornSimOutHTML(cod){
   const c=_cpFornCtx(cod); if(!c) return '';
   const pct=parseFloat(String(_cpFornSimPct).replace(',','.'))||0;
-  const base=(_cpFornSimBase==='B')?c.B:c.A, baseR=(_cpFornSimBase==='B')?c.rB:c.rA;
+  // Cenário sempre parte do período cronologicamente mais recente; A/B é só a ordem da escolha.
+  const O=_cpFornOrdem(c), base=O.novo, baseR=O.novoR;
   const qA=base.qtd, vA=base.total;
-  if(!(vA>0)) return `<div style="font-size:12.5px;color:var(--text3);font-style:italic">Sem compras no período ${_cpFornSimBase} para simular.</div>`;
+  if(!(vA>0)) return `<div style="font-size:12.5px;color:var(--text3);font-style:italic">Sem compras no período atual para simular.</div>`;
   const dq=qA*pct/100, dv=vA*pct/100;
-  const un=c.umsMistas?'un.':(c.um||'un');
+  const un=c.umsMistas?'un. mistas':(c.um||'un');
   const pctTxt=_cpNum(pct, Number.isInteger(pct)?0:1);
-  // rot = o que o bloco mede · deLab/de = de onde parte (riscado) · paraLab/para = onde chega · mais = a diferença
-  const bloco=(rot,deLab,de,paraLab,para,mais,tip)=>`<div style="flex:1 1 170px;min-width:0">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:7px">${rot}</div>
-      <div title="${escapeAttr(tip||'')}" style="font-size:9.5px;color:var(--text3);letter-spacing:.02em;${tip?'cursor:help':''}">${deLab}</div>
-      <div style="font-size:12px;color:var(--text3);text-decoration:line-through;margin-bottom:7px">${de}</div>
-      <div style="font-size:9.5px;font-weight:700;letter-spacing:.02em;color:var(--blue-mid)">${paraLab}</div>
-      <div style="font-size:19px;font-weight:800;color:var(--text);line-height:1.15;margin:1px 0 2px">${para}</div>
-      <div style="font-size:12.5px;font-weight:700;color:var(--blue-mid)">${mais} <span style="font-weight:600;color:var(--text3)">a mais</span></div>
-    </div>`;
-  const perTxt=baseR.label||'tudo', datas=_cpFornRangeDatas(baseR, c.f.linhas);
-  const dePer=`período ${_cpFornSimBase} · ${perTxt}`, tipPer=datas?('De '+datas):'';
-  const comPct=`com +${pctTxt}%`;
-  // 3º bloco: FECHAMENTO DO ANO. O período base costuma ser um recorte (jan–ago); o fornecedor quer
-  // ouvir o ano inteiro. Projeta o ano corrente pelo crescimento já observado e aplica o mesmo +X%.
-  // ⚠️ O ano vem do PERÍODO BASE, não de `today`. Antes era fixo no ano corrente: trocar o lado A/B
-  // ou o período não mexia neste bloco, e o número parecia travado (bug apontado pelo Diego).
-  // ⚠️ O resultado é o ANO SEGUINTE, não o ano da base: 2026 vai fechar na projeção (riscado) e o
-  // +X% é a meta para 2027 sobre esse número — por isso os rótulos dizem "2026 projetado" → "2027 com +X%".
-  const anoY=_cpFornAnoDoPer(baseR, c.f.linhas), projAno=_cpFornAno(c.f.linhas, anoY);
-  let blocoAno='';
-  if(projAno && projAno.total>0){
-    const pv=projAno.total;
-    const tipAno=projAno.fechado
-      ? `Base: soma de todas as compras de ${anoY} (${_cpBRL(pv)}).`
-      : `Base: projeção de ${anoY} (${_cpBRL(pv)})${projAno.metodo==='yoy'?` — ${anoY} acumula +${_cpNum((projAno.fator-1)*100,1)}% sobre o mesmo trecho de ${anoY-1}, ritmo aplicado ao ano cheio`:' pelo tempo decorrido'}.`;
-    blocoAno=bloco('Ano cheio', `${anoY} ${projAno.fechado?'fechado':'projetado'}`, _cpBRL(pv),
-                   `${anoY+1} ${comPct}`, _cpBRL(pv*(1+pct/100)), '+'+_cpBRL(pv*pct/100), tipAno);
-  }
-  return `<div style="display:flex;gap:16px;flex-wrap:wrap">
-      ${bloco('Volume', dePer, _cpNum(qA,0)+' '+un, comPct, _cpNum(qA+dq,0)+' '+un, '+'+_cpNum(dq,0)+' '+un, tipPer)}
-      ${bloco('Valor', dePer, _cpBRL(vA), comPct, _cpBRL(vA+dv), '+'+_cpBRL(dv), tipPer)}
-      ${blocoAno}
-    </div>
-    `;   // sem rodapé de texto (Diego): os 3 blocos já dizem período, valor e ano — a frase repetia tudo
+  const met=(rot,valor,mais)=>`<div style="min-width:0"><div style="font-size:10px;font-weight:750;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">${rot}</div><div style="font-size:21px;font-weight:800;color:var(--text);margin-top:4px;line-height:1.15">${valor}</div><div style="font-size:12px;font-weight:700;color:var(--blue-mid);margin-top:4px">+${mais} <span style="font-weight:500;color:var(--text3)">a mais</span></div></div>`;
+  return `<div><div style="font-size:11px;color:var(--text3);margin-bottom:11px">Sobre ${escapeHTML(baseR.label||'o período atual')} · com +${pctTxt}%</div><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px">${met('Novo volume',_cpNum(qA+dq,0)+' '+escapeHTML(un),_cpNum(dq,0)+' '+escapeHTML(un))}${met('Novo valor',_cpBRL(vA+dv),_cpBRL(dv))}</div></div>`;
 }
 // Card do simulador (usado no Resumo e na aba Comparar).
 function _cpFornSimCard(cod){
-  // ⚠️ max-width ~metade da tela (o wrap tem 1500px): esticado na largura toda o card parecia vazio,
-  // com os 3 blocos boiando longe um do outro (Diego). Em tela estreita volta a ocupar tudo.
   return `<div class="cp-card" id="cp-forn-sim-card" style="padding:15px 17px;max-width:700px">
-    <div class="cp-card-title"><span>E se eu aumentar o volume</span></div>
-    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-top:10px">
-      <div style="flex:0 0 auto;text-align:center">
-        <span style="display:inline-flex;align-items:baseline;gap:3px"><input type="text" inputmode="decimal" value="${escapeAttr(_cpFornSimPct)}" oninput="_cpFornSimSet(this.value)" class="cp-sim-inp" style="width:62px;text-align:center;font-size:24px;font-weight:800"><b style="font-size:19px;color:var(--text2)">%</b></span>
-        <div style="font-size:10.5px;color:var(--text3);margin-top:2px">de aumento</div>
-        <div style="display:inline-flex;gap:3px;margin-top:8px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:2px">
-          ${['A','B'].map(q=>`<button onclick="_cpFornSimBaseSet('${q}')" title="Simular sobre o período ${q}" style="border:none;cursor:pointer;font-family:inherit;font-size:11.5px;font-weight:700;padding:4px 11px;border-radius:6px;background:${_cpFornSimBase===q?'var(--card)':'transparent'};color:${_cpFornSimBase===q?'var(--blue-mid)':'var(--text3)'}">${q}</button>`).join('')}
-        </div>
-        <div style="font-size:9.5px;color:var(--text3);margin-top:3px">período base</div>
-      </div>
+    <div class="cp-card-title"><span>Cenário de negociação</span><span class="sub">sobre o período atual</span></div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;margin-top:11px">
+      <label style="flex:0 0 auto;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Crescimento<br><span style="display:inline-flex;align-items:baseline;gap:4px;margin-top:4px"><input type="text" inputmode="decimal" value="${escapeAttr(_cpFornSimPct)}" oninput="_cpFornSimSet(this.value)" class="cp-sim-inp" style="width:62px;text-align:center;font-size:21px;font-weight:800"><b style="font-size:17px;color:var(--text2)">%</b></span></label>
       <div id="cp-forn-sim-out" style="flex:1 1 300px;min-width:0">${_cpFornSimOutHTML(cod)}</div>
     </div></div>`;
 }
@@ -10913,6 +10873,24 @@ function _cpFornResumoHTML(cod){
       <div style="display:flex;flex-direction:column;gap:12px">${_cpFornResumoOCs(c,ocs)}${_cpFornResumoUltimas(c)}</div>
     </div>`;
 }
+function _cpFornCompResumoHTML(cod){
+  const c=_cpFornCtx(cod); if(!c) return '';
+  const O=_cpFornOrdem(c), valPct=_cpVar(O.novo.total,O.base.total), volPct=_cpVar(O.novo.qtd,O.base.qtd);
+  const itensBase=Object.keys(O.base.porItem).length, itensNovo=Object.keys(O.novo.porItem).length;
+  const dv=O.novo.total-O.base.total, dq=O.novo.qtd-O.base.qtd;
+  const sentido=v=>v>0.5?'a mais':(v<-0.5?'a menos':'sem alteração relevante');
+  let frase;
+  if(valPct==null) frase='O período base não possui valor suficiente para calcular a variação.';
+  else if(Math.abs(valPct)<=0.5) frase='O valor comprado ficou praticamente estável entre os dois períodos.';
+  else frase=`Compramos ${_cpNum(Math.abs(valPct),1)}% ${valPct>0?'mais':'menos'} deste fornecedor: ${_cpBRL(Math.abs(dv))} ${valPct>0?'a mais':'a menos'}${(!c.umsMistas&&volPct!=null)?`, com ${_cpNum(Math.abs(volPct),1)}% ${volPct>0?'mais':'menos'} de volume`:''}.`;
+  const met=(tit,base,atual,delta,nota)=>`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:13px 14px;min-width:0"><div style="font-size:10px;font-weight:750;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">${tit}</div><div style="display:flex;align-items:center;gap:8px;margin-top:8px;min-width:0"><span style="font-size:13px;color:var(--text3);white-space:nowrap">${base}</span><i class="ti ti-arrow-right" style="font-size:13px;color:var(--text3)"></i><b style="font-size:16px;color:var(--text);white-space:nowrap">${atual}</b></div><div style="font-size:12px;margin-top:7px">${delta}</div>${nota?`<div style="font-size:10.5px;color:var(--text3);margin-top:3px">${nota}</div>`:''}</div>`;
+  const un=c.umsMistas?'un. mistas':(c.um||'un');
+  const dItens=itensNovo-itensBase, itDelta=dItens===0?'<span style="font-weight:700;color:var(--text2)">sem alteração</span>':`<span style="font-weight:700;color:${dItens>0?'var(--blue-mid)':'var(--amber)'}">${dItens>0?'+':''}${_cpNum(dItens)} ${Math.abs(dItens)===1?'item':'itens'}</span>`;
+  const rot=(lab,r)=>`${lab}: <b style="color:var(--text2)">${escapeHTML(r.label)}</b>${_cpFornRangeDatas(r,c.f.linhas)?` <span style="opacity:.75">· ${escapeHTML(_cpFornRangeDatas(r,c.f.linhas))}</span>`:''}`;
+  const row=(lab,r,d)=>`<tr><td><b>${lab}</b></td><td>${escapeHTML(r.label)}</td><td>${escapeHTML(_cpFornRangeDatas(r,c.f.linhas))}</td><td style="text-align:right;font-weight:700">${_cpBRL(d.total)}</td><td style="text-align:right">${_cpNum(d.qtd,0)} ${escapeHTML(un)}</td><td style="text-align:right">${_cpNum(Object.keys(d.nfs).length)}</td><td style="text-align:right">${_cpNum(Object.keys(d.porItem).length)}</td></tr>`;
+  return `<div class="cp-card" style="padding:17px 18px"><div class="cp-card-title"><span>Resultado da comparação</span></div><div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:11px;color:var(--text3);margin-top:8px"><span>${rot('Base',O.baseR)}</span><i class="ti ti-arrow-right"></i><span>${rot('Atual',O.novoR)}</span></div><div style="font-size:19px;font-weight:750;color:var(--text);line-height:1.35;max-width:920px;margin:14px 0 15px">${escapeHTML(frase)}</div><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">${met('Valor comprado',_cpBRL(O.base.total),_cpBRL(O.novo.total),_cpVarPill(valPct),_cpBRL(Math.abs(dv))+' '+sentido(dv))}${met('Volume',_cpNum(O.base.qtd,0)+' '+escapeHTML(un),_cpNum(O.novo.qtd,0)+' '+escapeHTML(un),c.umsMistas?'<span style="color:var(--text3)">unidades não comparáveis</span>':_cpVarPill(volPct),c.umsMistas?'fornecedor possui unidades diferentes':(_cpNum(Math.abs(dq),0)+' '+escapeHTML(un)+' '+sentido(dq)))}${met('Itens comprados',_cpNum(itensBase),_cpNum(itensNovo),itDelta,'itens diferentes no período')}</div></div>
+    <details class="cp-card" style="margin-top:12px;padding:0 16px"><summary style="list-style:none;cursor:pointer;padding:13px 0;font-size:12px;font-weight:700;color:var(--text2);display:flex;align-items:center;justify-content:space-between;gap:10px"><span><i class="ti ti-list-details" style="margin-right:6px"></i>Ver detalhes</span><span style="font-size:10.5px;font-weight:500;color:var(--text3)">datas, notas e composição</span></summary><div style="overflow-x:auto;border-top:1px solid var(--border);padding:10px 0 14px"><table class="cp-tbl"><thead><tr><th></th><th>Período</th><th>Intervalo</th><th style="text-align:right">Valor</th><th style="text-align:right">Volume</th><th style="text-align:right">Notas</th><th style="text-align:right">Itens</th></tr></thead><tbody>${row('Base',O.baseR,O.base)}${row('Atual',O.novoR,O.novo)}</tbody></table></div></details>`;
+}
 function _cpFornCmpWizardHTML(cod){
   const c=_cpFornCtx(cod); if(!c) return '';
   const etapa=!_cpFornCmpAReady?1:(!_cpFornCmpBReady?2:3);
@@ -10932,8 +10910,8 @@ function _cpFornCmpWizardHTML(cod){
 }
 function _cpFornCompararHTML(cod){
   if(!_cpFornCmpMostrar) return _cpFornCmpWizardHTML(cod);
-  return `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 2px 10px"><span style="font-size:11.5px;color:var(--text3)"><i class="ti ti-circle-check" style="color:var(--success)"></i> Comparação pronta — você ainda pode ajustar os períodos abaixo.</span><button onclick="_cpFornCmpNova()" class="btn-modal-cancel" style="padding:6px 11px;font-size:11.5px"><i class="ti ti-refresh"></i> Nova comparação</button></div>
-    ${_cpFornCompHTML(cod)}
+  return `<div style="display:flex;justify-content:flex-end;align-items:center;margin:0 2px 10px"><button onclick="_cpFornCmpNova()" class="btn-modal-cancel" style="padding:6px 11px;font-size:11.5px"><i class="ti ti-refresh"></i> Nova comparação</button></div>
+    ${_cpFornCompResumoHTML(cod)}
     <div style="height:14px"></div>
     ${_cpFornSimCard(cod)}`;
 }
