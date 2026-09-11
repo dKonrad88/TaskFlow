@@ -10881,58 +10881,62 @@ function _cpFornCompResumoHTML(cod){
   if(valPct==null) frase='O período base não possui valor suficiente para calcular a variação.';
   else if(Math.abs(valPct)<=0.5) frase='O valor comprado ficou praticamente estável entre os dois períodos.';
   else frase=`Compramos ${_cpNum(Math.abs(valPct),1)}% ${valPct>0?'mais':'menos'} deste fornecedor: ${_cpBRL(Math.abs(dv))} ${valPct>0?'a mais':'a menos'}${(!c.umsMistas&&volPct!=null)?`, com ${_cpNum(Math.abs(volPct),1)}% ${volPct>0?'mais':'menos'} de volume`:''}.`;
-  // ══ UMA TABELA SÓ (pedido do Diego, set/26) ══
-  // Antes eram 3 cards repetindo os mesmos números (resultado em 3 quadros · fechamento do ano ·
-  // detalhes em tabela). Agora é um quadro: Base · Atual · Variação e, logo abaixo, Ano passado ·
-  // Este ano · Variação. A linha de variação traz o % E o quanto ele vale ("R$ X a mais").
-  const un=c.umsMistas?'un. mistas':(c.um||'un'), unD=c.um||'un.';
-  const avisoUM=c.umsMistas?' <i class="ti ti-alert-triangle" title="Este fornecedor entrega em mais de uma unidade: a soma de volume é aproximada" style="font-size:11px;color:var(--amber);cursor:help"></i>':'';
+  // ══ UMA TABELA, UMA MÉTRICA POR LINHA (pedido do Diego, set/26) ══
+  // A 1ª versão tinha Base/Atual/Variação nas LINHAS e as métricas nas colunas: 8 linhas, unidade e "est."
+  // repetidos em toda célula e a variação em dois andares ("muita informação, ruim de achar"). Agora cada
+  // MÉTRICA é uma linha (Valor · Volume · Notas · Itens) e as comparações são COLUNAS lado a lado:
+  // [Base · Atual · Variação · Diferença] | [Ano passado · Este ano · Variação · Diferença].
+  // Nenhum dado saiu: período e datas foram para o cabeçalho, a unidade e o aviso de unidades mistas para
+  // o rótulo da linha, e o "estimado" para o cabeçalho do ano projetado (explicado na nota de rodapé).
   const nNf=d=>Object.keys(d.nfs).length, nIt=d=>Object.keys(d.porItem).length;
-  const vol=q=>_cpNum(q,0)+' <span class="cp-un">'+escapeHTML(un)+'</span>';
-  // Célula de variação: o % em cima e, embaixo, quanto isso representa na unidade da coluna.
-  const vari=(pct,d,fmt,sing,plur,extra)=>{
-    const ad=Math.abs(d), txt=ad<0.5?'sem alteração':(fmt(ad)+(sing?' '+(Math.round(ad)===1?sing:plur):'')+(d>0?' a mais':' a menos'));
-    return `<div style="font-size:13px;line-height:1.2">${_cpVarPill(pct)}</div><div style="font-size:10.5px;font-weight:600;color:var(--text2);margin-top:2px">${escapeHTML(txt)}${extra||''}</div>`;
-  };
-  const grupo=(tit,sub)=>`<tr><td colspan="7" style="background:var(--bg2);padding:6px 12px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--text2)">${tit}${sub?` <span style="font-weight:600;text-transform:none;letter-spacing:0;color:var(--text3)">· ${sub}</span>`:''}</td></tr>`;
-  const cel=(v,forte)=>`<td class="cp-n" style="${forte?'font-weight:750;color:var(--text)':'color:var(--text2)'}">${v}</td>`;
-  const linha=(rot,per,intervalo,d,forte)=>`<tr><td style="font-weight:700;color:var(--text)">${rot}</td><td style="color:var(--text2)">${per}</td><td class="cp-mono">${intervalo}</td>${cel(d.valor,forte)}${cel(d.volume,forte)}${cel(d.notas,forte)}${cel(d.itens,forte)}</tr>`;
-  // inline no background: vence o :hover da .cp-tbl, então a linha de variação não "some" ao passar o mouse
-  const linhaVar=(nota,cels)=>`<tr style="background:color-mix(in srgb,var(--blue-mid) 6%,transparent)"><td style="font-weight:800;color:var(--text2);vertical-align:top">Variação</td><td colspan="2" style="font-size:11px;color:var(--text3);vertical-align:top">${nota}</td>${cels.map(x=>`<td class="cp-n" style="vertical-align:top">${x}</td>`).join('')}</tr>`;
-  const perRows=grupo('Períodos comparados','')
-    +linha('Base',escapeHTML(O.baseR.label),escapeHTML(_cpFornRangeDatas(O.baseR,c.f.linhas)),{valor:_cpBRL(O.base.total),volume:vol(O.base.qtd),notas:_cpNum(nNf(O.base)),itens:_cpNum(nIt(O.base))},false)
-    +linha('Atual',escapeHTML(O.novoR.label),escapeHTML(_cpFornRangeDatas(O.novoR,c.f.linhas)),{valor:_cpBRL(O.novo.total),volume:vol(O.novo.qtd),notas:_cpNum(nNf(O.novo)),itens:_cpNum(nIt(O.novo))},true)
-    +linhaVar('da base para o atual',[
-      vari(valPct,dv,_cpBRL),
-      vari(volPct,O.novo.qtd-O.base.qtd,v=>_cpNum(v,0)+' '+unD,null,null,avisoUM),
-      vari(_cpVar(nNf(O.novo),nNf(O.base)),nNf(O.novo)-nNf(O.base),v=>_cpNum(v,0),'nota','notas'),
-      vari(_cpVar(nIt(O.novo),nIt(O.base)),nIt(O.novo)-nIt(O.base),v=>_cpNum(v,0),'item','itens')]);
+  const Y=+today.slice(0,4), ant=_cpFornAno(c.f.linhas,Y-1), atual=_cpFornAno(c.f.linhas,Y);
+  // Notas e itens NÃO se projetam: no ano corrente ficam "—", e a variação delas também.
+  const temAno=!!(ant&&ant.total>0&&atual&&atual.total>0);
+  const LY=temAno?c.f.linhas.filter(l=>+l.data.slice(0,4)===Y-1):[];
+  const nfAnt=new Set(LY.map(l=>l.nf)).size, itAnt=new Set(LY.map(l=>String(l.item[0]))).size;
+  const ap=temAno?_cpVar(atual.total,ant.total):null, ritmo=(temAno&&atual.metodo==='yoy'&&atual.fator)?(atual.fator-1)*100:ap;
+  const num=v=>_cpNum(v,0), nada='<span style="color:var(--text3)">—</span>', ano=v=>temAno?v:nada;
+  const forte=v=>`<b style="color:var(--text)">${v}</b>`;
+  // Diferença absoluta com sinal, na mesma cor da pílula de % (azul subiu · âmbar caiu).
+  const dif=(d,fmt)=>Math.abs(d)<0.5?'<span style="color:var(--text3)">0</span>'
+    :`<span style="font-weight:650;color:${d>0?'var(--blue-mid)':'var(--amber)'}">${d>0?'+':'-'}${fmt(Math.abs(d))}</span>`;
+  // Linhas de apoio dentro do cabeçalho (o th é caixa alta; o período e as datas não).
+  const hsub=(t,cor)=>`<span style="display:block;text-transform:none;letter-spacing:0;font-weight:500;font-size:11px;color:var(--${cor||'text2'});margin-top:2px">${t}</span>`;
+  const hdt=r=>hsub(escapeHTML(_cpFornRangeDatas(r,c.f.linhas)),'text3');
+  const SEP='border-left:1px solid var(--border);', TINT='background:color-mix(in srgb,var(--blue-mid) 5%,transparent);';
+  const COL=['','',TINT,TINT,SEP,'',TINT,TINT];   // colunas de resultado tingidas · divisória antes do ano
+  const th=(i,tit,extra)=>`<th class="r" style="vertical-align:top;${i===4?SEP:''}">${tit}${extra||''}</th>`;
+  const cab=`<thead>
+      <tr><th rowspan="2"></th>
+        <th colspan="4" style="text-align:center;border-bottom:1px solid var(--border)">Períodos comparados</th>
+        <th colspan="4" style="text-align:center;border-bottom:1px solid var(--border);${SEP}">Fechamento do ano <span style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--text3)">· mantendo o ritmo atual</span></th></tr>
+      <tr>${th(0,'Base',hsub(escapeHTML(O.baseR.label))+hdt(O.baseR))}${th(1,'Atual',hsub(escapeHTML(O.novoR.label))+hdt(O.novoR))}${th(2,'Variação')}${th(3,'Diferença',hsub('a mais / a menos','text3'))}${th(4,'Ano passado',hsub(`${Y-1} fechado`)+hdt({ini:(Y-1)+'-01-01',fim:(Y-1)+'-12-31'}))}${th(5,'Este ano',hsub(`${Y} projetado*`)+hdt({ini:Y+'-01-01',fim:Y+'-12-31'}))}${th(6,'Variação')}${th(7,'Diferença',hsub('a mais / a menos','text3'))}</tr>
+    </thead>`;
+  const linha=(rot,rotSub,cels)=>`<tr><td style="font-weight:700;color:var(--text)">${rot}${rotSub?`<span style="display:block;font-size:10.5px;font-weight:500;color:var(--text3);margin-top:1px">${rotSub}</span>`:''}</td>${cels.map((x,i)=>`<td class="cp-n" style="${COL[i]}">${x}</td>`).join('')}</tr>`;
+  const unRot=c.umsMistas
+    ? 'un. mistas <i class="ti ti-alert-triangle" title="Este fornecedor entrega em mais de uma unidade: a soma de volume é aproximada" style="color:var(--amber);cursor:help"></i>'
+    : 'em '+escapeHTML(c.um||'un');
+  const corpo=
+     linha('Valor','',[_cpBRL(O.base.total), forte(_cpBRL(O.novo.total)), _cpVarPill(valPct), dif(dv,_cpBRL),
+       ano(_cpBRL(ant.total)), ano(forte(_cpBRL(atual.total))), ano(_cpVarPill(ap)), ano(dif(atual.total-ant.total,_cpBRL))])
+    +linha('Volume',unRot,[num(O.base.qtd), forte(num(O.novo.qtd)), _cpVarPill(volPct), dif(O.novo.qtd-O.base.qtd,num),
+       ano(num(ant.qtd)), ano(forte(num(atual.qtd))), ano(_cpVarPill(_cpVar(atual.qtd,ant.qtd))), ano(dif(atual.qtd-ant.qtd,num))])
+    +linha('Notas','',[num(nNf(O.base)), forte(num(nNf(O.novo))), _cpVarPill(_cpVar(nNf(O.novo),nNf(O.base))), dif(nNf(O.novo)-nNf(O.base),num),
+       ano(num(nfAnt)), nada, nada, nada])
+    +linha('Itens','diferentes',[num(nIt(O.base)), forte(num(nIt(O.novo))), _cpVarPill(_cpVar(nIt(O.novo),nIt(O.base))), dif(nIt(O.novo)-nIt(O.base),num),
+       ano(num(itAnt)), nada, nada, nada]);
   // Fechamento do ano: ano anterior REAL contra a estimativa do ano corrente. _cpFornAno aplica ao ano
   // anterior cheio o crescimento observado jan→hoje contra o mesmo trecho (a sazonalidade entra).
-  // Notas e itens NÃO se projetam — no ano corrente ficam "—" e a variação delas fica em branco.
-  const Y=+today.slice(0,4), ant=_cpFornAno(c.f.linhas,Y-1), atual=_cpFornAno(c.f.linhas,Y);
-  let anoRows, nota='';
-  if(ant&&ant.total>0&&atual&&atual.total>0){
-    const LY=c.f.linhas.filter(l=>+l.data.slice(0,4)===Y-1);
-    const nfAnt=new Set(LY.map(l=>l.nf)).size, itAnt=new Set(LY.map(l=>String(l.item[0]))).size;
-    const est=' <span style="font-size:10px;font-weight:600;color:var(--text3)">est.</span>';
-    const semProj='<span style="color:var(--text3)" title="Notas e itens não se projetam, só valor e volume">—</span>';
-    const ap=_cpVar(atual.total,ant.total), ritmo=(atual.metodo==='yoy'&&atual.fator)?(atual.fator-1)*100:ap;
-    anoRows=grupo('Fechamento do ano','mantendo o ritmo atual')
-      +linha('Ano passado',`${Y-1} fechado`,escapeHTML(_cpFornRangeDatas({ini:(Y-1)+'-01-01',fim:(Y-1)+'-12-31'})),{valor:_cpBRL(ant.total),volume:vol(ant.qtd),notas:_cpNum(nfAnt),itens:_cpNum(itAnt)},false)
-      +linha('Este ano',`${Y} projetado`,escapeHTML(_cpFornRangeDatas({ini:Y+'-01-01',fim:Y+'-12-31'})),{valor:_cpBRL(atual.total)+est,volume:vol(atual.qtd)+est,notas:semProj,itens:semProj},true)
-      +linhaVar(`${Y-1} fechado → ${Y} projetado`,[
-        vari(ap,atual.total-ant.total,_cpBRL),
-        vari(_cpVar(atual.qtd,ant.qtd),atual.qtd-ant.qtd,v=>_cpNum(v,0)+' '+unD,null,null,avisoUM),'','']);
-    nota=atual.metodo==='yoy'
-      ? `${Y} projetado: crescimento de ${ritmo>0?'+':''}${_cpNum(ritmo,1)}% do acumulado de ${Y} (até ${_cpDt(today)}) contra o mesmo trecho de ${Y-1}, aplicado sobre ${Y-1} fechado.`
-      : `${Y} projetado pelo tempo decorrido do ano (sem o mesmo trecho de ${Y-1} para comparar).`;
-  } else anoRows=grupo('Fechamento do ano','')+`<tr><td colspan="7" style="color:var(--text3);font-size:12px;white-space:normal">Ainda não há histórico suficiente para comparar ${Y-1} fechado com a projeção de ${Y}.</td></tr>`;
+  const nota=!temAno
+    ? `* Ainda não há histórico suficiente para comparar ${Y-1} fechado com a projeção de ${Y}.`
+    : (atual.metodo==='yoy'
+        ? `* ${Y} projetado: crescimento de ${ritmo>0?'+':''}${_cpNum(ritmo,1)}% do acumulado de ${Y} (até ${_cpDt(today)}) contra o mesmo trecho de ${Y-1}, aplicado sobre ${Y-1} fechado. Notas e itens não se projetam.`
+        : `* ${Y} projetado pelo tempo decorrido do ano (sem o mesmo trecho de ${Y-1} para comparar). Notas e itens não se projetam.`);
   return `<div class="cp-card" style="padding:15px 17px">
-    <div class="cp-card-title"><span>Resultado da comparação</span><span class="sub">períodos escolhidos e fechamento do ano</span></div>
+    <div class="cp-card-title"><span>Resultado da comparação</span></div>
     <div style="font-size:15px;font-weight:700;color:var(--text);line-height:1.35;margin:12px 2px 11px">${escapeHTML(frase)}</div>
-    <div style="overflow-x:auto"><table class="cp-tbl"><thead><tr><th></th><th>Período</th><th>Intervalo</th><th class="r">Valor</th><th class="r">Volume</th><th class="r">Notas</th><th class="r">Itens</th></tr></thead><tbody>${perRows}${anoRows}</tbody></table></div>
-    ${nota?`<div style="font-size:10.5px;color:var(--text3);margin-top:8px;font-style:italic">* ${escapeHTML(nota)}</div>`:''}
+    <div style="overflow-x:auto"><table class="cp-tbl">${cab}<tbody>${corpo}</tbody></table></div>
+    <div style="font-size:10.5px;color:var(--text3);margin-top:8px;font-style:italic">${escapeHTML(nota)}</div>
   </div>`;
 }
 function _cpFornCmpWizardHTML(cod){
