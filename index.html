@@ -13406,72 +13406,164 @@ function renderListaProdutos(){
   `;
 }
 
-// ─── Ficha individual (layout de colunas, editável) ───
+// ─── Ficha individual — PAINEL com abas (Resumo + uma seção por vez) ───
+// Pedido do Diego (set/2026): a ficha abria as 7 seções lado a lado, ~110 caixas de campo de uma
+// vez, com rolagem horizontal. Agora é painel: cabeçalho com a identidade do produto + sub-navbar
+// (mesmo desenho dos painéis de item/fornecedor de Compras). O Resumo traz só o essencial e cada
+// seção abre sozinha. Os campos seguem editáveis, mas em estilo "quieto": sem caixa, só um traço
+// embaixo, que acende ao passar o mouse/focar.
+// ⚠️ RASCUNHO: como só UMA seção fica no DOM por vez, o Salvar antigo (que lia os inputs da tela)
+// gravaria só a aba aberta. As edições vivem em _fpDraft (clone da ficha) até o Salvar: trocar de
+// aba não perde nada, e voltar sem salvar pede confirmação quando há mudança.
+let _fpTab='resumo', _fpDraft=null, _fpDraftId=null, _fpDirty=false;
+function _fpInitDraft(id){
+  const f=fichasProduto.find(x=>x.id===id)||{};
+  _fpDraft=JSON.parse(JSON.stringify(f)); _fpDraftId=id; _fpDirty=false;
+}
+// Guarda o valor digitado SEM re-renderizar (manter o foco); só acende o aviso do Salvar.
+function _fpSet(k,v){
+  if(!_fpDraft) return;
+  _fpDraft[k]=v;
+  if(!_fpDirty){ _fpDirty=true; const d=document.getElementById('fp-dirty'); if(d) d.hidden=false; }
+}
+function _fpSetTab(t){ _fpTab=t; renderFichaProduto(fichaProdutoAberta); window.scrollTo(0,0); }
+const _fpVazio=v=>v==null||String(v).trim()==='';
+function _fpCampoDef(k){
+  for(const s of FICHA_SECOES) for(const g of s.grupos) for(const c of g.campos) if(c.k===k) return c;
+  return {k, l:k};
+}
+// Preenchidos x total por seção — vira o contador discreto da aba ("6/10"): mostra onde falta
+// informação sem precisar abrir a seção.
+function _fpSecStats(sec,d){
+  let tot=0, ok=0;
+  sec.grupos.forEach(g=>g.campos.forEach(c=>{ tot++; if(!_fpVazio(d[c.k])) ok++; }));
+  return {tot, ok};
+}
+// O que aparece no Resumo: identificação, ritmo de produção e embalagem/logística.
+const FICHA_RESUMO=[
+  {t:'Identificação', icon:'ti-id-badge-2', sec:0, ks:['codBarras','codBarrasCaixa','gramatura','validade']},
+  {t:'Produção', icon:'ti-flame', sec:3, ks:['cpm','pesoCru','pesoAssado','kgsBatelada','kgsHoraCru','tempoBatelada','numPessoasAssado']},
+  {t:'Embalagem e logística', icon:'ti-box', sec:5, ks:['tipoEmb','materialEmb','pacotesMin','pacotesCaixa','caixasLastro','caixasPalete','pesoCaixaProduto','pesoPalete']},
+];
+function _fpCSS(){
+  // (sem crase em comentário dentro deste template: fecharia a string)
+  return `<style>
+  .fp-wrap{padding:18px 4px 44px;max-width:1180px}
+  .fp-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .fp-back{background:none;border:1px solid var(--border);border-radius:9px;width:36px;height:36px;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+  .fp-back:hover{color:var(--text);border-color:var(--text3)}
+  .fp-tw{flex:1;min-width:0}
+  .fp-title{font-size:20px;font-weight:800;color:var(--text);letter-spacing:-.01em;line-height:1.25}
+  .fp-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+  .fp-chip{font-size:11.5px;font-weight:600;color:var(--text2);background:var(--bg2);border-radius:999px;padding:3px 10px;white-space:nowrap}
+  .fp-chip.cod{font-variant-numeric:tabular-nums}
+  .fp-chip.on{color:var(--success);background:color-mix(in srgb,var(--success) 13%,transparent)}
+  .fp-chip.off{color:var(--text3)}
+  .fp-acts{display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .fp-btn{border-radius:9px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;position:relative}
+  .fp-btn.ghost{background:none;border:1px solid var(--border);color:var(--text3)}
+  .fp-btn.ghost:hover{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,transparent)}
+  .fp-btn.pri{background:var(--blue-mid);border:none;color:#fff;padding:8px 18px;font-weight:700}
+  .fp-dirty{position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;background:var(--amber);border:2px solid var(--bg)}
+  .fp-nav{display:flex;gap:2px;overflow-x:auto;overflow-y:hidden;border-bottom:1px solid var(--border);margin-bottom:18px;scrollbar-width:none}
+  .fp-nav::-webkit-scrollbar{display:none}
+  .fp-tab{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text3);padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+  .fp-tab i{font-size:14px}
+  .fp-tab:hover{color:var(--text2)}
+  .fp-tab.on{color:var(--text);border-bottom-color:var(--blue-mid)}
+  .fp-cnt{font-size:10.5px;font-weight:600;color:var(--text3);font-variant-numeric:tabular-nums}
+  .fp-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;align-items:start}
+  .fp-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+  .fp-card-h{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:10px}
+  .fp-card-h i{font-size:14px}
+  .fp-card-h .fp-ver{margin-left:auto;background:none;border:none;color:var(--blue-mid);font-size:11.5px;font-weight:600;letter-spacing:0;text-transform:none;cursor:pointer;font-family:inherit;padding:0}
+  .fp-kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 60%,transparent);font-size:13px}
+  .fp-kv:last-child{border-bottom:none}
+  .fp-kv .k{color:var(--text3)}
+  .fp-kv .v{color:var(--text);font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+  .fp-kv .v.vz{color:var(--text3);font-weight:400}
+  .fp-grp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 18px 16px;margin-bottom:14px}
+  .fp-grp-t{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+  .fp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));column-gap:22px;row-gap:4px}
+  .fp-f{display:flex;flex-direction:column;min-width:0;padding-top:8px}
+  .fp-f.wide{grid-column:span 2}
+  .fp-l{font-size:11.5px;color:var(--text3);margin-bottom:2px}
+  .fp-in{width:100%;box-sizing:border-box;background:transparent;border:0;border-bottom:1px solid var(--border);border-radius:0;padding:5px 2px 6px;font-size:13.5px;color:var(--text);font-family:inherit;outline:none;transition:border-color .15s,background .15s}
+  .fp-in:hover{border-bottom-color:var(--text3)}
+  .fp-in:focus{border-bottom-color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 5%,transparent)}
+  .fp-in::placeholder{color:var(--text3);opacity:.55}
+  select.fp-in{cursor:pointer}
+  select.fp-in option{background:var(--card);color:var(--text)}
+  textarea.fp-in{resize:vertical;line-height:1.45;min-height:58px}
+  @media(max-width:640px){.fp-f.wide{grid-column:auto}}
+  </style>`;
+}
 function renderFichaProduto(id){
   const main=document.getElementById('task-container');
-  const f = fichasProduto.find(x=>x.id===id) || {};
-  const campoHTML = (c)=>{
-    const val = f[c.k]!=null ? f[c.k] : '';
-    if(c.tipo==='select'){
-      return `<div style="margin-bottom:9px;">
-        <div style="font-size:11px; font-weight:600; color:var(--text3); margin-bottom:3px;">${c.l}</div>
-        <select data-fk="${c.k}" style="width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:7px; padding:7px 9px; font-size:13px; color:var(--text); font-family:inherit;">
-          ${c.opts.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}
-        </select></div>`;
-    }
-    if(c.tipo==='textarea'){
-      return `<div style="margin-bottom:9px;">
-        <div style="font-size:11px; font-weight:600; color:var(--text3); margin-bottom:3px;">${c.l}</div>
-        <textarea data-fk="${c.k}" rows="2" style="width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:7px; padding:7px 9px; font-size:13px; color:var(--text); font-family:inherit; resize:vertical; line-height:1.4;">${escapeHTML(String(val))}</textarea></div>`;
-    }
-    return `<div style="margin-bottom:9px;">
-      <div style="font-size:11px; font-weight:600; color:var(--text3); margin-bottom:3px;">${c.l}</div>
-      <input data-fk="${c.k}" value="${escapeAttr(String(val))}" style="width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:7px; padding:7px 9px; font-size:13px; color:var(--text); font-family:inherit;"></div>`;
+  if(!_fpDraft || _fpDraftId!==id) _fpInitDraft(id);
+  const d=_fpDraft;
+  const secIdx=_fpTab==='resumo'?-1:parseInt(String(_fpTab).slice(1),10);
+  if(_fpTab!=='resumo' && !FICHA_SECOES[secIdx]) _fpTab='resumo';
+
+  const tab=(key,icon,label,cnt)=>`<button class="fp-tab${_fpTab===key?' on':''}" onclick="_fpSetTab('${key}')"><i class="ti ${icon}"></i>${label}${cnt?`<span class="fp-cnt">${cnt}</span>`:''}</button>`;
+  const tabs=tab('resumo','ti-layout-dashboard','Resumo','')
+    + FICHA_SECOES.map((s,i)=>{ const st=_fpSecStats(s,d); return tab('s'+i, s.icon, escapeHTML(s.nome), st.ok+'/'+st.tot); }).join('');
+
+  const campo=c=>{
+    const val=d[c.k]!=null?String(d[c.k]):'';
+    const on=`oninput="_fpSet('${c.k}',this.value)"`;
+    let el;
+    if(c.tipo==='select') el=`<select class="fp-in" onchange="_fpSet('${c.k}',this.value)">${c.opts.map(o=>`<option value="${escapeAttr(o)}" ${o===val?'selected':''}>${escapeHTML(o||'—')}</option>`).join('')}</select>`;
+    else if(c.tipo==='textarea') el=`<textarea class="fp-in" rows="3" placeholder="—" ${on}>${escapeHTML(val)}</textarea>`;
+    else el=`<input class="fp-in" value="${escapeAttr(val)}" placeholder="—" ${on}>`;
+    return `<label class="fp-f${c.wide?' wide':''}"><span class="fp-l">${escapeHTML(c.l)}</span>${el}</label>`;
   };
 
-  const colunas = FICHA_SECOES.map(sec=>`
-    <div style="background:var(--card); border:1px solid var(--border); border-radius:13px; overflow:hidden; display:flex; flex-direction:column;">
-      <div style="background:color-mix(in srgb, ${sec.cor} 12%, var(--card)); border-bottom:1px solid var(--border); padding:12px 15px; display:flex; align-items:center; gap:8px;">
-        <i class="ti ${sec.icon}" style="color:${sec.cor}; font-size:18px;"></i>
-        <span style="font-size:14px; font-weight:700; color:var(--text);">${sec.nome}</span>
-      </div>
-      <div style="padding:13px 15px;">
-        ${sec.grupos.map(g=>`
-          <div style="font-size:11px; font-weight:700; color:${sec.cor}; letter-spacing:.4px; text-transform:uppercase; margin:6px 0 8px;">${g.titulo}</div>
-          ${g.campos.map(campoHTML).join('')}
-        `).join('')}
-      </div>
-    </div>
-  `).join('');
+  let corpo;
+  if(_fpTab==='resumo'){
+    corpo=`<div class="fp-cards">${FICHA_RESUMO.map(b=>`
+      <div class="fp-card">
+        <div class="fp-card-h"><i class="ti ${b.icon}"></i>${escapeHTML(b.t)}<button class="fp-ver" onclick="_fpSetTab('s${b.sec}')">ver seção ›</button></div>
+        ${b.ks.map(k=>{ const c=_fpCampoDef(k), v=d[k];
+          return `<div class="fp-kv"><span class="k">${escapeHTML(c.l)}</span><span class="v${_fpVazio(v)?' vz':''}">${_fpVazio(v)?'—':escapeHTML(String(v))}</span></div>`; }).join('')}
+      </div>`).join('')}</div>`;
+  } else {
+    const sec=FICHA_SECOES[secIdx];
+    corpo=sec.grupos.map(g=>`<div class="fp-grp"><div class="fp-grp-t">${escapeHTML(g.titulo)}</div><div class="fp-grid">${g.campos.map(campo).join('')}</div></div>`).join('');
+  }
 
-  main.innerHTML = `
-    <div style="padding:18px 4px 40px;">
-      ${hubBreadcrumb([
-        {label:'Produção', onclick:"setProducaoView('produtos')"},
-        {label:'Produtos', onclick:"voltarListaProdutos()"},
-        {label: f.produto || 'Nova ficha'}
-      ])}
-      <!-- Barra topo da ficha -->
-      <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap;">
-        <button onclick="voltarListaProdutos()" style="background:none; border:1px solid var(--border); border-radius:9px; width:38px; height:38px; cursor:pointer; color:var(--text2); display:flex; align-items:center; justify-content:center; flex-shrink:0;" title="Voltar">
-          <i class="ti ti-arrow-left" style="font-size:18px;"></i>
-        </button>
-        <div style="flex:1; min-width:0;">
-          <h1 style="font-size:19px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(f.codigo? f.codigo+' - ' : '')}${escapeHTML(f.produto||'Nova ficha de produto')}</h1>
+  const ativo=(d.ativo||'Sim')!=='Não';
+  main.innerHTML=`${_fpCSS()}<div class="fp-wrap">
+    ${hubBreadcrumb([
+      {label:'Produção', onclick:"_fpSair(function(){setProducaoView('produtos')})"},
+      {label:'Produtos', onclick:"_fpSair(voltarListaProdutos)"},
+      {label: d.produto || 'Nova ficha'}
+    ])}
+    <div class="fp-head">
+      <button class="fp-back" onclick="_fpSair(voltarListaProdutos)" title="Voltar aos produtos"><i class="ti ti-arrow-left" style="font-size:17px"></i></button>
+      <div class="fp-tw">
+        <div class="fp-title">${escapeHTML(d.produto||'Nova ficha de produto')}</div>
+        <div class="fp-meta">
+          ${d.codigo?`<span class="fp-chip cod">Cód. ${escapeHTML(d.codigo)}</span>`:''}
+          ${d.tipoProducao?`<span class="fp-chip">${escapeHTML(d.tipoProducao)}</span>`:''}
+          ${d.marca?`<span class="fp-chip">${escapeHTML(d.marca)}</span>`:''}
+          <span class="fp-chip ${ativo?'on':'off'}">${ativo?'Ativo':'Inativo'}</span>
         </div>
-        <button onclick="excluirFichaProduto('${id}')" style="background:none; border:1px solid color-mix(in srgb, var(--danger) 40%, transparent); color:var(--danger); border-radius:9px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px;">
-          <i class="ti ti-trash"></i> Excluir
-        </button>
-        <button onclick="salvarFichaProduto('${id}')" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:9px 20px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px;">
-          <i class="ti ti-device-floppy"></i> Salvar
-        </button>
       </div>
-      <!-- Colunas de seções (scroll horizontal como no Sispro) -->
-      <div style="display:grid; grid-template-columns:repeat(${FICHA_SECOES.length}, minmax(250px, 1fr)); gap:14px; overflow-x:auto; padding-bottom:8px; align-items:start;">
-        ${colunas}
+      <div class="fp-acts">
+        <button class="fp-btn ghost" onclick="excluirFichaProduto('${id}')" title="Excluir ficha"><i class="ti ti-trash"></i></button>
+        <button class="fp-btn pri" onclick="salvarFichaProduto('${id}')"><i class="ti ti-device-floppy"></i> Salvar<span id="fp-dirty" class="fp-dirty" title="Alterações não salvas"${_fpDirty?'':' hidden'}></span></button>
       </div>
     </div>
-  `;
+    <div class="fp-nav">${tabs}</div>
+    ${corpo}
+  </div>`;
+}
+// Sair da ficha: com alteração pendente, confirma antes de descartar o rascunho.
+function _fpSair(fn){
+  const go=()=>{ _fpDraft=null; _fpDraftId=null; _fpDirty=false; _fpTab='resumo'; fn(); };
+  if(!_fpDirty) return go();
+  confirmModal({title:'Sair sem salvar?', message:'As alterações feitas nesta ficha serão descartadas.', confirmLabel:'Descartar', danger:true, icon:'ti-alert-triangle', onConfirm:go});
 }
 
 function novaFichaProduto(){
@@ -13479,16 +13571,18 @@ function novaFichaProduto(){
   fichasProduto.push(nova);
   saveFichasProduto();
   fichaProdutoAberta = nova.id;
+  _fpInitDraft(nova.id); _fpTab='s0';   // ficha nova abre direto nos Dados gerais (o Resumo estaria vazio)
   renderProducao();
 }
-function abrirFichaProduto(id){ fichaProdutoAberta = id; renderProducao(); }
+function abrirFichaProduto(id){ fichaProdutoAberta = id; _fpInitDraft(id); _fpTab='resumo'; renderProducao(); }
 function voltarListaProdutos(){ fichaProdutoAberta = null; renderProducao(); }
 function salvarFichaProduto(id){
   const f = fichasProduto.find(x=>x.id===id);
   if(!f) return;
-  document.querySelectorAll('#task-container [data-fk]').forEach(el=>{ f[el.getAttribute('data-fk')] = el.value; });
+  if(_fpDraft && _fpDraftId===id) Object.assign(f, _fpDraft);
   saveFichasProduto();
   if(typeof toast==='function') toast('✅ Ficha salva');
+  _fpDraft=null; _fpDraftId=null; _fpDirty=false; _fpTab='resumo';
   fichaProdutoAberta = null;
   renderProducao();
 }
