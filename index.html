@@ -6697,8 +6697,8 @@ function hubMeuDiaItem(ativo, inline){
   if(inline){
     // "Início" PLANO fixo — sem borda e sem fundo, ícone de casa (pedido do Diego; não depende mais de config).
     const p='display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:700; box-sizing:border-box; font-family:inherit; margin-right:auto; white-space:nowrap; padding:5px 6px; border-radius:8px; background:none; border:none; transition:background .15s, color .15s;';
-    if(ativo) return `<button style="${p} color:var(--text); cursor:default;"><i class="ti ti-home"></i> <span>Início</span></button>`;
-    return `<button onclick="voltarMeuDia()" style="${p} color:var(--text2); cursor:pointer;" onmouseover="this.style.background='color-mix(in srgb, var(--text) 7%, transparent)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text2)'"><i class="ti ti-home"></i> <span>Início</span></button>`;
+    if(ativo) return `<button style="${p} color:var(--text); cursor:default;"><i class="ti ti-sun" style="color:#f5b301"></i> <span>Início</span></button>`;
+    return `<button onclick="voltarMeuDia()" style="${p} color:var(--text2); cursor:pointer;" onmouseover="this.style.background='color-mix(in srgb, var(--text) 7%, transparent)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text2)'"><i class="ti ti-sun" style="color:#f5b301"></i> <span>Início</span></button>`;
   }
   const base = 'display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:9px; font-size:13px; font-weight:600; color:var(--blue-mid); background:none; border:1.5px solid var(--blue-mid); box-sizing:border-box; width:100%; font-family:inherit; transition:background .15s;';
   if(ativo){
