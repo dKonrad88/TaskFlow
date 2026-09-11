@@ -10693,19 +10693,21 @@ function _cpFornItTfootHTML(cod){
 // rótulo: não dava p/ saber de que período era o riscado nem o que o azul representava (Diego).
 // Agora todo número vem com a legenda em cima — e cada bloco carrega a PRÓPRIA base, porque a do 3º
 // (ano cheio projetado) é diferente da dos outros dois (o período A/B escolhido).
-function _cpFornSimOutHTML(cod){
-  const c=_cpFornCtx(cod); if(!c) return '';
+// Conta do cenário — sai daqui p/ a tela e o PDF da aba Comparar mostrarem o MESMO número.
+function _cpFornSimDados(c){
   const pct=parseFloat(String(_cpFornSimPct).replace(',','.'))||0;
   // Cenário sempre parte do período cronologicamente mais recente; A/B é só a ordem da escolha.
   const O=_cpFornOrdem(c), base=O.novo, baseR=O.novoR;
   const qA=base.qtd, vA=base.total;
+  return {pct, pctTxt:_cpNum(pct, Number.isInteger(pct)?0:1), qA, vA, dq:qA*pct/100, dv:vA*pct/100,
+    un:c.umsMistas?'un. mistas':(c.um||'un'), baseR, datas:_cpFornRangeDatas(baseR,c.f.linhas)};
+}
+function _cpFornSimOutHTML(cod){
+  const c=_cpFornCtx(cod); if(!c) return '';
+  const {pctTxt,qA,vA,dq,dv,un,baseR,datas}=_cpFornSimDados(c);
   if(!(vA>0)) return `<div style="font-size:12.5px;color:var(--text3);font-style:italic">Sem compras no período atual para simular.</div>`;
-  const dq=qA*pct/100, dv=vA*pct/100;
-  const un=c.umsMistas?'un. mistas':(c.um||'un');
-  const pctTxt=_cpNum(pct, Number.isInteger(pct)?0:1);
   // Cada bloco mostra a BASE de onde o número saiu (pedido do Diego): base + % = novo.
   const met=(rot,valor,mais,base)=>`<div style="min-width:0"><div style="font-size:10px;font-weight:750;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">${rot}</div><div style="font-size:21px;font-weight:800;color:var(--text);margin-top:4px;line-height:1.15">${valor}</div><div style="font-size:12px;font-weight:700;color:var(--blue-mid);margin-top:4px">+${mais} <span style="font-weight:500;color:var(--text3)">a mais</span></div><div style="font-size:11px;color:var(--text3);margin-top:6px;padding-top:6px;border-top:1px dashed var(--border)">Base: <b style="font-weight:650;color:var(--text2)">${base}</b> + ${pctTxt}%</div></div>`;
-  const datas=_cpFornRangeDatas(baseR,c.f.linhas);
   return `<div><div style="font-size:11px;color:var(--text3);margin-bottom:11px">Sobre ${escapeHTML(baseR.label||'o período atual')}${datas?' · '+escapeHTML(datas):''} · com +${pctTxt}%</div><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px">${met('Novo volume',_cpNum(qA+dq,0)+' '+escapeHTML(un),_cpNum(dq,0)+' '+escapeHTML(un),_cpNum(qA,0)+' '+escapeHTML(un))}${met('Novo valor',_cpBRL(vA+dv),_cpBRL(dv),_cpBRL(vA))}</div></div>`;
 }
 // Card do simulador (usado no Resumo e na aba Comparar).
@@ -10829,18 +10831,22 @@ function _cpFornOCs(c){
 function _cpFornCard(tit,sub,body){
   return `<div class="cp-card" style="padding:14px 16px"><div class="cp-card-title"><span>${tit}</span>${sub?`<span class="sub">${sub}</span>`:''}</div>${body}</div>`;
 }
-function _cpFornResumoIndicadores(c,ocs){
+// Linhas do card Indicadores — a tela e o PDF do Resumo usam as mesmas.
+function _cpFornResumoIndRows(c,ocs){
   const L=c.f.linhas.slice().sort((a,b)=>b.data.localeCompare(a.data));
   const ult=L.length?L[0].data:'';
   const ticket=Object.keys(c.f.nfs).length?c.f.total/Object.keys(c.f.nfs).length:0;
   const valOC=ocs.reduce((a,p)=>a+(p.valor||0),0);
-  const rows=[
+  return [
     ['Última compra',ult?_cpDt(ult):'—'],
     ['Ticket médio por NF',ticket?_cpBRL(ticket):'—'],
     ['Itens fornecidos',_cpNum(c.itens.length)],
     ['OCs em aberto',_cpNum(new Set(ocs.map(p=>p.oc)).size)],
     ['Valor em trânsito',valOC?_cpBRL(valOC):'—']
   ];
+}
+function _cpFornResumoIndicadores(c,ocs){
+  const rows=_cpFornResumoIndRows(c,ocs);
   return _cpFornCard('Indicadores','visão atual',`<div style="margin-top:4px">${rows.map((r,i)=>`<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:6px 0;${i<rows.length-1?'border-bottom:1px solid var(--border)':''}"><span style="font-size:12px;color:var(--text3)">${r[0]}</span><span style="font-size:12.5px;font-weight:700;color:var(--text);text-align:right">${r[1]}</span></div>`).join('')}</div>`);
 }
 function _cpFornResumoTopItens(c){
@@ -10902,8 +10908,9 @@ function _cpFornResumoHTML(cod){
       <div style="display:flex;flex-direction:column;gap:12px">${_cpFornResumoOCs(c,ocs)}${_cpFornResumoUltimas(c)}</div>
     </div>`;
 }
-function _cpFornCompResumoHTML(cod){
-  const c=_cpFornCtx(cod); if(!c) return '';
+// Números dos 2 cards da Comparar (períodos selecionados × fechamento do ano). Saem daqui p/ a tela e o
+// PDF da aba usarem a MESMA conta — um PDF que diverge da tela é pior do que não ter PDF.
+function _cpFornCompDados(c){
   const O=_cpFornOrdem(c), valPct=_cpVar(O.novo.total,O.base.total), volPct=_cpVar(O.novo.qtd,O.base.qtd);
   const dv=O.novo.total-O.base.total;
   let frase;
@@ -10911,13 +10918,6 @@ function _cpFornCompResumoHTML(cod){
   if(valPct==null) frase='No período selecionado, a base não possui valor suficiente para calcular a variação.';
   else if(Math.abs(valPct)<=0.5) frase='No período selecionado, o valor comprado ficou praticamente estável.';
   else frase=`No período selecionado, compramos ${_cpNum(Math.abs(valPct),1)}% ${valPct>0?'mais':'menos'} deste fornecedor: ${_cpBRL(Math.abs(dv))} ${valPct>0?'a mais':'a menos'}${(!c.umsMistas&&volPct!=null)?`, com ${_cpNum(Math.abs(volPct),1)}% ${volPct>0?'mais':'menos'} de volume`:''}.`;
-  // ══ DOIS CARDS, UMA MÉTRICA POR LINHA (pedido do Diego, set/26) ══
-  // São DUAS análises e cada uma tem o próprio card: (1) os períodos escolhidos na barra acima e (2) o
-  // fechamento do ano, que não depende dessa escolha. Nos dois, cada MÉTRICA é uma linha (Valor · Volume
-  // · Notas · Itens) e as comparações são colunas: Base · Atual · Variação · Diferença.
-  // (A 1ª versão tinha Base/Atual/Variação nas LINHAS: 8 linhas, unidade e "est." em toda célula —
-  // "muita informação, ruim de achar".) Período e datas ficam no cabeçalho; unidade e aviso de unidades
-  // mistas no rótulo da linha; o "estimado" no cabeçalho do ano projetado, explicado na nota do card.
   const nNf=d=>Object.keys(d.nfs).length, nIt=d=>Object.keys(d.porItem).length;
   const Y=+today.slice(0,4), ant=_cpFornAno(c.f.linhas,Y-1), atual=_cpFornAno(c.f.linhas,Y);
   // Notas e itens NÃO se projetam: no ano corrente ficam "—", e a variação delas também.
@@ -10925,6 +10925,28 @@ function _cpFornCompResumoHTML(cod){
   const LY=temAno?c.f.linhas.filter(l=>+l.data.slice(0,4)===Y-1):[];
   const nfAnt=new Set(LY.map(l=>l.nf)).size, itAnt=new Set(LY.map(l=>String(l.item[0]))).size;
   const ap=temAno?_cpVar(atual.total,ant.total):null, ritmo=(temAno&&atual.metodo==='yoy'&&atual.fator)?(atual.fator-1)*100:ap;
+  // Ano anterior REAL contra a estimativa do ano corrente. _cpFornAno aplica ao ano anterior cheio o
+  // crescimento observado jan→hoje contra o mesmo trecho (a sazonalidade entra).
+  const dAno=temAno?atual.total-ant.total:0;
+  const fraseAno=!temAno
+    ? `Ainda não há histórico suficiente para comparar ${Y-1} fechado com a projeção de ${Y}.`
+    : `Mantendo o ritmo atual, ${Y} deve fechar em ${_cpBRL(atual.total)}: ${_cpBRL(Math.abs(dAno))} ${dAno>=0?'a mais':'a menos'} que ${Y-1}.`;
+  const nota=!temAno ? ''
+    : (atual.metodo==='yoy'
+        ? `* ${Y} projetado: crescimento de ${ritmo>0?'+':''}${_cpNum(ritmo,1)}% do acumulado de ${Y} (até ${_cpDt(today)}) contra o mesmo trecho de ${Y-1}, aplicado sobre ${Y-1} fechado. Notas e itens não se projetam.`
+        : `* ${Y} projetado pelo tempo decorrido do ano (sem o mesmo trecho de ${Y-1} para comparar). Notas e itens não se projetam.`);
+  return {O,valPct,volPct,dv,frase,nNf,nIt,Y,ant,atual,temAno,nfAnt,itAnt,ap,dAno,fraseAno,nota};
+}
+function _cpFornCompResumoHTML(cod){
+  const c=_cpFornCtx(cod); if(!c) return '';
+  const {O,valPct,volPct,dv,frase,nNf,nIt,Y,ant,atual,temAno,nfAnt,itAnt,ap,dAno,fraseAno,nota}=_cpFornCompDados(c);
+  // ══ DOIS CARDS, UMA MÉTRICA POR LINHA (pedido do Diego, set/26) ══
+  // São DUAS análises e cada uma tem o próprio card: (1) os períodos escolhidos na barra acima e (2) o
+  // fechamento do ano, que não depende dessa escolha. Nos dois, cada MÉTRICA é uma linha (Valor · Volume
+  // · Notas · Itens) e as comparações são colunas: Base · Atual · Variação · Diferença.
+  // (A 1ª versão tinha Base/Atual/Variação nas LINHAS: 8 linhas, unidade e "est." em toda célula —
+  // "muita informação, ruim de achar".) Período e datas ficam no cabeçalho; unidade e aviso de unidades
+  // mistas no rótulo da linha; o "estimado" no cabeçalho do ano projetado, explicado na nota do card.
   const num=v=>_cpNum(v,0), nada='<span style="color:var(--text3)">—</span>', ano=v=>temAno?v:nada;
   const forte=v=>`<b style="color:var(--text)">${v}</b>`;
   // Diferença absoluta com sinal, na mesma cor da pílula de % (azul subiu · âmbar caiu).
@@ -10954,16 +10976,7 @@ function _cpFornCompResumoHTML(cod){
       [num(O.base.qtd), forte(num(O.novo.qtd)), _cpVarPill(volPct), dif(O.novo.qtd-O.base.qtd,num)],
       [num(nNf(O.base)), forte(num(nNf(O.novo))), _cpVarPill(_cpVar(nNf(O.novo),nNf(O.base))), dif(nNf(O.novo)-nNf(O.base),num)],
       [num(nIt(O.base)), forte(num(nIt(O.novo))), _cpVarPill(_cpVar(nIt(O.novo),nIt(O.base))), dif(nIt(O.novo)-nIt(O.base),num)]]),'');
-  // Fechamento do ano: ano anterior REAL contra a estimativa do ano corrente. _cpFornAno aplica ao ano
-  // anterior cheio o crescimento observado jan→hoje contra o mesmo trecho (a sazonalidade entra).
-  const dAno=temAno?atual.total-ant.total:0;
-  const fraseAno=!temAno
-    ? `Ainda não há histórico suficiente para comparar ${Y-1} fechado com a projeção de ${Y}.`
-    : `Mantendo o ritmo atual, ${Y} deve fechar em ${_cpBRL(atual.total)}: ${_cpBRL(Math.abs(dAno))} ${dAno>=0?'a mais':'a menos'} que ${Y-1}.`;
-  const nota=!temAno ? ''
-    : (atual.metodo==='yoy'
-        ? `* ${Y} projetado: crescimento de ${ritmo>0?'+':''}${_cpNum(ritmo,1)}% do acumulado de ${Y} (até ${_cpDt(today)}) contra o mesmo trecho de ${Y-1}, aplicado sobre ${Y-1} fechado. Notas e itens não se projetam.`
-        : `* ${Y} projetado pelo tempo decorrido do ano (sem o mesmo trecho de ${Y-1} para comparar). Notas e itens não se projetam.`);
+  // Fechamento do ano: ano anterior REAL × estimativa do ano corrente (a conta está em _cpFornCompDados).
   const fechamento=card('Fechamento do ano','mantendo o ritmo atual',fraseAno,
     tabela(cabeca(th('Ano passado',hsub(`${Y-1} fechado`)+hdt({ini:(Y-1)+'-01-01',fim:(Y-1)+'-12-31'})), th('Este ano',hsub(`${Y} projetado*`)+hdt({ini:Y+'-01-01',fim:Y+'-12-31'}))),[
       [ano(_cpBRL(ant.total)), ano(forte(_cpBRL(atual.total))), ano(_cpVarPill(ap)), ano(dif(dAno,_cpBRL))],
@@ -11014,9 +11027,14 @@ function _cpFornCmpQuickHTML(cod){
     <button onclick="_cpFornCmpNova()" title="Recomeçar pelo passo a passo" style="margin-left:auto;border:none;background:transparent;color:var(--text3);font-family:inherit;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:3px 4px"><i class="ti ti-refresh"></i> Nova comparação</button>
   </div>`;
 }
+// Período personalizado sem as duas datas (ou com início depois do fim) ainda não tem resultado.
+function _cpFornCmpCustomIncompleto(){
+  const inc=o=>o.p==='custom'&&!(o.de&&o.ate&&o.de<=o.ate);
+  return inc(_cpFornPerA)||inc(_cpFornPerB);
+}
 function _cpFornCompararHTML(cod){
   if(!_cpFornCmpMostrar) return _cpFornCmpWizardHTML(cod);
-  const customIncompleto=(_cpFornPerA.p==='custom'&&!(_cpFornPerA.de&&_cpFornPerA.ate&&_cpFornPerA.de<=_cpFornPerA.ate))||(_cpFornPerB.p==='custom'&&!(_cpFornPerB.de&&_cpFornPerB.ate&&_cpFornPerB.de<=_cpFornPerB.ate));
+  const customIncompleto=_cpFornCmpCustomIncompleto();
   const quick=_cpFornCmpQuickHTML(cod);
   if(customIncompleto) return `${quick}<div class="cp-card" style="padding:18px;color:var(--text3);font-size:12.5px"><i class="ti ti-calendar-event" style="margin-right:6px"></i>Preencha as duas datas do período personalizado para atualizar o resultado.</div>`;
   return `${quick}${_cpFornCompResumoHTML(cod)}
@@ -11039,8 +11057,7 @@ function _cpFornItensHTML(cod){
       ${datas?`<div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:none;letter-spacing:0;margin-top:3px">${escapeHTML(datas)}</div>`:''}`; };
   return `<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 2px 10px">
       <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">Itens comprados</span>
-      ${_cpLupa(_cpFornItBuscaAberta,_cpFornItBusca,'_cpFornItBuscaToggle','_cpFornItBuscaInput','cp-fi-busca','Buscar item…',
-        `<button onclick="_cpFornItPDF('${_cpJs(cod)}')" title="Gerar PDF desta tabela (respeita a busca e os itens marcados)" style="height:38px;padding:0 13px;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--text2);font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-file-download" style="font-size:16px"></i> Gerar PDF</button>`)}
+      ${_cpLupa(_cpFornItBuscaAberta,_cpFornItBusca,'_cpFornItBuscaToggle','_cpFornItBuscaInput','cp-fi-busca','Buscar item…')}
     </div>
     <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead>
@@ -11084,6 +11101,10 @@ function _cpFichaFornHTML(cod){
   const btnFoco=foco
     ? `<button class="cp-exp-btn2" onclick="_cpToggleFoco()" title="Reduzir"><i class="ti ti-arrows-minimize"></i> Reduzir</button>`
     : `<button class="cp-exp-btn2" onclick="_cpToggleFoco()" title="Abrir em tela cheia"><i class="ti ti-arrows-maximize"></i> Tela cheia</button>`;
+  // UM "Gerar PDF" só, na barra das abas: gera o PDF da aba ABERTA (Resumo, Comparar, Itens ou Entradas).
+  // Antes existia só na aba Itens, ao lado da lupa; o Diego pediu em todas as abas, e um botão por aba
+  // repetiria a mesma ação em 4 lugares diferentes.
+  const btnPdf=`<button class="cp-exp-btn2" onclick="_cpFornPDF('${_cpJs(cod)}')" title="Gerar PDF da aba aberta"><i class="ti ti-file-download"></i> Gerar PDF</button>`;
   return `${_cpCSS()}<div class="cp-painel-wrap">
     <button class="cp-back-link" onclick="_cpVoltarForns()"><i class="ti ti-arrow-left"></i> Voltar aos fornecedores</button>
     <div style="display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;margin-bottom:2px">
@@ -11101,7 +11122,7 @@ function _cpFichaFornHTML(cod){
         ${tb('itens','ti-cube','Itens')}
         ${tb('entradas','ti-receipt','Entradas')}
       </div>
-      ${btnFoco}
+      ${btnPdf}${btnFoco}
     </div>
     <div id="cp-fornficha-main" style="margin-top:18px">${_cpFornMainHTML(cod)}</div>
   </div>`;
@@ -39503,15 +39524,223 @@ async function gerarPDFOrdem(id){
   _osPdfModal(pdfDoc, fileName);
 }
 
-// ══════ PDF da aba Itens da ficha do fornecedor (pedido do Diego) ══════
-// Exporta o que a tabela está mostrando: mesma busca, mesma ordenação e, se houver itens marcados,
-// só os marcados (a regra do check é "marcar = recortar a análise"). A4 deitado: são 13 colunas.
-// Reusa a pré-visualização da OS (_osPdfModal), com título próprio.
-async function _cpFornItPDF(cod){
+// ══════ PDFs da ficha do fornecedor — um por aba (pedido do Diego: "Gerar PDF em todas as abas") ══════
+// Um botão só, na barra das abas, gera o PDF da aba ABERTA. A regra vale para todos (é a do PDF de Itens):
+// o PDF sai com o que a tela mostra — mesmos períodos, mesma ordenação e, se houver itens marcados na aba
+// Itens, só eles (marcar recorta o painel inteiro, então o PDF recorta junto e AVISA no topo).
+// Todos abrem na pré-visualização da OS (_osPdfModal), com título próprio.
+function _cpFornPDF(cod){
+  if(_cpFornView==='itens') return _cpFornItPDF(cod);
+  if(_cpFornView==='entradas') return _cpFornEntrPDF(cod);
+  if(_cpFornView==='comparar') return _cpFornCompPDF(cod);
+  return _cpFornResumoPDF(cod);
+}
+async function _cpPdfPronto(){
   try{
     if(typeof ensurePdfMakeLoaded==='function') await ensurePdfMakeLoaded();
-    if(typeof pdfMake==='undefined'){ toast('⚠️ Biblioteca PDF não carregada. Tente novamente em alguns segundos.'); return; }
-  }catch(e){ console.error(e); toast('⚠️ Não foi possível carregar a biblioteca PDF.'); return; }
+    if(typeof pdfMake==='undefined'){ toast('⚠️ Biblioteca PDF não carregada. Tente novamente em alguns segundos.'); return false; }
+    return true;
+  }catch(e){ console.error(e); toast('⚠️ Não foi possível carregar a biblioteca PDF.'); return false; }
+}
+// Mesmas cores da tela: valor/volume = azul subiu · âmbar caiu; preço = vermelho subiu · verde caiu.
+const _cpPdfCorVar=v=>v==null?'#999':(v>0.5?'#185FA5':(v<-0.5?'#B47C0A':'#555'));
+const _cpPdfCorPreco=v=>v==null?'#999':(v>0.5?'#A32D2D':(v<-0.5?'#3B6D11':'#555'));
+const _cpPdfPct=v=>v==null?'—':((v>0?'+':'')+_cpNum(v,1)+'%');
+const _CP_PDF_FUNDO='#EEF1F5';
+// Tabela padrão dos PDFs: só linhas horizontais finas, sem verticais.
+const _CP_PDF_LAYOUT={ hLineWidth:(i,node)=>(i===0||i===node.table.body.length)?0:0.5, hLineColor:()=>'#DDE1E7', vLineWidth:()=>0,
+  paddingTop:()=>2.5, paddingBottom:()=>2.5, paddingLeft:()=>3, paddingRight:()=>3 };
+// Documento base: A4, cabeçalho KLAIN com a seção à direita e rodapé com a data de geração e as páginas.
+function _cpFornPdfDoc(secao, content, deitado){
+  const agora=new Date();
+  return {
+    pageSize:'A4', pageOrientation:deitado?'landscape':'portrait', pageMargins:[28,50,28,38],
+    header:{ margin:[28,18,28,0], columns:[
+      {text:'KLA',color:'#185FA5',fontSize:13,bold:true,width:'auto'},
+      {text:'IN',color:'#A32D2D',fontSize:13,bold:true,width:'auto'},
+      {text:secao,alignment:'right',color:'#888',fontSize:9,margin:[0,2,0,0]}
+    ]},
+    footer:function(p,n){ return { margin:[28,0,28,16], columns:[
+      {text:`Gerado em ${agora.toLocaleDateString('pt-BR')} às ${agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`, color:'#aaa', fontSize:8},
+      {text:`${p} / ${n}`, alignment:'right', color:'#aaa', fontSize:8}
+    ]}; },
+    content,
+    defaultStyle:{ font:'Roboto', color:'#333' }
+  };
+}
+// Topo comum: nome do fornecedor + linhas de contexto. O aviso de recorte por seleção entra sozinho.
+function _cpFornPdfTopo(nome, linhas){
+  const out=[{text:nome, fontSize:15, bold:true, color:'#0D3D6B'}];
+  (linhas||[]).filter(Boolean).forEach((l,i)=>out.push({text:l, fontSize:i?7.5:8.5, color:i?'#888':'#333', margin:[0,i?0:4,0,2]}));
+  if(_cpSelTem('fcomp')){ const n=_cpSelIds('fcomp').size;
+    out.push({text:`Recorte: só ${n} ${n===1?'item marcado':'itens marcados'} na aba Itens`, fontSize:7.5, bold:true, color:'#185FA5', margin:[0,0,0,2]}); }
+  out.push({text:'', margin:[0,0,0,4]});
+  return out;
+}
+// Título de seção — as caixas da tela viram título + conteúdo.
+function _cpPdfSecao(tit, sub){
+  return {text:[{text:tit.toUpperCase(),bold:true,color:'#0D3D6B'}, sub?{text:'  ·  '+sub,color:'#999'}:''], fontSize:8.5, margin:[0,13,0,5]};
+}
+function _cpPdfVazio(t){ return {text:t, fontSize:8, italics:true, color:'#999', margin:[0,2,0,0]}; }
+function _cpFornPdfAbrir(doc, prefixo, nome, titulo){
+  const slug=String(nome||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'').substring(0,40);
+  let pdfDoc;
+  try{ pdfDoc=pdfMake.createPdf(doc); }
+  catch(err){ console.error('Erro ao gerar PDF ('+prefixo+'):',err); toast('⚠️ Erro ao gerar PDF — verifique o console'); return; }
+  _osPdfModal(pdfDoc, `${prefixo}_${slug||'fornecedor'}_${today}.pdf`, titulo);
+}
+
+// ── RESUMO: os 4 indicadores do topo, volume e valor por mês (os 2 gráficos viram UMA tabela com barra
+// proporcional — número exato + o desenho), Indicadores, itens mais comprados, OCs em aberto e últimas
+// compras. Na tela as OCs param em 6 ("+ N em outras OCs"); no PDF saem TODAS, porque ali não há onde clicar.
+async function _cpFornResumoPDF(cod){
+  if(!await _cpPdfPronto()) return;
+  const c=_cpFornCtx(cod); if(!c){ toast('⚠️ Fornecedor não encontrado'); return; }
+  const f=c.f, nome=_cpForn(f.nome), ocs=_cpFornOCs(c), cr=_cpFornCresc(c), S=c.serie, F=_CP_PDF_FUNDO;
+  const H=(t,al)=>({text:t,bold:true,fontSize:6.5,color:'#666',alignment:al||'right',fillColor:F});
+  const C=(t,o)=>Object.assign({text:t,fontSize:8,alignment:'right'},o||{});
+  const tab=(widths,body)=>({table:{headerRows:1, dontBreakRows:true, widths, body}, layout:_CP_PDF_LAYOUT});
+  const lblYm=ym=>_cpMesLbl(+ym.slice(0,4), +ym.slice(5,7));
+  const un=c.umsMistas?'un. mistas':(c.um||'un');
+  const historico=_cpFornRangeDatas({ini:'',fim:''},f.linhas);
+  const kpi=(rot,val,sub,cor)=>({width:'*', table:{widths:['*'], body:[[{fillColor:'#F4F6F9', margin:[4,3,4,3], stack:[
+      {text:rot.toUpperCase(), fontSize:6.5, bold:true, color:'#888'},
+      {text:val, fontSize:12.5, bold:true, color:cor||'#222', margin:[0,2,0,0]},
+      {text:sub||' ', fontSize:6.5, color:'#999', margin:[0,1,0,0]}]}]]}, layout:'noBorders'});
+  const topo={columns:[
+    kpi('Comprado (tudo)', _cpBRL(f.total), historico),
+    kpi('Notas fiscais', _cpNum(Object.keys(f.nfs).length)),
+    kpi('Itens diferentes', _cpNum(c.itens.length)),
+    kpi('Crescimento médio/mês', cr?_cpPdfPct(cr.pct):'—', cr?`${lblYm(cr.ini)} – ${lblYm(cr.fim)} · ${cr.n} meses`:'histórico curto demais', cr?_cpPdfCorVar(cr.pct):'#999')
+  ], columnGap:6};
+  const BW=105, maxQ=Math.max(0,...S.map(s=>s.qtd)), maxV=Math.max(0,...S.map(s=>s.valor));
+  const barra=(v,max,cor)=>(max>0&&v>0)?{canvas:[{type:'rect', x:0, y:2, w:Math.max(1,BW*v/max), h:6, color:cor}], margin:[4,0,0,0]}:{text:''};
+  const meses=S.length
+    ? tab([40,64,BW+8,80,BW+8], [[H('MÊS','left'), H('VOLUME ('+un.toUpperCase()+')'), {text:'',fillColor:F}, H('VALOR'), {text:'',fillColor:F}]]
+        .concat(S.map(s=>[C(s.lbl,{alignment:'left'}), C(_cpNum(s.qtd,0)), barra(s.qtd,maxQ,'#9DB8D6'), C(_cpBRL(s.valor)), barra(s.valor,maxV,'#185FA5')])))
+    : _cpPdfVazio('Sem histórico.');
+  const parcial=S.some(s=>s.parcial)?{text:`* ${_cpMesLbl(+today.slice(0,4),+today.slice(5,7))} ainda está em curso — mês parcial.`, fontSize:7, italics:true, color:'#999', margin:[0,3,0,0]}:{text:''};
+  const ind={table:{widths:['*','auto'], body:_cpFornResumoIndRows(c,ocs).map(r=>[C(r[0],{alignment:'left',color:'#777'}), C(r[1],{bold:true})])}, layout:_CP_PDF_LAYOUT};
+  const top=_cpFornResumoItens(c).slice(0,5), totF=f.total||1;
+  const topT=top.length
+    ? tab([12,'*',44,70], [[H('#','left'),H('ITEM','left'),H('% COMPRAS'),H('TOTAL')]]
+        .concat(top.map((i,n)=>[C(String(n+1),{alignment:'left',color:'#999'}), C(i.nome,{alignment:'left'}), C(_cpNum(i.total/totF*100,1)+'%',{color:'#777'}), C(_cpBRL(i.total),{bold:true})])))
+    : _cpPdfVazio('Sem itens neste fornecedor.');
+  const nOC=new Set(ocs.map(p=>p.oc)).size;
+  const ocT=ocs.length
+    ? tab([48,52,'*',66,70], [[H('OC','left'),H('PREVISÃO','left'),H('ITEM','left'),H('A RECEBER'),H('VALOR')]]
+        .concat(ocs.map(p=>[C(p.oc||'—',{alignment:'left',bold:true}), C(p.prevista?_cpDt(p.prevista):'sem previsão',{alignment:'left',color:(p.prevista&&p.prevista<today)?'#A32D2D':'#777'}),
+          C(p.nome,{alignment:'left'}), C(_cpNum(p.qtd,0)+(p.um?' '+p.um:'')), C(_cpBRL(p.valor||0),{bold:true})])))
+    : _cpPdfVazio('Nenhuma OC em aberto para este fornecedor.');
+  const ult=f.linhas.slice().sort((a,b)=>b.data.localeCompare(a.data)).slice(0,7);
+  const ultT=ult.length
+    ? tab([42,'*',66,58,70], [[H('DATA','left'),H('ITEM','left'),H('QTDE'),H('PREÇO'),H('TOTAL')]]
+        .concat(ult.map(l=>[C(_cpDt(l.data),{alignment:'left',color:'#777'}), C(l.item[1],{alignment:'left'}), C(_cpNum(l.qtd,0)+(l.um?' '+l.um:'')), C(_cpBRL(l.vun||0)), C(_cpBRL(l.tot||0),{bold:true})])))
+    : _cpPdfVazio('Sem compras registradas.');
+  const content=[
+    ..._cpFornPdfTopo(nome, [`Resumo do fornecedor${historico?' · histórico de '+historico:''}`]),
+    topo,
+    _cpPdfSecao('Volume e valor comprados por mês'), meses, parcial,
+    {columns:[
+      {width:'38%', stack:[_cpPdfSecao('Indicadores','visão atual'), ind]},
+      {width:'*', stack:[_cpPdfSecao('Itens mais comprados','por valor'), topT]}
+    ], columnGap:16},
+    _cpPdfSecao('OCs em aberto', nOC?`${nOC} ${nOC===1?'ordem':'ordens'}`:''), ocT,
+    _cpPdfSecao('Últimas compras','entradas mais recentes'), ultT
+  ];
+  _cpFornPdfAbrir(_cpFornPdfDoc('COMPRAS · RESUMO DO FORNECEDOR', content, false), 'Resumo', nome, 'Pré-visualização — resumo do fornecedor');
+}
+
+// ── COMPARAR: os 2 cards (períodos selecionados × fechamento do ano) e o cenário de negociação, com a
+// mesma conta da tela (_cpFornCompDados / _cpFornSimDados). Sem comparação montada não há o que exportar.
+async function _cpFornCompPDF(cod){
+  if(!_cpFornCmpMostrar){ toast('⚠️ Monte a comparação (períodos A e B) antes de gerar o PDF.'); return; }
+  if(_cpFornCmpCustomIncompleto()){ toast('⚠️ Preencha as duas datas do período personalizado antes de gerar o PDF.'); return; }
+  if(!await _cpPdfPronto()) return;
+  const c=_cpFornCtx(cod); if(!c){ toast('⚠️ Fornecedor não encontrado'); return; }
+  const nome=_cpForn(c.f.nome), D=_cpFornCompDados(c), O=D.O, SIM=_cpFornSimDados(c), F=_CP_PDF_FUNDO, TINT='#F1F5FA';
+  const datas=r=>_cpFornRangeDatas(r,c.f.linhas), num=v=>_cpNum(v,0);
+  // cabeçalho em até 3 linhas: nome da coluna · período · datas
+  const H=linhas=>({stack:linhas.filter(Boolean).map((t,i)=>({text:t, fontSize:i?7:7, bold:!i, color:i?'#888':'#555'})), alignment:'right', fillColor:F});
+  const C=(t,o)=>Object.assign({text:t,fontSize:8.5,alignment:'right'},o||{});
+  const P=v=>C(_cpPdfPct(v),{bold:true,color:_cpPdfCorVar(v),fillColor:TINT});
+  const DIF=(d,fmt)=>Math.abs(d)<0.5?C('0',{color:'#999',fillColor:TINT})
+    :C((d>0?'+':'-')+fmt(Math.abs(d)),{bold:true,color:d>0?'#185FA5':'#B47C0A',fillColor:TINT});
+  const NADA=tint=>C('—',{color:'#aaa',fillColor:tint?TINT:undefined});
+  const rot=(t,sub)=>({stack:[{text:t,bold:true,fontSize:8.5,color:'#222'}].concat(sub?[{text:sub,fontSize:6.5,color:'#999'}]:[])});
+  const ROT=[rot('Valor'), rot('Volume', c.umsMistas?'un. mistas (soma aproximada)':'em '+(c.um||'un')), rot('Notas'), rot('Itens','diferentes')];
+  const tabela=(cabBase,cabAtual,linhas)=>({table:{headerRows:1, dontBreakRows:true, widths:[78,'*','*',58,'*'],
+    body:[[{text:'',fillColor:F}, cabBase, cabAtual, H(['VARIAÇÃO']), H(['DIFERENÇA','a mais / a menos'])]].concat(linhas.map((cels,r)=>[ROT[r]].concat(cels)))},
+    layout:_CP_PDF_LAYOUT});
+  const frase=t=>({text:t, fontSize:10, bold:true, color:'#222', margin:[0,1,0,6]});
+  const nfB=D.nNf(O.base), nfN=D.nNf(O.novo), itB=D.nIt(O.base), itN=D.nIt(O.novo);
+  const periodos=tabela(H(['BASE',O.baseR.label,datas(O.baseR)]), H(['ATUAL',O.novoR.label,datas(O.novoR)]), [
+    [C(_cpBRL(O.base.total)), C(_cpBRL(O.novo.total),{bold:true}), P(D.valPct), DIF(D.dv,_cpBRL)],
+    [C(num(O.base.qtd)), C(num(O.novo.qtd),{bold:true}), P(D.volPct), DIF(O.novo.qtd-O.base.qtd,num)],
+    [C(num(nfB)), C(num(nfN),{bold:true}), P(_cpVar(nfN,nfB)), DIF(nfN-nfB,num)],
+    [C(num(itB)), C(num(itN),{bold:true}), P(_cpVar(itN,itB)), DIF(itN-itB,num)]]);
+  const Y=D.Y, t=D.temAno, A0=D.ant, A1=D.atual;
+  const ano=cel=>t?cel:NADA(), anoR=cel=>t?cel:NADA(true);
+  // Notas e itens do ano corrente não se projetam: "—", como na tela.
+  const fechamento=tabela(H(['ANO PASSADO',`${Y-1} fechado`,datas({ini:(Y-1)+'-01-01',fim:(Y-1)+'-12-31'})]), H(['ESTE ANO',`${Y} projetado*`,datas({ini:Y+'-01-01',fim:Y+'-12-31'})]), [
+    [ano(C(_cpBRL(A0.total))), ano(C(_cpBRL(A1.total),{bold:true})), anoR(P(D.ap)), anoR(DIF(D.dAno,_cpBRL))],
+    [ano(C(num(A0.qtd))), ano(C(num(A1.qtd),{bold:true})), anoR(P(_cpVar(A1.qtd,A0.qtd))), anoR(DIF(A1.qtd-A0.qtd,num))],
+    [ano(C(num(D.nfAnt))), NADA(), NADA(true), NADA(true)],
+    [ano(C(num(D.itAnt))), NADA(), NADA(true), NADA(true)]]);
+  const simBox=(rotulo,valor,mais,base)=>({width:'*', table:{widths:['*'], body:[[{fillColor:'#F4F6F9', margin:[6,5,6,5], stack:[
+      {text:rotulo.toUpperCase(), fontSize:6.5, bold:true, color:'#888'},
+      {text:valor, fontSize:14, bold:true, color:'#222', margin:[0,3,0,0]},
+      {text:[{text:'+'+mais, bold:true, color:'#185FA5'}, {text:' a mais', color:'#999'}], fontSize:8.5, margin:[0,2,0,0]},
+      {text:[{text:'Base: ', color:'#999'}, {text:base, bold:true, color:'#555'}, {text:' + '+SIM.pctTxt+'%', color:'#999'}], fontSize:7.5, margin:[0,4,0,0]}
+    ]}]]}, layout:'noBorders'});
+  const cenario=SIM.vA>0
+    ? [{text:`Sobre ${SIM.baseR.label||'o período atual'}${SIM.datas?' · '+SIM.datas:''} · com +${SIM.pctTxt}% de crescimento`, fontSize:8, color:'#666', margin:[0,0,0,5]},
+       {columns:[simBox('Novo volume', num(SIM.qA+SIM.dq)+' '+SIM.un, num(SIM.dq)+' '+SIM.un, num(SIM.qA)+' '+SIM.un),
+                 simBox('Novo valor', _cpBRL(SIM.vA+SIM.dv), _cpBRL(SIM.dv), _cpBRL(SIM.vA))], columnGap:8}]
+    : [_cpPdfVazio('Sem compras no período atual para simular.')];
+  const per=r=>`${r.label||''}${datas(r)?' ('+datas(r)+')':''}`;
+  const content=[
+    ..._cpFornPdfTopo(nome, [`Comparação de períodos · base ${per(O.baseR)} → atual ${per(O.novoR)}`,
+      'As variações vão do período mais antigo para o mais recente.']),
+    _cpPdfSecao('Períodos selecionados','escolhidos na tela'), frase(D.frase), periodos,
+    _cpPdfSecao('Fechamento do ano','mantendo o ritmo atual'), frase(D.fraseAno), fechamento,
+    D.nota?{text:D.nota, fontSize:7, italics:true, color:'#888', margin:[0,4,0,0]}:{text:''},
+    _cpPdfSecao('Cenário de negociação','sobre o período atual'), ...cenario
+  ];
+  _cpFornPdfAbrir(_cpFornPdfDoc('COMPRAS · COMPARAÇÃO DE PERÍODOS', content, false), 'Comparacao', nome, 'Pré-visualização — comparação de períodos');
+}
+
+// ── ENTRADAS: a mesma lista da tela (ordenação atual, as 60 primeiras) + o total dessas linhas.
+async function _cpFornEntrPDF(cod){
+  if(!await _cpPdfPronto()) return;
+  const c=_cpFornCtx(cod); if(!c){ toast('⚠️ Fornecedor não encontrado'); return; }
+  const nome=_cpForn(c.f.nome), N=c.f.linhas.length;
+  const L=_cpSortArr('fentr', c.f.linhas, {cod:l=>l.item[0], nome:l=>l.item[1]}, 'data', -1).slice(0,60);
+  if(!L.length){ toast('⚠️ Nenhuma entrada para exportar.'); return; }
+  const s=_cpSortGet('fentr','data',-1), LAB={data:'data',nf:'NF',cod:'código',nome:'item',qtd:'quantidade',vun:'valor unitário',tot:'total'};
+  const ordem=s.campo==='data' ? (s.dir<0?'mais recentes primeiro':'mais antigas primeiro')
+    : `ordenadas por ${LAB[s.campo]||s.campo} (${s.dir<0?'decrescente':'crescente'})`;
+  const F=_CP_PDF_FUNDO;
+  const H=(t,al)=>({text:t,bold:true,fontSize:6.5,color:'#666',alignment:al||'right',fillColor:F});
+  const C=(t,o)=>Object.assign({text:t,fontSize:7.5,alignment:'right'},o||{});
+  const body=[[H('DATA','left'),H('NF','left'),H('CÓD.','left'),H('ITEM','left'),H('QTDE'),H('VLR UNIT.'),H('TOTAL')]];
+  L.forEach(l=>body.push([C(_cpDt(l.data),{alignment:'left',color:'#777'}), C(String(l.nf),{alignment:'left',color:'#777'}), C(String(l.item[0]),{alignment:'left',color:'#777'}),
+    C(l.item[1],{alignment:'left'}), C(_cpNum(l.qtd,2)+(l.um?' '+l.um:'')), C(_cpBRL(l.vun)), C(_cpBRL(l.tot),{bold:true})]));
+  const T=(t,o)=>C(t,Object.assign({bold:true,fillColor:'#F6F7F9'},o||{}));
+  body.push([T(`Total ${L.length<N?'das '+L.length+' entradas listadas':'('+L.length+(L.length===1?' entrada)':' entradas)')}`,{alignment:'left',colSpan:6}),{},{},{},{},{},
+    T(_cpBRL(L.reduce((a,l)=>a+(l.tot||0),0)))]);
+  const qtd=L.length<N?`as ${L.length} primeiras de ${_cpNum(N)}, na ordem da tela`:`${_cpNum(N)} ${N===1?'entrada':'entradas'}`;
+  const content=[
+    ..._cpFornPdfTopo(nome, [`Entradas (notas fiscais) · ${qtd} · ${ordem}`]),
+    {table:{headerRows:1, dontBreakRows:true, widths:[38,42,32,'*',60,58,64], body}, layout:_CP_PDF_LAYOUT}
+  ];
+  _cpFornPdfAbrir(_cpFornPdfDoc('COMPRAS · ENTRADAS DO FORNECEDOR', content, false), 'Entradas', nome, 'Pré-visualização — entradas do fornecedor');
+}
+
+// ── ITENS: exporta o que a tabela está mostrando — mesma busca, mesma ordenação e, se houver itens
+// marcados, só os marcados (a regra do check é "marcar = recortar a análise"). A4 deitado: são 13 colunas.
+async function _cpFornItPDF(cod){
+  if(!await _cpPdfPronto()) return;
   const c=_cpFornCtx(cod, true); if(!c){ toast('⚠️ Fornecedor não encontrado'); return; }
   const sel=_cpSelTem('fcomp');
   const rows=_cpSelFiltra('fcomp', _cpFornItRows(cod), i=>i.cod);
@@ -39521,11 +39750,7 @@ async function _cpFornItPDF(cod){
   const qtdTxt=n=>`${n} ${n===1?'item':'itens'}`;
   const recorte=sel ? `${rows.length} ${rows.length===1?'item selecionado':'itens selecionados'}`
     : (_cpFornItBusca ? `busca "${_cpFornItBusca}" · ${qtdTxt(rows.length)}` : qtdTxt(rows.length));
-  // Mesmas cores da tela: valor/volume = azul subiu · âmbar caiu; preço = vermelho subiu · verde caiu.
-  const corVar=v=>v==null?'#999':(v>0.5?'#185FA5':(v<-0.5?'#B47C0A':'#555'));
-  const corPreco=v=>v==null?'#999':(v>0.5?'#A32D2D':(v<-0.5?'#3B6D11':'#555'));
-  const pc=v=>v==null?'—':((v>0?'+':'')+_cpNum(v,1)+'%');
-  const FUNDO='#EEF1F5';
+  const corVar=_cpPdfCorVar, corPreco=_cpPdfCorPreco, pc=_cpPdfPct, FUNDO=_CP_PDF_FUNDO;
   const H=(t,al)=>({text:t,bold:true,fontSize:6.5,color:'#666',alignment:al||'right',fillColor:FUNDO});
   const C=(t,o)=>Object.assign({text:t,fontSize:7.5,alignment:'right'},o||{});
   const grp=t=>({text:t,colSpan:3,alignment:'center',bold:true,fontSize:7,color:'#0D3D6B',fillColor:FUNDO});
@@ -39555,33 +39780,13 @@ async function _cpFornItPDF(cod){
     T(_cpNum(qB,0)+unT), T(pmT(sB,qB)), T(_cpBRL(sB)),
     T(pc(vT),{color:corVar(vT)}), T(vP==null?'':pc(vP),{color:corPreco(vP)}), T(pc(vQ),{color:corVar(vQ)}), T('')
   ]);
-  const agora=new Date();
-  const docDefinition={
-    pageSize:'A4', pageOrientation:'landscape', pageMargins:[28,50,28,38],
-    header:{ margin:[28,18,28,0], columns:[
-      {text:'KLA',color:'#185FA5',fontSize:13,bold:true,width:'auto'},
-      {text:'IN',color:'#A32D2D',fontSize:13,bold:true,width:'auto'},
-      {text:'COMPRAS · ITENS DO FORNECEDOR',alignment:'right',color:'#888',fontSize:9,margin:[0,2,0,0]}
-    ]},
-    footer:function(p,n){ return { margin:[28,0,28,16], columns:[
-      {text:`Gerado em ${agora.toLocaleDateString('pt-BR')} às ${agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`, color:'#aaa', fontSize:8},
-      {text:`${p} / ${n}`, alignment:'right', color:'#aaa', fontSize:8}
-    ]}; },
-    content:[
+  const docDefinition=_cpFornPdfDoc('COMPRAS · ITENS DO FORNECEDOR', [
       {text:nome, fontSize:15, bold:true, color:'#0D3D6B'},
       {text:[{text:'Período A: ',bold:true,color:'#555'},perTxt(c.rA),'      ',{text:'Período B: ',bold:true,color:'#555'},perTxt(c.rB)], fontSize:8.5, color:'#333', margin:[0,4,0,2]},
       {text:recorte+' · as variações vão do período mais antigo para o mais recente', fontSize:7.5, color:'#888', margin:[0,0,0,8]},
-      {table:{headerRows:2, dontBreakRows:true, widths:[34,'*',46,46,46,56,46,46,56,40,40,44,38], body},
-       layout:{ hLineWidth:(i,node)=>(i===0||i===node.table.body.length)?0:0.5, hLineColor:()=>'#DDE1E7', vLineWidth:()=>0,
-                paddingTop:()=>2.5, paddingBottom:()=>2.5, paddingLeft:()=>3, paddingRight:()=>3 }}
-    ],
-    defaultStyle:{ font:'Roboto', color:'#333' }
-  };
-  const slug=nome.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'').substring(0,40);
-  let pdfDoc;
-  try{ pdfDoc=pdfMake.createPdf(docDefinition); }
-  catch(err){ console.error('Erro ao gerar PDF dos itens:',err); toast('⚠️ Erro ao gerar PDF — verifique o console'); return; }
-  _osPdfModal(pdfDoc, `Itens_${slug||'fornecedor'}_${today}.pdf`, 'Pré-visualização — itens do fornecedor');
+      {table:{headerRows:2, dontBreakRows:true, widths:[34,'*',46,46,46,56,46,46,56,40,40,44,38], body}, layout:_CP_PDF_LAYOUT}
+  ], true);
+  _cpFornPdfAbrir(docDefinition, 'Itens', nome, 'Pré-visualização — itens do fornecedor');
 }
 
 // `titulo` é opcional: sem ele continua "Pré-visualização da OS" (quem abriu primeiro foi a OS).
