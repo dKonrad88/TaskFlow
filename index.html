@@ -10676,8 +10676,10 @@ function _cpFornSimOutHTML(cod){
   const dq=qA*pct/100, dv=vA*pct/100;
   const un=c.umsMistas?'un. mistas':(c.um||'un');
   const pctTxt=_cpNum(pct, Number.isInteger(pct)?0:1);
-  const met=(rot,valor,mais)=>`<div style="min-width:0"><div style="font-size:10px;font-weight:750;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">${rot}</div><div style="font-size:21px;font-weight:800;color:var(--text);margin-top:4px;line-height:1.15">${valor}</div><div style="font-size:12px;font-weight:700;color:var(--blue-mid);margin-top:4px">+${mais} <span style="font-weight:500;color:var(--text3)">a mais</span></div></div>`;
-  return `<div><div style="font-size:11px;color:var(--text3);margin-bottom:11px">Sobre ${escapeHTML(baseR.label||'o período atual')} · com +${pctTxt}%</div><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px">${met('Novo volume',_cpNum(qA+dq,0)+' '+escapeHTML(un),_cpNum(dq,0)+' '+escapeHTML(un))}${met('Novo valor',_cpBRL(vA+dv),_cpBRL(dv))}</div></div>`;
+  // Cada bloco mostra a BASE de onde o número saiu (pedido do Diego): base + % = novo.
+  const met=(rot,valor,mais,base)=>`<div style="min-width:0"><div style="font-size:10px;font-weight:750;text-transform:uppercase;letter-spacing:.07em;color:var(--text3)">${rot}</div><div style="font-size:21px;font-weight:800;color:var(--text);margin-top:4px;line-height:1.15">${valor}</div><div style="font-size:12px;font-weight:700;color:var(--blue-mid);margin-top:4px">+${mais} <span style="font-weight:500;color:var(--text3)">a mais</span></div><div style="font-size:11px;color:var(--text3);margin-top:6px;padding-top:6px;border-top:1px dashed var(--border)">Base: <b style="font-weight:650;color:var(--text2)">${base}</b> + ${pctTxt}%</div></div>`;
+  const datas=_cpFornRangeDatas(baseR,c.f.linhas);
+  return `<div><div style="font-size:11px;color:var(--text3);margin-bottom:11px">Sobre ${escapeHTML(baseR.label||'o período atual')}${datas?' · '+escapeHTML(datas):''} · com +${pctTxt}%</div><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px">${met('Novo volume',_cpNum(qA+dq,0)+' '+escapeHTML(un),_cpNum(dq,0)+' '+escapeHTML(un),_cpNum(qA,0)+' '+escapeHTML(un))}${met('Novo valor',_cpBRL(vA+dv),_cpBRL(dv),_cpBRL(vA))}</div></div>`;
 }
 // Card do simulador (usado no Resumo e na aba Comparar).
 function _cpFornSimCard(cod){
