@@ -15913,6 +15913,622 @@ function _finCliFichaCreditoHTML(D, F){
       <div style="margin-top:12px"><button class="fin-btn pri" onclick="_finCreditoAbrir('${_cpJs(c.cod)}')"><i class="ti ti-shield-check"></i>Liberar ou bloquear</button></div>`),
   ])+_finNota('O bloqueio pela régua é automático enquanto houver título vencido há mais de 30 dias. Uma liberação manual registrada aqui <b>vence a régua</b> e fica com o nome de quem liberou — é assim que se audita exceção de crédito.');
 }
+
+// ── fin_scr_pagar.js ──
+// ─── FINANCEIRO › CONTAS A PAGAR ───
+// Títulos em aberto, agenda de desembolso, fila de aprovação por alçada, fornecedores,
+// simulador de corte quando o caixa aperta e desempenho (juros pagos e descontos perdidos).
+const FIN_PAG_PRIO=['', 'Impostos, folha e dívida', 'Matéria-prima e embalagens', 'Energia e fretes', 'Demais despesas'];
+function _finPagPrioPill(p){ const c=['','var(--danger)','var(--blue-mid)','var(--amber)','var(--text3)'][p]||'var(--text3)';
+  return _finPill(String(p), c, FIN_PAG_PRIO[p]||''); }
+
+function _finTela_pagar(){
+  const D=_finData(), G=_finPagarResumo(D), sub=_finSubGet('pagar','titulos');
+  const cats=[['todos','Todas as categorias']].concat(G.porCategoria.map(function(c){ return [c.categoria,c.categoria]; }));
+  const filtros=_finFSelect('pagar','categoria','Categoria',cats)
+    +_finFChips('pagar','sit',' Situação',[['todos','Todas'],['vencido','Vencidos'],['a7','Vencem em 7 dias'],['a30','Vencem em 30 dias']])
+    +_finFChips('pagar','aprov','Aprovação',[['todos','Todas'],['Pendente','Pendente'],['Aprovado','Aprovado'],['Agendado','Agendado'],['Reprovado','Reprovado']])
+    +_finFChips('pagar','prio','Prioridade',[['todos','Todas'],['1','1 · impostos, folha e dívida'],['2','2 · MP e embalagens'],['3','3 · energia e fretes'],['4','4 · demais']]);
+  const acao=_finPeriodo('pagar',FIN_PERIODOS,'30','Pagamentos')+_finFiltros('pagar',filtros,_finNFiltros('pagar',['periodo']))+_finLupa('pagar','Fornecedor, NF ou descrição…');
+  const pend=G.aprovacao.Pendente||{n:0,valor:0};
+  const kpis=_finKPIs([
+    { rot:'Total em aberto', val:_finK(G.total), sub:G.abertos.length+' títulos já emitidos', hint:'Só obrigação já constituída (nota emitida até hoje). Folha e impostos dos próximos meses existem na projeção de caixa, mas ainda não são conta a pagar.' },
+    { rot:'Vencido', val:G.totalVencido>0?_finK(G.totalVencido):'—', cor:G.totalVencido>0?'var(--danger)':'var(--success)', sub:G.vencidos.length+' títulos em atraso', onclick:"_finSetF('pagar','sit','vencido')", sel:_finGetF('pagar','sit')==='vencido' },
+    { rot:'Vence em 7 dias', val:_finK(G.a7), cor:'var(--amber)', sub:G.ate7.length+' títulos', onclick:"_finSetF('pagar','sit','a7')", sel:_finGetF('pagar','sit')==='a7' },
+    { rot:'Vence em 30 dias', val:_finK(G.a30), sub:G.ate30.length+' títulos', onclick:"_finSetF('pagar','sit','a30')", sel:_finGetF('pagar','sit')==='a30' },
+    { rot:'Pendente de aprovação', val:_finK(pend.valor), cor:pend.n?'var(--amber)':'var(--success)', sub:pend.n+' títulos acima da alçada de '+_finK(FIN_PARAM.alcadaAprovacao) },
+    { rot:'Prazo médio de pagamento', def:'pmp', val:_finDd(G.pmp,1), sub:'acordado '+_finDd(G.prazoAcordado,1)+' · efetivo '+_finDd(G.pmpEfetivo,1) },
+    { rot:'Pagos no vencimento', def:'pontualidade', val:_finPc(G.pctNoVencimento,0), cor:G.pctNoVencimento>=90?'var(--success)':'var(--amber)', sub:'últimos 90 dias · juros pagos 12m '+_finK(G.juros12) },
+  ]);
+  const abas=[['titulos','ti-list-details','Títulos em aberto',G.abertos.length],['agenda','ti-calendar','Agenda de desembolso'],['aprovacao','ti-check','Aprovações',pend.n||''],['fornecedores','ti-building-bank','Fornecedores'],['simulador','ti-adjustments','Simulador de corte'],['desempenho','ti-trending-up','Desempenho']];
+  let corpo='';
+  if(sub==='agenda') corpo=_finPagAgendaHTML(D,G);
+  else if(sub==='aprovacao') corpo=_finPagAprovHTML(D,G);
+  else if(sub==='fornecedores') corpo=_finPagFornHTML(D);
+  else if(sub==='simulador') corpo=_finPagSimHTML(D);
+  else if(sub==='desempenho') corpo=_finPagDesempHTML(D,G);
+  else corpo=_finPagTitulosHTML(D);
+  return _finTela('Contas a pagar','O que a empresa deve, quando vence, quem aprova e o que dá para adiar sem parar a fábrica.',
+    kpis+_finSubnav('pagar',abas,'titulos')+corpo, acao, null, {base:'D0', selo:'misto'});
+}
+
+// ── títulos ──
+function _finPagRows(D){
+  const q=_finBuscaQ('pagar'), cat=_finGetF('pagar','categoria','todos'), sit=_finGetF('pagar','sit','todos'),
+    ap=_finGetF('pagar','aprov','todos'), pr=_finGetF('pagar','prio','todos'), H=D.hoje;
+  return _finPagarResumo(D).abertos.filter(function(t){
+    if(cat!=='todos' && t.categoria!==cat) return false;
+    if(ap!=='todos' && t.aprovacao!==ap) return false;
+    if(pr!=='todos' && String(t.prioridade)!==pr) return false;
+    if(sit==='vencido' && !(t.diasVenc>0)) return false;
+    if(sit==='a7' && !(t.venc>=H && t.venc<=_finAdd(H,7))) return false;
+    if(sit==='a30' && !(t.venc>=H && t.venc<=_finAdd(H,30))) return false;
+    return _finMatch(q, t.forn, t.nf, t.desc, t.categoria);
+  });
+}
+function _finPagTbody(D, rows){
+  if(!rows.length) return `<tr><td colspan="13">${_cpVazio('Nenhum título a pagar nesse filtro.')}</td></tr>`;
+  return rows.slice(0,400).map(function(t){
+    return `<tr class="cp-clic${t.diasVenc>0?' fin-alerta':(t.diasVenc>=-2?' fin-atencao':'')}" onclick="_finTituloAbrir('${_cpJs(t.id)}')">
+      ${_cpSelTd('finpag',t.id)}
+      <td class="cp-item" title="${escapeAttr(t.forn)}">${_finE(_cpForn(t.forn))}</td>
+      <td class="cp-mono">${_finE(t.nf&&t.nf!=='—'?t.nf+' '+t.parc:'—')}</td>
+      <td style="color:var(--text3);max-width:190px;overflow:hidden;text-overflow:ellipsis">${_finE(t.desc||t.categoria)}</td>
+      <td>${_finE(t.categoria)}</td>
+      <td>${_finPagPrioPill(t.prioridade)}</td>
+      <td class="cp-mono">${_finDtBR(t.emissao)}</td><td class="cp-mono">${_finDtBR(t.venc)}</td>
+      <td class="cp-n">${_finMoeda(t.valor)}</td><td class="cp-n" style="font-weight:700">${_finMoeda(t.saldo)}</td>
+      <td class="cp-n" style="color:${t.diasVenc>0?'var(--danger)':'var(--text3)'}">${t.diasVenc>0?t.diasVenc:(t.diasVenc===0?'hoje':t.diasVenc)}</td>
+      <td>${_finPill(_finE(t.aprovacao), FIN_STATUS_COR[t.aprovacao]||'var(--text3)')}</td>
+      <td class="fin-noexp" onclick="event.stopPropagation()"><span class="fin-acoes">
+        <button class="fin-ico" title="Registrar pagamento" onclick="_finBaixaAbrir('${_cpJs(t.id)}')"><i class="ti ti-cash"></i></button>
+        ${t.aprovacao==='Pendente'?`<button class="fin-ico" title="Aprovar" onclick="_finAprovar('${_cpJs(t.id)}','Aprovado')"><i class="ti ti-check"></i></button>`:''}</span></td></tr>`;
+  }).join('')+(rows.length>400?`<tr><td colspan="13">${_cpVazio('Mostrando os 400 primeiros de '+rows.length+' — refine a busca ou os filtros.')}</td></tr>`:'');
+}
+function _finPagTitulosHTML(D){
+  const rows=_cpSortArr('finpagt', _finPagRows(D), { forn:t=>_cpForn(t.forn), dias:t=>t.diasVenc }, 'venc', 1);
+  const ids=rows.slice(0,400).map(function(t){ return t.id; });
+  const head=`<tr>${_cpSelTh('finpag',ids)}${_cpTh('finpagt','forn','Fornecedor')}${_cpTh('finpagt','nf','NF')}<th>Descrição</th>${_cpTh('finpagt','categoria','Categoria')}${_cpTh('finpagt','prioridade','Prio.',1)}${_cpTh('finpagt','emissao','Emissão','','',-1)}${_cpTh('finpagt','venc','Venc.','','',1)}${_cpTh('finpagt','valor','Valor',1)}${_cpTh('finpagt','saldo','Saldo',1)}${_cpTh('finpagt','dias','Dias',1)}${_cpTh('finpagt','aprovacao','Aprovação')}<th class="fin-noexp"></th></tr>`;
+  const sel=_cpSelIds('finpag'), selArr=[]; sel.forEach(function(x){ selArr.push(x); });
+  const barra=_cpSelTem('finpag')?`<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">${_cpSelNota('finpag')}
+    <button class="fin-btn mini ok" onclick="_finAprovarLote(${JSON.stringify(selArr).replace(/"/g,'&quot;')},'Aprovado')"><i class="ti ti-check"></i>Aprovar selecionados</button>
+    <button class="fin-btn mini" onclick="_finAprovarLote(${JSON.stringify(selArr).replace(/"/g,'&quot;')},'Agendado')"><i class="ti ti-calendar"></i>Agendar</button>
+    <button class="fin-btn mini no" onclick="_finAprovarLote(${JSON.stringify(selArr).replace(/"/g,'&quot;')},'Reprovado')"><i class="ti ti-x"></i>Reprovar</button></div>`:'';
+  return _finCard(`Títulos a pagar em aberto <span id="fin-pagar-cont" class="sub" style="font-weight:500;color:var(--text3)">${rows.length} títulos · ${_finMoeda(rows.reduce(function(a,t){ return a+t.saldo; },0))}</span>`,
+    barra+`<div class="fin-scroll fin-scroll-y cp-noscroll"><table class="cp-tbl" id="fin-tb-pagar"><thead>${head}</thead><tbody id="fin-pagar-tbody">${_finPagTbody(D,rows)}</tbody></table></div>`,
+    { acao:_finBtnCSV('fin-tb-pagar','contas-a-pagar'), hint:'Prioridade 1 (impostos, folha e dívida) nunca entra no corte do simulador. Marque títulos para aprovar, agendar ou reprovar em lote.' })
+    +_finNota('A coluna <b>Prioridade</b> é da política de pagamento do protótipo: 1 impostos, folha e dívida · 2 matéria-prima e embalagens · 3 energia e fretes · 4 demais despesas. É ela que ordena o que adiar quando o caixa aperta.');
+}
+function _finRefresh_pagar(){
+  const D=_finData(), sub=_finSubGet('pagar','titulos'); if(sub!=='titulos'){ renderFinanceiro(); return; }
+  const rows=_cpSortArr('finpagt', _finPagRows(D), { forn:t=>_cpForn(t.forn), dias:t=>t.diasVenc }, 'venc', 1);
+  const tb=document.getElementById('fin-pagar-tbody'); if(tb) tb.innerHTML=_finPagTbody(D,rows);
+  const ct=document.getElementById('fin-pagar-cont'); if(ct) ct.textContent=rows.length+' títulos · '+_finMoeda(rows.reduce(function(a,t){ return a+t.saldo; },0));
+}
+_CP_SEL_REPINTA['finpag']='renderFinanceiro';
+
+// ── agenda de desembolso ──
+function _finPagAgendaHTML(D, G){
+  const H=D.hoje, dias=[];
+  for(let i=0;i<=30;i++){ const iso=_finAdd(H,i), l=G.abertos.filter(function(t){ return t.venc===iso || (i===0 && t.venc<H); });
+    if(l.length) dias.push({ iso:iso, atrasado:i===0, titulos:l, valor:l.reduce(function(a,t){ return a+t.saldo; },0) }); }
+  let acum=0; const serie=dias.map(function(d){ acum+=d.valor; return { lbl:_cpDt(d.iso).slice(0,5), dia:d.valor, acum:acum }; });
+  const porCat={}; G.ate30.forEach(function(t){ porCat[t.categoria]=(porCat[t.categoria]||0)+t.saldo; });
+  const linhas=dias.map(function(d){ const cats={};
+    d.titulos.forEach(function(t){ cats[t.categoria]=(cats[t.categoria]||0)+t.saldo; });
+    const top=Object.keys(cats).sort(function(a,b){ return cats[b]-cats[a]; }).slice(0,3);
+    return `<tr${d.atrasado?' class="fin-alerta"':''}><td class="cp-mono">${d.atrasado?'vencidos + hoje':_finDtBR(d.iso)}</td>
+      <td class="cp-n">${d.titulos.length}</td><td class="cp-n" style="font-weight:700">${_finMoeda(d.valor)}</td>
+      <td style="color:var(--text3);font-size:11.5px">${top.map(function(c){ return _finE(c)+' '+_finKs(cats[c]); }).join(' · ')}</td>
+      <td style="width:26%">${_finBarra(_finPct(d.valor,Math.max.apply(null,dias.map(function(x){ return x.valor; }))),'var(--danger)')}</td></tr>`; }).join('');
+  return _finGrid(2,[
+    _finCard('Desembolso diário e acumulado — 30 dias', _finColunas(serie,[{campo:'dia',rot:'A pagar no dia',cor:'var(--danger)'}],
+      { h:205, fmt:_finMoeda, linhas:[{campo:'acum',rot:'Acumulado',cor:'var(--blue-mid)'}] }), { sub:'inclui os vencidos no primeiro dia' }),
+    _finCard('Por categoria — próximos 30 dias', _finRosca(Object.keys(porCat).map(function(k){ return { rot:k, v:porCat[k] }; }).sort(function(a,b){ return b.v-a.v; }), { centro:_finK(G.a30), centroSub:'30 dias' })),
+  ])+_finCard('Agenda de pagamentos', `<table class="cp-tbl" id="fin-tb-pagag"><thead><tr><th>Vencimento</th><th class="r">Títulos</th><th class="r">Valor</th><th>Principais categorias</th><th></th></tr></thead>
+    <tbody>${linhas||`<tr><td colspan="5">${_cpVazio('Nenhum vencimento nos próximos 30 dias.')}</td></tr>`}
+    ${dias.length?`<tr class="fin-tot"><td>Total 30 dias</td><td class="cp-n">${dias.reduce(function(a,d){ return a+d.titulos.length; },0)}</td><td class="cp-n">${_finMoeda(dias.reduce(function(a,d){ return a+d.valor; },0))}</td><td colspan="2"></td></tr>`:''}</tbody></table>`,
+    { acao:_finBtnCSV('fin-tb-pagag','agenda-pagamentos') });
+}
+
+// ── aprovações ──
+function _finPagAprovHTML(D, G){
+  const pend=G.pendentesAprov, H=D.hoje;
+  const urg=pend.filter(function(t){ return t.venc<=_finAdd(H,2); });
+  const st=['Aprovado','Pendente','Agendado','Reprovado'].map(function(k){ const o=G.aprovacao[k]||{n:0,valor:0}; return { rot:k, v:o.valor, n:o.n }; });
+  const linhas=pend.map(function(t){ return `<tr class="cp-clic${t.venc<=_finAdd(H,2)?' fin-alerta':''}" onclick="_finTituloAbrir('${_cpJs(t.id)}')">
+    <td class="cp-item">${_finE(_cpForn(t.forn))}</td><td class="cp-mono">${_finE(t.nf&&t.nf!=='—'?t.nf:'—')}</td>
+    <td style="color:var(--text3)">${_finE(t.desc||t.categoria)}</td><td>${_finE(t.categoria)}</td><td>${_finPagPrioPill(t.prioridade)}</td>
+    <td class="cp-mono">${_finDtBR(t.venc)}</td><td class="cp-n" style="color:${t.diasVenc>0?'var(--danger)':'var(--text3)'}">${t.diasVenc>0?'vencido '+t.diasVenc+' d':'em '+(-t.diasVenc)+' d'}</td>
+    <td class="cp-n" style="font-weight:700">${_finMoeda(t.saldo)}</td>
+    <td class="fin-noexp" onclick="event.stopPropagation()"><span class="fin-acoes">
+      <button class="fin-btn mini ok" onclick="_finAprovar('${_cpJs(t.id)}','Aprovado')"><i class="ti ti-check"></i>Aprovar</button>
+      <button class="fin-btn mini" onclick="_finAprovar('${_cpJs(t.id)}','Agendado')"><i class="ti ti-calendar"></i>Agendar</button>
+      <button class="fin-btn mini no" onclick="_finAprovar('${_cpJs(t.id)}','Reprovado')"><i class="ti ti-x"></i>Reprovar</button></span></td></tr>`; }).join('');
+  return (urg.length?`<div class="fin-alert"><i class="ti ti-alert-triangle"></i><div><b>${urg.length} pagamento(s) vencendo em até 2 dias sem aprovação</b> — ${_finMoeda(urg.reduce(function(a,t){ return a+t.saldo; },0))}. Sem a aprovação da diretoria o pagamento não sai e entra juros.</div></div>`:'')
+    +_finGrid(2,[
+      _finCard('Situação dos títulos em aberto', _finRosca(st.filter(function(s){ return s.v>0; }).map(function(s){ return { rot:s.rot+' ('+s.n+')', v:s.v, cor:FIN_STATUS_COR[s.rot] }; }), { centro:_finK(G.total), centroSub:'em aberto' })),
+      _finCard('Regra de alçada', `<div class="fin-lista-kv">
+        <div><span>Alçada do financeiro</span><b>até ${_finMoeda(FIN_PARAM.alcadaAprovacao)}</b></div>
+        <div><span>Acima disso</span><b>aprovação do diretor financeiro</b></div>
+        <div><span>Pendentes agora</span><b>${pend.length} títulos · ${_finMoeda(pend.reduce(function(a,t){ return a+t.saldo; },0))}</b></div>
+        <div><span>Vencendo em 2 dias</span><b style="color:${urg.length?'var(--danger)':'inherit'}">${urg.length}</b></div></div>`,
+        { hint:'No sistema real a alçada vem do cadastro de perfis. Aqui é um parâmetro único, para mostrar a regra.' }),
+    ])
+    +_finCard('Fila de aprovação', `<div class="fin-scroll cp-noscroll"><table class="cp-tbl" id="fin-tb-pagap"><thead><tr><th>Fornecedor</th><th>NF</th><th>Descrição</th><th>Categoria</th><th>Prio.</th><th>Venc.</th><th class="r">Prazo</th><th class="r">Valor</th><th class="fin-noexp"></th></tr></thead>
+      <tbody>${linhas||`<tr><td colspan="9">${_cpVazio('Nenhum título pendente de aprovação.')}</td></tr>`}</tbody></table></div>`,
+      { acao:_finBtnCSV('fin-tb-pagap','aprovacoes-pendentes') });
+}
+
+// ── fornecedores ──
+function _finPagFornHTML(D){
+  const q=_finBuscaQ('pagar'), F=_finFornecedores(D);
+  const L=_cpSortArr('finpagf', F.lista.filter(function(o){ return _finMatch(q,o.forn,o.cod); }), { forn:o=>_cpForn(o.forn) }, 'aberto', -1);
+  const linhas=L.slice(0,400).map(function(o){ return `<tr${o.vencido>0?' class="fin-alerta"':''}>
+    <td class="cp-item" title="${escapeAttr(o.forn)}">${_finE(_cpForn(o.forn))}</td><td class="cp-mono" style="color:var(--text3)">${_finE(o.cod||'—')}</td>
+    <td class="cp-n">${_finMoeda(o.compras12)}</td><td class="cp-n" style="color:var(--text3)">${_finPc(o.pct,1)}</td>
+    <td class="cp-n">${o.n}</td><td class="cp-n" style="font-weight:700">${_finMoeda(o.aberto)}</td>
+    <td class="cp-n" style="color:${o.vencido>0?'var(--danger)':'var(--text3)'}">${o.vencido>0?_finMoeda(o.vencido):'—'}</td>
+    <td class="cp-n">${o.a30?_finMoeda(o.a30):'—'}</td>
+    <td class="cp-n">${o.prazoAcordado==null?'—':_finDd(o.prazoAcordado,0)}</td>
+    <td class="cp-n" style="${o.prazoObtido==null||o.prazoAcordado==null?'':_finHeat(o.prazoObtido-o.prazoAcordado,20,true)}">${o.prazoObtido==null?'—':_finDd(o.prazoObtido,0)}</td>
+    <td class="cp-n">${o.juros?_finMoeda(o.juros):'—'}</td>
+    <td class="fin-noexp"><button class="fin-ico" title="Ver o que compramos dele (Compras)" onclick="hubView='compras';_cpAbrirForn('${_cpJs(o.forn)}')"><i class="ti ti-arrow-right"></i></button></td></tr>`; }).join('');
+  return _finCard(`Fornecedores <span class="sub" style="font-weight:500;color:var(--text3)">${L.length} com nota real · ${_finMoeda(L.reduce(function(a,o){ return a+o.aberto; },0))} em aberto</span>`,
+    `<div class="fin-scroll fin-scroll-y cp-noscroll"><table class="cp-tbl" id="fin-tb-pagforn"><thead><tr>${_cpTh('finpagf','forn','Fornecedor')}<th>Código</th>${_cpTh('finpagf','compras12','Compras 12m',1)}<th class="r">%</th>${_cpTh('finpagf','n','Títulos',1)}${_cpTh('finpagf','aberto','Em aberto',1)}${_cpTh('finpagf','vencido','Vencido',1)}<th class="r">Vence em 30 d</th>${_cpTh('finpagf','prazoAcordado','Prazo acordado',1)}${_cpTh('finpagf','prazoObtido','Prazo praticado',1)}<th class="r">Juros pagos</th><th class="fin-noexp"></th></tr></thead>
+    <tbody>${linhas||`<tr><td colspan="12">${_cpVazio('Nenhum fornecedor nesse filtro.')}</td></tr>`}</tbody></table></div>`,
+    { acao:_finBtnCSV('fin-tb-pagforn','fornecedores-a-pagar'), selo:'real',
+      hint:'Prazo acordado é da emissão ao vencimento nas notas dos últimos 90 dias; praticado é da emissão ao pagamento de fato. Praticado maior que acordado = a empresa está atrasando esse fornecedor.' })
+    +_finCard('Maior saldo em aberto', _finBarrasH(L.slice(0,12).map(function(o){ return { rot:_cpForn(o.forn), v:o.aberto, cor:o.vencido>0?'var(--danger)':'var(--blue-mid)' }; }), { colRot:'44%' }), { sub:'vermelho = tem título vencido' })
+    +_finNota('Esta aba usa as <b>notas fiscais reais de compra</b> do ERP. Folha, impostos e parcelas de financiamento não aparecem aqui porque não têm fornecedor de compra — estão nas outras abas e no fluxo.');
+}
+
+// ── simulador de corte ──
+function _finPagSimHTML(D){
+  const S=_finSimularCorte(D), P=_finProjecao(D,'base');
+  if(!S.necessario) return _finCard('Simulador de corte de pagamentos',
+    `<div style="display:flex;gap:12px;align-items:center;padding:6px 0"><i class="ti ti-check" style="font-size:26px;color:var(--success)"></i>
+     <div><b style="font-size:14px">Não é preciso cortar nada.</b><div style="color:var(--text2);font-size:12.5px;margin-top:3px">O menor saldo projetado das 13 semanas é ${_finMoeda(P.minimo.valor)} em ${_finDtBR(P.minimo.data)}, acima do caixa mínimo de ${_finMoeda(FIN_PARAM.caixaMinimo)}.</div></div></div>`,
+    { selo:'derivado' })+_finNota('Se o cenário piorar, esta aba lista automaticamente o que adiar — da menor para a maior prioridade — até fechar a conta.');
+  const linhas=S.adiar.map(function(t){ return `<tr class="cp-clic" onclick="_finTituloAbrir('${_cpJs(t.id)}')">
+    <td>${_finPagPrioPill(t.prioridade)}</td><td class="cp-item">${_finE(_cpForn(t.forn))}</td>
+    <td style="color:var(--text3)">${_finE(t.desc||t.categoria)}</td><td>${_finE(t.categoria)}</td>
+    <td class="cp-mono">${_finDtBR(t.venc)}</td><td class="cp-n" style="font-weight:700">${_finMoeda(t.saldo)}</td>
+    <td>${_finPill(_finE(t.aprovacao),FIN_STATUS_COR[t.aprovacao]||'var(--text3)')}</td></tr>`; }).join('');
+  return `<div class="fin-alert"><i class="ti ti-alert-triangle"></i><div><b>Faltam ${_finMoeda(S.falta)} na semana de ${_finDtBR(S.semana.ini)}</b> — o menor saldo da semana seria ${_finMoeda(S.semana.minSaldo)} em ${_finDtBR(S.semana.minData)}, contra o mínimo de ${_finMoeda(FIN_PARAM.caixaMinimo)}.</div></div>`
+    +_finKPIs([
+      { rot:'Falta para o mínimo', val:_finK(S.falta), cor:'var(--danger)', sub:'na semana de '+_finDtBR(S.semana.ini) },
+      { rot:'Adiável sem parar a fábrica', val:_finK(S.total), cor:S.suficiente?'var(--success)':'var(--amber)', sub:S.adiar.length+' títulos de prioridade 2 a 4' },
+      { rot:'Resultado', val:S.suficiente?'Fecha a conta':'Não fecha', cor:S.suficiente?'var(--success)':'var(--danger)', sub:S.suficiente?'adiando esses títulos o caixa atravessa a semana':'mesmo adiando tudo que dá, faltam '+_finK(S.falta-S.total) },
+    ])
+    +_finCard('Títulos sugeridos para adiar', `<div class="fin-scroll cp-noscroll"><table class="cp-tbl" id="fin-tb-pagsim"><thead><tr><th>Prio.</th><th>Fornecedor</th><th>Descrição</th><th>Categoria</th><th>Venc.</th><th class="r">Saldo</th><th>Aprovação</th></tr></thead>
+      <tbody>${linhas}<tr class="fin-tot"><td colspan="5">Total adiável</td><td class="cp-n">${_finMoeda(S.total)}</td><td></td></tr></tbody></table></div>`,
+      { acao:_finBtnCSV('fin-tb-pagsim','corte-sugerido'), selo:'derivado',
+        hint:'A ordem é da menor prioridade para a maior: demais despesas primeiro, depois energia e fretes, depois matéria-prima. Impostos, folha e parcelas de dívida (prioridade 1) nunca entram.' })
+    +_finNota('A simulação <b>não altera nada</b> — é uma lista para a reunião de caixa. Adiar de fato é renegociar com o fornecedor e mudar a data do título.');
+}
+
+// ── desempenho ──
+function _finPagDesempHTML(D, G){
+  const meses=Object.keys(G.jurosMes).sort(), S=_finSerieMensal(D);
+  const serie=meses.map(function(ym){ return { lbl:_finMesLbl(ym), juros:G.jurosMes[ym]||0, perd:G.descPerdMes[ym]||0 }; });
+  const cat=G.porCategoria.map(function(c){ return `<tr><td class="cp-item">${_finE(c.categoria)}</td><td style="color:var(--text3)">${_finE(c.grupo)}</td>
+    <td class="cp-n">${c.n}</td><td class="cp-n">${_finMoeda(c.avencer)}</td><td class="cp-n" style="color:${c.vencido>0?'var(--danger)':'var(--text3)'}">${c.vencido?_finMoeda(c.vencido):'—'}</td>
+    <td class="cp-n" style="color:var(--text3)">${_finPc(c.pct,1)}</td><td class="cp-n">${_finMoeda(c.pagoMes)}</td><td class="cp-n">${_finMoeda(c.pagoMesAnt)}</td>
+    <td class="cp-n">${_finVarPill(c.varMesAnt,false,0)}</td></tr>`; }).join('');
+  return _finKPIs([
+    { rot:'Juros e multas pagos', val:_finK(G.juros12), cor:G.juros12>0?'var(--danger)':'var(--success)', sub:'últimos 12 meses · dinheiro perdido por atraso' },
+    { rot:'Descontos perdidos', def:'descontosPerdidos', val:_finK(G.descPerdidos12), cor:G.descPerdidos12>0?'var(--amber)':'var(--success)', sub:'antecipação oferecida e não aproveitada' },
+    { rot:'Descontos obtidos', val:_finK(G.descObtidos12), cor:'var(--success)', sub:'pagamento antecipado que valeu a pena' },
+    { rot:'Pagos no vencimento', def:'pontualidade', val:_finPc(G.pctNoVencimento,0), sub:'do valor pago nos últimos 90 dias' },
+    { rot:'Prazo médio de pagamento', def:'pmp', val:_finDd(G.pmp,1), sub:'acordado '+_finDd(G.prazoAcordado,1) },
+  ])+_finGrid(2,[
+    _finCard('Juros pagos e descontos perdidos por mês', _finColunas(serie,[{campo:'juros',rot:'Juros e multas',cor:'var(--danger)'},{campo:'perd',rot:'Descontos perdidos',cor:'var(--amber)'}],{ h:200, fmt:_finMoeda }),
+      { sub:'os dois são dinheiro que sai por falha de processo, não por preço' }),
+    _finCard('Prazo médio: recebimento × pagamento', _finLinhas(S.filter(function(s){ return s.pmrSaldo!=null && s.pmpSaldo!=null; }).map(function(s){ return { lbl:s.lbl, pmr:s.pmrSaldo, pmp:s.pmpSaldo }; }),
+      [{campo:'pmr',rot:'PMR — prazo de recebimento',cor:'var(--blue-mid)'},{campo:'pmp',rot:'PMP — prazo de pagamento',cor:'var(--amber)'}],
+      { h:200, fmt:function(v){ return _finDd(v,0); }, labFmt:function(v){ return _cpNum(v,0)+'d'; } }),
+      { hint:'Quando o PMP fica abaixo do PMR, a empresa financia o cliente com capital próprio — é a origem da necessidade de capital de giro.' }),
+  ])+_finCard('Contas a pagar por categoria', `<div class="fin-scroll cp-noscroll"><table class="cp-tbl" id="fin-tb-pagcat"><thead><tr><th>Categoria</th><th>Grupo no fluxo</th><th class="r">Títulos</th><th class="r">A vencer</th><th class="r">Vencido</th><th class="r">% do aberto</th><th class="r">Pago no mês</th><th class="r">Mês anterior</th><th class="r">Variação</th></tr></thead>
+    <tbody>${cat}</tbody></table></div>`, { acao:_finBtnCSV('fin-tb-pagcat','pagar-por-categoria') });
+}
+
+// ── fin_scr_impostos.js ──
+// ─── FINANCEIRO › IMPOSTOS E OBRIGAÇÕES ───
+// Calendário de vencimentos, apuração do mês fechado, carga por tributo, folha e 13º,
+// créditos acumulados e parcelamento. Quem recolhe precisa ver a data antes do valor.
+function _finImpTribCor(t){ return { ICMS:'var(--blue-mid)', 'PIS/COFINS':'var(--success)', IPI:'var(--amber)', 'IRPJ/CSLL':'var(--purple)', IRRF:'var(--pink)', 'INSS/FGTS':'var(--danger)', 'Parcelamento ICMS':'var(--text3)' }[t]||'var(--text3)'; }
+
+function _finTela_impostos(){
+  const D=_finData(), I=_finImpostos(D), dre=_finDRE(D), sub=_finSubGet('impostos','calendario');
+  const tribs=[['todos','Todos os tributos']].concat(I.porTributo.filter(function(p){ return p.total>0; }).map(function(p){ return [p.tributo,p.tributo]; }));
+  const filtros=_finFSelect('impostos','tributo','Tributo',tribs)
+    +_finFChips('impostos','sit','Situação',[['todos','Todas'],['aberto','Em aberto'],['pago','Recolhidos']]);
+  const acao=_finFiltros('impostos',filtros,_finNFiltros('impostos',['periodo']))+_finLupa('impostos','Tributo ou órgão…');
+  const kpis=_finKPIs([
+    { rot:'A recolher em 60 dias', val:_finK(I.aRecolher), cor:I.vencendo5.length?'var(--amber)':null, sub:I.calendario.length+' guias · '+I.vencendo5.length+' vencendo em 5 dias' },
+    { rot:'Carga tributária 12 meses', val:_finK(I.totalLTM), sub:_finPc(I.cargaSobreReceita,1)+' da receita bruta', hint:'Soma de ICMS, PIS/COFINS, IPI, IRPJ/CSLL, IRRF, INSS/FGTS e parcelamento, por competência, nos últimos 12 meses.' },
+    { rot:'Crédito de ICMS acumulado', val:_finK(I.creditos.icms), cor:'var(--blue-mid)', sub:'abate o débito da apuração do mês' },
+    { rot:'Crédito de PIS/COFINS', val:_finK(I.creditos.pisCofins), cor:'var(--blue-mid)', sub:'regime não cumulativo · 9,25% sobre insumos' },
+    { rot:'Parcelamento', val:_finK(I.parcelamento.saldo), sub:_finE(I.parcelamento.nome)+' · '+I.parcelamento.restantes+' parcelas de '+_finK(I.parcelamento.parcela) },
+    { rot:'13º provisionado no ano', val:_finK(I.prov13Ano), sub:I.pago13>0?_finK(I.pago13)+' já pago':'ainda não houve parcela paga' },
+  ]);
+  const abas=[['calendario','ti-calendar','Calendário',I.calendario.length],['apuracao','ti-calculator','Apuração do mês'],['carga','ti-receipt-tax','Carga por tributo'],['folha','ti-users','Folha e 13º'],['creditos','ti-coins','Créditos e parcelamento']];
+  let corpo='';
+  if(sub==='apuracao') corpo=_finImpApuracaoHTML(D,I,dre);
+  else if(sub==='carga') corpo=_finImpCargaHTML(D,I,dre);
+  else if(sub==='folha') corpo=_finImpFolhaHTML(D,I,dre);
+  else if(sub==='creditos') corpo=_finImpCreditosHTML(D,I);
+  else corpo=_finImpCalendarioHTML(D,I);
+  return _finTela('Impostos e obrigações','Calendário de recolhimento, apuração do mês fechado e quanto de imposto a operação gera.',
+    kpis+_finSubnav('impostos',abas,'calendario')+corpo, acao, null, {base:'ambos', selo:'exemplo'});
+}
+
+// ── calendário ──
+function _finImpCalendarioHTML(D, I){
+  const q=_finBuscaQ('impostos'), tr=_finGetF('impostos','tributo','todos'), sit=_finGetF('impostos','sit','todos'), H=D.hoje;
+  const L=I.lista.filter(function(x){
+    if(tr!=='todos' && x.tributo!==tr) return false;
+    if(sit==='aberto' && x.pago) return false;
+    if(sit==='pago' && !x.pago) return false;
+    if(sit==='todos' && x.venc<_finAdd(H,-120)) return false;
+    return _finMatch(q, x.tributo, x.orgao, x.t.desc);
+  }).sort(function(a,b){ return a.venc<b.venc?-1:(a.venc>b.venc?1:0); });
+  const linhas=L.slice(0,400).map(function(x){ const dv=_finDias(x.venc,H);
+    return `<tr class="cp-clic${!x.pago&&dv>0?' fin-alerta':(!x.pago&&dv>=-5?' fin-atencao':'')}" onclick="_finTituloAbrir('${_cpJs(x.t.id)}')">
+      <td>${_finPill(_finE(x.tributo), _finImpTribCor(x.tributo))}</td>
+      <td style="color:var(--text3)">${_finE(x.t.desc||'')}</td>
+      <td class="cp-mono">${_finE(_finMesLbl(x.competencia))}</td>
+      <td class="cp-mono">${_finDtBR(x.venc)}</td>
+      <td class="cp-n" style="color:${!x.pago&&dv>0?'var(--danger)':'var(--text3)'}">${x.pago?'—':(dv>0?'vencido '+dv+' d':'em '+(-dv)+' d')}</td>
+      <td class="cp-n" style="font-weight:700">${_finMoeda(x.valor)}</td>
+      <td>${_finE(x.orgao)}</td><td style="color:var(--text3)">${_finE(x.forma||'—')}</td>
+      <td>${x.pago?_finPill('Recolhido','var(--success)'):_finPill('Em aberto','var(--amber)')}</td>
+      <td class="fin-noexp" onclick="event.stopPropagation()">${x.pago?'':`<button class="fin-ico" title="Registrar recolhimento" onclick="_finBaixaAbrir('${_cpJs(x.t.id)}')"><i class="ti ti-cash"></i></button>`}</td></tr>`; }).join('');
+  const prox=I.calendario.slice(0,8);
+  return (I.vencendo5.length?`<div class="fin-alert"><i class="ti ti-alert-triangle"></i><div><b>${I.vencendo5.length} guia(s) vencendo em até 5 dias</b> — ${_finMoeda(I.vencendo5.reduce(function(a,x){ return a+x.saldo; },0))}. ${I.vencendo5.map(function(x){ return _finE(x.tributo)+' em '+_finDtBR(x.venc); }).join(' · ')}</div></div>`:'')
+    +_finGrid(2,[
+      _finCard('Próximos vencimentos', prox.length?`<div style="display:flex;flex-direction:column;gap:8px">${prox.map(function(x){ const dv=-_finDias(x.venc,D.hoje);
+        return `<div class="cp-clic" onclick="_finTituloAbrir('${_cpJs(x.t.id)}')" style="display:grid;grid-template-columns:56px 1fr auto;gap:10px;align-items:center;font-size:12.5px">
+          <span class="cp-mono" style="color:${dv<=5?'var(--danger)':'var(--text3)'}">${_finDtBR(x.venc).slice(0,5)}</span>
+          <span>${_finPill(_finE(x.tributo),_finImpTribCor(x.tributo))} <span style="color:var(--text3)">${_finE(x.t.desc||'')}</span></span>
+          <b>${_finMoeda(x.saldo)}</b></div>`; }).join('')}</div>`:_cpVazio('Nada a recolher nos próximos 60 dias.'),
+        { sub:'próximos 60 dias' }),
+      _finCard('A recolher por tributo — 60 dias', _finRosca((function(){ const m={}; I.calendario.forEach(function(x){ m[x.tributo]=(m[x.tributo]||0)+x.saldo; });
+        return Object.keys(m).map(function(k){ return { rot:k, v:m[k], cor:_finImpTribCor(k) }; }).sort(function(a,b){ return b.v-a.v; }); })(),
+        { centro:_finK(I.aRecolher), centroSub:'60 dias' })),
+    ])
+    +_finCard(`Guias e obrigações <span class="sub" style="font-weight:500;color:var(--text3)">${L.length} lançamentos</span>`,
+      `<div class="fin-scroll fin-scroll-y cp-noscroll"><table class="cp-tbl" id="fin-tb-impcal"><thead><tr><th>Tributo</th><th>Descrição</th><th>Competência</th><th>Vencimento</th><th class="r">Prazo</th><th class="r">Valor</th><th>Órgão</th><th>Forma</th><th>Situação</th><th class="fin-noexp"></th></tr></thead>
+      <tbody>${linhas||`<tr><td colspan="10">${_cpVazio('Nenhuma guia nesse filtro.')}</td></tr>`}</tbody></table></div>`,
+      { acao:_finBtnCSV('fin-tb-impcal','calendario-tributario'), hint:'Competência é o mês do fato gerador; vencimento é quando a guia tem que ser paga. Atrasar guia custa multa e juros SELIC — é o pior tipo de atraso.' })
+    +_finNota('O calendário mostra as obrigações <b>já constituídas</b>. Em Fluxo de caixa elas aparecem de novo, no grupo Impostos, com a data de vencimento — é o mesmo dinheiro, visto pela ótica do caixa.');
+}
+
+// ── apuração ──
+function _finImpApuracaoHTML(D, I, dre){
+  const M=dre.M, det=dre.detalhe[M]||{};
+  const linhas=I.apuracao.map(function(a){ return `<tr><td class="cp-item">${_finPill(_finE(a.tributo),_finImpTribCor(a.tributo))}</td>
+    <td class="cp-n">${_finMoeda(a.debito)}</td><td class="cp-n" style="color:var(--success)">${a.credito?'−'+_finMoeda(a.credito).replace('R$ ','R$ '):'—'}</td>
+    <td class="cp-n" style="font-weight:700">${_finMoeda(a.recolher)}</td>
+    <td class="cp-n" style="color:var(--text3)">${_finPc(_finPct(a.recolher,dre.porMes[M]?dre.porMes[M].receitaBruta:0),2)}</td>
+    <td style="color:var(--text3);font-size:11.5px">${_finE(a.obs)}</td></tr>`; }).join('');
+  const totD=I.apuracao.reduce(function(a,x){ return a+x.debito; },0), totC=I.apuracao.reduce(function(a,x){ return a+x.credito; },0), totR=I.apuracao.reduce(function(a,x){ return a+x.recolher; },0);
+  const rb=dre.porMes[M]?dre.porMes[M].receitaBruta:0;
+  return _finCard('Apuração de '+_finMesLbl(M), `<table class="cp-tbl" id="fin-tb-impap"><thead><tr><th>Tributo</th><th class="r">Débito</th><th class="r">Crédito</th><th class="r">A recolher</th><th class="r">% da receita</th><th>Como é calculado</th></tr></thead>
+    <tbody>${linhas}<tr class="fin-tot"><td>Total</td><td class="cp-n">${_finMoeda(totD)}</td><td class="cp-n">${_finMoeda(totC)}</td><td class="cp-n">${_finMoeda(totR)}</td><td class="cp-n">${_finPc(_finPct(totR,rb),2)}</td><td></td></tr></tbody></table>`,
+    { acao:_finBtnCSV('fin-tb-impap','apuracao'), selo:'misto',
+      hint:'O crédito de ICMS vem das notas de compra REAIS do ERP, apropriado pelo consumo dos últimos 12 meses. O débito é estimado sobre a receita do mês.' })
+    +_finGrid(2,[
+      _finCard('Débito × crédito do mês', _finColunas([{ lbl:'ICMS', deb:I.apuracao[0].debito, cred:I.apuracao[0].credito, rec:I.apuracao[0].recolher },
+        { lbl:'PIS/COFINS', deb:I.apuracao[1].debito, cred:I.apuracao[1].credito, rec:I.apuracao[1].recolher },
+        { lbl:'IPI', deb:I.apuracao[2].debito, cred:I.apuracao[2].credito, rec:I.apuracao[2].recolher }],
+        [{campo:'deb',rot:'Débito',cor:'var(--danger)'},{campo:'cred',rot:'Crédito',cor:'var(--success)'},{campo:'rec',rot:'A recolher',cor:'var(--blue-mid)'}], { h:200, fmt:_finMoeda })),
+      _finCard('Da receita ao imposto', `<div class="fin-lista-kv">
+        <div><span>Receita bruta do mês</span><b>${_finMoeda(rb)}</b></div>
+        <div><span>Impostos sobre venda</span><b>${_finMoeda(dre.porMes[M]?dre.porMes[M].impostosVendas:0)}</b></div>
+        <div><span>Receita líquida</span><b>${_finMoeda(dre.porMes[M]?dre.porMes[M].receitaLiquida:0)}</b></div>
+        <div><span>Carga sobre a receita</span><b>${_finPc(_finPct(dre.porMes[M]?dre.porMes[M].impostosVendas:0, rb),2)}</b></div></div>`,
+        { hint:'A linha de impostos do DRE inclui os tributos sobre venda. IRPJ/CSLL e INSS não entram ali — aparecem em despesas e na folha.' }),
+    ])
+    +_finNota('Apuração <b>gerencial</b>, para mostrar a mecânica de débito e crédito. A apuração oficial sai do SPED e da escrita fiscal — no sistema real esta tela lê de lá.');
+}
+
+// ── carga por tributo ──
+function _finImpCargaHTML(D, I, dre){
+  const meses=dre.ltmMeses, P=I.porTributo.filter(function(p){ return p.total>0; });
+  const cab=`<tr><th>Tributo</th>${meses.map(function(ym){ return `<th class="r">${_finE(_finMesLbl(ym))}</th>`; }).join('')}<th class="r">12 meses</th><th class="r">% da receita</th></tr>`;
+  const linhas=P.map(function(p){ return `<tr><td class="cp-item">${_finPill(_finE(p.tributo),_finImpTribCor(p.tributo))}</td>
+    ${meses.map(function(ym){ const v=p.porMes[ym]||0; return `<td class="cp-n"${v?'':' style="color:var(--text3)"'}>${v?_finK(v):'—'}</td>`; }).join('')}
+    <td class="cp-n" style="font-weight:700">${_finK(p.total)}</td><td class="cp-n" style="color:var(--text3)">${_finPc(_finPct(p.total,dre.ltm.receitaBruta),2)}</td></tr>`; }).join('');
+  const serie=meses.map(function(ym){ const o={ lbl:_finMesLbl(ym) }; P.forEach(function(p){ o[p.tributo]=p.porMes[ym]||0; }); return o; });
+  return _finCard('Carga tributária por competência', `<div class="fin-scroll cp-noscroll"><table class="cp-tbl cp-tbl-sm" id="fin-tb-impcarga"><thead>${cab}</thead><tbody>${linhas}
+    <tr class="fin-tot"><td>Total</td>${meses.map(function(ym){ return `<td class="cp-n">${_finK(P.reduce(function(a,p){ return a+(p.porMes[ym]||0); },0))}</td>`; }).join('')}<td class="cp-n">${_finK(I.totalLTM)}</td><td class="cp-n">${_finPc(I.cargaSobreReceita,1)}</td></tr></tbody></table></div>`,
+    { acao:_finBtnCSV('fin-tb-impcarga','carga-tributaria') })
+    +_finCard('Composição mês a mês', _finColunas(serie, P.map(function(p){ return { campo:p.tributo, rot:p.tributo, cor:_finImpTribCor(p.tributo) }; }), { h:235, empilhado:true, fmt:_finK }),
+      { sub:'últimos 12 meses fechados, por competência' })
+    +_finGrid(2,[
+      _finCard('Participação de cada tributo', _finRosca(P.map(function(p){ return { rot:p.tributo, v:p.total, cor:_finImpTribCor(p.tributo) }; }), { centro:_finK(I.totalLTM), centroSub:'12 meses' })),
+      _finCard('Carga sobre a receita', `<div class="fin-lista-kv">
+        <div><span>Receita bruta 12 meses</span><b>${_finMoeda(dre.ltm.receitaBruta)}</b></div>
+        <div><span>Tributos 12 meses</span><b>${_finMoeda(I.totalLTM)}</b></div>
+        <div><span>Carga total</span><b>${_finPc(I.cargaSobreReceita,1)}</b></div>
+        ${P.map(function(p){ return `<div><span>${_finE(p.tributo)}</span><b>${_finPc(_finPct(p.total,dre.ltm.receitaBruta),2)}</b></div>`; }).join('')}</div>`,
+        { selo:'derivado' }),
+    ]);
+}
+
+// ── folha e 13º ──
+function _finImpFolhaHTML(D, I, dre){
+  const meses=dre.ltmMeses;
+  const serie=meses.map(function(ym){ const d=dre.detalhe[ym]||{}; return { lbl:_finMesLbl(ym), folha:d.folha||0, prov13:d.prov13||0 }; });
+  const p13=I.proximos13;
+  return _finKPIs([
+    { rot:'Folha do mês fechado', val:_finK((dre.detalhe[dre.M]||{}).folha||0), sub:'salários + encargos · base '+_finK(I.folhaBaseMes) },
+    { rot:'INSS/FGTS a recolher', val:_finK(I.lista.filter(function(x){ return x.tributo==='INSS/FGTS' && !x.pago; }).reduce(function(a,x){ return a+x.saldo; },0)), sub:'guias em aberto' },
+    { rot:'13º provisionado no ano', val:_finK(I.prov13Ano), sub:'competência de janeiro até '+_finMesLbl(dre.M) },
+    { rot:'13º já pago', val:I.pago13>0?_finK(I.pago13):'—', cor:I.pago13>0?'var(--success)':null, sub:p13.length?'próxima parcela em '+_finDtBR(p13[0].venc):'sem parcela em aberto' },
+  ])+_finCard('Folha e provisão de 13º por mês', _finColunas(serie,[{campo:'folha',rot:'Folha e encargos',cor:'var(--blue-mid)'},{campo:'prov13',rot:'Provisão de 13º',cor:'var(--amber)'}],{ h:215, fmt:_finK }),
+      { sub:'últimos 12 meses fechados', selo:'exemplo' })
+    +_finCard('Parcelas de 13º em aberto', p13.length?`<table class="cp-tbl" id="fin-tb-imp13"><thead><tr><th>Descrição</th><th>Vencimento</th><th class="r">Valor</th><th>Situação</th><th class="fin-noexp"></th></tr></thead><tbody>
+      ${p13.map(function(t){ return `<tr class="cp-clic" onclick="_finTituloAbrir('${_cpJs(t.id)}')"><td class="cp-item">${_finE(t.desc)}</td><td class="cp-mono">${_finDtBR(t.venc)}</td><td class="cp-n" style="font-weight:700">${_finMoeda(t.saldo)}</td><td>${_finPill(_finE(t.aprovacao),FIN_STATUS_COR[t.aprovacao]||'var(--text3)')}</td>
+        <td class="fin-noexp" onclick="event.stopPropagation()"><button class="fin-ico" title="Registrar pagamento" onclick="_finBaixaAbrir('${_cpJs(t.id)}')"><i class="ti ti-cash"></i></button></td></tr>`; }).join('')}</tbody></table>`
+      :_cpVazio('Nenhuma parcela de 13º em aberto.'),
+      { hint:'A provisão é mensal (1/12 da folha por competência), mas o desembolso é concentrado em novembro e dezembro — por isso o fluxo de caixa do fim do ano aperta mesmo com lucro estável.' })
+    +_finNota('Folha é <b>dado de exemplo</b> neste protótipo — vem da folha de pagamento no sistema real. O que importa aqui é a regra: provisionar por competência e desembolsar concentrado.');
+}
+
+// ── créditos e parcelamento ──
+function _finImpCreditosHTML(D, I){
+  const P=I.parcelamento;
+  return _finGrid(2,[
+    _finCard('Créditos tributários acumulados', `<div class="fin-lista-kv">
+      <div><span>Crédito de ICMS</span><b>${_finMoeda(I.creditos.icms)}</b></div>
+      <div><span>Crédito de PIS/COFINS</span><b>${_finMoeda(I.creditos.pisCofins)}</b></div>
+      <div><span>Total</span><b>${_finMoeda(I.creditos.icms+I.creditos.pisCofins)}</b></div></div>
+      <div style="margin-top:10px;font-size:12px;color:var(--text2)">Crédito acumulado é <b>dinheiro da empresa parado</b>: entra no ativo do balanço, abate imposto futuro, mas não paga conta hoje. Crédito crescendo mês a mês costuma indicar compra de insumo com carga maior que a da venda.</div>`,
+      { hint:'Aparece no Balanço como Impostos a recuperar, dentro do ativo circulante.' }),
+    _finCard('Parcelamento tributário', `<div class="fin-lista-kv">
+      <div><span>Programa</span><b>${_finE(P.nome)}</b></div>
+      <div><span>Parcela mensal</span><b>${_finMoeda(P.parcela)}</b></div>
+      <div><span>Parcelas restantes</span><b>${P.restantes}</b></div>
+      <div><span>Saldo devedor</span><b>${_finMoeda(P.saldo)}</b></div>
+      <div><span>Encerra em</span><b>${_finE(_finMesLbl(_finYmAdd(_finYm(D.hoje),P.restantes)))}</b></div></div>
+      <div style="margin-top:10px"><button class="fin-btn mini" onclick="_finIr('endividamento')">Ver no endividamento <i class="ti ti-arrow-right"></i></button></div>`,
+      { hint:'O parcelamento é dívida tributária: entra na dívida bruta e nos covenants, mesmo não sendo dívida bancária.' }),
+  ])+_finCard('Obrigações acessórias do mês', `<table class="cp-tbl"><thead><tr><th>Obrigação</th><th>Periodicidade</th><th>Prazo</th><th>Responsável</th></tr></thead><tbody>
+    <tr><td class="cp-item">SPED Fiscal (EFD ICMS/IPI)</td><td>Mensal</td><td>até o dia 20 do mês seguinte</td><td>Fiscal</td></tr>
+    <tr><td class="cp-item">SPED Contribuições (EFD PIS/COFINS)</td><td>Mensal</td><td>até o 10º dia útil do 2º mês seguinte</td><td>Fiscal</td></tr>
+    <tr><td class="cp-item">DCTFWeb</td><td>Mensal</td><td>até o dia 15 do mês seguinte</td><td>Fiscal</td></tr>
+    <tr><td class="cp-item">eSocial e FGTS Digital</td><td>Mensal</td><td>até o dia 15 do mês seguinte</td><td>Departamento pessoal</td></tr>
+    <tr><td class="cp-item">GIA estadual</td><td>Mensal</td><td>conforme calendário da SEFAZ</td><td>Fiscal</td></tr>
+    <tr><td class="cp-item">ECD e ECF</td><td>Anual</td><td>maio e julho</td><td>Contabilidade</td></tr></tbody></table>`,
+    { selo:'exemplo', hint:'Lista de referência do calendário acessório. No sistema real ela vira checklist com status por competência.' })
+    +_finNota('Estas datas são o padrão nacional e podem mudar por estado e por regime. Confirme sempre com a contabilidade antes de usar como prazo oficial.');
+}
+
+// ── fin_scr_endividamento.js ──
+// ─── FINANCEIRO › ENDIVIDAMENTO ───
+// Contratos de financiamento, cronograma de amortização, covenants, evolução da dívida líquida
+// e simulador de captação. A ficha do contrato abre pelo _finContratoSel (estado do núcleo).
+function _finEndNum(v){ return _cpNumParse(v); }
+function _finEndSet(campo, el){ _finSetF('endividamento', campo, el.value); }
+
+function _finTela_endividamento(){
+  if(_finContratoSel!=null) return _finEndFichaHTML(_finContratoSel);
+  const D=_finData(), V=_finDivida(D), sub=_finSubGet('endividamento','contratos');
+  const bancos=[['todos','Todos os bancos']].concat(Object.keys(V.porBanco).sort().map(function(b){ return [b,b]; }));
+  const filtros=_finFSelect('endividamento','banco','Banco',bancos)
+    +_finFChips('endividamento','mod','Modalidade',[['todos','Todas']].concat(Object.keys(V.porModalidade).map(function(m){ return [m,m]; })));
+  const acao=_finFiltros('endividamento',filtros,_finNFiltros('endividamento',['periodo']))+_finLupa('endividamento','Contrato, banco ou modalidade…');
+  const desc=V.covenants.filter(function(c){ return c.status==='Descumprido'; }), aten=V.covenants.filter(function(c){ return c.status==='Atenção'; });
+  const kpis=_finKPIs([
+    { rot:'Dívida bruta', def:'dividaBruta', val:_finK(V.bruta), sub:_finK(V.emprestimos)+' em contratos · '+_finK(V.totalDescontado)+' descontadas'+(V.garantida>0?' · '+_finK(V.garantida)+' conta garantida':'') },
+    { rot:'Dívida líquida', def:'dividaLiq', val:_finK(V.liquida), sub:'bruta menos caixa livre de '+_finK(V.caixaLivre) },
+    { rot:'Dívida líquida / EBITDA', def:'dlEbitda', val:_finXx(V.dlEbitda), cor:V.dlEbitda==null?null:(V.dlEbitda>FIN_PARAM.metas.dlEbitda?'var(--danger)':'var(--success)'), sub:'EBITDA 12 meses '+_finK(V.ebitdaLTM)+' · limite '+_finXx(FIN_PARAM.metas.dlEbitda) },
+    { rot:'Cobertura de juros', def:'coberturaJuros', val:_finXx(V.coberturaJuros), cor:V.coberturaJuros==null?null:(V.coberturaJuros<3?'var(--danger)':'var(--success)'), sub:'EBITDA ÷ juros de '+_finK(V.jurosLTM) },
+    { rot:'Custo médio da dívida', def:'custoDivida', val:_finPc(V.custoMedio,1)+' a.a.', sub:'ponderado pelo saldo de cada operação' },
+    { rot:'Perfil', val:_finPc(V.pctCP,0)+' curto prazo', cor:V.pctCP>60?'var(--amber)':null, sub:'prazo médio de '+_cpNum(V.prazoMedioMeses,1)+' meses' },
+    { rot:'Covenants', val:desc.length?desc.length+' descumprido(s)':(aten.length?aten.length+' em atenção':'todos cumpridos'), cor:desc.length?'var(--danger)':(aten.length?'var(--amber)':'var(--success)'), sub:V.covenants.length+' cláusulas acompanhadas' },
+  ]);
+  const abas=[['contratos','ti-list-details','Contratos',V.contratos.length],['cronograma','ti-calendar','Cronograma'],['covenants','ti-gavel','Covenants',V.covenants.length],['evolucao','ti-chart-line','Evolução'],['captacao','ti-building-bank','Simular captação']];
+  let corpo='';
+  if(sub==='cronograma') corpo=_finEndCronogramaHTML(D,V);
+  else if(sub==='covenants') corpo=_finEndCovenantsHTML(D,V);
+  else if(sub==='evolucao') corpo=_finEndEvolucaoHTML(D,V);
+  else if(sub==='captacao') corpo=_finEndCaptacaoHTML(D,V);
+  else corpo=_finEndContratosHTML(D,V);
+  return _finTela('Endividamento','Quanto a empresa deve, a que custo, por quanto tempo e o que os bancos exigem em troca.',
+    kpis+_finSubnav('endividamento',abas,'contratos')+corpo, acao, null, {base:'ambos', selo:'exemplo'});
+}
+
+// ── contratos ──
+function _finEndContratosHTML(D, V){
+  const q=_finBuscaQ('endividamento'), bco=_finGetF('endividamento','banco','todos'), mod=_finGetF('endividamento','mod','todos');
+  const L=_cpSortArr('finend', V.contratos.filter(function(c){
+    if(bco!=='todos' && c.banco!==bco) return false;
+    if(mod!=='todos' && c.modalidade!==mod) return false;
+    return _finMatch(q, c.contrato, c.banco, c.modalidade, c.garantia);
+  }), {}, 'saldo', -1);
+  const linhas=L.map(function(c){ return `<tr class="cp-clic" onclick="_finAbrirContrato('${_cpJs(c.contrato)}')">
+    <td class="cp-item">${_finE(c.contrato)}</td><td>${_finE(c.banco)}</td><td>${_finE(c.modalidade)}</td>
+    <td class="cp-n">${_finMoeda(c.original)}</td><td class="cp-n" style="font-weight:700">${_finMoeda(c.saldo)}</td>
+    <td style="width:110px">${_finBarra(c.pctPago,'var(--success)')}<span style="font-size:11px;color:var(--text3)">${_finPc(c.pctPago,0)} pago</span></td>
+    <td class="cp-n">${_finPc(c.taxaAA,2)}</td><td style="color:var(--text3)">${_finE(c.indexador||'pré')}</td>
+    <td class="cp-n">${_finMoeda(c.parcela)}</td><td class="cp-n">${c.pagas}/${c.meses}</td>
+    <td class="cp-mono">${_finDtBR(c.proxVenc)}</td><td class="cp-mono">${_finDtBR(c.fim)}</td>
+    <td class="cp-n">${_finMoeda(c.cp)}</td><td class="cp-n">${_finMoeda(c.lp)}</td>
+    <td style="color:var(--text3);max-width:150px;overflow:hidden;text-overflow:ellipsis">${_finE(c.garantia||'—')}</td></tr>`; }).join('');
+  const desc=V.porBancoDesc.map(function(b){ return `<tr><td class="cp-item">${_finE(b.banco)}</td><td>Desconto de duplicatas</td><td class="cp-n">${b.n} títulos</td>
+    <td class="cp-n" style="font-weight:700">${_finMoeda(b.saldo)}</td><td class="cp-n">${_cpNum(b.taxaMes,2)}% a.m.</td><td class="cp-n">${_finPc((Math.pow(1+b.taxaMes/100,12)-1)*100,1)} a.a.</td></tr>`; }).join('');
+  return _finCard(`Contratos de financiamento <span class="sub" style="font-weight:500;color:var(--text3)">${L.length} contratos · ${_finMoeda(L.reduce(function(a,c){ return a+c.saldo; },0))}</span>`,
+    `<div class="fin-scroll cp-noscroll"><table class="cp-tbl" id="fin-tb-endc"><thead><tr>${_cpTh('finend','contrato','Contrato')}${_cpTh('finend','banco','Banco')}${_cpTh('finend','modalidade','Modalidade')}${_cpTh('finend','original','Valor original',1)}${_cpTh('finend','saldo','Saldo devedor',1)}<th>Amortizado</th>${_cpTh('finend','taxaAA','Taxa a.a.',1)}<th>Indexador</th>${_cpTh('finend','parcela','Parcela',1)}<th class="r">Parcelas</th>${_cpTh('finend','proxVenc','Próx. venc.','','',1)}<th>Fim</th><th class="r">Curto prazo</th><th class="r">Longo prazo</th><th>Garantia</th></tr></thead>
+    <tbody>${linhas||`<tr><td colspan="15">${_cpVazio('Nenhum contrato nesse filtro.')}</td></tr>`}</tbody></table></div>`,
+    { acao:_finBtnCSV('fin-tb-endc','contratos-financiamento'), hint:'Clique na linha para ver o contrato parcela a parcela. Curto prazo = o que amortiza nos próximos 12 meses; é ele que entra no passivo circulante do balanço.' })
+    +(desc?_finCard('Outras operações de crédito', `<table class="cp-tbl"><thead><tr><th>Banco</th><th>Modalidade</th><th class="r">Operações</th><th class="r">Saldo</th><th class="r">Taxa mensal</th><th class="r">Equivalente anual</th></tr></thead><tbody>${desc}
+      ${V.garantida>0?`<tr><td class="cp-item">Conta garantida</td><td>Limite rotativo</td><td class="cp-n">—</td><td class="cp-n" style="font-weight:700">${_finMoeda(V.garantida)}</td><td class="cp-n">—</td><td class="cp-n">—</td></tr>`:''}
+      <tr class="fin-tot"><td colspan="3">Total fora de contrato</td><td class="cp-n">${_finMoeda(V.totalDescontado+V.garantida)}</td><td colspan="2"></td></tr></tbody></table>`,
+      { hint:'Duplicata descontada é dívida: o banco adiantou o dinheiro e, se o cliente não pagar, debita da empresa (desconto com regresso). Por isso entra na dívida bruta e nos covenants.' }):'')
+    +_finGrid(2,[
+      _finCard('Dívida por modalidade', _finRosca(Object.keys(V.porModalidade).map(function(k){ return { rot:k, v:V.porModalidade[k] }; }).sort(function(a,b){ return b.v-a.v; }), { centro:_finK(V.bruta), centroSub:'dívida bruta' })),
+      _finCard('Dívida por banco', _finBarrasH(Object.keys(V.porBanco).map(function(k){ return { rot:k, v:V.porBanco[k] }; }).sort(function(a,b){ return b.v-a.v; }), { colRot:'40%' }),
+        { hint:'Concentração num banco só reduz poder de negociação na hora de renovar.' }),
+    ]);
+}
+
+// ── cronograma ──
+function _finEndCronogramaHTML(D, V){
+  const C=V.cronograma, prox12=C.slice(0,12);
+  const linhas=C.map(function(m){ return `<tr${m.total>0?'':' style="opacity:.55"'}><td class="cp-item">${_finE(m.lbl)}</td>
+    <td class="cp-n">${m.amortizacao?_finMoeda(m.amortizacao):'—'}</td><td class="cp-n">${m.juros?_finMoeda(m.juros):'—'}</td>
+    <td class="cp-n" style="font-weight:700">${m.total?_finMoeda(m.total):'—'}</td>
+    <td class="cp-n" style="color:var(--text3)">${m.descontadasVencendo?_finMoeda(m.descontadasVencendo):'—'}</td>
+    <td class="cp-n">${_finMoeda(m.saldoApos)}</td>
+    <td style="width:24%">${_finBarra(_finPct(m.total,Math.max.apply(null,C.map(function(x){ return x.total; }))||1),'var(--amber)')}</td></tr>`; }).join('');
+  return _finCard('Serviço da dívida — 24 meses', _finColunas(C.map(function(m){ return { lbl:m.lbl, am:m.amortizacao, ju:m.juros, saldo:m.saldoApos }; }),
+      [{campo:'am',rot:'Amortização (principal)',cor:'var(--blue-mid)'},{campo:'ju',rot:'Juros',cor:'var(--danger)'}],
+      { h:235, empilhado:true, fmt:_finK, linhas:[{campo:'saldo',rot:'Saldo devedor após o mês',cor:'var(--text3)'}] }),
+      { sub:'só contratos de financiamento — descontadas e conta garantida não têm parcela fixa', selo:'exemplo' })
+    +_finKPIs([
+      { rot:'Serviço da dívida · 12 meses', val:_finK(prox12.reduce(function(a,m){ return a+m.total; },0)), sub:'amortização '+_finK(prox12.reduce(function(a,m){ return a+m.amortizacao; },0))+' + juros '+_finK(prox12.reduce(function(a,m){ return a+m.juros; },0)) },
+      { rot:'Maior parcela mensal', val:_finK(Math.max.apply(null,prox12.map(function(m){ return m.total; }))), sub:'em '+_finE((prox12.slice().sort(function(a,b){ return b.total-a.total; })[0]||{}).lbl||'—') },
+      { rot:'Saldo em 12 meses', val:_finK(prox12.length?prox12[prox12.length-1].saldoApos:0), sub:'se nenhuma nova captação acontecer' },
+    ])
+    +_finCard('Cronograma mês a mês', `<div class="fin-scroll fin-scroll-y cp-noscroll"><table class="cp-tbl" id="fin-tb-endcron"><thead><tr><th>Mês</th><th class="r">Amortização</th><th class="r">Juros</th><th class="r">Total</th><th class="r">Descontadas vencendo</th><th class="r">Saldo após</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`,
+      { acao:_finBtnCSV('fin-tb-endcron','cronograma-divida'), hint:'A coluna de descontadas mostra quando as duplicatas adiantadas vencem — se o cliente não pagar, esse valor vira débito na conta da empresa naquela data.' })
+    +_finNota('Este cronograma já está dentro do <b>Fluxo de caixa</b>, no grupo "Amortização e juros de dívida" — não é desembolso a mais, é o mesmo visto por contrato.');
+}
+
+// ── covenants ──
+function _finEndCovenantsHTML(D, V){
+  const linhas=V.covenants.map(function(c){ return `<tr class="${c.status==='Descumprido'?'fin-alerta':(c.status==='Atenção'?'fin-atencao':'')}">
+    <td class="cp-item">${_finE(c.indicador)}</td><td>${_finE(c.banco)}</td><td class="cp-mono" style="color:var(--text3)">${_finE(c.contrato)}</td>
+    <td class="cp-n">${c.tipo==='max'?'máx. ':'mín. '}${_finXx(c.limite)}</td>
+    <td class="cp-n" style="font-weight:700">${c.apurado==null?'—':_finXx(c.apurado)}</td>
+    <td class="cp-n" style="${c.folga==null?'':_finHeat(c.folga,50,true)}">${c.folga==null?'—':_finPcS(c.folga,0)}</td>
+    <td>${_finSemaforo(c.status)}</td><td class="cp-mono">${_finDtBR(c.proxApuracao)}</td></tr>`; }).join('');
+  const desc=V.covenants.filter(function(c){ return c.status==='Descumprido'; });
+  return (desc.length?`<div class="fin-alert"><i class="ti ti-alert-triangle"></i><div><b>${desc.length} covenant descumprido</b> — ${desc.map(function(c){ return _finE(c.indicador)+' ('+_finE(c.banco)+')'; }).join(' · ')}. Descumprimento pode dar ao banco o direito de <b>vencimento antecipado</b> do contrato: negocie o waiver antes da data de apuração.</div></div>`:'')
+    +_finCard('Cláusulas financeiras acompanhadas', `<table class="cp-tbl" id="fin-tb-endcov"><thead><tr><th>Indicador</th><th>Banco</th><th>Contrato</th><th class="r">Limite</th><th class="r">Apurado</th><th class="r">Folga</th><th>Situação</th><th>Próxima apuração</th></tr></thead><tbody>${linhas}</tbody></table>`,
+      { acao:_finBtnCSV('fin-tb-endcov','covenants'), selo:'exemplo',
+        hint:'Folga é a distância percentual até o limite. Abaixo de 10% já entra como alerta no Painel, porque um trimestre ruim fecha a diferença.' })
+    +_finGrid(2,[
+      _finCard('Folga de cada covenant', _finBarrasH(V.covenants.filter(function(c){ return c.folga!=null; }).map(function(c){
+        return { rot:c.indicador+' · '+c.banco, v:Math.max(0,c.folga), cor:c.status==='Descumprido'?'var(--danger)':(c.status==='Atenção'?'var(--amber)':'var(--success)') }; }),
+        { colRot:'52%', fmt:function(v){ return _finPc(v,0); } }), { sub:'quanto maior a barra, mais longe do limite' }),
+      _finCard('O que fazer quando aperta', `<ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px;font-size:12.5px;color:var(--text2)">
+        <li>Antecipar amortização com caixa sobrando derruba a dívida líquida e melhora dívida/EBITDA na hora.</li>
+        <li>Trocar desconto de duplicatas (caro e curto) por uma linha mais longa melhora o perfil, mas não a dívida bruta.</li>
+        <li>Melhorar o EBITDA leva um trimestre para aparecer no indicador — não resolve apuração da semana que vem.</li>
+        <li>Waiver formal do banco antes da data de apuração evita o vencimento antecipado; depois da data, a negociação é pior.</li></ul>`,
+        { selo:'exemplo' }),
+    ]);
+}
+
+// ── evolução ──
+function _finEndEvolucaoHTML(D, V){
+  const S=V.serie;
+  const linhas=S.map(function(s){ return `<tr><td class="cp-item">${_finE(s.lbl)}</td><td class="cp-n">${_finMoeda(s.bruta)}</td><td class="cp-n">${_finMoeda(s.caixa)}</td>
+    <td class="cp-n" style="font-weight:700">${_finMoeda(s.liquida)}</td><td class="cp-n">${s.ebitdaLTM==null?'—':_finMoeda(s.ebitdaLTM)}</td>
+    <td class="cp-n" style="${s.dlEbitda==null?'':_finHeat(FIN_PARAM.metas.dlEbitda-s.dlEbitda,2,true)};font-weight:600">${s.dlEbitda==null?'—':_finXx(s.dlEbitda)}</td></tr>`; }).join('');
+  return _finCard('Dívida bruta, líquida e caixa', _finLinhas(S,[{campo:'bruta',rot:'Dívida bruta',cor:'var(--danger)'},{campo:'liquida',rot:'Dívida líquida',cor:'var(--amber)',area:true},{campo:'caixa',rot:'Caixa livre',cor:'var(--success)'}],
+      { h:230, fmt:_finK }), { sub:'últimos 12 meses fechados', selo:'exemplo' })
+    +_finCard('Alavancagem — dívida líquida sobre EBITDA', _finLinhas(S.filter(function(s){ return s.dlEbitda!=null; }),[{campo:'dlEbitda',rot:'Dívida líquida / EBITDA',cor:'var(--blue-mid)'}],
+      { h:195, fmt:function(v){ return _finXx(v); }, labFmt:function(v){ return _cpNum(v,1)+'x'; }, ref:{ v:FIN_PARAM.metas.dlEbitda, rot:'limite do covenant '+_finXx(FIN_PARAM.metas.dlEbitda) } }),
+      { def:'dlEbitda', sub:'EBITDA dos 12 meses móveis em cada ponto' })
+    +_finCard('Série mensal', `<div class="fin-scroll cp-noscroll"><table class="cp-tbl" id="fin-tb-endev"><thead><tr><th>Mês</th><th class="r">Dívida bruta</th><th class="r">Caixa livre</th><th class="r">Dívida líquida</th><th class="r">EBITDA 12m</th><th class="r">DL/EBITDA</th></tr></thead><tbody>${linhas}</tbody></table></div>`,
+      { acao:_finBtnCSV('fin-tb-endev','evolucao-divida') })
+    +_finNota('Dívida líquida caindo com dívida bruta parada significa <b>caixa subindo</b>, não dívida sendo paga. São coisas diferentes na hora de negociar com o banco.');
+}
+
+// ── simulador de captação ──
+function _finEndCaptacaoHTML(D, V){
+  const valor=_finEndNum(_finGetF('endividamento','capValor','1.000.000')),
+    taxa=parseFloat(String(_finGetF('endividamento','capTaxa','1,35')).replace(',','.'))||0,
+    meses=parseInt(_finGetF('endividamento','capMeses','36'),10)||36,
+    car=parseInt(_finGetF('endividamento','capCarencia','6'),10)||0;
+  const S=_finSimularCaptacao(D, valor, taxa, meses, car);
+  const inp=function(campo, rot, val, sufixo){ return `<div style="display:flex;flex-direction:column;gap:3px">
+    <span style="font-size:11px;color:var(--text3)">${rot}</span>
+    <span style="display:flex;align-items:center;gap:5px"><input class="modal-input" value="${escapeAttr(String(val))}" onchange="_finEndSet('${campo}',this)" style="width:104px;padding:6px 9px;font-size:12.5px;text-align:right">${sufixo?`<span style="font-size:11.5px;color:var(--text3)">${sufixo}</span>`:''}</span></div>`; };
+  const premissas=`<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+    ${inp('capValor','Valor da captação', _finGetF('endividamento','capValor','1.000.000'), 'R$')}
+    ${inp('capTaxa','Taxa mensal', _finGetF('endividamento','capTaxa','1,35'), '% a.m.')}
+    ${inp('capMeses','Prazo', _finGetF('endividamento','capMeses','36'), 'meses')}
+    ${inp('capCarencia','Carência', _finGetF('endividamento','capCarencia','6'), 'meses')}</div>`;
+  const antes=[['Dívida bruta',_finMoeda(V.bruta),_finMoeda(S.novaBruta)],
+    ['Custo médio',_finPc(V.custoMedio,1)+' a.a.',_finPc(S.custoMedioNovo,1)+' a.a.'],
+    ['Dívida líquida / EBITDA',_finXx(V.dlEbitda), _finXx(V.ebitdaLTM>0?(V.liquida)/V.ebitdaLTM:null)],
+    ['Parcela mensal nova','—',_finMoeda(S.parcela)],
+    ['Juros totais do contrato','—',_finMoeda(S.jurosTotal)],
+    ['Taxa equivalente','—',_finPc(S.taxaAA,1)+' a.a. · CET '+_finPc(S.cet,1)]];
+  return _finCard('Simular uma nova captação', premissas+`<div class="fin-grid fin-g2">
+    <div><table class="cp-tbl"><thead><tr><th>Indicador</th><th class="r">Hoje</th><th class="r">Com a captação</th></tr></thead><tbody>
+      ${antes.map(function(x){ return `<tr><td class="cp-item">${_finE(x[0])}</td><td class="cp-n" style="color:var(--text3)">${x[1]}</td><td class="cp-n" style="font-weight:700">${x[2]}</td></tr>`; }).join('')}</tbody></table></div>
+    <div class="fin-lista-kv">
+      <div><span>Parcela sobre a geração de caixa</span><b style="color:${S.pesoParcela==null?'inherit':(S.pesoParcela>30?'var(--danger)':(S.pesoParcela>15?'var(--amber)':'var(--success)'))}">${S.pesoParcela==null?'—':_finPc(S.pesoParcela,0)}</b></div>
+      <div><span>Geração operacional média</span><b>${_finMoeda(S.opMedio)}</b></div>
+      <div><span>Carência</span><b>${S.carencia} meses</b></div>
+      <div><span>Parcelas</span><b>${S.meses}</b></div>
+      <div><span>Custo total do dinheiro</span><b>${_finPc(_finPct(S.jurosTotal,S.valor),1)} sobre o principal</b></div>
+    </div></div>`,
+    { selo:'derivado', hint:'Sistema Price (parcela fixa). Durante a carência só há capitalização de juros — a parcela depois sai maior porque o saldo cresceu.' })
+    +_finCard('Como a parcela pesa no caixa', _finBarrasH([
+      { rot:'Geração operacional média (6 meses)', v:S.opMedio, cor:'var(--success)' },
+      { rot:'Serviço da dívida atual (média mensal 12m)', v:V.cronograma.slice(0,12).reduce(function(a,m){ return a+m.total; },0)/12, cor:'var(--amber)' },
+      { rot:'Parcela da nova captação', v:S.parcela, cor:'var(--danger)' }], { colRot:'46%' }),
+      { sub:'a soma das duas últimas não pode comer a primeira' })
+    +_finNota('Simulação, não proposta: <b>nada é gravado</b>. Antes de contratar, confira o efeito no covenant de dívida líquida sobre EBITDA na aba Covenants — captação aumenta a dívida bruta na hora e o EBITDA só depois.');
+}
+
+// ─── FICHA DO CONTRATO ───
+function _finEndFichaHTML(ct){
+  const D=_finData(), V=_finDivida(D), c=V.contratos.find(function(x){ return String(x.contrato)===String(ct); });
+  if(!c) return _finTela('Contrato','Não encontrado.', _cpVazio('Contrato '+_finE(ct)+' não existe na base.'), '', { fn:'_finVoltarContrato()', label:'Voltar ao endividamento' }, {base:'D0'});
+  const v=_finContratoView||'resumo';
+  const fut=c.parcelasDet.filter(function(p){ return p.venc>=D.hoje; });
+  const kpis=_finKPIs([
+    { rot:'Saldo devedor', val:_finK(c.saldo), sub:_finPc(c.pctPago,0)+' do principal já amortizado' },
+    { rot:'Parcela', val:_finK(c.parcela), sub:c.pagas+' pagas de '+c.meses+' · '+c.restantes+' a vencer' },
+    { rot:'Taxa', val:_finPc(c.taxaAA,2)+' a.a.', sub:_cpNum(c.taxaMes,2)+'% a.m. · '+_finE(c.indexador||'pré-fixado')+' · CET '+_finPc(c.cet,1) },
+    { rot:'Próximo vencimento', val:_finDtBR(c.proxVenc), sub:'todo dia '+c.dia+' · fim em '+_finDtBR(c.fim) },
+    { rot:'Curto prazo', val:_finK(c.cp), sub:'amortiza nos próximos 12 meses · longo prazo '+_finK(c.lp) },
+    { rot:'Juros dos próximos 12 meses', val:_finK(c.juros12), sub:'o que vai para despesa financeira do DRE' },
+  ]);
+  const abas=[['resumo','ti-file-description','Resumo'],['parcelas','ti-list-details','Parcelas',c.parcelasDet.length]];
+  const subnav=`<div class="cp-subnav-wrap" style="margin-bottom:16px"><div class="cp-subnav">${abas.map(function(a){ return `<button class="cp-subtab ${v===a[0]?'on':''}" onclick="_finContratoSetView('${a[0]}')"><i class="ti ${a[1]}"></i>${a[2]}${a[3]!=null?` <span class="fin-pill" style="--c:var(--text3);margin-left:4px;padding:0 6px">${a[3]}</span>`:''}</button>`; }).join('')}</div></div>`;
+  let corpo='';
+  if(v==='parcelas'){
+    const linhas=c.parcelasDet.map(function(p){ const paga=p.venc<D.hoje;
+      return `<tr${paga?' style="opacity:.6"':(p.venc===c.proxVenc?' class="fin-dest"':'')}><td class="cp-n">${p.n}</td><td class="cp-item">${_finE(_finMesLbl(p.ym))}</td><td class="cp-mono">${_finDtBR(p.venc)}</td>
+        <td class="cp-n">${_finMoeda(p.valor)}</td><td class="cp-n" style="color:var(--danger)">${_finMoeda(p.juros)}</td><td class="cp-n" style="color:var(--blue-mid)">${_finMoeda(p.amort)}</td>
+        <td class="cp-n">${_finMoeda(p.saldo)}</td><td>${paga?_finPill('Paga','var(--success)'):(p.venc===c.proxVenc?_finPill('Próxima','var(--blue-mid)'):'<span style="color:var(--text3)">A vencer</span>')}</td></tr>`; }).join('');
+    corpo=_finCard('Composição da parcela ao longo do contrato', _finColunas(c.parcelasDet.filter(function(p){ return p.venc>=D.hoje; }).slice(0,24).map(function(p){ return { lbl:_finMesLbl(p.ym), ju:p.juros, am:p.amort }; }),
+        [{campo:'ju',rot:'Juros',cor:'var(--danger)'},{campo:'am',rot:'Amortização',cor:'var(--blue-mid)'}], { h:200, empilhado:true, fmt:_finMoeda }),
+        { sub:'no sistema '+_finE(c.sistema)+' a parcela é fixa e a parte de juros cai a cada mês' })
+      +_finCard('Parcelas', `<div class="fin-scroll fin-scroll-y cp-noscroll"><table class="cp-tbl" id="fin-tb-endpar"><thead><tr><th class="r">#</th><th>Competência</th><th>Vencimento</th><th class="r">Parcela</th><th class="r">Juros</th><th class="r">Amortização</th><th class="r">Saldo após</th><th>Situação</th></tr></thead><tbody>${linhas}</tbody></table></div>`,
+        { acao:_finBtnCSV('fin-tb-endpar','parcelas-'+c.contrato) });
+  } else {
+    const ficha=[['Contrato',c.contrato],['Banco',c.banco],['Modalidade',c.modalidade],['Sistema de amortização',c.sistema],
+      ['Valor contratado',_finMoeda(c.original)],['Contratação',_finDtBR(c.contratacao)],['Primeira parcela',_finDtBR(c.inicio)],['Vencimento final',_finDtBR(c.fim)],
+      ['Prazo total',c.meses+' meses'],['Dia do vencimento','todo dia '+c.dia],['Taxa nominal',_finPc(c.taxaAA,2)+' a.a. ('+_cpNum(c.taxaMes,2)+'% a.m.)'],['Indexador',c.indexador||'pré-fixado'],
+      ['CET estimado',_finPc(c.cet,1)+' a.a.'],['Garantia',c.garantia||'—'],['Prazo médio restante',_cpNum(c.prazoMedioMeses,1)+' meses']];
+    const cov=V.covenants.filter(function(x){ return x.contrato===c.contrato; });
+    corpo=_finGrid(2,[
+      _finCard('Dados do contrato', `<div class="fin-lista-kv">${ficha.map(function(x){ return `<div><span>${_finE(x[0])}</span><b>${_finE(x[1])}</b></div>`; }).join('')}</div>`),
+      _finCard('Situação', `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="color:var(--text2)">Amortizado</span><b>${_finPc(c.pctPago,0)}</b></div>${_finBarra(c.pctPago,'var(--success)')}</div>
+        <div class="fin-lista-kv">
+        <div><span>Já pago (principal)</span><b>${_finMoeda(c.original-c.saldo)}</b></div>
+        <div><span>Saldo devedor</span><b>${_finMoeda(c.saldo)}</b></div>
+        <div><span>Parcelas restantes</span><b>${c.restantes}</b></div>
+        <div><span>Desembolso nos 12 meses</span><b>${_finMoeda(c.cp+c.juros12)}</b></div></div>`
+        +(cov.length?`<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px"><div style="font-size:11.5px;color:var(--text3);margin-bottom:6px">Cláusulas deste contrato</div>
+          ${cov.map(function(x){ return `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:3px 0"><span>${_finE(x.indicador)} ${x.tipo==='max'?'máx.':'mín.'} ${_finXx(x.limite)}</span>${_finSemaforo(x.status)}</div>`; }).join('')}</div>`:'')),
+    ])+_finNota('Este contrato entra no fluxo de caixa parcela a parcela, no grupo "Amortização e juros de dívida", e o saldo devedor aparece no passivo do balanço dividido em curto e longo prazo.');
+  }
+  return _finTela(c.contrato, c.banco+' · '+c.modalidade+' · '+_finE(c.garantia||'sem garantia real'),
+    kpis+subnav+corpo, '', { fn:'_finVoltarContrato()', label:'Voltar ao endividamento' }, {base:'D0', selo:'exemplo'});
+}
 // ════ FIM DO BLOCO FINANCEIRO ════
 
 // ─── ÁREA QUALIDADE ───
