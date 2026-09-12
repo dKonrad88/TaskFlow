@@ -16307,6 +16307,487 @@ function _finImpCreditosHTML(D, I){
     +_finNota('Estas datas são o padrão nacional e podem mudar por estado e por regime. Confirme sempre com a contabilidade antes de usar como prazo oficial.');
 }
 
+// ── fin_scr_dre.js ──
+// ─── FINANCEIRO › DRE GERENCIAL ───
+// Resultado por competência mês a mês, comparativo (mês, acumulado e 12 meses), margens e ponto de
+// equilíbrio, margem de contribuição por canal e a ponte do EBITDA até o caixa operacional.
+function _finDreLinhaCls(l){ return l.tipo==='total'?(l.destaque?'fin-dest':'fin-sub'):(l.nivel===2?'':''); }
+function _finDreNome(l){ return l.nivel===2?`<td class="fin-l2">${_finE(l.n)}</td>`:`<td class="cp-item">${_finE(l.n)}</td>`; }
+
+function _finTela_dre(){
+  const D=_finData(), dre=_finDRE(D), sub=_finSubGet('dre','mensal');
+  const m=_finMargens(dre.ltm), mAnt=_finMargens(dre.ltmAnt);
+  const abas=[['mensal','ti-table','Mês a mês'],['comparativo','ti-columns','Comparativo'],['margens','ti-chart-line','Margens'],['canal','ti-users','Por canal'],['ponte','ti-cash','Do EBITDA ao caixa']];
+  const kpis=_finKPIs([
+    { rot:'Receita bruta · 12 meses', val:_finK(dre.ltm.receitaBruta), sub:_finVarPill(_finPct(dre.ltm.receitaBruta-dre.ltmAnt.receitaBruta, Math.abs(dre.ltmAnt.receitaBruta)||1),true,1)+' contra os 12 meses anteriores' },
+    { rot:'Receita líquida', val:_finK(dre.ltm.receitaLiquida), sub:'impostos, devoluções e verbas de '+_finK(dre.ltm.receitaBruta-dre.ltm.receitaLiquida) },
+    { rot:'Lucro bruto', val:_finK(dre.ltm.lucroBruto), sub:'margem bruta '+_finPc(m.bruta) },
+    { rot:'Margem de contribuição', val:_finK(dre.ltm.margemContribuicao), sub:_finPc(m.contribuicao)+' da receita líquida' },
+    { rot:'EBITDA · 12 meses', def:'ebitdaLTM', val:_finK(dre.ltm.ebitda), cor:m.ebitda>=FIN_PARAM.metas.margemEbitda?'var(--success)':'var(--amber)', sub:'margem '+_finPc(m.ebitda)+' · meta '+_finPc(FIN_PARAM.metas.margemEbitda) },
+    { rot:'Lucro líquido', val:_finK(dre.ltm.lucroLiquido), cor:dre.ltm.lucroLiquido>=0?'var(--success)':'var(--danger)', sub:'margem líquida '+_finPc(m.liquida)+' · antes: '+_finPc(mAnt.liquida) },
+  ]);
+  let corpo='';
+  if(sub==='comparativo') corpo=_finDreCompHTML(D,dre);
+  else if(sub==='margens') corpo=_finDreMargensHTML(D,dre);
+  else if(sub==='canal') corpo=_finDreCanalHTML(D);
+  else if(sub==='ponte') corpo=_finDrePonteHTML(D);
+  else corpo=_finDreMensalHTML(D,dre);
+  return _finTela('DRE gerencial','Resultado por competência: o que a operação ganhou, não o que entrou no caixa.',
+    kpis+_finSubnav('dre',abas,'mensal')+corpo, '', null, {base:'M', selo:'misto'});
+}
+
+// ── mês a mês ──
+function _finDreMensalHTML(D, dre){
+  const M=dre.meses.slice(-13);
+  const cab=`<tr><th style="min-width:250px">Linha</th>${M.map(function(ym){ return `<th class="r">${_finE(_finMesLbl(ym))}</th>`; }).join('')}<th class="r">12 meses</th><th class="r">% RL</th></tr>`;
+  const rl12=dre.ltm.receitaLiquida||1;
+  const linhas=FIN_DRE_LINHAS.map(function(l){
+    const tot=dre.ltm[l.k]||0;
+    return `<tr class="${_finDreLinhaCls(l)}">${_finDreNome(l)}
+      ${M.map(function(ym){ const v=dre.porMes[ym]?dre.porMes[ym][l.k]:0;
+        return `<td class="cp-n"${l.sinal===-1?' style="color:var(--text2)"':(l.destaque?' style="font-weight:700"':'')}>${v?_finK(v):'—'}</td>`; }).join('')}
+      <td class="cp-n" style="font-weight:700">${_finK(tot)}</td>
+      <td class="cp-n" style="color:var(--text3)">${_finPc(_finPct(tot,rl12),1)}</td></tr>`; }).join('');
+  return _finCard('DRE mês a mês', `<div class="fin-scroll cp-noscroll"><table class="cp-tbl cp-tbl-sm" id="fin-tb-dre"><thead>${cab}</thead><tbody>${linhas}</tbody></table></div>`,
+      { acao:_finBtnCSV('fin-tb-dre','dre-gerencial'), selo:'misto',
+        hint:'Competência, não caixa: a NF de compra entra no mês da emissão e as despesas sem nota (folha, impostos, comissões) entram no mês do fato gerador, não no da guia.' })
+    +_finCard('Receita, EBITDA e lucro líquido', _finColunas(dre.meses.slice(-13).map(function(ym){ const p=dre.porMes[ym];
+        return { lbl:_finMesLbl(ym), ym:ym, rl:p.receitaLiquida, eb:p.ebitda, ll:p.lucroLiquido }; }),
+        [{campo:'rl',rot:'Receita líquida',cor:'color-mix(in srgb,var(--blue-mid) 42%,transparent)'},{campo:'eb',rot:'EBITDA',cor:'var(--success)'},{campo:'ll',rot:'Lucro líquido',cor:'var(--purple)'}],
+        { h:235, fmt:_finK }), { sub:'últimos 13 meses fechados' })
+    +_finNota('Sem export contábil, o <b>CPV usa as compras do período</b> apropriadas pelo consumo — não há variação de estoque por competência. A margem bruta mensal pode oscilar mais do que a real; a de 12 meses é confiável.');
+}
+
+// ── comparativo ──
+function _finDreCompHTML(D, dre){
+  const rlM=dre.porMes[dre.M]?dre.porMes[dre.M].receitaLiquida:1, rlY=dre.ytd.receitaLiquida||1, rlL=dre.ltm.receitaLiquida||1;
+  const mesAnt=_finYmAdd(dre.M,-1), mesAA=_finYmAdd(dre.M,-12);
+  const linhas=FIN_DRE_LINHAS.map(function(l){
+    const vm=dre.porMes[dre.M]?dre.porMes[dre.M][l.k]:0, va=dre.porMes[mesAnt]?dre.porMes[mesAnt][l.k]:0, vaa=dre.porMes[mesAA]?dre.porMes[mesAA][l.k]:0;
+    const custo=(l.sinal===-1);
+    return `<tr class="${_finDreLinhaCls(l)}">${_finDreNome(l)}
+      <td class="cp-n">${vm?_finK(vm):'—'}</td><td class="cp-n" style="color:var(--text3)">${_finPc(_finPct(vm,rlM),1)}</td>
+      <td class="cp-n" style="color:var(--text3)">${va?_finK(va):'—'}</td><td class="cp-n">${_finVarPill(_finPct(vm-va,Math.abs(va)||1),!custo,1)}</td>
+      <td class="cp-n" style="color:var(--text3)">${vaa?_finK(vaa):'—'}</td><td class="cp-n">${_finVarPill(_finPct(vm-vaa,Math.abs(vaa)||1),!custo,1)}</td>
+      <td class="cp-n">${dre.ytd[l.k]?_finK(dre.ytd[l.k]):'—'}</td><td class="cp-n">${_finVarPill(_finPct(dre.ytd[l.k]-dre.ytdAnt[l.k],Math.abs(dre.ytdAnt[l.k])||1),!custo,1)}</td>
+      <td class="cp-n" style="font-weight:700">${dre.ltm[l.k]?_finK(dre.ltm[l.k]):'—'}</td><td class="cp-n" style="color:var(--text3)">${_finPc(_finPct(dre.ltm[l.k],rlL),1)}</td></tr>`; }).join('');
+  return _finCard('Comparativo — mês, acumulado do ano e 12 meses',
+    `<div class="fin-scroll cp-noscroll"><table class="cp-tbl cp-tbl-sm" id="fin-tb-drec"><thead>
+      <tr><th style="min-width:250px">Linha</th><th class="r">${_finE(_finMesLbl(dre.M))}</th><th class="r">% RL</th><th class="r">${_finE(_finMesLbl(mesAnt))}</th><th class="r">vs mês ant.</th>
+      <th class="r">${_finE(_finMesLbl(mesAA))}</th><th class="r">vs ano ant.</th><th class="r">${_finE(dre.ano)} acum.</th><th class="r">vs ${_finE(String(+dre.ano-1))}</th><th class="r">12 meses</th><th class="r">% RL</th></tr></thead>
+      <tbody>${linhas}</tbody></table></div>`,
+    { acao:_finBtnCSV('fin-tb-drec','dre-comparativo'), hint:'O acumulado do ano compara com o mesmo número de meses do ano anterior — não com o ano inteiro.' })
+    +_finGrid(2,[
+      _finCard('Cascata do resultado — 12 meses', _finCascata([
+        { rot:'Receita líquida', v:dre.ltm.receitaLiquida, tipo:'ini' },
+        { rot:'CPV', v:-dre.ltm.cpv, tipo:'delta' },
+        { rot:'Despesas variáveis', v:-dre.ltm.despVariaveis, tipo:'delta' },
+        { rot:'Despesas fixas', v:-(dre.ltm.despComerciais+dre.ltm.despAdm), tipo:'delta' },
+        { rot:'PDD e perdas', v:-dre.ltm.pddPerdas, tipo:'delta' },
+        { rot:'EBITDA', v:dre.ltm.ebitda, tipo:'total' }], { h:235 }), { selo:'derivado' }),
+      _finCard('Composição da receita bruta', _finEmpilhada([
+        { rot:'Receita líquida', v:dre.ltm.receitaLiquida, cor:'var(--success)' },
+        { rot:'Impostos sobre vendas', v:dre.ltm.impostosVendas, cor:'var(--danger)' },
+        { rot:'Verbas e abatimentos', v:dre.ltm.verbas, cor:'var(--amber)' },
+        { rot:'Devoluções', v:dre.ltm.devolucoes, cor:'var(--purple)' }], { h:20 })
+        +`<div style="margin-top:14px" class="fin-lista-kv">
+          <div><span>Receita bruta 12 meses</span><b>${_finMoeda(dre.ltm.receitaBruta)}</b></div>
+          <div><span>Deduções</span><b>${_finPc(_finPct(dre.ltm.receitaBruta-dre.ltm.receitaLiquida, dre.ltm.receitaBruta),1)} da receita bruta</b></div></div>`),
+    ]);
+}
+
+// ── margens ──
+function _finDreMargensHTML(D, dre){
+  const serie=dre.meses.slice(-13).map(function(ym){ const p=dre.porMes[ym], mg=_finMargens(p);
+    return { lbl:_finMesLbl(ym), bruta:mg.bruta, contribuicao:mg.contribuicao, ebitda:mg.ebitda, liquida:mg.liquida }; });
+  const PE=_finPontoEquilibrio(dre), m=_finMargens(dre.ltm), mAnt=_finMargens(dre.ltmAnt);
+  const comp=[['Margem bruta',m.bruta,mAnt.bruta,35],['Margem de contribuição',m.contribuicao,mAnt.contribuicao,null],['Margem EBITDA',m.ebitda,mAnt.ebitda,FIN_PARAM.metas.margemEbitda],['Margem líquida',m.liquida,mAnt.liquida,6]];
+  return _finCard('Margens mês a mês', _finLinhas(serie,[
+      {campo:'bruta',rot:'Margem bruta',cor:'var(--blue-mid)'},
+      {campo:'contribuicao',rot:'Margem de contribuição',cor:'var(--purple)'},
+      {campo:'ebitda',rot:'Margem EBITDA',cor:'var(--success)'},
+      {campo:'liquida',rot:'Margem líquida',cor:'var(--amber)'}],
+      { h:235, fmt:function(v){ return _finPc(v,1); }, labFmt:function(v){ return _finPc(v,0); }, ref:{ v:FIN_PARAM.metas.margemEbitda, rot:'meta EBITDA '+_finPc(FIN_PARAM.metas.margemEbitda) } }),
+      { sub:'percentual sobre a receita líquida de cada mês', selo:'derivado' })
+    +_finGrid(2,[
+      _finCard('Margens — 12 meses × 12 meses anteriores', `<table class="cp-tbl"><thead><tr><th>Margem</th><th class="r">12 meses</th><th class="r">12 anteriores</th><th class="r">Variação</th><th class="r">Meta</th><th>Situação</th></tr></thead><tbody>
+        ${comp.map(function(x){ const dif=x[1]-x[2];
+          return `<tr><td class="cp-item">${_finE(x[0])}</td><td class="cp-n" style="font-weight:700">${_finPc(x[1])}</td><td class="cp-n" style="color:var(--text3)">${_finPc(x[2])}</td>
+          <td class="cp-n">${_finVarPill(dif,true,1)}</td><td class="cp-n">${x[3]==null?'—':_finPc(x[3],0)}</td>
+          <td>${x[3]==null?'':_finSemaforo(x[1]>=x[3]?'Na meta':(x[1]>=x[3]*0.9?'Atenção':'Fora da meta'))}</td></tr>`; }).join('')}</tbody></table>`,
+        { hint:'A variação está em pontos percentuais, não em porcentagem da porcentagem.' }),
+      _finCard('Ponto de equilíbrio', `<div class="fin-lista-kv">
+        <div><span>Custos e despesas fixas (12 meses)</span><b>${_finMoeda(PE.fixos)}</b></div>
+        <div><span>Índice de margem de contribuição</span><b>${_finPc(PE.imc*100,1)}</b></div>
+        <div><span>Receita de equilíbrio por mês</span><b>${_finMoeda(PE.peMes)}</b></div>
+        <div><span>Receita líquida média mensal</span><b>${_finMoeda(PE.rlMes)}</b></div>
+        <div><span>Folga sobre o equilíbrio</span><b style="color:${PE.folga>0?'var(--success)':'var(--danger)'}">${_finPc(PE.folga,1)}</b></div></div>
+        <div style="margin-top:12px">${_finBarra(Math.min(100,_finPct(PE.peMes,PE.rlMes)),'var(--danger)')}<div style="font-size:11.5px;color:var(--text3);margin-top:5px">A barra mostra quanto da receita média mensal só cobre os custos fixos. O que passa dela é lucro.</div></div>`,
+        { selo:'derivado', hint:'Custos fixos aqui incluem mão de obra direta e custos indiretos de fabricação, que não variam com o volume no curto prazo.' }),
+    ]);
+}
+
+// ── por canal ──
+function _finDreCanalHTML(D){
+  const C=_finDREPorCanal(D);
+  const linhas=C.canais.map(function(c){ return `<tr><td class="cp-item">${_finE(c.canal)}</td><td class="cp-n">${c.clientes}</td>
+    <td class="cp-n">${_finMoeda(c.rb)}</td><td class="cp-n" style="color:var(--text3)">${_finPc(c.pctRB,1)}</td>
+    <td class="cp-n">${_finMoeda(c.impostos)}</td><td class="cp-n" style="color:${c.verbasPct>3?'var(--danger)':'var(--text2)'}">${_finMoeda(c.verbas)}</td>
+    <td class="cp-n" style="color:var(--text3)">${_finPc(c.verbasPct,1)}</td>
+    <td class="cp-n">${_finMoeda(c.rl)}</td><td class="cp-n">${_finMoeda(c.cpv)}</td><td class="cp-n">${_finMoeda(c.despVar)}</td>
+    <td class="cp-n" style="font-weight:700;color:${c.mc>0?'var(--success)':'var(--danger)'}">${_finMoeda(c.mc)}</td>
+    <td class="cp-n" style="${_finHeat(c.mcPct-20,20,true)};font-weight:600">${_finPc(c.mcPct,1)}</td>
+    <td class="cp-n" style="color:var(--text3)">${_finPc(c.partMC,1)}</td></tr>`; }).join('');
+  return _finCard('Margem de contribuição por canal — 12 meses',
+    `<div class="fin-scroll cp-noscroll"><table class="cp-tbl" id="fin-tb-drecan"><thead><tr><th>Canal</th><th class="r">Clientes</th><th class="r">Receita bruta</th><th class="r">%</th><th class="r">Impostos</th><th class="r">Verbas e abatimentos</th><th class="r">% da receita</th><th class="r">Receita líquida</th><th class="r">CPV</th><th class="r">Fretes e comissões</th><th class="r">Margem de contribuição</th><th class="r">% MC</th><th class="r">Part. na MC</th></tr></thead>
+    <tbody>${linhas}<tr class="fin-tot"><td>Total</td><td></td><td class="cp-n">${_finMoeda(C.canais.reduce(function(a,c){ return a+c.rb; },0))}</td><td class="cp-n">100%</td>
+      <td class="cp-n">${_finMoeda(C.canais.reduce(function(a,c){ return a+c.impostos; },0))}</td><td class="cp-n">${_finMoeda(C.canais.reduce(function(a,c){ return a+c.verbas; },0))}</td><td></td>
+      <td class="cp-n">${_finMoeda(C.canais.reduce(function(a,c){ return a+c.rl; },0))}</td><td class="cp-n">${_finMoeda(C.canais.reduce(function(a,c){ return a+c.cpv; },0))}</td>
+      <td class="cp-n">${_finMoeda(C.canais.reduce(function(a,c){ return a+c.despVar; },0))}</td><td class="cp-n">${_finMoeda(C.mcTot)}</td><td colspan="2"></td></tr></tbody></table></div>`,
+    { acao:_finBtnCSV('fin-tb-drecan','dre-por-canal'), selo:'derivado',
+      hint:'Receita e abatimentos vêm dos títulos de cada cliente. Impostos, CPV e despesas variáveis são rateados pela receita — não há custo por produto no protótipo, então compare canais entre si, não o valor absoluto da margem.' })
+    +_finGrid(2,[
+      _finCard('Participação na margem de contribuição', _finRosca(C.canais.map(function(c){ return { rot:c.canal, v:Math.max(0,c.mc) }; }), { centro:_finK(C.mcTot), centroSub:'MC 12 meses' })),
+      _finCard('Receita × margem por canal', _finColunas(C.canais.map(function(c){ return { lbl:c.canal, rb:c.rb, mc:c.mc, pct:c.mcPct }; }),
+        [{campo:'rb',rot:'Receita bruta',cor:'color-mix(in srgb,var(--blue-mid) 42%,transparent)'},{campo:'mc',rot:'Margem de contribuição',cor:'var(--success)'}],
+        { h:210, fmt:_finK, rotulos:false })),
+    ])
+    +_finNota('Canal com receita grande e margem percentual baixa costuma ser <b>rede de supermercado</b>: o preço é menor e ainda vêm as verbas e abatimentos. Vale olhar a coluna "% da receita" das verbas antes de negociar o próximo acordo comercial.');
+}
+
+// ── ponte EBITDA → caixa ──
+function _finDrePonteHTML(D){
+  const P=_finPonteEbitdaCaixa(D);
+  const passos=P.itens.filter(function(i){ return i.tipo!=='total'; }).concat([P.itens[P.itens.length-1]]);
+  const linhas=P.itens.map(function(i){ return `<tr class="${i.tipo==='total'?'fin-tot':(i.tipo==='ini'?'fin-sub':'')}">
+    <td class="${i.tipo==='delta'?'fin-l2':'cp-item'}">${_finE(i.rot)}</td>
+    <td class="cp-n" style="font-weight:${i.tipo==='delta'?'400':'700'};color:${i.tipo==='delta'?(i.v>=0?'var(--success)':'var(--danger)'):'inherit'}">${_finMoeda(i.v)}</td>
+    <td style="color:var(--text3);font-size:11.5px">${_finE(i.obs||'')}</td></tr>`; }).join('');
+  return _finCard('Do EBITDA ao caixa operacional — 12 meses', _finCascata(passos,{ h:250 }), { selo:'derivado', sub:_finDtBR(P.ini)+' a '+_finDtBR(P.fim) })
+    +_finCard('A conta, linha a linha', `<table class="cp-tbl" id="fin-tb-dreponte"><thead><tr><th>Linha</th><th class="r">Valor</th><th>Observação</th></tr></thead><tbody>${linhas}
+      <tr><td class="cp-item">Caixa operacional realizado (fluxo direto)</td><td class="cp-n" style="font-weight:700">${_finMoeda(P.realOp)}</td><td style="color:var(--text3);font-size:11.5px">${P.mesesFluxo} meses cobertos pelo fluxo</td></tr>
+      <tr class="fin-dest"><td>Diferença não explicada</td><td class="cp-n">${_finMoeda(P.diferenca)}</td><td style="color:var(--text3);font-size:11.5px">${_finE(P.obs||'quanto menor, melhor a consistência entre resultado e caixa')}</td></tr></tbody></table>`,
+      { acao:_finBtnCSV('fin-tb-dreponte','ponte-ebitda-caixa'),
+        hint:'Lucro não é caixa: o que separa os dois é a variação do capital de giro (clientes, estoques, fornecedores), o IR pago e o resultado financeiro. Esta ponte torna essa diferença visível.' })
+    +_finNota('Se o EBITDA sobe e o caixa operacional não, a diferença está quase sempre em <b>clientes</b> (vendeu mais e recebeu depois) ou em <b>estoques</b>. Ver Capital de giro para o detalhe por conta.');
+}
+
+// ── fin_scr_orcamento.js ──
+// ─── FINANCEIRO › ORÇAMENTO ───
+// Orçado × realizado do ano por linha da DRE e por centro de custo, com desvio do mês, do
+// acumulado e projeção de fechamento do ano (forecast).
+function _finOrcDesvio(v, favoravel){ if(v==null||!isFinite(v)) return '—';
+  return `<span style="color:${favoravel?'var(--success)':'var(--danger)'};font-weight:600">${(v>0?'+':'')+_finK(v)}</span>`; }
+
+function _finTela_orcamento(){
+  const D=_finData(), O=_finOrcamento(D), sub=_finSubGet('orcamento','resumo');
+  const rb=O.linhas[0], eb=O.linhas.find(function(l){ return l.k==='ebitda'; }), ll=O.linhas.find(function(l){ return l.k==='lucroLiquido'; });
+  const abas=[['resumo','ti-target-arrow','Resumo'],['linhas','ti-table','Linha a linha'],['centros','ti-building-bank','Centros de custo',O.cc.length],['evolucao','ti-chart-bar','Evolução mensal']];
+  const kpis=_finKPIs([
+    { rot:'Receita · '+_finMesLbl(O.M), val:_finK(rb.realMes), sub:'orçado '+_finK(rb.orcMes)+' · '+_finPcS(rb.desvioPct,1), cor:rb.realMes>=rb.orcMes?'var(--success)':'var(--danger)' },
+    { rot:'Receita acumulada '+O.ano, val:_finK(rb.realAc), sub:'orçado '+_finK(rb.orcAc)+' · '+_finPcS(rb.desvioAcPct,1), cor:rb.realAc>=rb.orcAc?'var(--success)':'var(--danger)' },
+    { rot:'EBITDA acumulado', val:_finK(eb.realAc), cor:eb.favoravel?'var(--success)':'var(--danger)', sub:'orçado '+_finK(eb.orcAc)+' · '+_finPcS(eb.desvioAcPct,1) },
+    { rot:'Lucro líquido acumulado', val:_finK(ll.realAc), cor:ll.favoravel?'var(--success)':'var(--danger)', sub:'orçado '+_finK(ll.orcAc) },
+    { rot:'Forecast de receita do ano', val:_finK(rb.forecast), sub:'orçamento do ano '+_finK(rb.orcAno)+' · '+_finPcS(_finPct(rb.forecast-rb.orcAno,Math.abs(rb.orcAno)||1),1) },
+    { rot:'Forecast de EBITDA', val:_finK(eb.forecast), cor:eb.forecast>=eb.orcAno?'var(--success)':'var(--amber)', sub:'orçamento do ano '+_finK(eb.orcAno) },
+  ]);
+  let corpo='';
+  if(sub==='linhas') corpo=_finOrcLinhasHTML(D,O);
+  else if(sub==='centros') corpo=_finOrcCentrosHTML(D,O);
+  else if(sub==='evolucao') corpo=_finOrcEvolucaoHTML(D,O);
+  else corpo=_finOrcResumoHTML(D,O);
+  return _finTela('Orçamento','O que estava previsto para '+O.ano+', o que aconteceu até '+_finMesLbl(O.M)+' e como o ano deve fechar.',
+    kpis+_finSubnav('orcamento',abas,'resumo')+corpo, '', null, {base:'M', selo:'exemplo'});
+}
+
+// ── resumo ──
+function _finOrcResumoHTML(D, O){
+  const chave=['receitaBruta','receitaLiquida','cpv','lucroBruto','despComerciais','despAdm','ebitda','lucroLiquido'];
+  const L=O.linhas.filter(function(l){ return chave.indexOf(l.k)>=0; });
+  const linhas=L.map(function(l){ return `<tr class="${l.destaque?'fin-dest':(l.tipo==='total'?'fin-sub':'')}"><td class="cp-item">${_finE(l.n)}</td>
+    <td class="cp-n">${_finK(l.orcMes)}</td><td class="cp-n" style="font-weight:700">${_finK(l.realMes)}</td><td class="cp-n">${_finOrcDesvio(l.desvio, l.sinal===-1?l.desvio<=0:l.desvio>=0)}</td><td class="cp-n" style="color:var(--text3)">${_finPcS(l.desvioPct,1)}</td>
+    <td class="cp-n">${_finK(l.orcAc)}</td><td class="cp-n" style="font-weight:700">${_finK(l.realAc)}</td><td class="cp-n">${_finOrcDesvio(l.desvioAc, l.favoravel)}</td><td class="cp-n" style="color:var(--text3)">${_finPcS(l.desvioAcPct,1)}</td>
+    <td class="cp-n">${_finK(l.forecast)}</td><td class="cp-n" style="color:var(--text3)">${_finK(l.orcAno)}</td>
+    <td>${_finSemaforo(l.favoravel?'Na meta':(Math.abs(l.desvioAcPct)<5?'Atenção':'Fora da meta'))}</td></tr>`; }).join('');
+  const eb=O.linhas.find(function(l){ return l.k==='ebitda'; });
+  const pontes=[{ rot:'EBITDA orçado (acumulado)', v:eb.orcAc, tipo:'ini' }]
+    .concat(['receitaBruta','impostosVendas','verbas','cpv','despVariaveis','despComerciais','despAdm','pddPerdas'].map(function(k){
+      const l=O.linhas.find(function(x){ return x.k===k; }); const sinal=(l.sinal===-1)?-1:1;
+      return { rot:l.n.replace('(−) ','').replace('(+) ',''), v:(l.realAc-l.orcAc)*sinal, tipo:'delta' }; }))
+    .concat([{ rot:'EBITDA realizado', v:eb.realAc, tipo:'total' }]);
+  return _finCard('Orçado × realizado — '+O.ano, `<div class="fin-scroll cp-noscroll"><table class="cp-tbl" id="fin-tb-orcres"><thead>
+      <tr><th rowspan="2" style="min-width:210px">Linha</th><th colspan="4" style="text-align:center">${_finE(_finMesLbl(O.M))}</th><th colspan="4" style="text-align:center">Acumulado do ano</th><th colspan="2" style="text-align:center">Ano</th><th rowspan="2">Situação</th></tr>
+      <tr><th class="r">Orçado</th><th class="r">Realizado</th><th class="r">Desvio</th><th class="r">%</th><th class="r">Orçado</th><th class="r">Realizado</th><th class="r">Desvio</th><th class="r">%</th><th class="r">Forecast</th><th class="r">Orçamento</th></tr></thead>
+      <tbody>${linhas}</tbody></table></div>`,
+      { acao:_finBtnCSV('fin-tb-orcres','orcado-realizado'),
+        hint:'Desvio favorável é verde: receita acima do orçado ou custo abaixo. O forecast projeta o resto do ano mantendo a relação realizado ÷ orçado observada até aqui (limitada a ±20%).' })
+    +_finCard('Por que o EBITDA saiu do orçado — acumulado do ano', _finCascata(pontes,{ h:255 }), { selo:'derivado',
+      hint:'Cada barra é a contribuição daquela linha para a diferença: verde ajudou o EBITDA, vermelho atrapalhou.' })
+    +_finNota('O orçamento deste protótipo é <b>gerado</b> a partir do ano anterior com metas típicas (receita +4% com sazonalidade, CPV −1,5%, despesas administrativas −3%, PDD −10%). No sistema real ele vem do orçamento aprovado pela diretoria.');
+}
+
+// ── linha a linha ──
+function _finOrcLinhasHTML(D, O){
+  const linhas=O.linhas.map(function(l){ return `<tr class="${l.destaque?'fin-dest':(l.tipo==='total'?'fin-sub':'')}">
+    ${l.nivel===2?`<td class="fin-l2">${_finE(l.n)}</td>`:`<td class="cp-item">${_finE(l.n)}</td>`}
+    <td class="cp-n">${_finMoeda(l.orcMes)}</td><td class="cp-n" style="font-weight:600">${_finMoeda(l.realMes)}</td>
+    <td class="cp-n" style="${_finHeat(l.desvioPct*(l.sinal===-1?-1:1),25,true)}">${_finPcS(l.desvioPct,1)}</td>
+    <td class="cp-n">${_finMoeda(l.orcAc)}</td><td class="cp-n" style="font-weight:600">${_finMoeda(l.realAc)}</td>
+    <td class="cp-n">${_finOrcDesvio(l.desvioAc,l.favoravel)}</td>
+    <td class="cp-n" style="${_finHeat(l.desvioAcPct*(l.sinal===-1?-1:1),25,true)}">${_finPcS(l.desvioAcPct,1)}</td>
+    <td class="cp-n">${_finMoeda(l.forecast)}</td><td class="cp-n" style="color:var(--text3)">${_finMoeda(l.orcAno)}</td></tr>`; }).join('');
+  return _finCard('Todas as linhas da DRE', `<div class="fin-scroll cp-noscroll"><table class="cp-tbl cp-tbl-sm" id="fin-tb-orcl"><thead>
+    <tr><th style="min-width:250px">Linha</th><th class="r">Orçado ${_finE(_finMesLbl(O.M))}</th><th class="r">Realizado</th><th class="r">Desvio</th>
+    <th class="r">Orçado acum.</th><th class="r">Realizado acum.</th><th class="r">Desvio</th><th class="r">%</th><th class="r">Forecast do ano</th><th class="r">Orçamento do ano</th></tr></thead>
+    <tbody>${linhas}</tbody></table></div>`,
+    { acao:_finBtnCSV('fin-tb-orcl','orcamento-linhas'), hint:'O mapa de calor usa o sinal da linha: em linha de custo, gastar menos que o orçado fica verde.' });
+}
+
+// ── centros de custo ──
+function _finOrcCentrosHTML(D, O){
+  const cc=O.cc;
+  const linhas=cc.map(function(c){ return `<tr class="${c.status==='Acima'?'fin-atencao':''}">
+    <td class="cp-item">${_finE(c.cc)}</td><td style="color:var(--text3)">${_finE(c.resp)}</td>
+    <td class="cp-n">${_finMoeda(c.orcMes)}</td><td class="cp-n" style="font-weight:600">${_finMoeda(c.realMes)}</td>
+    <td class="cp-n">${_finMoeda(c.orcAc)}</td><td class="cp-n" style="font-weight:700">${_finMoeda(c.realAc)}</td>
+    <td class="cp-n">${_finOrcDesvio(c.desvio, c.desvio<=0)}</td>
+    <td class="cp-n" style="${_finHeat(-c.desvioPct,20,true)};font-weight:600">${_finPcS(c.desvioPct,1)}</td>
+    <td>${_finSemaforo(c.status==='Acima'?'Fora da meta':(c.status==='Dentro'?'Na meta':'Abaixo'))}</td>
+    <td style="width:110px">${_finSpark(c.serie.map(function(s){ return s.real; }),{ cor:c.status==='Acima'?'var(--danger)':'var(--blue-mid)' })}</td></tr>`; }).join('');
+  const tot={ orcMes:cc.reduce(function(a,c){ return a+c.orcMes; },0), realMes:cc.reduce(function(a,c){ return a+c.realMes; },0),
+    orcAc:cc.reduce(function(a,c){ return a+c.orcAc; },0), realAc:cc.reduce(function(a,c){ return a+c.realAc; },0) };
+  return _finCard('Centros de custo — '+O.ano, `<div class="fin-scroll cp-noscroll"><table class="cp-tbl" id="fin-tb-orccc"><thead>
+    <tr><th>Centro de custo</th><th>Responsável</th><th class="r">Orçado ${_finE(_finMesLbl(O.M))}</th><th class="r">Realizado</th><th class="r">Orçado acum.</th><th class="r">Realizado acum.</th><th class="r">Desvio</th><th class="r">%</th><th>Situação</th><th>Tendência</th></tr></thead>
+    <tbody>${linhas}<tr class="fin-tot"><td colspan="2">Total</td><td class="cp-n">${_finMoeda(tot.orcMes)}</td><td class="cp-n">${_finMoeda(tot.realMes)}</td>
+      <td class="cp-n">${_finMoeda(tot.orcAc)}</td><td class="cp-n">${_finMoeda(tot.realAc)}</td><td class="cp-n">${_finOrcDesvio(tot.realAc-tot.orcAc, tot.realAc<=tot.orcAc)}</td>
+      <td class="cp-n">${_finPcS(_finPct(tot.realAc-tot.orcAc,tot.orcAc),1)}</td><td colspan="2"></td></tr></tbody></table></div>`,
+    { acao:_finBtnCSV('fin-tb-orccc','centros-de-custo'), selo:'derivado',
+      hint:'Os centros são reconstruídos a partir das linhas do DRE (energia, manutenção, folha, comissões, tarifas). No sistema real o rateio vem do plano de contas com centro de custo em cada lançamento.' })
+    +_finGrid(2,[
+      _finCard('Desvio acumulado por centro', _finBarrasH(cc.map(function(c){ return { rot:c.cc, v:c.desvio, cor:c.desvio>0?'var(--danger)':'var(--success)' }; }), { colRot:'42%' }),
+        { sub:'positivo = gastou mais que o orçado' }),
+      _finCard('Peso de cada centro no gasto do ano', _finRosca(cc.map(function(c){ return { rot:c.cc, v:Math.max(0,c.realAc) }; }), { centro:_finK(tot.realAc), centroSub:'acumulado' })),
+    ]);
+}
+
+// ── evolução ──
+function _finOrcEvolucaoHTML(D, O){
+  const dre=_finDRE(D);
+  const serie=O.mesesAno.map(function(ym){ const real=dre.porMes[ym], orc=dre.orcado[ym];
+    return { lbl:_finMesLbl(ym), orcRb:orc.receitaBruta, realRb:real?real.receitaBruta:null, orcEb:orc.ebitda, realEb:real?real.ebitda:null, futuro:!real }; });
+  const linhas=O.mesesAno.map(function(ym){ const real=dre.porMes[ym], orc=dre.orcado[ym];
+    const dRb=real?real.receitaBruta-orc.receitaBruta:null, dEb=real?real.ebitda-orc.ebitda:null;
+    return `<tr${real?'':' style="opacity:.55"'}><td class="cp-item">${_finE(_finMesLbl(ym))}</td>
+      <td class="cp-n">${_finMoeda(orc.receitaBruta)}</td><td class="cp-n">${real?_finMoeda(real.receitaBruta):'—'}</td>
+      <td class="cp-n">${dRb==null?'—':_finOrcDesvio(dRb,dRb>=0)}</td>
+      <td class="cp-n">${_finMoeda(orc.ebitda)}</td><td class="cp-n">${real?_finMoeda(real.ebitda):'—'}</td>
+      <td class="cp-n">${dEb==null?'—':_finOrcDesvio(dEb,dEb>=0)}</td>
+      <td class="cp-n" style="color:var(--text3)">${real?_finPc(_finPct(real.ebitda,real.receitaLiquida),1):_finPc(_finPct(orc.ebitda,orc.receitaLiquida),1)}</td>
+      <td>${real?_finPill('Fechado','var(--success)'):_finPill('A realizar','var(--text3)')}</td></tr>`; }).join('');
+  return _finCard('Receita: orçado × realizado', _finColunas(serie,[{campo:'realRb',rot:'Receita realizada',cor:'var(--blue-mid)'}],
+      { h:225, fmt:_finK, linhas:[{campo:'orcRb',rot:'Receita orçada',cor:'var(--text3)',tracejado:true}] }), { sub:'meses sem coluna ainda não fecharam' })
+    +_finCard('EBITDA: orçado × realizado', _finColunas(serie,[{campo:'realEb',rot:'EBITDA realizado',cor:'var(--success)'}],
+      { h:210, fmt:_finK, linhas:[{campo:'orcEb',rot:'EBITDA orçado',cor:'var(--text3)',tracejado:true}] }))
+    +_finCard('Mês a mês', `<table class="cp-tbl" id="fin-tb-orcev"><thead><tr><th>Mês</th><th class="r">Receita orçada</th><th class="r">Receita realizada</th><th class="r">Desvio</th><th class="r">EBITDA orçado</th><th class="r">EBITDA realizado</th><th class="r">Desvio</th><th class="r">Margem EBITDA</th><th>Situação</th></tr></thead><tbody>${linhas}</tbody></table>`,
+      { acao:_finBtnCSV('fin-tb-orcev','orcamento-mensal') });
+}
+
+// ── fin_scr_capital.js ──
+// ─── FINANCEIRO › CAPITAL DE GIRO ───
+// Ciclo financeiro (PMR + PME − PMP), necessidade de capital de giro pelo modelo Fleuriet,
+// composição em dias, onde o dinheiro está parado e simulador de liberação de caixa.
+function _finCapSet(campo, el){ _finSetF('capital', campo, el.value); }
+function _finCapTipoCor(t){ return { 'Excelente':'var(--success)', 'Sólida':'var(--success)', 'Insatisfatória':'var(--amber)', 'Alto risco':'var(--amber)', 'Péssima':'var(--danger)', 'Muito ruim':'var(--danger)' }[t]||'var(--text3)'; }
+
+function _finTela_capital(){
+  const D=_finData(), CG=_finCapitalGiro(D), C=CG.ciclos, sub=_finSubGet('capital','ciclo');
+  const abas=[['ciclo','ti-clock','Ciclo financeiro'],['ncg','ti-scale','NCG e Fleuriet'],['composicao','ti-table','Composição em dias'],['onde','ti-list-details','Onde o dinheiro está'],['simulador','ti-adjustments','Simulador']];
+  const kpis=_finKPIs([
+    { rot:'Ciclo financeiro', def:'cicloFin', val:_finDd(C.financeiro,1), cor:C.financeiro<=FIN_PARAM.metas.cicloFin?'var(--success)':'var(--danger)', sub:'meta '+_finDd(FIN_PARAM.metas.cicloFin)+' · ciclo operacional '+_finDd(C.operacional,1) },
+    { rot:'PMR', def:'pmr', val:_finDd(C.pmr,1), cor:C.pmr<=FIN_PARAM.metas.pmr?'var(--success)':'var(--amber)', sub:'meta '+_finDd(FIN_PARAM.metas.pmr)+' · efetivo '+_finDd(C.pmrEfetivo.pmr,1) },
+    { rot:'PME', def:'pme', val:_finDd(C.pme,1), sub:'insumos '+_finDd(C.pmeDet.pmemp,1)+' · fábrica '+_finDd(C.pmeDet.pmf,1)+' · acabado '+_finDd(C.pmeDet.pmv,1) },
+    { rot:'PMP', def:'pmp', val:_finDd(C.pmp,1), cor:C.pmp>=FIN_PARAM.metas.pmp?'var(--success)':'var(--amber)', sub:'meta '+_finDd(FIN_PARAM.metas.pmp)+' · efetivo '+_finDd(C.pmpEfetivo.pmp,1) },
+    { rot:'Necessidade de capital de giro', def:'ncg', val:_finK(CG.ncg), sub:_finDd(CG.ncgDias,0)+' de faturamento · mês anterior '+_finK(CG.ncgAnt) },
+    { rot:'Saldo de tesouraria', def:'st', val:_finK(CG.st), cor:CG.st>=0?'var(--success)':'var(--danger)', sub:CG.st<0?'financiada por dívida de curto prazo':'sobra de caixa sobre a dívida curta' },
+    { rot:'Situação financeira', val:_finPill(_finE(CG.tipo),_finCapTipoCor(CG.tipo)), sub:CG.bpM.tesoura?'efeito tesoura: NCG cresce mais que o CCL':'capital circulante líquido '+_finK(CG.ccl) },
+  ]);
+  let corpo='';
+  if(sub==='ncg') corpo=_finCapNcgHTML(D,CG);
+  else if(sub==='composicao') corpo=_finCapComposicaoHTML(D,CG);
+  else if(sub==='onde') corpo=_finCapOndeHTML(D,CG);
+  else if(sub==='simulador') corpo=_finCapSimuladorHTML(D,CG);
+  else corpo=_finCapCicloHTML(D,CG);
+  return _finTela('Capital de giro','Quantos dias o dinheiro fica preso entre pagar o fornecedor e receber do cliente — e quanto isso custa.',
+    kpis+_finSubnav('capital',abas,'ciclo')+corpo, '', null, {base:'ambos', selo:'misto'});
+}
+
+// ── ciclo ──
+function _finCapCicloHTML(D, CG){
+  const C=CG.ciclos, P=CG.prazos;
+  const barra=function(rot, dias, cor, tot){ return `<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:var(--text2)">${rot}</span><b>${_finDd(dias,1)}</b></div>${_finBarra(_finPct(Math.abs(dias),tot),cor)}</div>`; };
+  const tot=Math.max(C.pme+C.pmr, C.pmp)||1;
+  const linhas=P.map(function(p){ return `<tr><td class="cp-item">${_finE(p.lbl)}</td>
+    <td class="cp-n">${_finDd(p.pmr,1)}</td><td class="cp-n" style="color:var(--text3)">${p.concedido==null?'—':_finDd(p.concedido,1)}</td><td class="cp-n" style="${p.atraso==null?'':_finHeat(p.atraso,20,false)}">${p.atraso==null?'—':_finDd(p.atraso,1)}</td>
+    <td class="cp-n">${_finDd(p.pme,1)}</td><td class="cp-n">${_finDd(p.pmp,1)}</td>
+    <td class="cp-n">${_finDd(p.cicloOp,1)}</td>
+    <td class="cp-n" style="font-weight:700;color:${p.cicloFin<=p.meta?'var(--success)':'var(--danger)'}">${_finDd(p.cicloFin,1)}</td></tr>`; }).join('');
+  return _finGrid(2,[
+    _finCard('O ciclo em dias', barra('PME — estoques', C.pme, 'var(--amber)', tot)+barra('PMR — recebimento', C.pmr, 'var(--blue-mid)', tot)
+      +`<div style="border-top:1px dashed var(--border);margin:10px 0;padding-top:10px"></div>`
+      +barra('Ciclo operacional (PME + PMR)', C.operacional, 'var(--purple)', tot)
+      +barra('(−) PMP — pagamento a fornecedores', C.pmp, 'var(--success)', tot)
+      +`<div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:13px;font-weight:700">Ciclo financeiro</span><span style="font-size:20px;font-weight:800;color:${C.financeiro<=FIN_PARAM.metas.cicloFin?'var(--success)':'var(--danger)'}">${_finDd(C.financeiro,1)}</span></div>
+      <div style="font-size:11.5px;color:var(--text3);margin-top:6px">São os dias em que a empresa banca a operação com dinheiro próprio (ou de banco). Cada dia a menos libera ${_finMoeda(CG.rbDia)}.</div>`,
+      { def:'cicloFin' }),
+    _finCard('Prazo concedido × atraso do cliente', `<div class="fin-lista-kv">
+      <div><span>Prazo médio concedido (política)</span><b>${_finDd(C.pmrEfetivo.prazo,1)}</b></div>
+      <div><span>Atraso médio do cliente</span><b style="color:${C.pmrEfetivo.atraso>5?'var(--danger)':'inherit'}">${_finDd(C.pmrEfetivo.atraso,1)}</b></div>
+      <div><span>PMR efetivo (liquidados)</span><b>${_finDd(C.pmrEfetivo.pmr,1)}</b></div>
+      <div><span>PMR headline (carteira ÷ faturamento)</span><b>${_finDd(C.pmr,1)}</b></div>
+      <div><span>Prazo obtido do fornecedor</span><b>${_finDd(C.pmpEfetivo.prazo,1)}</b></div>
+      <div><span>PMP efetivo (pagos)</span><b>${_finDd(C.pmpEfetivo.pmp,1)}</b></div></div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text2)">O PMR <b>headline</b> usa o saldo da carteira e por isso inclui o vencido antigo; o <b>efetivo</b> olha só o que foi liquidado. Quando os dois se afastam, há título velho parado na carteira.</div>`,
+      { def:'pmrEfetivo' }),
+  ])+_finCard('Prazos e ciclo mês a mês', _finLinhas(CG.prazos,[
+      {campo:'pmr',rot:'PMR',cor:'var(--blue-mid)'},{campo:'pme',rot:'PME',cor:'var(--amber)'},{campo:'pmp',rot:'PMP',cor:'var(--success)'},{campo:'cicloFin',rot:'Ciclo financeiro',cor:'var(--purple)'}],
+      { h:230, fmt:function(v){ return _finDd(v,1); }, labFmt:function(v){ return _cpNum(v,0)+'d'; }, ref:{ v:FIN_PARAM.metas.cicloFin, rot:'meta do ciclo' } }), { selo:'derivado' })
+    +_finCard('Série mensal', `<table class="cp-tbl" id="fin-tb-capciclo"><thead><tr><th>Mês</th><th class="r">PMR</th><th class="r">Concedido</th><th class="r">Atraso</th><th class="r">PME</th><th class="r">PMP</th><th class="r">Ciclo operacional</th><th class="r">Ciclo financeiro</th></tr></thead><tbody>${linhas}</tbody></table>`,
+      { acao:_finBtnCSV('fin-tb-capciclo','ciclo-financeiro'), hint:'O PME é calculado sobre o estoque real de insumos (foto única do ERP) mais dias fixos de fabricação e produto acabado — por isso ele quase não varia entre os meses.' });
+}
+
+// ── NCG e Fleuriet ──
+function _finCapNcgHTML(D, CG){
+  const F=CG.fleuriet, bp=CG.bpM;
+  const linhas=F.map(function(p){ return `<tr${p.hoje?' class="fin-dest"':''}><td class="cp-item">${_finE(p.lbl)}</td>
+    <td class="cp-n">${_finMoeda(p.ncg)}</td><td class="cp-n" style="color:${p.st>=0?'var(--success)':'var(--danger)'}">${_finMoeda(p.st)}</td>
+    <td class="cp-n">${_finMoeda(p.ccl)}</td><td>${_finPill(_finE(p.tipo),_finCapTipoCor(p.tipo))}</td>
+    <td>${p.tesoura?_finPill('efeito tesoura','var(--danger)'):''}</td></tr>`; }).join('');
+  return _finGrid(2,[
+    _finCard('A conta da NCG', `<table class="cp-tbl"><tbody>
+      <tr class="fin-sub"><td>Ativo circulante operacional</td><td class="cp-n">${_finMoeda(bp.aco)}</td></tr>
+      <tr><td class="fin-l2">Clientes líquidos de PDD</td><td class="cp-n">${_finMoeda(bp.ac.clientes+bp.ac.pdd)}</td></tr>
+      <tr><td class="fin-l2">Estoques</td><td class="cp-n">${_finMoeda(bp.ac.estoquesMP+bp.ac.estoquesPA)}</td></tr>
+      <tr><td class="fin-l2">Impostos a recuperar</td><td class="cp-n">${_finMoeda(bp.ac.impostosRecuperar)}</td></tr>
+      <tr class="fin-sub"><td>(−) Passivo circulante operacional</td><td class="cp-n">${_finMoeda(bp.pco)}</td></tr>
+      <tr><td class="fin-l2">Fornecedores</td><td class="cp-n">${_finMoeda(bp.pc.fornecedores)}</td></tr>
+      <tr><td class="fin-l2">Salários e encargos</td><td class="cp-n">${_finMoeda(bp.pc.salarios)}</td></tr>
+      <tr><td class="fin-l2">Impostos a recolher</td><td class="cp-n">${_finMoeda(bp.pc.impostos)}</td></tr>
+      <tr><td class="fin-l2">Comissões, fretes e verbas</td><td class="cp-n">${_finMoeda(bp.pc.comerciais)}</td></tr>
+      <tr class="fin-dest"><td>= Necessidade de capital de giro</td><td class="cp-n">${_finMoeda(bp.ncg)}</td></tr>
+      <tr class="fin-sub"><td>Capital circulante líquido (AC − PC)</td><td class="cp-n">${_finMoeda(bp.ccl)}</td></tr>
+      <tr class="fin-tot"><td>Saldo de tesouraria (CCL − NCG)</td><td class="cp-n" style="color:${bp.st>=0?'var(--success)':'var(--danger)'}">${_finMoeda(bp.st)}</td></tr></tbody></table>`,
+      { def:'ncg', sub:'posição de '+_finMesLbl(_finM(D)) }),
+    _finCard('Como ler o modelo Fleuriet', `<div style="font-size:12.5px;color:var(--text2);display:flex;flex-direction:column;gap:8px">
+      <div><b>NCG</b> é o dinheiro que a operação exige só para funcionar: o que está preso em cliente e estoque menos o que o fornecedor financia.</div>
+      <div><b>CCL</b> é quanto de recurso de longo prazo sobra para bancar o giro.</div>
+      <div><b>Saldo de tesouraria</b> é a diferença. Negativo significa que a NCG está sendo paga com dívida de curto prazo — desconto de duplicata, conta garantida.</div>
+      <div style="border-top:1px solid var(--border);padding-top:8px"><b>Efeito tesoura</b> acontece quando a NCG cresce mais rápido que o CCL: a empresa vende mais, precisa de mais giro e financia a diferença no banco, cada vez mais caro.</div>
+      <div style="margin-top:2px">Situação atual: ${_finPill(_finE(CG.tipo),_finCapTipoCor(CG.tipo))} ${bp.tesoura?_finPill('efeito tesoura','var(--danger)'):''}</div></div>`,
+      { selo:'derivado' }),
+  ])+_finCard('NCG, CCL e saldo de tesouraria — 12 meses', _finLinhas(F.filter(function(p){ return !p.hoje; }),[
+      {campo:'ncg',rot:'NCG',cor:'var(--amber)'},{campo:'ccl',rot:'CCL',cor:'var(--blue-mid)'},{campo:'st',rot:'Saldo de tesouraria',cor:'var(--success)',area:true}],
+      { h:235, fmt:_finK }), { def:'st', hint:'Quando a linha da NCG (âmbar) passa por cima da do CCL (azul), o saldo de tesouraria fica negativo — é o efeito tesoura desenhado.' })
+    +_finCard('Série mensal', `<table class="cp-tbl" id="fin-tb-capncg"><thead><tr><th>Mês</th><th class="r">NCG</th><th class="r">Saldo de tesouraria</th><th class="r">CCL</th><th>Situação</th><th></th></tr></thead><tbody>${linhas}</tbody></table>`,
+      { acao:_finBtnCSV('fin-tb-capncg','ncg-fleuriet') });
+}
+
+// ── composição em dias ──
+function _finCapComposicaoHTML(D, CG){
+  const C=CG.composicao;
+  const linha=function(x){ return `<tr><td class="cp-item">${_finE(x.conta)}${x.foto?' '+_finPill('foto única','var(--text3)','Estoque de insumos vem de uma única posição do ERP; não há série por mês.'):''}${x.exemplo?' '+_finSelo('exemplo'):''}</td>
+    <td class="cp-n" style="font-weight:600">${_finMoeda(x.m)}</td><td class="cp-n" style="color:var(--text3)">${_finMoeda(x.ant)}</td>
+    <td class="cp-n">${_finCapVar(x.m-x.ant, x.grupo==='ACO')}</td>
+    <td class="cp-n" style="color:var(--text3)">${_finMoeda(x.a12)}</td><td class="cp-n">${_finCapVar(x.m-x.a12, x.grupo==='ACO')}</td>
+    <td class="cp-n" style="font-weight:700">${_finDd(x.dias,1)}</td></tr>`; };
+  const aco=C.filter(function(x){ return x.grupo==='ACO'; }), pco=C.filter(function(x){ return x.grupo==='PCO'; });
+  const somaM=function(l){ return l.reduce(function(a,x){ return a+x.m; },0); };
+  return _finCard('Onde a NCG está, conta a conta', `<table class="cp-tbl" id="fin-tb-capcomp"><thead>
+    <tr><th>Conta</th><th class="r">${_finE(_finMesLbl(_finM(D)))}</th><th class="r">Mês anterior</th><th class="r">Variação</th><th class="r">12 meses atrás</th><th class="r">Variação</th><th class="r">Em dias</th></tr></thead><tbody>
+    <tr class="fin-sub"><td>Ativo circulante operacional</td><td class="cp-n">${_finMoeda(somaM(aco))}</td><td colspan="5"></td></tr>
+    ${aco.map(linha).join('')}
+    <tr class="fin-sub"><td>Passivo circulante operacional</td><td class="cp-n">${_finMoeda(somaM(pco))}</td><td colspan="5"></td></tr>
+    ${pco.map(linha).join('')}
+    <tr class="fin-tot"><td>Necessidade de capital de giro</td><td class="cp-n">${_finMoeda(CG.ncg)}</td><td class="cp-n">${_finMoeda(CG.ncgAnt)}</td><td class="cp-n">${_finCapVar(CG.ncg-CG.ncgAnt,true)}</td>
+      <td class="cp-n">${_finMoeda(CG.ncg12)}</td><td class="cp-n">${_finCapVar(CG.ncg-CG.ncg12,true)}</td><td class="cp-n">${_finDd(CG.ncgDias,1)}</td></tr></tbody></table>`,
+    { acao:_finBtnCSV('fin-tb-capcomp','composicao-ncg'),
+      hint:'A coluna "em dias" divide o saldo pelo giro diário certo de cada conta: clientes e impostos pela receita bruta, estoques pelo CPV e fornecedores pelas compras.' })
+    +_finGrid(2,[
+      _finCard('Composição do ativo operacional', _finRosca(aco.map(function(x){ return { rot:x.conta, v:Math.max(0,x.m) }; }), { centro:_finK(somaM(aco)), centroSub:'ACO' })),
+      _finCard('Composição do passivo operacional', _finRosca(pco.map(function(x){ return { rot:x.conta, v:Math.max(0,x.m) }; }), { centro:_finK(somaM(pco)), centroSub:'PCO' })),
+    ])
+    +_finNota('Variação em <b>verde</b> significa NCG menor (bom para o caixa): ativo operacional caindo ou passivo operacional subindo.');
+}
+function _finCapVar(v, ehAtivo){ if(!v||Math.abs(v)<0.5) return '<span style="color:var(--text3)">—</span>';
+  const bom=ehAtivo?v<0:v>0;
+  return `<span style="color:${bom?'var(--success)':'var(--danger)'}">${(v>0?'+':'')+_finK(v)}</span>`; }
+
+// ── onde o dinheiro está ──
+function _finCapOndeHTML(D, CG){
+  const cli=CG.drillPMR, est=CG.drillPME;
+  return _finGrid(2,[
+    _finCard('Clientes que mais somam dias de PMR', `<table class="cp-tbl cp-tbl-sm"><thead><tr><th>Cliente</th><th class="r">Carteira</th><th class="r">Vencido</th><th class="r">Dias de PMR</th></tr></thead><tbody>
+      ${cli.map(function(x){ return `<tr class="cp-clic" onclick="_finAbrirCliente('${_cpJs(x.s.cod)}')"><td class="cp-item">${_finE(x.s.cli.nome)}</td>
+        <td class="cp-n">${_finMoeda(x.s.carteira)}</td><td class="cp-n" style="color:${x.s.vencido>0?'var(--danger)':'var(--text3)'}">${x.s.vencido>0?_finMoeda(x.s.vencido):'—'}</td>
+        <td class="cp-n" style="font-weight:700">${_cpNum(x.dias,1)}</td></tr>`; }).join('')}
+      <tr class="fin-tot"><td>Somam</td><td class="cp-n">${_finMoeda(cli.reduce(function(a,x){ return a+x.s.carteira; },0))}</td><td></td><td class="cp-n">${_cpNum(cli.reduce(function(a,x){ return a+x.dias; },0),1)} d</td></tr></tbody></table>`,
+      { hint:'Cada cliente contribui com dias de PMR na proporção do saldo dele sobre o faturamento diário da empresa. Reduzir o prazo dos cinco primeiros vale mais que uma política geral.' }),
+    _finCard('Insumos que mais prendem capital', `<table class="cp-tbl cp-tbl-sm"><thead><tr><th>Item</th><th class="r">Valor em estoque</th><th class="r">Consumo/mês</th><th class="r">Dias</th></tr></thead><tbody>
+      ${est.map(function(i){ return `<tr class="cp-clic" onclick="_finAbrirItemCompras('${_cpJs(i.cod)}')"><td class="cp-item" title="${escapeAttr(i.nome)}">${_finE(i.nome)}</td>
+        <td class="cp-n">${_finMoeda(i.valor)}</td><td class="cp-n">${i.consMesR>0?_finMoeda(i.consMesR):'—'}</td>
+        <td class="cp-n" style="font-weight:700;color:${i.dias==null?'var(--text3)':(i.dias>120?'var(--danger)':(i.dias>60?'var(--amber)':'var(--text)'))}">${i.dias==null?'sem giro':_cpNum(i.dias,0)}</td></tr>`; }).join('')}
+      </tbody></table>`,
+      { selo:'real', hint:'Dado real do ERP (estoque × custo médio ÷ consumo). Clique para abrir a ficha do item em Compras.' }),
+  ])+_finCard('Estoque sem giro', `<div class="fin-lista-kv">
+      <div><span>Valor total de insumos</span><b>${_finMoeda(CG.ciclos.pmeDet.estoqueInsumos)}</b></div>
+      <div><span>Sem consumo registrado</span><b style="color:${CG.ciclos.pmeDet.semGiro>0?'var(--danger)':'inherit'}">${_finMoeda(CG.ciclos.pmeDet.semGiro)}</b></div>
+      <div><span>Itens considerados</span><b>${CG.ciclos.pmeDet.itens}</b></div>
+      <div><span>Itens sem custo no ERP</span><b>${CG.ciclos.pmeDet.semCusto}</b></div>
+      <div><span>Itens com saldo negativo</span><b>${CG.ciclos.pmeDet.negativos}</b></div></div>
+      <div style="margin-top:10px"><button class="fin-btn mini" onclick="hubView='compras';setComprasView('estoque')">Ver no estoque de Compras <i class="ti ti-arrow-right"></i></button></div>`,
+      { selo:'real', hint:'Item com saldo negativo no ERP (consumo lançado antes da nota) entra como zero no cálculo e é contado à parte — não infla nem some do PME sem aviso.' })
+    +_finNota('Este é o caminho prático para liberar caixa: os clientes de cima cobrados antes e os itens de cima comprados em lote menor mexem no ciclo mais que qualquer meta geral.');
+}
+
+// ── simulador ──
+function _finCapSimuladorHTML(D, CG){
+  const dPMR=parseFloat(String(_finGetF('capital','dPMR','-3')).replace(',','.'))||0,
+    dPME=parseFloat(String(_finGetF('capital','dPME','-2')).replace(',','.'))||0,
+    dPMP=parseFloat(String(_finGetF('capital','dPMP','3')).replace(',','.'))||0;
+  const S=_finSimularGiro(D,dPMR,dPME,dPMP), C=CG.ciclos;
+  const inp=function(campo, rot, val, ajuda){ return `<div style="display:flex;flex-direction:column;gap:3px">
+    <span style="font-size:11px;color:var(--text3)">${rot}</span>
+    <span style="display:flex;align-items:center;gap:5px"><input class="modal-input" value="${escapeAttr(String(val))}" onchange="_finCapSet('${campo}',this)" style="width:76px;padding:6px 9px;font-size:12.5px;text-align:right"><span style="font-size:11.5px;color:var(--text3)">dias</span></span>
+    <span style="font-size:10.5px;color:var(--text3)">${ajuda}</span></div>`; };
+  return _finCard('Quanto caixa cada dia do ciclo libera',
+    `<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-bottom:14px">
+      ${inp('dPMR','Variação do PMR', _finGetF('capital','dPMR','-3'), 'negativo = receber antes')}
+      ${inp('dPME','Variação do PME', _finGetF('capital','dPME','-2'), 'negativo = menos estoque')}
+      ${inp('dPMP','Variação do PMP', _finGetF('capital','dPMP','3'), 'positivo = pagar depois')}</div>
+    <table class="cp-tbl"><thead><tr><th>Alavanca</th><th class="r">Variação</th><th class="r">Valor por dia</th><th class="r">Caixa liberado</th></tr></thead><tbody>
+      <tr><td class="cp-item">PMR — prazo de recebimento</td><td class="cp-n">${_cpNum(dPMR,0)} d</td><td class="cp-n" style="color:var(--text3)">${_finMoeda(CG.porDia.pmr)}</td><td class="cp-n" style="font-weight:700;color:${S.pmr>=0?'var(--success)':'var(--danger)'}">${_finMoeda(S.pmr)}</td></tr>
+      <tr><td class="cp-item">PME — estoques</td><td class="cp-n">${_cpNum(dPME,0)} d</td><td class="cp-n" style="color:var(--text3)">${_finMoeda(CG.porDia.pme)}</td><td class="cp-n" style="font-weight:700;color:${S.pme>=0?'var(--success)':'var(--danger)'}">${_finMoeda(S.pme)}</td></tr>
+      <tr><td class="cp-item">PMP — prazo de pagamento</td><td class="cp-n">${_cpNum(dPMP,0)} d</td><td class="cp-n" style="color:var(--text3)">${_finMoeda(CG.porDia.pmp)}</td><td class="cp-n" style="font-weight:700;color:${S.pmp>=0?'var(--success)':'var(--danger)'}">${_finMoeda(S.pmp)}</td></tr>
+      <tr class="fin-tot"><td>Total liberado</td><td class="cp-n">ciclo ${_finDd(S.cicloNovo,1)}</td><td></td><td class="cp-n" style="color:${S.total>=0?'var(--success)':'var(--danger)'}">${_finMoeda(S.total)}</td></tr></tbody></table>`,
+    { selo:'derivado', hint:'Cada dia vale o giro diário da conta: PMR pela receita bruta, PME pelo CPV e PMP pelas compras. Por isso um dia de PMP libera menos que um dia de PMR.' })
+    +_finGrid(2,[
+      _finCard('Antes e depois', `<div class="fin-lista-kv">
+        <div><span>Ciclo financeiro hoje</span><b>${_finDd(C.financeiro,1)}</b></div>
+        <div><span>Ciclo financeiro simulado</span><b style="color:${S.cicloNovo<C.financeiro?'var(--success)':'var(--danger)'}">${_finDd(S.cicloNovo,1)}</b></div>
+        <div><span>Meta</span><b>${_finDd(FIN_PARAM.metas.cicloFin)}</b></div>
+        <div><span>NCG hoje</span><b>${_finMoeda(CG.ncg)}</b></div>
+        <div><span>NCG simulada</span><b>${_finMoeda(CG.ncg-S.total)}</b></div>
+        <div><span>Efeito no saldo de tesouraria</span><b style="color:${S.total>=0?'var(--success)':'var(--danger)'}">${_finMoeda(CG.st+S.total)}</b></div></div>`),
+      _finCard('O que vale a pena tentar', `<ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px;font-size:12.5px;color:var(--text2)">
+        <li>Reduzir o <b>atraso</b> (${_finDd(C.pmrEfetivo.atraso,1)}) é mais barato que reduzir o prazo concedido — não mexe na política comercial.</li>
+        <li>Estoque sem giro (${_finK(C.pmeDet.semGiro)}) vira caixa sem afetar a produção.</li>
+        <li>Alongar o PMP só vale se o fornecedor não cobrar por isso: confira os descontos perdidos em Contas a pagar.</li>
+        <li>Cada dia a menos no ciclo vale cerca de ${_finMoeda(CG.rbDia)} — compare com o custo da dívida de curto prazo antes de decidir.</li></ul>`,
+        { selo:'derivado' }),
+    ])
+    +_finNota('Simulação apenas: <b>nada é gravado</b>. Serve para dimensionar a meta antes de levá-la para a área comercial ou de compras.');
+}
+
 // ── fin_scr_endividamento.js ──
 // ─── FINANCEIRO › ENDIVIDAMENTO ───
 // Contratos de financiamento, cronograma de amortização, covenants, evolução da dívida líquida
@@ -16528,6 +17009,305 @@ function _finEndFichaHTML(ct){
   }
   return _finTela(c.contrato, c.banco+' · '+c.modalidade+' · '+_finE(c.garantia||'sem garantia real'),
     kpis+subnav+corpo, '', { fn:'_finVoltarContrato()', label:'Voltar ao endividamento' }, {base:'D0', selo:'exemplo'});
+}
+
+// ── fin_scr_balanco.js ──
+// ─── FINANCEIRO › BALANÇO E INDICADORES ───
+// Balanço gerencial em qualquer mês fechado, painel de indicadores com meta e semáforo,
+// evolução das contas e estrutura do ativo e do passivo.
+function _finBalFmt(fmt, v){ if(v==null||!isFinite(v)) return '—';
+  if(fmt==='x2') return _finXx(v); if(fmt==='%') return _finPc(v,0); if(fmt==='%1') return _finPc(v,1); if(fmt==='d') return _finDd(v,0); return _cpNum(v,2); }
+function _finBalTend(t){ if(!t) return '<span style="color:var(--text3)">—</span>';
+  return t>0?'<i class="ti ti-trending-up" style="color:var(--success)" title="Melhorou em relação ao mês anterior"></i>':'<i class="ti ti-trending-down" style="color:var(--danger)" title="Piorou em relação ao mês anterior"></i>'; }
+
+function _finTela_balanco(){
+  const D=_finData(), M=_finM(D), bp=_finBalanco(D,_finFimMes(M)), IND=_finIndicadores(D), sub=_finSubGet('balanco','balanco');
+  const meses=[]; for(let i=0;i<12;i++) meses.push(_finYmAdd(M,-i));
+  const mesSel=_finGetF('balanco','periodo',M), bpSel=_finBalanco(D,_finFimMes(mesSel));
+  const acao=_finPeriodo('balanco',meses.map(function(ym){ return [ym,_finMesLbl(ym)]; }),M,'Mês')
+    +_finFiltros('balanco',_finFChips('balanco','grupo','Grupo de indicadores',[['todos','Todos'],['Liquidez','Liquidez'],['Endividamento','Endividamento'],['Rentabilidade','Rentabilidade'],['Atividade','Atividade']]),_finNFiltros('balanco',['periodo','mes']));
+  const fora=IND.linhas.filter(function(l){ return l.status==='Fora da meta'; });
+  const kpis=_finKPIs([
+    { rot:'Ativo total', val:_finK(bp.ativo), sub:'circulante '+_finK(bp.acTot)+' · imobilizado '+_finK(bp.ancTot) },
+    { rot:'Patrimônio líquido', val:_finK(bp.pl), sub:'por diferença (ativo − passivo) · '+_finPc(_finPct(bp.pl,bp.ativo),0)+' do ativo' },
+    { rot:'Liquidez corrente', def:'liqCorrente', val:_finXx(bp.indices.liqCorrente), cor:bp.indices.liqCorrente>=FIN_PARAM.metas.liqCorrente?'var(--success)':'var(--danger)', sub:'meta '+_finXx(FIN_PARAM.metas.liqCorrente)+' · seca '+_finXx(bp.indices.liqSeca) },
+    { rot:'Endividamento geral', val:_finPc(bp.indices.endividamento,0), cor:bp.indices.endividamento>60?'var(--amber)':'var(--success)', sub:_finPc(bp.indices.composicao,0)+' vence em até 12 meses' },
+    { rot:'Capital circulante líquido', def:'ccl', val:_finK(bp.ccl), cor:bp.ccl>=0?'var(--success)':'var(--danger)', sub:'ativo circulante menos passivo circulante' },
+    { rot:'Indicadores fora da meta', val:String(fora.length), cor:fora.length?'var(--danger)':'var(--success)', sub:'de '+IND.linhas.length+' acompanhados em '+_finMesLbl(IND.M) },
+  ]);
+  const abas=[['balanco','ti-scale','Balanço'],['indicadores','ti-list-details','Indicadores',IND.linhas.length],['evolucao','ti-chart-line','Evolução'],['estrutura','ti-chart-pie','Estrutura']];
+  let corpo='';
+  if(sub==='indicadores') corpo=_finBalIndicadoresHTML(D,IND);
+  else if(sub==='evolucao') corpo=_finBalEvolucaoHTML(D,IND);
+  else if(sub==='estrutura') corpo=_finBalEstruturaHTML(D,bpSel,mesSel);
+  else corpo=_finBalBalancoHTML(D,bpSel,mesSel,M);
+  return _finTela('Balanço e indicadores','Posição patrimonial do mês fechado e os índices que os bancos e a diretoria olham.',
+    kpis+_finSubnav('balanco',abas,'balanco')+corpo, acao, null, {base:'M', selo:'misto'});
+}
+
+// ── balanço ──
+function _finBalBalancoHTML(D, bp, mesSel, M){
+  const ant=_finBalanco(D,_finFimMes(_finYmAdd(mesSel,-1))), a12=_finBalanco(D,_finFimMes(_finYmAdd(mesSel,-12)));
+  const linhas=FIN_BP_LINHAS.map(function(l){
+    const v=_finBPValor(bp,l.k), va=_finBPValor(ant,l.k), v12=_finBPValor(a12,l.k);
+    const nome=l.g||l.n, cls=l.tipo==='total'?'fin-tot':(l.tipo==='grupo'?'fin-sub':'');
+    return `<tr class="${cls}">${l.tipo?`<td>${_finE(nome)}</td>`:`<td class="fin-l2">${_finE(nome)}${l.real?' '+_finSelo('real'):''}${l.exemplo?' '+_finSelo('exemplo'):''}</td>`}
+      <td class="cp-n"${l.tipo?' style="font-weight:700"':''}>${_finMoeda(v)}</td>
+      <td class="cp-n" style="color:var(--text3)">${_finPc(_finPct(Math.abs(v),bp.ativo),1)}</td>
+      <td class="cp-n" style="color:var(--text3)">${_finMoeda(va)}</td>
+      <td class="cp-n">${Math.abs(v-va)<0.5?'<span style="color:var(--text3)">—</span>':_finK(v-va)}</td>
+      <td class="cp-n" style="color:var(--text3)">${_finMoeda(v12)}</td>
+      <td class="cp-n">${Math.abs(v-v12)<0.5?'<span style="color:var(--text3)">—</span>':_finK(v-v12)}</td></tr>`; }).join('');
+  const fecha=Math.abs(bp.ativo-bp.passivoTotal)<1;
+  return _finCard('Balanço patrimonial gerencial — '+_finMesLbl(mesSel),
+    `<div class="fin-scroll cp-noscroll"><table class="cp-tbl" id="fin-tb-bal"><thead><tr><th style="min-width:290px">Conta</th><th class="r">${_finE(_finMesLbl(mesSel))}</th><th class="r">% do ativo</th><th class="r">Mês anterior</th><th class="r">Variação</th><th class="r">12 meses atrás</th><th class="r">Variação</th></tr></thead>
+    <tbody>${linhas}</tbody></table></div>
+    <div style="margin-top:10px;font-size:12px;color:${fecha?'var(--success)':'var(--danger)'}"><i class="ti ti-${fecha?'check':'alert-triangle'}"></i> Ativo ${fecha?'=':'≠'} Passivo + PL${fecha?'':' — diferença de '+_finMoeda(bp.ativo-bp.passivoTotal)}</div>`,
+    { acao:_finBtnCSV('fin-tb-bal','balanco-gerencial'), selo:'misto',
+      hint:'Balanço GERENCIAL: sem razão contábil, o patrimônio líquido é o fechamento (ativo menos passivo) e o imobilizado é estimado a partir de uma base mais o capex das notas menos a depreciação.' })
+    +(bp.estoqueFoto?_finNota('O estoque de insumos vem de uma <b>foto única</b> do ERP (a posição mais recente de Compras) e por isso se repete nas datas passadas — a variação de estoque entre meses aparece como zero.'):'')
+    +_finNota('As contas marcadas com selo <b>real</b> saem do ERP: fornecedores (notas de compra) e estoque de matéria-prima e embalagens. O resto é exemplo determinístico.');
+}
+
+// ── indicadores ──
+function _finBalIndicadoresHTML(D, IND){
+  const gr=_finGetF('balanco','grupo','todos');
+  const L=IND.linhas.filter(function(l){ return gr==='todos' || l.g===gr; });
+  let ultG='';
+  const linhas=L.map(function(l){
+    const head=l.g!==ultG?`<tr class="fin-sub"><td colspan="8">${_finE(l.g)}</td></tr>`:''; ultG=l.g;
+    return head+`<tr><td class="cp-item">${_finE(l.n)} ${_hint(l.f)}</td>
+      <td class="cp-n" style="font-weight:700">${_finBalFmt(l.fmt,l.valor)}</td>
+      <td class="cp-n" style="color:var(--text3)">${_finBalFmt(l.fmt,l.mesAnt)}</td>
+      <td style="text-align:center">${_finBalTend(l.tendencia)}</td>
+      <td class="cp-n" style="color:var(--text3)">${_finBalFmt(l.fmt,l.m12)}</td>
+      <td class="cp-n">${_finBalFmt(l.fmt,l.meta)}</td>
+      <td>${_finSemaforo(l.status)}</td>
+      <td style="width:110px">${_finSpark(l.serie.map(function(s){ return s.v; }),{ meta:l.meta, cor:l.status==='Na meta'?'var(--success)':(l.status==='Atenção'?'var(--amber)':'var(--danger)') })}</td></tr>`; }).join('');
+  const fora=IND.linhas.filter(function(l){ return l.status==='Fora da meta'; });
+  return (fora.length?`<div class="fin-alert"><i class="ti ti-alert-triangle"></i><div><b>${fora.length} indicador(es) fora da meta em ${_finMesLbl(IND.M)}</b> — ${fora.map(function(l){ return _finE(l.n)+' ('+_finBalFmt(l.fmt,l.valor)+' contra '+_finBalFmt(l.fmt,l.meta)+')'; }).join(' · ')}.</div></div>`:'')
+    +_finCard('Painel de indicadores — '+_finMesLbl(IND.M),
+      `<div class="fin-scroll cp-noscroll"><table class="cp-tbl" id="fin-tb-balind"><thead><tr><th style="min-width:250px">Indicador</th><th class="r">${_finE(_finMesLbl(IND.M))}</th><th class="r">Mês anterior</th><th style="text-align:center">Tendência</th><th class="r">12 meses atrás</th><th class="r">Meta</th><th>Situação</th><th>Série</th></tr></thead>
+      <tbody>${linhas}</tbody></table></div>`,
+      { acao:_finBtnCSV('fin-tb-balind','indicadores'),
+        hint:'A tendência compara com o mês anterior no sentido certo de cada indicador: em PMR, cair é melhorar; em PMP, subir é melhorar. Passe o mouse no ícone de cada linha para ver a fórmula oficial.' })
+    +_finNota('As metas vêm de <b>Parâmetros e fontes</b> — é lá que se ajusta o que a empresa considera aceitável. Mudar a meta muda o semáforo de todas as telas de uma vez.');
+}
+
+// ── evolução ──
+function _finBalEvolucaoHTML(D, IND){
+  const P=IND.pontos;
+  const graf=function(titulo, campos, fmt, ref, def){ return _finCard(titulo, _finLinhas(P.map(function(p){ const o={ lbl:p.lbl }; campos.forEach(function(c){ o[c.campo]=p[c.campo]; }); return o; }),
+    campos, { h:200, fmt:fmt, labFmt:fmt, ref:ref }), { def:def }); };
+  return _finGrid(2,[
+    graf('Liquidez', [{campo:'liqCorrente',rot:'Corrente',cor:'var(--blue-mid)'},{campo:'liqSeca',rot:'Seca',cor:'var(--amber)'},{campo:'liqImediata',rot:'Imediata',cor:'var(--success)'}],
+      function(v){ return _finXx(v); }, { v:FIN_PARAM.metas.liqCorrente, rot:'meta corrente' }, 'liqCorrente'),
+    graf('Rentabilidade (LTM)', [{campo:'margemEbitda',rot:'Margem EBITDA',cor:'var(--success)'},{campo:'margemLiquida',rot:'Margem líquida',cor:'var(--purple)'},{campo:'roe',rot:'ROE',cor:'var(--blue-mid)'}],
+      function(v){ return _finPc(v,1); }, { v:FIN_PARAM.metas.margemEbitda, rot:'meta EBITDA' }, 'margemEbitda'),
+    graf('Endividamento', [{campo:'endividamento',rot:'Endividamento geral',cor:'var(--danger)'},{campo:'composicao',rot:'Composição (curto prazo)',cor:'var(--amber)'}],
+      function(v){ return _finPc(v,0); }, null, null),
+    graf('Atividade', [{campo:'pmr',rot:'PMR',cor:'var(--blue-mid)'},{campo:'pmp',rot:'PMP',cor:'var(--success)'}],
+      function(v){ return _finDd(v,0); }, null, 'pmr'),
+  ])+_finCard('NCG, saldo de tesouraria e CCL', _finLinhas(P,[{campo:'ncg',rot:'NCG',cor:'var(--amber)'},{campo:'ccl',rot:'CCL',cor:'var(--blue-mid)'},{campo:'st',rot:'Saldo de tesouraria',cor:'var(--success)',area:true}],
+      { h:215, fmt:_finK }), { def:'ncg', sub:'mesma série usada em Capital de giro' })
+    +_finNota('Todos os pontos são <b>ponto no tempo</b>: cada mês usa só o que tinha acontecido até o fechamento dele, sem contaminar o passado com informação de hoje.');
+}
+
+// ── estrutura ──
+function _finBalEstruturaHTML(D, bp, mesSel){
+  const at=[{ rot:'Disponibilidades', v:bp.ac.disponibilidades, cor:'var(--success)' },
+    { rot:'Clientes líquidos', v:bp.ac.clientes+bp.ac.pdd, cor:'var(--blue-mid)' },
+    { rot:'Estoques', v:bp.ac.estoquesMP+bp.ac.estoquesPA, cor:'var(--amber)' },
+    { rot:'Impostos a recuperar', v:bp.ac.impostosRecuperar, cor:'var(--purple)' },
+    { rot:'Imobilizado', v:bp.ancTot, cor:'var(--text3)' }];
+  const pa=[{ rot:'Fornecedores', v:bp.pc.fornecedores, cor:'var(--blue-mid)' },
+    { rot:'Salários, impostos e verbas', v:bp.pc.salarios+bp.pc.impostos+bp.pc.comerciais, cor:'var(--amber)' },
+    { rot:'Dívida de curto prazo', v:bp.pc.emprestimosCP+bp.pc.descontadas+bp.pc.garantida+bp.pc.parcelamentoCP, cor:'var(--danger)' },
+    { rot:'Dividendos a pagar', v:bp.pc.dividendos, cor:'var(--pink)' },
+    { rot:'Dívida de longo prazo', v:bp.pncTot, cor:'var(--purple)' },
+    { rot:'Patrimônio líquido', v:Math.max(0,bp.pl), cor:'var(--success)' }];
+  return _finGrid(2,[
+    _finCard('Estrutura do ativo', _finRosca(at,{ centro:_finK(bp.ativo), centroSub:'ativo total' }), { sub:_finMesLbl(mesSel) }),
+    _finCard('Estrutura do passivo e PL', _finRosca(pa,{ centro:_finK(bp.passivoTotal), centroSub:'passivo + PL' }), { sub:_finMesLbl(mesSel) }),
+  ])+_finCard('Origens e aplicações', _finEmpilhada(pa,{ h:22 })
+      +`<div style="margin-top:16px">${_finEmpilhada(at,{ h:22 })}</div>`,
+      { sub:'em cima, de onde vem o dinheiro · embaixo, onde ele está', selo:'derivado' })
+    +_finGrid(2,[
+      _finCard('Curto prazo × longo prazo', `<table class="cp-tbl"><thead><tr><th>Origem</th><th class="r">Valor</th><th class="r">% do total</th></tr></thead><tbody>
+        <tr><td class="cp-item">Passivo circulante</td><td class="cp-n">${_finMoeda(bp.pcTot)}</td><td class="cp-n">${_finPc(_finPct(bp.pcTot,bp.passivoTotal),1)}</td></tr>
+        <tr><td class="cp-item">Passivo não circulante</td><td class="cp-n">${_finMoeda(bp.pncTot)}</td><td class="cp-n">${_finPc(_finPct(bp.pncTot,bp.passivoTotal),1)}</td></tr>
+        <tr><td class="cp-item">Patrimônio líquido</td><td class="cp-n">${_finMoeda(bp.pl)}</td><td class="cp-n">${_finPc(_finPct(bp.pl,bp.passivoTotal),1)}</td></tr>
+        <tr class="fin-tot"><td>Total</td><td class="cp-n">${_finMoeda(bp.passivoTotal)}</td><td class="cp-n">100%</td></tr></tbody></table>`,
+        { hint:'Quanto maior a fatia do passivo circulante, mais a empresa depende de renovar dívida curta todo mês.' }),
+      _finCard('Índices da posição', `<div class="fin-lista-kv">
+        <div><span>Liquidez corrente</span><b>${_finXx(bp.indices.liqCorrente)}</b></div>
+        <div><span>Liquidez seca</span><b>${_finXx(bp.indices.liqSeca)}</b></div>
+        <div><span>Liquidez imediata</span><b>${_finXx(bp.indices.liqImediata)}</b></div>
+        <div><span>Liquidez geral</span><b>${_finXx(bp.indices.liqGeral)}</b></div>
+        <div><span>Endividamento geral</span><b>${_finPc(bp.indices.endividamento,1)}</b></div>
+        <div><span>Composição do endividamento</span><b>${_finPc(bp.indices.composicao,1)}</b></div>
+        <div><span>Situação (Fleuriet)</span><b>${_finE(bp.tipoFleuriet)}</b></div></div>`,
+        { def:'liqSeca' }),
+    ]);
+}
+
+// ── fin_scr_parametros.js ──
+// ─── FINANCEIRO › PARÂMETROS E FONTES ───
+// O manual da área: de onde vem cada número, a fórmula oficial de cada indicador, os parâmetros
+// usados nas regras, o checklist de fechamento do mês e o que o usuário registrou neste aparelho.
+function _finParFonteCor(f){ return f==='REAL'?'var(--success)':'var(--amber)'; }
+
+function _finTela_parametros(){
+  const D=_finData(), F=_finFechamento(D), sub=_finSubGet('parametros','fontes');
+  const acao=_finLupa('parametros','Indicador, fonte ou parâmetro…');
+  const reais=FIN_FONTES.filter(function(f){ return f.f==='REAL'; }).length;
+  const atrasadas=F.etapas.filter(function(e){ return e.status==='Atrasado'; });
+  const kpis=_finKPIs([
+    { rot:'Fontes de dado', val:reais+' de '+FIN_FONTES.length+' reais', sub:'o resto é exemplo determinístico do protótipo' },
+    { rot:'Indicadores definidos', val:String(Object.keys(_FIN_DEF).length), sub:'cada um com fórmula única usada por todas as telas' },
+    { rot:'Fechamento de '+_finMesLbl(F.M), val:_finPc(F.avanco,0), cor:atrasadas.length?'var(--danger)':(F.avanco>=100?'var(--success)':'var(--amber)'), sub:F.diaUtil+'º dia útil · '+atrasadas.length+' etapa(s) atrasada(s)' },
+    { rot:'Caixa mínimo', val:_finK(FIN_PARAM.caixaMinimo), sub:'dispara alerta no Painel e no Fluxo de caixa' },
+    { rot:'Alçada de aprovação', val:_finK(FIN_PARAM.alcadaAprovacao), sub:'acima disso o pagamento exige aprovação da diretoria' },
+  ]);
+  const abas=[['fontes','ti-database','Fontes do dado',FIN_FONTES.length],['definicoes','ti-book','Definições',Object.keys(_FIN_DEF).length],['parametros','ti-adjustments','Parâmetros e metas'],['fechamento','ti-check','Fechamento do mês'],['dados','ti-user','Meus registros']];
+  let corpo='';
+  if(sub==='definicoes') corpo=_finParDefinicoesHTML(D);
+  else if(sub==='parametros') corpo=_finParParametrosHTML(D);
+  else if(sub==='fechamento') corpo=_finParFechamentoHTML(D,F);
+  else if(sub==='dados') corpo=_finParDadosHTML(D);
+  else corpo=_finParFontesHTML(D);
+  return _finTela('Parâmetros e fontes','De onde vem cada número, como cada indicador é calculado e o que ainda é exemplo.',
+    kpis+_finSubnav('parametros',abas,'fontes')+corpo, acao, null, {base:'ambos', selo:'misto'});
+}
+
+// ── fontes ──
+function _finParFontesHTML(D){
+  const q=_finBuscaQ('parametros');
+  const L=FIN_FONTES.filter(function(f){ return _finMatch(q,f.o,f.d,f.f); });
+  const linhas=L.map(function(f){ return `<tr><td class="cp-item">${_finE(f.o)}</td>
+    <td>${_finPill(f.f==='REAL'?'real':'exemplo', _finParFonteCor(f.f))}</td>
+    <td style="color:var(--text2);font-size:12px">${_finE(f.d)}</td></tr>`; }).join('');
+  return _finCard('De onde vem cada dado', `<table class="cp-tbl" id="fin-tb-parf"><thead><tr><th style="min-width:260px">Informação</th><th>Origem</th><th>Detalhe</th></tr></thead>
+    <tbody>${linhas||`<tr><td colspan="3">${_cpVazio('Nada encontrado.')}</td></tr>`}</tbody></table>`,
+    { acao:_finBtnCSV('fin-tb-parf','fontes-do-dado'),
+      hint:'Esta é a tabela que responde "esse número é de verdade?". Toda tela do Financeiro carrega um selo com a mesma informação no cabeçalho.' })
+    +_finGrid(2,[
+      _finCard('O que é real hoje', `<ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px;font-size:12.5px;color:var(--text2)">
+        <li><b>Notas fiscais de compra</b> do ERP: fornecedor, item, data, valor e ICMS destacado — a mesma base da área Compras.</li>
+        <li><b>Posição de estoque e consumo</b> de insumos: alimenta o PME, o CPV e os estoques do balanço.</li>
+        <li>Desses dois saem o custo dos produtos vendidos, os créditos de imposto, o prazo de pagamento a fornecedor e o capital parado em estoque.</li></ul>`,
+        { selo:'real' }),
+      _finCard('O que ainda é exemplo', `<ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px;font-size:12.5px;color:var(--text2)">
+        <li><b>Clientes e títulos a receber</b> — dependem do faturamento do ERP.</li>
+        <li><b>Folha, impostos e despesas sem nota</b> — dependem da folha e da escrita fiscal.</li>
+        <li><b>Bancos, aplicações e empréstimos</b> — dependem do extrato e dos contratos.</li>
+        <li>Tudo é gerado de forma <b>determinística</b>: o mesmo dia sempre produz os mesmos números, então dá para comparar telas entre si sem medo.</li></ul>`,
+        { selo:'exemplo' }),
+    ])
+    +_finNota('Quando o export de uma dessas fontes chegar, o que muda é só a camada de dados — as funções de cálculo e as telas continuam iguais. É esse o desenho da área.');
+}
+
+// ── definições ──
+function _finParDefinicoesHTML(D){
+  const q=_finBuscaQ('parametros');
+  const ks=Object.keys(_FIN_DEF).filter(function(k){ const d=_FIN_DEF[k]; return _finMatch(q,d.n,d.f,k); });
+  const linhas=ks.map(function(k){ const d=_FIN_DEF[k];
+    return `<tr><td class="cp-item">${_finE(d.n)}</td><td class="cp-mono" style="color:var(--text3);font-size:11px">${_finE(k)}</td>
+      <td style="color:var(--text2);font-size:12px">${_finE(d.f)}</td></tr>`; }).join('');
+  return _finCard(`Definições oficiais <span class="sub" style="font-weight:500;color:var(--text3)">${ks.length} indicadores</span>`,
+    `<div class="fin-scroll fin-scroll-y cp-noscroll"><table class="cp-tbl" id="fin-tb-pard"><thead><tr><th style="min-width:230px">Indicador</th><th>Chave</th><th>Fórmula</th></tr></thead>
+    <tbody>${linhas||`<tr><td colspan="3">${_cpVazio('Nada encontrado.')}</td></tr>`}</tbody></table></div>`,
+    { acao:_finBtnCSV('fin-tb-pard','definicoes'),
+      hint:'Este é o registro único: o texto que aparece no ícone de ajuda de cada KPI e de cada card sai daqui. Mudar a definição aqui muda em todas as telas de uma vez.' })
+    +_finNota('A regra da área é que <b>nenhuma tela calcula indicador por conta própria</b>. Se dois lugares mostram o mesmo nome, mostram o mesmo número — foi assim que se evitou o problema clássico de "cada relatório diz uma coisa".');
+}
+
+// ── parâmetros e metas ──
+function _finParParametrosHTML(D){
+  const met=FIN_PARAM.metas;
+  const par=[['Caixa mínimo',_finMoeda(FIN_PARAM.caixaMinimo),'Abaixo disso o Painel e o Fluxo de caixa acendem alerta e o simulador de corte entra em ação.'],
+    ['Horizonte da projeção',FIN_PARAM.diasProjecao+' dias','13 semanas — o horizonte em que ainda dá para agir sobre cobrança e pagamento.'],
+    ['Alçada de aprovação',_finMoeda(FIN_PARAM.alcadaAprovacao),'Título a pagar acima deste valor exige aprovação do diretor financeiro.'],
+    ['Dias sem conciliar',FIN_PARAM.diasSemConciliar+' dias úteis','Conta bancária sem conciliação por mais tempo que isso vira alerta.']];
+  const metas=[['PMR',_finDd(met.pmr),'máximo','Prazo médio de recebimento pela carteira.'],
+    ['PMP',_finDd(met.pmp),'mínimo','Prazo médio de pagamento a fornecedores.'],
+    ['Ciclo financeiro',_finDd(met.cicloFin),'máximo','PME + PMR − PMP.'],
+    ['Inadimplência > 30 dias',_finPc(met.inad30),'máximo','Vencido há mais de 30 dias sobre a carteira.'],
+    ['Inadimplência > 90 dias',_finPc(met.inad90),'máximo','Vencido há mais de 90 dias sobre a carteira.'],
+    ['Dívida líquida / EBITDA',_finXx(met.dlEbitda),'máximo','Também é o limite do covenant mais apertado.'],
+    ['Liquidez corrente',_finXx(met.liqCorrente),'mínimo','Ativo circulante sobre passivo circulante.'],
+    ['Margem EBITDA',_finPc(met.margemEbitda),'mínimo','EBITDA sobre receita líquida.']];
+  return _finGrid(2,[
+    _finCard('Parâmetros de operação', `<table class="cp-tbl"><thead><tr><th>Parâmetro</th><th class="r">Valor</th></tr></thead><tbody>
+      ${par.map(function(x){ return `<tr><td class="cp-item">${_finE(x[0])} ${_hint(x[2])}</td><td class="cp-n" style="font-weight:700">${x[1]}</td></tr>`; }).join('')}</tbody></table>`,
+      { hint:'No protótipo estes valores são fixos no código. No sistema real viram cadastro, com histórico de quem mudou e quando.' }),
+    _finCard('Metas dos indicadores', `<table class="cp-tbl"><thead><tr><th>Indicador</th><th class="r">Meta</th><th>Sentido</th></tr></thead><tbody>
+      ${metas.map(function(x){ return `<tr><td class="cp-item">${_finE(x[0])} ${_hint(x[3])}</td><td class="cp-n" style="font-weight:700">${x[1]}</td><td style="color:var(--text3)">${_finE(x[2])}</td></tr>`; }).join('')}</tbody></table>`,
+      { hint:'São essas metas que pintam o semáforo em Balanço e indicadores, no Painel e nos KPIs de cada tela.' }),
+  ])+_finGrid(2,[
+    _finCard('Matriz de PDD por faixa de atraso', `<table class="cp-tbl"><thead><tr><th>Faixa</th><th class="r">Provisão</th></tr></thead><tbody>
+      ${FIN_PDD.map(function(f){ return `<tr><td class="cp-item">${_finE(f.rot)}</td><td class="cp-n" style="font-weight:700">${_finPc(f.pct,0)}</td></tr>`; }).join('')}</tbody></table>`,
+      { def:'pdd', hint:'A mesma matriz é usada na projeção de caixa como perda esperada dos vencidos — projeção e provisão não contam histórias diferentes.' }),
+    _finCard('Régua de cobrança', `<table class="cp-tbl"><thead><tr><th class="r">Dia</th><th>Etapa</th><th>Responsável</th></tr></thead><tbody>
+      ${FIN_REGUA.map(function(r){ return `<tr><td class="cp-n" style="color:var(--text3)">${r.dias<0?r.dias:'D+'+r.dias}</td><td class="cp-item">${_finE(r.etapa)} ${_hint(r.acao+' · '+r.canal)}</td><td style="color:var(--text3)">${_finE(r.resp)}</td></tr>`; }).join('')}</tbody></table>`),
+  ])+_finGrid(2,[
+    _finCard('Cenários da projeção de caixa', `<div class="fin-lista-kv">${Object.keys(FIN_CENARIOS).map(function(k){ const c=FIN_CENARIOS[k];
+      return `<div><span>${_finE(c.rot)}</span><b style="font-weight:400;color:var(--text2);text-align:left">${_finE(c.desc)}</b></div>`; }).join('')}</div>`),
+    _finCard('Faixas de aging', `<table class="cp-tbl"><thead><tr><th>A vencer</th><th>Vencido</th></tr></thead><tbody>
+      <tr><td>${FIN_AGING_AVENC.map(function(f){ return f.rot; }).join(' · ')} dias</td><td>${FIN_AGING_VENC.map(function(f){ return f.rot; }).join(' · ')} dias</td></tr></tbody></table>
+      <div style="margin-top:10px;font-size:12px;color:var(--text2)">As mesmas faixas valem em Contas a receber, em Crédito e cobrança e na série mensal do balanço — por isso os totais sempre batem entre as telas.</div>`),
+  ]);
+}
+
+// ── fechamento ──
+function _finParFechamentoHTML(D, F){
+  const linhas=F.etapas.map(function(e){ return `<tr class="${e.status==='Atrasado'?'fin-alerta':''}">
+    <td class="cp-item">${_finE(e.etapa)}</td><td>${_finE(e.resp)}</td>
+    <td class="cp-n">${e.prazo}º dia útil</td>
+    <td>${_finPill(_finE(e.status), e.status==='Concluído'?'var(--success)':(e.status==='Atrasado'?'var(--danger)':'var(--amber)'))}</td>
+    <td style="color:var(--text3);font-size:12px">${_finE(e.det)}</td></tr>`; }).join('');
+  return _finCard('Checklist de fechamento — '+_finMesLbl(F.M),
+    `<div style="display:flex;gap:14px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:180px">${_finBarra(F.avanco, F.avanco>=100?'var(--success)':'var(--blue-mid)')}</div>
+      <span style="font-size:12.5px;color:var(--text2)"><b>${_finPc(F.avanco,0)}</b> concluído · hoje é o <b>${F.diaUtil}º dia útil</b> do mês</span></div>
+    <table class="cp-tbl" id="fin-tb-parfech"><thead><tr><th style="min-width:280px">Etapa</th><th>Responsável</th><th class="r">Prazo</th><th>Situação</th><th>Verificação</th></tr></thead><tbody>${linhas}</tbody></table>`,
+    { acao:_finBtnCSV('fin-tb-parfech','fechamento-do-mes'), selo:'derivado',
+      hint:'O status NÃO é marcação manual: cada etapa é verificada nos próprios dados (conciliação pendente, título vencido em aberto, DRE e balanço montados). Não dá para marcar como pronto o que não está.' })
+    +_finNota('A etapa de <b>inventário e custo médio</b> fica permanentemente pendente no protótipo porque o estoque vem de uma foto única do ERP, sem fechamento por mês. É a principal limitação do balanço gerencial daqui.');
+}
+
+// ── meus registros ──
+function _finParDadosHTML(D){
+  const U=D.U, cont=[
+    ['Baixas registradas', Object.keys(U.baixas).length, 'recebimentos e pagamentos lançados por você', 'receber'],
+    ['Ações de cobrança', Object.keys(U.cobranca).length, 'contatos, promessas e acordos', 'cobranca'],
+    ['Aprovações de pagamento', Object.keys(U.aprov).length, 'aprovado, agendado ou reprovado', 'pagar'],
+    ['Decisões de crédito', Object.keys(U.cred).length, 'liberações e bloqueios manuais', 'clientes'],
+    ['Conciliações', Object.keys(U.concil).length, 'lançamentos conciliados ou lançados', 'bancos'],
+  ];
+  const total=cont.reduce(function(a,x){ return a+x[1]; },0);
+  return _finGrid(2,[
+    _finCard('O que você registrou neste aparelho', `<table class="cp-tbl"><thead><tr><th>Tipo</th><th class="r">Registros</th><th></th></tr></thead><tbody>
+      ${cont.map(function(x){ return `<tr><td class="cp-item">${_finE(x[0])} ${_hint(x[2])}</td><td class="cp-n" style="font-weight:700">${x[1]||'—'}</td>
+        <td class="fin-noexp"><button class="fin-ico" title="Ir para a tela" onclick="_finIr('${x[3]}')"><i class="ti ti-arrow-right"></i></button></td></tr>`; }).join('')}
+      <tr class="fin-tot"><td>Total</td><td class="cp-n">${total}</td><td></td></tr></tbody></table>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="fin-btn no" onclick="_finResetUsuario()"><i class="ti ti-trash"></i>Limpar meus registros</button></div>`,
+      { hint:'Suas ações ficam separadas dos dados de exemplo: o app recalcula tudo aplicando o que você registrou por cima da base. Limpar devolve a base ao estado original, sem apagar mais nada.' }),
+    _finCard('Como a área está montada', `<div style="font-size:12.5px;color:var(--text2);display:flex;flex-direction:column;gap:9px">
+      <div><b>1. Dados</b> — uma função monta a base do dia (títulos, bancos, contratos) misturando o que é real do ERP com o exemplo determinístico.</div>
+      <div><b>2. Cálculo</b> — funções puras e memoizadas produzem cada indicador, sempre da mesma forma. Nenhuma tela calcula por conta própria.</div>
+      <div><b>3. Telas</b> — só montam HTML a partir do cálculo. <b>Nenhuma tela grava</b>: quem grava são as ações (baixa, cobrança, aprovação, crédito, conciliação).</div>
+      <div><b>4. Datas-base</b> — indicadores de posição usam <b>${_finDtBR(D.hoje)}</b>; resultado e balanço usam o <b>último mês fechado (${_finMesLbl(_finM(D))})</b>. Todo cabeçalho diz qual das duas está em uso.</div></div>`,
+      { selo:'derivado' }),
+  ])+_finCard('Limites conhecidos deste protótipo', `<table class="cp-tbl"><thead><tr><th style="min-width:230px">Limitação</th><th>Efeito</th><th>O que resolve</th></tr></thead><tbody>
+    <tr><td class="cp-item">Estoque é foto única</td><td>Variação de estoque entre meses fica zero; o CPV usa consumo estimado.</td><td>Export de posição de estoque por mês.</td></tr>
+    <tr><td class="cp-item">Sem razão contábil</td><td>O patrimônio líquido do balanço é fechado por diferença e o imobilizado é estimado.</td><td>Integração com a contabilidade (ECD).</td></tr>
+    <tr><td class="cp-item">Faturamento é exemplo</td><td>Receita, clientes e títulos a receber são gerados, não vêm do ERP.</td><td>Export de notas de venda e do cadastro de clientes.</td></tr>
+    <tr><td class="cp-item">Sem custo por produto</td><td>A margem por canal é rateada pela receita, não calculada por SKU.</td><td>Ficha técnica e custo por produto.</td></tr>
+    <tr><td class="cp-item">Prazo de pagamento simulado</td><td>O vencimento das notas de compra é estimado — o export não traz a condição de pagamento.</td><td>Campo de condição de pagamento no export de compras.</td></tr></tbody></table>`,
+    { hint:'Lista honesta do que não dá para afirmar com os dados de hoje. Cada linha vira um pedido concreto para a TI.' })
+    +_finNota('Todo número desta área é <b>gerencial</b>: serve para decidir, não para declarar. O oficial continua sendo o que a contabilidade fecha.');
 }
 // ════ FIM DO BLOCO FINANCEIRO ════
 
