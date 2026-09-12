@@ -14753,6 +14753,166 @@ function _finRefresh_painel(){
   if(!ok) renderFinanceiro();
 }
 
+// ── fin_scr_fluxo.js ──
+// ─── FINANCEIRO › FLUXO DE CAIXA ───
+// Projeção comportamental (13 semanas, 12 meses e dia a dia), fluxo realizado pelo método direto,
+// comparação de cenários e acurácia da previsão. Tudo sai do motor diário único (_finProjDiaria),
+// então semana, mês e dia somam exatamente o mesmo dinheiro.
+function _finFlxCen(){ return _finGetF('fluxo','cenario','base'); }
+function _finFlxSetCen(v){ _finSetF('fluxo','cenario',v); }
+function _finFlxEhEnt(g){ return FIN_PROJ_ENTRADAS.indexOf(g)>=0; }
+function _finFlxCel(v){ if(!v||Math.abs(v)<0.5) return '<td class="cp-n" style="color:var(--text3)">—</td>';
+  return `<td class="cp-n" style="color:${v>0?'var(--success)':'var(--danger)'}">${_finK(v)}</td>`; }
+function _finFlxDow(iso){ const p=String(iso).slice(0,10).split('-'); return ['dom','seg','ter','qua','qui','sex','sáb'][new Date(+p[0],+p[1]-1,+p[2]).getDay()]; }
+
+function _finTela_fluxo(){
+  const D=_finData(), cen=_finFlxCen(), P=_finProjecao(D,cen), B=_finBancos(D);
+  const sub=_finSubGet('fluxo','semanas'), fim=P.semanas[P.semanas.length-1];
+  const acao=_finSeg([['base','Base'],['conservador','Conservador'],['otimista','Otimista']], cen, '_finFlxSetCen');
+  const kpis=_finKPIs([
+    { rot:'Caixa livre hoje', def:'caixaLivre', val:_finK(B.caixaLivre), sub:`${_finK(B.saldoContas)} em contas · ${_finK(B.saldoAplicacoes)} aplicado` },
+    { rot:'Liquidez total', val:_finK(B.liquidezTotal), sub:`com ${_finK(B.limitesDisponiveis)} de limites não usados` },
+    { rot:'Entradas · 13 semanas', val:_finK(P.entradas), cor:'var(--success)', sub:'recebimento previsto pelo comportamento do cliente' },
+    { rot:'Saídas · 13 semanas', val:_finK(P.saidas), cor:'var(--danger)', sub:'contas em aberto + compras e despesas estimadas' },
+    { rot:'Saldo em '+_finDtBR(P.ultimo), val:_finK(fim.saldoFim), cor:fim.saldoFim<FIN_PARAM.caixaMinimo?'var(--danger)':'var(--success)', sub:`líquido de ${_finK(P.entradas-P.saidas)} no período` },
+    { rot:'Menor saldo projetado', def:'menorSaldo', val:_finK(P.minimo.valor), cor:P.minimo.valor<FIN_PARAM.caixaMinimo?'var(--danger)':null, sub:'em '+_finDtBR(P.minimo.data)+' · mínimo '+_finK(FIN_PARAM.caixaMinimo), hint:'O pior dia das 13 semanas, não o saldo do fim. É esse número que decide se falta dinheiro.' },
+    { rot:'Necessidade de caixa', val:P.necessidade>0?_finK(P.necessidade):'—', cor:P.necessidade>0?'var(--danger)':'var(--success)', hint:'Quanto falta para o saldo não furar o caixa mínimo em nenhum dia das 13 semanas. Zero = a projeção se sustenta.', sub:P.necessidade>0?'captação ou antecipação necessária':'não fura o caixa mínimo' },
+  ]);
+  const abas=[['semanas','ti-calendar','13 semanas'],['mensal','ti-chart-bar','12 meses'],['diario','ti-chart-line','Dia a dia'],['realizado','ti-history','Realizado'],['cenarios','ti-adjustments','Cenários'],['acuracia','ti-target-arrow','Acurácia']];
+  let corpo='';
+  if(sub==='mensal') corpo=_finFlxMensalHTML(D,cen);
+  else if(sub==='diario') corpo=_finFlxDiarioHTML(D,cen);
+  else if(sub==='realizado') corpo=_finFlxRealizadoHTML(D);
+  else if(sub==='cenarios') corpo=_finFlxCenariosHTML(D,cen);
+  else if(sub==='acuracia') corpo=_finFlxAcuraciaHTML(D);
+  else corpo=_finFlxSemanasHTML(D,cen,P);
+  return _finTela('Fluxo de caixa','Quanto entra, quanto sai e quando o caixa aperta — projetado pelo comportamento de pagamento de cada cliente.',
+    kpis+_finSubnav('fluxo',abas,'semanas')+corpo, acao, null, {base:'D0', selo:'misto'});
+}
+
+// ── 13 semanas ──
+function _finFlxSemanasHTML(D, cen, P){
+  const W=P.semanas, ent=P.grupos.filter(_finFlxEhEnt), sai=P.grupos.filter(function(g){ return !_finFlxEhEnt(g); });
+  const som=function(g){ return W.reduce(function(a,w){ return a+(w.grupos[g]||0); },0); };
+  const cab=`<tr><th style="min-width:210px">Linha</th>${W.map(w=>`<th class="r" title="${escapeAttr(_finDtBR(w.ini)+' a '+_finDtBR(w.fim))}">${_finE(w.lbl)}</th>`).join('')}<th class="r">Total</th></tr>`;
+  const linha=function(g){ return `<tr><td class="fin-l2">${_finE(g)}</td>${W.map(w=>_finFlxCel(w.grupos[g]||0)).join('')}<td class="cp-n" style="font-weight:700;color:${som(g)>0?'var(--success)':'var(--danger)'}">${_finK(som(g))}</td></tr>`; };
+  const corpo=`<div class="fin-scroll cp-noscroll"><table class="cp-tbl cp-tbl-sm" id="fin-tb-flx13"><thead>${cab}</thead><tbody>
+    <tr class="fin-sub"><td>Saldo inicial</td>${W.map(w=>`<td class="cp-n">${_finK(w.saldoIni)}</td>`).join('')}<td class="cp-n">${_finK(W[0].saldoIni)}</td></tr>
+    <tr class="fin-sub"><td>Entradas</td>${W.map(w=>`<td class="cp-n" style="color:var(--success)">${_finK(w.entradas)}</td>`).join('')}<td class="cp-n" style="color:var(--success)">${_finK(P.entradas)}</td></tr>
+    ${ent.map(linha).join('')}
+    <tr class="fin-sub"><td>Saídas</td>${W.map(w=>`<td class="cp-n" style="color:var(--danger)">${_finK(-w.saidas)}</td>`).join('')}<td class="cp-n" style="color:var(--danger)">${_finK(-P.saidas)}</td></tr>
+    ${sai.map(linha).join('')}
+    <tr class="fin-dest"><td>Líquido da semana</td>${W.map(w=>`<td class="cp-n" style="color:${w.liquido>=0?'var(--success)':'var(--danger)'}">${_finK(w.liquido)}</td>`).join('')}<td class="cp-n">${_finK(P.entradas-P.saidas)}</td></tr>
+    <tr class="fin-tot"><td>Saldo final</td>${W.map(w=>`<td class="cp-n" style="color:${w.abaixoMin?'var(--danger)':'var(--text)'}">${_finK(w.saldoFim)}</td>`).join('')}<td class="cp-n">${_finK(W[W.length-1].saldoFim)}</td></tr>
+    <tr><td style="color:var(--text3)">Folga sobre o caixa mínimo <span class="cp-hsub">(pior dia da semana)</span></td>${W.map(w=>`<td class="cp-n" style="${_finHeat(w.folga/Math.max(1,FIN_PARAM.caixaMinimo)*100,120,true)};color:${w.folga<0?'var(--danger)':'var(--text2)'}">${_finK(w.folga)}</td>`).join('')}<td></td></tr>
+  </tbody></table></div>`;
+  const PD=_finProjDiaria(D,cen), curva=PD.dias.slice(0,92).map(d=>({ lbl:_cpDt(d.iso).slice(0,5), saldo:d.saldo }));
+  const alerta=P.primeiroAbaixo?`<div class="fin-alert"><i class="ti ti-alert-triangle"></i><div><b>O caixa fura o mínimo em ${_finDtBR(P.primeiroAbaixo.iso)}</b> — saldo projetado de ${_finMoeda(P.primeiroAbaixo.saldo)} contra o mínimo de ${_finMoeda(FIN_PARAM.caixaMinimo)}. Faltam ${_finMoeda(P.necessidade)} para atravessar as 13 semanas.<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button class="fin-btn mini" onclick="_finIr('cobranca')"><i class="ti ti-phone-call"></i>Acelerar cobrança</button><button class="fin-btn mini" onclick="_finIr('pagar');_finSetSub('pagar','simulador')"><i class="ti ti-adjustments"></i>Simular corte de pagamentos</button><button class="fin-btn mini" onclick="_finIr('endividamento');_finSetSub('endividamento','captacao')"><i class="ti ti-building-bank"></i>Simular captação</button></div></div></div>`:'';
+  return alerta+_finCard('Saldo diário projetado — próximos 91 dias',
+      _finLinhas(curva,[{campo:'saldo',rot:'Saldo projetado',cor:'var(--blue-mid)',area:true,pontos:false}],{ h:215, fmt:_finK, ref:{ v:FIN_PARAM.caixaMinimo, rot:'caixa mínimo' } }),
+      { sub:'cenário '+_finE(FIN_CENARIOS[cen].rot), selo:'derivado', hint:FIN_CENARIOS[cen].desc })
+    +_finCard('Projeção semanal por natureza', corpo, { acao:_finBtnCSV('fin-tb-flx13','fluxo-13-semanas') })
+    +_finNota('Entradas são o saldo de cada título deslocado pelo <b>atraso médio de 12 meses daquele cliente</b> (prazo médio de '+_finDd(P.pmr)+') e, nos vencidos, líquido da perda esperada da faixa de PDD. Duplicatas descontadas <b>não entram</b> — aquele dinheiro já foi creditado pelo banco. Saídas são as contas em aberto mais as compras ainda não lançadas (a partir de '+_finDtBR(P.ultNF)+', pagas em '+_finDd(P.pmp)+').');
+}
+
+// ── 12 meses ──
+function _finFlxMensalHTML(D, cen){
+  const M=_finProjecaoMensal(D,cen), gs={};
+  M.forEach(function(m){ Object.keys(m.grupos).forEach(function(g){ gs[g]=(gs[g]||0)+Math.abs(m.grupos[g]); }); });
+  const grupos=Object.keys(gs).sort(function(a,b){ return (_finFlxEhEnt(b)?1:0)-(_finFlxEhEnt(a)?1:0) || gs[b]-gs[a]; });
+  const som=function(g){ return M.reduce(function(a,m){ return a+(m.grupos[g]||0); },0); };
+  const linhas=grupos.map(g=>`<tr><td class="fin-l2">${_finE(g)}</td>${M.map(m=>_finFlxCel(m.grupos[g]||0)).join('')}<td class="cp-n" style="font-weight:700">${_finK(som(g))}</td></tr>`).join('');
+  return _finCard('Saldo projetado por mês', _finColunas(M.map(m=>({ lbl:m.lbl+(m.parcial?'*':''), parcial:m.parcial, ent:m.entradas, sai:-m.saidas, saldo:m.saldoFim })),
+      [{campo:'ent',rot:'Entradas',cor:'var(--success)'},{campo:'sai',rot:'Saídas',cor:'var(--danger)'}],
+      { h:230, fmt:_finK, linhas:[{campo:'saldo',rot:'Saldo no fim do mês',cor:'var(--blue-mid)'}], ref:{ v:FIN_PARAM.caixaMinimo, rot:'caixa mínimo' } }),
+      { sub:'* mês em curso (só de hoje em diante) · cenário '+_finE(FIN_CENARIOS[cen].rot), selo:'derivado' })
+    +_finCard('Projeção mensal por natureza', `<div class="fin-scroll cp-noscroll"><table class="cp-tbl cp-tbl-sm" id="fin-tb-flxmes"><thead><tr><th style="min-width:210px">Linha</th>${M.map(m=>`<th class="r">${_finE(m.lbl)}${m.parcial?'*':''}</th>`).join('')}<th class="r">Total</th></tr></thead><tbody>
+      <tr class="fin-sub"><td>Saldo inicial</td>${M.map(m=>`<td class="cp-n">${_finK(m.saldoIni)}</td>`).join('')}<td class="cp-n">${_finK(M[0].saldoIni)}</td></tr>
+      ${linhas}
+      <tr class="fin-dest"><td>Líquido do mês</td>${M.map(m=>`<td class="cp-n" style="color:${m.liquido>=0?'var(--success)':'var(--danger)'}">${_finK(m.liquido)}</td>`).join('')}<td class="cp-n">${_finK(M.reduce(function(a,m){ return a+m.liquido; },0))}</td></tr>
+      <tr class="fin-tot"><td>Saldo final</td>${M.map(m=>`<td class="cp-n" style="color:${m.abaixoMin?'var(--danger)':'var(--text)'}">${_finK(m.saldoFim)}</td>`).join('')}<td class="cp-n">${_finK(M[M.length-1].saldoFim)}</td></tr>
+    </tbody></table></div>`, { acao:_finBtnCSV('fin-tb-flxmes','fluxo-12-meses') })
+    +_finNota('Quanto mais longe, mais o número vem de estimativa (vendas pela média sazonal, compras pelo prazo médio de pagamento) e menos de título já emitido. Para decidir pagamento, use as 13 semanas.');
+}
+
+// ── dia a dia ──
+function _finFlxDiarioHTML(D, cen){
+  const PD=_finProjDiaria(D,cen), dias=PD.dias.slice(0,61);
+  const comMov=dias.filter(function(d){ return d.ent>0.5 || d.sai>0.5; });
+  const criticos=dias.filter(function(d){ return d.saldo<FIN_PARAM.caixaMinimo; });
+  const rows=comMov.map(function(d){ const gs=Object.keys(d.grupos).sort(function(a,b){ return Math.abs(d.grupos[b])-Math.abs(d.grupos[a]); }).slice(0,3);
+    return `<tr${d.saldo<FIN_PARAM.caixaMinimo?' class="fin-alerta"':''}><td class="cp-mono">${_finDtBR(d.iso)}</td><td style="color:var(--text3)">${_finFlxDow(d.iso)}</td>
+      <td class="cp-n" style="color:var(--success)">${d.ent>0.5?_finMoeda(d.ent):'—'}</td><td class="cp-n" style="color:var(--danger)">${d.sai>0.5?_finMoeda(d.sai):'—'}</td>
+      <td class="cp-n" style="font-weight:600;color:${(d.ent-d.sai)>=0?'var(--success)':'var(--danger)'}">${_finMoeda(d.ent-d.sai)}</td>
+      <td class="cp-n" style="font-weight:700;color:${d.saldo<FIN_PARAM.caixaMinimo?'var(--danger)':'var(--text)'}">${_finMoeda(d.saldo)}</td>
+      <td style="color:var(--text3);font-size:11.5px">${gs.map(g=>_finE(g)+' '+_finKs(d.grupos[g])).join(' · ')}</td></tr>`; }).join('');
+  return _finGrid(2,[
+    _finCard('Movimento diário líquido — 60 dias', _finBarrasSinal(dias.map(d=>({ lbl:_cpDt(d.iso).slice(0,5), v:d.ent-d.sai })),'v',{ h:190, rot:'Entradas − saídas do dia', fmt:_finMoeda }), { sub:'verde = entra mais do que sai naquele dia' }),
+    _finCard('Dias abaixo do caixa mínimo', criticos.length
+      ? `<div class="fin-scroll-y cp-noscroll" style="max-height:210px"><table class="cp-tbl cp-tbl-sm"><thead><tr><th>Data</th><th class="r">Saldo</th><th class="r">Falta</th></tr></thead><tbody>${criticos.slice(0,40).map(d=>`<tr><td class="cp-mono">${_finDtBR(d.iso)}</td><td class="cp-n" style="color:var(--danger)">${_finMoeda(d.saldo)}</td><td class="cp-n">${_finMoeda(FIN_PARAM.caixaMinimo-d.saldo)}</td></tr>`).join('')}</tbody></table></div>`
+      : _cpVazio('Nenhum dia abaixo do caixa mínimo de '+_cpBRL(FIN_PARAM.caixaMinimo)+' nos próximos 60 dias.'), { sub:criticos.length?criticos.length+' dias nos próximos 60':'' }),
+  ])+_finCard('Agenda de caixa — próximos 60 dias',
+    `<div class="fin-scroll fin-scroll-y cp-noscroll"><table class="cp-tbl" id="fin-tb-flxdia"><thead><tr><th>Data</th><th>Dia</th><th class="r">Entradas</th><th class="r">Saídas</th><th class="r">Líquido</th><th class="r">Saldo</th><th>Principais naturezas</th></tr></thead>
+    <tbody>${rows||`<tr><td colspan="7">${_cpVazio('Sem movimento projetado nos próximos 60 dias.')}</td></tr>`}</tbody></table></div>`,
+    { acao:_finBtnCSV('fin-tb-flxdia','fluxo-diario'), hint:'Só os dias com movimento previsto. Linha em vermelho = saldo do dia abaixo do caixa mínimo.' });
+}
+
+// ── realizado ──
+function _finFlxRealizadoHTML(D){
+  const F=_finFluxoRealizado(D), M=F.slice(-12), gs=FIN_FLUXO_ORDEM.filter(function(g){ return M.some(function(m){ return Math.abs(m.grupos[g]||0)>0.5; }); });
+  const som=function(g){ return M.reduce(function(a,m){ return a+(m.grupos[g]||0); },0); };
+  const linhas=gs.map(g=>`<tr><td class="fin-l2">${_finE(g)}</td>${M.map(m=>_finFlxCel(m.grupos[g]||0)).join('')}<td class="cp-n" style="font-weight:700">${_finK(som(g))}</td></tr>`).join('');
+  const ativ=['Operacional','Investimento','Financiamento'];
+  return _finCard('Geração de caixa por mês', _finColunas(M.map(m=>({ lbl:m.lbl+(m.parcial?'*':''), parcial:m.parcial, op:m.atividades.Operacional, inv:m.atividades.Investimento, fin:m.atividades.Financiamento, saldo:m.saldoFim })),
+      [{campo:'op',rot:'Operacional',cor:'var(--blue-mid)'},{campo:'inv',rot:'Investimento',cor:'var(--purple)'},{campo:'fin',rot:'Financiamento',cor:'var(--amber)'}],
+      { h:230, empilhado:true, fmt:_finK, linhas:[{campo:'saldo',rot:'Saldo no fim do mês',cor:'var(--success)'}] }),
+      { sub:'* mês em curso · o caixa que a operação gerou, o que foi investido e o que veio (ou saiu) de financiamento', selo:'exemplo' })
+    +_finCard('Fluxo de caixa realizado — método direto', `<div class="fin-scroll cp-noscroll"><table class="cp-tbl cp-tbl-sm" id="fin-tb-flxreal"><thead><tr><th style="min-width:210px">Linha</th>${M.map(m=>`<th class="r">${_finE(m.lbl)}${m.parcial?'*':''}</th>`).join('')}<th class="r">12 meses</th></tr></thead><tbody>
+      <tr class="fin-sub"><td>Saldo inicial</td>${M.map(m=>`<td class="cp-n">${_finK(m.saldoIni)}</td>`).join('')}<td class="cp-n">${_finK(M[0].saldoIni)}</td></tr>
+      ${linhas}
+      ${ativ.map(a=>`<tr class="fin-sub"><td>${a}</td>${M.map(m=>_finFlxCel(m.atividades[a])).join('')}<td class="cp-n" style="font-weight:700">${_finK(M.reduce(function(x,m){ return x+m.atividades[a]; },0))}</td></tr>`).join('')}
+      <tr class="fin-dest"><td>Geração líquida de caixa</td>${M.map(m=>`<td class="cp-n" style="color:${m.liquido>=0?'var(--success)':'var(--danger)'}">${_finK(m.liquido)}</td>`).join('')}<td class="cp-n">${_finK(M.reduce(function(a,m){ return a+m.liquido; },0))}</td></tr>
+      <tr class="fin-tot"><td>Saldo final</td>${M.map(m=>`<td class="cp-n">${_finK(m.saldoFim)}</td>`).join('')}<td class="cp-n">${_finK(M[M.length-1].saldoFim)}</td></tr>
+    </tbody></table></div>`, { acao:_finBtnCSV('fin-tb-flxreal','fluxo-realizado'), hint:'Método direto: soma o que de fato entrou e saiu da conta, por natureza. A ponte entre o lucro do DRE e este caixa está em DRE gerencial.' })
+    +_finNota('O mês em curso vai só até '+_finDtBR(D.hoje)+' — não compare com mês fechado sem lembrar disso.');
+}
+
+// ── cenários ──
+function _finFlxCenariosHTML(D, cen){
+  const cks=['base','conservador','otimista'], Ps=cks.map(k=>({ k:k, P:_finProjecao(D,k) }));
+  const cores={ base:'var(--blue-mid)', conservador:'var(--danger)', otimista:'var(--success)' };
+  const serie=Ps[0].P.semanas.map(function(w,i){ const o={ lbl:w.lbl }; Ps.forEach(function(p){ o[p.k]=p.P.semanas[i].saldoFim; }); return o; });
+  const linhas=Ps.map(p=>({ campo:p.k, rot:FIN_CENARIOS[p.k].rot, cor:cores[p.k], tracejado:p.k!==cen }));
+  const tab=`<table class="cp-tbl"><thead><tr><th>Cenário</th><th class="r">Entradas</th><th class="r">Saídas</th><th class="r">Líquido</th><th class="r">Saldo em ${_finDtBR(Ps[0].P.ultimo)}</th><th class="r">Menor saldo</th><th>Quando</th><th class="r">Necessidade</th></tr></thead><tbody>
+    ${Ps.map(p=>`<tr class="cp-clic${p.k===cen?' fin-dest':''}" onclick="_finFlxSetCen('${p.k}')"><td class="cp-item">${_finE(FIN_CENARIOS[p.k].rot)}${p.k===cen?' '+_finPill('em uso','var(--blue-mid)'):''}</td>
+      <td class="cp-n">${_finK(p.P.entradas)}</td><td class="cp-n">${_finK(p.P.saidas)}</td><td class="cp-n" style="color:${p.P.entradas-p.P.saidas>=0?'var(--success)':'var(--danger)'}">${_finK(p.P.entradas-p.P.saidas)}</td>
+      <td class="cp-n" style="font-weight:700">${_finK(p.P.semanas[12].saldoFim)}</td>
+      <td class="cp-n" style="color:${p.P.minimo.valor<FIN_PARAM.caixaMinimo?'var(--danger)':'var(--text)'}">${_finK(p.P.minimo.valor)}</td><td class="cp-mono">${_finDtBR(p.P.minimo.data)}</td>
+      <td class="cp-n" style="color:${p.P.necessidade>0?'var(--danger)':'var(--success)'}">${p.P.necessidade>0?_finK(p.P.necessidade):'—'}</td></tr>`).join('')}
+  </tbody></table>`;
+  const prem=`<div class="fin-lista-kv">${cks.map(k=>`<div><span>${_finE(FIN_CENARIOS[k].rot)}</span><b style="font-weight:400;color:var(--text2);text-align:left">${_finE(FIN_CENARIOS[k].desc)}</b></div>`).join('')}</div>`;
+  return _finCard('Saldo ao fim de cada semana nos três cenários', _finLinhas(serie,linhas,{ h:235, fmt:_finK, ref:{ v:FIN_PARAM.caixaMinimo, rot:'caixa mínimo' } }), { sub:'linha cheia = cenário em uso · clique na tabela para trocar', selo:'derivado' })
+    +_finGrid(2,[ _finCard('Comparação', tab), _finCard('O que muda em cada cenário', prem, { hint:'Os três usam o mesmo motor diário; muda só a premissa de atraso, de perda e de vendas.' }) ])
+    +_finNota('No cenário base a perda esperada dos vencidos é exatamente a <b>PDD da faixa</b> — projeção e provisão não podem contar histórias diferentes. O conservador usa 1,5× essa perda; o otimista, 0,7×.');
+}
+
+// ── acurácia ──
+function _finFlxAcuraciaHTML(D){
+  const A=_finAcuracia(D);
+  const linhas=A.semanas.map(s=>`<tr><td class="cp-mono">${_finDtBR(s.ini)}</td><td class="cp-mono" style="color:var(--text3)">${_finDtBR(s.fim)}</td>
+    <td class="cp-n">${_finMoeda(s.prevEnt)}</td><td class="cp-n">${_finMoeda(s.realEnt)}</td><td class="cp-n" style="${_finHeat(s.desvEnt/Math.max(1,s.prevEnt)*100,30,true)}">${_finMoeda(s.desvEnt)}</td><td class="cp-n" style="font-weight:600">${_finPc(s.acEnt,0)}</td>
+    <td class="cp-n">${_finMoeda(s.prevSai)}</td><td class="cp-n">${_finMoeda(s.realSai)}</td><td class="cp-n" style="${_finHeat(s.desvSai/Math.max(1,s.prevSai)*100,30,false)}">${_finMoeda(s.desvSai)}</td><td class="cp-n" style="font-weight:600">${_finPc(s.acSai,0)}</td></tr>`).join('');
+  return _finKPIs([
+    { rot:'Acurácia das entradas', def:'acuracia', val:_finPc(A.acEnt,0), cor:A.acEnt>=85?'var(--success)':(A.acEnt>=70?'var(--amber)':'var(--danger)'), sub:'média das 8 últimas semanas fechadas', hint:'100% menos o desvio percentual entre o previsto pelo vencimento e o que de fato entrou.' },
+    { rot:'Acurácia das saídas', val:_finPc(A.acSai,0), cor:A.acSai>=85?'var(--success)':(A.acSai>=70?'var(--amber)':'var(--danger)'), sub:'média das 8 últimas semanas fechadas' },
+  ])+_finCard('Previsto × realizado — últimas 8 semanas', `<div class="fin-scroll cp-noscroll"><table class="cp-tbl" id="fin-tb-flxac"><thead>
+      <tr><th>Semana</th><th>até</th><th class="r">Entradas previstas</th><th class="r">Entradas reais</th><th class="r">Desvio</th><th class="r">Acurácia</th><th class="r">Saídas previstas</th><th class="r">Saídas reais</th><th class="r">Desvio</th><th class="r">Acurácia</th></tr></thead>
+      <tbody>${linhas}</tbody></table></div>`,
+      { acao:_finBtnCSV('fin-tb-flxac','acuracia-fluxo'), hint:'O previsto aqui é o CONTRATUAL (saldo a vencer na semana, visto na véspera), não o comportamental — é assim que se mede o quanto o cliente atrasa.' })
+    +_finCard('Desvio das entradas por semana', _finBarrasSinal(A.semanas.map(s=>({ lbl:s.lbl, v:s.desvEnt })),'v',{ h:180, rot:'Realizado − previsto', fmt:_finMoeda }), { sub:'abaixo de zero = entrou menos do que venceu na semana' })
+    +_finNota('As entradas quase sempre ficam abaixo do contratual — é o atraso médio dos clientes. Por isso a projeção das 13 semanas não usa o vencimento puro, e sim o comportamento de pagamento de cada um.');
+}
+
 // ── fin_scr_bancos.js ──
 // ─── FINANCEIRO › BANCOS E CONCILIAÇÃO ───
 // Tesouraria diária: onde está o dinheiro (contas, aplicações, bloqueios), extrato por conta, pendências de
@@ -15282,6 +15442,476 @@ function _finRecGraficosHTML(D, C){
       _finCard('Composição da carteira', _finEmpilhada([{rot:'A vencer',v:C.totalAvencer-C.descontados.filter(t=>t.diasVenc<=0).reduce((a,t)=>a+t.saldo,0),cor:'var(--blue-mid)'},{rot:'Descontada',v:C.totalDescontado,cor:'var(--purple)'},{rot:'Vencido até 30 d',v:C.totalVencido-_finInad(D).vencido30,cor:'var(--amber)'},{rot:'Vencido > 30 d',v:_finInad(D).vencido30,cor:'var(--danger)'}],{h:18})),
       _finCard('Top 10 clientes por saldo', _finBarrasH(topCli,{ colRot:'44%' }), { sub:'âmbar = com vencido' }),
     ]);
+}
+
+// ── fin_scr_cobranca.js ──
+// ─── FINANCEIRO › CRÉDITO E COBRANÇA ───
+// Fila priorizada de quem cobrar hoje, régua, aging e PDD, promessas, histórico de contatos e
+// qualidade da carteira (roll rate, safras, recuperação). Ação de cobrança e de crédito saem daqui.
+function _finCobEtapaPill(e){ if(!e) return '<span style="color:var(--text3)">—</span>';
+  const c=e.dias>=90?'var(--danger)':(e.dias>=45?'var(--purple)':(e.dias>=30?'var(--amber)':'var(--blue-mid)'));
+  return _finPill(_finE(e.etapa), c, e.acao+' · '+e.canal+' · '+e.resp); }
+
+function _finTela_cobranca(){
+  const D=_finData(), C=_finCarteira(D), I=_finInad(D), R=_finRecuperacao(D), PR=_finPromessas(D), F=_finFilaCobranca(D);
+  const sub=_finSubGet('cobranca','fila');
+  const cobradores=[['todos','Todos os cobradores']].concat([...new Set(D.clientes.map(c=>c.cobrador))].sort().map(c=>[c,c]));
+  const filtros=_finFSelect('cobranca','cobrador','Responsável',cobradores)
+    +_finFChips('cobranca','faixa','Atraso',[['todos','Todos'],['1','1–30 d'],['31','31–60 d'],['61','61–90 d'],['91','> 90 d']])
+    +_finFChips('cobranca','sit','Situação',[['todos','Todas'],['promessa','Com promessa'],['quebrada','Promessa quebrada'],['semcontato','Sem contato']]);
+  const acao=_finPeriodo('cobranca',FIN_PERIODOS,'90','Histórico')+_finFiltros('cobranca',filtros,_finNFiltros('cobranca',['periodo']))+_finLupa('cobranca','Cliente, grupo ou NF…');
+  const kpis=_finKPIs([
+    { rot:'Vencido total', val:_finK(C.totalVencido), cor:'var(--danger)', sub:C.vencidos.length+' títulos · atraso médio '+_finDd(I.atrasoMedioCarteira,0) },
+    { rot:'Inadimplência > 30 d', def:'inad30', val:_finPc(I.idx30), cor:I.idx30>FIN_PARAM.metas.inad30?'var(--danger)':'var(--success)', sub:_finK(I.vencido30)+' · meta '+_finPc(FIN_PARAM.metas.inad30) },
+    { rot:'Inadimplência > 90 d', def:'inad90', val:_finPc(I.idx90), cor:I.idx90>FIN_PARAM.metas.inad90?'var(--danger)':'var(--success)', sub:_finK(I.vencido90)+' · meta '+_finPc(FIN_PARAM.metas.inad90) },
+    { rot:'PDD gerencial', def:'pdd', val:_finK(I.pdd), sub:'mês anterior '+_finK(I.pddMesAnt)+' · '+_finVarPill(_finPct(I.pdd-I.pddMesAnt,Math.max(1,I.pddMesAnt)),false,0) },
+    { rot:'Taxa de recuperação', def:'recuperacao', val:_finPc(R.pct), cor:R.pct>=50?'var(--success)':'var(--amber)', sub:'do vencido > 30 d recuperado em 90 dias' },
+    { rot:'Promessas em aberto', def:'promessas', val:_finK(PR.valorAberto), sub:PR.abertas.length+' promessas · '+PR.quebradas.length+' quebradas ('+_finK(PR.valorQuebrado)+')', cor:PR.quebradas.length?'var(--amber)':null },
+    { rot:'Clientes na fila', val:String(F.length), sub:'com pelo menos um título vencido' },
+  ]);
+  const abas=[['fila','ti-phone-call','Fila de cobrança',F.length],['regua','ti-list-details','Régua'],['aging','ti-chart-bar','Aging e PDD'],['promessas','ti-gavel','Promessas',PR.abertas.length],['historico','ti-history','Histórico'],['qualidade','ti-shield-check','Qualidade da carteira']];
+  let corpo='';
+  if(sub==='regua') corpo=_finCobReguaHTML(D,C);
+  else if(sub==='aging') corpo=_finCobAgingHTML(D,C,I);
+  else if(sub==='promessas') corpo=_finCobPromessasHTML(D,PR);
+  else if(sub==='historico') corpo=_finCobHistHTML(D);
+  else if(sub==='qualidade') corpo=_finCobQualidadeHTML(D,R);
+  else corpo=_finCobFilaHTML(D);
+  return _finTela('Crédito e cobrança','Quem cobrar primeiro, em que etapa da régua cada um está e quanto da carteira vencida costuma voltar.',
+    kpis+_finSubnav('cobranca',abas,'fila')+corpo, acao, null, {base:'D0', selo:'exemplo'});
+}
+
+// ── fila ──
+function _finCobFilaRows(D){
+  const q=_finBuscaQ('cobranca'), cob=_finGetF('cobranca','cobrador','todos'), fx=_finGetF('cobranca','faixa','todos'), sit=_finGetF('cobranca','sit','todos');
+  return _finFilaCobranca(D).filter(function(f){
+    if(cob!=='todos' && f.resp!==cob) return false;
+    if(fx!=='todos'){ const d=f.dias; if(fx==='1' && !(d>=1&&d<=30)) return false; if(fx==='31' && !(d>=31&&d<=60)) return false;
+      if(fx==='61' && !(d>=61&&d<=90)) return false; if(fx==='91' && !(d>90)) return false; }
+    if(sit==='promessa' && !f.promessa) return false;
+    if(sit==='quebrada' && !(f.promessa && f.promessa.quebrada)) return false;
+    if(sit==='semcontato' && f.ultAcao) return false;
+    return _finMatch(q, f.cli.nome, f.cli.grupo, f.cli.cidade);
+  });
+}
+function _finCobFilaTbody(D, rows){
+  if(!rows.length) return `<tr><td colspan="11">${_cpVazio('Nenhum cliente nesse filtro — carteira em dia por aqui.')}</td></tr>`;
+  return rows.slice(0,400).map(function(f){
+    return `<tr class="cp-clic${f.dias>90?' fin-alerta':(f.dias>30?' fin-atencao':'')}" onclick="_finAbrirCliente('${_cpJs(f.cod)}')">
+      <td class="cp-n" style="color:var(--text3)">${f.ordem}</td>
+      <td class="cp-item" title="${escapeAttr(f.cli.nome)}">${_finE(f.cli.nome)}</td>
+      <td style="color:var(--text3)">${_finE(f.cli.grupo===f.cli.nome?'—':f.cli.grupo)}</td>
+      <td class="cp-n" style="font-weight:700;color:var(--danger)">${_finMoeda(f.vencido)}</td>
+      <td class="cp-n">${f.n}</td>
+      <td class="cp-n" style="color:var(--danger)">${f.dias}</td>
+      <td>${_finCobEtapaPill(f.etapa)}</td>
+      <td>${f.promessa?_finPill((f.promessa.quebrada?'quebrada ':'promessa ')+_finDtBR(f.promessa.data), f.promessa.quebrada?'var(--danger)':'var(--blue-mid)', 'Valor prometido: '+_cpBRL(f.promessa.valor)):`<span style="color:var(--text3)">${_finE(f.situacao)}</span>`}</td>
+      <td style="color:var(--text3)">${f.ultAcao?_finDtBR(f.ultAcao.data)+' · '+_finE(f.ultAcao.tipo):'sem contato'}</td>
+      <td><span style="font-size:11.5px">${_finE(f.proxAcao)}</span><br><span style="color:var(--text3);font-size:11px">${_finDtBR(f.proxData)}</span></td>
+      <td class="fin-noexp" onclick="event.stopPropagation()"><span class="fin-acoes">
+        <button class="fin-ico" title="Registrar ação de cobrança" onclick="_finCobrancaAbrir('cli:${_cpJs(f.cod)}')"><i class="ti ti-phone-call"></i></button>
+        <button class="fin-ico" title="Crédito do cliente" onclick="_finCreditoAbrir('${_cpJs(f.cod)}')"><i class="ti ti-shield-check"></i></button>
+        <button class="fin-ico" title="Criar tarefa de cobrança" onclick="_finCobTarefa('${_cpJs(f.cod)}')"><i class="ti ti-check"></i></button></span></td></tr>`;
+  }).join('')+(rows.length>400?`<tr><td colspan="11">${_cpVazio('Mostrando os 400 primeiros de '+rows.length+'.')}</td></tr>`:'');
+}
+function _finCobFilaHTML(D){
+  const rows=_cpSortArr('fincob', _finCobFilaRows(D), { cli:f=>f.cli.nome, grupo:f=>f.cli.grupo, resp:f=>f.resp }, 'prioridade', -1);
+  const tot=rows.reduce(function(a,f){ return a+f.vencido; },0);
+  const head=`<tr>${_cpTh('fincob','ordem','#',1)}${_cpTh('fincob','cli','Cliente')}${_cpTh('fincob','grupo','Grupo')}${_cpTh('fincob','vencido','Vencido',1)}${_cpTh('fincob','n','Títulos',1)}${_cpTh('fincob','dias','Atraso',1)}<th>Etapa da régua</th><th>Situação</th><th>Último contato</th><th>Próxima ação</th><th class="fin-noexp"></th></tr>`;
+  return _finCard(`Fila de cobrança <span id="fin-cobranca-cont" class="sub" style="font-weight:500;color:var(--text3)">${rows.length} clientes · ${_finMoeda(tot)} vencido</span>`,
+    `<div class="fin-scroll fin-scroll-y cp-noscroll"><table class="cp-tbl" id="fin-tb-cobfila"><thead>${head}</thead><tbody id="fin-cobranca-tbody">${_finCobFilaTbody(D,rows)}</tbody></table></div>`,
+    { acao:_finBtnCSV('fin-tb-cobfila','fila-de-cobranca'), hint:'A ordem é por prioridade: valor vencido ponderado pelo atraso (mais de 90 dias pesa 4×, 61–90 pesa 3×, 31–60 pesa 2×). Clique na linha para abrir a ficha do cliente.' })
+    +_finNota('A fila é por <b>cliente</b>, não por título — quem cobra liga uma vez e resolve tudo o que está em aberto daquele cliente.');
+}
+function _finRefresh_cobranca(){
+  const D=_finData(), sub=_finSubGet('cobranca','fila'); if(sub!=='fila'){ renderFinanceiro(); return; }
+  const rows=_cpSortArr('fincob', _finCobFilaRows(D), { cli:f=>f.cli.nome, grupo:f=>f.cli.grupo, resp:f=>f.resp }, 'prioridade', -1);
+  const tb=document.getElementById('fin-cobranca-tbody'); if(tb) tb.innerHTML=_finCobFilaTbody(D,rows);
+  const ct=document.getElementById('fin-cobranca-cont'); if(ct) ct.textContent=rows.length+' clientes · '+_finMoeda(rows.reduce(function(a,f){ return a+f.vencido; },0))+' vencido';
+}
+function _finCobTarefa(cod){
+  const D=_finData(), F=_finFilaCobranca(D).find(function(f){ return f.cod===cod; }); if(!F) return;
+  _finCriarTarefa('Cobrar '+F.cli.nome+' — '+_cpBRL(F.vencido)+' vencido',
+    ['Cliente: '+F.cli.nome+' ('+F.cod+')', F.n+' título(s) vencido(s), atraso de até '+F.dias+' dias',
+     'Etapa da régua: '+(F.etapa?F.etapa.etapa+' — '+F.etapa.acao:'—'), 'Responsável pela carteira: '+F.resp],
+    { prio:F.dias>60?'alta':'media', data:today, ref:'cobranca:'+F.cod });
+}
+
+// ── régua ──
+function _finCobReguaHTML(D, C){
+  const porEtapa=FIN_REGUA.map(function(r,i){ return { r:r, i:i, valor:0, n:0, clientes:{} }; });
+  C.vencidos.forEach(function(t){ const i=_finReguaEtapa(t.diasVenc); if(i==null) return; porEtapa[i].valor+=t.saldo; porEtapa[i].n++; porEtapa[i].clientes[t.cli]=1; });
+  const totV=C.totalVencido;
+  const linhas=porEtapa.map(function(e){ const nc=Object.keys(e.clientes).length;
+    return `<tr${e.n?'':' style="opacity:.5"'}><td class="cp-n" style="color:var(--text3)">${e.r.dias<0?e.r.dias:'D+'+e.r.dias}</td>
+      <td class="cp-item">${_finCobEtapaPill(e.r)}</td><td>${_finE(e.r.acao)}</td><td style="color:var(--text3)">${_finE(e.r.canal)}</td><td>${_finE(e.r.resp)}</td>
+      <td class="cp-n">${e.n||'—'}</td><td class="cp-n">${nc||'—'}</td><td class="cp-n" style="font-weight:700">${e.valor?_finMoeda(e.valor):'—'}</td>
+      <td style="width:22%">${e.valor?_finBarra(_finPct(e.valor,totV),e.r.dias>=45?'var(--danger)':'var(--amber)'):''}</td></tr>`; }).join('');
+  const semRegua=C.vencidos.filter(function(t){ return _finReguaEtapa(t.diasVenc)==null; });
+  return _finCard('Régua de cobrança', `<table class="cp-tbl" id="fin-tb-cobregua"><thead><tr><th class="r">Dia</th><th>Etapa</th><th>Ação</th><th>Canal</th><th>Responsável</th><th class="r">Títulos</th><th class="r">Clientes</th><th class="r">Valor vencido</th><th></th></tr></thead>
+    <tbody>${linhas}<tr class="fin-tot"><td></td><td>Total vencido</td><td colspan="3"></td><td class="cp-n">${C.vencidos.length}</td><td class="cp-n"></td><td class="cp-n">${_finMoeda(totV)}</td><td></td></tr></tbody></table>`,
+    { acao:_finBtnCSV('fin-tb-cobregua','regua-de-cobranca'), hint:'Cada título entra na etapa mais avançada que o atraso dele já alcançou. D−3 é o aviso antes do vencimento, disparado pelo sistema.' })
+    +_finGrid(2,[
+      _finCard('Vencido por etapa', _finRosca(porEtapa.filter(function(e){ return e.valor>0; }).map(function(e){ return { rot:e.r.etapa, v:e.valor }; }), { centro:_finK(totV), centroSub:'vencido' })),
+      _finCard('Quem responde por cada etapa', `<div class="fin-lista-kv">${FIN_REGUA.map(function(r){ return `<div><span>${_finE(r.etapa)}</span><b>${_finE(r.resp)}</b></div>`; }).join('')}</div>`,
+        { sub:'papéis do protótipo', hint:'No sistema real cada etapa dispara para o responsável pela carteira daquele cliente.' }),
+    ])
+    +(semRegua.length?_finNota(semRegua.length+' título(s) vencido(s) ainda não alcançaram a primeira etapa da régua (menos de 1 dia de atraso).'):'');
+}
+
+// ── aging e PDD ──
+function _finCobAgingHTML(D, C, I){
+  const totV=C.totalVencido;
+  const ag=C.agingVencido.map(function(f){ return `<tr><td style="font-weight:600">${f.rot} dias</td><td class="cp-n">${f.n}</td><td class="cp-n">${_finMoeda(f.valor)}</td><td class="cp-n">${_finPc(_finPct(f.valor,totV))}</td><td class="cp-n">${_finPc(_finPct(f.valor,C.total))}</td><td style="width:26%">${_finBarra(_finPct(f.valor,totV),'var(--danger)')}</td></tr>`; }).join('');
+  const pdd=I.pddFaixas.map(function(f,i){ const ant=I.pddFaixasMesAnt[i]||{valor:0,pdd:0};
+    return `<tr><td style="font-weight:600">${f.rot}</td><td class="cp-n">${_finPc(f.pct,0)}</td><td class="cp-n">${f.n}</td><td class="cp-n">${_finMoeda(f.valor)}</td><td class="cp-n" style="font-weight:700">${_finMoeda(f.pdd)}</td><td class="cp-n" style="color:var(--text3)">${_finMoeda(ant.pdd)}</td><td class="cp-n" style="${_finHeat(_finPct(f.pdd-ant.pdd,Math.max(1,ant.pdd)),40,false)}">${_finMoeda(f.pdd-ant.pdd)}</td></tr>`; }).join('');
+  const S=_finSerieMensal(D);
+  return _finGrid(2,[
+    _finCard('Vencidos por faixa de atraso', `<table class="cp-tbl"><thead><tr><th>Faixa</th><th class="r">Qtde</th><th class="r">Saldo</th><th class="r">% do vencido</th><th class="r">% da carteira</th><th></th></tr></thead><tbody>${ag}
+      <tr class="fin-tot"><td>Total vencido</td><td class="cp-n">${C.vencidos.length}</td><td class="cp-n">${_finMoeda(totV)}</td><td class="cp-n">100%</td><td class="cp-n">${_finPc(_finPct(totV,C.total))}</td><td></td></tr></tbody></table>`,
+      { sub:'posição de '+_finDtBR(D.hoje) }),
+    _finCard('Provisão para devedores duvidosos (PDD)', `<table class="cp-tbl"><thead><tr><th>Faixa</th><th class="r">%</th><th class="r">Qtde</th><th class="r">Base</th><th class="r">PDD</th><th class="r">Mês ant.</th><th class="r">Variação</th></tr></thead><tbody>${pdd}
+      <tr class="fin-tot"><td>Total</td><td></td><td class="cp-n">${C.vencidos.length}</td><td class="cp-n">${_finMoeda(totV)}</td><td class="cp-n">${_finMoeda(I.pdd)}</td><td class="cp-n">${_finMoeda(I.pddMesAnt)}</td><td class="cp-n">${_finMoeda(I.pdd-I.pddMesAnt)}</td></tr></tbody></table>`,
+      { def:'pdd', sub:'matriz gerencial fixa por faixa' }),
+  ])+_finCard('Inadimplência e PDD mês a mês', _finColunas(S.map(function(s){ return { lbl:s.lbl+(s.parcial?'*':''), parcial:s.parcial, ym:s.ym, v30:s.vencido30, pdd:s.pdd, idx:s.idx30 }; }),
+      [{campo:'v30',rot:'Vencido > 30 dias',cor:'var(--danger)'},{campo:'pdd',rot:'PDD',cor:'var(--amber)'}],
+      { h:225, fmt:_finK, linhas:[{campo:'idx',rot:'Inadimplência > 30 d (%)',cor:'var(--blue-mid)'}], ref:{ v:FIN_PARAM.metas.inad30, rot:'meta '+_finPc(FIN_PARAM.metas.inad30) } }),
+      { sub:'cada ponto usa só o que tinha acontecido até o fim daquele mês (ponto no tempo)', selo:'derivado' })
+    +_finNota('A PDD aqui é <b>gerencial</b>: percentual fixo por faixa de atraso ('+FIN_PDD.map(function(f){ return f.rot+' '+f.pct+'%'; }).join(' · ')+'). A provisão contábil da empresa pode usar outro critério; o que não pode é a projeção de caixa supor recuperação diferente desta — e não supõe.');
+}
+
+// ── promessas ──
+function _finCobPromessasHTML(D, PR){
+  const linha=function(t, tipo){ const c=D.cliByCod[t.cli]||{};
+    return `<tr class="cp-clic" onclick="_finTituloAbrir('${_cpJs(t.id)}')"><td class="cp-item">${_finE(c.nome)}</td><td class="cp-mono">${_finE(t.nf)} ${_finE(t.parc)}</td>
+      <td class="cp-mono">${_finDtBR(t.venc)}</td><td class="cp-n" style="color:var(--danger)">${t.diasVenc}</td><td class="cp-n">${_finMoeda(t.saldo)}</td>
+      <td class="cp-mono">${_finDtBR(t.promessa.data)}</td><td class="cp-n" style="font-weight:700">${_finMoeda(t.promessa.valor)}</td>
+      <td>${tipo==='q'?_finPill('quebrada','var(--danger)'):(t.promessa.data<D.hoje?_finPill('vence hoje ou antes','var(--amber)'):_finPill('no prazo','var(--blue-mid)'))}</td>
+      <td style="color:var(--text3)">${_finE(c.cobrador)}</td>
+      <td class="fin-noexp" onclick="event.stopPropagation()"><button class="fin-ico" title="Registrar ação de cobrança" onclick="_finCobrancaAbrir('${_cpJs(t.id)}')"><i class="ti ti-phone-call"></i></button></td></tr>`; };
+  const cab=`<tr><th>Cliente</th><th>NF</th><th>Venc.</th><th class="r">Atraso</th><th class="r">Saldo</th><th>Promessa para</th><th class="r">Valor prometido</th><th>Situação</th><th>Cobrador</th><th class="fin-noexp"></th></tr>`;
+  return _finKPIs([
+    { rot:'Promessas em aberto', val:_finK(PR.valorAberto), sub:PR.abertas.length+' títulos' },
+    { rot:'Promessas quebradas', val:_finK(PR.valorQuebrado), cor:'var(--danger)', sub:PR.quebradas.length+' títulos · cliente prometeu e não pagou' },
+    { rot:'Taxa de cumprimento', def:'promessas', val:_finPc(PR.taxa,0), cor:PR.taxa>=60?'var(--success)':'var(--amber)', sub:PR.cumpridas.length+' cumpridas de '+(PR.cumpridas.length+PR.quebradas.length)+' vencidas' },
+  ])+_finCard('Promessas em aberto', `<div class="fin-scroll cp-noscroll"><table class="cp-tbl" id="fin-tb-cobprom"><thead>${cab}</thead><tbody>${PR.abertas.length?PR.abertas.slice().sort(function(a,b){ return a.promessa.data<b.promessa.data?-1:1; }).map(function(t){ return linha(t,'a'); }).join(''):`<tr><td colspan="10">${_cpVazio('Nenhuma promessa de pagamento em aberto.')}</td></tr>`}</tbody></table></div>`,
+    { acao:_finBtnCSV('fin-tb-cobprom','promessas-abertas') })
+    +_finCard('Promessas quebradas', `<div class="fin-scroll cp-noscroll"><table class="cp-tbl" id="fin-tb-cobpromq"><thead>${cab}</thead><tbody>${PR.quebradas.length?PR.quebradas.map(function(t){ return linha(t,'q'); }).join(''):`<tr><td colspan="10">${_cpVazio('Nenhuma promessa quebrada.')}</td></tr>`}</tbody></table></div>`,
+      { acao:_finBtnCSV('fin-tb-cobpromq','promessas-quebradas'), hint:'Promessa quebrada é o sinal mais forte de risco: o cliente foi contatado, assumiu a data e não cumpriu. Costuma anteceder a escalada para protesto.' })
+    +_finNota('Promessa não muda o vencimento do título nem tira ele do aging — ela só entra na projeção de caixa e na priorização da fila.');
+}
+
+// ── histórico ──
+function _finCobHistHTML(D){
+  const q=_finBuscaQ('cobranca'), P=_finIntervalo(D,_finGetF('cobranca','periodo','90')), cob=_finGetF('cobranca','cobrador','todos');
+  const H=_finCobrancaHist(D).filter(function(h){ if(h.data<P.ini || h.data>P.fim) return false; if(cob!=='todos' && h.resp!==cob) return false;
+    return _finMatch(q, _finNomeCli(D,h.cli), h.nf, h.tipo, h.resultado); });
+  const porTipo={}, porRes={};
+  H.forEach(function(h){ porTipo[h.tipo]=(porTipo[h.tipo]||0)+1; porRes[h.resultado]=(porRes[h.resultado]||0)+1; });
+  const L=_cpSortArr('fincobh', H, { cli:h=>_finNomeCli(D,h.cli) }, 'data', -1);
+  return _finGrid(2,[
+    _finCard('Ações por tipo', _finBarrasH(Object.keys(porTipo).map(function(k){ return { rot:k, v:porTipo[k] }; }).sort(function(a,b){ return b.v-a.v; }), { colRot:'50%', fmt:function(v){ return _cpNum(v,0); } }), { sub:_finE(P.rot) }),
+    _finCard('Resultado dos contatos', _finRosca(Object.keys(porRes).map(function(k){ return { rot:k, v:porRes[k] }; }).sort(function(a,b){ return b.v-a.v; }), { centro:String(H.length), centroSub:'contatos', fmt:function(v){ return _cpNum(v,0); } }), { sub:_finE(P.rot) }),
+  ])+_finCard(`Histórico de cobrança · ${_finE(P.rot)}`,
+    `<div class="fin-scroll fin-scroll-y cp-noscroll"><table class="cp-tbl" id="fin-tb-cobh"><thead><tr>${_cpTh('fincobh','data','Data','','',-1)}${_cpTh('fincobh','cli','Cliente')}<th>NF</th>${_cpTh('fincobh','tipo','Tipo')}${_cpTh('fincobh','resultado','Resultado')}<th>Observação</th>${_cpTh('fincobh','resp','Responsável')}<th>Origem</th></tr></thead>
+    <tbody>${L.length?L.slice(0,400).map(function(h){ return `<tr${h.tituloId?' class="cp-clic" onclick="_finTituloAbrir(\''+_cpJs(h.tituloId)+'\')"':''}>
+      <td class="cp-mono">${_finDtBR(h.data)}</td><td class="cp-item">${_finE(_finNomeCli(D,h.cli))}</td><td class="cp-mono">${_finE(h.nf)} ${_finE(h.parc)}</td>
+      <td>${_finE(h.tipo)}</td><td>${_finPill(_finE(h.resultado), h.resultado==='Pagou'||h.resultado==='Acordo fechado'?'var(--success)':(h.resultado==='Sem retorno'?'var(--danger)':'var(--amber)'))}</td>
+      <td style="color:var(--text3);max-width:280px;overflow:hidden;text-overflow:ellipsis">${_finE(h.obs)}</td><td>${_finE(h.resp)}</td>
+      <td>${h.origem==='usuario'?_finPill('registrado','var(--blue-mid)'):'<span style="color:var(--text3)">exemplo</span>'}</td></tr>`; }).join('')
+      :`<tr><td colspan="8">${_cpVazio('Nenhum contato no período.')}</td></tr>`}</tbody></table></div>`,
+    { acao:_finBtnCSV('fin-tb-cobh','historico-cobranca'), hint:'As linhas marcadas como "exemplo" são geradas a partir da régua, para mostrar o formato. As "registrado" são as ações que você lançou pelo botão de cobrança.' });
+}
+
+// ── qualidade da carteira ──
+function _finCobQualidadeHTML(D, R){
+  const RR=_finRollRate(D,6), SF=_finSafras(D,12), ult=RR[RR.length-1];
+  const cabRoll=`<tr><th>Transição</th>${RR.map(function(r){ return `<th class="r">${_finE(r.lbl.split(' → ')[0])}</th>`; }).join('')}<th class="r">Média</th></tr>`;
+  const linhasRoll=ult.taxas.map(function(tx,i){
+    const vals=RR.map(function(r){ return r.taxas[i].pct; }), med=vals.reduce(function(a,b){ return a+b; },0)/vals.length;
+    return `<tr><td class="cp-item">${_finE(tx.rot)}</td>${RR.map(function(r){ const v=r.taxas[i].pct; return `<td class="cp-n" style="${_finHeat(v,60,false)}" title="${escapeAttr('Base '+_cpBRL(r.taxas[i].base)+' · rolou '+_cpBRL(r.taxas[i].rolou))}">${_finPc(v,0)}</td>`; }).join('')}<td class="cp-n" style="font-weight:700">${_finPc(med,0)}</td></tr>`; }).join('');
+  const linhasSaf=SF.map(function(s){ return `<tr><td class="cp-item">${_finE(s.lbl)}</td><td class="cp-n">${s.n}</td><td class="cp-n">${_finMoeda(s.original)}</td>
+    <td class="cp-n" style="${s.p30==null?'':_finHeat(s.p30,30,false)}">${s.p30==null?'—':_finPc(s.p30,1)}</td>
+    <td class="cp-n" style="${s.p60==null?'':_finHeat(s.p60,20,false)}">${s.p60==null?'—':_finPc(s.p60,1)}</td>
+    <td class="cp-n" style="${s.p90==null?'':_finHeat(s.p90,15,false)}">${s.p90==null?'—':_finPc(s.p90,1)}</td>
+    <td class="cp-n">${s.perda?_finMoeda(s.perda):'—'}</td><td class="cp-n">${s.perda?_finPc(s.pPerda,2):'—'}</td></tr>`; }).join('');
+  return _finCard('Roll rate — quanto do saldo piora de faixa a cada mês', `<div class="fin-scroll cp-noscroll"><table class="cp-tbl" id="fin-tb-cobroll"><thead>${cabRoll}</thead><tbody>${linhasRoll}</tbody></table></div>`,
+      { acao:_finBtnCSV('fin-tb-cobroll','roll-rate'), def:'rollRate', hint:'De cada faixa, o percentual do saldo que no mês seguinte estava numa faixa pior. Roll rate alto na primeira transição significa que a cobrança não está segurando o cliente no começo do atraso.' })
+    +_finCard('Safras por mês de vencimento', `<div class="fin-scroll cp-noscroll"><table class="cp-tbl" id="fin-tb-cobsaf"><thead><tr><th>Venceu em</th><th class="r">Títulos</th><th class="r">Valor original</th><th class="r">Aberto D+30</th><th class="r">Aberto D+60</th><th class="r">Aberto D+90</th><th class="r">Perda</th><th class="r">% perda</th></tr></thead><tbody>${linhasSaf}</tbody></table></div>`,
+      { acao:_finBtnCSV('fin-tb-cobsaf','safras'), def:'safra', hint:'Acompanha o mesmo grupo de títulos ao longo do tempo: de tudo que venceu naquele mês, quanto ainda estava aberto 30, 60 e 90 dias depois. Safra piorando de mês para mês é deterioração real de crédito, não sazonalidade.' })
+    +_finGrid(2,[
+      _finCard('Deterioração D+30 por safra', _finLinhas(SF.filter(function(s){ return s.p30!=null; }).map(function(s){ return { lbl:s.lbl, p30:s.p30, p60:s.p60, p90:s.p90 }; }),
+        [{campo:'p30',rot:'Aberto em D+30',cor:'var(--amber)'},{campo:'p60',rot:'D+60',cor:'var(--danger)'},{campo:'p90',rot:'D+90',cor:'var(--purple)'}],
+        { h:200, fmt:function(v){ return _finPc(v,1); }, labFmt:function(v){ return _finPc(v,0); } })),
+      _finCard('Recuperação do vencido > 30 dias', `<table class="cp-tbl"><thead><tr><th>Base em</th><th class="r">Vencido > 30 d</th><th class="r">Recuperado em 90 d</th><th class="r">Taxa</th></tr></thead><tbody>
+        ${R.pontos.map(function(p){ return `<tr><td class="cp-item">${_finE(p.lbl)}</td><td class="cp-n">${_finMoeda(p.base)}</td><td class="cp-n">${_finMoeda(p.recuperado)}</td><td class="cp-n" style="font-weight:700;color:${p.pct>=50?'var(--success)':'var(--amber)'}">${_finPc(p.pct)}</td></tr>`; }).join('')}
+        <tr class="fin-tot"><td>Média</td><td></td><td></td><td class="cp-n">${_finPc(R.pct)}</td></tr></tbody></table>`, { def:'recuperacao' }),
+    ])
+    +_finNota('Esses três indicadores respondem perguntas diferentes: o <b>roll rate</b> diz se o atraso está piorando agora, a <b>safra</b> diz se a qualidade do crédito concedido está caindo, e a <b>recuperação</b> diz quanto do que já venceu costuma voltar — é ela que justifica os percentuais da PDD.');
+}
+
+// ── fin_scr_clientes.js ──
+// ─── FINANCEIRO › CLIENTES ───
+// Lista de clientes com risco e exposição, grupos econômicos, concentração e limites de crédito.
+// Clicar num cliente abre a ficha 360° (o estado _finCliSel/_finCliView é do núcleo).
+function _finCliRating(r){ const c={ AA:'var(--success)', A:'var(--success)', B:'var(--blue-mid)', C:'var(--amber)', D:'var(--danger)' }[r]||'var(--text3)'; return _finPill(r,c); }
+function _finCliSitPill(s){ const c=String(s).indexOf('Bloqueado')===0?'var(--danger)':(s==='Acima do limite'?'var(--amber)':'var(--success)'); return _finPill(_finE(s),c); }
+
+function _finTela_clientes(){
+  if(_finCliSel!=null) return _finCliFichaHTML(_finCliSel);
+  const D=_finData(), S=_finClientesStats(D), sub=_finSubGet('clientes','lista');
+  const canais=[['todos','Todos os canais']].concat([...new Set(D.clientes.map(c=>c.canal))].sort().map(c=>[c,c]));
+  const filtros=_finFSelect('clientes','canal','Canal',canais)
+    +_finFChips('clientes','classe','Curva ABC',[['todos','Todas'],['A','A'],['B','B'],['C','C']])
+    +_finFChips('clientes','risco','Situação',[['todos','Todas'],['vencido','Com vencido'],['acima','Acima do limite'],['bloq','Bloqueado'],['revisao','Revisão vencida']])
+    +_finFSelect('clientes','rep','Vendedor',[['todos','Todos']].concat(_FIN_REPS.map(r=>[r,r])));
+  const acao=_finFiltros('clientes',filtros,_finNFiltros('clientes',['periodo']))+_finLupa('clientes','Cliente, grupo ou cidade…');
+  const ativos=S.lista.filter(function(s){ return s.fat12>0 || s.carteira>0; });
+  const kpis=_finKPIs([
+    { rot:'Clientes ativos', val:String(ativos.length), sub:'de '+S.lista.length+' cadastrados · faturaram ou devem nos últimos 12 meses' },
+    { rot:'Faturamento 12 meses', val:_finK(S.fatTot), sub:'base da curva ABC' },
+    { rot:'Concentração top 5', val:_finPc(S.top5), cor:S.top5>50?'var(--amber)':null, sub:'top 10: '+_finPc(S.top10)+' · HHI '+_cpNum(S.hhi,0), hint:'HHI é a soma dos quadrados das participações. Acima de 1.800 indica carteira concentrada — perder um cliente vira problema de caixa.' },
+    { rot:'Exposição total', val:_finK(S.exposicao), sub:'carteira + pedidos aprovados · limites '+_finK(S.limiteTotal) },
+    { rot:'Acima do limite', val:String(S.acimaLimite.length), cor:S.acimaLimite.length?'var(--danger)':'var(--success)', sub:S.excedente>0?_finK(S.excedente)+' de excedente':'nenhum cliente estourou o limite' },
+    { rot:'Pontualidade da carteira', def:'pontualidade', val:_finPc(S.pontualidade), cor:S.pontualidade>=80?'var(--success)':'var(--amber)', sub:'do valor liquidado em até 3 dias úteis do vencimento' },
+  ]);
+  const abas=[['lista','ti-users','Clientes',ativos.length],['grupos','ti-building-bank','Grupos econômicos'],['concentracao','ti-chart-bar','Concentração'],['limites','ti-shield-check','Limites e crédito']];
+  let corpo='';
+  if(sub==='grupos') corpo=_finCliGruposHTML(D);
+  else if(sub==='concentracao') corpo=_finCliConcHTML(D,S);
+  else if(sub==='limites') corpo=_finCliLimitesHTML(D,S);
+  else corpo=_finCliListaHTML(D);
+  return _finTela('Clientes','Quem fatura, quem deve, quem atrasa e quanto de crédito cada um ainda tem.',
+    kpis+_finSubnav('clientes',abas,'lista')+corpo, acao, null, {base:'D0', selo:'exemplo'});
+}
+
+// ── lista ──
+function _finCliRows(D){
+  const q=_finBuscaQ('clientes'), canal=_finGetF('clientes','canal','todos'), cl=_finGetF('clientes','classe','todos'),
+    risco=_finGetF('clientes','risco','todos'), rep=_finGetF('clientes','rep','todos');
+  return _finClientesStats(D).lista.filter(function(s){ const c=s.cli;
+    if(!(s.fat12>0 || s.carteira>0)) return false;
+    if(canal!=='todos' && c.canal!==canal) return false;
+    if(cl!=='todos' && s.classe!==cl) return false;
+    if(rep!=='todos' && c.rep!==rep) return false;
+    if(risco==='vencido' && !(s.vencido>0)) return false;
+    if(risco==='acima' && !s.acimaLimite) return false;
+    if(risco==='bloq' && String(s.situacaoCredito).indexOf('Bloqueado')!==0) return false;
+    if(risco==='revisao' && !s.revisaoVencida) return false;
+    return _finMatch(q, c.nome, c.grupo, c.cidade, c.cod);
+  });
+}
+function _finCliTbody(D, rows){
+  if(!rows.length) return `<tr><td colspan="14">${_cpVazio('Nenhum cliente nesse filtro.')}</td></tr>`;
+  return rows.slice(0,400).map(function(s){ const c=s.cli;
+    return `<tr class="cp-clic${s.vencido30>0?' fin-alerta':(s.acimaLimite?' fin-atencao':'')}" onclick="_finAbrirCliente('${_cpJs(s.cod)}')">
+      <td class="cp-item" title="${escapeAttr(c.nome)}">${_finE(c.nome)}</td>
+      <td style="color:var(--text3);max-width:150px;overflow:hidden;text-overflow:ellipsis">${_finE(c.grupo===c.nome?'—':c.grupo)}</td>
+      <td>${_finE(c.canal)}</td><td class="cp-mono" style="color:var(--text3)">${_finE(c.uf)}</td>
+      <td class="cp-n">${_finMoeda(s.fat12)}</td><td class="cp-n" style="color:var(--text3)">${_finPc(s.pctFat,1)}</td>
+      <td>${_finPill(s.classe, s.classe==='A'?'var(--blue-mid)':(s.classe==='B'?'var(--amber)':'var(--text3)'))}</td>
+      <td class="cp-n">${_finMoeda(s.carteira)}</td>
+      <td class="cp-n" style="color:${s.vencido>0?'var(--danger)':'var(--text3)'}">${s.vencido>0?_finMoeda(s.vencido):'—'}</td>
+      <td class="cp-n" style="color:${s.vencido30>0?'var(--danger)':'var(--text3)'}">${s.vencido30>0?_finMoeda(s.vencido30):'—'}</td>
+      <td class="cp-n">${s.atrasoMedio==null?'—':_finDd(s.atrasoMedio,1)}</td>
+      <td>${_finCliRating(s.rating)} <span style="color:var(--text3);font-size:11px">${s.score}</span></td>
+      <td class="cp-n" style="color:${s.usoLimite>100?'var(--danger)':(s.usoLimite>85?'var(--amber)':'var(--text2)')}">${_finPc(s.usoLimite,0)}</td>
+      <td>${_finCliSitPill(s.situacaoCredito)}</td></tr>`; }).join('')
+    +(rows.length>400?`<tr><td colspan="14">${_cpVazio('Mostrando os 400 primeiros de '+rows.length+' — refine a busca ou os filtros.')}</td></tr>`:'');
+}
+function _finCliListaHTML(D){
+  const rows=_cpSortArr('fincli', _finCliRows(D), { cli:s=>s.cli.nome, grupo:s=>s.cli.grupo, canal:s=>s.cli.canal, uf:s=>s.cli.uf, sit:s=>s.situacaoCredito }, 'fat12', -1);
+  const head=`<tr>${_cpTh('fincli','cli','Cliente')}${_cpTh('fincli','grupo','Grupo')}${_cpTh('fincli','canal','Canal')}${_cpTh('fincli','uf','UF')}${_cpTh('fincli','fat12','Faturamento 12m',1)}<th class="r">%</th>${_cpTh('fincli','classe','ABC')}${_cpTh('fincli','carteira','Carteira',1)}${_cpTh('fincli','vencido','Vencido',1)}${_cpTh('fincli','vencido30','> 30 d',1)}${_cpTh('fincli','atrasoMedio','Atraso médio',1)}${_cpTh('fincli','score','Rating',1)}${_cpTh('fincli','usoLimite','Uso do limite',1)}${_cpTh('fincli','sit','Situação')}</tr>`;
+  return _finCard(`Clientes <span id="fin-clientes-cont" class="sub" style="font-weight:500;color:var(--text3)">${rows.length} clientes · ${_finMoeda(rows.reduce(function(a,s){ return a+s.carteira; },0))} em carteira</span>`,
+    `<div class="fin-scroll fin-scroll-y cp-noscroll"><table class="cp-tbl" id="fin-tb-clientes"><thead>${head}</thead><tbody id="fin-clientes-tbody">${_finCliTbody(D,rows)}</tbody></table></div>`,
+    { acao:_finBtnCSV('fin-tb-clientes','clientes'), hint:'Clique na linha para a ficha completa do cliente. Linha vermelha = tem título vencido há mais de 30 dias; âmbar = exposição acima do limite.' })
+    +_finNota('O <b>rating</b> é calculado (0–1000) com pontualidade (40%), atraso médio (25%), vencido acima de 30 dias (20%), uso do limite (10%) e tempo de casa (5%). Quem tem título vencido há mais de 90 dias não pode ficar acima de B, por regra.');
+}
+function _finRefresh_clientes(){
+  const D=_finData(); if(_finCliSel!=null || _finSubGet('clientes','lista')!=='lista'){ renderFinanceiro(); return; }
+  const rows=_cpSortArr('fincli', _finCliRows(D), { cli:s=>s.cli.nome, grupo:s=>s.cli.grupo, canal:s=>s.cli.canal, uf:s=>s.cli.uf, sit:s=>s.situacaoCredito }, 'fat12', -1);
+  const tb=document.getElementById('fin-clientes-tbody'); if(tb) tb.innerHTML=_finCliTbody(D,rows);
+  const ct=document.getElementById('fin-clientes-cont'); if(ct) ct.textContent=rows.length+' clientes · '+_finMoeda(rows.reduce(function(a,s){ return a+s.carteira; },0))+' em carteira';
+}
+
+// ── grupos econômicos ──
+function _finCliGruposHTML(D){
+  const q=_finBuscaQ('clientes'), G=_finGrupos(D).filter(function(g){ return (g.fat12>0||g.carteira>0) && _finMatch(q,g.grupo); });
+  const multi=G.filter(function(g){ return g.multi; });
+  const linhas=G.map(function(g){ return `<tr class="cp-clic" onclick="_finSetF('clientes','q','')" style="cursor:default">
+    <td class="cp-item">${_finE(g.grupo)}${g.multi?' '+_finPill(g.clientes.length+' CNPJs','var(--blue-mid)'):''}</td>
+    <td class="cp-n">${_finMoeda(g.fat12)}</td><td class="cp-n" style="color:var(--text3)">${_finPc(g.pctFat,1)}</td>
+    <td class="cp-n">${_finMoeda(g.carteira)}</td>
+    <td class="cp-n" style="color:${g.vencido>0?'var(--danger)':'var(--text3)'}">${g.vencido>0?_finMoeda(g.vencido):'—'}</td>
+    <td class="cp-n" style="color:${g.vencido30>0?'var(--danger)':'var(--text3)'}">${g.vencido30>0?_finMoeda(g.vencido30):'—'}</td>
+    <td class="cp-n">${_finMoeda(g.exposicao)}</td><td class="cp-n">${_finMoeda(g.limite)}</td>
+    <td class="cp-n" style="color:${g.usoLimite>100?'var(--danger)':(g.usoLimite>85?'var(--amber)':'var(--text2)')};font-weight:600">${_finPc(g.usoLimite,0)}</td>
+    <td style="color:var(--text3);font-size:11.5px">${g.clientes.slice(0,3).map(function(s){ return `<span class="cp-clic" onclick="event.stopPropagation();_finAbrirCliente('${_cpJs(s.cod)}')">${_finE(s.cli.nome)}</span>`; }).join(' · ')}${g.clientes.length>3?' +'+(g.clientes.length-3):''}</td></tr>`; }).join('');
+  return _finCard(`Grupos econômicos <span class="sub" style="font-weight:500;color:var(--text3)">${G.length} grupos · ${multi.length} com mais de um CNPJ</span>`,
+    `<div class="fin-scroll fin-scroll-y cp-noscroll"><table class="cp-tbl" id="fin-tb-cligrp"><thead><tr><th>Grupo</th><th class="r">Faturamento 12m</th><th class="r">%</th><th class="r">Carteira</th><th class="r">Vencido</th><th class="r">> 30 d</th><th class="r">Exposição</th><th class="r">Limite somado</th><th class="r">Uso</th><th>Clientes</th></tr></thead>
+    <tbody>${linhas||`<tr><td colspan="10">${_cpVazio('Nenhum grupo nesse filtro.')}</td></tr>`}</tbody></table></div>`,
+    { acao:_finBtnCSV('fin-tb-cligrp','grupos-economicos'), hint:'Rede com vários CNPJs (uma loja por cidade, por exemplo) é um risco só: se o grupo quebra, todos os CNPJs param de pagar junto.' })
+    +_finCard('Maior exposição por grupo', _finBarrasH(G.slice(0,12).map(function(g){ return { rot:g.grupo, v:g.exposicao, cor:g.vencido30>0?'var(--danger)':(g.usoLimite>100?'var(--amber)':'var(--blue-mid)'), sub:g.multi?'('+g.clientes.length+')':'' }; }), { colRot:'42%' }),
+      { sub:'vermelho = tem vencido acima de 30 dias · âmbar = acima do limite somado' })
+    +_finNota('O limite do grupo aqui é a <b>soma</b> dos limites individuais. No sistema real vale a pena ter um limite do grupo, menor que a soma — senão a empresa concede mais crédito do que pretende para o mesmo dono.');
+}
+
+// ── concentração ──
+function _finCliConcHTML(D, S){
+  const ativos=S.lista.filter(function(s){ return s.fat12>0; });
+  let acum=0; const pareto=ativos.slice(0,25).map(function(s){ acum+=s.pctFat; return { lbl:String(s.rank), ym:s.cod, fat:s.fat12, acum:acum, nome:s.cli.nome }; });
+  const porClasse=['A','B','C'].map(function(k){ const l=ativos.filter(function(s){ return s.classe===k; });
+    return { classe:k, n:l.length, fat:l.reduce(function(a,s){ return a+s.fat12; },0), cart:l.reduce(function(a,s){ return a+s.carteira; },0), venc:l.reduce(function(a,s){ return a+s.vencido; },0) }; });
+  return _finGrid(2,[
+    _finCard('Faturamento por canal', _finRosca(S.porCanal.map(function(c){ return { rot:c.canal, v:c.fat12 }; }), { centro:_finK(S.fatTot), centroSub:'12 meses' }), { sub:'últimos 12 meses' }),
+    _finCard('Carteira e vencido por canal', `<table class="cp-tbl"><thead><tr><th>Canal</th><th class="r">Clientes</th><th class="r">Faturamento 12m</th><th class="r">%</th><th class="r">Carteira</th><th class="r">Vencido</th><th class="r">% vencido</th></tr></thead><tbody>
+      ${S.porCanal.map(function(c){ return `<tr><td class="cp-item">${_finE(c.canal)}</td><td class="cp-n">${c.n}</td><td class="cp-n">${_finMoeda(c.fat12)}</td><td class="cp-n" style="color:var(--text3)">${_finPc(_finPct(c.fat12,S.fatTot),1)}</td><td class="cp-n">${_finMoeda(c.carteira)}</td><td class="cp-n" style="color:${c.vencido>0?'var(--danger)':'var(--text3)'}">${_finMoeda(c.vencido)}</td><td class="cp-n">${_finPc(_finPct(c.vencido,c.carteira),1)}</td></tr>`; }).join('')}
+      <tr class="fin-tot"><td>Total</td><td class="cp-n">${S.porCanal.reduce(function(a,c){ return a+c.n; },0)}</td><td class="cp-n">${_finMoeda(S.fatTot)}</td><td class="cp-n">100%</td><td class="cp-n">${_finMoeda(S.porCanal.reduce(function(a,c){ return a+c.carteira; },0))}</td><td class="cp-n">${_finMoeda(S.porCanal.reduce(function(a,c){ return a+c.vencido; },0))}</td><td></td></tr></tbody></table>`),
+  ])+_finCard('Curva de Pareto — 25 maiores clientes', _finColunas(pareto,[{campo:'fat',rot:'Faturamento 12 meses',cor:'var(--blue-mid)'}],
+      { h:225, fmt:_finK, chave:'ym', onClick:'_finAbrirCliente', linhas:[{campo:'acum',rot:'% acumulado do faturamento',cor:'var(--amber)'}], ref:{ v:80, rot:'80%', cor:'var(--text3)' } }),
+      { sub:'clique numa coluna para abrir a ficha do cliente', hint:'A linha âmbar usa a mesma escala do valor; leia nela só o formato da curva (onde ela dobra), não o número exato.' })
+    +_finCard('Curva ABC', `<table class="cp-tbl"><thead><tr><th>Classe</th><th>Regra</th><th class="r">Clientes</th><th class="r">Faturamento 12m</th><th class="r">% do faturamento</th><th class="r">Carteira</th><th class="r">Vencido</th></tr></thead><tbody>
+      ${porClasse.map(function(c){ return `<tr><td class="cp-item">${_finPill(c.classe, c.classe==='A'?'var(--blue-mid)':(c.classe==='B'?'var(--amber)':'var(--text3)'))}</td>
+        <td style="color:var(--text3)">${c.classe==='A'?'até 80% acumulados':(c.classe==='B'?'de 80% a 95%':'últimos 5%')}</td>
+        <td class="cp-n">${c.n}</td><td class="cp-n">${_finMoeda(c.fat)}</td><td class="cp-n">${_finPc(_finPct(c.fat,S.fatTot),1)}</td><td class="cp-n">${_finMoeda(c.cart)}</td>
+        <td class="cp-n" style="color:${c.venc>0?'var(--danger)':'var(--text3)'}">${_finMoeda(c.venc)}</td></tr>`; }).join('')}</tbody></table>`,
+      { hint:'Mesma lógica da curva ABC de fornecedores em Compras: ordena por faturamento e corta em 80% e 95% do acumulado.' })
+    +_finNota('Concentração não é problema em si — vira problema quando o cliente grande também atrasa. Cruze esta aba com a coluna "Vencido" da lista antes de decidir política de crédito.');
+}
+
+// ── limites e crédito ──
+function _finCliLimitesHTML(D, S){
+  const q=_finBuscaQ('clientes');
+  const L=S.lista.filter(function(s){ return (s.limite>0 || s.exposicao>0) && _finMatch(q,s.cli.nome,s.cli.grupo); })
+    .sort(function(a,b){ return b.usoLimite-a.usoLimite; });
+  const revisao=S.lista.filter(function(s){ return s.revisaoVencida && (s.carteira>0||s.pedidos>0); });
+  const bloq=S.lista.filter(function(s){ return String(s.situacaoCredito).indexOf('Bloqueado')===0; });
+  const linhas=L.slice(0,400).map(function(s){ return `<tr class="cp-clic${s.acimaLimite?' fin-alerta':''}" onclick="_finAbrirCliente('${_cpJs(s.cod)}')">
+    <td class="cp-item">${_finE(s.cli.nome)}</td><td>${_finCliRating(s.rating)}</td>
+    <td class="cp-n">${_finMoeda(s.carteira)}</td><td class="cp-n">${s.pedidos?_finMoeda(s.pedidos):'—'}</td>
+    <td class="cp-n" style="font-weight:700">${_finMoeda(s.exposicao)}</td><td class="cp-n">${_finMoeda(s.limite)}</td>
+    <td class="cp-n" style="color:${s.disponivel<0?'var(--danger)':'var(--success)'}">${_finMoeda(s.disponivel)}</td>
+    <td style="width:130px">${_finBarra(Math.min(100,s.usoLimite), s.usoLimite>100?'var(--danger)':(s.usoLimite>85?'var(--amber)':'var(--success)'))}<span style="font-size:11px;color:var(--text3)">${_finPc(s.usoLimite,0)}</span></td>
+    <td class="cp-mono" style="color:${s.revisaoVencida?'var(--danger)':'var(--text3)'}">${_finDtBR(s.cli.revisaoLimite)}</td>
+    <td>${_finE(s.cli.garantia||'—')}</td><td>${_finCliSitPill(s.situacaoCredito)}</td>
+    <td class="fin-noexp" onclick="event.stopPropagation()"><button class="fin-ico" title="Analisar crédito" onclick="_finCreditoAbrir('${_cpJs(s.cod)}')"><i class="ti ti-shield-check"></i></button></td></tr>`; }).join('');
+  return _finKPIs([
+    { rot:'Exposição total', def:'usoLimite', val:_finK(S.exposicao), sub:'carteira em aberto + pedidos aprovados ainda não faturados' },
+    { rot:'Limite concedido', val:_finK(S.limiteTotal), sub:'uso de '+_finPc(_finPct(S.exposicao,S.limiteTotal),0) },
+    { rot:'Acima do limite', val:String(S.acimaLimite.length), cor:S.acimaLimite.length?'var(--danger)':'var(--success)', sub:_finK(S.excedente)+' de excedente' },
+    { rot:'Bloqueados', val:String(bloq.length), cor:bloq.length?'var(--amber)':null, sub:'pela régua (vencido > 30 d) ou manualmente' },
+    { rot:'Revisão de limite vencida', val:String(revisao.length), cor:revisao.length?'var(--amber)':'var(--success)', sub:'clientes ativos com data de revisão no passado' },
+  ])+_finCard('Limites de crédito por cliente',
+    `<div class="fin-scroll fin-scroll-y cp-noscroll"><table class="cp-tbl" id="fin-tb-clilim"><thead><tr><th>Cliente</th><th>Rating</th><th class="r">Carteira</th><th class="r">Pedidos aprovados</th><th class="r">Exposição</th><th class="r">Limite</th><th class="r">Disponível</th><th>Uso</th><th>Revisão</th><th>Garantia</th><th>Situação</th><th class="fin-noexp"></th></tr></thead>
+    <tbody>${linhas||`<tr><td colspan="12">${_cpVazio('Nenhum cliente com limite ou exposição.')}</td></tr>`}</tbody></table></div>`,
+    { acao:_finBtnCSV('fin-tb-clilim','limites-de-credito'), hint:'Exposição é o que já foi faturado e ainda não recebido MAIS o pedido aprovado que ainda vai virar nota. É esse número que tem que caber no limite — não só a carteira.' })
+    +_finNota('O bloqueio pela régua é <b>automático</b> (título vencido há mais de 30 dias) e não depende de ninguém lembrar. O botão de análise de crédito permite liberar ou bloquear manualmente, e essa decisão fica registrada com o seu nome.');
+}
+
+// ─── FICHA 360° DO CLIENTE ───
+function _finCliFichaHTML(cod){
+  const D=_finData(), F=_finCliente(D,cod);
+  if(!F) return _finTela('Cliente','Não encontrado.', _cpVazio('Cliente '+_finE(cod)+' não existe na base.'), '', { fn:'_finVoltarCliente()', label:_finVoltarLabel() }, {base:'D0'});
+  const s=F.s, c=F.cli, v=_finCliView||'resumo';
+  const kpis=_finKPIs([
+    { rot:'Faturamento 12 meses', val:_finK(s.fat12), sub:'posição '+s.rank+' · classe '+s.classe+' · '+_finPc(s.pctFat,1)+' do total' },
+    { rot:'Carteira em aberto', val:_finK(s.carteira), sub:s.nAbertos+' títulos'+(s.descontado>0?' · '+_finK(s.descontado)+' descontada':'') },
+    { rot:'Vencido', val:s.vencido>0?_finK(s.vencido):'—', cor:s.vencido>0?'var(--danger)':'var(--success)', sub:s.vencido>0?'maior atraso '+_finDd(s.maisAntigo)+' · > 30 d '+_finK(s.vencido30):'sem título vencido' },
+    { rot:'Rating', val:_finCliRating(s.rating)+' <span style="font-size:13px;color:var(--text3)">'+s.score+'</span>', sub:'pontualidade '+(s.pontualidade==null?'—':_finPc(s.pontualidade,0))+' · atraso médio '+(s.atrasoMedio==null?'—':_finDd(s.atrasoMedio,1)) },
+    { rot:'Prazo médio concedido', def:'prazoConcedido', val:s.prazoMedio==null?'—':_finDd(s.prazoMedio,1), cor:s.foraPolitica?'var(--amber)':null, sub:'política do canal: '+_finDd(c.prazoPolitica) },
+    { rot:'Uso do limite', def:'usoLimite', val:_finPc(s.usoLimite,0), cor:s.usoLimite>100?'var(--danger)':(s.usoLimite>85?'var(--amber)':'var(--success)'), sub:_finK(s.exposicao)+' de '+_finK(s.limite)+' · disponível '+_finK(s.disponivel) },
+  ]);
+  const abas=[['resumo','ti-user','Resumo'],['titulos','ti-list-details','Títulos',F.abertos.length],['pagamentos','ti-cash','Pagamentos',F.pagamentos.length],['cobranca','ti-phone-call','Cobrança',F.cobranca.length],['credito','ti-shield-check','Crédito']];
+  const subnav=`<div class="cp-subnav-wrap" style="margin-bottom:16px"><div class="cp-subnav">${abas.map(function(a){ return `<button class="cp-subtab ${v===a[0]?'on':''}" onclick="_finCliSetView('${a[0]}')"><i class="ti ${a[1]}"></i>${a[2]}${a[3]!=null?` <span class="fin-pill" style="--c:var(--text3);margin-left:4px;padding:0 6px">${a[3]}</span>`:''}</button>`; }).join('')}</div></div>`;
+  let corpo='';
+  if(v==='titulos') corpo=_finCliFichaTitulosHTML(D,F);
+  else if(v==='pagamentos') corpo=_finCliFichaPagtosHTML(D,F);
+  else if(v==='cobranca') corpo=_finCliFichaCobrancaHTML(D,F);
+  else if(v==='credito') corpo=_finCliFichaCreditoHTML(D,F);
+  else corpo=_finCliFichaResumoHTML(D,F);
+  const acao=`<div style="display:flex;gap:8px;align-items:flex-end">
+    <button class="fin-btn" onclick="_finCobrancaAbrir('cli:${_cpJs(cod)}')"><i class="ti ti-phone-call"></i>Registrar cobrança</button>
+    <button class="fin-btn pri" onclick="_finCreditoAbrir('${_cpJs(cod)}')"><i class="ti ti-shield-check"></i>Analisar crédito</button></div>`;
+  return _finTela(c.nome, c.cod+' · '+c.canal+' · '+c.cidade+'/'+c.uf+' · vendedor '+c.rep+' · cobrador '+c.cobrador,
+    kpis+subnav+corpo, acao, { fn:'_finVoltarCliente()', label:_finVoltarLabel() }, {base:'D0', selo:'exemplo'});
+}
+function _finCliFichaResumoHTML(D, F){
+  const s=F.s, c=F.cli, M=F.mensal;
+  const ficha=[['Código',c.cod],['Grupo econômico',c.grupo],['Canal',c.canal],['Cidade',c.cidade+'/'+c.uf],['Vendedor',c.rep],['Cobrador',c.cobrador],
+    ['Cliente desde',String(c.desde)],['Prazo da política',_finDd(c.prazoPolitica)],['Prazos praticados',c.prazoRot||'—'],['Perfil de pagamento',c.perfilRot||'—'],
+    ['Limite de crédito',_finMoeda(c.limite)],['Revisão do limite',_finDtBR(c.revisaoLimite)],['Garantia',c.garantia||'—'],['Participação na carteira',_finPc(s.pctFat,1)]];
+  return _finGrid(2,[
+    _finCard('Faturamento e recebimento por mês', _finColunas(M.map(function(m){ return { lbl:m.lbl, fat:m.faturado, rec:m.recebido }; }),
+      [{campo:'fat',rot:'Faturado',cor:'color-mix(in srgb,var(--blue-mid) 45%,transparent)'},{campo:'rec',rot:'Recebido',cor:'var(--success)'}], { h:200, fmt:_finK }), { sub:'últimos 12 meses' }),
+    _finCard('Cadastro e política', `<div class="fin-lista-kv">${ficha.map(function(x){ return `<div><span>${_finE(x[0])}</span><b>${_finE(x[1])}</b></div>`; }).join('')}</div>`),
+  ])+_finGrid(2,[
+    _finCard('Comportamento de pagamento', `<table class="cp-tbl cp-tbl-sm"><thead><tr><th>Mês</th><th class="r">Faturado</th><th class="r">Recebido</th><th class="r">Prazo</th><th class="r">Atraso</th><th class="r">Abatimentos</th><th class="r">Saldo no fim</th></tr></thead><tbody>
+      ${M.map(function(m){ return `<tr><td class="cp-item">${_finE(m.lbl)}</td><td class="cp-n">${m.faturado?_finMoeda(m.faturado):'—'}</td><td class="cp-n">${m.recebido?_finMoeda(m.recebido):'—'}</td>
+        <td class="cp-n">${m.prazo==null?'—':_finDd(m.prazo,0)}</td><td class="cp-n" style="${m.atraso==null?'':_finHeat(m.atraso,20,false)}">${m.atraso==null?'—':_finDd(m.atraso,1)}</td>
+        <td class="cp-n">${m.abatimentos?_finMoeda(m.abatimentos):'—'}</td><td class="cp-n">${_finMoeda(m.saldoFim)}</td></tr>`; }).join('')}</tbody></table>`,
+      { def:'atrasoMedio', hint:'Prazo é da emissão ao vencimento (o que foi concedido); atraso é do vencimento ao pagamento (o que o cliente faz com isso).' }),
+    _finCard('Leitura e sugestões', `<ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px;font-size:12.5px;color:var(--text2)">
+      ${F.sugestoes.map(function(x){ return `<li>${_finE(x)}</li>`; }).join('')}</ul>`
+      +(F.irmaos.length?`<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px"><div style="font-size:11.5px;color:var(--text3);margin-bottom:6px">Outros CNPJs do grupo ${_finE(F.cli.grupo)}</div>
+        ${F.irmaos.map(function(i){ return `<div class="cp-clic" onclick="_finAbrirCliente('${_cpJs(i.cod)}')" style="display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:3px 0"><span>${_finE(i.cli.nome)}</span><b style="color:${i.vencido>0?'var(--danger)':'var(--text2)'}">${_finMoeda(i.carteira)}</b></div>`; }).join('')}</div>`:''),
+      { sub:'derivado das regras de crédito', selo:'derivado' }),
+  ]);
+}
+function _finCliFichaTitulosHTML(D, F){
+  const L=F.abertos;
+  return _finCard('Títulos em aberto', `<div class="fin-scroll cp-noscroll"><table class="cp-tbl" id="fin-tb-clift"><thead><tr><th>NF</th><th>Parc.</th><th>Emissão</th><th>Venc.</th><th class="r">Valor</th><th class="r">Saldo</th><th class="r">Dias</th><th>Situação</th><th>Carteira</th><th class="fin-noexp"></th></tr></thead>
+    <tbody>${L.length?L.map(function(t){ return `<tr class="cp-clic${t.diasVenc>30?' fin-alerta':(t.diasVenc>0?' fin-atencao':'')}" onclick="_finTituloAbrir('${_cpJs(t.id)}')">
+      <td class="cp-mono">${_finE(t.nf)}</td><td class="cp-mono">${_finE(t.parc)}</td><td class="cp-mono">${_finDtBR(t.emissao)}</td><td class="cp-mono">${_finDtBR(t.venc)}</td>
+      <td class="cp-n">${_finMoeda(t.valor)}</td><td class="cp-n" style="font-weight:700">${_finMoeda(t.saldo)}</td>
+      <td class="cp-n" style="color:${t.diasVenc>0?'var(--danger)':'var(--text3)'}">${t.diasVenc>0?t.diasVenc:(t.diasVenc===0?'hoje':t.diasVenc)}</td>
+      <td>${t.situacao?_finPill(_finE(t.situacao),FIN_STATUS_COR[t.situacao]):_finStatusPill(t)}</td>
+      <td>${t.descontado?_finPill('Descontada · '+_finE(t.descontado.banco),'var(--purple)'):'<span style="color:var(--text3)">Simples</span>'}</td>
+      <td class="fin-noexp" onclick="event.stopPropagation()"><button class="fin-ico" title="Registrar recebimento" onclick="_finBaixaAbrir('${_cpJs(t.id)}')"><i class="ti ti-cash"></i></button></td></tr>`; }).join('')
+      :`<tr><td colspan="10">${_cpVazio('Nenhum título em aberto.')}</td></tr>`}
+      ${L.length?`<tr class="fin-tot"><td colspan="4">Total · ${L.length} títulos</td><td class="cp-n">${_finMoeda(L.reduce(function(a,t){ return a+t.valor; },0))}</td><td class="cp-n">${_finMoeda(L.reduce(function(a,t){ return a+t.saldo; },0))}</td><td colspan="4"></td></tr>`:''}</tbody></table></div>`,
+    { acao:_finBtnCSV('fin-tb-clift','titulos-cliente') });
+}
+function _finCliFichaPagtosHTML(D, F){
+  const L=F.pagamentos;
+  return _finCard('Pagamentos dos últimos 12 meses', `<div class="fin-scroll fin-scroll-y cp-noscroll"><table class="cp-tbl" id="fin-tb-clifp"><thead><tr><th>Data</th><th>NF</th><th>Venc.</th><th class="r">Valor</th><th class="r">Recebido</th><th class="r">Juros</th><th class="r">Abatimento</th><th>Motivo do abatimento</th><th class="r">Atraso</th></tr></thead>
+    <tbody>${L.length?L.map(function(t){ return `<tr class="cp-clic" onclick="_finTituloAbrir('${_cpJs(t.id)}')"><td class="cp-mono">${_finDtBR(t.dtBaixa)}</td><td class="cp-mono">${_finE(t.nf)} ${_finE(t.parc)}</td><td class="cp-mono">${_finDtBR(t.venc)}</td>
+      <td class="cp-n">${_finMoeda(t.valor)}</td><td class="cp-n" style="font-weight:600">${_finMoeda(t.recebido)}</td><td class="cp-n">${t.juros?_finMoeda(t.juros):'—'}</td>
+      <td class="cp-n" style="color:${t.abatimento>0?'var(--danger)':'var(--text3)'}">${t.abatimento?_finMoeda(t.abatimento):'—'}</td><td style="color:var(--text3)">${_finE(t.motivoAbat||'—')}</td>
+      <td class="cp-n" style="color:${t.atraso>0?'var(--danger)':'var(--success)'}">${t.atraso>0?'+'+t.atraso:t.atraso}</td></tr>`; }).join('')
+      :`<tr><td colspan="9">${_cpVazio('Nenhum pagamento nos últimos 12 meses.')}</td></tr>`}</tbody></table></div>`,
+    { acao:_finBtnCSV('fin-tb-clifp','pagamentos-cliente'), hint:'Atraso positivo = pagou depois do vencimento. É a média ponderada disso que alimenta a projeção de caixa deste cliente.' });
+}
+function _finCliFichaCobrancaHTML(D, F){
+  const L=F.cobranca;
+  return _finCard('Histórico de cobrança', `<div class="fin-scroll fin-scroll-y cp-noscroll"><table class="cp-tbl" id="fin-tb-clifc"><thead><tr><th>Data</th><th>NF</th><th>Tipo</th><th>Resultado</th><th>Observação</th><th>Responsável</th><th>Origem</th></tr></thead>
+    <tbody>${L.length?L.map(function(h){ return `<tr><td class="cp-mono">${_finDtBR(h.data)}</td><td class="cp-mono">${_finE(h.nf)} ${_finE(h.parc)}</td><td>${_finE(h.tipo)}</td>
+      <td>${_finPill(_finE(h.resultado), h.resultado==='Pagou'||h.resultado==='Acordo fechado'?'var(--success)':(h.resultado==='Sem retorno'?'var(--danger)':'var(--amber)'))}</td>
+      <td style="color:var(--text3)">${_finE(h.obs)}</td><td>${_finE(h.resp)}</td><td>${h.origem==='usuario'?_finPill('registrado','var(--blue-mid)'):'<span style="color:var(--text3)">exemplo</span>'}</td></tr>`; }).join('')
+      :`<tr><td colspan="7">${_cpVazio('Nenhuma ação de cobrança registrada.')}</td></tr>`}</tbody></table></div>`,
+    { acao:`<button class="fin-btn mini" onclick="_finCobrancaAbrir('cli:${_cpJs(F.cli.cod)}')"><i class="ti ti-phone-call"></i>Registrar ação</button>` });
+}
+function _finCliFichaCreditoHTML(D, F){
+  const s=F.s, c=F.cli;
+  const comp=[['Pontualidade (40%)', s.pontualidade==null?'—':_finPc(s.pontualidade,0), s.pontualidade==null?70:s.pontualidade],
+    ['Atraso médio (25%)', s.atrasoMedio==null?'—':_finDd(s.atrasoMedio,1), Math.max(0,100-Math.min(60,s.atrasoMedio||0)/60*100)],
+    ['Vencido > 30 d (20%)', s.vencido30>0?_finMoeda(s.vencido30):'nenhum', 100-Math.min(100,_finPct(s.vencido30,Math.max(1,s.carteira)))],
+    ['Uso do limite (10%)', _finPc(s.usoLimite,0), Math.max(0,100-Math.min(150,s.usoLimite)/150*100)],
+    ['Tempo de casa (5%)', String(c.desde), 100]];
+  return _finGrid(2,[
+    _finCard('Composição do rating', `<div style="display:flex;flex-direction:column;gap:9px">${comp.map(function(x){ return `<div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:var(--text2)">${_finE(x[0])}</span><b>${x[1]}</b></div>${_finBarra(x[2], x[2]>=70?'var(--success)':(x[2]>=40?'var(--amber)':'var(--danger)'))}</div>`; }).join('')}
+      <div style="border-top:1px solid var(--border);padding-top:9px;display:flex;justify-content:space-between;align-items:center"><span style="color:var(--text2);font-size:12.5px">Score final</span><span style="font-size:18px;font-weight:800">${s.score} ${_finCliRating(s.rating)}</span></div></div>`,
+      { selo:'derivado', hint:'Modelo do protótipo, para mostrar o formato: o sistema real pode usar bureau externo, faturamento declarado e histórico setorial.' }),
+    _finCard('Situação de crédito', `<div class="fin-lista-kv">
+      <div><span>Situação</span><b>${_finCliSitPill(s.situacaoCredito)}</b></div>
+      <div><span>Exposição</span><b>${_finMoeda(s.exposicao)}</b></div>
+      <div><span>Limite</span><b>${_finMoeda(s.limite)}</b></div>
+      <div><span>Disponível</span><b style="color:${s.disponivel<0?'var(--danger)':'var(--success)'}">${_finMoeda(s.disponivel)}</b></div>
+      <div><span>Pedidos aprovados</span><b>${s.pedidos?_finMoeda(s.pedidos):'—'}</b></div>
+      <div><span>Revisão do limite</span><b style="color:${s.revisaoVencida?'var(--danger)':'inherit'}">${_finDtBR(c.revisaoLimite)}</b></div>
+      <div><span>Garantia</span><b>${_finE(c.garantia||'—')}</b></div>
+      <div><span>Etapa da régua</span><b>${s.etapa!=null?_finE(FIN_REGUA[s.etapa].etapa):'—'}</b></div></div>
+      <div style="margin-top:12px"><button class="fin-btn pri" onclick="_finCreditoAbrir('${_cpJs(c.cod)}')"><i class="ti ti-shield-check"></i>Liberar ou bloquear</button></div>`),
+  ])+_finNota('O bloqueio pela régua é automático enquanto houver título vencido há mais de 30 dias. Uma liberação manual registrada aqui <b>vence a régua</b> e fica com o nome de quem liberou — é assim que se audita exceção de crédito.');
 }
 // ════ FIM DO BLOCO FINANCEIRO ════
 
