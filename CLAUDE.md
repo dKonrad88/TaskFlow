@@ -422,6 +422,52 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐⭐ 2026-09-12 — PC da Empresa — NOVA ÁREA **FINANCEIRO** (dados + cálculo + núcleo + 3 das 14 telas) — commit `a74a7bbb`
+> Continuação do trabalho iniciado em 11/09, que parou no meio (acabaram os tokens). O código gerado estava **só no
+> scratchpad do Temp** (que o CLAUDE.md avisa que some) — a prioridade desta sessão foi **injetar e commitar**.
+- **Onde fica:** um bloco único entre os marcadores `// ════ INÍCIO/FIM DO BLOCO FINANCEIRO ════`, logo **antes** de
+  `// ─── ÁREA QUALIDADE ───`. Montado pelo `scratchpad/inject_fin.ps1` (idempotente: substitui o bloco entre os
+  marcadores; se não existirem, insere antes da Qualidade). O injetor lista os 25 arquivos em `$ordem` e imprime
+  `FALTA: <arquivo>` p/ o que não existir — **é assim que se acrescenta tela nova** (gera o `fin_scr_<chave>.js`,
+  roda o script, testa, commita). Bloco = 307 KB; `index.html` foi de 4,47 → **4,78 MB**.
+- **4 camadas (nessa ordem dentro do bloco):**
+  1. **Dados** `fin_data.js` — `_finBuild()`/`_finData()` (memoizado). **REAL** = NFs de compra do ERP (`_CP_NF`) +
+     estoque/consumo (`_cpIdx`). **EXEMPLO determinístico** (semente fixa, não muda a cada render) = clientes,
+     títulos a receber, folha, empréstimos, bancos. Hoje = **12/09/2026**; 5.149 títulos a receber, 10.224 a pagar,
+     4 bancos, caixa R$ 5,18 mi. Build em **256 ms**.
+  2. **Cálculo** `fin_calc_a..g.js` — **`_FIN_DEF`** é o registro ÚNICO com a fórmula oficial de ~40 indicadores
+     (o texto que o `_hint`/`_finDefTxt` mostra na tela sai daqui) + funções **puras e memoizadas**: carteira/aging/PDD,
+     PMR/PMP/PME, DRE por competência, orçamento, pagar, impostos, bancos, dívida, balanço, capital de giro, projeção
+     diária de caixa e painel. ⚠️ **Nenhum número pode ser calculado na tela** — se falta um, cria-se a função aqui.
+  3. **Núcleo** `fin_core_a/b/c.js` — navegação (`financeiroView`, `FIN_MENU` com 7 grupos/14 itens, `setFinanceiroView`,
+     `renderFinanceiro`), formatação (`_finMoeda/_finK/_finPc/_finDd/_finDtBR/_finMesLbl/_finXx`), layout
+     (`_finTela/_finKPIs/_finCard/_finSubnav/_finSelo/_finNota`), gráficos SVG (`_finColunas/_finLinhas/_finRosca/`
+     `_finCascata/_finEmpilhada/_finBarrasH/_finSpark/_finHeat`) e as **únicas funções que gravam**
+     (`_finBaixa*/_finCobranca*/_finAprovar/_finCredito*/_finConciliar/_finCriarTarefa/_finCSV`).
+  4. **Telas** — uma `function _finTela_<chave>()` por tela, cada uma com **prefixo próprio** de globais.
+- ✅ **PRONTAS (3):** **Painel** (`_finTela_painel`) · **Bancos e conciliação** (`_finTela_bancos`) ·
+  **Contas a receber** (`_finTela_receber`, é a tela-modelo a copiar).
+  ⏳ **FALTAM (11):** `fluxo · cobranca · clientes · pagar · impostos · dre · orcamento · capital · endividamento ·
+  balanco · parametros`. **Não quebram nada:** o dispatch de `renderFinanceiro` faz `window['_finTela_'+view]` e,
+  se não achar, cai num **"Em construção"**; se a função existir e estourar, cai num `try/catch` com aviso na tela.
+- **Fiação (o que ficou fora do bloco, no resto do arquivo):** grupo **Financeiro** na sidebar (`_finSbHTML`/`FIN_MENU`,
+  ~14225), dispatch em `render()` (`hubView==='financeiro'`), `_cpSetFoco`, `voltarDasConfiguracoes`, e a rota
+  `tf_route` (persiste `financeiroView`, `_finCliSel`, `_finCliOrigem`, `_finContratoSel`, `_finSub`).
+  O kit de Compras ganhou 2 extensões usadas pelo Financeiro: **`_cpBarChart` aceita `opts {onClick,selYm}`** e
+  **`_cpLine` aceita `selYm`** (aditivo — as chamadas antigas seguem iguais).
+- **Regra P0 repetida aqui:** *render nunca grava*. Gravar é só nas ações `_finBaixa*`, `_finCobranca*`, `_finAprovar`,
+  `_finCredito*`, `_finConciliar`, `_finCriarTarefa`.
+- **Verificado no navegador** (preview `static` na :8777): app boota sem erro de sintaxe, `_finData()` 256 ms, as 3 telas
+  montam (painel 148.573 chars em 165 ms · bancos 44.385 em 3 ms · receber 313.932 em 26 ms), as outras 11 caem no
+  "Em construção", **0 erros de console**. Painel na tela: 8 KPIs, 9 cards, 6 gráficos SVG, 5 tabelas, cabeçalho
+  "Posição 12/09/26 · Mês fechado ago/26" e selo **REAL + EXEMPLO**.
+- ⚠️ **O contrato de quem escreve tela** está em `scratchpad/fin_spec.md` (11 regras invioláveis + formato do `D`
+  + lista das funções de cálculo + tabela de prefixos por tela). ⚠️ **O scratchpad é Temp e some** — se sumir antes
+  das 11 telas, o que sobrevive é: o bloco no `index.html` (que tem as 3 telas prontas como exemplo vivo), este
+  handoff e o `inject_fin.ps1`. Nesse caso, copiar `_finTela_receber` como molde.
+- ⏳ **Em aberto:** as 11 telas; decidir se algum dado hoje "exemplo" (clientes/recebíveis/folha/empréstimos) passa a
+  vir de export do ERP, como foi feito em Compras.
+
 ### 2026-09-11 (b) — PC da Empresa — Compras › ficha do fornecedor › Comparar vira UMA TABELA
 Pedido do Diego: os 3 cards (Resultado em 3 quadros · Fechamento do ano · Detalhes da comparação) repetiam os mesmos números → **um card só com uma tabela** (`_cpFornCompResumoHTML`). Colunas Período · Intervalo · Valor · Volume · Notas · Itens; grupo **Períodos comparados** (Base · Atual · **Variação**) e grupo **Fechamento do ano** (Ano passado fechado · Este ano projetado · **Variação**). A linha de variação traz o **%** e, embaixo, **quanto vale** ("R$ 929.766,24 a mais", "176.527 un. a mais", "11 notas a menos", "3 itens a menos"). No ano projetado, notas/itens = "—" (não se projetam). Unidades mistas: ⚠ com tooltip no volume. A frase-resumo ficou (menor) e a explicação da projeção virou nota de rodapé.
 - ⚠️ **Contexto multi-ferramenta:** o Diego está alternando com o **Codex** (13 commits dele chegaram hoje, mensagens sem prefixo). No working tree havia um card **"Alterar comparação"** (`_cpFornCmpQuickHTML`, troca A/B sem voltar ao passo a passo) **não commitado pelo Codex** — foi **incluído neste commit**. A fiação do **Financeiro** (sidebar/render/rota/patches do kit) segue **não commitada de propósito** (o bloco das telas ainda não foi injetado; subir só a fiação deixaria um grupo "Financeiro" vazio no Pages). Commit feito com `git apply --cached` de um patch só com os trechos da Comparar.
