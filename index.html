@@ -17840,6 +17840,11 @@ function renderChatGrupos(){
   const main=document.getElementById('task-container'); if(!main) return;
   const _st=document.getElementById('stats-box'); if(_st) _st.style.display='none';
   const _pr=document.getElementById('progress-box'); if(_pr) _pr.style.display='none';
+  // Cabeçalho também aqui: quando a aba volta pela rota (F5), o render() não passa pelo setTab.
+  { const _tt=document.getElementById('tab-title'), _ts=document.getElementById('tab-sub');
+    if(_tt){ _tt.textContent='💬 Chat - Grupos'; _tt.style.display=''; }
+    if(_ts){ _ts.textContent='Grupos de trabalho — a conversa vira tarefa e decisão'; _ts.style.display=''; }
+    if(typeof _atualizarTabHeaderActions==='function') _atualizarTabHeaderActions(); }
   const eu=_chatEu(), meus=_chatGruposDe(eu);
   const estreita=window.innerWidth>0 && window.innerWidth<=760;
   if(_chatSel && !meus.some(g=>g.id===_chatSel)) _chatSel=null;
