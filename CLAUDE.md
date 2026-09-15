@@ -422,6 +422,34 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-09-15 — PC da Empresa — NOVA ABA **"Chat - Grupos"** (Gestão) + saem **Análise** e **Oficina de Ideias** da sidebar
+Pedido do Diego: "sair do WhatsApp com alguns grupos, fazer tudo por ali, inclusive criar tarefas e interações" + tirar Análise e
+Oficina. Verificado no preview (:8777) por DOM/JS — **0 erros de console**; roteiro completo testado e os dados de teste restaurados.
+- **Onde fica:** bloco único entre `// ════ INÍCIO/FIM DO BLOCO CHAT - GRUPOS ════`, logo **antes** de `// OFICINA DE IDEIAS`.
+  Fiação fora do bloco: item na sidebar Gestão (depois de Reuniões, **badge = não lidas**), `setTab` (título/sub/listas de exclusão),
+  dispatch em `render()` (`currentTab==='chat'` → `renderChatGrupos`), botão **"Novo grupo"** em `_atualizarTabHeaderActions`,
+  `_notifCatDe` (`mencao_chat` → Menções), `_notifClick` (ref `chat:<grupo>:<msg>` → `_chatNotifAbrir`), Lixeira (`chatGrupo` em
+  `restoreFromTrash` + labels/ícones) e rota `tf_route` (guarda `chatSel`).
+- **Tela (3 colunas):** lista de grupos (busca por nome/mensagem, prévia, não lidas, "@" quando te mencionaram) · conversa (divisória
+  por dia, "Novas mensagens", balões, responder com citação, reações, @menção com popup e `@todos`, anexos ≤ 2 MB, links clicáveis,
+  busca na conversa, apagar a própria mensagem com Desfazer) · painel **Tarefas · Decisões · Fixadas · Arquivos · Membros**.
+- ⭐ **A conversa vira trabalho:** ☑ na mensagem → **tarefa REAL** (`origem:'chat'`, `chatGrupoId`, `chatMsgId`; solicitante = quem
+  criou; responsável sugerido = 1º mencionado, senão você; prazo hoje) → cai no **Meu Dia** e aparece no grupo como **card com status
+  vivo** (concluir pelo card chama o `toggle` do app). ⚖️ na mensagem → **decisão** registrada no grupo. A mensagem de origem ganha o
+  selo "tarefa"/"decisão" e os cards levam de volta a ela. Tudo com Desfazer.
+- **Grupos:** criar/editar (nome, descrição, ícone, cor, membros), admin adiciona/remove/promove, sair, exportar `.txt`,
+  **excluir → Lixeira** (volta com as mensagens). Mensagens de sistema ("adicionou/removeu/renomeou").
+- **Dados:** `taskflow_chat_grupos` (sincroniza) = `{grupos, msgs:{gid:[...]}, lidas:{pessoa:{gid:ts}}}`. **3 grupos de exemplo**
+  (Marca Própria, Manutenção — Chamados, Compras × PCP) vivem só em memória e **só são gravados na 1ª ação** — regra P0 respeitada
+  (conferido: abrir a aba não grava nada). "Falando como" = `tf_chat_eu` (por aparelho, **não** sincroniza).
+- ⚠️ **Protótipo — o que é simulado:** identidade (troca no chip do cabeçalho); "tempo real" só entre **abas do mesmo navegador**
+  (evento `storage`); o sino só notifica o **usuário real** do navegador (troque para outra pessoa e mencione o Diego para ver).
+  Chat entre pessoas de verdade, notificação por destinatário e anexos fora do localStorage = **backend do Guilherme**.
+- **Análise e Oficina de Ideias:** só saíram da sidebar — `renderAnalise`/`renderOficina` e os dados continuam no arquivo. Uma rota
+  salva nelas (`tf_route`) volta ao **Meu Dia**. A "Análise" dentro do Painel de Projeto não foi tocada.
+- ⏳ **Em aberto:** o Diego ainda não viu a tela; decidir se o seed de exemplo fica; possíveis próximos passos — colar imagem com
+  Ctrl+V, "silenciar grupo", mensagem → item de pauta de reunião, e decidir se Análise/Oficina voltam em outro lugar ou saem de vez.
+
 ### ⭐⭐ 2026-09-12 — PC da Empresa — NOVA ÁREA **FINANCEIRO** (dados + cálculo + núcleo + AS 14 TELAS) — commits `a74a7bbb` … `22508a01`
 > Continuação do trabalho iniciado em 11/09, que parou no meio (acabaram os tokens). O código gerado estava **só no
 > scratchpad do Temp** (que o CLAUDE.md avisa que some) — a prioridade desta sessão foi **injetar e commitar**.
