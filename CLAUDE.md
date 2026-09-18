@@ -430,9 +430,14 @@ Oficina. Verificado no preview (:8777) por DOM/JS — **0 erros de console**; ro
   dispatch em `render()` (`currentTab==='chat'` → `renderChatGrupos`), botão **"Novo grupo"** em `_atualizarTabHeaderActions`,
   `_notifCatDe` (`mencao_chat` → Menções), `_notifClick` (ref `chat:<grupo>:<msg>` → `_chatNotifAbrir`), Lixeira (`chatGrupo` em
   `restoreFromTrash` + labels/ícones) e rota `tf_route` (guarda `chatSel`).
-- **Tela (3 colunas):** lista de grupos (busca por nome/mensagem, prévia, não lidas, "@" quando te mencionaram) · conversa (divisória
+- **Tela (2 colunas):** lista de grupos (busca por nome/mensagem, prévia, não lidas, "@" quando te mencionaram) · conversa (divisória
   por dia, "Novas mensagens", balões, responder com citação, reações, @menção com popup e `@todos`, anexos ≤ 2 MB, links clicáveis,
-  busca na conversa, apagar a própria mensagem com Desfazer) · painel **Tarefas · Decisões · Fixadas · Arquivos · Membros**.
+  busca na conversa, apagar a própria mensagem com Desfazer).
+  ⚠️ **(18/09) o painel da direita (Tarefas · Decisões · Fixadas · Arquivos · Membros) SAIU a pedido do Diego** — "só a lista de grupos
+  e o chat". Junto saíram o botão de mostrar/esconder o painel e a ação **Fixar** (só servia à aba Fixadas). **Membros** virou um
+  **popover** (`_chatMembrosPop`) aberto clicando no nome do grupo no cabeçalho ou em ⋮ › Membros (adicionar, tornar admin, remover,
+  sair). `_chatPopover` passou a medir a âncora ANTES de fechar o popover anterior (senão o menu de membro abria no canto da tela) e
+  aceita `alinharEsq`. Os dados `g.fixadas` continuam no modelo, sem UI.
 - ⭐ **A conversa vira trabalho:** ☑ na mensagem → **tarefa REAL** (`origem:'chat'`, `chatGrupoId`, `chatMsgId`; solicitante = quem
   criou; responsável sugerido = 1º mencionado, senão você; prazo hoje) → cai no **Meu Dia** e aparece no grupo como **card com status
   vivo** (concluir pelo card chama o `toggle` do app). ⚖️ na mensagem → **decisão** registrada no grupo. A mensagem de origem ganha o

@@ -17584,8 +17584,6 @@ const CHAT_ICONES=['ti-messages','ti-package','ti-tool','ti-shopping-cart','ti-t
 const CHAT_CORES=['var(--blue-mid)','var(--success)','var(--amber)','var(--danger)','var(--purple)','var(--text2)'];
 let _chatDB=null;            // cache em memória do LS_CHAT
 let _chatSel=null;           // grupo aberto
-let _chatSide='tarefas';     // aba do painel direito
-let _chatSideAberto=true;    // painel direito visível
 let _chatBusca='';           // busca na lista de grupos
 let _chatBuscaMsg='';        // busca dentro da conversa
 let _chatBuscaMsgAberta=false;
@@ -17688,7 +17686,6 @@ function _chatMeMencionou(gid,pid){ return _chatNaoLidasArr(gid,pid).some(m=>(m.
 function _chatTotalNaoLidas(){
   try{ const eu=_chatEu(); return _chatGruposDe(eu).reduce((s,g)=>s+_chatNaoLidas(g.id,eu),0); }catch(e){ return 0; }
 }
-function _chatTarefasDo(gid){ return (tasks||[]).filter(t=>t.chatGrupoId===gid); }
 
 // ── Formatação ─────────────────────────────────────────────────────────────────────────────────
 function _chatDiaISO(iso){ return _isoLocal(new Date(iso)); }
@@ -17731,8 +17728,7 @@ function _chatResumo(m){
 
 // ── Tela: estrutura em 3 colunas (grupos | conversa | painel) ─────────────────────────────────
 function _chatCSS(){ return `
-.chat-wrap{display:grid;grid-template-columns:272px minmax(0,1fr) 304px;height:calc(100vh - 158px);min-height:520px;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--surface-painel,var(--card))}
-.chat-wrap.sem-side{grid-template-columns:272px minmax(0,1fr)}
+.chat-wrap{display:grid;grid-template-columns:272px minmax(0,1fr);height:calc(100vh - 158px);min-height:520px;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--surface-painel,var(--card))}
 .chat-lista{border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0;background:var(--card)}
 .chat-lista-top{padding:12px 12px 10px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:9px}
 .chat-lista-itens{flex:1;overflow-y:auto}
@@ -17810,26 +17806,18 @@ function _chatCSS(){ return `
 .chat-pop{position:fixed;z-index:10002;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.18);overflow:hidden}
 .chat-pop-row{display:flex;align-items:center;gap:8px;width:100%;background:transparent;border:none;padding:6px 10px;cursor:pointer;font-family:inherit;font-size:13px;color:var(--text);text-align:left}
 .chat-pop-row:hover,.chat-pop-row.on{background:color-mix(in srgb,var(--blue-mid) 12%,transparent)}
-.chat-side{border-left:1px solid var(--border);display:flex;flex-direction:column;min-height:0;background:var(--card)}
-.chat-side-tabs{display:flex;border-bottom:1px solid var(--border);padding:0 4px;flex-shrink:0}
-.chat-stab{flex:1;background:none;border:none;border-bottom:2px solid transparent;padding:9px 1px 7px;cursor:pointer;color:var(--text3);font-size:16px;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
-.chat-stab span{font-size:9.5px;font-weight:700;white-space:nowrap}
-.chat-stab:hover{color:var(--text2)}
-.chat-stab.on{color:var(--blue-mid);border-bottom-color:var(--blue-mid)}
-.chat-side-body{flex:1;overflow-y:auto;padding:12px 14px 20px}
-.chat-side-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin:2px 0 8px}
+.chat-memb-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:10px 12px 6px}
 .chat-srow{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 55%,transparent);font-size:12.5px;color:var(--text)}
 .chat-srow:last-child{border-bottom:none}
 .chat-sub{font-size:11px;color:var(--text3);margin-top:2px}
 .chat-link{background:none;border:none;padding:0;color:var(--blue-mid);cursor:pointer;font-family:inherit;font-size:11px;font-weight:700}
-.chat-vazio-side{font-size:12px;color:var(--text3);line-height:1.55;padding:10px 2px}
 .chat-chk{width:17px;height:17px;border-radius:5px;border:1.5px solid var(--border);background:var(--card);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;color:#fff;font-size:12px;padding:0;margin-top:1px}
 .chat-chk.on{background:var(--success);border-color:var(--success)}
 .chat-mini-btn{display:inline-flex;align-items:center;gap:5px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;font-family:inherit}
 .chat-mini-btn:hover{border-color:var(--blue-mid);color:var(--blue-mid)}
 .chat-gm-row:hover{background:var(--bg2)}
-@media(max-width:1240px){.chat-wrap,.chat-wrap.sem-side{grid-template-columns:240px minmax(0,1fr)}.chat-side{display:none}}
-@media(max-width:760px){.chat-wrap,.chat-wrap.sem-side{grid-template-columns:1fr;height:calc(100vh - 130px)}.chat-wrap.tem-sel .chat-lista{display:none}.chat-wrap:not(.tem-sel) .chat-conv{display:none}.chat-voltar{display:inline-flex}}
+@media(max-width:1240px){.chat-wrap{grid-template-columns:240px minmax(0,1fr)}}
+@media(max-width:760px){.chat-wrap{grid-template-columns:1fr;height:calc(100vh - 130px)}.chat-wrap.tem-sel .chat-lista{display:none}.chat-wrap:not(.tem-sel) .chat-conv{display:none}.chat-voltar{display:inline-flex}}
 `; }
 
 function _chatOrdenados(lista){
@@ -17850,12 +17838,12 @@ function renderChatGrupos(){
   if(_chatSel && !meus.some(g=>g.id===_chatSel)) _chatSel=null;
   if(!_chatSel && meus.length && !estreita) _chatSel=_chatOrdenados(meus)[0].id;
   if(!meus.length){ main.innerHTML=`<style>${_chatCSS()}</style>${_chatVazioHTML(eu)}`; return; }
-  const g=_chatSel?_chatGrupo(_chatSel):null, side=!!(g && _chatSideAberto);
+  const g=_chatSel?_chatGrupo(_chatSel):null;
   // guarda a rolagem: re-render do MESMO grupo (ex.: concluir tarefa) não pode pular para o fim
   const _pf=document.getElementById('chat-feed');
   const prev=_pf ? {gid:_pf.dataset.gid, top:_pf.scrollTop, noFim:(_pf.scrollHeight-_pf.scrollTop-_pf.clientHeight)<90} : null;
   main.innerHTML=`<style>${_chatCSS()}</style>
-  <div class="chat-wrap${g?' tem-sel':''}${side?'':' sem-side'}">
+  <div class="chat-wrap${g?' tem-sel':''}">
     <aside class="chat-lista">
       <div class="chat-lista-top">
         <div class="chat-busca"><i class="ti ti-search"></i><input class="chat-busca-inp" placeholder="Buscar grupo ou mensagem…" value="${escapeAttr(_chatBusca)}" oninput="_chatSetBusca(this.value)"></div>
@@ -17863,7 +17851,6 @@ function renderChatGrupos(){
       <div class="chat-lista-itens" id="chat-lista-itens">${_chatListaItensHTML()}</div>
     </aside>
     <section class="chat-conv" id="chat-conv">${g?_chatConvHTML(g):_chatSemSelHTML()}</section>
-    ${side?`<aside class="chat-side" id="chat-side">${_chatSideHTML(g)}</aside>`:''}
   </div>`;
   _chatPosRender(prev);
 }
@@ -17946,7 +17933,6 @@ function _chatRefresh(opts){
   const bw=document.getElementById('chat-buscamsg-wrap'); if(bw && !opts.manterBusca) bw.innerHTML=_chatBuscaMsgHTML(g);
   feed.innerHTML=_chatFeedHTML(g);
   const ex=document.getElementById('chat-comp-extra'); if(ex) ex.innerHTML=_chatCompExtraHTML(g);
-  const sd=document.getElementById('chat-side'); if(sd) sd.innerHTML=_chatSideHTML(g);
   if(_chatFlash) _chatPosRender(null);
   else if(opts.fim || noFim) feed.scrollTop=feed.scrollHeight;
   if(typeof renderSidebar==='function') renderSidebar();
@@ -17977,13 +17963,12 @@ function _chatConvHeadHTML(g){
   const nomes=g.membros.map(_chatPrim).join(', ');
   return `<button class="chat-hbtn chat-voltar" title="Voltar aos grupos" onclick="_chatVoltarLista()"><i class="ti ti-arrow-left"></i></button>
   <div class="chat-gico" style="background:color-mix(in srgb,${g.cor||'var(--blue-mid)'} 16%,var(--card));color:${g.cor||'var(--blue-mid)'}"><i class="ti ${g.icone||'ti-messages'}"></i></div>
-  <div style="flex:1;min-width:0;cursor:pointer" onclick="_chatSetSide('membros')" title="Ver membros">
+  <div id="chat-hdr-info" style="flex:1;min-width:0;cursor:pointer" onclick="_chatMembrosPop(this)" title="Ver membros">
     <div style="font-size:14.5px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(g.nome)}</div>
     <div style="font-size:11.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.membros.length} membro${g.membros.length===1?'':'s'} · ${escapeHTML(nomes)}</div>
   </div>
   <button class="chat-eu" onclick="_chatTrocarEu(this)" title="Identidade SIMULADA do protótipo — no sistema real cada um entra com o próprio login">${avatarHTML(me,22)}<span>Falando como <b>${escapeHTML(_chatPrim(eu))}</b></span><i class="ti ti-chevron-down" style="font-size:12px"></i></button>
   <button class="chat-hbtn ${_chatBuscaMsgAberta?'on':''}" title="Buscar nesta conversa" onclick="_chatToggleBuscaMsg()"><i class="ti ti-search"></i></button>
-  <button class="chat-hbtn ${_chatSideAberto?'on':''}" title="Painel do grupo" onclick="_chatToggleSide()"><i class="ti ti-layout-sidebar-right"></i></button>
   <button class="chat-hbtn" title="Opções do grupo" onclick="_chatMenuGrupo(this)"><i class="ti ti-dots-vertical"></i></button>`;
 }
 
@@ -18034,8 +18019,7 @@ function _chatFeedHTML(g){
 function _chatMsgHTML(g,m,cont,eu){
   const mine=m.autorId===eu, p=_chatP(m.autorId);
   const gid=escapeAttr(g.id), mid=escapeAttr(m.id);
-  const fix=g.fixadas.includes(m.id);
-  const meta=`<div class="chat-meta">${fix?'<i class="ti ti-pin" title="Fixada"></i>':''}${_chatVinculosHTML(g,m)}<span>${_chatHora(m.em)}</span></div>`;
+  const meta=`<div class="chat-meta">${_chatVinculosHTML(g,m)}<span>${_chatHora(m.em)}</span></div>`;
   let corpo;
   if(m.excluida){
     corpo=`<div class="chat-bub"><span class="chat-apagada"><i class="ti ti-ban"></i> Mensagem apagada</span>${meta}</div>`;
@@ -18065,7 +18049,6 @@ function _chatMsgHTML(g,m,cont,eu){
     <button title="Reagir" onclick="_chatMenuReacao(this,'${gid}','${mid}')"><i class="ti ti-mood-smile"></i></button>
     ${m.tipo==='msg'?`<button title="Transformar em tarefa" onclick="_chatAbrirTarefa('${gid}','${mid}')"><i class="ti ti-checkbox"></i></button>
     <button title="Registrar como decisão" onclick="_chatAbrirDecisao('${gid}','${mid}')"><i class="ti ti-gavel"></i></button>`:''}
-    <button title="${fix?'Desafixar':'Fixar no grupo'}" onclick="_chatFixar('${gid}','${mid}')"><i class="ti ${fix?'ti-pinned-off':'ti-pin'}"></i></button>
     ${m.texto?`<button title="Copiar texto" onclick="_chatCopiar('${gid}','${mid}')"><i class="ti ti-copy"></i></button>`:''}
     ${mine && m.tipo==='msg'?`<button class="perigo" title="Apagar mensagem" onclick="_chatApagar('${gid}','${mid}')"><i class="ti ti-trash"></i></button>`:''}
   </div>`;
@@ -18153,13 +18136,6 @@ function _chatToggleBuscaMsg(){
   _chatBuscaMsgAberta=!_chatBuscaMsgAberta; if(!_chatBuscaMsgAberta) _chatBuscaMsg='';
   _chatRefresh({fim:!_chatBuscaMsgAberta});
   if(_chatBuscaMsgAberta) setTimeout(()=>document.getElementById('chat-buscamsg')?.focus(),0);
-}
-function _chatToggleSide(){ _chatSideAberto=!_chatSideAberto; renderChatGrupos(); }
-function _chatSetSide(tab){
-  _chatSide=tab;
-  const sd=document.getElementById('chat-side');
-  if(!_chatSideAberto || !sd){ _chatSideAberto=true; renderChatGrupos(); return; }
-  const g=_chatGrupo(_chatSel); if(g) sd.innerHTML=_chatSideHTML(g);
 }
 function _chatVoltarLista(){ _chatSel=null; _chatMenFechar(); renderChatGrupos(); }
 
@@ -18316,13 +18292,14 @@ function _chatCancelReply(){
   _chatReply=null;
   const g=_chatGrupo(_chatSel), ex=document.getElementById('chat-comp-extra'); if(ex && g) ex.innerHTML=_chatCompExtraHTML(g);
 }
-function _chatPopover(anchor, html){
+function _chatPopover(anchor, html, alinharEsq){
+  const r=anchor.getBoundingClientRect(); // mede ANTES de fechar: a âncora pode estar dentro do popover que vai sumir
   _chatPopFechar();
   const pop=document.createElement('div'); pop.id='chat-pop'; pop.className='chat-pop'; pop.innerHTML=html;
   document.body.appendChild(pop);
   const vw=window.innerWidth||document.documentElement.clientWidth||1280, vh=window.innerHeight||document.documentElement.clientHeight||800;
-  const r=anchor.getBoundingClientRect(), pw=pop.offsetWidth, ph=pop.offsetHeight;
-  pop.style.left=Math.max(8, Math.min(r.right-pw, vw-8-pw))+'px';
+  const pw=pop.offsetWidth, ph=pop.offsetHeight;
+  pop.style.left=Math.max(8, Math.min(alinharEsq?r.left:r.right-pw, vw-8-pw))+'px';
   pop.style.top=((r.bottom+6+ph>vh-8)?Math.max(8,r.top-6-ph):r.bottom+6)+'px';
   setTimeout(()=>{ document.addEventListener('mousedown',_chatPopFora,true); document.addEventListener('keydown',_chatPopEsc,true); },0);
   return pop;
@@ -18342,13 +18319,6 @@ function _chatReagir(gid,mid,e){
   if(i>=0) a.splice(i,1); else a.push(eu);
   if(a.length) m.reacoes[e]=a; else delete m.reacoes[e];
   _chatSave(); _chatRefresh();
-}
-function _chatFixar(gid,mid){
-  const g=_chatGrupo(gid); if(!g) return;
-  const i=g.fixadas.indexOf(mid);
-  if(i>=0) g.fixadas.splice(i,1); else g.fixadas.unshift(mid);
-  _chatSave(); _chatRefresh();
-  toast(i>=0?'Mensagem desafixada':'📌 Mensagem fixada no grupo');
 }
 function _chatCopiar(gid,mid){
   const m=_chatMsg(gid,mid); if(!m) return;
@@ -18546,92 +18516,31 @@ function _chatRemoverDecisao(gid,decId,desfazer){
   (d.msgs[gid]||[]).forEach(x=>{ if(x.decisaoIds){ x.decisaoIds=x.decisaoIds.filter(y=>y!==decId); if(!x.decisaoIds.length) delete x.decisaoIds; } });
   _chatSave(); _chatRefresh(); toast(desfazer?'Decisão desfeita':'Decisão removida');
 }
-function _chatConfirmarRemoverDecisao(gid,decId){
-  confirmModal({title:'Remover decisão', message:'A decisão sai da lista e do chat.', confirmLabel:'Remover', danger:true, icon:'ti-trash', onConfirm:()=>_chatRemoverDecisao(gid,decId,false)});
-}
-
-// ── Painel lateral ─────────────────────────────────────────────────────────────────────────────
-function _chatSideHTML(g){
-  const eu=_chatEu(), tar=_chatTarefasDo(g.id), arqs=_chatArquivos(g);
-  const tabs=[['tarefas','ti-checkbox','Tarefas',tar.filter(t=>!t.done).length],['decisoes','ti-gavel','Decisões',g.decisoes.length],
-              ['fixadas','ti-pin','Fixadas',g.fixadas.length],['arquivos','ti-paperclip','Arquivos',arqs.length],['membros','ti-users','Membros',g.membros.length]];
-  const tabsHTML=tabs.map(([k,ic,l,n])=>`<button class="chat-stab ${_chatSide===k?'on':''}" onclick="_chatSetSide('${k}')" title="${l}"><span style="display:flex;align-items:center;gap:3px"><i class="ti ${ic}" style="font-size:16px"></i>${n?`<b style="font-size:10px">${n}</b>`:''}</span><span>${l}</span></button>`).join('');
-  let body;
-  if(_chatSide==='decisoes') body=_chatSideDecisoesHTML(g,eu);
-  else if(_chatSide==='fixadas') body=_chatSideFixadasHTML(g);
-  else if(_chatSide==='arquivos') body=_chatSideArquivosHTML(g,arqs);
-  else if(_chatSide==='membros') body=_chatSideMembrosHTML(g,eu);
-  else body=_chatSideTarefasHTML(g,tar);
-  return `<div class="chat-side-tabs">${tabsHTML}</div><div class="chat-side-body">${body}</div>`;
-}
-function _chatSideTarefasHTML(g,tar){
-  const gid=escapeAttr(g.id);
-  const head=`<div class="chat-side-h"><span>Tarefas do grupo</span><button class="chat-mini-btn" onclick="_chatAbrirTarefa('${gid}',null)"><i class="ti ti-plus"></i> Nova</button></div>`;
-  if(!tar.length) return head+`<div class="chat-vazio-side">Nenhuma tarefa ainda.<br>Passe o mouse numa mensagem e clique em <i class="ti ti-checkbox"></i> para transformá-la em tarefa — ela cai no Meu Dia de quem executa.</div>`;
-  const ord=[...tar].sort((a,b)=>(Number(!!a.done)-Number(!!b.done)) || String(a.date||'9999').localeCompare(String(b.date||'9999')));
-  const abertas=ord.filter(t=>!t.done), feitas=ord.filter(t=>t.done);
-  const row=t=>{
-    const st=_chatTarefaStatus(t), card=_chatMsgs(g.id).find(x=>x.tipo==='tarefa' && x.taskId===t.id);
-    return `<div class="chat-srow"><button class="chat-chk ${t.done?'on':''}" onclick="_chatToggleTarefa(${Number(t.id)})" title="${t.done?'Reabrir':'Concluir'}">${t.done?'<i class="ti ti-check"></i>':''}</button>
-      <div style="flex:1;min-width:0"><div style="font-weight:600;cursor:pointer;overflow-wrap:anywhere;${t.done?'text-decoration:line-through;color:var(--text3)':''}" onclick="openEdit(${Number(t.id)})" title="Abrir tarefa">${escapeHTML(t.title||'')}</div>
-      <div class="chat-sub">${escapeHTML(t.executor?_chatPrim(t.executor):'Sem responsável')} · ${t.date?_chatDataBR(t.date):'sem prazo'} · <span style="color:${st.cor};font-weight:700">${st.lbl}</span></div>
-      ${card?`<button class="chat-link" onclick="_chatIrPara('${gid}','${escapeAttr(card.id)}')">ver no chat</button>`:''}</div></div>`;
-  };
-  return head+`<div class="chat-sub" style="margin:-2px 0 6px">${abertas.length} aberta${abertas.length===1?'':'s'} · ${feitas.length} concluída${feitas.length===1?'':'s'}</div>`+
-    abertas.map(row).join('')+(feitas.length?`<div class="chat-side-h" style="margin-top:14px"><span>Concluídas</span></div>`+feitas.slice(0,20).map(row).join(''):'');
-}
-function _chatSideDecisoesHTML(g,eu){
-  const gid=escapeAttr(g.id);
-  const head=`<div class="chat-side-h"><span>Decisões</span><button class="chat-mini-btn" onclick="_chatAbrirDecisao('${gid}',null)"><i class="ti ti-plus"></i> Registrar</button></div>`;
-  if(!g.decisoes.length) return head+`<div class="chat-vazio-side">Nada decidido ainda.<br>Quando algo for combinado, clique em <i class="ti ti-gavel"></i> na mensagem para registrar.</div>`;
-  const adm=_chatEhAdmin(g,eu);
-  return head+[...g.decisoes].reverse().map(d=>{
-    const card=_chatMsgs(g.id).find(x=>x.tipo==='decisao' && x.decisaoId===d.id);
-    return `<div class="chat-srow"><i class="ti ti-gavel" style="color:var(--purple);font-size:15px;margin-top:2px"></i><div style="flex:1;min-width:0">
-      <div style="font-weight:600;white-space:pre-wrap;overflow-wrap:anywhere">${escapeHTML(d.texto)}</div>
-      <div class="chat-sub">${escapeHTML(_chatPrim(d.autorId))} · ${_chatDiaLabel(d.em)} ${_chatHora(d.em)}</div>
-      <div style="display:flex;gap:10px;margin-top:3px">${card?`<button class="chat-link" onclick="_chatIrPara('${gid}','${escapeAttr(card.id)}')">ver no chat</button>`:''}${(adm||d.autorId===eu)?`<button class="chat-link" style="color:var(--text3)" onclick="_chatConfirmarRemoverDecisao('${gid}','${escapeAttr(d.id)}')">remover</button>`:''}</div>
-    </div></div>`;
-  }).join('');
-}
-function _chatSideFixadasHTML(g){
-  const gid=escapeAttr(g.id);
-  const lista=g.fixadas.map(id=>_chatMsg(g.id,id)).filter(Boolean);
-  const head=`<div class="chat-side-h"><span>Mensagens fixadas</span></div>`;
-  if(!lista.length) return head+`<div class="chat-vazio-side">Nenhuma mensagem fixada.<br>Use <i class="ti ti-pin"></i> para deixar à mão o que todo mundo precisa achar rápido (especificação, contato, endereço…).</div>`;
-  return head+lista.map(m=>`<div class="chat-srow"><i class="ti ti-pin" style="color:var(--amber);font-size:15px;margin-top:2px"></i><div style="flex:1;min-width:0">
-    <div style="white-space:pre-wrap;overflow-wrap:anywhere">${escapeHTML(_chatResumo(m).slice(0,220))}</div>
-    <div class="chat-sub">${escapeHTML(_chatPrim(m.autorId))} · ${_chatDiaLabel(m.em)} ${_chatHora(m.em)}</div>
-    <div style="display:flex;gap:10px;margin-top:3px"><button class="chat-link" onclick="_chatIrPara('${gid}','${escapeAttr(m.id)}')">ver no chat</button><button class="chat-link" style="color:var(--text3)" onclick="_chatFixar('${gid}','${escapeAttr(m.id)}')">desafixar</button></div>
-  </div></div>`).join('');
-}
-function _chatArquivos(g){ const out=[]; _chatMsgs(g.id).forEach(m=>{ if(!m.excluida) (m.anexos||[]).forEach(a=>out.push({a,m})); }); return out.reverse(); }
-function _chatSideArquivosHTML(g,arqs){
-  const head=`<div class="chat-side-h"><span>Arquivos do grupo</span></div>`;
-  if(!arqs.length) return head+`<div class="chat-vazio-side">Nenhum arquivo enviado.<br>Use <i class="ti ti-paperclip"></i> ao lado do campo de mensagem (até 2 MB por arquivo).</div>`;
-  return head+arqs.map(({a,m})=>{
-    const url=String(a.data||'').startsWith('data:')?a.data:'', img=url && String(a.tipo||'').startsWith('image/');
-    return `<div class="chat-srow">${img?`<img src="${escapeAttr(url)}" alt="" style="width:38px;height:38px;border-radius:7px;object-fit:cover;border:1px solid var(--border);flex-shrink:0">`:`<i class="ti ti-file-description" style="font-size:22px;color:var(--blue-mid);flex-shrink:0"></i>`}
-      <div style="flex:1;min-width:0"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(a.nome||'arquivo')}</div>
-      <div class="chat-sub">${_chatTam(a.tam||0)} · ${escapeHTML(_chatPrim(m.autorId))} · ${_chatDiaLabel(m.em)}</div>
-      <div style="display:flex;gap:10px;margin-top:3px">${url?`<a class="chat-link" style="text-decoration:none" href="${escapeAttr(url)}" download="${escapeAttr(a.nome||'arquivo')}">baixar</a>`:''}<button class="chat-link" onclick="_chatIrPara('${escapeAttr(g.id)}','${escapeAttr(m.id)}')">ver no chat</button></div></div></div>`;
-  }).join('');
-}
-function _chatSideMembrosHTML(g,eu){
-  const gid=escapeAttr(g.id), adm=_chatEhAdmin(g,eu);
+// ── Membros (popover aberto pelo nome do grupo no cabeçalho ou pelo menu ⋮) ────────────────────
+// (set/2026) O painel lateral (Tarefas · Decisões · Fixadas · Arquivos · Membros) saiu a pedido do Diego:
+// a tela ficou só lista de grupos + conversa. Tarefas e decisões seguem como CARDS dentro da conversa.
+function _chatMembrosPop(anchor){
+  const g=_chatGrupo(_chatSel); if(!g || !anchor) return;
+  const eu=_chatEu(), gid=escapeAttr(g.id), adm=_chatEhAdmin(g,eu);
   const lista=g.membros.map(_chatP).sort((a,b)=>(Number(_chatEhAdmin(g,b.id))-Number(_chatEhAdmin(g,a.id))) || a.name.localeCompare(b.name,'pt-BR'));
-  const head=`<div class="chat-side-h"><span>${g.membros.length} membro${g.membros.length===1?'':'s'}</span>${adm?`<button class="chat-mini-btn" onclick="_chatAddMembroPicker(this,'${gid}')"><i class="ti ti-user-plus"></i> Adicionar</button>`:''}</div>`;
-  const rows=lista.map(p=>`<div class="chat-srow" style="align-items:center">${avatarHTML(p,30)}
-    <div style="flex:1;min-width:0"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(p.name)}${p.id===eu?' <span style="color:var(--text3);font-weight:400">(você)</span>':''}</div><div class="chat-sub">${escapeHTML(p.setor||p.cargo||'')}</div></div>
-    ${_chatEhAdmin(g,p.id)?`<span class="chat-pill" style="background:color-mix(in srgb,var(--blue-mid) 13%,transparent);color:var(--blue-mid)">admin</span>`:''}
-    ${adm && p.id!==eu?`<button class="chat-hbtn" style="width:28px;height:28px;font-size:15px" title="Opções" onclick="_chatMenuMembro(this,'${gid}','${escapeAttr(p.id)}')"><i class="ti ti-dots-vertical"></i></button>`:''}
-  </div>`).join('');
-  return head+rows+`<div style="margin-top:16px;display:flex;flex-direction:column;gap:7px">
-    ${g.desc?`<div style="font-size:12px;color:var(--text2);background:var(--bg2);border-radius:9px;padding:8px 10px;line-height:1.5">${escapeHTML(g.desc)}</div>`:''}
-    <div class="chat-sub">Criado por ${escapeHTML(_chatP(g.criadoPor).name)} · ${_chatDiaLabel(g.criadoEm)}</div>
-    ${adm?'':`<div class="chat-sub"><i class="ti ti-lock"></i> Só administradores adicionam ou removem pessoas.</div>`}
-    ${g.membros.includes(eu)?`<button class="chat-mini-btn" style="justify-content:center;color:var(--danger)" onclick="_chatSair('${gid}')"><i class="ti ti-logout"></i> Sair do grupo</button>`:''}
-  </div>`;
+  const rows=lista.map(p=>{
+    const sub=p.setor||p.cargo||'';
+    return `<div class="chat-srow" style="align-items:center;padding:6px 12px">${avatarHTML(p,28)}
+      <div style="flex:1;min-width:0"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(p.name)}${p.id===eu?' <span style="color:var(--text3);font-weight:400">(você)</span>':''}</div>${sub?`<div class="chat-sub">${escapeHTML(sub)}</div>`:''}</div>
+      ${_chatEhAdmin(g,p.id)?`<span class="chat-pill" style="background:color-mix(in srgb,var(--blue-mid) 13%,transparent);color:var(--blue-mid)">admin</span>`:''}
+      ${adm && p.id!==eu?`<button class="chat-hbtn" style="width:28px;height:28px;font-size:15px" title="Opções" onclick="_chatMenuMembro(this,'${gid}','${escapeAttr(p.id)}')"><i class="ti ti-dots-vertical"></i></button>`:''}
+    </div>`;
+  }).join('');
+  _chatPopover(anchor, `<div style="width:300px;max-width:calc(100vw - 16px)">
+    <div class="chat-memb-h"><span>${g.membros.length} membro${g.membros.length===1?'':'s'}</span>${adm?`<button class="chat-mini-btn" onclick="_chatAddMembroPicker(this,'${gid}')"><i class="ti ti-user-plus"></i> Adicionar</button>`:''}</div>
+    ${g.desc?`<div style="margin:0 12px 8px;font-size:12px;color:var(--text2);background:var(--bg2);border-radius:9px;padding:7px 10px;line-height:1.5">${escapeHTML(g.desc)}</div>`:''}
+    <div style="max-height:320px;overflow-y:auto;border-top:1px solid var(--border)">${rows}</div>
+    <div style="border-top:1px solid var(--border);padding:9px 12px;display:flex;flex-direction:column;gap:7px">
+      <div class="chat-sub" style="margin:0">Criado por ${escapeHTML(_chatP(g.criadoPor).name)} · ${_chatDiaLabel(g.criadoEm)}</div>
+      ${adm?'':`<div class="chat-sub" style="margin:0"><i class="ti ti-lock"></i> Só administradores adicionam ou removem pessoas.</div>`}
+      ${g.membros.includes(eu)?`<button class="chat-mini-btn" style="justify-content:center;color:var(--danger)" onclick="_chatPopFechar();_chatSair('${gid}')"><i class="ti ti-logout"></i> Sair do grupo</button>`:''}
+    </div>
+  </div>`, true);
 }
 
 // ── Membros ────────────────────────────────────────────────────────────────────────────────────
@@ -18688,7 +18597,7 @@ function _chatMenuGrupo(btn){
   const it=(ic,l,fn,cor)=>`<button class="chat-pop-row" style="${cor?'color:'+cor:''}" onclick="_chatPopFechar();${fn}"><i class="ti ${ic}"></i> ${l}</button>`;
   _chatPopover(btn, `<div style="padding:4px;min-width:220px">
     ${adm?it('ti-pencil','Editar grupo',`_chatEditarGrupo('${gid}')`):''}
-    ${it('ti-users','Membros',`_chatSetSide('membros')`)}
+    ${it('ti-users','Membros',`_chatMembrosPop(document.getElementById('chat-hdr-info'))`)}
     ${it('ti-download','Exportar conversa (.txt)',`_chatExportar('${gid}')`)}
     ${it('ti-logout','Sair do grupo',`_chatSair('${gid}')`)}
     ${adm?`<div style="height:1px;background:var(--border);margin:4px 0"></div>`+it('ti-trash','Excluir grupo',`_chatExcluirGrupo('${gid}')`,'var(--danger)'):''}
