@@ -17570,7 +17570,7 @@ function renderProcessos(){
 // O diferencial é que a conversa VIRA TRABALHO: cada mensagem pode virar TAREFA (real, cai no
 // Meu Dia de quem executa) ou DECISÃO (registrada no grupo), além de responder, reagir, fixar,
 // @mencionar e anexar. O painel da direita consolida Tarefas · Decisões · Fixadas · Arquivos · Membros.
-// Dados: taskflow_chat_grupos (sincroniza). "Falando como" = tf_chat_eu (por aparelho, NÃO sincroniza).
+// Dados: taskflow_chat_grupos (sincroniza). Identidade = sempre o usuário do navegador (CURRENT_USER_ID).
 // ⚠️ PROTÓTIPO: o "tempo real" aqui é só entre ABAS do mesmo navegador (evento 'storage'). Chat de
 //    verdade entre pessoas = backend do Guilherme (realtime/websocket). Aqui se demonstra FORMATO e REGRAS.
 // ⚠️ REGRA P0: render NUNCA grava. Só as ações chamam _chatSave(). O exemplo inicial vive em memória
@@ -17595,10 +17595,10 @@ function _chatNow(){ return new Date().toISOString(); }
 function _chatId(p){ return p+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 function _chatP(id){ return (people||[]).find(p=>p.id===id) || {id:String(id||'x'), name:'Pessoa removida'}; }
 function _chatPrim(id){ return (_chatP(id).name||'').split(' ')[0]; }
-function _chatEu(){
-  let v=null; try{ v=localStorage.getItem(LS_CHAT_EU); }catch(e){}
-  return (v && (people||[]).some(p=>p.id===v)) ? v : CURRENT_USER_ID;
-}
+function _chatEu(){ return CURRENT_USER_ID; }
+// (set/2026) o seletor "Falando como" saiu do cabeçalho a pedido do Diego → a identidade é sempre o usuário
+// do navegador. Limpa um valor antigo que tenha ficado salvo (senão ninguém conseguiria voltar a ser "eu").
+try{ localStorage.removeItem(LS_CHAT_EU); }catch(e){}
 
 // ── Exemplo inicial (só em memória; ver regra P0 acima) ────────────────────────────────────────
 function _chatSeed(){
@@ -17727,7 +17727,7 @@ function _chatResumo(m){
 
 // ── Tela: estrutura em 3 colunas (grupos | conversa | painel) ─────────────────────────────────
 function _chatCSS(){ return `
-.chat-wrap{display:grid;grid-template-columns:260px minmax(0,1fr);height:calc(100vh - 168px);min-height:480px;box-sizing:border-box;border:1px solid var(--border);border-radius:14px;background:transparent;--ch-bolha:color-mix(in srgb,var(--text) 5%,transparent);--ch-bolha-eu:color-mix(in srgb,var(--text) 10%,transparent);--ch-campo:color-mix(in srgb,var(--text) 4%,transparent);--ch-hover:color-mix(in srgb,var(--text) 6%,transparent);--ch-sel:color-mix(in srgb,var(--text) 9%,transparent)}
+.chat-wrap{display:grid;grid-template-columns:260px minmax(0,1fr);height:calc(100vh - 168px);min-height:480px;box-sizing:border-box;border:1px solid color-mix(in srgb,var(--text) 20%,transparent);border-radius:14px;background:transparent;--ch-bolha:color-mix(in srgb,var(--text) 5%,transparent);--ch-bolha-eu:color-mix(in srgb,var(--text) 10%,transparent);--ch-campo:color-mix(in srgb,var(--text) 4%,transparent);--ch-hover:color-mix(in srgb,var(--text) 6%,transparent);--ch-sel:color-mix(in srgb,var(--text) 9%,transparent)}
 .chat-lista{border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0;padding:12px 10px 12px 12px}
 .chat-lista-top{padding:0 0 10px;display:flex;flex-direction:column;gap:9px}
 .chat-lista-itens{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
@@ -17750,8 +17750,6 @@ function _chatCSS(){ return `
 .chat-head{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 18px;border-bottom:1px solid var(--border);min-height:48px;box-sizing:border-box}
 .chat-hbtn{width:34px;height:34px;border-radius:9px;border:none;background:transparent;color:var(--text2);cursor:pointer;font-size:17px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 .chat-hbtn:hover,.chat-hbtn.on{background:var(--ch-hover);color:var(--text)}
-.chat-eu{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:transparent;border-radius:20px;padding:3px 10px 3px 3px;font-size:12px;color:var(--text2);cursor:pointer;font-family:inherit;flex-shrink:0}
-.chat-eu:hover{border-color:var(--text3)}
 .chat-voltar{display:none}
 .chat-feed{flex:1;overflow-y:auto;padding:14px 12px 10px 18px;display:flex;flex-direction:column}
 .chat-dia{align-self:center;font-size:11px;font-weight:700;color:var(--text3);margin:16px 0 8px}
@@ -17828,7 +17826,7 @@ function renderChatGrupos(){
   // Cabeçalho também aqui: quando a aba volta pela rota (F5), o render() não passa pelo setTab.
   { const _tt=document.getElementById('tab-title'), _ts=document.getElementById('tab-sub');
     if(_tt){ _tt.textContent='💬 Chat - Grupos'; _tt.style.display=''; }
-    if(_ts){ _ts.textContent='Grupos de trabalho — a conversa vira tarefa e decisão'; _ts.style.display=''; }
+    if(_ts){ _ts.textContent='Conversas da equipe, organizadas por grupo'; _ts.style.display=''; }
     if(typeof _atualizarTabHeaderActions==='function') _atualizarTabHeaderActions(); }
   const eu=_chatEu(), meus=_chatGruposDe(eu);
   const estreita=window.innerWidth>0 && window.innerWidth<=760;
@@ -17951,12 +17949,11 @@ function _chatConvHTML(g){
       <textarea id="chat-input" class="chat-input" rows="1" placeholder="Escreva uma mensagem…  (@ menciona alguém)" oninput="_chatOnInput(this)" onkeydown="_chatOnKey(event,this)" onfocus="_chatTocouConversa()" onblur="setTimeout(_chatMenFechar,150)"></textarea>
       <button class="chat-ibtn chat-send" title="Enviar (Enter)" onclick="_chatEnviar()"><i class="ti ti-send"></i></button>
     </div>
-    <div class="chat-comp-dica">Enter envia · Shift+Enter quebra a linha · passe o mouse numa mensagem para responder, reagir ou transformar em <b>tarefa</b> / <b>decisão</b></div>
+    <div class="chat-comp-dica">Enter envia · Shift+Enter quebra a linha · passe o mouse numa mensagem para responder ou reagir</div>
   </div>`;
 }
 
 function _chatConvHeadHTML(g){
-  const eu=_chatEu(), me=_chatP(eu);
   const nomes=g.membros.map(_chatPrim).join(', ');
   return `<button class="chat-hbtn chat-voltar" title="Voltar aos grupos" onclick="_chatVoltarLista()"><i class="ti ti-arrow-left"></i></button>
   <div class="chat-gico"><i class="ti ${g.icone||'ti-messages'}"></i></div>
@@ -17964,7 +17961,6 @@ function _chatConvHeadHTML(g){
     <div style="font-size:14.5px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(g.nome)}</div>
     <div style="font-size:11.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.membros.length} membro${g.membros.length===1?'':'s'} · ${escapeHTML(nomes)}</div>
   </div>
-  <button class="chat-eu" onclick="_chatTrocarEu(this)" title="Identidade SIMULADA do protótipo — no sistema real cada um entra com o próprio login">${avatarHTML(me,22)}<span>Falando como <b>${escapeHTML(_chatPrim(eu))}</b></span><i class="ti ti-chevron-down" style="font-size:12px"></i></button>
   <button class="chat-hbtn ${_chatBuscaMsgAberta?'on':''}" title="Buscar nesta conversa" onclick="_chatToggleBuscaMsg()"><i class="ti ti-search"></i></button>
   <button class="chat-hbtn" title="Opções do grupo" onclick="_chatMenuGrupo(this)"><i class="ti ti-dots-vertical"></i></button>`;
 }
@@ -18251,7 +18247,7 @@ function _chatEnviar(){
 
 // ── Notificações ───────────────────────────────────────────────────────────────────────────────
 // Protótipo: o sino é deste navegador (usuário real = CURRENT_USER_ID). Só vira notificação o que é PARA
-// ele — ex.: trocar "Falando como" para outra pessoa e mencionar o Diego. No backend real, cada
+// ele (o próprio usuário não se notifica). No backend real, cada
 // destinatário recebe a sua (regra: paraId). O texto vai como HTML → tudo que é do usuário é escapado.
 function _chatNotificar(g, paraIds, textoHTML, msgId){
   const eu=_chatEu();
@@ -18271,7 +18267,6 @@ function _chatNotificarMencoes(g,m){
 function _chatNotifAbrir(ref){
   const partes=String(ref||'').split(':'), gid=partes[1], mid=partes.slice(2).join(':');
   const g=_chatGrupo(gid); if(!g){ toast('Este grupo não existe mais'); return; }
-  if(_chatEu()!==CURRENT_USER_ID && g.membros.includes(CURRENT_USER_ID)){ try{ localStorage.setItem(LS_CHAT_EU, CURRENT_USER_ID); }catch(e){} } // o sino é do usuário real deste navegador → volta a falar como ele
   if(gid!==_chatSel){ _chatReply=null; _chatMarcaNovas=null; }
   _chatSel=gid; _chatFlash=mid||null; _chatBuscaMsg=''; _chatBuscaMsgAberta=false;
   _chatMarcarLida(gid);
@@ -18366,16 +18361,7 @@ function _chatRemoverPend(i){
   const ex=document.getElementById('chat-comp-extra'); if(ex) ex.innerHTML=_chatCompExtraHTML(g);
 }
 
-// ── Identidade simulada / tarefas ──────────────────────────────────────────────────────────────
-function _chatTrocarEu(btn){
-  _pessoaPicker(btn, _chatEu(), false, pid=>{
-    if(!pid) return;
-    try{ localStorage.setItem(LS_CHAT_EU, pid); }catch(e){}
-    _chatSel=null; _chatReply=null; _chatMarcaNovas=null; _chatBuscaMsg=''; _chatBuscaMsgAberta=false; _chatMenFechar();
-    renderChatGrupos(); if(typeof renderSidebar==='function') renderSidebar();
-    toast('Agora falando como '+_chatP(pid).name);
-  });
-}
+// ── Tarefas ──────────────────────────────────────────────────────────────────────────────────
 function _chatToggleTarefa(id){
   if(typeof toggle==='function') toggle(id);
   setTimeout(()=>{ if(typeof currentTab!=='undefined' && currentTab==='chat') _chatRefresh(); }, 900);
@@ -25811,7 +25797,7 @@ function setTab(tab,el){
   // Mapa de títulos e subtítulos para cada aba
   const titles={dash:'📊 Painel',rotinas:'🔁 Rotinas',hoje:'📅 Tarefas de Hoje','minhas-tarefas':'👤 Minhas Tarefas',solicitadas:'📤 Solicitadas',equipe:'👥 Tarefas da Equipe',entrada:'📥 Organizar',someday:'💤 Lembrete',atrasadas:'🚨 Tarefas Atrasadas',amanha:'🌅 Tarefas de Amanhã',semana:'📆 Tarefas da Semana',pendentes:'⏰ Tarefas Pendentes','prox-semana':'📆 Próxima Semana',concluidas:'✅ Concluídas',todas:'📋 Todas as Tarefas',pessoas:'👤 Por Pessoa',anotacoes:'📝 Anotações',agenda:'🗓️ Agenda',projetos:'📁 Projetos',['projetos-pro']:'📁 Projetos',processos:'🧩 Processos',reunioes:'📅 Reuniões',analise:'📊 Análise',lixeira:'🗑️ Lixeira',ajuda:'❓ Ajuda',mural:'💡 Mural de Ideias',oficina:'🧰 Oficina de Ideias',chat:'💬 Chat - Grupos'};
   const _fmtTab=x=>x.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit'}).replace('.','');
-  const subs={dash:'Visão geral de todas as suas tarefas',rotinas:'Tarefas que se repetem automaticamente',hoje:'Foque no que importa agora','minhas-tarefas':'Tarefas onde você é o executor',solicitadas:'Tarefas que você pediu a outras pessoas — e confirmações pendentes',equipe:'Atrasadas e de hoje — o que precisa da sua atenção agora',entrada:'Tarefas sem executor — classifique com calma',someday:'Tarefas sem urgência — sem data definida',atrasadas:'Tarefas com data vencida ainda não concluídas',amanha:'O que vem pela frente',semana:`Visão semanal — ${_fmtTab(_mon)} a ${_fmtTab(_sun)}`,pendentes:'Tarefas ainda não concluídas','prox-semana':`Visão da próxima semana — ${_fmtTab(_proxMon)} a ${_fmtTab(_proxSun)}`,concluidas:'Ótimo trabalho!',todas:'Visão completa',pessoas:'Selecione uma pessoa para filtrar',anotacoes:'Blocos rápidos para ideias, reuniões, lembretes e decisões',agenda:'Visualização por dias, estilo Notion',projetos:'Gerencie projetos e equipas',['projetos-pro']:'Projetos com fases, setores e tarefas vinculadas',processos:'Mini-fluxos reutilizáveis — rode avulso ou dentro de um projeto',reunioes:'Hub de reuniões — histórico, pauta e ATA',analise:'Pontualidade e gargalos — pessoal, equipe e reuniões',lixeira:'Itens excluídos — recuperáveis em 30 dias',ajuda:'Tudo o que você precisa saber para usar o sistema',mural:'Ideias e melhorias — vote, comente e acompanhe',oficina:'Métodos guiados para pensar, planejar e melhorar',chat:'Grupos de trabalho — a conversa vira tarefa e decisão'};
+  const subs={dash:'Visão geral de todas as suas tarefas',rotinas:'Tarefas que se repetem automaticamente',hoje:'Foque no que importa agora','minhas-tarefas':'Tarefas onde você é o executor',solicitadas:'Tarefas que você pediu a outras pessoas — e confirmações pendentes',equipe:'Atrasadas e de hoje — o que precisa da sua atenção agora',entrada:'Tarefas sem executor — classifique com calma',someday:'Tarefas sem urgência — sem data definida',atrasadas:'Tarefas com data vencida ainda não concluídas',amanha:'O que vem pela frente',semana:`Visão semanal — ${_fmtTab(_mon)} a ${_fmtTab(_sun)}`,pendentes:'Tarefas ainda não concluídas','prox-semana':`Visão da próxima semana — ${_fmtTab(_proxMon)} a ${_fmtTab(_proxSun)}`,concluidas:'Ótimo trabalho!',todas:'Visão completa',pessoas:'Selecione uma pessoa para filtrar',anotacoes:'Blocos rápidos para ideias, reuniões, lembretes e decisões',agenda:'Visualização por dias, estilo Notion',projetos:'Gerencie projetos e equipas',['projetos-pro']:'Projetos com fases, setores e tarefas vinculadas',processos:'Mini-fluxos reutilizáveis — rode avulso ou dentro de um projeto',reunioes:'Hub de reuniões — histórico, pauta e ATA',analise:'Pontualidade e gargalos — pessoal, equipe e reuniões',lixeira:'Itens excluídos — recuperáveis em 30 dias',ajuda:'Tudo o que você precisa saber para usar o sistema',mural:'Ideias e melhorias — vote, comente e acompanhe',oficina:'Métodos guiados para pensar, planejar e melhorar',chat:'Conversas da equipe, organizadas por grupo'};
   document.getElementById('tab-title').textContent=titles[tab];
   document.getElementById('tab-title').style.display='';
   document.getElementById('tab-sub').style.display='';
