@@ -17611,7 +17611,7 @@ function _chatSeed(){
   const g1='cg_seed_mp', g2='cg_seed_manut', g3='cg_seed_compras';
   const grupos=[
     {id:g1, nome:'Alinhamento — Marca Própria', desc:'Clientes de marca própria: amostras, artes, aprovações e pedidos.', icone:'ti-package', cor:'var(--blue-mid)',
-      membros:[eu,pk(0),pk(1),pk(2)], admins:[eu], criadoPor:eu, criadoEm:t(3000), fixadas:[g1+'_m1'],
+      membros:[eu,pk(0),pk(1),pk(2)], admins:[eu], criadoPor:eu, criadoEm:t(3000), fixadas:[g1+'_m2'],
       decisoes:[{id:g1+'_d0', texto:'Rodada 2 de amostras da Quitanda sai com 20% menos sal.', autorId:eu, em:t(95), msgId:g1+'_m5'}]},
     {id:g2, nome:'Manutenção — Chamados', desc:'Paradas de máquina e pedidos rápidos para a manutenção.', icone:'ti-tool', cor:'var(--amber)',
       membros:[eu,pk(3),pk(4)], admins:[eu], criadoPor:eu, criadoEm:t(2800), fixadas:[], decisoes:[]},
@@ -17641,7 +17641,11 @@ function _chatSeed(){
     {autorId:eu, texto:'Então fecha. @todos confirmem aqui até amanhã o que cada um precisa.', em:t(15), mencoes:['todos']}
   ]);
   const lidas={}; lidas[eu]={}; lidas[eu][g1]=t(60); lidas[eu][g2]=t(58); lidas[eu][g3]=t(25);
-  return {v:1, grupos, msgs, lidas, _seed:true};
+  // até onde os OUTROS já leram — só p/ o "Visto por" do exemplo ter o que mostrar
+  const lido=(pid,gid,min)=>{ if(pid===eu) return; if(!lidas[pid]) lidas[pid]={}; lidas[pid][gid]=t(min); };
+  lido(pk(0),g1,100); lido(pk(4),g2,50); lido(pk(5),g3,10);
+  const fixadosPor={}; fixadosPor[eu]=[g1];
+  return {v:1, grupos, msgs, lidas, fixadosPor, _seed:true};
 }
 
 function _chatLoad(){
@@ -17655,6 +17659,7 @@ function _chatLoad(){
 function _chatNormalizar(d){
   if(!d.msgs || typeof d.msgs!=='object') d.msgs={};
   if(!d.lidas || typeof d.lidas!=='object') d.lidas={};
+  if(!d.fixadosPor || typeof d.fixadosPor!=='object') d.fixadosPor={};   // pessoa → [gid] conversas fixadas no topo
   d.grupos.forEach(g=>{
     ['membros','admins','fixadas','decisoes'].forEach(k=>{ if(!Array.isArray(g[k])) g[k]=[]; });
     if(!Array.isArray(d.msgs[g.id])) d.msgs[g.id]=[];
@@ -17684,6 +17689,29 @@ function _chatMeMencionou(gid,pid){ return _chatNaoLidasArr(gid,pid).some(m=>(m.
 // Usado pelo badge da sidebar (renderSidebar) — só lê.
 function _chatTotalNaoLidas(){
   try{ const eu=_chatEu(); return _chatGruposDe(eu).reduce((s,g)=>s+_chatNaoLidas(g.id,eu),0); }catch(e){ return 0; }
+}
+// Conversas fixadas no topo da lista — escolha de CADA pessoa (não afeta os outros membros).
+function _chatFixadosDe(pid){ const a=(_chatLoad().fixadosPor||{})[pid]; return Array.isArray(a)?a:[]; }
+// Mensagens fixadas do grupo (valem para todos os membros), da mais antiga p/ a mais nova.
+const CHAT_FIX_MAX=3;
+function _chatFixadasValidas(g){ return (g.fixadas||[]).map(id=>_chatMsg(g.id,id)).filter(m=>m && !m.excluida && m.tipo!=='sistema'); }
+// "Visto por": até quando cada membro já viu a conversa. Conta a leitura gravada, a última mensagem
+// que a pessoa mandou (quem responde depois, viu) — e, por mensagem, quem reagiu a ela.
+// ⚠️ PROTÓTIPO: aqui só o usuário do navegador grava leitura; no backend real cada um grava a sua.
+function _chatVistoAte(g){
+  const r={}; g.membros.forEach(pid=>{ r[pid]=_chatLidaEm(g.id,pid)||''; });
+  _chatMsgs(g.id).forEach(x=>{ if(x.tipo!=='sistema' && Object.prototype.hasOwnProperty.call(r,x.autorId) && x.em>r[x.autorId]) r[x.autorId]=x.em; });
+  return r;
+}
+function _chatVistoPor(g,m,ate,eu){
+  const reagiu=pid=>Object.values(m.reacoes||{}).some(a=>Array.isArray(a) && a.includes(pid));
+  return g.membros.filter(pid=>pid!==eu && pid!==m.autorId && (((ate[pid]||'')>=m.em) || reagiu(pid)));
+}
+function _chatNomesLista(ids){
+  const n=ids.map(_chatPrim);
+  if(n.length<=1) return n.join('');
+  if(n.length<=3) return n.slice(0,-1).join(', ')+' e '+n[n.length-1];
+  return n.slice(0,2).join(', ')+' e mais '+(n.length-2);
 }
 
 // ── Formatação ─────────────────────────────────────────────────────────────────────────────────
@@ -17811,12 +17839,32 @@ function _chatCSS(){ return `
 .chat-mini-btn{display:inline-flex;align-items:center;gap:5px;background:transparent;border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;font-family:inherit}
 .chat-mini-btn:hover{border-color:var(--text3);color:var(--text)}
 .chat-gm-row:hover{background:color-mix(in srgb,var(--text) 5%,transparent)}
+.chat-sec{display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;padding:10px 10px 4px}
+.chat-sec:first-child{padding-top:2px}
+.chat-li-fix{display:none;width:22px;height:22px;border:none;background:transparent;border-radius:6px;color:var(--text3);cursor:pointer;font-size:14px;align-items:center;justify-content:center;padding:0;flex-shrink:0}
+.chat-li:hover .chat-li-fix{display:inline-flex}
+.chat-li-fix:hover{background:var(--ch-sel);color:var(--text)}
+.chat-li:hover .chat-li-hora{display:none}
+.chat-li-pinned{font-size:12px;color:var(--text3);flex-shrink:0}
+.chat-fixbar{display:flex;align-items:center;gap:10px;padding:6px 12px 6px 18px;border-bottom:1px solid var(--border);cursor:pointer;min-height:44px;box-sizing:border-box}
+.chat-fixbar:hover{background:var(--ch-hover)}
+.chat-fix-l{font-size:10.5px;font-weight:700;color:var(--text3)}
+.chat-fix-t{font-size:12.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-novas{display:flex;align-items:center;gap:10px;margin:14px 0 4px;color:var(--text2);font-size:11px;font-weight:800}
+.chat-novas span{flex:1;height:1px;background:color-mix(in srgb,var(--text) 22%,transparent)}
+.chat-visto{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--text3);margin:3px 2px 0}
+.chat-meta .ti-checks.todos{color:var(--text)}
 @media(max-width:1240px){.chat-wrap{grid-template-columns:230px minmax(0,1fr)}}
 @media(max-width:760px){.chat-wrap{grid-template-columns:1fr;height:calc(100vh - 140px)}.chat-lista{padding:12px;border-right:none}.chat-wrap.tem-sel .chat-lista{display:none}.chat-wrap:not(.tem-sel) .chat-conv{display:none}.chat-voltar{display:inline-flex}}
 `; }
 
 function _chatOrdenados(lista){
   return [...lista].sort((a,b)=>{ const ua=(_chatUltima(a.id)||{}).em||a.criadoEm||'', ub=(_chatUltima(b.id)||{}).em||b.criadoEm||''; return ub.localeCompare(ua); });
+}
+// Mesma ordem da lista: fixadas primeiro, depois as outras (cada bloco pela última mensagem).
+function _chatOrdenadosFix(lista,eu){
+  const fx=_chatFixadosDe(eu), o=_chatOrdenados(lista);
+  return o.filter(g=>fx.includes(g.id)).concat(o.filter(g=>!fx.includes(g.id)));
 }
 
 function renderChatGrupos(){
@@ -17831,7 +17879,11 @@ function renderChatGrupos(){
   const eu=_chatEu(), meus=_chatGruposDe(eu);
   const estreita=window.innerWidth>0 && window.innerWidth<=760;
   if(_chatSel && !meus.some(g=>g.id===_chatSel)) _chatSel=null;
-  if(!_chatSel && meus.length && !estreita) _chatSel=_chatOrdenados(meus)[0].id;
+  if(!_chatSel && meus.length && !estreita){
+    _chatSel=_chatOrdenadosFix(meus,eu)[0].id;
+    // abriu sozinho no 1º grupo: a divisória de "novas" também vale para ele (é só estado de tela, não grava)
+    _chatMarcaNovas = _chatNaoLidas(_chatSel,eu) ? {gid:_chatSel, ts:_chatLidaEm(_chatSel,eu)} : null;
+  }
   if(!meus.length){ main.innerHTML=`<style>${_chatCSS()}</style>${_chatVazioHTML(eu)}`; return; }
   const g=_chatSel?_chatGrupo(_chatSel):null;
   // guarda a rolagem: re-render do MESMO grupo (ex.: concluir tarefa) não pode pular para o fim
@@ -17856,17 +17908,22 @@ function _chatListaItensHTML(){
   let lista=_chatOrdenados(_chatGruposDe(eu));
   if(q) lista=lista.filter(g=>_chatNorm(g.nome+' '+(g.desc||'')).includes(q) || _chatMsgs(g.id).some(m=>!m.excluida && _chatNorm(m.texto||'').includes(q)));
   if(!lista.length) return `<div style="padding:26px 16px;text-align:center;font-size:12.5px;color:var(--text3)">Nenhum grupo encontrado.</div>`;
-  return lista.map(g=>{
-    const u=_chatUltima(g.id), nl=_chatNaoLidas(g.id,eu), men=nl && _chatMeMencionou(g.id,eu);
+  const fx=_chatFixadosDe(eu);
+  const item=g=>{
+    const u=_chatUltima(g.id), nl=_chatNaoLidas(g.id,eu), men=nl && _chatMeMencionou(g.id,eu), fix=fx.includes(g.id);
     const quem=u && u.tipo!=='sistema' ? (u.autorId===eu?'Você':_chatPrim(u.autorId))+': ' : '';
     return `<div class="chat-li${g.id===_chatSel?' sel':''}${nl?' nl':''}" onclick="_chatAbrir('${escapeAttr(g.id)}')" title="${escapeAttr(g.nome)}">
       <div class="chat-gico"><i class="ti ${g.icone||'ti-messages'}"></i></div>
       <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
-        <div style="display:flex;align-items:center;gap:6px"><span class="chat-li-nome">${escapeHTML(g.nome)}</span><span class="chat-li-hora">${_chatQuando(u?u.em:g.criadoEm)}</span></div>
+        <div style="display:flex;align-items:center;gap:6px"><span class="chat-li-nome">${escapeHTML(g.nome)}</span>${fix?`<i class="ti ti-pinned chat-li-pinned" title="Conversa fixada"></i>`:''}<span class="chat-li-hora">${_chatQuando(u?u.em:g.criadoEm)}</span><button class="chat-li-fix" title="${fix?'Desafixar conversa':'Fixar conversa no topo'}" onclick="_chatToggleFixarGrupo('${escapeAttr(g.id)}',event)"><i class="ti ${fix?'ti-pinned-off':'ti-pin'}"></i></button></div>
         <div style="display:flex;align-items:center;gap:6px"><span class="chat-li-prev">${escapeHTML(quem+_chatResumo(u))}</span>${men?`<span class="chat-nl" title="Você foi mencionado">@</span>`:''}${nl?`<span class="chat-nl">${nl}</span>`:''}</div>
       </div>
     </div>`;
-  }).join('');
+  };
+  const fixados=lista.filter(g=>fx.includes(g.id)), outros=lista.filter(g=>!fx.includes(g.id));
+  if(!fixados.length) return outros.map(item).join('');
+  return `<div class="chat-sec"><i class="ti ti-pinned"></i> Fixadas</div>${fixados.map(item).join('')}`
+    + (outros.length ? `<div class="chat-sec">Grupos</div>${outros.map(item).join('')}` : '');
 }
 
 function _chatSemSelHTML(){
@@ -17925,6 +17982,7 @@ function _chatRefresh(opts){
   const noFim=feed.scrollHeight-feed.scrollTop-feed.clientHeight<90;
   const li=document.getElementById('chat-lista-itens'); if(li) li.innerHTML=_chatListaItensHTML();
   const hd=document.getElementById('chat-conv-head'); if(hd) hd.innerHTML=_chatConvHeadHTML(g);
+  const fb=document.getElementById('chat-fixbar-wrap'); if(fb) fb.innerHTML=_chatFixBarHTML(g);
   const bw=document.getElementById('chat-buscamsg-wrap'); if(bw && !opts.manterBusca) bw.innerHTML=_chatBuscaMsgHTML(g);
   feed.innerHTML=_chatFeedHTML(g);
   const ex=document.getElementById('chat-comp-extra'); if(ex) ex.innerHTML=_chatCompExtraHTML(g);
@@ -17939,6 +17997,7 @@ let _chatMen=null;          // popup de @menção: {itens:[{id,nome}], idx, ini,
 
 function _chatConvHTML(g){
   return `<div class="chat-head" id="chat-conv-head">${_chatConvHeadHTML(g)}</div>
+  <div id="chat-fixbar-wrap">${_chatFixBarHTML(g)}</div>
   <div id="chat-buscamsg-wrap">${_chatBuscaMsgHTML(g)}</div>
   <div class="chat-feed" id="chat-feed" onmousedown="_chatTocouConversa()">${_chatFeedHTML(g)}</div>
   <div class="chat-comp">
@@ -17963,6 +18022,28 @@ function _chatConvHeadHTML(g){
   </div>
   <button class="chat-hbtn ${_chatBuscaMsgAberta?'on':''}" title="Buscar nesta conversa" onclick="_chatToggleBuscaMsg()"><i class="ti ti-search"></i></button>
   <button class="chat-hbtn" title="Opções do grupo" onclick="_chatMenuGrupo(this)"><i class="ti ti-dots-vertical"></i></button>`;
+}
+
+// Barra "Mensagem fixada" logo abaixo do cabeçalho (padrão WhatsApp): mostra uma por vez, começando
+// pela mais nova; clicar leva até ela e passa para a próxima. Até CHAT_FIX_MAX por grupo.
+let _chatFixIdx={};   // gid → qual fixada a barra está mostrando (0 = a mais nova)
+function _chatFixBarHTML(g){
+  const fx=_chatFixadasValidas(g); if(!fx.length) return '';
+  let k=_chatFixIdx[g.id]||0; if(k>=fx.length) k=0;
+  const m=fx[fx.length-1-k], gid=escapeAttr(g.id), mid=escapeAttr(m.id);
+  const quem=m.autorId===_chatEu()?'Você':_chatPrim(m.autorId);
+  return `<div class="chat-fixbar" onclick="_chatFixBarClique('${gid}','${mid}')" title="Ir para a mensagem fixada">
+    <i class="ti ti-pinned" style="font-size:16px;color:var(--text2)"></i>
+    <div style="flex:1;min-width:0"><div class="chat-fix-l">Mensagem fixada${fx.length>1?` · ${k+1} de ${fx.length}`:''}</div>
+      <div class="chat-fix-t"><b style="font-weight:700">${escapeHTML(quem)}:</b> ${escapeHTML(_chatResumo(m).slice(0,160))}</div></div>
+    <button class="chat-hbtn" style="width:30px;height:30px;font-size:15px" title="Desafixar" onclick="event.stopPropagation();_chatToggleFixarMsg('${gid}','${mid}')"><i class="ti ti-pinned-off"></i></button>
+  </div>`;
+}
+function _chatFixBarClique(gid,mid){
+  const g=_chatGrupo(gid); if(!g) return;
+  const n=_chatFixadasValidas(g).length;
+  _chatFixIdx[gid] = n>1 ? ((_chatFixIdx[gid]||0)+1)%n : 0;
+  _chatIrPara(gid,mid);
 }
 
 function _chatBuscaMsgHTML(g){
@@ -17990,11 +18071,17 @@ function _chatFeedHTML(g){
              : `<div style="margin:auto;text-align:center;color:var(--text3);font-size:13px"><i class="ti ti-message-circle" style="font-size:32px;display:block;opacity:.4;margin-bottom:6px"></i>Nenhuma mensagem ainda. Comece a conversa.</div>`;
   }
   let h='', diaAnt='', autorAnt='', emAnt=0, marcou=false;
+  // divisória "N novas": conta o que chegou depois da última leitura (as suas e as de sistema não contam)
+  const mk=_chatMarcaNovas && _chatMarcaNovas.gid===g.id ? _chatMarcaNovas.ts : null;
+  const ehNova=m=>mk!==null && m.em>mk && m.autorId!==eu && m.tipo!=='sistema' && !m.excluida;
+  const nNovas=mk!==null ? arr.filter(ehNova).length : 0;
+  // "visto por": calculado 1× por render; a frase vai só embaixo da SUA última mensagem
+  const ctx={ate:_chatVistoAte(g), ultMinha:([..._chatMsgs(g.id)].reverse().find(x=>x.autorId===eu && x.tipo==='msg' && !x.excluida)||{}).id};
   arr.forEach(m=>{
     const dia=_chatDiaISO(m.em);
     if(dia!==diaAnt){ h+=`<div class="chat-dia">${_chatDiaLabel(m.em)}</div>`; diaAnt=dia; autorAnt=''; }
-    if(!q && !marcou && _chatMarcaNovas && _chatMarcaNovas.gid===g.id && m.em>_chatMarcaNovas.ts && m.autorId!==eu && m.tipo!=='sistema'){
-      h+=`<div id="chat-novas" style="display:flex;align-items:center;gap:10px;margin:12px 0 4px;color:var(--text3);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em"><span style="flex:1;height:1px;background:var(--border)"></span>Novas mensagens<span style="flex:1;height:1px;background:var(--border)"></span></div>`;
+    if(!q && !marcou && nNovas && ehNova(m)){
+      h+=`<div id="chat-novas" class="chat-novas"><span></span>${nNovas} ${nNovas===1?'nova mensagem':'novas mensagens'}<span></span></div>`;
       marcou=true; autorAnt='';
     }
     if(m.tipo==='sistema'){
@@ -18003,16 +18090,28 @@ function _chatFeedHTML(g){
     }
     const t=new Date(m.em).getTime();
     const cont = m.tipo==='msg' && autorAnt===m.autorId && (t-emAnt)<5*60000;
-    h+=_chatMsgHTML(g,m,cont,eu);
+    h+=_chatMsgHTML(g,m,cont,eu,ctx);
     autorAnt = m.tipo==='msg' ? m.autorId : ''; emAnt=t;
   });
   return h;
 }
 
-function _chatMsgHTML(g,m,cont,eu){
+function _chatMsgHTML(g,m,cont,eu,ctx){
   const mine=m.autorId===eu, p=_chatP(m.autorId);
   const gid=escapeAttr(g.id), mid=escapeAttr(m.id);
-  const meta=`<div class="chat-meta">${_chatVinculosHTML(g,m)}<span>${_chatHora(m.em)}</span></div>`;
+  const fix=(g.fixadas||[]).includes(m.id) && !m.excluida;
+  // ✓ = enviada · ✓✓ = alguém viu · ✓✓ forte = todos viram (só nas SUAS mensagens)
+  let vistos=null, outros=[], checks='';
+  if(mine && m.tipo==='msg' && !m.excluida && ctx){
+    outros=g.membros.filter(pid=>pid!==eu);
+    vistos=_chatVistoPor(g,m,ctx.ate,eu);
+    if(outros.length){
+      const todos=vistos.length===outros.length;
+      const tt=vistos.length ? 'Visto por '+vistos.map(x=>_chatP(x).name).join(', ') : 'Enviada · ainda não vista';
+      checks=`<i class="ti ${vistos.length?'ti-checks':'ti-check'}${todos?' todos':''}" style="font-size:13px" title="${escapeAttr(tt)}"></i>`;
+    }
+  }
+  const meta=`<div class="chat-meta">${_chatVinculosHTML(g,m)}${fix?`<i class="ti ti-pinned" title="Mensagem fixada"></i>`:''}<span>${_chatHora(m.em)}</span>${checks}</div>`;
   let corpo;
   if(m.excluida){
     corpo=`<div class="chat-bub"><span class="chat-apagada"><i class="ti ti-ban"></i> Mensagem apagada</span>${meta}</div>`;
@@ -18040,6 +18139,7 @@ function _chatMsgHTML(g,m,cont,eu){
   const acts = m.excluida ? '' : `<div class="chat-acts">
     <button title="Responder" onclick="_chatResponder('${gid}','${mid}')"><i class="ti ti-arrow-back-up"></i></button>
     <button title="Reagir" onclick="_chatMenuReacao(this,'${gid}','${mid}')"><i class="ti ti-mood-smile"></i></button>
+    ${(m.tipo==='msg'||m.tipo==='decisao')?`<button title="${fix?'Desafixar mensagem':'Fixar mensagem no topo'}" onclick="_chatToggleFixarMsg('${gid}','${mid}')"><i class="ti ${fix?'ti-pinned-off':'ti-pin'}"></i></button>`:''}
     ${m.tipo==='msg'?`<button title="Transformar em tarefa" onclick="_chatAbrirTarefa('${gid}','${mid}')"><i class="ti ti-checkbox"></i></button>
     <button title="Registrar como decisão" onclick="_chatAbrirDecisao('${gid}','${mid}')"><i class="ti ti-gavel"></i></button>`:''}
     ${m.texto?`<button title="Copiar texto" onclick="_chatCopiar('${gid}','${mid}')"><i class="ti ti-copy"></i></button>`:''}
@@ -18047,7 +18147,13 @@ function _chatMsgHTML(g,m,cont,eu){
   </div>`;
   const av = mine ? '' : `<div class="chat-av">${cont?'':avatarHTML(p,30)}</div>`;
   const autor = (!mine && !cont) ? `<div class="chat-autor">${escapeHTML(p.name)}</div>` : '';
-  return `<div class="chat-row${mine?' mine':''}${cont?' cont':''}" id="chatmsg-${mid}">${av}<div class="chat-col">${autor}${corpo}${reacHTML}</div>${acts}</div>`;
+  let vistoHTML='';
+  if(vistos && outros.length && ctx.ultMinha===m.id){
+    const txt = vistos.length===outros.length ? (outros.length===1?'Visto por '+_chatPrim(outros[0]):'Visto por todos')
+              : vistos.length ? 'Visto por '+_chatNomesLista(vistos) : 'Enviada · ainda não vista';
+    vistoHTML=`<div class="chat-visto" title="${escapeAttr(vistos.length?vistos.map(x=>_chatP(x).name).join(', '):'Ninguém abriu a conversa depois desta mensagem')}"><i class="ti ${vistos.length?'ti-eye':'ti-check'}"></i>${escapeHTML(txt)}</div>`;
+  }
+  return `<div class="chat-row${mine?' mine':''}${cont?' cont':''}" id="chatmsg-${mid}">${av}<div class="chat-col">${autor}${corpo}${reacHTML}${vistoHTML}</div>${acts}</div>`;
 }
 
 // Selinho na mensagem de origem: "virou tarefa" / "virou decisão" (clicável → vai ao card).
@@ -18333,6 +18439,37 @@ function _chatApagar(gid,mid){
     }});
   }});
 }
+// ── Fixar ──────────────────────────────────────────────────────────────────────────────────────
+// Conversa fixada = escolha de cada pessoa (topo da SUA lista). Mensagem fixada = do grupo, todos veem.
+function _chatToggleFixarGrupo(gid,ev){
+  if(ev) ev.stopPropagation();
+  const d=_chatLoad(), eu=_chatEu();
+  if(!Array.isArray(d.fixadosPor[eu])) d.fixadosPor[eu]=[];
+  const antes=[...d.fixadosPor[eu]], a=d.fixadosPor[eu], i=a.indexOf(gid);
+  if(i>=0) a.splice(i,1); else a.push(gid);
+  if(!_chatSave()){ d.fixadosPor[eu]=antes; toast('Não foi possível salvar — armazenamento cheio'); return; }
+  _chatRefresh();
+  toast(i>=0?'Conversa desafixada':'Conversa fixada no topo');
+}
+function _chatToggleFixarMsg(gid,mid){
+  const g=_chatGrupo(gid), m=_chatMsg(gid,mid); if(!g || !m || m.excluida) return;
+  const antes=[...g.fixadas], i=g.fixadas.indexOf(mid);
+  let aviso='';
+  if(i>=0) g.fixadas.splice(i,1);
+  else {
+    g.fixadas=g.fixadas.filter(id=>{ const x=_chatMsg(gid,id); return x && !x.excluida; });
+    g.fixadas.push(mid);
+    if(g.fixadas.length>CHAT_FIX_MAX){ g.fixadas.shift(); aviso=` · a mais antiga saiu (máx. ${CHAT_FIX_MAX})`; }
+    _chatFixIdx[gid]=0;   // a barra passa a mostrar a que acabou de ser fixada
+  }
+  if(!_chatSave()){ g.fixadas=antes; toast('Não foi possível salvar — armazenamento cheio'); return; }
+  _chatRefresh();
+  toast((i>=0?'Mensagem desafixada':'Mensagem fixada')+aviso, {undoFn:()=>{
+    const g2=_chatGrupo(gid); if(!g2) return;
+    g2.fixadas=antes; _chatFixIdx[gid]=0; _chatSave(); _chatRefresh();
+  }});
+}
+
 function _chatIrPara(gid,mid){
   _chatFlash=mid;
   if(gid!==_chatSel){ _chatAbrir(gid); return; }
@@ -18581,6 +18718,7 @@ function _chatMenuGrupo(btn){
   _chatPopover(btn, `<div style="padding:4px;min-width:220px">
     ${adm?it('ti-pencil','Editar grupo',`_chatEditarGrupo('${gid}')`):''}
     ${it('ti-users','Membros',`_chatMembrosPop(document.getElementById('chat-hdr-info'))`)}
+    ${_chatFixadosDe(_chatEu()).includes(g.id)?it('ti-pinned-off','Desafixar conversa',`_chatToggleFixarGrupo('${gid}')`):it('ti-pin','Fixar conversa no topo',`_chatToggleFixarGrupo('${gid}')`)}
     ${it('ti-download','Exportar conversa (.txt)',`_chatExportar('${gid}')`)}
     ${it('ti-logout','Sair do grupo',`_chatSair('${gid}')`)}
     ${adm?`<div style="height:1px;background:var(--border);margin:4px 0"></div>`+it('ti-trash','Excluir grupo',`_chatExcluirGrupo('${gid}')`,'var(--danger)'):''}

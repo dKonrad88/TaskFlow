@@ -447,6 +447,18 @@ Oficina. Verificado no preview (:8777) por DOM/JS — **0 erros de console**; ro
   continua; `g.cor` segue no dado, sem uso). Conferido nos temas claro e escuro com **Edge headless** — o Browser pane estava oculto
   e travava. 📌 Receita que funcionou: `Start-Process msedge --headless --screenshot=... -Wait` pelo **PowerShell** (pelo Bash o
   Edge sai sem gravar o PNG), com um HTML de teste que grava `tf_route`/`taskflow_theme` no localStorage antes do app.
+- ⭐ **(18/09) Fixar + novas + visto** (o Diego escolheu entre 5 mockups de refinamento: "do 3, as novas e fixar conversa/mensagem; do 5, o visto"):
+  **Conversa fixada** = escolha de CADA pessoa → `d.fixadosPor={pessoa:[gid]}` (normalizado em `_chatNormalizar`); a lista ganha as seções
+  **Fixadas / Grupos** (`_chatOrdenadosFix` — o grupo aberto por padrão respeita essa ordem); fixa pelo alfinete que aparece ao passar o
+  mouse no item da lista ou em ⋮ › Fixar conversa (`_chatToggleFixarGrupo`). **Mensagem fixada** = do GRUPO, todos veem → `g.fixadas`
+  (já existia no dado); máx. `CHAT_FIX_MAX=3` (a 4ª tira a mais antiga); barra `_chatFixBarHTML` sob o cabeçalho mostra uma por vez
+  ("1 de 3"), clicar vai até ela e passa p/ a próxima (`_chatFixIdx`); fixar/desafixar pelo alfinete no hover da mensagem
+  (`_chatToggleFixarMsg`, com Desfazer) e alfinete pequeno no rodapé da mensagem. **Divisória "N novas mensagens"** (`.chat-novas`) —
+  passa a valer também no grupo que abre sozinho (estado de tela, não grava). **Visto**: ✓ enviada · ✓✓ alguém viu · ✓✓ forte todos viram,
+  e a frase "Visto por X e Y" / "Visto por todos" só embaixo da SUA última mensagem. Regra (`_chatVistoAte`/`_chatVistoPor`): viu quem tem
+  leitura gravada depois da mensagem, OU mandou mensagem depois dela, OU reagiu a ela. ⚠️ No protótipo só o usuário do navegador grava
+  leitura (o exemplo semeia leituras dos outros) — leitura real por pessoa = backend do Guilherme. Testado em Edge headless por script
+  (fixar 4 → sobra 3, ciclo da barra, seções, visto nos 3 grupos, 0 erros de JS) + fotos nos temas claro e escuro.
 - ⭐ **A conversa vira trabalho:** ☑ na mensagem → **tarefa REAL** (`origem:'chat'`, `chatGrupoId`, `chatMsgId`; solicitante = quem
   criou; responsável sugerido = 1º mencionado, senão você; prazo hoje) → cai no **Meu Dia** e aparece no grupo como **card com status
   vivo** (concluir pelo card chama o `toggle` do app). ⚖️ na mensagem → **decisão** registrada no grupo. A mensagem de origem ganha o
