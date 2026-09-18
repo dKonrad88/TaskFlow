@@ -422,6 +422,15 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-18 (c) — PC da Empresa — REMOVIDO o "Painel da Tarefa" (expandir a tarefa em tela cheia)
+Pedido do Diego: "esse expandir as tarefas pode tirar de 100% do HUB, foi só um teste". Era o recurso da sessão v7 (21/07, commits
+`5bbc039b`/`ed75e6fc`/`e8611444`). **Saiu tudo (159 linhas, só remoção):** o botão ⤢ nas linhas de tarefa (`tableRowHTML`, vale p/
+Organizar, listas e a tela das partes/fases), o botão ⤢ no topo do modal da tarefa (`#m-fs-btn`), `openTaskFocus`/`_exitTaskFocus`/
+`renderTaskFocus`/`_tfSet*`/`_tfAdd*`/`_tfDel*`/`_tfAnotacoesHTML`, o CSS `body.task-focus`/`.tf-*`, a guarda no `render()`, a limpeza
+no `setTab` e o Esc. **Ficaram de propósito:** os `_anotCmd/_anotCheck/_anotSalvar` (são do editor de Anotações da REUNIÃO; só tinham
+ganho suporte a id de tarefa). Os ⤢ que continuam no Hub são de OUTRAS telas (ficha de Compras, Organograma, Painel de Projeto, Painel
+de Reunião). Testado: Organizar só com Editar/Excluir, modal sem o botão, 0 erros.
+
 ### 2026-09-18 (b) — PC da Empresa — Projeto › aba Tarefas: setas ↑↓ para reordenar + trava de "planejar" liberada no protótipo
 Diego montando o projeto "Palestra - Setembro Amarelo" não conseguia mudar a ordem das tarefas. **Causa:** ele não era dono nem
 coordenador desse projeto, e o `_ppPodeGerenciar` escondia o ícone de arrastar e desligava a seta de dependência. Mesmo problema que
