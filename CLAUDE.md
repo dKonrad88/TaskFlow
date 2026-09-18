@@ -466,6 +466,8 @@ Oficina. Verificado no preview (:8777) por DOM/JS — **0 erros de console**; ro
   **"Novo grupo" virou um "+" azul** (`.chat-novo`, `var(--blue-mid)`) ao lado da busca da lista; o botão do cabeçalho saiu de
   `_atualizarTabHeaderActions`. O campo de mensagem tem `padding-right:90px` p/ o botão enviar não ficar embaixo do FAB. Busca da lista
   virou "Buscar nos grupos…" (a antiga cortava com o "+"). A dica sob o campo ("Enter envia · Shift+Enter…") também saiu, a pedido.
+  O **campo de mensagem** (`.chat-comp`) ocupa **metade da largura da conversa, centralizado** (`width:50%;min-width:min(100%,440px);
+  margin:0 auto`) — com isso não precisa mais do recuo à direita p/ o FAB; no celular (≤760px) volta a largura toda com `padding-right:90px`.
 - ⭐ **(18/09) 3 PONTES CHAT ↔ HUB** (o Diego pediu "o que do Hub faz sentido no chat" e aprovou as 3 sugestões). Seção
   "Integração com o Hub" no fim do bloco do chat:
   1. **`#` cita algo do Hub** (item de Compras, OS, projeto, reunião, tarefa em aberto) — mesmo popup do `@` (`_chatMen.tipo='ref'`,
