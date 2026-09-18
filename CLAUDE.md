@@ -439,7 +439,7 @@ Oficina. Verificado no preview (:8777) por DOM/JS — **0 erros de console**; ro
   sair). `_chatPopover` passou a medir a âncora ANTES de fechar o popover anterior (senão o menu de membro abria no canto da tela) e
   aceita `alinharEsq`. Os dados `g.fixadas` continuam no modelo, sem UI.
   ⚠️ **(18/09) visual NEUTRO e SEM CARTÃO** (Diego, em 2 rodadas: "branco, feio, chamativo" → "muita cor, quero bem mais neutro,
-  sem ser um card gigante"): o `.chat-wrap` não tem mais borda/raio/fundo — lista e conversa ficam **direto no fundo da página**,
+  sem ser um card gigante"): o `.chat-wrap` não tem FUNDO — lista e conversa ficam **direto no fundo da página**, só com um **contorno leve** em volta (3ª rodada: `border:1px var(--border)` + raio 14px, sem preenchimento; o padding passou p/ lista/cabeçalho/feed/campo),
   separadas só por linhas finas. Cores = tons de cinza derivados de `--text` com transparência (`--ch-bolha`, `--ch-bolha-eu`,
   `--ch-campo`, `--ch-hover`, `--ch-sel`), então seguem qualquer tema. Saiu todo o azul/roxo do chat (item selecionado, balão
   próprio, @menção, contador de não lidas, botão enviar, cards de tarefa/decisão, selos); ficaram só as cores com FUNÇÃO (status da
