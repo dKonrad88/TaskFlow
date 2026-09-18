@@ -459,6 +459,13 @@ Oficina. Verificado no preview (:8777) por DOM/JS — **0 erros de console**; ro
   leitura gravada depois da mensagem, OU mandou mensagem depois dela, OU reagiu a ela. ⚠️ No protótipo só o usuário do navegador grava
   leitura (o exemplo semeia leituras dos outros) — leitura real por pessoa = backend do Guilherme. Testado em Edge headless por script
   (fixar 4 → sobra 3, ciclo da barra, seções, visto nos 3 grupos, 0 erros de JS) + fotos nos temas claro e escuro.
+- ⭐ **(18/09) Chat em TELA INTEIRA:** saíram o título "Chat - Grupos", o subtítulo e o **contorno** — o chat ocupa toda a área abaixo do
+  cabeçalho azul (`.chat-wrap` com `height:calc(100vh - 56px)`, 56 = `.hdr`). Feito **só com CSS dentro do `_chatCSS()`**:
+  `.main:has(.chat-wrap){max-width:none;padding:0}` e `.main:has(.chat-wrap/.chat-vazio) .topbar{display:none}` — como a regra mora no
+  `<style>` do próprio chat, **sair da aba devolve a topbar sozinho** (conferido: Meu Dia volta com título e padding normais). O
+  **"Novo grupo" virou um "+" azul** (`.chat-novo`, `var(--blue-mid)`) ao lado da busca da lista; o botão do cabeçalho saiu de
+  `_atualizarTabHeaderActions`. O campo de mensagem tem `padding-right:90px` p/ o botão enviar não ficar embaixo do FAB. Busca da lista
+  virou "Buscar nos grupos…" (a antiga cortava com o "+").
 - ⭐ **A conversa vira trabalho:** ☑ na mensagem → **tarefa REAL** (`origem:'chat'`, `chatGrupoId`, `chatMsgId`; solicitante = quem
   criou; responsável sugerido = 1º mencionado, senão você; prazo hoje) → cai no **Meu Dia** e aparece no grupo como **card com status
   vivo** (concluir pelo card chama o `toggle` do app). ⚖️ na mensagem → **decisão** registrada no grupo. A mensagem de origem ganha o

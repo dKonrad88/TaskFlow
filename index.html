@@ -17755,9 +17755,14 @@ function _chatResumo(m){
 
 // ── Tela: estrutura em 3 colunas (grupos | conversa | painel) ─────────────────────────────────
 function _chatCSS(){ return `
-.chat-wrap{display:grid;grid-template-columns:260px minmax(0,1fr);height:calc(100vh - 168px);min-height:480px;box-sizing:border-box;border:1px solid color-mix(in srgb,var(--text) 20%,transparent);border-radius:14px;background:transparent;--ch-bolha:color-mix(in srgb,var(--text) 5%,transparent);--ch-bolha-eu:color-mix(in srgb,var(--text) 10%,transparent);--ch-campo:color-mix(in srgb,var(--text) 4%,transparent);--ch-hover:color-mix(in srgb,var(--text) 6%,transparent);--ch-sel:color-mix(in srgb,var(--text) 9%,transparent)}
+.main:has(.chat-wrap){max-width:none;padding:0}
+.main:has(.chat-wrap) .topbar,.main:has(.chat-vazio) .topbar{display:none!important}
+.chat-wrap{display:grid;grid-template-columns:260px minmax(0,1fr);height:calc(100vh - 56px);min-height:480px;box-sizing:border-box;background:transparent;--ch-bolha:color-mix(in srgb,var(--text) 5%,transparent);--ch-bolha-eu:color-mix(in srgb,var(--text) 10%,transparent);--ch-campo:color-mix(in srgb,var(--text) 4%,transparent);--ch-hover:color-mix(in srgb,var(--text) 6%,transparent);--ch-sel:color-mix(in srgb,var(--text) 9%,transparent)}
 .chat-lista{border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0;padding:12px 10px 12px 12px}
-.chat-lista-top{padding:0 0 10px;display:flex;flex-direction:column;gap:9px}
+.chat-lista-top{padding:0 0 10px;display:flex;align-items:center;gap:8px}
+.chat-lista-top .chat-busca{flex:1;min-width:0}
+.chat-novo{width:36px;height:36px;border-radius:10px;border:none;background:var(--blue-mid);color:#fff;font-size:19px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
+.chat-novo:hover{filter:brightness(1.1)}
 .chat-lista-itens{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
 .chat-busca{position:relative}
 .chat-busca i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px}
@@ -17818,7 +17823,7 @@ function _chatCSS(){ return `
 .chat-replybar{display:flex;align-items:center;gap:8px;border-left:3px solid var(--text3);background:var(--ch-campo);border-radius:8px;padding:6px 10px;margin-top:8px;font-size:12px;color:var(--text2)}
 .chat-pend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .chat-pend span{display:inline-flex;align-items:center;gap:5px;background:var(--ch-campo);border:1px solid var(--border);border-radius:20px;padding:2px 4px 2px 9px;font-size:11.5px;color:var(--text2)}
-.chat-comp{padding:10px 12px 10px 18px;position:relative}
+.chat-comp{padding:10px 90px 10px 18px;position:relative}
 .chat-comp-row{display:flex;align-items:flex-end;gap:6px}
 .chat-input{flex:1;resize:none;border:1px solid var(--border);background:transparent;border-radius:12px;padding:9px 12px;font-size:13.5px;font-family:inherit;color:var(--text);max-height:150px;min-height:40px;height:40px;line-height:1.45;outline:none;box-sizing:border-box}
 .chat-input:focus{border-color:var(--text3)}
@@ -17855,7 +17860,7 @@ function _chatCSS(){ return `
 .chat-visto{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--text3);margin:3px 2px 0}
 .chat-meta .ti-checks.todos{color:var(--text)}
 @media(max-width:1240px){.chat-wrap{grid-template-columns:230px minmax(0,1fr)}}
-@media(max-width:760px){.chat-wrap{grid-template-columns:1fr;height:calc(100vh - 140px)}.chat-lista{padding:12px;border-right:none}.chat-wrap.tem-sel .chat-lista{display:none}.chat-wrap:not(.tem-sel) .chat-conv{display:none}.chat-voltar{display:inline-flex}}
+@media(max-width:760px){.chat-wrap{grid-template-columns:1fr;height:calc(100vh - 56px)}.chat-lista{padding:12px;border-right:none}.chat-wrap.tem-sel .chat-lista{display:none}.chat-wrap:not(.tem-sel) .chat-conv{display:none}.chat-voltar{display:inline-flex}}
 `; }
 
 function _chatOrdenados(lista){
@@ -17871,11 +17876,9 @@ function renderChatGrupos(){
   const main=document.getElementById('task-container'); if(!main) return;
   const _st=document.getElementById('stats-box'); if(_st) _st.style.display='none';
   const _pr=document.getElementById('progress-box'); if(_pr) _pr.style.display='none';
-  // Cabeçalho também aqui: quando a aba volta pela rota (F5), o render() não passa pelo setTab.
-  { const _tt=document.getElementById('tab-title'), _ts=document.getElementById('tab-sub');
-    if(_tt){ _tt.textContent='💬 Chat - Grupos'; _tt.style.display=''; }
-    if(_ts){ _ts.textContent='Conversas da equipe, organizadas por grupo'; _ts.style.display=''; }
-    if(typeof _atualizarTabHeaderActions==='function') _atualizarTabHeaderActions(); }
+  // Sem título/subtítulo: o chat ocupa a área toda. A topbar some pelo CSS (.main:has(.chat-wrap)),
+  // que só vale enquanto o chat está na tela — sair da aba devolve a topbar sem precisar limpar nada.
+  if(typeof _atualizarTabHeaderActions==='function') _atualizarTabHeaderActions();
   const eu=_chatEu(), meus=_chatGruposDe(eu);
   const estreita=window.innerWidth>0 && window.innerWidth<=760;
   if(_chatSel && !meus.some(g=>g.id===_chatSel)) _chatSel=null;
@@ -17893,7 +17896,8 @@ function renderChatGrupos(){
   <div class="chat-wrap${g?' tem-sel':''}">
     <aside class="chat-lista">
       <div class="chat-lista-top">
-        <div class="chat-busca"><i class="ti ti-search"></i><input class="chat-busca-inp" placeholder="Buscar grupo ou mensagem…" value="${escapeAttr(_chatBusca)}" oninput="_chatSetBusca(this.value)"></div>
+        <div class="chat-busca"><i class="ti ti-search"></i><input class="chat-busca-inp" placeholder="Buscar nos grupos…" title="Busca pelo nome do grupo ou pelo texto das mensagens" value="${escapeAttr(_chatBusca)}" oninput="_chatSetBusca(this.value)"></div>
+        <button class="chat-novo" title="Novo grupo" onclick="_chatNovoGrupo()"><i class="ti ti-plus"></i></button>
       </div>
       <div class="chat-lista-itens" id="chat-lista-itens">${_chatListaItensHTML()}</div>
     </aside>
@@ -17935,7 +17939,7 @@ function _chatSemSelHTML(){
 
 function _chatVazioHTML(eu){
   const passo=(ic,t,d)=>`<div style="display:flex;gap:11px;align-items:flex-start;text-align:left"><div style="width:34px;height:34px;border-radius:10px;background:color-mix(in srgb,var(--blue-mid) 14%,var(--card));color:var(--blue-mid);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0"><i class="ti ${ic}"></i></div><div><div style="font-size:13px;font-weight:700;color:var(--text)">${t}</div><div style="font-size:12px;color:var(--text3);margin-top:2px;line-height:1.5">${d}</div></div></div>`;
-  return `<div style="max-width:620px;margin:40px auto;background:var(--surface-painel,var(--card));border:1px solid var(--border);border-radius:16px;padding:30px 32px;text-align:center">
+  return `<div class="chat-vazio" style="max-width:620px;margin:40px auto;background:var(--surface-painel,var(--card));border:1px solid var(--border);border-radius:16px;padding:30px 32px;text-align:center">
     <i class="ti ti-messages" style="font-size:42px;color:var(--blue-mid)"></i>
     <div style="font-size:19px;font-weight:800;color:var(--text);margin:8px 0 4px">${escapeHTML(_chatPrim(eu))}, você ainda não está em nenhum grupo</div>
     <div style="font-size:13px;color:var(--text3);margin-bottom:22px">Traga para cá os grupos de trabalho que hoje estão no WhatsApp — com a vantagem de que a conversa vira trabalho.</div>
@@ -25848,7 +25852,7 @@ function _atualizarTabHeaderActions(){
   const secHover=` onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"`;
   let html='';
   if(currentTab==='chat'){
-    html=`<button onclick="_chatNovoGrupo()" style="${pri}"><i class="ti ti-users-plus"></i> Novo grupo</button>`;
+    // (18/09) "Novo grupo" virou o "+" azul dentro da lista de grupos do próprio chat.
   } else if(currentTab==='reunioes' && reuniaoTab!=='historico'){
     // (jul/2026) Saíram daqui, a pedido do Diego: o filtro de TIPO (Todas|Reuniões|
     // Compromissos) e o menu ⋮ (Visualização Lista/Mural + Histórico). O recorte
