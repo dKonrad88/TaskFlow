@@ -38370,7 +38370,7 @@ function renderProjectProInfo(p, prog){
 // Seguro para o cronograma: a corrente das tarefas usa a ordem GLOBAL (ppOrdem), não a das fases.
 function _moverFase(projectId, faseId, dir){
   const p=projectsPro.find(x=>x.id===projectId); if(!p||!p.fases) return;
-  if(!_ppPodeGerenciar(p)){ toast('🔒 Só o dono e os coordenadores podem reordenar fases'); return; }
+  if(!_ppPodePlanejar(p)){ toast('🔒 Só o dono e os coordenadores podem reordenar fases'); return; }
   const i=p.fases.findIndex(f=>f.id===faseId); const j=i+dir;
   if(i<0||j<0||j>=p.fases.length) return;
   [p.fases[i],p.fases[j]]=[p.fases[j],p.fases[i]];
@@ -38646,6 +38646,12 @@ function _ppPodeGerenciar(p){
   if(!p.dono && !p.coordenador && !p.coordenador2) return true;
   return CURRENT_USER_ID===p.dono || CURRENT_USER_ID===p.coordenador || CURRENT_USER_ID===p.coordenador2;
 }
+// PLANEJAR a esteira (reordenar tarefas/fases, mover ↑↓, depende-da-anterior × paralela).
+// ⚠️ PROTÓTIPO: liberado p/ quem está no navegador. A identidade aqui é simulada e a trava deixou o
+// Diego sem conseguir mover as tarefas de um projeto em que não era dono (set/2026) — o mesmo que já
+// tinha acontecido com a equipe do projeto (jul/2026). REGRA REAL, p/ o backend do Guilherme: a mesma do
+// _ppPodeGerenciar (só dono e coordenadores planejam). Excluir continua travado pelo _ppPodeGerenciar.
+function _ppPodePlanejar(p){ return !!p; }
 function _ppBloqueioExclusao(p){
   if(_ppPodeGerenciar(p)) return false;
   toast('🔒 Só o dono e os coordenadores podem excluir itens deste projeto');
@@ -39066,7 +39072,7 @@ function _ppPorQuePrazo(projectId){
 
 function _ppToggleParalela(projectId, taskId){
   const p=projectsPro.find(x=>x.id===projectId); if(!p) return;
-  if(!_ppPodeGerenciar(p)){ toast('🔒 Só o dono e os coordenadores podem mudar etapas'); return; }
+  if(!_ppPodePlanejar(p)){ toast('🔒 Só o dono e os coordenadores podem mudar etapas'); return; }
   const t=tasks.find(x=>x.id===taskId); if(!t) return;
   const _snap=_ppPrazoSnap(p);
   t.ppParalela=!t.ppParalela; saveTask_db(t);
@@ -39132,7 +39138,7 @@ function _ppProjecao(ord, et, anchorISO){
 let _ppDragId=null;
 function _ppDragStart(ev, taskId, projectId){
   const p=projectsPro.find(x=>x.id===projectId);
-  if(p && !_ppPodeGerenciar(p)){ ev.preventDefault(); return; }
+  if(p && !_ppPodePlanejar(p)){ ev.preventDefault(); return; }
   _ppDragId=taskId;
   try{ ev.dataTransfer.effectAllowed='move'; ev.dataTransfer.setData('text/plain', String(taskId)); }catch(e){}
   const tr=ev.currentTarget.closest('tr'); if(tr) tr.style.opacity='0.4';
@@ -39153,7 +39159,7 @@ function _ppDrop(ev, targetId, projectId, scopeFaseId){
   ev.preventDefault();
   _ppClearDropHints();
   const p=projectsPro.find(x=>x.id===projectId); if(!p) return;
-  if(!_ppPodeGerenciar(p)){ toast('🔒 Só o dono e os coordenadores podem reordenar'); _ppDragId=null; return; }
+  if(!_ppPodePlanejar(p)){ toast('🔒 Só o dono e os coordenadores podem reordenar'); _ppDragId=null; return; }
   if(_ppDragId==null || _ppDragId===targetId){ _ppDragId=null; return; }
   const ord=_ppTarefasOrdenadas(p);
   const dragged=ord.find(t=>t.id===_ppDragId);
@@ -39194,6 +39200,33 @@ function _ppDrop(ev, targetId, projectId, scopeFaseId){
   lista.splice(idx,0,dragged);
   lista.forEach((t,i)=>{ const v=(i+1)*10; if(t.ppOrdem!==v){ t.ppOrdem=v; saveTask_db(t); } });
   _ppDragId=null; render();
+}
+// ─── Mover ↑/↓ (aba Tarefas) — alternativa ao arrastar, 1 posição por clique ───
+// Sem scopeFaseId = ordem GLOBAL (modo Lista). Com scopeFaseId = só dentro do bloco da fase (modo
+// agrupado), reaproveitando os mesmos "slots" de ppOrdem — mesma regra do _ppDrop.
+function _ppMoverTarefa(projectId, taskId, dir, scopeFaseId){
+  const p=projectsPro.find(x=>x.id===projectId); if(!p) return;
+  if(!_ppPodePlanejar(p)){ toast('🔒 Só o dono e os coordenadores podem reordenar'); return; }
+  const ord=_ppTarefasOrdenadas(p);
+  const grp=scopeFaseId!==undefined;
+  const esc=grp ? ord.filter(o=>(o.projectProFaseId||'__none__')===scopeFaseId) : ord;
+  const i=esc.findIndex(t=>t.id===taskId), j=i+dir;
+  if(i<0 || j<0 || j>=esc.length) return;
+  const nova=esc.slice(); const tmp=nova[i]; nova[i]=nova[j]; nova[j]=tmp;
+  if(grp){
+    const slots=esc.map(o=>o.ppOrdem).sort((a,b)=>a-b);
+    nova.forEach((o,k)=>{ if(o.ppOrdem!==slots[k]){ o.ppOrdem=slots[k]; saveTask_db(o); } });
+  } else {
+    nova.forEach((o,k)=>{ const v=(k+1)*10; if(o.ppOrdem!==v){ o.ppOrdem=v; saveTask_db(o); } });
+  }
+  render();
+  // realça a linha que andou (e traz p/ a vista se saiu da tela)
+  setTimeout(()=>{
+    const tr=document.querySelector('.pp-planilha tr[data-task-id="'+taskId+'"]'); if(!tr) return;
+    tr.scrollIntoView({block:'nearest'});
+    tr.style.transition='background .7s'; tr.style.background='color-mix(in srgb,var(--blue-mid) 16%,transparent)';
+    setTimeout(()=>{ tr.style.background=''; },700);
+  },0);
 }
 // ─── Cards RECOLHÍVEIS do Painel (hoje só o "Acontecendo agora") ───────────────────────
 // (jul/2026, Diego) "só expandir quando alguém quiser de fato olhar". Nascem RECOLHIDOS —
@@ -39351,7 +39384,7 @@ function _ppToggleTodasFases(projectId, colapsar){
 // Dentro de cada fase mantém a ordem atual. Tarefas sem fase vão para o fim.
 function _ppOrdenarPorFase(projectId){
   const p=projectsPro.find(x=>x.id===projectId); if(!p) return;
-  if(!_ppPodeGerenciar(p)){ toast('🔒 Só o dono e os coordenadores podem reordenar'); return; }
+  if(!_ppPodePlanejar(p)){ toast('🔒 Só o dono e os coordenadores podem reordenar'); return; }
   const ord=_ppTarefasOrdenadas(p);
   const faseIdx=new Map((p.fases||[]).map((f,i)=>[f.id,i]));
   const semFaseRank=(p.fases||[]).length+1;
@@ -39437,7 +39470,7 @@ function renderProjectProTarefas(p){
 
   // ─── MODO PLANILHA: tabela com colunas editáveis inline ──────────
   const _planilhaHTML = () => {
-    const podeGerir = _ppPodeGerenciar(p);
+    const podeGerir = _ppPodePlanejar(p);
     // Declarado AQUI (antes de `linha`) porque as colunas dependem do modo: agrupado por
     // fase, o card já diz a fase e o subtítulo diz o setor → as 2 colunas são redundantes.
     // No modo LISTA não há agrupamento nenhum, então elas VOLTAM (Diego, jul/2026).
@@ -39457,8 +39490,16 @@ function renderProjectProTarefas(p){
       // acrescentar leitura: a mesma informação já está no texto "início → fim".
       return `<span title="${atual?'Em andamento agora':'Período previsto'}" style="font-size:10.5px;font-weight:600;color:${cor};background:${bg};padding:3px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><i class="ti ${icon}" style="font-size:11px"></i>${txt}</span>`;
     };
+    // Posição de cada tarefa dentro do seu bloco (fase) — p/ saber quando ↑/↓ não têm p/ onde ir no modo agrupado.
+    const _escPos=new Map(), _escLen={};
+    todas.forEach(t=>{ const k=t.projectProFaseId||'__none__'; _escPos.set(t.id,_escLen[k]||0); _escLen[k]=(_escLen[k]||0)+1; });
     const linha = (t, scopeFaseId) => {
       const exec = t.executor ? _personById(t.executor) : null;
+      const _grp = scopeFaseId!==undefined;
+      const _pos = _grp ? _escPos.get(t.id) : t._idx, _len = _grp ? (_escLen[scopeFaseId]||0) : todas.length;
+      const _mvArg = _grp ? `,'${scopeFaseId}'` : '';
+      const _mvBtn = (dir, pode) => `<button onclick="event.stopPropagation();_ppMoverTarefa('${p.id}',${t.id},${dir}${_mvArg})" ${pode?'':'disabled'} title="${dir<0?'Subir':'Descer'}" style="background:none;border:none;padding:0;width:16px;height:12px;line-height:1;display:inline-flex;align-items:center;justify-content:center;color:var(--text3);cursor:${pode?'pointer':'default'};${pode?'':'opacity:.25'}" ${pode?`onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text3)'"`:''}><i class="ti ti-chevron-${dir<0?'up':'down'}" style="font-size:13px"></i></button>`;
+      const _mover = podeGerir ? `<span style="display:inline-flex;flex-direction:column;gap:1px">${_mvBtn(-1,_pos>0)}${_mvBtn(1,_pos<_len-1)}</span>` : '';
       // Visual (padding/bordas/altura/hover) vem da classe .pp-planilha — igual ao Organizar.
       // Aqui só sobram larguras/alinhamentos específicos de cada coluna.
       // Só no modo agrupado (table-layout:fixed) a célula precisa conter o conteúdo: sem isso
@@ -39475,8 +39516,9 @@ function renderProjectProTarefas(p){
         ? `<button onclick="event.stopPropagation();_ppToggleParalela('${p.id}',${t.id})" ${podeGerir?'':'disabled'} title="${t.ppParalela?'Roda JUNTO com a tarefa anterior — clique p/ torná-la dependente (só começa depois)':'DEPENDE da anterior (só começa quando ela concluir) — clique p/ rodar em paralelo'}" style="background:none;border:none;cursor:${podeGerir?'pointer':'default'};color:${t.ppParalela?p.cor:'var(--text3)'};padding:0 2px;line-height:1;${podeGerir?'':'opacity:.4'}"><i class="ti ti-${t.ppParalela?'arrows-split-2':'arrow-down-right'}" style="font-size:13px"></i></button>`
         : '';
       return `<tr data-task-id="${t.id}" ondragover="_ppDragOver(event)" ondrop="_ppDrop(event,${t.id},'${p.id}'${scopeFaseId!==undefined?`,'${scopeFaseId}'`:''})" style="${t.done?'opacity:.6':''}">
-        <td style="${cell};width:72px;white-space:nowrap;text-align:center">
+        <td style="${cell};width:96px;white-space:nowrap;text-align:center">
           <div style="display:inline-flex;align-items:center;gap:4px">
+            ${_mover}
             ${podeGerir?`<span draggable="true" ondragstart="_ppDragStart(event,${t.id},'${p.id}')" ondragend="_ppDragEnd(event)" title="Arraste para reordenar" style="cursor:grab;color:var(--text3);font-size:15px;line-height:1;display:inline-flex"><i class="ti ti-grip-vertical"></i></span>`:''}
             <span title="${t._num&&t._num.includes('.')?`Etapa ${st.etapa} — roda junto com a ${st.etapa}`:`Etapa ${st.etapa}`}" style="font-size:10px;font-weight:800;color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 12%,transparent);border-radius:6px;padding:2px 5px;min-width:16px;display:inline-block;white-space:nowrap">${t._num||st.etapa}</span>
             ${paralelaBtn}
@@ -39518,14 +39560,14 @@ function renderProjectProTarefas(p){
     // um card p/ o outro. No modo LISTA é uma tabela só (nada com que alinhar), e forçar `fixed`
     // espremia a coluna Tarefa a ponto de truncar todo título: lá vale o layout automático.
     const _colgroup = _agrupar ? `<colgroup>
-          <col style="width:78px"><col>
+          <col style="width:100px"><col>
           <col style="width:170px"><col style="width:112px">
           <col style="width:92px"><col style="width:62px">
         </colgroup>` : '';
     // No modo agrupado NÃO há cabeçalho de colunas: repetido em cada card ele pesava a tela e
     // fugia do modelo do Painel, que o Diego pediu p/ copiar (jul/2026).
     const _thead = _agrupar ? '' : `<thead><tr>
-          <th style="${th};text-align:center;border-top:none" title="Arraste para reordenar; o número é a etapa">Ordem</th>
+          <th style="${th};text-align:center;border-top:none" title="Use as setas ↑↓ ou arraste para reordenar; o número é a etapa">Ordem</th>
           <th style="${th}">Tarefa</th><th style="${th}" title="Período previsto de cada tarefa">Previsão</th><th style="${th}">Executor</th>
           <th style="${th}">${_ppRot(p,1)}</th><th style="${th}">${_ppRot(p,2)}</th>
           <th style="${th};text-align:center">Dias</th>
@@ -39575,7 +39617,7 @@ function renderProjectProTarefas(p){
     }
     return `${_agToggle}${corpoHTML}
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:8px">
-      <div style="font-size:11px;color:var(--text3);display:inline-flex;align-items:center;gap:5px"><i class="ti ti-grip-vertical" style="font-size:12px"></i> arraste para reordenar${_agrupar?` (entre cards = muda ${_ppG(p,1,'a','o')} ${_ppRot(p,1,false,true)})`:''} · <i class="ti ti-arrow-down-right" style="font-size:12px"></i> depende da anterior · <i class="ti ti-arrows-split-2" style="font-size:12px"></i> roda em paralelo</div>
+      <div style="font-size:11px;color:var(--text3);display:inline-flex;align-items:center;gap:5px"><i class="ti ti-arrows-up-down" style="font-size:12px"></i> setas ou <i class="ti ti-grip-vertical" style="font-size:12px"></i> arraste para reordenar${_agrupar?` (entre cards = muda ${_ppG(p,1,'a','o')} ${_ppRot(p,1,false,true)})`:''} · <i class="ti ti-arrow-down-right" style="font-size:12px"></i> depende da anterior · <i class="ti ti-arrows-split-2" style="font-size:12px"></i> roda em paralelo</div>
     </div>`;
   };
 

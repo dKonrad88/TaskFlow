@@ -422,6 +422,20 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-18 (b) — PC da Empresa — Projeto › aba Tarefas: setas ↑↓ para reordenar + trava de "planejar" liberada no protótipo
+Diego montando o projeto "Palestra - Setembro Amarelo" não conseguia mudar a ordem das tarefas. **Causa:** ele não era dono nem
+coordenador desse projeto, e o `_ppPodeGerenciar` escondia o ícone de arrastar e desligava a seta de dependência. Mesmo problema que
+já tinha travado a equipe do projeto em jul/2026 (entrada 07-17 d).
+- **Novo `_ppPodePlanejar(p)`** (logo acima de `_ppBloqueioExclusao`): no protótipo devolve sempre `true`. Usado em reordenar tarefas
+  (arrastar e setas), reordenar fases (`_moverFase`), "Ordenar por parte" e depende/paralela (`_ppToggleParalela`). **Regra real p/ o
+  Guilherme continua sendo a do `_ppPodeGerenciar`** (só dono e coordenadores planejam) — está escrito no comentário. **Excluir segue
+  travado** pelo `_ppPodeGerenciar` (conferido: `_ppBloqueioExclusao` ainda bloqueia quem não é dono).
+- **Setas ↑↓ na coluna Ordem** (antes do ⠿ de arrastar), 1 posição por clique: `_ppMoverTarefa(projectId, taskId, dir, scopeFaseId)`.
+  Modo Lista = ordem global (renumera `ppOrdem` 10,20,30…); modo "Por parte/fase" = só dentro do bloco, reaproveitando os slots (mesma
+  regra do `_ppDrop`). Primeira não sobe, última não desce (e no agrupado, por bloco). A linha que andou pisca e rola p/ a vista.
+- Testado em Edge headless por script (projeto em que o usuário NÃO é dono): setas e ⠿ aparecem, descer/subir mudam a ordem e gravam,
+  agrupado move só dentro da fase, paralela alterna, exclusão continua travada, 0 erros.
+
 ### 2026-09-18 — PC da Empresa — nova ÁREA **Comercial** (só o setor, vazio)
 Pedido do Diego: "crie o setor comercial, não precisa pôr nada dentro". Grupo `comercial` (ícone `ti-briefcase`) nas ÁREAS da
 sidebar, em ordem alfabética (antes de Compras), com um "Em breve" apagado dentro. **Sem tela, sem `hubView`, sem rota** — quando
