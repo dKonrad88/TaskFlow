@@ -438,6 +438,9 @@ Oficina. Verificado no preview (:8777) por DOM/JS — **0 erros de console**; ro
   **popover** (`_chatMembrosPop`) aberto clicando no nome do grupo no cabeçalho ou em ⋮ › Membros (adicionar, tornar admin, remover,
   sair). `_chatPopover` passou a medir a âncora ANTES de fechar o popover anterior (senão o menu de membro abria no canto da tela) e
   aceita `alinharEsq`. Os dados `g.fixadas` continuam no modelo, sem UI.
+  ⚠️ **(18/09) cores suavizadas** (Diego: "branco, feio, chamativo"): o `.chat-wrap` define `--ch-fundo` (= `--bg2`, lista/cabeçalho/
+  rodapé), `--ch-feed` (área da conversa), `--ch-bolha` (balões/cards) e `--ch-campo` (campos) — tudo derivado do tema, sem branco
+  puro. Conferido nos temas claro e escuro renderizando com **Edge headless** (o Browser pane estava oculto e travava).
 - ⭐ **A conversa vira trabalho:** ☑ na mensagem → **tarefa REAL** (`origem:'chat'`, `chatGrupoId`, `chatMsgId`; solicitante = quem
   criou; responsável sugerido = 1º mencionado, senão você; prazo hoje) → cai no **Meu Dia** e aparece no grupo como **card com status
   vivo** (concluir pelo card chama o `toggle` do app). ⚖️ na mensagem → **decisão** registrada no grupo. A mensagem de origem ganha o
