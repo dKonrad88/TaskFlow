@@ -468,6 +468,9 @@ Oficina. Verificado no preview (:8777) por DOM/JS — **0 erros de console**; ro
   virou "Buscar nos grupos…" (a antiga cortava com o "+"). A dica sob o campo ("Enter envia · Shift+Enter…") também saiu, a pedido.
   O **campo de mensagem** (`.chat-comp`) ocupa **metade da largura da conversa, centralizado** (`width:50%;min-width:min(100%,440px);
   margin:0 auto`) — com isso não precisa mais do recuo à direita p/ o FAB; no celular (≤760px) volta a largura toda com `padding-right:90px`.
+  **Balões como no WhatsApp:** os SEUS têm cor própria (`--ch-minha` = tom suave do acento do tema: 18% no claro, 34% no escuro via
+  `body.dark .chat-wrap`) e os de TODOS os outros participantes ficam no mesmo cinza (`--ch-bolha`). É a única cor "de tema" nos
+  balões — o resto do chat segue neutro.
 - ⭐ **(18/09) 3 PONTES CHAT ↔ HUB** (o Diego pediu "o que do Hub faz sentido no chat" e aprovou as 3 sugestões). Seção
   "Integração com o Hub" no fim do bloco do chat:
   1. **`#` cita algo do Hub** (item de Compras, OS, projeto, reunião, tarefa em aberto) — mesmo popup do `@` (`_chatMen.tipo='ref'`,
