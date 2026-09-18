@@ -422,6 +422,12 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-18 — PC da Empresa — nova ÁREA **Comercial** (só o setor, vazio)
+Pedido do Diego: "crie o setor comercial, não precisa pôr nada dentro". Grupo `comercial` (ícone `ti-briefcase`) nas ÁREAS da
+sidebar, em ordem alfabética (antes de Compras), com um "Em breve" apagado dentro. **Sem tela, sem `hubView`, sem rota** — quando
+entrarem as abas, seguir o molde do RH (`rhView`/`setRHView`/`renderRH` + dispatch em `render()` + `tf_route`). Nasce fechado
+(flag 1× `taskflow_areas_seed_comercial`, mesmo padrão do `taskflow_areas_seed_v1`).
+
 ### ⭐ 2026-09-15 — PC da Empresa — NOVA ABA **"Chat - Grupos"** (Gestão) + saem **Análise** e **Oficina de Ideias** da sidebar
 Pedido do Diego: "sair do WhatsApp com alguns grupos, fazer tudo por ali, inclusive criar tarefas e interações" + tirar Análise e
 Oficina. Verificado no preview (:8777) por DOM/JS — **0 erros de console**; roteiro completo testado e os dados de teste restaurados.

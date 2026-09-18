@@ -5805,6 +5805,12 @@ if(!safeLSGet('taskflow_areas_seed_v1')){
   safeSetItem(LS_SBNAV_GROUPS, JSON.stringify(_sbnavColapsados));
   safeSetItem('taskflow_areas_seed_v1','1');
 }
+// Área nova entra fechada, como as outras (1 vez só — depois o estado é do usuário).
+if(!safeLSGet('taskflow_areas_seed_comercial')){
+  _sbnavColapsados.comercial=true;
+  safeSetItem(LS_SBNAV_GROUPS, JSON.stringify(_sbnavColapsados));
+  safeSetItem('taskflow_areas_seed_comercial','1');
+}
 function _saveSbnavGroups(){
   // GUILHERME: usa safeSetItem para tratar QuotaExceededError uniformemente
   if(typeof safeSetItem==='function') safeSetItem(LS_SBNAV_GROUPS, JSON.stringify(_sbnavColapsados));
@@ -21155,6 +21161,10 @@ function renderSidebar(){
       `<div style="font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);padding:${i?'9px':'3px'} 12px 2px 32px">${g.g}</div>`
       + g.itens.map(it=>_areaItem('financeiro',_fv,it[0],it[1],it[2],'setFinanceiroView')).join('')).join('') : '';
   const areasHTML = hubGroupDivider('ÁREAS')
+    // Comercial (set/2026): só o setor criado, ainda sem telas — as abas entram aqui quando forem definidas.
+    + grupo('comercial','ti-briefcase','Comercial',
+        `<div style="padding:5px 12px 8px 32px;font-size:11.5px;color:var(--text3);font-style:italic">Em breve</div>`
+      , 'var(--text2)')
     + grupo('compras','ti-shopping-cart','Compras',
         _areaItem('compras',_cv,'painel','ti-layout-dashboard','Painel','setComprasView') +
         _areaItem('compras',_cv,'planejamento','ti-clipboard-check','Planejamento de compras','setComprasView') +
