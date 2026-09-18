@@ -466,6 +466,26 @@ Oficina. Verificado no preview (:8777) por DOM/JS — **0 erros de console**; ro
   **"Novo grupo" virou um "+" azul** (`.chat-novo`, `var(--blue-mid)`) ao lado da busca da lista; o botão do cabeçalho saiu de
   `_atualizarTabHeaderActions`. O campo de mensagem tem `padding-right:90px` p/ o botão enviar não ficar embaixo do FAB. Busca da lista
   virou "Buscar nos grupos…" (a antiga cortava com o "+"). A dica sob o campo ("Enter envia · Shift+Enter…") também saiu, a pedido.
+- ⭐ **(18/09) 3 PONTES CHAT ↔ HUB** (o Diego pediu "o que do Hub faz sentido no chat" e aprovou as 3 sugestões). Seção
+  "Integração com o Hub" no fim do bloco do chat:
+  1. **`#` cita algo do Hub** (item de Compras, OS, projeto, reunião, tarefa em aberto) — mesmo popup do `@` (`_chatMen.tipo='ref'`,
+     busca `_chatRefBuscar`, até 3 por tipo; sem digitar nada sugere itens com cobertura <10 d, OS abertas, projetos ativos e
+     próximas reuniões). A mensagem guarda **só a referência** (`m.refs=[{t,id,l}]`); o **cartão é montado na hora** com a
+     situação ATUAL (`_chatRefDados`/`_chatRefCardHTML`) e clicar abre o item no módulo dele (`_chatRefAbrir`; tarefa abre por
+     cima do chat). Se o `#nome` for apagado do texto antes de enviar, a citação cai. Item excluído → cartão "Não existe mais".
+     ⚠️ No render as OS/equipamentos são lidos por `_chatOrdensLer`/`_chatEquipNome` (leitura pura) — o `_osLoad` grava o exemplo.
+  2. **Levar para a pauta** (ícone de calendário no hover da mensagem) → lista as reuniões agendadas daqui pra frente (sem as
+     "rápidas") com "N do grupo"/"já está na pauta"; entra como assunto com **"quem trouxe" = autor da mensagem**
+     (`_pautaSetAutor`), não duplica, tem Desfazer, e a mensagem ganha o selo **"pauta"** (`m.pautas`, clicar abre a reunião).
+  3. **Avisos automáticos** (`tipo:'hub'`, autor "Hub Klain · aviso automático"): cada grupo assina tipos em **Editar grupo ›
+     Avisos do Hub** (`g.avisos`, `CHAT_AVISOS`). Hoje: **`os`** (OS aberta ou concluída — ligado em `salvarOrdem` e
+     `_pvGerarOS`, com o cartão vivo da OS) e **`necessidade`** (ao abrir Compras › Necessidade da semana, lista o que "Não
+     atende" + link "Abrir a Necessidade da semana"; 1 por semana). Dedup por `hubKey`. Contam como não lidas. Os grupos de
+     exemplo já vêm assinando (Manutenção → os, Compras × PCP → necessidade — `_chatNormalizar` aplica também a quem já tinha
+     os grupos gravados). ⚠️ Só AÇÕES publicam (regra P0). No protótipo o aviso nasce no navegador de quem agiu; no backend real
+     é o servidor que publica. Para um tipo novo: entrada em `CHAT_AVISOS` + função `_chatAviso<Tipo>` chamada pela ação.
+  Testado em Edge headless por script (busca, envio com/sem citação, cartões de item e OS, pauta + duplicata + autor, avisos +
+  dedup, grupo sem assinatura não recebe, OS nova/concluída/edição sem aviso, navegação pelos cartões, 0 erros) + fotos claro/escuro.
 - ⭐ **A conversa vira trabalho:** ☑ na mensagem → **tarefa REAL** (`origem:'chat'`, `chatGrupoId`, `chatMsgId`; solicitante = quem
   criou; responsável sugerido = 1º mencionado, senão você; prazo hoje) → cai no **Meu Dia** e aparece no grupo como **card com status
   vivo** (concluir pelo card chama o `toggle` do app). ⚖️ na mensagem → **decisão** registrada no grupo. A mensagem de origem ganha o
