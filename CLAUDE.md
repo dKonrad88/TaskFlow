@@ -438,9 +438,15 @@ Oficina. Verificado no preview (:8777) por DOM/JS — **0 erros de console**; ro
   **popover** (`_chatMembrosPop`) aberto clicando no nome do grupo no cabeçalho ou em ⋮ › Membros (adicionar, tornar admin, remover,
   sair). `_chatPopover` passou a medir a âncora ANTES de fechar o popover anterior (senão o menu de membro abria no canto da tela) e
   aceita `alinharEsq`. Os dados `g.fixadas` continuam no modelo, sem UI.
-  ⚠️ **(18/09) cores suavizadas** (Diego: "branco, feio, chamativo"): o `.chat-wrap` define `--ch-fundo` (= `--bg2`, lista/cabeçalho/
-  rodapé), `--ch-feed` (área da conversa), `--ch-bolha` (balões/cards) e `--ch-campo` (campos) — tudo derivado do tema, sem branco
-  puro. Conferido nos temas claro e escuro renderizando com **Edge headless** (o Browser pane estava oculto e travava).
+  ⚠️ **(18/09) visual NEUTRO e SEM CARTÃO** (Diego, em 2 rodadas: "branco, feio, chamativo" → "muita cor, quero bem mais neutro,
+  sem ser um card gigante"): o `.chat-wrap` não tem mais borda/raio/fundo — lista e conversa ficam **direto no fundo da página**,
+  separadas só por linhas finas. Cores = tons de cinza derivados de `--text` com transparência (`--ch-bolha`, `--ch-bolha-eu`,
+  `--ch-campo`, `--ch-hover`, `--ch-sel`), então seguem qualquer tema. Saiu todo o azul/roxo do chat (item selecionado, balão
+  próprio, @menção, contador de não lidas, botão enviar, cards de tarefa/decisão, selos); ficaram só as cores com FUNÇÃO (status da
+  tarefa, avatares, "Sair/Excluir" em vermelho). A **cor do grupo** saiu da tela e o **seletor de cor** saiu do modal (o ícone
+  continua; `g.cor` segue no dado, sem uso). Conferido nos temas claro e escuro com **Edge headless** — o Browser pane estava oculto
+  e travava. 📌 Receita que funcionou: `Start-Process msedge --headless --screenshot=... -Wait` pelo **PowerShell** (pelo Bash o
+  Edge sai sem gravar o PNG), com um HTML de teste que grava `tf_route`/`taskflow_theme` no localStorage antes do app.
 - ⭐ **A conversa vira trabalho:** ☑ na mensagem → **tarefa REAL** (`origem:'chat'`, `chatGrupoId`, `chatMsgId`; solicitante = quem
   criou; responsável sugerido = 1º mencionado, senão você; prazo hoje) → cai no **Meu Dia** e aparece no grupo como **card com status
   vivo** (concluir pelo card chama o `toggle` do app). ⚖️ na mensagem → **decisão** registrada no grupo. A mensagem de origem ganha o
