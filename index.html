@@ -17829,7 +17829,6 @@ function _chatCSS(){ return `
 .chat-input:focus{border-color:var(--text3)}
 .chat-ibtn{width:40px;height:40px;border-radius:10px;border:none;background:transparent;color:var(--text2);cursor:pointer;font-size:19px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 .chat-ibtn:hover{background:var(--ch-hover);color:var(--text)}
-.chat-comp-dica{font-size:10.5px;color:var(--text3);margin-top:5px}
 .chat-pop{position:fixed;z-index:10002;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.18);overflow:hidden}
 .chat-pop-row{display:flex;align-items:center;gap:8px;width:100%;background:transparent;border:none;padding:6px 10px;cursor:pointer;font-family:inherit;font-size:13px;color:var(--text);text-align:left}
 .chat-pop-row:hover,.chat-pop-row.on{background:color-mix(in srgb,var(--text) 7%,transparent)}
@@ -18012,7 +18011,6 @@ function _chatConvHTML(g){
       <textarea id="chat-input" class="chat-input" rows="1" placeholder="Escreva uma mensagem…  (@ menciona alguém)" oninput="_chatOnInput(this)" onkeydown="_chatOnKey(event,this)" onfocus="_chatTocouConversa()" onblur="setTimeout(_chatMenFechar,150)"></textarea>
       <button class="chat-ibtn chat-send" title="Enviar (Enter)" onclick="_chatEnviar()"><i class="ti ti-send"></i></button>
     </div>
-    <div class="chat-comp-dica">Enter envia · Shift+Enter quebra a linha · passe o mouse numa mensagem para responder ou reagir</div>
   </div>`;
 }
 

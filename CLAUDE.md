@@ -465,7 +465,7 @@ Oficina. Verificado no preview (:8777) por DOM/JS — **0 erros de console**; ro
   `<style>` do próprio chat, **sair da aba devolve a topbar sozinho** (conferido: Meu Dia volta com título e padding normais). O
   **"Novo grupo" virou um "+" azul** (`.chat-novo`, `var(--blue-mid)`) ao lado da busca da lista; o botão do cabeçalho saiu de
   `_atualizarTabHeaderActions`. O campo de mensagem tem `padding-right:90px` p/ o botão enviar não ficar embaixo do FAB. Busca da lista
-  virou "Buscar nos grupos…" (a antiga cortava com o "+").
+  virou "Buscar nos grupos…" (a antiga cortava com o "+"). A dica sob o campo ("Enter envia · Shift+Enter…") também saiu, a pedido.
 - ⭐ **A conversa vira trabalho:** ☑ na mensagem → **tarefa REAL** (`origem:'chat'`, `chatGrupoId`, `chatMsgId`; solicitante = quem
   criou; responsável sugerido = 1º mencionado, senão você; prazo hoje) → cai no **Meu Dia** e aparece no grupo como **card com status
   vivo** (concluir pelo card chama o `toggle` do app). ⚖️ na mensagem → **decisão** registrada no grupo. A mensagem de origem ganha o
