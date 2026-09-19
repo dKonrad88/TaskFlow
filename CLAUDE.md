@@ -422,6 +422,32 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-09-19 — PC da Empresa — MINI-CHAT FLUTUANTE ("Mensagens", canto inferior direito) + CONVERSA DIRETA 1 a 1
+Ideia do Diego: mandar mensagem para alguém (ex.: o Stéfano do PCP) sem ir ao WhatsApp nem sair da tela. Mostrei 6 modelos
+(flutuante · gaveta lateral · rostos na sidebar · pela busca @ · conversa no item · resposta pelo sino); ele escolheu o **1
+(flutuante)** e perguntou **como trocar de pessoa**. Seção "MINI-CHAT FLUTUANTE" no fim do bloco do chat (antes do listener `storage`).
+- **Onde fica:** pílula **"Mensagens"** (com nº de não lidas) à esquerda do "+" (`#mc-root`, `right:88px`); clicar abre a janela
+  380×490. Montada no `<body>`, FORA do `#task-container` → **não fecha ao trocar de tela** (rascunho e conversa continuam).
+  Some só na aba **Chat - Grupos** (a tela cheia já está ali). Estado da janela = `tf_minichat` (por aparelho, NÃO sincroniza).
+- **Trocar de pessoa = coluna de rostos** à esquerda da janela (`_mcRailHTML`): conversas recentes (até `MC_RAIL_MAX=7`, fixadas
+  primeiro), com o nº de não lidas; 1 clique troca. O 1º botão da coluna abre a **lista completa** ("Conversas" + "Começar
+  conversa com" = todas as pessoas) com busca (Enter abre o 1º resultado). ⤢ no cabeçalho abre a conversa no Chat - Grupos.
+- ⭐ **Conversa DIRETA** (não existia — o chat só tinha grupos): grupo com `tipo:'direto'`, `membros:[a,b]`, id fixo do par
+  `cd_<a>__<b>` (`_chatDiretoId`, ordenado → os dois lados caem na mesma conversa). Nome/foto dependem de quem olha
+  (`_chatNomeG`, `_chatOutro`, `_chatIcoHTML`). **Só nasce no 1º envio** (`_mcPara` = pessoa "pendente"). Aparece também no
+  Chat - Grupos (lista, cabeçalho com setor, menu só com Fixar/Exportar; menção, tarefa e exportar usam `_chatNomeG`).
+- **Ligação:** `_mcSync()` no topo de `render()` e de `renderSidebar()` (mostra/esconde, atualiza contadores, coluna, lista e
+  feed sem mexer no campo). Liga só no fim do boot (`_mcBoot=true`) — antes as pessoas não estão carregadas e o exemplo do chat
+  ficaria cacheado sem gente. Marcar como lida = ao abrir a conversa, clicar no feed ou focar o campo (ação, não render).
+- **O que o mini NÃO tem (usa a tela cheia):** @menção com popup, # citação, anexo, reagir, responder, virar tarefa/decisão. Ele
+  MOSTRA cartões # e textos de tarefa/decisão que vieram da tela cheia.
+- Testado em Edge headless por script: abre/minimiza, conversa com 2 pessoas, troca pela coluna, rascunho sobrevive a ir no Chat
+  e voltar, some na aba Chat, aparece em Compras, badge de não lida na coluna, abrir marca lida, conversa direta gravada, 0 erros.
+  Fotos no tema escuro (conversa e lista).
+- ⚠️ Protótipo: mensagem de verdade de uma pessoa para outra = backend do Guilherme (aqui só entre abas do mesmo navegador).
+- ⏳ **Em aberto:** Diego testar; possíveis próximos: rostos na sidebar e balão no item (modelos 3 e 5) abrindo este mesmo mini;
+  @menção/anexo no mini; "online agora" (presença) depende do backend.
+
 ### 2026-09-18 (c) — PC da Empresa — REMOVIDO o "Painel da Tarefa" (expandir a tarefa em tela cheia)
 Pedido do Diego: "esse expandir as tarefas pode tirar de 100% do HUB, foi só um teste". Era o recurso da sessão v7 (21/07, commits
 `5bbc039b`/`ed75e6fc`/`e8611444`). **Saiu tudo (159 linhas, só remoção):** o botão ⤢ nas linhas de tarefa (`tableRowHTML`, vale p/

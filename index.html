@@ -17715,6 +17715,20 @@ function _chatVistoPor(g,m,ate,eu){
   const reagiu=pid=>Object.values(m.reacoes||{}).some(a=>Array.isArray(a) && a.includes(pid));
   return g.membros.filter(pid=>pid!==eu && pid!==m.autorId && (((ate[pid]||'')>=m.em) || reagiu(pid)));
 }
+// ── Conversa DIRETA (1 a 1) — um "grupo" de 2 pessoas com tipo:'direto'. Nome e foto dependem de quem
+// olha: cada um vê o OUTRO. O id é fixo para o par (cd_<a>__<b>, em ordem), então os dois lados caem na
+// mesma conversa — no backend real vale a mesma regra (uma conversa por par de pessoas).
+function _chatEhDireto(g){ return !!g && g.tipo==='direto'; }
+function _chatDiretoId(a,b){ return 'cd_'+[String(a),String(b)].sort().join('__'); }
+function _chatOutro(g,eu){ eu=eu||_chatEu(); return (g.membros||[]).find(p=>p!==eu) || eu; }
+function _chatNomeG(g,eu){ return _chatEhDireto(g) ? _chatP(_chatOutro(g,eu)).name : (g.nome||'Grupo'); }
+// Ícone da conversa: foto/iniciais da pessoa (direta) ou o ícone do grupo. Estilo inline porque também
+// aparece no mini-chat, que não carrega o CSS da tela do chat.
+function _chatIcoHTML(g,tam){
+  tam=tam||36;
+  if(_chatEhDireto(g)) return avatarHTML(_chatP(_chatOutro(g)),tam);
+  return `<div style="width:${tam}px;height:${tam}px;border-radius:${Math.round(tam*.28)}px;display:flex;align-items:center;justify-content:center;font-size:${Math.round(tam*.5)}px;flex-shrink:0;background:color-mix(in srgb,var(--text) 6%,transparent);color:var(--text2)"><i class="ti ${g.icone||'ti-messages'}"></i></div>`;
+}
 function _chatNomesLista(ids){
   const n=ids.map(_chatPrim);
   if(n.length<=1) return n.join('');
@@ -17935,16 +17949,17 @@ function _chatListaItensHTML(){
   const eu=_chatEu();
   const q=_chatNorm(_chatBusca);
   let lista=_chatOrdenados(_chatGruposDe(eu));
-  if(q) lista=lista.filter(g=>_chatNorm(g.nome+' '+(g.desc||'')).includes(q) || _chatMsgs(g.id).some(m=>!m.excluida && _chatNorm(m.texto||'').includes(q)));
+  if(q) lista=lista.filter(g=>_chatNorm(_chatNomeG(g,eu)+' '+(g.desc||'')).includes(q) || _chatMsgs(g.id).some(m=>!m.excluida && _chatNorm(m.texto||'').includes(q)));
   if(!lista.length) return `<div style="padding:26px 16px;text-align:center;font-size:12.5px;color:var(--text3)">Nenhum grupo encontrado.</div>`;
   const fx=_chatFixadosDe(eu);
   const item=g=>{
     const u=_chatUltima(g.id), nl=_chatNaoLidas(g.id,eu), men=nl && _chatMeMencionou(g.id,eu), fix=fx.includes(g.id);
     const quem=u && u.tipo!=='sistema' ? (u.autorId===eu?'Você':_chatPrim(u.autorId))+': ' : '';
-    return `<div class="chat-li${g.id===_chatSel?' sel':''}${nl?' nl':''}" onclick="_chatAbrir('${escapeAttr(g.id)}')" title="${escapeAttr(g.nome)}">
-      <div class="chat-gico"><i class="ti ${g.icone||'ti-messages'}"></i></div>
+    const nome=_chatNomeG(g,eu);
+    return `<div class="chat-li${g.id===_chatSel?' sel':''}${nl?' nl':''}" onclick="_chatAbrir('${escapeAttr(g.id)}')" title="${escapeAttr(nome)}">
+      ${_chatEhDireto(g)?_chatIcoHTML(g,36):`<div class="chat-gico"><i class="ti ${g.icone||'ti-messages'}"></i></div>`}
       <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
-        <div style="display:flex;align-items:center;gap:6px"><span class="chat-li-nome">${escapeHTML(g.nome)}</span>${fix?`<i class="ti ti-pinned chat-li-pinned" title="Conversa fixada"></i>`:''}<span class="chat-li-hora">${_chatQuando(u?u.em:g.criadoEm)}</span><button class="chat-li-fix" title="${fix?'Desafixar conversa':'Fixar conversa no topo'}" onclick="_chatToggleFixarGrupo('${escapeAttr(g.id)}',event)"><i class="ti ${fix?'ti-pinned-off':'ti-pin'}"></i></button></div>
+        <div style="display:flex;align-items:center;gap:6px"><span class="chat-li-nome">${escapeHTML(nome)}</span>${fix?`<i class="ti ti-pinned chat-li-pinned" title="Conversa fixada"></i>`:''}<span class="chat-li-hora">${_chatQuando(u?u.em:g.criadoEm)}</span><button class="chat-li-fix" title="${fix?'Desafixar conversa':'Fixar conversa no topo'}" onclick="_chatToggleFixarGrupo('${escapeAttr(g.id)}',event)"><i class="ti ${fix?'ti-pinned-off':'ti-pin'}"></i></button></div>
         <div style="display:flex;align-items:center;gap:6px"><span class="chat-li-prev">${escapeHTML(quem+_chatResumo(u))}</span>${men?`<span class="chat-nl" title="Você foi mencionado">@</span>`:''}${nl?`<span class="chat-nl">${nl}</span>`:''}</div>
       </div>
     </div>`;
@@ -18042,6 +18057,18 @@ function _chatConvHTML(g){
 
 function _chatConvHeadHTML(g){
   const nomes=g.membros.map(_chatPrim).join(', ');
+  if(_chatEhDireto(g)){
+    // conversa direta: sem gestão de membros (é sempre o par) — só a pessoa e o setor dela
+    const p=_chatP(_chatOutro(g));
+    return `<button class="chat-hbtn chat-voltar" title="Voltar às conversas" onclick="_chatVoltarLista()"><i class="ti ti-arrow-left"></i></button>
+  ${avatarHTML(p,36)}
+  <div id="chat-hdr-info" style="flex:1;min-width:0">
+    <div style="font-size:14.5px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(p.name)}</div>
+    <div style="font-size:11.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(p.setor||'Conversa direta')}</div>
+  </div>
+  <button class="chat-hbtn ${_chatBuscaMsgAberta?'on':''}" title="Buscar nesta conversa" onclick="_chatToggleBuscaMsg()"><i class="ti ti-search"></i></button>
+  <button class="chat-hbtn" title="Opções da conversa" onclick="_chatMenuGrupo(this)"><i class="ti ti-dots-vertical"></i></button>`;
+  }
   return `<button class="chat-hbtn chat-voltar" title="Voltar aos grupos" onclick="_chatVoltarLista()"><i class="ti ti-arrow-left"></i></button>
   <div class="chat-gico"><i class="ti ${g.icone||'ti-messages'}"></i></div>
   <div id="chat-hdr-info" style="flex:1;min-width:0;cursor:pointer" onclick="_chatMembrosPop(this)" title="Ver membros">
@@ -18426,7 +18453,7 @@ function _chatNotificarMencoes(g,m){
   const alvos=(m.mencoes||[]).includes('todos') ? g.membros : (m.mencoes||[]);
   if(!alvos.length) return;
   const trecho=(m.texto||'').slice(0,70)+((m.texto||'').length>70?'…':'');
-  _chatNotificar(g, alvos, `<b>${escapeHTML(_chatP(m.autorId).name)}</b> mencionou você em <b>${escapeHTML(g.nome)}</b>: “${escapeHTML(trecho)}”`, m.id);
+  _chatNotificar(g, alvos, `<b>${escapeHTML(_chatP(m.autorId).name)}</b> mencionou você em <b>${escapeHTML(_chatNomeG(g))}</b>: “${escapeHTML(trecho)}”`, m.id);
 }
 // Chamado pelo _notifClick (ref 'chat:<gid>:<msgId>').
 function _chatNotifAbrir(ref){
@@ -18607,7 +18634,8 @@ function _chatAbrirTarefa(gid,mid){
     g.membros.map(_chatP).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'))
       .map(p=>`<option value="${escapeAttr(p.id)}" ${p.id===exec?'selected':''}>${escapeHTML(p.name)}${p.id===eu?' (você)':''}</option>`)).join('');
   const prio=Object.keys(PRIO_LABEL).map(k=>`<option value="${k}" ${k==='media'?'selected':''}>${PRIO_LABEL[k]}</option>`).join('');
-  const desc=m?`Do grupo "${g.nome}" — ${_chatP(m.autorId).name}, ${_chatDiaLabel(m.em).toLowerCase()} às ${_chatHora(m.em)}:\n"${texto}"`:`Do grupo "${g.nome}".`;
+  const _origem=_chatEhDireto(g)?`Da conversa com ${_chatNomeG(g)}`:`Do grupo "${g.nome}"`;
+  const desc=m?`${_origem} — ${_chatP(m.autorId).name}, ${_chatDiaLabel(m.em).toLowerCase()} às ${_chatHora(m.em)}:\n"${texto}"`:`${_origem}.`;
   _chatModal({titulo:'Transformar em tarefa', icone:'ti-checkbox', okLabel:'Criar tarefa', okIcone:'ti-plus', corpo:`
     ${m?_chatCitacaoHTML(m):''}
     ${_chatLbl('Título da tarefa')}<input id="chat-t-titulo" class="chat-minp" data-foco style="${_CHAT_INP}" maxlength="200" value="${escapeAttr(titulo)}" placeholder="O que precisa ser feito?">
@@ -18640,7 +18668,7 @@ function _chatCriarTarefa(gid,mid){
   const om=mid?_chatMsg(gid,mid):null; if(om) om.tarefaIds=(om.tarefaIds||[]).concat([t.id]);
   if(!d.lidas[eu]) d.lidas[eu]={}; d.lidas[eu][gid]=card.em;
   _chatSave();
-  if(exec && exec!==eu) _chatNotificar(g,[exec],`<b>${escapeHTML(_chatP(eu).name)}</b> passou uma tarefa para você em <b>${escapeHTML(g.nome)}</b>: “${escapeHTML(title.slice(0,80))}”`, card.id);
+  if(exec && exec!==eu) _chatNotificar(g,[exec],`<b>${escapeHTML(_chatP(eu).name)}</b> passou uma tarefa para você em <b>${escapeHTML(_chatNomeG(g))}</b>: “${escapeHTML(title.slice(0,80))}”`, card.id);
   try{ updateStats(); }catch(e){}
   _chatRefresh({fim:true});
   const quem=exec?(exec===eu?'você':_chatP(exec).name):'Organizar (sem responsável)';
@@ -18774,6 +18802,14 @@ function _chatMenuGrupo(btn){
   const g=_chatGrupo(_chatSel); if(!g) return;
   const adm=_chatEhAdmin(g,_chatEu()), gid=escapeAttr(g.id);
   const it=(ic,l,fn,cor)=>`<button class="chat-pop-row" style="${cor?'color:'+cor:''}" onclick="_chatPopFechar();${fn}"><i class="ti ${ic}"></i> ${l}</button>`;
+  if(_chatEhDireto(g)){
+    // conversa direta não tem editar/membros/sair/excluir — é sempre o par
+    _chatPopover(btn, `<div style="padding:4px;min-width:220px">
+      ${_chatFixadosDe(_chatEu()).includes(g.id)?it('ti-pinned-off','Desafixar conversa',`_chatToggleFixarGrupo('${gid}')`):it('ti-pin','Fixar conversa no topo',`_chatToggleFixarGrupo('${gid}')`)}
+      ${it('ti-download','Exportar conversa (.txt)',`_chatExportar('${gid}')`)}
+    </div>`);
+    return;
+  }
   _chatPopover(btn, `<div style="padding:4px;min-width:220px">
     ${adm?it('ti-pencil','Editar grupo',`_chatEditarGrupo('${gid}')`):''}
     ${it('ti-users','Membros',`_chatMembrosPop(document.getElementById('chat-hdr-info'))`)}
@@ -18848,7 +18884,7 @@ function _chatGMSalvar(gid){
 function _chatExportar(gid){
   const g=_chatGrupo(gid); if(!g) return;
   const pad=n=>String(n).padStart(2,'0');
-  const linhas=['Chat - Grupos · '+g.nome, 'Exportado em '+new Date().toLocaleString('pt-BR'), ''];
+  const linhas=['Chat - Grupos · '+_chatNomeG(g), 'Exportado em '+new Date().toLocaleString('pt-BR'), ''];
   _chatMsgs(gid).forEach(m=>{
     const dt=new Date(m.em), ts=`${pad(dt.getDate())}/${pad(dt.getMonth()+1)}/${dt.getFullYear()} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
     const quem=_chatP(m.autorId).name;
@@ -18860,7 +18896,7 @@ function _chatExportar(gid){
   if(g.decisoes.length){ linhas.push('','DECISÕES'); g.decisoes.forEach(x=>linhas.push(`- ${x.texto} (${_chatP(x.autorId).name}, ${_chatDiaLabel(x.em)})`)); }
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['﻿'+linhas.join('\r\n')],{type:'text/plain;charset=utf-8'}));
-  a.download=('chat - '+g.nome).replace(/[\\/:*?"<>|]+/g,'-')+'.txt';
+  a.download=('chat - '+_chatNomeG(g)).replace(/[\\/:*?"<>|]+/g,'-')+'.txt';
   document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
 }
 function _chatExcluirGrupo(gid){
@@ -19123,6 +19159,350 @@ function _chatAvisoNecessidade(){
 // Botão de ação no pé de um aviso (leva à tela de origem). Chave → rótulo + o que faz.
 const CHAT_HUB_ACOES={ nec:{l:'Abrir a Necessidade da semana', fn:()=>setComprasView('necessidade')} };
 function _chatHubAcao(k){ const a=CHAT_HUB_ACOES[k]; if(a){ _chatMenFechar(); _chatPopFechar(); a.fn(); } }
+
+// ════ MINI-CHAT FLUTUANTE (set/2026) ═══════════════════════════════════════════════════════════
+// Janelinha no canto inferior direito, ao lado do "+", para mandar uma mensagem sem sair do que se está
+// fazendo. Mora no <body>, FORA da área que o Hub redesenha a cada troca de tela → continua aberta (com
+// a conversa e o que foi digitado) em qualquer tela. Usa os MESMOS dados do Chat - Grupos: os grupos
+// aparecem aqui e as conversas diretas aparecem lá.
+// TROCAR DE PESSOA: coluna de rostos à esquerda da janela = conversas recentes (com nº de não lidas);
+//   um clique troca. O primeiro botão da coluna abre a lista completa + busca por qualquer pessoa.
+// Conversa direta nova só nasce no 1º envio (abrir e desistir não deixa conversa vazia gravada).
+// Estado da janela (aberta, conversa escolhida) = tf_minichat, por aparelho (não sincroniza).
+// Some na aba Chat - Grupos (a tela cheia já está ali). Só as AÇÕES gravam (regra P0).
+const LS_MC='tf_minichat';
+const MC_RAIL_MAX=7;
+let _mc=(function(){ const b={aberto:false, sel:null, view:'lista'}; try{ return Object.assign(b, JSON.parse(localStorage.getItem(LS_MC)||'{}')); }catch(e){ return b; } })();
+let _mcBoot=false;      // só liga depois do boot (antes disso as pessoas ainda não foram carregadas)
+let _mcPara=null;       // pessoa escolhida para conversa direta que ainda não existe
+let _mcBusca='';
+let _mcDraft={};        // conversa → texto digitado (sobrevive a re-render e a troca de conversa)
+let _mcFeedN=-1;        // nº de mensagens desenhadas (para saber se chegou coisa nova)
+function _mcGuardar(){ try{ localStorage.setItem(LS_MC, JSON.stringify({aberto:!!_mc.aberto, sel:_mc.sel||null, view:_mc.view||'lista'})); }catch(e){} }
+function _mcVisivel(){ return !(typeof hubView!=='undefined' && hubView==='taskflow' && typeof currentTab!=='undefined' && currentTab==='chat'); }
+function _mcEstreita(){ return window.innerWidth>0 && window.innerWidth<=760; }
+// Conversa aberta: {g} (existe) ou {pend:pessoaId} (direta que nasce no 1º envio) ou null.
+function _mcConv(){
+  const eu=_chatEu();
+  if(_mcPara){ const g=_chatGrupo(_chatDiretoId(eu,_mcPara)); return g ? {g} : {pend:_mcPara}; }
+  const g=_mc.sel?_chatGrupo(_mc.sel):null;
+  return (g && g.membros.includes(eu)) ? {g} : null;
+}
+function _mcChave(c){ return c ? (c.g ? c.g.id : 'p:'+c.pend) : ''; }
+function _mcRecentes(){ const eu=_chatEu(); return _chatOrdenadosFix(_chatGruposDe(eu),eu); }
+function _mcPessoasValidas(){ const eu=_chatEu(); return (people||[]).filter(p=>p && p.id!==eu && p.name && !/minhas tarefas/i.test(p.name)); }
+
+function _mcCSS(){ return `
+#mc-root{position:fixed;right:88px;bottom:20px;z-index:995;font-family:inherit;--mc-bolha:color-mix(in srgb,var(--text) 6%,transparent);--mc-minha:color-mix(in srgb,var(--blue-mid) 18%,transparent);--mc-hover:color-mix(in srgb,var(--text) 6%,transparent);--mc-sel:color-mix(in srgb,var(--text) 11%,transparent)}
+body.dark #mc-root{--mc-minha:color-mix(in srgb,var(--blue-mid) 34%,transparent)}
+.mc-pill{position:absolute;right:0;bottom:8px;height:40px;display:inline-flex;align-items:center;gap:8px;padding:0 16px 0 13px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.14);white-space:nowrap}
+.mc-pill:hover{border-color:var(--text3)}
+.mc-pill .ti{font-size:18px;color:var(--blue-mid)}
+.mc-badge{min-width:18px;height:18px;border-radius:9px;background:var(--danger);color:#fff;font-size:10.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;box-sizing:border-box;line-height:1}
+.mc-win{position:absolute;right:0;bottom:0;width:380px;height:min(490px,calc(100vh - 96px));display:flex;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 16px 44px rgba(0,0,0,.22);overflow:hidden}
+.mc-rail{width:56px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 0;overflow-y:auto;overflow-x:hidden;background:color-mix(in srgb,var(--text) 3%,transparent);scrollbar-width:none}
+.mc-rail::-webkit-scrollbar{display:none}
+.mc-rbtn{position:relative;width:42px;height:42px;border-radius:12px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;color:var(--text2);font-size:19px;flex-shrink:0;font-family:inherit}
+.mc-rbtn:hover{background:var(--mc-hover)}
+.mc-rbtn.on{background:var(--mc-sel);color:var(--text)}
+.mc-rbtn.on::before{content:'';position:absolute;left:-7px;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--blue-mid)}
+.mc-rbtn .mc-badge{position:absolute;top:-2px;right:-3px;border:2px solid var(--card);min-width:19px;height:19px}
+.mc-rsep{width:26px;height:1px;background:var(--border);margin:1px 0;flex-shrink:0}
+.mc-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.mc-head{display:flex;align-items:center;gap:9px;padding:8px 8px 8px 12px;border-bottom:1px solid var(--border);min-height:54px;box-sizing:border-box}
+.mc-hbtn{width:30px;height:30px;border-radius:8px;border:none;background:transparent;color:var(--text2);cursor:pointer;font-size:16px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
+.mc-hbtn:hover{background:var(--mc-hover);color:var(--text)}
+.mc-tit{font-size:13.5px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc-sub{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc-feed{flex:1;overflow-y:auto;padding:6px 10px 8px;display:flex;flex-direction:column}
+.mc-dia{align-self:center;font-size:10.5px;font-weight:700;color:var(--text3);margin:10px 0 2px}
+.mc-sis{align-self:center;font-size:11px;color:var(--text3);margin:5px 0;text-align:center}
+.mc-row{display:flex;flex-direction:column;align-items:flex-start;margin-top:8px}
+.mc-row.cont{margin-top:2px}
+.mc-row.mine{align-items:flex-end}
+.mc-autor{font-size:11px;font-weight:700;color:var(--text2);margin:0 0 2px 3px}
+.mc-bub{max-width:86%;background:var(--mc-bolha);border-radius:4px 12px 12px 12px;padding:6px 10px 4px;font-size:13px;line-height:1.42;color:var(--text);overflow-wrap:anywhere;box-sizing:border-box}
+.mc-row.cont .mc-bub{border-radius:12px}
+.mc-row.mine .mc-bub{background:var(--mc-minha);border-radius:12px 4px 12px 12px}
+.mc-row.mine.cont .mc-bub{border-radius:12px}
+.mc-hora{font-size:10px;color:var(--text3);text-align:right;margin-top:1px}
+.mc-comp{padding:8px 10px 10px;border-top:1px solid var(--border);display:flex;align-items:flex-end;gap:6px}
+.mc-inp{flex:1;resize:none;border:1px solid var(--border);background:transparent;border-radius:11px;padding:8px 11px;font-size:13px;font-family:inherit;color:var(--text);min-height:36px;height:36px;max-height:110px;line-height:1.4;outline:none;box-sizing:border-box}
+.mc-inp:focus{border-color:var(--text3)}
+.mc-send{width:36px;height:36px;border-radius:10px;border:none;background:var(--blue-mid);color:#fff;cursor:pointer;font-size:16px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
+.mc-send:hover{filter:brightness(1.1)}
+.mc-busca{margin:10px 10px 4px;position:relative;flex-shrink:0}
+.mc-busca .ti{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px}
+.mc-busca input.mc-busca-inp{width:100%;box-sizing:border-box;height:34px!important;background:transparent;border:1px solid var(--border);border-radius:9px;padding:0 10px 0 29px;font-size:12.5px;color:var(--text);font-family:inherit;outline:none}
+.mc-busca input.mc-busca-inp:focus{border-color:var(--text3)}
+.mc-lista{flex:1;overflow-y:auto;padding:2px 6px 8px}
+.mc-sec{font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;padding:10px 6px 4px}
+.mc-li{display:flex;align-items:center;gap:9px;padding:6px 6px;border-radius:9px;cursor:pointer}
+.mc-li:hover{background:var(--mc-hover)}
+.mc-li-n{font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.mc-li.nl .mc-li-n{font-weight:800}
+.mc-li-p{font-size:11.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.mc-vazio{margin:auto;text-align:center;color:var(--text3);font-size:12.5px;padding:18px;line-height:1.5}
+#mc-root .chat-refs{display:flex;flex-direction:column;gap:4px;margin:5px 0 2px}
+#mc-root .chat-ref{display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:color-mix(in srgb,var(--card) 70%,transparent);border-radius:9px;padding:6px 8px;cursor:pointer;box-sizing:border-box}
+#mc-root .chat-ref:hover{border-color:var(--text3)}
+#mc-root .chat-ref.off{cursor:default;opacity:.7}
+#mc-root .chat-ref-ic{width:26px;height:26px;border-radius:7px;background:var(--mc-sel);color:var(--text2);display:inline-flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+#mc-root .chat-ref-t{font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mc-root .chat-ref-s{font-size:10.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mc-root .chat-pill{display:inline-flex;align-items:center;font-size:10px;font-weight:700;border-radius:20px;padding:1px 7px}
+#mc-root .chat-mencao,#mc-root .chat-ref-tx{font-weight:700}
+@media(max-width:760px){#mc-root{right:12px;left:12px;bottom:84px}.mc-win{width:auto;left:0;height:min(490px,calc(100vh - 150px))}}
+`; }
+
+function _mcRaiz(){
+  let r=document.getElementById('mc-root');
+  if(!r){
+    if(!document.getElementById('mc-css')){ const s=document.createElement('style'); s.id='mc-css'; s.textContent=_mcCSS(); document.head.appendChild(s); }
+    r=document.createElement('div'); r.id='mc-root'; document.body.appendChild(r);
+  }
+  return r;
+}
+
+// Desenha tudo (só nas ações do próprio mini-chat). Guarda rolagem, rascunho e foco.
+function _mcRender(){
+  if(!_mcBoot) return;
+  const r=_mcRaiz();
+  if(!_mcVisivel()){ r.style.display='none'; return; }
+  r.style.display='';
+  if(!_mc.aberto){ r.innerHTML=_mcPillHTML(); return; }
+  const ae=document.activeElement, focoInp=!!(ae && ae.id==='mc-inp'), focoBusca=!!(ae && ae.id==='mc-busca-inp');
+  const f=document.getElementById('mc-feed');
+  const prev=f ? {k:f.dataset.k, top:f.scrollTop, noFim:(f.scrollHeight-f.scrollTop-f.clientHeight)<60} : null;
+  r.innerHTML=`<div class="mc-win" role="dialog" aria-label="Mensagens">
+    <nav class="mc-rail" id="mc-rail" aria-label="Conversas">${_mcRailHTML()}</nav>
+    <section class="mc-main" id="mc-main">${_mcMainHTML()}</section></div>`;
+  _mcPos(prev);
+  if(focoInp) document.getElementById('mc-inp')?.focus({preventScroll:true});
+  if(focoBusca){ const b=document.getElementById('mc-busca-inp'); if(b){ b.focus({preventScroll:true}); b.setSelectionRange(b.value.length,b.value.length); } }
+}
+// Chamado a cada navegação (render/renderSidebar) e quando chega mensagem de outra aba: mostra/esconde e
+// atualiza contadores, a coluna de rostos, a lista e o feed — sem tocar no campo de digitação.
+function _mcSync(){
+  if(!_mcBoot) return;
+  const r=document.getElementById('mc-root');
+  if(!r){ _mcRender(); return; }
+  if(!_mcVisivel()){ r.style.display='none'; return; }
+  const estavaOculto=r.style.display==='none'; r.style.display='';
+  if(!_mc.aberto){ r.innerHTML=_mcPillHTML(); return; }
+  const rail=document.getElementById('mc-rail'), main=document.getElementById('mc-main');
+  if(!rail || !main || estavaOculto){ _mcRender(); return; }
+  rail.innerHTML=_mcRailHTML();
+  const c=_mcConv();
+  if(_mc.view==='conv' && c){
+    const f=document.getElementById('mc-feed');
+    if(!f || f.dataset.k!==_mcChave(c)){ _mcRender(); return; }
+    const n=c.g ? _chatMsgs(c.g.id).length : 0;
+    if(n!==_mcFeedN){
+      const noFim=(f.scrollHeight-f.scrollTop-f.clientHeight)<60;
+      f.innerHTML=_mcFeedHTML(c); _mcFeedN=n;
+      if(noFim) f.scrollTop=f.scrollHeight;
+    }
+  } else {
+    const l=document.getElementById('mc-lista');
+    if(l) l.innerHTML=_mcListaItensHTML(); else _mcRender();
+  }
+}
+function _mcPos(prev){
+  const c=_mcConv(), k=_mcChave(c);
+  const inp=document.getElementById('mc-inp');
+  if(inp){ inp.value=_mcDraft[k]||''; _mcAltura(inp); }
+  const f=document.getElementById('mc-feed');
+  if(f){
+    f.dataset.k=k; _mcFeedN=(c && c.g) ? _chatMsgs(c.g.id).length : 0;
+    if(prev && prev.k===k && !prev.noFim) f.scrollTop=prev.top; else f.scrollTop=f.scrollHeight;
+  }
+}
+function _mcFocar(){
+  if(_mcEstreita()) return;
+  setTimeout(()=>{ (document.getElementById('mc-inp')||document.getElementById('mc-busca-inp'))?.focus({preventScroll:true}); },0);
+}
+
+function _mcPillHTML(){
+  const n=_chatTotalNaoLidas();
+  return `<button class="mc-pill" onclick="_mcAbrir()" title="Conversas com a equipe — abre aqui mesmo, sem sair desta tela"><i class="ti ti-message-circle"></i>Mensagens${n?`<span class="mc-badge">${n>99?'99+':n}</span>`:''}</button>`;
+}
+
+// Coluna de rostos: é por aqui que se TROCA de pessoa (um clique).
+function _mcRailHTML(){
+  const eu=_chatEu(), c=_mcConv(), k=(_mc.view==='conv') ? _mcChave(c) : '';
+  let lista=_mcRecentes().slice(0,MC_RAIL_MAX);
+  // a conversa aberta aparece sempre, mesmo se for antiga (fora das recentes)
+  if(c && c.g && !lista.some(g=>g.id===c.g.id)) lista=[c.g].concat(lista.slice(0,MC_RAIL_MAX-1));
+  let h=`<button class="mc-rbtn${_mc.view!=='conv'?' on':''}" title="Todas as conversas · falar com outra pessoa" onclick="_mcVerLista()"><i class="ti ti-list-search"></i></button><div class="mc-rsep"></div>`;
+  if(c && c.pend && _mc.view==='conv') h+=`<button class="mc-rbtn on" title="${escapeAttr(_chatP(c.pend).name)} · nova conversa">${avatarHTML(_chatP(c.pend),34)}</button>`;
+  h+=lista.map(g=>{
+    const nl=_chatNaoLidas(g.id,eu), nome=_chatNomeG(g,eu);
+    return `<button class="mc-rbtn${k===g.id?' on':''}" title="${escapeAttr(nome)}${nl?` · ${nl} não lida${nl>1?'s':''}`:''}" onclick="_mcAbrirConv('${escapeAttr(g.id)}')">${_chatIcoHTML(g,34)}${nl?`<span class="mc-badge">${nl>9?'9+':nl}</span>`:''}</button>`;
+  }).join('');
+  return h;
+}
+
+function _mcMainHTML(){
+  const c=_mcConv();
+  return (_mc.view==='conv' && c) ? _mcConvHTML(c) : _mcListaHTML();
+}
+function _mcHeadBtns(){
+  return `<button class="mc-hbtn" title="Abrir em tela cheia (Chat - Grupos)" onclick="_mcTelaCheia()"><i class="ti ti-arrows-maximize"></i></button>
+    <button class="mc-hbtn" title="Minimizar" onclick="_mcMinimizar()"><i class="ti ti-minus"></i></button>`;
+}
+
+// ── Lista: conversas + pessoas (nova conversa) ─────────────────────────────────────────────────
+function _mcListaHTML(){
+  return `<div class="mc-head"><div style="flex:1;min-width:0"><div class="mc-tit">Mensagens</div><div class="mc-sub">Escolha uma conversa ou alguém da equipe</div></div>${_mcHeadBtns()}</div>
+  <div class="mc-busca"><i class="ti ti-search"></i><input id="mc-busca-inp" class="mc-busca-inp" placeholder="Buscar pessoa ou grupo…" value="${escapeAttr(_mcBusca)}" oninput="_mcSetBusca(this.value)" onkeydown="_mcBuscaKey(event)"></div>
+  <div class="mc-lista" id="mc-lista">${_mcListaItensHTML()}</div>`;
+}
+function _mcListaItensHTML(){
+  const eu=_chatEu(), q=_chatNorm(_mcBusca);
+  let convs=_mcRecentes();
+  if(q) convs=convs.filter(g=>_chatNorm(_chatNomeG(g,eu)+' '+(_chatEhDireto(g)?(_chatP(_chatOutro(g,eu)).setor||''):'')).includes(q));
+  const jaTem=new Set(_chatGruposDe(eu).filter(_chatEhDireto).map(g=>_chatOutro(g,eu)));
+  const pessoas=_mcPessoasValidas().filter(p=>!jaTem.has(p.id) && (!q || _chatNorm(p.name+' '+(p.setor||'')).includes(q)))
+    .sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+  if(!convs.length && !pessoas.length) return `<div class="mc-vazio">Ninguém encontrado com “${escapeHTML(_mcBusca)}”.</div>`;
+  const conv=g=>{
+    const u=_chatUltima(g.id), nl=_chatNaoLidas(g.id,eu);
+    const quem=(u && u.tipo!=='sistema') ? (u.autorId===eu ? 'Você: ' : (_chatEhDireto(g) ? '' : _chatPrim(u.autorId)+': ')) : '';
+    return `<div class="mc-li${nl?' nl':''}" onclick="_mcAbrirConv('${escapeAttr(g.id)}')">${_chatIcoHTML(g,32)}
+      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px"><span class="mc-li-n">${escapeHTML(_chatNomeG(g,eu))}</span><span style="font-size:10.5px;color:var(--text3);flex-shrink:0">${_chatQuando(u?u.em:g.criadoEm)}</span></div>
+      <div style="display:flex;align-items:center;gap:6px"><span class="mc-li-p">${escapeHTML(u ? quem+_chatResumo(u) : 'Sem mensagens')}</span>${nl?`<span class="mc-badge">${nl}</span>`:''}</div></div></div>`;
+  };
+  const pes=p=>`<div class="mc-li" onclick="_mcFalarCom('${escapeAttr(p.id)}')">${avatarHTML(p,32)}
+    <div style="flex:1;min-width:0"><div class="mc-li-n">${escapeHTML(p.name)}</div><div class="mc-li-p">${escapeHTML(p.setor||p.cargo||'')}</div></div></div>`;
+  return (convs.length ? `<div class="mc-sec">Conversas</div>${convs.map(conv).join('')}` : '')
+       + (pessoas.length ? `<div class="mc-sec">Começar conversa com</div>${pessoas.map(pes).join('')}` : '');
+}
+function _mcSetBusca(v){ _mcBusca=v; const l=document.getElementById('mc-lista'); if(l) l.innerHTML=_mcListaItensHTML(); }
+function _mcBuscaKey(e){
+  if(e.key==='Escape'){ e.stopPropagation(); if(_mcBusca){ e.target.value=''; _mcSetBusca(''); } else _mcMinimizar(); return; }
+  if(e.key==='Enter'){ e.preventDefault(); document.querySelector('#mc-lista .mc-li')?.click(); }
+}
+
+// ── Conversa ───────────────────────────────────────────────────────────────────────────────────
+function _mcConvHTML(c){
+  const eu=_chatEu();
+  let ico, nome, sub;
+  if(c.g){
+    ico=_chatIcoHTML(c.g,34); nome=_chatNomeG(c.g,eu);
+    sub=_chatEhDireto(c.g) ? (_chatP(_chatOutro(c.g,eu)).setor||'Conversa direta') : c.g.membros.length+' membros · '+c.g.membros.map(_chatPrim).join(', ');
+  } else {
+    const p=_chatP(c.pend); ico=avatarHTML(p,34); nome=p.name; sub=p.setor||'Nova conversa';
+  }
+  const prim=c.g && !_chatEhDireto(c.g) ? 'o grupo' : _chatPrim(c.g?_chatOutro(c.g,eu):c.pend);
+  return `<div class="mc-head">${ico}<div style="flex:1;min-width:0"><div class="mc-tit">${escapeHTML(nome)}</div><div class="mc-sub">${escapeHTML(sub)}</div></div>${_mcHeadBtns()}</div>
+  <div class="mc-feed" id="mc-feed" onmousedown="_mcTocou()">${_mcFeedHTML(c)}</div>
+  <div class="mc-comp"><textarea id="mc-inp" class="mc-inp" rows="1" placeholder="Mensagem para ${escapeAttr(prim)}…" oninput="_mcOnInput(this)" onkeydown="_mcOnKey(event,this)" onfocus="_mcTocou()"></textarea>
+    <button class="mc-send" title="Enviar (Enter)" onclick="_mcEnviar()"><i class="ti ti-send"></i></button></div>`;
+}
+function _mcFeedHTML(c){
+  const eu=_chatEu();
+  if(!c.g) return `<div class="mc-vazio"><i class="ti ti-message-circle" style="font-size:28px;display:block;opacity:.4;margin-bottom:6px"></i>Nenhuma mensagem ainda.<br>Escreva abaixo para começar a conversa com ${escapeHTML(_chatPrim(c.pend))}.</div>`;
+  const g=c.g, arr=_chatMsgs(g.id).slice(-120);
+  if(!arr.length) return `<div class="mc-vazio"><i class="ti ti-message-circle" style="font-size:28px;display:block;opacity:.4;margin-bottom:6px"></i>Nenhuma mensagem ainda.</div>`;
+  const direta=_chatEhDireto(g);
+  let h='', diaAnt='', autorAnt='', emAnt=0;
+  arr.forEach(m=>{
+    const dia=_chatDiaISO(m.em);
+    if(dia!==diaAnt){ h+=`<div class="mc-dia">${_chatDiaLabel(m.em)}</div>`; diaAnt=dia; autorAnt=''; }
+    if(m.tipo==='sistema'){ h+=`<div class="mc-sis">${escapeHTML(_chatPrim(m.autorId))} ${escapeHTML(m.texto||'')}</div>`; autorAnt=''; return; }
+    const mine=m.autorId===eu, t=new Date(m.em).getTime();
+    const cont=autorAnt===m.autorId && (t-emAnt)<5*60000;
+    let corpo;
+    if(m.excluida) corpo=`<span style="font-style:italic;color:var(--text3)"><i class="ti ti-ban"></i> Mensagem apagada</span>`;
+    else if(m.tipo==='tarefa' || m.tipo==='decisao') corpo=`<span style="color:var(--text2)"><i class="ti ${m.tipo==='tarefa'?'ti-checkbox':'ti-gavel'}"></i> ${m.tipo==='tarefa'?'Tarefa':'Decisão'}: ${escapeHTML(m.texto||'')}</span>`;
+    else {
+      const anx=(m.anexos||[]).map(a=>`<div style="font-size:12px;color:var(--text2);margin-top:3px"><i class="ti ti-paperclip"></i> ${escapeHTML(a.nome||'arquivo')}</div>`).join('');
+      const refs=(m.refs||[]).length ? `<div class="chat-refs">${m.refs.map(_chatRefCardHTML).join('')}</div>` : '';
+      corpo=`${m.texto?`<div>${_chatTextoHTML(m)}</div>`:''}${refs}${anx}`;
+    }
+    const hub=m.tipo==='hub';
+    const autor=(!mine && !cont && (!direta || hub)) ? `<div class="mc-autor">${hub?'<i class="ti ti-bolt"></i> Hub Klain · aviso':escapeHTML(_chatP(m.autorId).name)}</div>` : '';
+    h+=`<div class="mc-row${mine?' mine':''}${cont?' cont':''}">${autor}<div class="mc-bub">${corpo}<div class="mc-hora">${_chatHora(m.em)}</div></div></div>`;
+    autorAnt=m.autorId; emAnt=t;
+  });
+  return h;
+}
+function _mcAltura(el){ el.style.height='36px'; if(!el.value) return; el.style.height=Math.min(110, Math.max(36, el.scrollHeight))+'px'; }
+function _mcOnInput(el){ _mcDraft[_mcChave(_mcConv())]=el.value; _mcAltura(el); }
+function _mcOnKey(e,el){
+  if(e.key==='Escape'){ e.stopPropagation(); el.blur(); return; }
+  if(e.key==='Enter' && !e.shiftKey && !e.isComposing){ e.preventDefault(); _mcEnviar(); }
+}
+
+// ── Ações ──────────────────────────────────────────────────────────────────────────────────────
+function _mcAbrir(){
+  _mc.aberto=true;
+  if(_mc.view==='conv' && !_mcConv()) _mc.view='lista';
+  _mcGuardar();
+  const c=_mcConv(); if(_mc.view==='conv' && c && c.g) _mcLer(c.g.id);
+  _mcRender(); _mcFocar();
+}
+function _mcMinimizar(){ _mc.aberto=false; _mcGuardar(); _mcRender(); }
+function _mcVerLista(){ _mc.view='lista'; _mcGuardar(); _mcRender(); _mcFocar(); }
+function _mcAbrirConv(gid){
+  if(!_chatGrupo(gid)){ _mcVerLista(); return; }
+  _mcPara=null; _mc.sel=gid; _mc.view='conv'; _mcBusca=''; _mcGuardar();
+  _mcLer(gid); _mcRender(); _mcFocar();
+}
+// Clicou numa pessoa: se já existe conversa direta com ela, abre; senão fica "pendente" até o 1º envio.
+function _mcFalarCom(pid){
+  const gid=_chatDiretoId(_chatEu(),pid);
+  if(_chatGrupo(gid)){ _mcAbrirConv(gid); return; }
+  _mcPara=pid; _mc.sel=null; _mc.view='conv'; _mcBusca=''; _mcGuardar();
+  _mcRender(); _mcFocar();
+}
+// Marca como lida só se havia algo não lido (grava) — chamado ao abrir a conversa ou mexer nela.
+function _mcLer(gid){
+  if(!_chatNaoLidas(gid,_chatEu())) return;
+  _chatMarcarLida(gid);
+  if(typeof renderSidebar==='function') renderSidebar();
+}
+function _mcTocou(){ const c=_mcConv(); if(c && c.g) _mcLer(c.g.id); }
+function _mcTelaCheia(){
+  const c=_mcConv();
+  if(c && c.g){ _chatSel=c.g.id; _chatMarcaNovas=null; _chatReply=null; _chatBuscaMsg=''; _chatBuscaMsgAberta=false; }
+  if(typeof setTab==='function') setTab('chat', null);
+}
+function _mcEnviar(){
+  const el=document.getElementById('mc-inp'); if(!el) return;
+  const texto=String(el.value||'').trim(); if(!texto) return;
+  const c=_mcConv(); if(!c) return;
+  const eu=_chatEu(), d=_chatLoad(), chave=_mcChave(c);
+  let g=c.g, criou=false;
+  if(!g){
+    // 1ª mensagem de uma conversa direta: é agora que ela passa a existir (para os dois)
+    const pid=c.pend;
+    g={id:_chatDiretoId(eu,pid), tipo:'direto', nome:'', desc:'', icone:'', cor:'', membros:[eu,pid], admins:[eu,pid],
+       criadoPor:eu, criadoEm:_chatNow(), fixadas:[], decisoes:[], avisos:[]};
+    d.grupos.push(g); d.msgs[g.id]=[]; criou=true;
+  }
+  if(!g.membros.includes(eu)){ toast('Você não participa desta conversa'); return; }
+  const m={id:_chatId('cm'), tipo:'msg', autorId:eu, texto, em:_chatNow(), replyTo:null, reacoes:{}, anexos:[], mencoes:_chatDetectarMencoes(g,texto)};
+  d.msgs[g.id].push(m);
+  if(!d.lidas[eu]) d.lidas[eu]={};
+  const lidaAnt=d.lidas[eu][g.id]; d.lidas[eu][g.id]=m.em;
+  if(!_chatSave()){
+    d.msgs[g.id].pop();
+    if(lidaAnt===undefined) delete d.lidas[eu][g.id]; else d.lidas[eu][g.id]=lidaAnt;
+    if(criou){ d.grupos=d.grupos.filter(x=>x!==g); delete d.msgs[g.id]; }
+    toast('Não foi possível enviar: armazenamento cheio.');
+    return;
+  }
+  _mcDraft[chave]='';
+  if(criou){ _mcPara=null; _mc.sel=g.id; _mcGuardar(); }
+  el.value='';
+  _chatNotificarMencoes(g,m);
+  _mcRender();
+  const f=document.getElementById('mc-feed'); if(f) f.scrollTop=f.scrollHeight;
+  document.getElementById('mc-inp')?.focus({preventScroll:true});
+  if(typeof renderSidebar==='function') renderSidebar();
+}
 
 // ── "Tempo real" entre ABAS do mesmo navegador (protótipo; realtime de verdade = backend) ─────
 window.addEventListener('storage', function(e){
@@ -20909,6 +21289,8 @@ function _hint(txt){ return `<span class="hint" data-tip="${escapeAttr(txt)}">�
 function renderSidebar(){
   const sb=document.getElementById('sidebar');
   if(!sb) return;
+  // Mini-chat flutuante: mostra/esconde (some na aba Chat - Grupos) e atualiza contadores a cada navegação.
+  try{ if(typeof _mcSync==="function") _mcSync(); }catch(e){}
   try{ if(typeof hubView==='undefined'||hubView!=='rh') document.body.classList.remove('org-focus'); }catch(e){}
 
   // BUGFIX (jun/2026): Lixeira e Configurações são telas GLOBAIS que renderizam no
@@ -27305,6 +27687,7 @@ function _projectById(id){ if(id==null) return undefined; if(_idxProjects&&_idxP
 function _projectProById(id){ if(id==null) return undefined; if(_idxProjectsPro&&_idxProjectsPro.has(id)) return _idxProjectsPro.get(id); return (projectsPro||[]).find(p=>p.id===id); }
 function render(){
   _rebuildIndexes();
+  try{ if(typeof _mcSync==="function") _mcSync(); }catch(e){}
   // A navegação de volta da topbar é por-tela: esconde por padrão e quem precisa reexibe
   // (hoje só o Painel de Reunião, reaberto logo abaixo no ramo 'reunioes').
   _tabBackSet('');
@@ -47037,6 +47420,8 @@ window.addEventListener('load', async ()=>{
   // Refresh mantém a tela: tenta restaurar a última rota; se não houver/falhar, renderiza o padrão (Meu dia).
   let _rotaOk=false; try{ _rotaOk=_tfRestoreRoute(); }catch(e){ console.warn('[rota]',e); }
   if(!_rotaOk) render();
+  // Mini-chat: só liga depois do boot (antes disso as pessoas ainda não estão carregadas).
+  try{ _mcBoot=true; _mcSync(); }catch(e){ console.warn("[minichat]",e); }
   setTimeout(()=>{ try{ _sininhoIniciar(); }catch(e){} }, 2000);
 });
 
