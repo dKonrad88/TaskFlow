@@ -422,6 +422,24 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-19 (b) — PC da Empresa — FINANCEIRO ZERADO: só Contas a pagar + Contas a receber (em branco) + NOTA com o que existia
+Pedido do Diego: "pode tirar tudo fora, vou começar bem mais simples e do zero; cria uma NOTA com o resumo de cada aba; deixa só
+Contas a Pagar e Contas a Receber, sem subtítulo". **Saiu o bloco inteiro** das 14 telas (~5.300 linhas, `index.html` 5,1 → 4,6 MB):
+dados/cálculo/núcleo/telas, fichas de cliente e de contrato, `_FIN_DEF`. **Código antigo recuperável pelo git: versão `abf330f8`.**
+- **Novo bloco** (mesmos marcadores `INÍCIO/FIM DO BLOCO FINANCEIRO`): `FIN_MENU` virou lista plana `[[id,ícone,rótulo]]` com
+  `pagar` e `receber`; `setFinanceiroView`/`renderFinanceiro` + `_finTelaHTML` (hoje "Em construção"). **Sidebar sem as legendas de
+  grupo** (`_finSbHTML` só mapeia os itens). Aba desconhecida (rota antiga salva em `tf_route` como Painel/DRE…) cai em Contas a pagar.
+  Rota não guarda mais `finCliSel/finContratoSel/finSub`. Para crescer: entrada em `FIN_MENU` + conteúdo em `_finTelaHTML`.
+- **Nota** "Financeiro — o que tinha antes do recomeço" (fixada no topo das Notas): por quê, de onde vinham os números, ações que
+  existiam e, para cada uma das 14 telas, descrição + indicadores + sub-abas. Criada 1× no boot por `_seedNotaFinanceiro` (chamado
+  em `load()` junto do `_seedImplantacaoHub`), flag `taskflow_nota_fin_v1`, **id numérico fixo `9170000000001`** (o card chama
+  `openNoteModal(id)` sem aspas; o id fixo evita duplicata entre máquinas). Aparece em cada navegador na próxima abertura do app.
+- **Ficou de propósito:** `_cpRerenderArea`/`_cpSetFoco` ainda chamam `renderFinanceiro` (inofensivo) e as extensões do kit de Compras
+  (`_cpBarChart` opts, `_cpLine selYm`). As chaves de dado antigas `taskflow_fin_*` (baixas, cobrança, aprovações…) ficam órfãs no
+  localStorage — não apaguei dado do usuário.
+- Testado em Edge headless: rota antiga "dre" abre Contas a pagar, sidebar só com as 2 abas e sem legendas, troca de aba ok, nota
+  criada 1 vez (não duplica ao rodar de novo), abre no modal com as 14 telas, Compras segue funcionando, 0 erros.
+
 ### ⭐ 2026-09-19 — PC da Empresa — MINI-CHAT FLUTUANTE ("Mensagens", canto inferior direito) + CONVERSA DIRETA 1 a 1
 Ideia do Diego: mandar mensagem para alguém (ex.: o Stéfano do PCP) sem ir ao WhatsApp nem sair da tela. Mostrei 6 modelos
 (flutuante · gaveta lateral · rostos na sidebar · pela busca @ · conversa no item · resposta pelo sino); ele escolheu o **1
@@ -564,6 +582,8 @@ Oficina. Verificado no preview (:8777) por DOM/JS — **0 erros de console**; ro
   Ctrl+V, "silenciar grupo", mensagem → item de pauta de reunião, e decidir se Análise/Oficina voltam em outro lugar ou saem de vez.
 
 ### ⭐⭐ 2026-09-12 — PC da Empresa — NOVA ÁREA **FINANCEIRO** (dados + cálculo + núcleo + AS 14 TELAS) — commits `a74a7bbb` … `22508a01`
+> ⚠️ **REMOVIDO em 19/09/2026** a pedido do Diego (recomeço do zero — ver entrada 2026-09-19 (b)). O texto abaixo fica como
+> histórico; o código está no git (versão `abf330f8`) e o resumo das telas está numa nota em Notas.
 > Continuação do trabalho iniciado em 11/09, que parou no meio (acabaram os tokens). O código gerado estava **só no
 > scratchpad do Temp** (que o CLAUDE.md avisa que some) — a prioridade desta sessão foi **injetar e commitar**.
 - **Onde fica:** um bloco único entre os marcadores `// ════ INÍCIO/FIM DO BLOCO FINANCEIRO ════`, logo **antes** de
