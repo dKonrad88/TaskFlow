@@ -11981,17 +11981,19 @@ function _mktCfgReset(){ _mktLoad(); mktConfig.pontos=Object.assign({},MKT_PONTO
 // Regra P0: esta tela só LÊ — nada aqui grava no localStorage.
 let comercialView='pedidos';
 let _comAba='produtos';          // sub-aba: produtos | representantes | aberto
-let _comPer='ontem';             // período dos chips (só 'ontem' tem dado hoje)
+let _comPer='hoje';              // período dos chips (hoje e ontem têm dado)
 let _comBusca='';
+let _comCmp=false;               // coluna "vs. período anterior" na tabela (os cards já comparam sempre)
 let _comSort={campo:'valor',dir:-1};
 const _comFechadas={};           // linhas recolhidas — estado de tela, não persiste
 const COM_MENU=[['pedidos','ti-shopping-cart','Pedidos']];
 const COM_PERIODOS=[['aberto','Em aberto'],['ontem','Ontem'],['hoje','Hoje'],['semana','Semana'],['semanaAnt','Semana ant.'],['mes','Mês'],['mesAnt','Mês ant.'],['ano','Ano']];
 // Totais do rodapé do Power BI. Clientes e pedidos NÃO são a soma das linhas (o mesmo pedido leva
-// produtos de várias linhas) — por isso vêm do total, nunca somados.
-const _COM_TOT={valor:281047.25,cx:3954,cli:236,ped:268};
+// produtos de várias linhas) — por isso vêm do total, nunca somados. As CAIXAS por produto vêm
+// arredondadas (há produto com 0 caixa e valor > 0), então a soma delas também não fecha com o total.
+const _COM_TOT_ONTEM={valor:281047.25,cx:3954,cli:236,ped:268};
 // [nome, %, valor, caixas, clientes, pedidos, [ [cód, produto, %, valor, caixas, clientes, pedidos], … ]]
-const _COM_LINHAS=[
+const _COM_LINHAS_ONTEM=[
  ['Amendoim',13.860,38953.82,524,164,166,[
    [70,'Biscoito de Amendoim com Chocolate ao Leite 250g',6.751,18972.17,242,140,142],
    [9,'Biscoito Broa de Amendoim 250g',4.602,12933.01,191,104,104],
@@ -12123,6 +12125,150 @@ const _COM_LINHAS=[
    [105,'Chocomoça (pote 960g — 32 un.)',0.040,113.28,2,2,2],
    [1014,'Paçoca Zero Açúcar 14g (pote 196g — 14 un.)',0.015,43.13,0,1,1]]],
 ];
+// HOJE — o print não trazia o rodapé; o total veio do resumo de REPRESENTANTES do mesmo momento
+// (R$ 90.858,24 · 1.431 cx · 96 clientes · 99 pedidos) e confere pelo %: a linha Amendoim é 19,131%
+// de 90.857. As linhas transcritas somam R$ 88.819,69 — o resto está em linhas pequenas fora do print.
+const _COM_TOT_HOJE={valor:90858.24,cx:1431,cli:96,ped:99};
+const _COM_LINHAS_HOJE=[
+ ['Amendoim',19.131,17381.69,262,65,65,[
+   [70,'Biscoito de Amendoim com Chocolate ao Leite 250g',8.835,8027.17,110,60,60],
+   [9,'Biscoito Broa de Amendoim 250g',8.808,8002.53,133,41,41],
+   [71,'Biscoito de Amendoim com Chocolate Branco 250g',1.488,1351.99,19,18,18]]],
+ ['Salgadão',12.839,11665.52,367,55,55,[
+   [787,'Salgadão sabor Bacon 100g',11.787,10709.19,339,52,52],
+   [901,'Salgadão sabor Churrasco 100g',0.989,898.43,26,17,17],
+   [930,'Salgadão sabor Bacon 50g',0.064,57.90,2,2,2]]],
+ ['Pão de mel',10.025,9108.47,127,56,56,[
+   [17,'Pão de Mel com Chocolate ao Leite 250g',8.331,7569.43,108,52,52],
+   [47,'Pão de Mel com Chocolate Branco 250g',1.480,1345.03,16,21,21],
+   [2,'Pão de Mel Menta com Choc. ao Leite 250g',0.214,194.01,2,4,4]]],
+ ['Clássicos',6.679,6068.63,104,56,56,[
+   [39,'Biscoito de Milho 240g',2.437,2214.41,41,29,29],
+   [30,'Biscoito Amanteigado 240g',1.207,1096.31,18,24,24],
+   [1222,'Biscoito de Maracujá 240g',0.806,731.99,12,22,22],
+   [1214,'Biscoito de Limão 240g',0.732,665.35,11,21,21],
+   [69,'Biscoito de Maisena 240g',0.595,540.22,9,12,12],
+   [743,'Biscoito Manteiguinha com Chocolate 240g',0.561,509.69,8,14,14],
+   [1175,'Biscoito de Banana com Canela 240g',0.342,310.66,5,11,11]]],
+ ['Coberturas',5.803,5272.59,31,13,13,[
+   [511,'Cobertura Sab. Choc. KLAIN 1,010 kg — Branco (pacote)',2.431,2208.73,13,7,7],
+   [510,'Cobertura Sab. Choc. KLAIN 1,010 kg — Ao Leite (pacote)',1.995,1812.47,10,10,10],
+   [512,'Cobertura Sab. Choc. KLAIN 1,010 kg — Meio Amargo',1.377,1251.39,7,7,7]]],
+ ['Econômica',5.294,4810.47,61,17,17,[
+   [742,'Biscoito de Milho Pacotão Econômico 500g',1.659,1507.51,19,13,13],
+   [3,'Biscoito Manteiguinha Pacotão Econômico 500g',1.003,910.89,11,11,11],
+   [740,'Biscoito Manteiguinha de Choc Pacotão Econômico 500g',0.795,722.47,9,6,6],
+   [1176,'Biscoito de Banana com Canela Pacotão Econômico 500g',0.602,547.14,7,4,4],
+   [741,'Biscoito de Maisena Pacotão Econômico 500g',0.556,505.18,7,5,5],
+   [1216,'Biscoito de Limão Pacotão Econômico 500g',0.340,308.64,4,3,3],
+   [1223,'Biscoito de Maracujá Pacotão Econômico 500g',0.340,308.64,4,3,3]]],
+ ['Cobertura 20 kg',5.192,4717.62,13,2,2,[
+   [521,'Cobertura Sabor Choc. KLAIN 20 kg — Branco',3.938,3577.62,10,2,2],
+   [522,'Cobertura Sabor Choc. KLAIN 20 kg — Meio Amargo',1.255,1140.00,3,1,1]]],
+ ['Recheio forneável',5.068,4605.12,50,8,8,[
+   [547,'Recheio Forn. KLAIN 4 kg — Meio Amargo (balde)',2.106,1913.60,26,2,2],
+   [546,'Recheio Forn. KLAIN 4 kg — Branco (balde)',0.970,881.30,12,2,2],
+   [540,'Recheio Forn. KLAIN 1,010 kg — Ao Leite (bisnaga)',0.538,488.37,3,3,3],
+   [543,'Recheio Forn. KLAIN 1,010 kg — Avelã (bisnaga)',0.413,375.60,2,2,2],
+   [952,'Recheio Forn. KLAIN 1,010 kg — Leitinho (bisnaga)',0.404,367.10,2,4,4],
+   [542,'Recheio Forn. KLAIN 1,010 kg — Meio Amargo (bisnaga)',0.213,193.28,1,1,1],
+   [541,'Recheio Forn. KLAIN 1,010 kg — Branco (bisnaga)',0.194,176.51,1,1,1],
+   [548,'Recheio Forn. KLAIN 4 kg — Avelã (balde)',0.156,141.32,2,2,2],
+   [545,'Recheio Forn. KLAIN 4 kg — Ao Leite (balde)',0.075,68.04,1,1,1]]],
+ ['Palitinhos',4.695,4265.76,87,38,38,[
+   [1794,'Salgadinho Palitinho sabor Original 138g',1.152,1046.64,22,14,14],
+   [1795,'Salgadinho Palitinho sabor Churrasco 138g',1.140,1036.23,21,23,23],
+   [1798,'Salgadinho Palitinho sabor Bacon 138g',1.099,998.18,20,21,21],
+   [1793,'Salgadinho Palitinho sabor Calabresa 138g',0.755,686.36,14,8,8],
+   [1796,'Salgadinho Palitinho sabor Pizza 138g',0.281,255.59,5,8,8],
+   [1797,'Salgadinho Palitinho sabor Salsa 138g',0.175,158.68,3,7,7],
+   [1815,'Salgadinho Palitinho sabor Queijo 138g',0.093,84.08,2,3,3]]],
+ ['Suspiro',3.481,3162.72,48,30,30,[
+   [72,'Suspiro com Chocolate ao Leite 140g',1.545,1403.47,21,22,22],
+   [34,'Suspiro Tradicional 100g',1.213,1102.52,17,20,20],
+   [77,'Suspiro com Chocolate Branco 140g',0.723,656.73,10,11,11]]],
+ ['Chocolovers',3.095,2812.41,35,37,37,[
+   [29,'Biscoito Duetto 250g',1.496,1359.69,16,21,21],
+   [10,'Biscoito Mignon com Chocolate ao Leite 180g',0.765,695.20,9,6,6],
+   [12,'Biscoito Choco Rosca 250g',0.645,586.22,8,17,17],
+   [48,'Biscoito Choco Bola 180g',0.189,171.30,2,4,4]]],
+ ['Batatas',2.502,2273.30,24,23,23,[
+   [1179,'Batata Frita sabor Original 85g',0.784,712.72,7,17,17],
+   [1181,'Batata Frita sabor Cebola e Salsa 85g',0.702,638.22,6,14,14],
+   [1178,'Batata Frita sabor Churrasco 85g',0.530,481.72,5,12,12],
+   [31,'Batata Frita sabor Original 40g',0.189,171.80,3,6,6],
+   [215,'Batata Palha 80g',0.175,158.74,1,4,4],
+   [24,'Batata Frita sabor Churrasco 40g',0.121,110.10,2,3,3]]],
+ ['Intensus',2.281,2072.13,32,20,20,[
+   [1153,'Salgadinho Intensus sabor Cebola e Salsa 130g',0.568,515.88,7,10,10],
+   [1154,'Salgadinho Intensus sabor Presunto 140g',0.565,512.91,7,10,10],
+   [1155,'Salgadinho Intensus sabor Requeijão Cremoso 140g',0.456,413.96,6,8,8],
+   [1158,'Salgadinho Intensus sabor Cebola e Salsa 70g',0.163,147.72,3,5,5],
+   [1160,'Salgadinho Intensus sabor Requeijão Cremoso 80g',0.161,146.70,3,5,5],
+   [1159,'Salgadinho Intensus sabor Presunto 80g',0.160,145.75,3,4,4],
+   [1156,'Salgadinho Intensus sabor Queijo Parmesão 140g',0.130,117.87,2,2,2],
+   [1161,'Salgadinho Intensus sabor Queijo Parmesão 80g',0.079,71.34,2,2,2]]],
+ ['Biscoitos salgados',1.765,1603.77,23,16,16,[
+   [27,'Biscoito Mignon sabor Tradicional 180g',1.505,1367.17,20,15,15],
+   [28,'Biscoito Mignon sabor Bacon 180g',0.260,236.60,3,4,4]]],
+ ['Polvilho',1.577,1433.01,28,23,23,[
+   [874,'Biscoito de Polvilho sabor Tradicional 60g',1.441,1309.70,26,22,22],
+   [878,'Biscoito de Polvilho sabor Queijo 60g',0.136,123.31,2,5,5]]],
+ ['Pipocas',1.299,1180.13,42,25,25,[
+   [941,'Pipoca Doce Tradicional 100g (10 un.)',0.582,528.48,21,15,15],
+   [1162,'Pipoca Doce Rosa 100g (10 un.)',0.428,388.42,15,12,12],
+   [943,'Pipoca Caramelizada 100g (10 un.)',0.290,263.23,6,6,6]]],
+ ['Premium',0.996,905.11,19,9,9,[
+   [1150,'Alfajor Premium Meio Amargo 38g',0.578,525.43,11,8,8],
+   [1151,'Alfajor Premium Branco 38g',0.261,237.12,5,3,3],
+   [1152,'Alfajor Premium Pasta de Amendoim 38g',0.157,142.56,3,2,2]]],
+ ['Fritar',0.910,827.00,11,14,14,[
+   [924,'Pastilha de Trigo 250g',0.910,827.00,11,14,14]]],
+ ['Biscoitos doces',0.908,824.97,8,13,13,[
+   [45,'Biscoito Folhadinho Doce 250g',0.908,824.97,8,13,13]]],
+ ['Proteico',0.850,772.53,12,8,8,[
+   [1219,'Salg. Protein sabor Presunto Defumado 50g',0.322,292.51,4,7,7],
+   [1220,'Salg. Protein sabor Azeite de Oliva c/ Manjericão 50g',0.309,280.96,4,7,7],
+   [1221,'Salg. Protein sabor Barbecue 50g',0.219,199.06,3,6,6]]],
+ ['Mega milho',0.731,663.98,15,7,7,[
+   [985,'Salgadinho MEGA MILHO sabor Presunto 150g',0.248,225.34,5,5,5],
+   [987,'Salgadinho MEGA MILHO sabor Queijo 150g',0.195,177.00,4,3,3],
+   [988,'Salgadinho MEGA MILHO sabor Requeijão 150g',0.193,175.70,4,4,4],
+   [986,'Salgadinho MEGA MILHO sabor Cebola e Salsa 150g',0.095,85.94,2,2,2]]],
+ ['Caseira',0.622,565.41,6,10,10,[
+   [905,'Massa Tipo Caseira N3 bandeja 400g',0.324,294.49,3,5,5],
+   [904,'Massa Tipo Caseira N2 bandeja 400g',0.188,170.92,2,4,4],
+   [906,'Massa Tipo Caseira N4 bandeja 400g',0.082,74.90,1,3,3],
+   [903,'Massa Tipo Caseira N1 bandeja 400g',0.028,25.10,0,1,1]]],
+ ['Flocos de arroz',0.500,454.30,4,6,6,[
+   [310,'Flocos de Arroz Tradicional 100g',0.366,332.45,3,5,5],
+   [311,'Flocos de Arroz Integral 100g',0.134,121.85,1,3,3]]],
+ ['Aperitivos',0.432,392.13,8,8,8,[
+   [788,'Salgadinho Aperitivo sabor Churrasco 140g',0.132,119.85,2,4,4],
+   [790,'Salgadinho Aperitivo sabor Bacon 140g',0.112,101.56,2,4,4],
+   [789,'Salgadinho Aperitivo sabor Costelinha com Limão 140g',0.094,85.50,2,3,3],
+   [1170,'Salgadinho Aperitivo sabor Original 140g',0.094,85.22,2,3,3]]],
+ ['Rosquinhas',0.425,385.70,6,5,5,[
+   [1097,'Biscoito Rosquinha de Coco 240g',0.286,259.45,4,2,2],
+   [885,'Biscoito Rosquinha de Coco 500g',0.094,85.20,1,1,1],
+   [1098,'Biscoito Rosquinha de Leite 240g',0.045,41.05,1,2,2]]],
+ ['Potes moças e paçocas',0.337,306.44,6,6,6,[
+   [104,'Pé de Moça (pote 960g — 32 un.)',0.164,148.70,3,3,3],
+   [105,'Chocomoça (pote 960g — 32 un.)',0.121,110.08,2,2,2],
+   [990,'Paçoca Tradicional 14g (pote 560g — 40 un.)',0.052,47.66,1,3,3]]],
+ ['Bolinhas',0.226,205.32,4,6,6,[
+   [1136,'Salgadinho de Bolinhas sabor Bacon 138g',0.208,189.12,4,6,6],
+   [1135,'Salgadinho de Bolinhas sabor Churrasco 138g',0.018,16.20,0,1,1]]],
+ ['Pasta de amendoim',0.092,83.46,1,1,1,[
+   [958,'Pasta de Amendoim Tradicional 450g',0.046,41.73,1,1,1],
+   [960,'Pasta de Amendoim Tradicional com Cacau 450g',0.046,41.73,1,1,1]]],
+];
+// Um período por chave. Para acrescentar (semana, mês…): mais uma entrada aqui e o chip já funciona.
+// 'base' = com quem esse período se compara nos cards e na coluna "vs.".
+const _COM_DADOS={
+  hoje:{rot:'hoje',tot:_COM_TOT_HOJE,linhas:_COM_LINHAS_HOJE,base:'ontem',parcial:true},
+  ontem:{rot:'ontem',tot:_COM_TOT_ONTEM,linhas:_COM_LINHAS_ONTEM,base:null},
+};
 const _COM_REPS=[];      // Resumo representantes — entra quando o Diego mandar o print/export
 const _COM_ABERTO=[];    // Pedidos em aberto e atrasados — idem
 const _comNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
@@ -12149,7 +12295,28 @@ function _comBuscaInput(v){ _comBusca=v; _comRefresh(); }
 function _comToggleLinha(i){ if(_comFechadas[i]) delete _comFechadas[i]; else _comFechadas[i]=1; _comRefresh(); }
 function _comTodasLinhas(fechar){ _COM_LINHAS.forEach((l,i)=>{ if(fechar) _comFechadas[i]=1; else delete _comFechadas[i]; }); _comRefresh(); }
 function _comSortBy(c){ if(_comSort.campo===c) _comSort.dir*=-1; else { _comSort.campo=c; _comSort.dir=(c==='nome'?1:-1); } _comRefresh(); }
-function _comTemDados(){ return _comPer==='ontem'; }
+function _comD(){ return _COM_DADOS[_comPer]||null; }
+function _comBase(){ const d=_comD(); return (d&&d.base&&_COM_DADOS[d.base])?_COM_DADOS[d.base]:null; }
+function _comTemDados(){ return !!_comD(); }
+function _comToggleCmp(){ _comCmp=!_comCmp; renderComercial(); }
+// Índice do período-base p/ comparar: linha por NOME, produto por CÓDIGO.
+function _comIdxBase(){
+  const b=_comBase(); if(!b) return null;
+  const m={};
+  b.linhas.forEach(l=>{ const p={}; (l[6]||[]).forEach(x=>{ p[x[0]]=x; }); m[_comNorm(l[0])]={l:l,p:p}; });
+  return m;
+}
+// Variação de valor: devolve o HTML já colorido (verde subiu, vermelho caiu, cinza item novo).
+function _comVarHTML(atual, ant, curto){
+  if(ant==null) return `<span style="color:var(--text3)">novo</span>`;
+  if(!ant) return '—';
+  const dif=atual-ant, pct=dif/ant*100;
+  if(Math.abs(pct)<0.05) return `<span style="color:var(--text3)">igual</span>`;
+  const cor=dif>0?'var(--success)':'var(--danger)';
+  const seta=dif>0?'arrow-up-right':'arrow-down-right';
+  const n=`${dif>0?'+':'−'}${_cpNum(Math.abs(pct),1)}%`;
+  return `<span style="color:${cor}" title="${dif>0?'+':'−'}${_cpBRL(Math.abs(dif))}"><i class="ti ti-${seta}" style="font-size:11px"></i> ${n}${curto?'':` · ${dif>0?'':'−'}${_cpBRL(Math.abs(dif))}`}</span>`;
+}
 const _COM_SC={nome:[0,1],valor:[2,3],cx:[3,4],cli:[4,5],ped:[5,6]};
 function _comOrdenar(arr,isProd){
   const par=_COM_SC[_comSort.campo]||_COM_SC.valor, k=par[isProd?1:0], d=_comSort.dir;
@@ -12160,8 +12327,8 @@ function _comOrdenar(arr,isProd){
   });
 }
 function _comFiltradas(){
-  const q=_comNorm(_comBusca), out=[];
-  _COM_LINHAS.forEach((l,i)=>{
+  const q=_comNorm(_comBusca), out=[], d=_comD(); if(!d) return out;
+  d.linhas.forEach((l,i)=>{
     const nomeOk=!q||_comNorm(l[0]).indexOf(q)>=0;
     const prods=(l[6]||[]).filter(p=>!q||nomeOk||_comNorm(p[1]).indexOf(q)>=0||String(p[0]).indexOf(q)>=0);
     if(!q||nomeOk||prods.length) out.push({i:i,l:l,prods:prods});
@@ -12191,31 +12358,42 @@ function _comCSS(){
   </style>`;
 }
 function _comCorpoHTML(){
-  const t=_comTemDados()?_COM_TOT:null;
+  const d=_comD(), t=d?d.tot:null, b=_comBase(), bt=b?b.tot:null;
   const chips=COM_PERIODOS.map(p=>`<button class="com-chip${_comPer===p[0]?' on':''}" onclick="_comSetPer('${p[0]}')">${p[1]}</button>`).join('');
-  const kpis=_cpKPIcards([
-    _cpKPI('Valor vendido', t?_cpBRL(t.valor):'—'),
-    _cpKPI('Caixas', t?_cpNum(t.cx):'—'),
-    _cpKPI('Pedidos', t?_cpNum(t.ped):'—'),
-    _cpKPI('Clientes', t?_cpNum(t.cli):'—'),
-    _cpKPI('Ticket médio', t?_cpBRL(t.valor/t.ped):'—'),
-  ]);
+  const kpi=(lab,val,extra)=>`<div class="cp-card" style="padding:13px 16px"><div class="cp-kpi"><s>${lab}</s><b>${val}</b></div>${extra?`<div style="font-size:11.5px;font-weight:600;margin-top:3px">${extra}</div>`:''}</div>`;
+  const cmp=(a,ba,moeda)=>{ if(!bt||ba==null) return ''; const dif=a-ba, pct=ba?dif/ba*100:0;
+    const cor=dif>0?'var(--success)':(dif<0?'var(--danger)':'var(--text3)');
+    const abs=moeda?_cpBRL(Math.abs(dif)):_cpNum(Math.abs(dif));
+    return `<span style="color:${cor}">${dif>=0?'▲':'▼'} ${_cpNum(Math.abs(pct),1)}% · ${abs} ${dif>=0?'a mais':'a menos'}</span> <span style="color:var(--text3);font-weight:600">que ${b.rot}</span>`; };
+  const kpis=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:6px">
+    ${kpi('Valor vendido', t?_cpBRL(t.valor):'—', t&&bt?cmp(t.valor,bt.valor,1):'')}
+    ${kpi('Caixas', t?_cpNum(t.cx):'—', t&&bt?cmp(t.cx,bt.cx):'')}
+    ${kpi('Pedidos', t?_cpNum(t.ped):'—', t&&bt?cmp(t.ped,bt.ped):'')}
+    ${kpi('Clientes', t?_cpNum(t.cli):'—', t&&bt?cmp(t.cli,bt.cli):'')}
+    ${kpi('Ticket médio', t?_cpBRL(t.valor/t.ped):'—', t&&bt?cmp(t.valor/t.ped,bt.valor/bt.ped,1):'')}
+  </div>
+  <div style="font-size:11.5px;color:var(--text3);margin-bottom:16px">${
+    !t?'Este período ainda não tem dado carregado.'
+    : bt?('Comparando com '+b.rot+(d.parcial?' — lembrando que o dia de hoje ainda não fechou.':'.'))
+    : 'Sem período anterior carregado para comparar.'}</div>`;
   const abas=[['produtos','Produtos'],['representantes','Representantes'],['aberto','Pedidos em aberto']]
     .map(a=>`<button class="com-sub${_comAba===a[0]?' on':''}" onclick="_comSetAba('${a[0]}')">${a[1]}</button>`).join('');
   // ⚠️ o campo PRECISA ter uma classe: existe uma regra global input:not([class]){height:40px} que
   // ignoraria a altura inline (mesma armadilha já documentada nos selects pequenos de Compras).
   const busca=_comAba==='produtos'&&_comTemDados()
     ? `<input id="com-busca" value="${escapeAttr(_comBusca)}" oninput="_comBuscaInput(this.value)" placeholder="Buscar produto ou linha" class="com-busca" style="width:230px;height:32px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-family:inherit;font-size:12.5px;padding:0 10px">` : '';
+  const btnCmp=_comAba==='produtos'&&b
+    ? `<button class="com-chip${_comCmp?' on':''}" onclick="_comToggleCmp()" style="padding:5px 11px"><i class="ti ti-arrows-left-right" style="font-size:12px"></i> Comparar com ${b.rot}</button>` : '';
   return `${_comCSS()}
     <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px">${chips}</div>
     ${kpis}
     <div style="display:flex;align-items:center;gap:20px;border-bottom:1px solid var(--border);margin-bottom:12px">
-      ${abas}<div style="margin-left:auto;padding-bottom:6px">${busca}</div>
+      ${abas}<div style="margin-left:auto;padding-bottom:6px;display:flex;align-items:center;gap:8px">${btnCmp}${busca}</div>
     </div>
     <div id="com-conteudo">${_comConteudoHTML()}</div>`;
 }
 function _comConteudoHTML(){
-  if(!_comTemDados()) return _cpVazio('Só o período de ontem está carregado. Os outros entram quando vier o export do Power BI.');
+  if(!_comTemDados()) return _cpVazio('Por enquanto só hoje e ontem estão carregados. Os outros períodos entram quando vier o export do Power BI.');
   if(_comAba==='representantes') return _cpVazio('Aguardando os dados do resumo de representantes.');
   if(_comAba==='aberto') return _cpVazio('Aguardando os dados dos pedidos em aberto.');
   return _comProdutosHTML();
@@ -12224,51 +12402,58 @@ function _comProdutosHTML(){
   // semSeta = a coluna % ordena pelo mesmo campo do Valor; a seta aparece só uma vez, no Valor.
   const th=(c,lab,cls,semSeta)=>{ const on=_comSort.campo===c;
     return `<th class="${cls||''}" onclick="_comSortBy('${c}')" style="${on?'color:var(--blue-mid)':''}">${lab}${on&&!semSeta?` <i class="ti ti-${_comSort.dir<0?'arrow-down':'arrow-up'}" style="font-size:11px"></i>`:''}</th>`; };
+  const d=_comD(), bIdx=_comIdxBase(), b=_comBase();
+  const cmp=_comCmp&&!!bIdx, nc=cmp?7:6;
+  const vs=(atual,ant)=>cmp?`<td>${_comVarHTML(atual,ant,1)}</td>`:'';
   const linhas=_comFiltradas();
   const buscando=!!_comBusca.trim();
   let corpo='';
   linhas.forEach((g,n)=>{
-    const l=g.l, fechada=_comFechadas[g.i]&&!buscando;
-    if(n) corpo+=`<tr class="com-sp"><td colspan="6"></td></tr>`;
+    const l=g.l, fechada=_comFechadas[g.i]&&!buscando, bl=bIdx?bIdx[_comNorm(l[0])]:null;
+    if(n) corpo+=`<tr class="com-sp"><td colspan="${nc}"></td></tr>`;
     corpo+=`<tr class="com-lin" onclick="_comToggleLinha(${g.i})">
       <td class="l"><i class="ti ti-chevron-${fechada?'right':'down'}" style="color:var(--text3);font-size:13px;margin-right:4px"></i>${escapeHTML(l[0])}</td>
-      <td>${_comPct(l[1])}</td><td>${_cpBRL(l[2])}</td><td>${_cpNum(l[3])}</td><td>${_cpNum(l[4])}</td><td>${_cpNum(l[5])}</td></tr>`;
+      <td>${_comPct(l[1])}</td><td>${_cpBRL(l[2])}</td>${vs(l[2], bl?bl.l[2]:null)}<td>${_cpNum(l[3])}</td><td>${_cpNum(l[4])}</td><td>${_cpNum(l[5])}</td></tr>`;
     if(fechada) return;
     _comOrdenar(g.prods,true).forEach(p=>{
+      const bp=bl?bl.p[p[0]]:null;
       corpo+=`<tr class="com-prod">
         <td class="l" style="padding-left:32px" title="${escapeAttr(p[1])}"><span class="com-cod">${p[0]} ·</span>${escapeHTML(p[1])}</td>
-        <td>${_comPct(p[2])}</td><td>${_cpBRL(p[3])}</td><td>${_cpNum(p[4])}</td><td>${_cpNum(p[5])}</td><td>${_cpNum(p[6])}</td></tr>`;
+        <td>${_comPct(p[2])}</td><td>${_cpBRL(p[3])}</td>${vs(p[3], bp?bp[3]:null)}<td>${_cpNum(p[4])}</td><td>${_cpNum(p[5])}</td><td>${_cpNum(p[6])}</td></tr>`;
     });
   });
-  if(!linhas.length) corpo=`<tr><td colspan="6">${_cpVazio('Nenhum produto com esse nome.')}</td></tr>`;
+  if(!linhas.length) corpo=`<tr><td colspan="${nc}">${_cpVazio('Nenhum produto com esse nome.')}</td></tr>`;
   // Rodapé: sem busca mostra o TOTAL do relatório (com a sobra das linhas que não vieram no print);
   // com busca, soma só o que está na tela.
+  const sv=d.linhas.reduce((s,l)=>s+l[2],0), sc=d.linhas.reduce((s,l)=>s+l[3],0);
   let rodape='';
   if(buscando){
-    const sv=linhas.reduce((s,g)=>s+g.prods.reduce((a,p)=>a+p[3],0),0);
-    const sc=linhas.reduce((s,g)=>s+g.prods.reduce((a,p)=>a+p[4],0),0);
+    const fv=linhas.reduce((s,g)=>s+g.prods.reduce((a,p)=>a+p[3],0),0);
+    const fc=linhas.reduce((s,g)=>s+g.prods.reduce((a,p)=>a+p[4],0),0);
     const np=linhas.reduce((s,g)=>s+g.prods.length,0);
-    rodape=`<tr class="com-tot"><td class="l">${_cpNum(np)} produtos encontrados</td><td></td><td>${_cpBRL(sv)}</td><td>${_cpNum(sc)}</td><td></td><td></td></tr>`;
+    rodape=`<tr class="com-tot"><td class="l">${_cpNum(np)} produtos encontrados</td><td></td><td>${_cpBRL(fv)}</td>${cmp?'<td></td>':''}<td>${_cpNum(fc)}</td><td></td><td></td></tr>`;
   }else{
-    const sv=_COM_LINHAS.reduce((s,l)=>s+l[2],0), sc=_COM_LINHAS.reduce((s,l)=>s+l[3],0);
-    const rv=_COM_TOT.valor-sv, rc=_COM_TOT.cx-sc;
-    if(rv>0.01) rodape+=`<tr class="com-sp"><td colspan="6"></td></tr>
+    const rv=d.tot.valor-sv, rc=d.tot.cx-sc;
+    if(rv>0.01) rodape+=`<tr class="com-sp"><td colspan="${nc}"></td></tr>
       <tr class="com-prod"><td class="l" style="font-style:italic">Demais linhas (não vieram no print)</td>
-      <td>${_comPct(rv/_COM_TOT.valor*100)}</td><td>${_cpBRL(rv)}</td><td>${_cpNum(rc)}</td><td>—</td><td>—</td></tr>`;
-    rodape+=`<tr class="com-tot"><td class="l">Total</td><td>100,00%</td><td>${_cpBRL(_COM_TOT.valor)}</td><td>${_cpNum(_COM_TOT.cx)}</td><td>${_cpNum(_COM_TOT.cli)}</td><td>${_cpNum(_COM_TOT.ped)}</td></tr>`;
+      <td>${_comPct(rv/d.tot.valor*100)}</td><td>${_cpBRL(rv)}</td>${cmp?'<td>—</td>':''}<td>${rc>0?_cpNum(rc):'—'}</td><td>—</td><td>—</td></tr>`;
+    rodape+=`<tr class="com-tot"><td class="l">Total</td><td>100,00%</td><td>${_cpBRL(d.tot.valor)}</td>${vs(d.tot.valor, b?b.tot.valor:null)}<td>${_cpNum(d.tot.cx)}</td><td>${_cpNum(d.tot.cli)}</td><td>${_cpNum(d.tot.ped)}</td></tr>`;
   }
   const fechadas=Object.keys(_comFechadas).length;
+  const cols=cmp
+    ? `<col style="width:34%"><col style="width:8%"><col style="width:15%"><col style="width:13%"><col style="width:10%"><col style="width:10%"><col style="width:10%">`
+    : `<col style="width:42%"><col style="width:9%"><col style="width:16%"><col style="width:11%"><col style="width:11%"><col style="width:11%">`;
   return `<div class="cp-card" style="padding:4px 6px 10px">
     <div style="display:flex;align-items:center;gap:10px;padding:8px 10px 2px">
       <span style="font-size:11.5px;color:var(--text3)">${_cpNum(linhas.length)} linhas de produto</span>
       <button onclick="_comTodasLinhas(${fechadas?0:1})" style="margin-left:auto;background:none;border:none;color:var(--text3);font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer">${fechadas?'Abrir todas':'Recolher todas'}</button>
     </div>
     <table class="com-tbl">
-      <colgroup><col style="width:42%"><col style="width:9%"><col style="width:16%"><col style="width:11%"><col style="width:11%"><col style="width:11%"></colgroup>
-      <thead><tr>${th('nome','Linha / produto','l')}${th('valor','%','',1)}${th('valor','Valor')}${th('cx','Caixas')}${th('cli','Clientes')}${th('ped','Pedidos')}</tr></thead>
+      <colgroup>${cols}</colgroup>
+      <thead><tr>${th('nome','Linha / produto','l')}${th('valor','%','',1)}${th('valor','Valor')}${cmp?`<th>vs. ${b.rot}</th>`:''}${th('cx','Caixas')}${th('cli','Clientes')}${th('ped','Pedidos')}</tr></thead>
       <tbody>${corpo}${rodape}</tbody>
     </table>
-    <div class="com-nota">Clientes e pedidos não somam entre as linhas — o mesmo pedido leva produtos de linhas diferentes, por isso o total vem do relatório.<br>Transcrito do Power BI (ontem). As linhas do print somam R$ 280.122,26; a diferença até o total está na linha "Demais linhas".</div>
+    <div class="com-nota">Clientes e pedidos não somam entre as linhas — o mesmo pedido leva produtos de linhas diferentes, por isso o total vem do relatório. As caixas por produto vêm arredondadas do Power BI (há produto com 0 caixa e valor acima de zero), então a soma delas também não fecha exatamente.<br>Transcrito do Power BI (${d.rot}): as linhas do print somam ${_cpBRL(sv)}; a diferença até o total está na linha "Demais linhas".</div>
   </div>`;
 }
 // ════ FIM DO BLOCO COMERCIAL ════

@@ -422,6 +422,26 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-22 (b) — PC da Empresa — Comercial › Pedidos: 2º período (HOJE) + **comparação ligada**
+O Diego mandou o print dos produtos de **hoje**. Os dados deixaram de ser um período só: agora `_COM_DADOS` tem uma
+entrada por período (`hoje` e `ontem`), cada uma com `tot`, `linhas` e **`base`** (com quem se compara) — acrescentar
+semana/mês é só mais uma entrada, o chip já funciona. Padrão passou a abrir em **Hoje**.
+- **Cards comparam sempre** (era o que ele tinha gostado no mockup 3): cada indicador mostra ▲/▼ %, a diferença
+  absoluta e "que ontem". Sob os cards, a frase "Comparando com ontem — lembrando que o dia de hoje ainda não fechou"
+  (`parcial:true`), porque comparar dia parcial com dia fechado dá −67% e isso precisa estar escrito.
+- **Coluna "vs. ontem" na tabela** por um botão **Comparar com ontem** (desligado por padrão, p/ não poluir). Casa
+  linha por NOME e produto por CÓDIGO (`_comIdxBase`): sobe verde, cai vermelho, item que não existia no dia anterior
+  aparece como **"novo"** (hoje: Caseira e Pasta de amendoim). A diferença em R$ fica no tooltip.
+- **HOJE:** 28 linhas, 104 produtos, R$ 90.858,24 · 1.431 cx · 96 clientes · 99 pedidos. ⚠️ O print de hoje **não
+  tinha rodapé** — o total veio do **resumo de representantes do mesmo momento** e confere pelo %: Amendoim é 19,131%
+  e R$ 17.381,69 → total ≈ R$ 90.857. As linhas transcritas somam R$ 88.819,69 (faltam ~2,2% em linhas pequenas que
+  não entraram no print) → vão para a linha "Demais linhas", como em ontem.
+- ⚠️ **As CAIXAS por produto vêm ARREDONDADAS do Power BI** — há produto com **0 caixa e valor acima de zero**
+  (Massa Caseira N1 R$ 25,10; Bolinhas Churrasco R$ 16,20). Por isso a soma das caixas das linhas (1.434) passa do
+  total (1.431): o resto de caixas fica negativo e a tela mostra "—" em vez de número. Está escrito na nota da tabela.
+- Testado em Edge headless: 28/104 em hoje e 27/103 em ontem, totais e ticket certos, cards comparando, coluna vs.
+  com "novo" nas 2 linhas novas, ontem sem base (botão some), busca/ordenação/períodos vazios, **0 erros de JS**.
+
 ### ⭐ 2026-09-22 — PC da Empresa — NOVA ABA **Comercial › Pedidos** (o resumo do Power BI dentro do HUB)
 O Diego quer trazer para o HUB as 3 telas que o comercial usa hoje no Power BI (Resumo linhas/produtos · Resumo
 representantes · Pedidos em aberto/atrasados, sem o gráfico), **numa aba só**, porque "no Power BI tudo é muito
