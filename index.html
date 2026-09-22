@@ -11984,6 +11984,7 @@ let _comAba='produtos';          // sub-aba: produtos | representantes | aberto
 let _comPer='hoje';              // período dos chips (hoje e ontem têm dado)
 let _comBusca='';
 let _comCmp=false;               // coluna "vs. período anterior" na tabela (os cards já comparam sempre)
+let _comAbFiltro='';             // pedidos em aberto: '' | 'atraso' | 'rota'
 let _comSort={campo:'valor',dir:-1};
 const _comFechadas={};           // linhas recolhidas — estado de tela, não persiste
 const COM_MENU=[['pedidos','ti-shopping-cart','Pedidos']];
@@ -12329,7 +12330,98 @@ const _COM_REPS_HOJE=[
 ];
 _COM_DADOS.hoje.reps=_COM_REPS_HOJE;
 _COM_DADOS.ontem.reps=_COM_REPS_ONTEM;
-const _COM_ABERTO=[];    // Pedidos em aberto e atrasados — entra quando o Diego mandar o print/export
+// PEDIDOS EM ABERTO (a tela "Atrasados" do Power BI). É uma FOTO, não um período: por isso esta
+// sub-aba esconde os chips de período e troca os indicadores do topo.
+// Item = [pedido, cód. cliente, cliente, valor, caixas, emissão, UF, cidade, semana lançada, semanas da região].
+// ⚠️ Os "dias" NÃO são gravados: são calculados de emissão até hoje, então continuam certos amanhã.
+// ⚠️ PARCIAL: o print trouxe 5 representantes (3 inteiros e 2 cortados no meio). Nos cortados entra uma
+// linha "restante do representante" para fechar o total do grupo, que veio do cabeçalho do relatório.
+const COM_ABERTO_ALERTA={amarelo:7,vermelho:15};   // dias de emissão — é só trocar aqui
+const _COM_ABERTO={ atualizado:'2026-09-22', grupos:[
+ {cod:1,cls:'Klain',nome:'Televendas (marca própria)',ped:17,valor:63640.79,cx:1262,completo:true,itens:[
+  [472429,4073,'Atacado de Produtos Alimentícios Zeca - Eireli',17.70,0,'2026-09-04','RS','Lajeado','',''],
+  [474781,101390,'Marquez Alimentos Ltda',3972.15,70,'2026-09-10','RS','Travesseiro','',''],
+  [475706,2750,'Distribuidora Alves e Aguiar Ltda ME',35.22,1,'2026-09-11','RS','Terra de Areia','',''],
+  [475945,4073,'Atacado de Produtos Alimentícios Zeca - Eireli',1506.37,50,'2026-09-11','RS','Lajeado','',''],
+  [476234,4166,'Comercial de Alimentos Winter Ltda ME',5895.36,100,'2026-09-11','RS','Taquara','',''],
+  [478614,7543,'E. Gomes Machado Comercial Eireli',6780.42,110,'2026-09-16','RS','Santo Antônio da Patrulha','',''],
+  [479002,6029,'Pavanelli Comércio de Doces e Biscoitos Ltda',2783.51,50,'2026-09-16','SP','São Paulo','',''],
+  [479043,3237,'D. S. A. Indústria & Comércio Ltda',5763.04,100,'2026-09-16','RS','Santo Antônio da Patrulha','',''],
+  [480543,1960,'Casa da Cuca Ltda',5323.50,80,'2026-09-18','SC','Iporã do Oeste','',''],
+  [480567,6345,'Pedro Agliardi & Cia Ltda',2947.68,50,'2026-09-18','RS','Gravataí','',''],
+  [481354,4073,'Atacado de Produtos Alimentícios Zeca - Eireli',2822.81,50,'2026-09-19','RS','Lajeado','',''],
+  [481355,4073,'Atacado de Produtos Alimentícios Zeca - Eireli',1537.27,50,'2026-09-19','RS','Lajeado','',''],
+  [481356,4073,'Atacado de Produtos Alimentícios Zeca - Eireli',2126.81,50,'2026-09-19','RS','Lajeado','',''],
+  [481357,4073,'Atacado de Produtos Alimentícios Zeca - Eireli',3502.50,150,'2026-09-19','RS','Lajeado','',''],
+  [481360,10792,'J. S. Cavalcanti Distrib. de Produtos Aliment. Ltda',16200.00,300,'2026-09-19','SP','Votorantim','',''],
+  [481361,10792,'J. S. Cavalcanti Distrib. de Produtos Aliment. Ltda',2407.50,50,'2026-09-19','SP','Votorantim','',''],
+  [481661,10792,'J. S. Cavalcanti Distrib. de Produtos Aliment. Ltda',18.95,0,'2026-09-21','SP','Votorantim','',''],
+ ]},
+ {cod:100,cls:'Klain',nome:'Televendas (atacados, distribuidores)',ped:2,valor:15634.70,cx:274,completo:true,itens:[
+  [468437,14338,'WT Alimentos Ltda',1944.00,40,'2026-08-31','SP','Ribeirão Pires','',''],
+  [482623,1578,'Globo Pan Alimentos Ltda',13690.70,234,'2026-09-22','SP','Cotia','',''],
+ ]},
+ {cod:1011,cls:'Broker',nome:'Maras 1',ped:13,valor:10066.83,cx:126,completo:true,itens:[
+  [481481,13025,'Paulo Sergio Frutuoso',497.64,6,'2026-09-21','SC','Lontras','',''],
+  [481569,8442,'Carmem Lucia Medeiros de Silva & Cia Ltda ME',333.45,4,'2026-09-21','SC','Rio do Sul','',''],
+  [481588,12581,'Supermercado Telmo Ltda',589.35,7,'2026-09-21','SC','Rio do Sul','',''],
+  [481653,7945,'Patricia de Oliveira Mazera Ltda',595.95,7,'2026-09-21','SC','Rio do Sul','',''],
+  [481657,13064,'Mercearia Rabel Ltda',1375.89,18,'2026-09-21','SC','Rio do Sul','',''],
+  [481810,8836,'Charles Odilon Zluhan e Cia Ltda',549.25,6,'2026-09-21','SC','Rio do Sul','',''],
+  [481825,7737,'Kalbusch & Oliveira Minimercado Ltda',477.00,6,'2026-09-21','SC','Rio do Sul','',''],
+  [481964,13491,'Supermercado Riosulense Ltda',416.25,5,'2026-09-21','SC','Rio do Sul','',''],
+  [481965,14886,'Padaria e Confeitaria Rota Ltda',543.20,7,'2026-09-21','SC','Rio do Sul','',''],
+  [482106,7728,'J D Mercearia Ltda',422.85,5,'2026-09-21','SC','Rio do Sul','',''],
+  [482119,16081,'Supermercado Vambommel Ltda',2997.00,40,'2026-09-21','SC','Rio do Sul','',''],
+  [482494,8844,'V L M R Comércio de Alimentos Ltda',666.45,8,'2026-09-22','SC','Rio do Sul','',''],
+  [482608,500,'Paulo Cesar Abelino',602.55,7,'2026-09-22','SC','Rio do Sul','',''],
+ ]},
+ {cod:11,cls:'Rep. varejo',nome:'Fernando Scheibe (Lajeado)',ped:null,valor:36778.26,cx:493,completo:false,itens:[
+  [480809,11778,'Real Distribuidora de Alimentos Ltda',324.94,10,'2026-09-18','RS','Teutônia','Sem 1','Sem 1'],
+  [480812,11778,'Real Distribuidora de Alimentos Ltda',999.10,10,'2026-09-18','RS','Teutônia','Sem 1','Sem 1'],
+  [480815,11778,'Real Distribuidora de Alimentos Ltda',591.25,10,'2026-09-18','RS','Teutônia','Sem 1','Sem 1'],
+  [480850,11778,'Real Distribuidora de Alimentos Ltda',436.95,8,'2026-09-18','RS','Teutônia','Sem 1','Sem 1'],
+  [481140,2261,'Mariliza Dorneles Martins',1491.38,4,'2026-09-18','RS','Teutônia','Sem 1','Sem 1'],
+  [481933,8301,'Aline Patricia Giconetti Kroetz',1785.73,10,'2026-09-18','RS','Teutônia','Sem 1','Sem 1'],
+  [482053,11588,'Krunner Indústria de Produtos Alimentícios Ltda',894.15,5,'2026-09-18','RS','Paverama','Sem 1','Sem 1'],
+  [481935,11731,'Comércio de Combustíveis Beija-Flor Ltda',305.12,6,'2026-09-20','RS','Imigrante','Sem 1','Sem 1'],
+  [481936,3147,'Welp Padaria e Confeitaria Ltda',1081.38,3,'2026-09-20','RS','Colinas','Sem 1','Sem 1'],
+  [481993,5415,'Supermercado Ideal Ltda',484.96,9,'2026-09-20','RS','Imigrante','Sem 1','Sem 1'],
+  [481994,2272,'Supermercado Wunsch Ltda',425.80,8,'2026-09-20','RS','Imigrante','Sem 1','Sem 1'],
+  [482032,6184,'Mario Magetanz',458.87,6,'2026-09-20','RS','Colinas','Sem 1','Sem 1'],
+  [482048,2679,'Gerson Luis Meyer Ltda EPP',693.67,12,'2026-09-20','RS','Colinas','Sem 1','Sem 1'],
+  [482161,14294,'SL Agropecuária e Empório de Bebidas Ltda',1007.29,15,'2026-09-20','RS','Colinas','Sem 1','Sem 1'],
+  [482795,2195,'Supermercado Lutterbeck Ltda EPP',1153.43,16,'2026-09-20','RS','Imigrante','Sem 1','Sem 1'],
+  [482077,2762,'Comercial de Alimentos Altmann Ltda ME',503.26,8,'2026-09-21','RS','Estrela','Sem 2','Sem 4'],
+  [482439,6234,'Alana Paini & Cia Ltda',2558.62,35,'2026-09-22','RS','Encantado','Sem 2','Sem 2'],
+  [482463,7135,'Ianca Diehl Muller',542.33,10,'2026-09-22','RS','Encantado','Sem 2','Sem 2'],
+  [482493,15667,'Avelino Radaelli',255.15,6,'2026-09-22','RS','Encantado','Sem 2','Sem 2'],
+  [482502,2652,'Açougue Santo Antão Ltda',605.65,12,'2026-09-22','RS','Encantado','Sem 2','Sem 2'],
+  [482520,10459,'Sindicato dos Trab. Rurais de Encantado',645.12,11,'2026-09-22','RS','Encantado','Sem 2','Sem 2'],
+ ]},
+ {cod:211,cls:'Rep. varejo',nome:'Jean Claudio da Silva (Montenegro)',ped:null,valor:47286.77,cx:582,completo:false,itens:[
+  [477420,8734,'Impra e Expra de Cereais S/A (Desconto Montenegro)',7570.64,116,'2026-09-14','RS','Montenegro','Sem 1','Sem 1, 3'],
+  [482552,15437,'Luis Claudiomir de Ávila & Cia Ltda',777.20,11,'2026-09-14','RS','Taquari','Sem 1','Sem 1'],
+  [482553,15437,'Luis Claudiomir de Ávila & Cia Ltda',324.95,10,'2026-09-14','RS','Taquari','Sem 1','Sem 1'],
+  [482554,15437,'Luis Claudiomir de Ávila & Cia Ltda',1998.20,20,'2026-09-14','RS','Taquari','Sem 1','Sem 1'],
+  [482573,15437,'Luis Claudiomir de Ávila & Cia Ltda',1326.70,21,'2026-09-14','RS','Taquari','Sem 1','Sem 1'],
+  [480686,500508,'Jean Claudio da Silva',37.98,1,'2026-09-16','RS','Colinas','Sem 1',''],
+  [482549,629,'Querli Arlete Gomes Prediger',370.70,2,'2026-09-16','RS','Fazenda Vilanova','Sem 1','Sem 1'],
+  [482550,2444,'Daniel Gerhardt & Cia Ltda',484.50,10,'2026-09-16','RS','Fazenda Vilanova','Sem 1','Sem 1'],
+  [482551,2444,'Daniel Gerhardt & Cia Ltda',1026.16,17,'2026-09-16','RS','Fazenda Vilanova','Sem 1','Sem 1'],
+  [482574,4189,'Casa da Granja Produtos Coloniais Ltda',382.95,7,'2026-09-17','RS','Tabaí','Sem 1','Sem 1'],
+  [480991,5103,'Impra e Expra de Cereais S/A (Desconto Charqueadas)',4356.58,75,'2026-09-18','RS','Charqueadas','Sem 1','Sem 4'],
+  [481002,8734,'Impra e Expra de Cereais S/A (Desconto Montenegro)',15451.48,188,'2026-09-18','RS','Montenegro','Sem 1','Sem 1, 3'],
+  [481407,8734,'Impra e Expra de Cereais S/A (Desconto Montenegro)',857.06,0,'2026-09-21','RS','Montenegro','Sem 2','Sem 1, 3'],
+  [481418,5103,'Impra e Expra de Cereais S/A (Desconto Charqueadas)',857.06,0,'2026-09-21','RS','Charqueadas','Sem 2','Sem 4'],
+  [481943,13899,'Jairo Ledur & Cia Ltda',1089.95,17,'2026-09-21','RS','Bom Princípio','Sem 2','Sem 2'],
+  [481951,6273,'Rosa Maria Bartzen Klering',778.25,2,'2026-09-21','RS','Bom Princípio','Sem 2','Sem 2'],
+  [481967,7411,'Minimercado Didjo Ltda ME',549.25,9,'2026-09-21','RS','Alto Feliz','Sem 2','Sem 2'],
+  [481969,11398,'GD Silva Churrascaria e Restaurante Ltda',704.41,4,'2026-09-21','RS','Portão','Sem 2','Sem 2'],
+  [481971,4728,'Janete Fernandes Patricio Lunkes',297.24,2,'2026-09-21','RS','Feliz','Sem 2','Sem 2'],
+  [481973,14908,'Amélia Doces Caseiros Ltda',380.00,1,'2026-09-21','RS','São Vendelino','Sem 2','Sem 2'],
+ ]},
+]};
 const _comNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
 const _comPct=p=>Number(p||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
 const _comN=v=>v==null?'—':_cpNum(v);   // clientes não somam entre dias → célula fica em "—"
@@ -12477,13 +12569,15 @@ function _comCorpoHTML(){
     .map(a=>`<button class="com-sub${_comAba===a[0]?' on':''}" onclick="_comSetAba('${a[0]}')">${a[1]}</button>`).join('');
   // ⚠️ o campo PRECISA ter uma classe: existe uma regra global input:not([class]){height:40px} que
   // ignoraria a altura inline (mesma armadilha já documentada nos selects pequenos de Compras).
-  const busca=(_comAba==='produtos'||_comAba==='representantes')&&_comTemDados()
-    ? `<input id="com-busca" value="${escapeAttr(_comBusca)}" oninput="_comBuscaInput(this.value)" placeholder="${_comAba==='representantes'?'Buscar representante':'Buscar produto ou linha'}" class="com-busca" style="width:230px;height:32px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-family:inherit;font-size:12.5px;padding:0 10px">` : '';
+  const busca=(_comAba==='aberto'||((_comAba==='produtos'||_comAba==='representantes')&&_comTemDados()))
+    ? `<input id="com-busca" value="${escapeAttr(_comBusca)}" oninput="_comBuscaInput(this.value)" placeholder="${_comAba==='representantes'?'Buscar representante':(_comAba==='aberto'?'Buscar cliente, pedido ou cidade':'Buscar produto ou linha')}" class="com-busca" style="width:230px;height:32px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-family:inherit;font-size:12.5px;padding:0 10px">` : '';
   const btnCmp=(_comAba==='produtos'||_comAba==='representantes')&&b
     ? `<button class="com-chip${_comCmp?' on':''}" onclick="_comToggleCmp()" style="padding:5px 11px"><i class="ti ti-arrows-left-right" style="font-size:12px"></i> Comparar com ${b.rot}</button>` : '';
+  // Pedidos em aberto é uma FOTO, não um período: os chips saem e os indicadores são outros.
+  const topo=_comAba==='aberto' ? _comAbertoTopoHTML()
+    : `<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px">${chips}</div>${kpis}`;
   return `${_comCSS()}
-    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px">${chips}</div>
-    ${kpis}
+    ${topo}
     <div style="display:flex;align-items:center;gap:20px;border-bottom:1px solid var(--border);margin-bottom:12px">
       ${abas}<div style="margin-left:auto;padding-bottom:6px;display:flex;align-items:center;gap:8px">${btnCmp}${busca}</div>
     </div>
@@ -12492,8 +12586,100 @@ function _comCorpoHTML(){
 function _comConteudoHTML(){
   if(!_comTemDados()) return _cpVazio('Por enquanto só hoje, ontem e a semana estão carregados. Os outros períodos entram quando vier o export do Power BI.');
   if(_comAba==='representantes') return _comRepsHTML();
-  if(_comAba==='aberto') return _cpVazio('Aguardando os dados dos pedidos em aberto.');
+  if(_comAba==='aberto') return _comAbertoHTML();
   return _comProdutosHTML();
+}
+// ── Pedidos em aberto ───────────────────────────────────────────────────────────────────────
+const _comDias=iso=>{ try{ return Math.round((new Date(today)-new Date(iso))/86400000); }catch(e){ return null; } };
+// A semana lançada bate com a semana de rota do cliente? (o Power BI pinta de verde/vermelho)
+function _comSemOK(lanc,reg){
+  if(!lanc) return null;
+  const n=(String(lanc).match(/\d+/)||[])[0]; if(!n) return null;
+  return (String(reg||'').match(/\d+/g)||[]).indexOf(n)>=0;
+}
+function _comAbItens(){
+  const out=[];
+  (_COM_ABERTO.grupos||[]).forEach(g=>(g.itens||[]).forEach(it=>out.push({g:g,it:it})));
+  return out;
+}
+function _comAbFiltrar(itens){
+  const q=_comNorm(_comBusca);
+  return itens.filter(x=>{
+    const it=x.it;
+    if(_comAbFiltro==='atraso' && !(_comDias(it[5])>=COM_ABERTO_ALERTA.vermelho)) return false;
+    if(_comAbFiltro==='rota' && _comSemOK(it[8],it[9])!==false) return false;
+    if(!q) return true;
+    return _comNorm(it[2]).indexOf(q)>=0 || String(it[0]).indexOf(q)>=0 || _comNorm(it[7]).indexOf(q)>=0 || _comNorm(x.g.nome).indexOf(q)>=0;
+  });
+}
+function _comAbSetFiltro(v){ _comAbFiltro=(_comAbFiltro===v?'':v); _comRefresh(); }
+function _comAbertoTopoHTML(){
+  const gs=_COM_ABERTO.grupos||[];
+  const itens=_comAbItens();
+  const valor=gs.reduce((s,g)=>s+g.valor,0), cx=gs.reduce((s,g)=>s+g.cx,0);
+  const dias=itens.map(x=>_comDias(x.it[5])).filter(d=>d!=null);
+  const maior=dias.length?Math.max.apply(null,dias):null;
+  const atrasados=itens.filter(x=>_comDias(x.it[5])>=COM_ABERTO_ALERTA.vermelho).length;
+  const fora=itens.filter(x=>_comSemOK(x.it[8],x.it[9])===false).length;
+  const kpi=(lab,val,extra,cor)=>`<div class="cp-card" style="padding:13px 16px"><div class="cp-kpi"><s>${lab}</s><b${cor?` style="color:${cor}"`:''}>${val}</b></div>${extra?`<div style="font-size:11.5px;font-weight:600;color:var(--text3);margin-top:3px">${extra}</div>`:''}</div>`;
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:6px">
+    ${kpi('Valor em aberto',_cpBRL(valor),_cpNum(gs.length)+' representantes')}
+    ${kpi('Caixas',_cpNum(cx),'')}
+    ${kpi('Pedidos na tela',_cpNum(itens.length),'2 representantes vieram cortados')}
+    ${kpi('Mais antigo',maior!=null?_cpNum(maior)+' dias':'—',_cpNum(atrasados)+' com '+COM_ABERTO_ALERTA.vermelho+'+ dias', maior>=COM_ABERTO_ALERTA.vermelho?'var(--danger)':'')}
+    ${kpi('Fora da semana de rota',_cpNum(fora),'lançados em semana diferente', fora?'var(--amber)':'')}
+  </div>
+  <div style="font-size:11.5px;color:var(--text3);margin-bottom:16px">Foto do que está em aberto — não é um período, por isso os botões de dia e semana não valem aqui.</div>`;
+}
+function _comAbertoHTML(){
+  const grupos=_COM_ABERTO.grupos||[];
+  if(!grupos.length) return _cpVazio('Aguardando os dados dos pedidos em aberto.');
+  const todos=_comAbItens(), vis=_comAbFiltrar(todos);
+  const porGrupo={}; vis.forEach(x=>{ (porGrupo[x.g.cod]=porGrupo[x.g.cod]||[]).push(x.it); });
+  const filtrando=!!_comBusca.trim()||!!_comAbFiltro;
+  const diaCel=d=>{ const cor=d>=COM_ABERTO_ALERTA.vermelho?'var(--danger)':(d>=COM_ABERTO_ALERTA.amarelo?'var(--amber)':'');
+    return `<td${cor?` style="color:${cor};font-weight:700"`:''}>${d==null?'—':_cpNum(d)}</td>`; };
+  const semCel=(l,r)=>{ if(!l) return '<td></td>';
+    const ok=_comSemOK(l,r);
+    const cor=ok===false?'var(--danger)':'var(--success)';
+    const tit=ok===false?`lançado na ${l} e a rota do cliente é ${r||'sem semana cadastrada'}`:`rota do cliente: ${r}`;
+    return `<td title="${escapeAttr(tit)}"><span style="color:${cor}">${escapeHTML(l)}</span></td>`; };
+  let corpo='';
+  grupos.forEach((g,n)=>{
+    const itens=porGrupo[g.cod]||[];
+    if(filtrando && !itens.length) return;
+    if(corpo) corpo+=`<tr class="com-sp"><td colspan="8"></td></tr>`;
+    const sv=itens.reduce((s,i)=>s+i[3],0), sc=itens.reduce((s,i)=>s+i[4],0);
+    corpo+=`<tr class="com-lin"><td class="l"><span class="com-cod">${g.cod} ·</span>${escapeHTML(g.nome)} <span class="com-cls">${escapeHTML(g.cls)}</span></td>
+      <td>${filtrando?_cpNum(itens.length):(g.ped!=null?_cpNum(g.ped):_cpNum(g.itens.length)+'+')}</td>
+      <td>${_cpBRL(filtrando?sv:g.valor)}</td><td>${_cpNum(filtrando?sc:g.cx)}</td><td colspan="4"></td></tr>`;
+    itens.forEach(it=>{
+      const d=_comDias(it[5]);
+      corpo+=`<tr class="com-prod">
+        <td class="l" style="padding-left:26px"><span class="com-cod">${it[0]}</span>${escapeHTML(it[2])}</td>
+        <td>${_cpBRL(it[3])}</td><td>${_cpNum(it[4])}</td><td>${_cpDt(it[5])}</td>${diaCel(d)}
+        <td class="l">${escapeHTML(it[7])}<span class="com-cod" style="margin-left:5px">${escapeHTML(it[6])}</span></td>${semCel(it[8],it[9])}<td></td></tr>`;
+    });
+    if(!filtrando && !g.completo){
+      const rv=g.valor-g.itens.reduce((s,i)=>s+i[3],0), rc=g.cx-g.itens.reduce((s,i)=>s+i[4],0);
+      corpo+=`<tr class="com-prod"><td class="l" style="padding-left:26px;font-style:italic">restante do representante (não veio no print)</td>
+        <td>${_cpBRL(rv)}</td><td>${rc>0?_cpNum(rc):'—'}</td><td colspan="4"></td><td></td></tr>`;
+    }
+  });
+  if(!corpo) corpo=`<tr><td colspan="8">${_cpVazio('Nenhum pedido com esse filtro.')}</td></tr>`;
+  return `<div class="cp-card" style="padding:4px 6px 10px">
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px 4px;flex-wrap:wrap">
+      <span style="font-size:11.5px;color:var(--text3)">${_cpNum(vis.length)} pedidos na tela · ${_cpNum(grupos.length)} representantes</span>
+      <button class="com-chip${_comAbFiltro==='atraso'?' on':''}" onclick="_comAbSetFiltro('atraso')" style="margin-left:auto;padding:4px 10px">${COM_ABERTO_ALERTA.vermelho}+ dias</button>
+      <button class="com-chip${_comAbFiltro==='rota'?' on':''}" onclick="_comAbSetFiltro('rota')" style="padding:4px 10px">Fora da semana de rota</button>
+    </div>
+    <table class="com-tbl">
+      <colgroup><col style="width:30%"><col style="width:11%"><col style="width:8%"><col style="width:10%"><col style="width:7%"><col style="width:17%"><col style="width:10%"><col style="width:7%"></colgroup>
+      <thead><tr><th class="l">Representante / pedido · cliente</th><th>Valor</th><th>Caixas</th><th>Emissão</th><th>Dias</th><th class="l">Cidade</th><th>Semana</th><th></th></tr></thead>
+      <tbody>${corpo}</tbody>
+    </table>
+    <div class="com-nota">Os dias são contados da emissão até hoje, então continuam certos amanhã. A coluna Semana fica vermelha quando o pedido foi lançado numa semana diferente da rota do cliente.<br>Foto do relatório em ${_cpDt(_COM_ABERTO.atualizado)}. O print trouxe 5 representantes — em 2 deles a lista veio cortada, e o que falta está na linha "restante do representante".</div>
+  </div>`;
 }
 // Representantes: lista plana (é assim no Power BI), mesma ordenação/busca/comparação dos produtos.
 const _COM_SCR={nome:2,valor:4,cx:5,cli:6,ped:7};

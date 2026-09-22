@@ -422,6 +422,27 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-22 (e) — PC da Empresa — Comercial: 3ª sub-aba **Pedidos em aberto** (a tela "Atrasados")
+Fecha as 3 telas do Power BI numa aba só. `_COM_ABERTO` = `{atualizado, grupos:[{cod,cls,nome,ped,valor,cx,completo,itens}]}`,
+item = **[pedido, cód. cliente, cliente, valor, caixas, emissão, UF, cidade, semana lançada, semanas da região]**.
+- ⭐ **Não é um período, é uma FOTO:** nesta sub-aba os **chips de período somem** e o topo troca para indicadores
+  próprios — Valor em aberto · Caixas · Pedidos na tela · **Mais antigo (dias)** · **Fora da semana de rota**.
+- ⭐ **DIAS SÃO CALCULADOS**, não gravados (`_comDias` = emissão → `today`), então continuam certos amanhã.
+  Cores: **≥7 âmbar, ≥15 vermelho** (`COM_ABERTO_ALERTA`, é só trocar os dois números). O Diego não tinha escolhido
+  o corte — usei o que sugeri a ele.
+- ⭐ **Decifrada a regra das cores do Power BI:** "Semana Lançada" fica **verde quando a semana do pedido está entre
+  as semanas de rota do cliente** ("Sem 1" dentro de "Sem 1, 3") e **vermelha quando não está** (Sem 2 × Sem 4, ou
+  região em branco). Confirmado nos 6 casos coloridos dos prints. Agora é **calculado** (`_comSemOK`), não copiado —
+  e virou **filtro** ("Fora da semana de rota", 5 pedidos) e indicador. Filtro irmão: "15+ dias".
+- ⚠️ **PARCIAL:** o print trouxe **5 representantes** — 3 inteiros (17, 2 e 13 pedidos, cujas somas batem ao centavo
+  com o cabeçalho do grupo) e **2 cortados no meio** (Fernando Scheibe e Jean Claudio). Nos cortados entra a linha
+  **"restante do representante"**, que fecha o total do grupo vindo do cabeçalho. Total na tela: R$ 173.407,35 ·
+  2.737 cx · 73 pedidos. ⚠️ O relatório inteiro tinha **623 pedidos e R$ 812.737,51** num print anterior — falta
+  quase tudo; quando vier o export, é trocar `_COM_ABERTO.grupos`.
+- Testado em Edge headless: 5 grupos, 73 pedidos + 2 linhas de resto, KPIs certos (mais antigo 22 dias, 5 fora de
+  rota), filtros (15+ dias → 2; fora da rota → exatamente os 5 que o Power BI pintou de vermelho), busca por cidade
+  ("votorantim" → 3), chips de período somem e voltam ao trocar de sub-aba, **0 erros de JS**.
+
 ### 2026-09-22 (d) — PC da Empresa — Comercial: sub-aba **Representantes** (ontem, hoje e semana)
 Chegaram os prints do resumo de representantes dos 2 dias. `_COM_REPS_ONTEM` (29) e `_COM_REPS_HOJE` (22), formato
 **[cód, classe, nome, %, valor, caixas, clientes, pedidos]** — a **classe** (Rep. varejo · Broker · Klain) vem do
