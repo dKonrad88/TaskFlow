@@ -12128,7 +12128,7 @@ const _COM_LINHAS_ONTEM=[
 // HOJE — o print não trazia o rodapé; o total veio do resumo de REPRESENTANTES do mesmo momento
 // (R$ 90.858,24 · 1.431 cx · 96 clientes · 99 pedidos) e confere pelo %: a linha Amendoim é 19,131%
 // de 90.857. As linhas transcritas somam R$ 88.819,69 — o resto está em linhas pequenas fora do print.
-const _COM_TOT_HOJE={valor:90858.24,cx:1431,cli:96,ped:99};
+const _COM_TOT_HOJE={valor:90858.24,cx:1430,cli:96,ped:99};
 const _COM_LINHAS_HOJE=[
  ['Amendoim',19.131,17381.69,262,65,65,[
    [70,'Biscoito de Amendoim com Chocolate ao Leite 250g',8.835,8027.17,110,60,60],
@@ -12268,9 +12268,68 @@ const _COM_LINHAS_HOJE=[
 const _COM_DADOS={
   hoje:{rot:'hoje',tot:_COM_TOT_HOJE,linhas:_COM_LINHAS_HOJE,base:'ontem',parcial:true},
   ontem:{rot:'ontem',tot:_COM_TOT_ONTEM,linhas:_COM_LINHAS_ONTEM,base:null},
-};
-const _COM_REPS=[];      // Resumo representantes — entra quando o Diego mandar o print/export
-const _COM_ABERTO=[];    // Pedidos em aberto e atrasados — idem
+};   // os representantes (reps) são plugados logo abaixo, depois das listas — const não pode ser usada antes de declarada
+// RESUMO DE REPRESENTANTES — [cód, classe, nome, %, valor, caixas, clientes, pedidos].
+// Os totais batem com os de produtos do mesmo período (mesmo relatório, outro corte).
+// Representante sem venda no dia não entra (no Power BI aparece com as colunas em branco).
+const _COM_REPS_ONTEM=[
+ [571,'Rep. varejo','Vanderlei Nicknig (Santa Cruz do Sul)',12.523,35195.58,609,32,38],
+ [103,'Klain','Televendas (indústria)',8.622,24232.95,70,1,1],
+ [71,'Broker','Maras Valderi',8.250,23187.58,318,10,11],
+ [891,'Rep. varejo','Patrick Aguiar Hister (Gravataí)',7.362,20690.04,329,14,18],
+ [671,'Rep. varejo','Geferson Brescovit (Palmeira das Missões)',7.139,20065.19,317,7,8],
+ [211,'Rep. varejo','Jean Claudio da Silva (Montenegro)',6.201,17426.48,167,15,17],
+ [841,'Rep. varejo','Everson da Rosa Silva (Litoral)',6.038,16969.13,304,17,20],
+ [861,'Rep. varejo','Fabiano Martins Saraiva (Viamão)',5.165,14516.44,270,12,12],
+ [481,'Rep. varejo','Matheus da Luz (Bento Gonçalves)',4.348,12220.90,194,16,17],
+ [1031,'Broker','Maras 3',4.081,11470.90,170,3,7],
+ [651,'Rep. varejo','Regional (Erechim)',3.942,11080.26,161,18,18],
+ [1101,'Broker','Maras 10',3.417,9604.44,131,6,9],
+ [1081,'Broker','Maras 8',3.267,9180.79,121,13,14],
+ [1011,'Broker','Maras 1',3.130,8797.83,111,11,11],
+ [11,'Rep. varejo','Fernando Scheibe (Lajeado)',2.921,8210.16,91,3,5],
+ [661,'Rep. varejo','Adelmo Tiago Britzke (Passo Fundo)',2.574,7234.39,109,15,15],
+ [881,'Rep. varejo','Jardel Luiz Pinto (Ijuí)',2.310,6491.64,119,10,11],
+ [1061,'Broker','Maras 6',2.269,6377.27,82,7,8],
+ [851,'Rep. varejo','Gilmar Jacobus Júnior (Sapiranga)',2.089,5870.46,97,3,3],
+ [871,'Rep. varejo','Joel Machado da Silva (POA zona sul)',0.872,2452.08,43,4,4],
+ [1121,'Broker','Maras 12',0.724,2036.02,30,4,4],
+ [901,'Rep. varejo','Valdeni Reichmbach dos Santos (Caxias)',0.688,1934.05,38,4,5],
+ [501,'Rep. varejo','Campo Bom',0.465,1306.95,17,1,1],
+ [1111,'Broker','Maras 11',0.430,1207.25,11,2,3],
+ [1041,'Broker','Maras 4',0.389,1092.75,13,2,2],
+ [1071,'Broker','Maras 7',0.330,928.25,12,2,2],
+ [1,'Klain','Televendas (marca própria)',0.284,798.95,14,2,2],
+ [51,'Broker','Robson Gregorio (5% frete)',0.119,333.85,4,1,1],
+ [100,'Klain','Televendas (atacados, distribuidores)',0.048,134.67,3,1,1],
+];
+const _COM_REPS_HOJE=[
+ [11,'Rep. varejo','Fernando Scheibe (Lajeado)',20.574,18692.97,294,13,14],
+ [100,'Klain','Televendas (atacados, distribuidores)',15.068,13690.70,234,1,1],
+ [671,'Rep. varejo','Geferson Brescovit (Palmeira das Missões)',9.919,9012.37,239,6,6],
+ [571,'Rep. varejo','Vanderlei Nicknig (Santa Cruz do Sul)',8.936,8118.67,137,17,17],
+ [481,'Rep. varejo','Matheus da Luz (Bento Gonçalves)',5.746,5220.97,68,4,4],
+ [103,'Klain','Televendas (indústria)',5.273,4791.22,14,2,2],
+ [881,'Rep. varejo','Jardel Luiz Pinto (Ijuí)',4.886,4439.60,69,8,8],
+ [51,'Broker','Robson Gregorio (5% frete)',4.503,4091.19,57,5,5],
+ [1101,'Broker','Maras 10',4.088,3714.42,43,3,4],
+ [851,'Rep. varejo','Gilmar Jacobus Júnior (Sapiranga)',3.230,2934.49,35,7,7],
+ [861,'Rep. varejo','Fabiano Martins Saraiva (Viamão)',2.761,2509.00,26,5,5],
+ [651,'Rep. varejo','Regional (Erechim)',2.273,2065.12,35,4,4],
+ [871,'Rep. varejo','Joel Machado da Silva (POA zona sul)',2.045,1858.20,35,2,3],
+ [102,'Klain','Televendas (supermercados)',1.793,1629.45,29,1,1],
+ [501,'Rep. varejo','Campo Bom',1.692,1537.08,25,3,3],
+ [1081,'Broker','Maras 8',1.669,1516.57,23,3,3],
+ [1011,'Broker','Maras 1',1.397,1269.00,15,2,2],
+ [1061,'Broker','Maras 6',1.364,1239.69,16,2,2],
+ [901,'Rep. varejo','Valdeni Reichmbach dos Santos (Caxias)',1.292,1173.80,20,4,4],
+ [661,'Rep. varejo','Adelmo Tiago Britzke (Passo Fundo)',0.686,623.17,11,2,2],
+ [1111,'Broker','Maras 11',0.437,397.35,6,1,1],
+ [841,'Rep. varejo','Everson da Rosa Silva (Litoral)',0.367,333.21,0,1,1],
+];
+_COM_DADOS.hoje.reps=_COM_REPS_HOJE;
+_COM_DADOS.ontem.reps=_COM_REPS_ONTEM;
+const _COM_ABERTO=[];    // Pedidos em aberto e atrasados — entra quando o Diego mandar o print/export
 const _comNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
 const _comPct=p=>Number(p||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
 const _comN=v=>v==null?'—':_cpNum(v);   // clientes não somam entre dias → célula fica em "—"
@@ -12298,7 +12357,15 @@ _COM_DADOS.semana=(function(){
                         .sort((a,b)=>b[3]-a[3]);
     return [e.nome, e.valor/tot.valor*100, e.valor, e.cx, null, e.ped, prods];
   }).sort((a,b)=>b[2]-a[2]);
-  return { rot:'esta semana', tot:tot, linhas:linhas, base:null, parcial:true,
+  // representantes da semana: mesma regra (soma valor/caixas/pedidos, clientes não soma)
+  const rm={}, rOrdem=[];
+  dias.forEach(d=>(d.reps||[]).forEach(r=>{
+    let e=rm[r[0]]; if(!e){ e=rm[r[0]]={cod:r[0],cls:r[1],nome:r[2],valor:0,cx:0,ped:0}; rOrdem.push(r[0]); }
+    e.valor+=r[4]; e.cx+=r[5]; e.ped+=r[7];
+  }));
+  const reps=rOrdem.map(c=>{ const e=rm[c]; return [e.cod,e.cls,e.nome,e.valor/tot.valor*100,e.valor,e.cx,null,e.ped]; })
+                   .sort((a,b)=>b[4]-a[4]);
+  return { rot:'esta semana', tot:tot, linhas:linhas, reps:reps, base:null, parcial:true,
            nota:'Semana de segunda a sexta — por enquanto soma segunda e terça. Clientes não somam entre os dias (o mesmo cliente pode ter comprado nos dois), por isso a coluna fica em "—".' };
 })();
 function _comAbaMenu(v){ return COM_MENU.find(x=>x[0]===v) || COM_MENU[0]; }
@@ -12376,6 +12443,7 @@ function _comCSS(){
   .com-prod td{color:var(--text2)}
   .com-prod:hover td{background:color-mix(in srgb,var(--text) 4%,transparent)}
   .com-cod{color:var(--text3);font-size:11.5px;margin-right:6px}
+  .com-cls{color:var(--text3);font-size:10.5px;border:1px solid var(--border);border-radius:999px;padding:1px 7px;margin-left:6px;white-space:nowrap}
   .com-sp td{height:13px;padding:0;border:none;background:none}
   .com-tot td{font-weight:700;color:var(--text);border-top:2px solid var(--border);background:var(--bg2)}
   .com-chip{font-size:12px;font-weight:600;padding:6px 13px;border-radius:999px;cursor:pointer;font-family:inherit;background:transparent;border:1px solid var(--border);color:var(--text2)}
@@ -12409,9 +12477,9 @@ function _comCorpoHTML(){
     .map(a=>`<button class="com-sub${_comAba===a[0]?' on':''}" onclick="_comSetAba('${a[0]}')">${a[1]}</button>`).join('');
   // ⚠️ o campo PRECISA ter uma classe: existe uma regra global input:not([class]){height:40px} que
   // ignoraria a altura inline (mesma armadilha já documentada nos selects pequenos de Compras).
-  const busca=_comAba==='produtos'&&_comTemDados()
-    ? `<input id="com-busca" value="${escapeAttr(_comBusca)}" oninput="_comBuscaInput(this.value)" placeholder="Buscar produto ou linha" class="com-busca" style="width:230px;height:32px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-family:inherit;font-size:12.5px;padding:0 10px">` : '';
-  const btnCmp=_comAba==='produtos'&&b
+  const busca=(_comAba==='produtos'||_comAba==='representantes')&&_comTemDados()
+    ? `<input id="com-busca" value="${escapeAttr(_comBusca)}" oninput="_comBuscaInput(this.value)" placeholder="${_comAba==='representantes'?'Buscar representante':'Buscar produto ou linha'}" class="com-busca" style="width:230px;height:32px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-family:inherit;font-size:12.5px;padding:0 10px">` : '';
+  const btnCmp=(_comAba==='produtos'||_comAba==='representantes')&&b
     ? `<button class="com-chip${_comCmp?' on':''}" onclick="_comToggleCmp()" style="padding:5px 11px"><i class="ti ti-arrows-left-right" style="font-size:12px"></i> Comparar com ${b.rot}</button>` : '';
   return `${_comCSS()}
     <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px">${chips}</div>
@@ -12422,10 +12490,62 @@ function _comCorpoHTML(){
     <div id="com-conteudo">${_comConteudoHTML()}</div>`;
 }
 function _comConteudoHTML(){
-  if(!_comTemDados()) return _cpVazio('Por enquanto só hoje e ontem estão carregados. Os outros períodos entram quando vier o export do Power BI.');
-  if(_comAba==='representantes') return _cpVazio('Aguardando os dados do resumo de representantes.');
+  if(!_comTemDados()) return _cpVazio('Por enquanto só hoje, ontem e a semana estão carregados. Os outros períodos entram quando vier o export do Power BI.');
+  if(_comAba==='representantes') return _comRepsHTML();
   if(_comAba==='aberto') return _cpVazio('Aguardando os dados dos pedidos em aberto.');
   return _comProdutosHTML();
+}
+// Representantes: lista plana (é assim no Power BI), mesma ordenação/busca/comparação dos produtos.
+const _COM_SCR={nome:2,valor:4,cx:5,cli:6,ped:7};
+function _comRepsFiltrados(){
+  const d=_comD(); if(!d||!d.reps) return [];
+  const q=_comNorm(_comBusca);
+  const arr=d.reps.filter(r=>!q||_comNorm(r[2]).indexOf(q)>=0||_comNorm(r[1]).indexOf(q)>=0||String(r[0]).indexOf(q)>=0);
+  const k=_COM_SCR[_comSort.campo]||_COM_SCR.valor, dir=_comSort.dir;
+  return arr.slice().sort((a,b)=> _comSort.campo==='nome'
+    ? String(a[2]).localeCompare(String(b[2]),'pt-BR')*dir
+    : (Number(a[k])-Number(b[k]))*dir);
+}
+function _comRepsHTML(){
+  const d=_comD();
+  if(!d.reps||!d.reps.length) return _cpVazio('Aguardando os dados do resumo de representantes.');
+  const b=_comBase();
+  const bIdx=(_comCmp&&b&&b.reps)?(function(){ const m={}; b.reps.forEach(r=>{ m[r[0]]=r; }); return m; })():null;
+  const cmp=!!bIdx;
+  const th=(c,lab,cls,semSeta)=>{ const on=_comSort.campo===c;
+    return `<th class="${cls||''}" onclick="_comSortBy('${c}')" style="${on?'color:var(--blue-mid)':''}">${lab}${on&&!semSeta?` <i class="ti ti-${_comSort.dir<0?'arrow-down':'arrow-up'}" style="font-size:11px"></i>`:''}</th>`; };
+  const reps=_comRepsFiltrados();
+  const buscando=!!_comBusca.trim();
+  let corpo=reps.map(r=>`<tr class="com-prod">
+      <td class="l" title="${escapeAttr(r[2])}"><span class="com-cod">${r[0]} ·</span>${escapeHTML(r[2])} <span class="com-cls">${escapeHTML(r[1])}</span></td>
+      <td>${_comPct(r[3])}</td><td>${_cpBRL(r[4])}</td>${cmp?`<td>${_comVarHTML(r[4], bIdx[r[0]]?bIdx[r[0]][4]:null, 1)}</td>`:''}
+      <td>${_cpNum(r[5])}</td><td>${_comN(r[6])}</td><td>${_cpNum(r[7])}</td></tr>`).join('');
+  if(!reps.length) corpo=`<tr><td colspan="${cmp?7:6}">${_cpVazio('Nenhum representante com esse nome.')}</td></tr>`;
+  let rodape='';
+  if(buscando){
+    const sv=reps.reduce((s,r)=>s+r[4],0), sc=reps.reduce((s,r)=>s+r[5],0), sp=reps.reduce((s,r)=>s+r[7],0);
+    rodape=`<tr class="com-tot"><td class="l">${_cpNum(reps.length)} representantes encontrados</td><td></td><td>${_cpBRL(sv)}</td>${cmp?'<td></td>':''}<td>${_cpNum(sc)}</td><td></td><td>${_cpNum(sp)}</td></tr>`;
+  }else{
+    rodape=`<tr class="com-tot"><td class="l">Total</td><td>100,00%</td><td>${_cpBRL(d.tot.valor)}</td>${cmp?`<td>${_comVarHTML(d.tot.valor,b.tot.valor,1)}</td>`:''}<td>${_cpNum(d.tot.cx)}</td><td>${d.tot.cli!=null?_cpNum(d.tot.cli):'até '+_cpNum(d.tot.cliMax)}</td><td>${_cpNum(d.tot.ped)}</td></tr>`;
+  }
+  // quem vendeu ontem e não vendeu hoje: some da lista, então vale dizer quantos são
+  const sumiram=(b&&b.reps&&!buscando)?b.reps.filter(r=>!d.reps.some(x=>x[0]===r[0])).length:0;
+  const cols=cmp
+    ? `<col style="width:40%"><col style="width:8%"><col style="width:15%"><col style="width:13%"><col style="width:8%"><col style="width:8%"><col style="width:8%">`
+    : `<col style="width:48%"><col style="width:9%"><col style="width:16%"><col style="width:9%"><col style="width:9%"><col style="width:9%">`;
+  return `<div class="cp-card" style="padding:4px 6px 10px">
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px 2px">
+      <span style="font-size:11.5px;color:var(--text3)">${_cpNum(reps.length)} representantes com venda${sumiram?` · ${_cpNum(sumiram)} venderam ${b.rot} e ainda não hoje`:''}</span>
+    </div>
+    <table class="com-tbl">
+      <colgroup>${cols}</colgroup>
+      <thead><tr>${th('nome','Representante','l')}${th('valor','%','',1)}${th('valor','Valor')}${cmp?`<th>vs. ${b.rot}</th>`:''}${th('cx','Caixas')}${th('cli','Clientes')}${th('ped','Pedidos')}</tr></thead>
+      <tbody>${corpo}${rodape}</tbody>
+    </table>
+    <div class="com-nota">${_comPer==='semana'
+      ? 'Somado dos dias já carregados. Clientes não somam entre os dias, por isso a coluna fica em "—".'
+      : `Transcrito do Power BI (${d.rot}). O total bate com o da aba Produtos — é o mesmo relatório, visto por outro corte.`}</div>
+  </div>`;
 }
 function _comProdutosHTML(){
   // semSeta = a coluna % ordena pelo mesmo campo do Valor; a seta aparece só uma vez, no Valor.

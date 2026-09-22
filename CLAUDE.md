@@ -422,6 +422,26 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-22 (d) — PC da Empresa — Comercial: sub-aba **Representantes** (ontem, hoje e semana)
+Chegaram os prints do resumo de representantes dos 2 dias. `_COM_REPS_ONTEM` (29) e `_COM_REPS_HOJE` (22), formato
+**[cód, classe, nome, %, valor, caixas, clientes, pedidos]** — a **classe** (Rep. varejo · Broker · Klain) vem do
+"Class. Representantes" do Power BI e aparece como chip ao lado do nome. Lista plana (como no Power BI), com a mesma
+ordenação por clique, busca (nome, código ou classe), comparação "vs. ontem" e total. A **semana** também soma os
+representantes (30, mesma regra: valor/caixas/pedidos somam, clientes não).
+- ✅ **Cruzamento que fecha:** o total dos representantes bate com o de produtos no mesmo período (ontem R$ 281.047,25
+  · 3.954 cx · 236 clientes · 268 pedidos). É o mesmo relatório por outro corte — bom sinal de que a transcrição está certa.
+- ⚠️ **Corrigido:** o total de caixas de HOJE era 1.431 (eu tinha somado as linhas); o rodapé do print de
+  representantes mostra **1.430** — vale o rodapé do ERP, porque as caixas por item vêm arredondadas. Semana: 5.384.
+- **Quem sumiu aparece:** o cabeçalho diz "8 venderam ontem e ainda não hoje", e quem não vendia ontem entra com
+  "novo" na coluna de comparação (hoje: 102 Televendas supermercados).
+- 🐞 **Bug meu, pego no teste:** pus os arrays de representantes DEPOIS do `_COM_DADOS` que os referencia — `const`
+  em zona morta temporal, o bloco inteiro parava (a aba renderizava vazia). Agora `_COM_DADOS` nasce sem `reps` e os
+  dois são plugados logo abaixo das listas (`_COM_DADOS.hoje.reps=…`). **Regra: dado grande vai sempre ANTES do
+  objeto que o usa** — ou plugue depois, como ficou aqui.
+- Testado em Edge headless: 22/29/30 representantes nos 3 períodos, totais batendo com a aba Produtos, comparação
+  (Fernando Scheibe +127,7% = 8.210,16 → 18.692,97), "novo", busca por classe ("broker" → 11), ordenação, e a aba
+  Produtos intacta. **0 erros de JS.**
+
 ### 2026-09-22 (c) — PC da Empresa — Comercial: período SEMANA (derivado) · sai a aba Notícias de Compras · CHAT ESCONDIDO
 - **Semana (seg–sex) DERIVADA, não transcrita.** Hoje é terça, então a semana até agora é segunda (ontem) + terça
   (hoje): `_COM_DADOS.semana` é montado por um IIFE que soma os dias (chave `dias` no topo dele — para incluir
