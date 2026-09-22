@@ -11972,6 +11972,307 @@ function _influConfigHTML(){
 function _mktCfgSet(k, v){ _mktLoad(); if(!mktConfig.pontos) mktConfig.pontos={}; mktConfig.pontos[k]=Number(v)||0; saveMktConfig(); }
 function _mktCfgReset(){ _mktLoad(); mktConfig.pontos=Object.assign({},MKT_PONTOS_DEFAULT); saveMktConfig(); renderInfluenciadores(); toast('Pesos restaurados'); }
 
+// ════ INÍCIO DO BLOCO COMERCIAL ════
+// COMERCIAL › Pedidos (set/2026) — junta numa aba só as 3 telas que o comercial usa hoje no Power BI:
+// Resumo linhas/produtos, Resumo representantes e Pedidos em aberto. Formato escolhido pelo Diego entre
+// 5 mockups: topo FIXO (chips de período + cards de indicadores) e sub-abas que trocam só o conteúdo.
+// ⚠️ DADO ESTÁTICO, transcrito dos prints do Power BI — período ONTEM. Quando vier o export, trocar
+// _COM_TOT/_COM_LINHAS (e preencher _COM_REPS / _COM_ABERTO) e, aí sim, ligar os outros períodos.
+// Regra P0: esta tela só LÊ — nada aqui grava no localStorage.
+let comercialView='pedidos';
+let _comAba='produtos';          // sub-aba: produtos | representantes | aberto
+let _comPer='ontem';             // período dos chips (só 'ontem' tem dado hoje)
+let _comBusca='';
+let _comSort={campo:'valor',dir:-1};
+const _comFechadas={};           // linhas recolhidas — estado de tela, não persiste
+const COM_MENU=[['pedidos','ti-shopping-cart','Pedidos']];
+const COM_PERIODOS=[['aberto','Em aberto'],['ontem','Ontem'],['hoje','Hoje'],['semana','Semana'],['semanaAnt','Semana ant.'],['mes','Mês'],['mesAnt','Mês ant.'],['ano','Ano']];
+// Totais do rodapé do Power BI. Clientes e pedidos NÃO são a soma das linhas (o mesmo pedido leva
+// produtos de várias linhas) — por isso vêm do total, nunca somados.
+const _COM_TOT={valor:281047.25,cx:3954,cli:236,ped:268};
+// [nome, %, valor, caixas, clientes, pedidos, [ [cód, produto, %, valor, caixas, clientes, pedidos], … ]]
+const _COM_LINHAS=[
+ ['Amendoim',13.860,38953.82,524,164,166,[
+   [70,'Biscoito de Amendoim com Chocolate ao Leite 250g',6.751,18972.17,242,140,142],
+   [9,'Biscoito Broa de Amendoim 250g',4.602,12933.01,191,104,104],
+   [71,'Biscoito de Amendoim com Chocolate Branco 250g',2.508,7048.64,92,58,60]]],
+ ['Econômica',11.695,32868.52,429,59,62,[
+   [3,'Biscoito Manteiguinha Pacotão Econômico 500g',3.005,8444.37,109,45,47],
+   [742,'Biscoito de Milho Pacotão Econômico 500g',2.309,6489.62,85,36,36],
+   [740,'Biscoito Manteiguinha de Choc Pacotão Econômico 500g',2.095,5889.09,77,34,35],
+   [741,'Biscoito de Maisena Pacotão Econômico 500g',1.966,5526.39,72,28,28],
+   [1216,'Biscoito de Limão Pacotão Econômico 500g',0.834,2344.87,32,18,18],
+   [1176,'Biscoito de Banana com Canela Pacotão Econômico 500g',0.784,2204.01,30,15,15],
+   [1223,'Biscoito de Maracujá Pacotão Econômico 500g',0.701,1970.17,26,19,19]]],
+ ['Cobertura 20 kg',10.879,30575.05,87,8,8,[
+   [620,'Cobertura Sabor Choc. CACAUCHEF 20 kg — Ao Leite',6.102,17150.00,50,1,1],
+   [521,'Cobertura Sabor Choc. KLAIN 20 kg — Branco',2.906,8167.09,23,4,4],
+   [520,'Cobertura Sabor Choc. KLAIN 20 kg — Ao Leite',0.946,2660.00,7,5,5],
+   [522,'Cobertura Sabor Choc. KLAIN 20 kg — Meio Amargo',0.924,2597.96,7,2,2]]],
+ ['Palitinhos',9.586,26941.85,567,86,86,[
+   [1795,'Salgadinho Palitinho sabor Churrasco 138g',2.894,8132.50,171,68,68],
+   [1798,'Salgadinho Palitinho sabor Bacon 138g',2.172,6103.87,129,57,57],
+   [1794,'Salgadinho Palitinho sabor Original 138g',1.954,5492.96,116,48,48],
+   [1793,'Salgadinho Palitinho sabor Calabresa 138g',1.226,3445.18,74,28,28],
+   [1797,'Salgadinho Palitinho sabor Salsa 138g',0.498,1399.98,29,19,19],
+   [1815,'Salgadinho Palitinho sabor Queijo 138g',0.374,1050.86,22,13,13],
+   [1796,'Salgadinho Palitinho sabor Pizza 138g',0.329,925.96,18,20,20],
+   [1811,'Salgadinho Palitinho sabor Oregano 138g',0.139,390.54,8,9,9]]],
+ ['Pão de mel',7.290,20487.17,262,136,139,[
+   [17,'Pão de Mel com Chocolate ao Leite 250g',5.348,15030.59,192,128,131],
+   [47,'Pão de Mel com Chocolate Branco 250g',1.744,4901.83,63,51,52],
+   [2,'Pão de Mel Menta com Choc. ao Leite 250g',0.197,554.75,7,9,9]]],
+ ['Clássicos',6.371,17906.62,302,132,134,[
+   [39,'Biscoito de Milho 240g',3.213,9029.68,154,94,95],
+   [30,'Biscoito Amanteigado 240g',0.948,2665.29,44,58,59],
+   [1222,'Biscoito de Maracujá 240g',0.515,1448.35,24,42,42],
+   [743,'Biscoito Manteiguinha com Chocolate 240g',0.502,1410.49,24,39,39],
+   [1175,'Biscoito de Banana com Canela 240g',0.454,1276.12,21,34,35],
+   [69,'Biscoito de Maisena 240g',0.378,1063.05,18,28,28],
+   [1214,'Biscoito de Limão 240g',0.361,1013.64,17,33,33]]],
+ ['Salgadão',5.814,16341.18,486,109,112,[
+   [787,'Salgadão sabor Bacon 100g',3.746,10527.06,317,100,103],
+   [901,'Salgadão sabor Churrasco 100g',1.894,5323.31,152,59,62],
+   [930,'Salgadão sabor Bacon 50g',0.092,258.91,9,7,8],
+   [931,'Salgadão sabor Churrasco 50g',0.083,231.90,8,6,7]]],
+ ['Chocolovers',4.933,13864.90,171,104,105,[
+   [29,'Biscoito Duetto 250g',2.454,6896.23,80,80,81],
+   [12,'Biscoito Choco Rosca 250g',1.162,3265.30,45,44,44],
+   [10,'Biscoito Mignon com Chocolate ao Leite 180g',0.774,2176.65,27,37,37],
+   [48,'Biscoito Choco Bola 180g',0.543,1526.72,19,20,20]]],
+ ['Coberturas',3.913,10996.35,58,32,32,[
+   [512,'Cobertura Sab. Choc. KLAIN 1,010 kg — Meio Amargo',1.539,4326.61,23,21,21],
+   [510,'Cobertura Sab. Choc. KLAIN 1,010 kg — Ao Leite (pacote)',1.491,4191.06,21,21,21],
+   [511,'Cobertura Sab. Choc. KLAIN 1,010 kg — Branco (pacote)',0.882,2478.68,14,15,15]]],
+ ['Suspiro',3.733,10490.38,158,85,86,[
+   [34,'Suspiro Tradicional 100g',1.417,3982.98,63,51,52],
+   [72,'Suspiro com Chocolate ao Leite 140g',1.415,3977.60,58,51,52],
+   [77,'Suspiro com Chocolate Branco 140g',0.900,2529.80,37,23,23]]],
+ ['Intensus',3.024,8500.26,127,36,37,[
+   [1153,'Salgadinho Intensus sabor Cebola e Salsa 130g',0.824,2315.86,33,16,16],
+   [1156,'Salgadinho Intensus sabor Queijo Parmesão 140g',0.691,1942.68,28,9,9],
+   [1155,'Salgadinho Intensus sabor Requeijão Cremoso 140g',0.627,1761.62,25,19,20],
+   [1154,'Salgadinho Intensus sabor Presunto 140g',0.567,1593.66,23,16,17],
+   [1158,'Salgadinho Intensus sabor Cebola e Salsa 70g',0.102,286.77,6,6,7],
+   [1159,'Salgadinho Intensus sabor Presunto 80g',0.086,241.59,5,4,4],
+   [1161,'Salgadinho Intensus sabor Queijo Parmesão 80g',0.085,238.95,5,3,4],
+   [1160,'Salgadinho Intensus sabor Requeijão Cremoso 80g',0.042,119.13,3,3,3]]],
+ ['Batatas',2.625,7377.38,86,67,69,[
+   [1179,'Batata Frita sabor Original 85g',0.608,1709.06,17,26,27],
+   [31,'Batata Frita sabor Original 40g',0.551,1547.22,26,25,25],
+   [1181,'Batata Frita sabor Cebola e Salsa 85g',0.443,1244.65,12,24,24],
+   [215,'Batata Palha 80g',0.419,1177.51,7,16,18],
+   [1178,'Batata Frita sabor Churrasco 85g',0.303,850.70,9,17,17],
+   [24,'Batata Frita sabor Churrasco 40g',0.302,848.24,15,20,20]]],
+ ['Biscoitos salgados',2.259,6349.47,90,41,42,[
+   [27,'Biscoito Mignon sabor Tradicional 180g',1.958,5502.07,79,35,35],
+   [28,'Biscoito Mignon sabor Bacon 180g',0.302,847.40,11,15,16]]],
+ ['Polvilho',2.106,5919.19,118,63,63,[
+   [874,'Biscoito de Polvilho sabor Tradicional 60g',1.841,5173.00,104,61,61],
+   [878,'Biscoito de Polvilho sabor Queijo 60g',0.266,746.19,14,16,16]]],
+ ['Recheio forneável',2.059,5788.00,40,7,8,[
+   [540,'Recheio Forn. KLAIN 1,010 kg — Ao Leite (bisnaga)',0.957,2690.93,16,5,5],
+   [541,'Recheio Forn. KLAIN 1,010 kg — Branco (bisnaga)',0.680,1910.37,11,4,4],
+   [545,'Recheio Forn. KLAIN 4 kg — Ao Leite (balde)',0.218,613.87,9,1,1],
+   [543,'Recheio Forn. KLAIN 1,010 kg — Avelã (bisnaga)',0.110,307.95,2,3,3],
+   [548,'Recheio Forn. KLAIN 4 kg — Avelã (balde)',0.050,139.20,2,1,1],
+   [952,'Recheio Forn. KLAIN 1,010 kg — Leitinho (bisnaga)',0.045,125.68,1,2,2]]],
+ ['(sem linha cadastrada)',1.549,4353.18,1,6,7,[
+   ['—','(produto sem nome no relatório)',1.549,4353.18,1,6,7]]],
+ ['Bolinhas',1.374,3861.47,79,25,25,[
+   [1135,'Salgadinho de Bolinhas sabor Churrasco 138g',0.695,1954.56,40,19,19],
+   [1136,'Salgadinho de Bolinhas sabor Bacon 138g',0.679,1906.91,39,20,20]]],
+ ['Pipocas',1.342,3771.44,133,60,62,[
+   [1162,'Pipoca Doce Rosa 100g (10 un.)',0.621,1744.87,72,31,33],
+   [943,'Pipoca Caramelizada 100g (10 un.)',0.377,1058.32,23,18,18],
+   [941,'Pipoca Doce Tradicional 100g (10 un.)',0.345,968.25,38,37,38]]],
+ ['Premium',1.000,2810.95,59,25,25,[
+   [1150,'Alfajor Premium Meio Amargo 38g',0.457,1284.34,27,23,23],
+   [1152,'Alfajor Premium Pasta de Amendoim 38g',0.307,861.65,18,12,12],
+   [1151,'Alfajor Premium Branco 38g',0.237,664.96,14,11,11]]],
+ ['Biscoitos doces',0.841,2363.46,23,37,38,[
+   [45,'Biscoito Folhadinho Doce 250g',0.841,2363.46,23,37,38]]],
+ ['Flocos de arroz',0.784,2203.51,18,19,20,[
+   [310,'Flocos de Arroz Tradicional 100g',0.613,1723.36,14,18,19],
+   [311,'Flocos de Arroz Integral 100g',0.171,480.15,4,4,5]]],
+ ['Fritar',0.543,1525.59,21,21,22,[
+   [924,'Pastilha de Trigo 250g',0.543,1525.59,21,21,22]]],
+ ['Mega milho',0.531,1491.13,34,18,18,[
+   [988,'Salgadinho MEGA MILHO sabor Requeijão 150g',0.169,474.48,11,11,11],
+   [986,'Salgadinho MEGA MILHO sabor Cebola e Salsa 150g',0.127,356.90,8,7,7],
+   [985,'Salgadinho MEGA MILHO sabor Presunto 150g',0.124,349.10,8,7,7],
+   [987,'Salgadinho MEGA MILHO sabor Queijo 150g',0.111,310.65,7,6,6]]],
+ ['Aperitivos',0.519,1459.69,29,12,12,[
+   [788,'Salgadinho Aperitivo sabor Churrasco 140g',0.280,786.58,16,10,10],
+   [790,'Salgadinho Aperitivo sabor Bacon 140g',0.105,294.45,6,7,7],
+   [789,'Salgadinho Aperitivo sabor Costelinha com Limão 140g',0.068,191.97,4,6,6],
+   [1170,'Salgadinho Aperitivo sabor Original 140g',0.066,186.69,4,6,6]]],
+ ['Rosquinhas',0.471,1324.46,19,10,10,[
+   [886,'Biscoito Rosquinha de Leite 500g',0.203,570.87,8,5,5],
+   [885,'Biscoito Rosquinha de Coco 500g',0.177,498.27,7,4,4],
+   [1097,'Biscoito Rosquinha de Coco 240g',0.049,137.71,2,5,5],
+   [1098,'Biscoito Rosquinha de Leite 240g',0.042,117.61,2,4,4]]],
+ ['Proteico',0.308,864.54,14,12,12,[
+   [1219,'Salg. Protein sabor Presunto Defumado 50g',0.132,371.52,6,7,7],
+   [1220,'Salg. Protein sabor Azeite de Oliva c/ Manjericão 50g',0.098,275.02,5,9,9],
+   [1221,'Salg. Protein sabor Barbecue 50g',0.078,218.00,4,6,6]]],
+ ['Potes moças e paçocas',0.261,732.70,9,13,13,[
+   [994,'Paçoca Tradicional 14g (pote 196g — 14 un.)',0.114,321.69,4,3,3],
+   [991,'Paçoca Zero Açúcar 14g (pote 560g — 40 un.)',0.050,141.20,1,3,3],
+   [990,'Paçoca Tradicional 14g (pote 560g — 40 un.)',0.040,113.40,1,6,6],
+   [105,'Chocomoça (pote 960g — 32 un.)',0.040,113.28,2,2,2],
+   [1014,'Paçoca Zero Açúcar 14g (pote 196g — 14 un.)',0.015,43.13,0,1,1]]],
+];
+const _COM_REPS=[];      // Resumo representantes — entra quando o Diego mandar o print/export
+const _COM_ABERTO=[];    // Pedidos em aberto e atrasados — idem
+const _comNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+const _comPct=p=>Number(p||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
+function _comAbaMenu(v){ return COM_MENU.find(x=>x[0]===v) || COM_MENU[0]; }
+function setComercialView(v){
+  hubView='comercial'; window._sbOrigemLixCfg=null;
+  comercialView=_comAbaMenu(v)[0];
+  try{ document.body.classList.remove('cp-focus'); }catch(e){}
+  renderSidebar(); renderComercial(); window.scrollTo(0,0);
+}
+function renderComercial(){
+  const main=document.getElementById('task-container'); if(!main) return;
+  const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
+  const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
+  const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
+  main.innerHTML=_cpTela('Pedidos','O que foi vendido no período — por produto, por representante e o que está em aberto.', _comCorpoHTML());
+}
+// Re-render só do miolo: os chips, os cards e a busca ficam de fora, então o foco do campo não se perde.
+function _comRefresh(){ const el=document.getElementById('com-conteudo'); if(el) el.innerHTML=_comConteudoHTML(); else renderComercial(); }
+function _comSetPer(p){ _comPer=p; renderComercial(); }
+function _comSetAba(a){ _comAba=a; renderComercial(); }
+function _comBuscaInput(v){ _comBusca=v; _comRefresh(); }
+function _comToggleLinha(i){ if(_comFechadas[i]) delete _comFechadas[i]; else _comFechadas[i]=1; _comRefresh(); }
+function _comTodasLinhas(fechar){ _COM_LINHAS.forEach((l,i)=>{ if(fechar) _comFechadas[i]=1; else delete _comFechadas[i]; }); _comRefresh(); }
+function _comSortBy(c){ if(_comSort.campo===c) _comSort.dir*=-1; else { _comSort.campo=c; _comSort.dir=(c==='nome'?1:-1); } _comRefresh(); }
+function _comTemDados(){ return _comPer==='ontem'; }
+const _COM_SC={nome:[0,1],valor:[2,3],cx:[3,4],cli:[4,5],ped:[5,6]};
+function _comOrdenar(arr,isProd){
+  const par=_COM_SC[_comSort.campo]||_COM_SC.valor, k=par[isProd?1:0], d=_comSort.dir;
+  return arr.slice().sort((a,b)=>{
+    const va=(isProd?a:a.l)[k], vb=(isProd?b:b.l)[k];
+    if(_comSort.campo==='nome') return String(va).localeCompare(String(vb),'pt-BR')*d;
+    return (Number(va)-Number(vb))*d;
+  });
+}
+function _comFiltradas(){
+  const q=_comNorm(_comBusca), out=[];
+  _COM_LINHAS.forEach((l,i)=>{
+    const nomeOk=!q||_comNorm(l[0]).indexOf(q)>=0;
+    const prods=(l[6]||[]).filter(p=>!q||nomeOk||_comNorm(p[1]).indexOf(q)>=0||String(p[0]).indexOf(q)>=0);
+    if(!q||nomeOk||prods.length) out.push({i:i,l:l,prods:prods});
+  });
+  return _comOrdenar(out,false);
+}
+function _comCSS(){
+  return `<style>
+  .com-tbl{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed}
+  .com-tbl th{font-size:11px;font-weight:700;color:var(--text3);text-align:right;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
+  .com-tbl th:hover{color:var(--text2)}
+  .com-tbl th.l,.com-tbl td.l{text-align:left}
+  .com-tbl td{padding:7px 10px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .com-tbl td.l{white-space:normal;overflow:hidden;text-overflow:ellipsis}
+  .com-lin td{font-weight:700;color:var(--text);background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer}
+  .com-lin:hover td{background:color-mix(in srgb,var(--blue-mid) 8%,var(--bg2))}
+  .com-prod td{color:var(--text2)}
+  .com-prod:hover td{background:color-mix(in srgb,var(--text) 4%,transparent)}
+  .com-cod{color:var(--text3);font-size:11.5px;margin-right:6px}
+  .com-sp td{height:13px;padding:0;border:none;background:none}
+  .com-tot td{font-weight:700;color:var(--text);border-top:2px solid var(--border);background:var(--bg2)}
+  .com-chip{font-size:12px;font-weight:600;padding:6px 13px;border-radius:999px;cursor:pointer;font-family:inherit;background:transparent;border:1px solid var(--border);color:var(--text2)}
+  .com-chip.on{border-color:var(--blue-mid);color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 12%,transparent)}
+  .com-sub{background:none;border:none;font-family:inherit;font-size:13.5px;font-weight:700;color:var(--text3);padding:9px 2px;cursor:pointer;border-bottom:2px solid transparent}
+  .com-sub.on{color:var(--blue-mid);border-bottom-color:var(--blue-mid)}
+  .com-nota{font-size:11.5px;color:var(--text3);margin-top:10px;line-height:1.5}
+  </style>`;
+}
+function _comCorpoHTML(){
+  const t=_comTemDados()?_COM_TOT:null;
+  const chips=COM_PERIODOS.map(p=>`<button class="com-chip${_comPer===p[0]?' on':''}" onclick="_comSetPer('${p[0]}')">${p[1]}</button>`).join('');
+  const kpis=_cpKPIcards([
+    _cpKPI('Valor vendido', t?_cpBRL(t.valor):'—'),
+    _cpKPI('Caixas', t?_cpNum(t.cx):'—'),
+    _cpKPI('Pedidos', t?_cpNum(t.ped):'—'),
+    _cpKPI('Clientes', t?_cpNum(t.cli):'—'),
+    _cpKPI('Ticket médio', t?_cpBRL(t.valor/t.ped):'—'),
+  ]);
+  const abas=[['produtos','Produtos'],['representantes','Representantes'],['aberto','Pedidos em aberto']]
+    .map(a=>`<button class="com-sub${_comAba===a[0]?' on':''}" onclick="_comSetAba('${a[0]}')">${a[1]}</button>`).join('');
+  // ⚠️ o campo PRECISA ter uma classe: existe uma regra global input:not([class]){height:40px} que
+  // ignoraria a altura inline (mesma armadilha já documentada nos selects pequenos de Compras).
+  const busca=_comAba==='produtos'&&_comTemDados()
+    ? `<input id="com-busca" value="${escapeAttr(_comBusca)}" oninput="_comBuscaInput(this.value)" placeholder="Buscar produto ou linha" class="com-busca" style="width:230px;height:32px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-family:inherit;font-size:12.5px;padding:0 10px">` : '';
+  return `${_comCSS()}
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px">${chips}</div>
+    ${kpis}
+    <div style="display:flex;align-items:center;gap:20px;border-bottom:1px solid var(--border);margin-bottom:12px">
+      ${abas}<div style="margin-left:auto;padding-bottom:6px">${busca}</div>
+    </div>
+    <div id="com-conteudo">${_comConteudoHTML()}</div>`;
+}
+function _comConteudoHTML(){
+  if(!_comTemDados()) return _cpVazio('Só o período de ontem está carregado. Os outros entram quando vier o export do Power BI.');
+  if(_comAba==='representantes') return _cpVazio('Aguardando os dados do resumo de representantes.');
+  if(_comAba==='aberto') return _cpVazio('Aguardando os dados dos pedidos em aberto.');
+  return _comProdutosHTML();
+}
+function _comProdutosHTML(){
+  // semSeta = a coluna % ordena pelo mesmo campo do Valor; a seta aparece só uma vez, no Valor.
+  const th=(c,lab,cls,semSeta)=>{ const on=_comSort.campo===c;
+    return `<th class="${cls||''}" onclick="_comSortBy('${c}')" style="${on?'color:var(--blue-mid)':''}">${lab}${on&&!semSeta?` <i class="ti ti-${_comSort.dir<0?'arrow-down':'arrow-up'}" style="font-size:11px"></i>`:''}</th>`; };
+  const linhas=_comFiltradas();
+  const buscando=!!_comBusca.trim();
+  let corpo='';
+  linhas.forEach((g,n)=>{
+    const l=g.l, fechada=_comFechadas[g.i]&&!buscando;
+    if(n) corpo+=`<tr class="com-sp"><td colspan="6"></td></tr>`;
+    corpo+=`<tr class="com-lin" onclick="_comToggleLinha(${g.i})">
+      <td class="l"><i class="ti ti-chevron-${fechada?'right':'down'}" style="color:var(--text3);font-size:13px;margin-right:4px"></i>${escapeHTML(l[0])}</td>
+      <td>${_comPct(l[1])}</td><td>${_cpBRL(l[2])}</td><td>${_cpNum(l[3])}</td><td>${_cpNum(l[4])}</td><td>${_cpNum(l[5])}</td></tr>`;
+    if(fechada) return;
+    _comOrdenar(g.prods,true).forEach(p=>{
+      corpo+=`<tr class="com-prod">
+        <td class="l" style="padding-left:32px" title="${escapeAttr(p[1])}"><span class="com-cod">${p[0]} ·</span>${escapeHTML(p[1])}</td>
+        <td>${_comPct(p[2])}</td><td>${_cpBRL(p[3])}</td><td>${_cpNum(p[4])}</td><td>${_cpNum(p[5])}</td><td>${_cpNum(p[6])}</td></tr>`;
+    });
+  });
+  if(!linhas.length) corpo=`<tr><td colspan="6">${_cpVazio('Nenhum produto com esse nome.')}</td></tr>`;
+  // Rodapé: sem busca mostra o TOTAL do relatório (com a sobra das linhas que não vieram no print);
+  // com busca, soma só o que está na tela.
+  let rodape='';
+  if(buscando){
+    const sv=linhas.reduce((s,g)=>s+g.prods.reduce((a,p)=>a+p[3],0),0);
+    const sc=linhas.reduce((s,g)=>s+g.prods.reduce((a,p)=>a+p[4],0),0);
+    const np=linhas.reduce((s,g)=>s+g.prods.length,0);
+    rodape=`<tr class="com-tot"><td class="l">${_cpNum(np)} produtos encontrados</td><td></td><td>${_cpBRL(sv)}</td><td>${_cpNum(sc)}</td><td></td><td></td></tr>`;
+  }else{
+    const sv=_COM_LINHAS.reduce((s,l)=>s+l[2],0), sc=_COM_LINHAS.reduce((s,l)=>s+l[3],0);
+    const rv=_COM_TOT.valor-sv, rc=_COM_TOT.cx-sc;
+    if(rv>0.01) rodape+=`<tr class="com-sp"><td colspan="6"></td></tr>
+      <tr class="com-prod"><td class="l" style="font-style:italic">Demais linhas (não vieram no print)</td>
+      <td>${_comPct(rv/_COM_TOT.valor*100)}</td><td>${_cpBRL(rv)}</td><td>${_cpNum(rc)}</td><td>—</td><td>—</td></tr>`;
+    rodape+=`<tr class="com-tot"><td class="l">Total</td><td>100,00%</td><td>${_cpBRL(_COM_TOT.valor)}</td><td>${_cpNum(_COM_TOT.cx)}</td><td>${_cpNum(_COM_TOT.cli)}</td><td>${_cpNum(_COM_TOT.ped)}</td></tr>`;
+  }
+  const fechadas=Object.keys(_comFechadas).length;
+  return `<div class="cp-card" style="padding:4px 6px 10px">
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px 2px">
+      <span style="font-size:11.5px;color:var(--text3)">${_cpNum(linhas.length)} linhas de produto</span>
+      <button onclick="_comTodasLinhas(${fechadas?0:1})" style="margin-left:auto;background:none;border:none;color:var(--text3);font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer">${fechadas?'Abrir todas':'Recolher todas'}</button>
+    </div>
+    <table class="com-tbl">
+      <colgroup><col style="width:42%"><col style="width:9%"><col style="width:16%"><col style="width:11%"><col style="width:11%"><col style="width:11%"></colgroup>
+      <thead><tr>${th('nome','Linha / produto','l')}${th('valor','%','',1)}${th('valor','Valor')}${th('cx','Caixas')}${th('cli','Clientes')}${th('ped','Pedidos')}</tr></thead>
+      <tbody>${corpo}${rodape}</tbody>
+    </table>
+    <div class="com-nota">Clientes e pedidos não somam entre as linhas — o mesmo pedido leva produtos de linhas diferentes, por isso o total vem do relatório.<br>Transcrito do Power BI (ontem). As linhas do print somam R$ 280.122,26; a diferença até o total está na linha "Demais linhas".</div>
+  </div>`;
+}
+// ════ FIM DO BLOCO COMERCIAL ════
+
 // ════ INÍCIO DO BLOCO FINANCEIRO ════
 // FINANCEIRO — recomeço (set/2026). O Diego pediu para tirar as 14 telas antigas e começar do zero, mais
 // simples: hoje são só 2 abas, sem grupos na sidebar — Contas a pagar e Contas a receber, ainda em branco.
@@ -16266,12 +16567,13 @@ function renderSidebar(){
   const _cv=(typeof comprasView!=='undefined')?comprasView:'';
   const _rv=(typeof rhView!=='undefined')?rhView:'';
   const _fv=(typeof financeiroView!=='undefined')?financeiroView:'';
+  const _comv=(typeof comercialView!=='undefined')?comercialView:'';
   // Financeiro (set/2026, recomeço): só 2 abas, sem legendas de grupo — ver o bloco do Financeiro.
   const _finSbHTML=(typeof FIN_MENU!=='undefined')? FIN_MENU.map(it=>_areaItem('financeiro',_fv,it[0],it[1],it[2],'setFinanceiroView')).join('') : '';
   const areasHTML = hubGroupDivider('ÁREAS')
-    // Comercial (set/2026): só o setor criado, ainda sem telas — as abas entram aqui quando forem definidas.
+    // Comercial (set/2026): 1ª tela = Pedidos (o resumo do Power BI). Novas abas entram em COM_MENU.
     + grupo('comercial','ti-briefcase','Comercial',
-        `<div style="padding:5px 12px 8px 32px;font-size:11.5px;color:var(--text3);font-style:italic">Em breve</div>`
+        (typeof COM_MENU!=='undefined'? COM_MENU.map(it=>_areaItem('comercial',_comv,it[0],it[1],it[2],'setComercialView')).join('') : '')
       , 'var(--text2)')
     + grupo('compras','ti-shopping-cart','Compras',
         _areaItem('compras',_cv,'painel','ti-layout-dashboard','Painel','setComprasView') +
@@ -22448,6 +22750,10 @@ function render(){
   }
   if(hubView === 'financeiro'){
     renderFinanceiro();
+    return;
+  }
+  if(hubView === 'comercial'){
+    renderComercial();
     return;
   }
   if(hubView === 'producao'){
@@ -41974,6 +42280,7 @@ function _tfSaveRoute(){
       cpItemOrigem:_cpItemOrigem, cpFornSel:_cpFornSel,
       manutencaoView:manutencaoView, producaoView:producaoView, qualidadeView:qualidadeView, marketingView:marketingView, rhView:(typeof rhView!=='undefined'?rhView:'organograma'),
       financeiroView:(typeof financeiroView!=='undefined'?financeiroView:'pagar'),
+      comercialView:(typeof comercialView!=='undefined'?comercialView:'pedidos'), comAba:(typeof _comAba!=='undefined'?_comAba:'produtos'), comPer:(typeof _comPer!=='undefined'?_comPer:'ontem'),
       meuDiaSetor:meuDiaSetor, prodAba:prodAba,
       chatSel:(typeof _chatSel!=='undefined'?_chatSel:null)
     }));
@@ -41995,6 +42302,11 @@ function _tfRestoreRoute(){
     if(r.hubView==='financeiro' && typeof renderFinanceiro==='function'){
       hubView='financeiro'; financeiroView=r.financeiroView||'pagar';   // aba antiga (Painel, DRE…) cai em Contas a pagar
       renderSidebar(); renderFinanceiro(); return true;
+    }
+    if(r.hubView==='comercial' && typeof renderComercial==='function'){
+      hubView='comercial'; comercialView=r.comercialView||'pedidos';
+      if(r.comAba) _comAba=r.comAba; if(r.comPer) _comPer=r.comPer;
+      renderSidebar(); renderComercial(); return true;
     }
     if(r.hubView==='manutencao'){ hubView='manutencao'; manutencaoView=r.manutencaoView||'ordens'; renderSidebar(); renderManutencao(); return true; }
     if(r.hubView==='producao'){ hubView='producao'; producaoView=r.producaoView||'produtos'; renderSidebar(); renderProducao(); return true; }

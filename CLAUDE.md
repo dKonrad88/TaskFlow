@@ -422,6 +422,44 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-09-22 — PC da Empresa — NOVA ABA **Comercial › Pedidos** (o resumo do Power BI dentro do HUB)
+O Diego quer trazer para o HUB as 3 telas que o comercial usa hoje no Power BI (Resumo linhas/produtos · Resumo
+representantes · Pedidos em aberto/atrasados, sem o gráfico), **numa aba só**, porque "no Power BI tudo é muito
+limitado". Mostrei 5 mockups, ele escolheu o **formato 1**: topo fixo (chips de período + cards de indicadores) e
+**sub-abas** que trocam só o conteúdo; ele também aprovou a ideia de **comparar com o período anterior** (dos cards)
+e pediu **sem TOP 25** e com **uma linha de respiro entre os grupos de produto**, como no Power BI.
+- **Onde fica:** bloco único entre `// ════ INÍCIO/FIM DO BLOCO COMERCIAL ════`, logo **antes** do bloco FINANCEIRO.
+  Fiação fora do bloco: item na sidebar (`COM_MENU` → `_areaItem('comercial',…,'setComercialView')`, substituiu o
+  "Em breve"), dispatch em `render()` (`hubView==='comercial'`) e a rota `tf_route` (guarda `comercialView`,
+  `comAba` e `comPer`). Para uma aba nova na área: entrada em `COM_MENU` + a tela.
+- **Tela:** `renderComercial` → `_cpTela('Pedidos', …)`. Chips de período (Em aberto · Ontem · Hoje · Semana ·
+  Semana ant. · Mês · Mês ant. · Ano), 5 cards (`_cpKPIcards`): Valor vendido · Caixas · Pedidos · Clientes ·
+  **Ticket médio** (valor÷pedidos, não existe no Power BI). Sub-abas **Produtos · Representantes · Pedidos em
+  aberto** — as 2 últimas em "aguardando os dados". Tabela de produtos agrupada por linha, com **espaçador de 13px
+  entre os grupos**, cabeçalho **ordenável** (nome/valor/caixas/clientes/pedidos, clicar inverte), **recolher a
+  linha** (clique no cabeçalho do grupo) + "Recolher/Abrir todas", e **busca** por produto, código ou linha
+  (mostra só os produtos que casam; com busca ativa o rodapé soma o que está na tela).
+- ⚠️ **DADO ESTÁTICO** transcrito dos prints (período **ONTEM**): `_COM_TOT` + `_COM_LINHAS` = **27 linhas, 103
+  produtos**. `_COM_REPS`/`_COM_ABERTO` estão vazios à espera dos prints/export. Regra P0 respeitada: a tela só lê.
+- 📌 **Conferências dos números:** as linhas do print somam **R$ 280.122,26 e 3.944 cx**, contra o total de
+  **R$ 281.047,25 / 3.954 cx** do rodapé → faltam **R$ 924,99 e 10 caixas** (as últimas linhas minúsculas não
+  apareceram no print). Em vez de esconder, a tabela mostra a linha **"Demais linhas (não vieram no print)"** e
+  fecha no total. **Clientes e pedidos NÃO somam** entre linhas (o mesmo pedido leva produtos de várias linhas) —
+  o total vem do relatório, nunca da soma; há nota de rodapé na tela dizendo isso.
+  O print tem ainda uma **linha SEM NOME** (R$ 4.353,18 · 1 cx · 6 clientes), exibida como "(sem linha cadastrada)"
+  — vale o Diego conferir no cadastro. E o resumo de **representantes** (print de "Hoje") fecha em R$ 90.858,24 ·
+  1.431 cx · 96 clientes · 99 pedidos, período **diferente** do print de produtos.
+- ⚠️ **Armadilha de CSS repetida:** o campo de busca PRECISA ter classe (`com-busca`) — a regra global
+  `input:not([class]){height:40px}` ignoraria a altura inline. Mesma pegadinha já documentada nos selects de Compras.
+- Testado em Edge headless por script (harness com iframe): 27 linhas/103 produtos + linha de resto, total e ticket
+  certos, ordenar por caixas põe Palitinhos no topo, recolher/abrir, busca ("palitinho" → 8, "cacauchef" → 1, "zzz"
+  → vazio), sub-abas e períodos sem dado caindo no estado vazio, item da sidebar ativo, rota, **0 erros de JS**, sem
+  rolagem horizontal. Fotos nos temas claro e escuro.
+- ⏳ **Em aberto:** (1) o Diego vai mandar o print do **resumo de representantes** e depois o de **pedidos em
+  aberto**; (2) a **comparação com o período anterior** nos cards só liga quando houver um 2º período carregado;
+  (3) decidir de onde vem o dado no futuro (export do Power BI colado, como no PCP, × integração); (4) nos pedidos
+  em aberto, definir a partir de quantos dias a linha fica vermelha (sugeri 7 âmbar / 15 vermelho).
+
 ### 2026-09-19 (b) — PC da Empresa — FINANCEIRO ZERADO: só Contas a pagar + Contas a receber (em branco) + NOTA com o que existia
 Pedido do Diego: "pode tirar tudo fora, vou começar bem mais simples e do zero; cria uma NOTA com o resumo de cada aba; deixa só
 Contas a Pagar e Contas a Receber, sem subtítulo". **Saiu o bloco inteiro** das 14 telas (~5.300 linhas, `index.html` 5,1 → 4,6 MB):
