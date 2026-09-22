@@ -12273,6 +12273,34 @@ const _COM_REPS=[];      // Resumo representantes — entra quando o Diego manda
 const _COM_ABERTO=[];    // Pedidos em aberto e atrasados — idem
 const _comNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
 const _comPct=p=>Number(p||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
+const _comN=v=>v==null?'—':_cpNum(v);   // clientes não somam entre dias → célula fica em "—"
+// SEMANA (segunda a sexta) — DERIVADA, não transcrita: hoje é terça, então a semana até agora é
+// segunda (ontem) + terça (hoje). Valor, caixas e PEDIDOS somam (cada pedido é um pedido).
+// CLIENTES não: o mesmo cliente pode ter comprado nos dois dias e o Power BI conta sem repetir —
+// aqui não dá, então a coluna fica em "—" e o card mostra "até N". Ao entrar um dia novo, é só
+// incluir a chave em `dias` abaixo.
+_COM_DADOS.semana=(function(){
+  const dias=['ontem','hoje'].map(k=>_COM_DADOS[k]).filter(Boolean);
+  if(dias.length<2) return null;
+  const mapa={}, ordem=[];
+  dias.forEach(d=>d.linhas.forEach(l=>{
+    const k=_comNorm(l[0]); let e=mapa[k];
+    if(!e){ e=mapa[k]={nome:l[0],valor:0,cx:0,ped:0,prod:{},pOrdem:[]}; ordem.push(k); }
+    e.valor+=l[2]; e.cx+=l[3]; e.ped+=l[5];
+    (l[6]||[]).forEach(p=>{ let q=e.prod[p[0]];
+      if(!q){ q=e.prod[p[0]]={cod:p[0],nome:p[1],valor:0,cx:0,ped:0}; e.pOrdem.push(p[0]); }
+      q.valor+=p[3]; q.cx+=p[4]; q.ped+=p[6]; });
+  }));
+  const tot={ valor:dias.reduce((s,d)=>s+d.tot.valor,0), cx:dias.reduce((s,d)=>s+d.tot.cx,0),
+              ped:dias.reduce((s,d)=>s+d.tot.ped,0), cli:null, cliMax:dias.reduce((s,d)=>s+d.tot.cli,0) };
+  const linhas=ordem.map(k=>{ const e=mapa[k];
+    const prods=e.pOrdem.map(c=>{ const q=e.prod[c]; return [q.cod,q.nome,q.valor/tot.valor*100,q.valor,q.cx,null,q.ped]; })
+                        .sort((a,b)=>b[3]-a[3]);
+    return [e.nome, e.valor/tot.valor*100, e.valor, e.cx, null, e.ped, prods];
+  }).sort((a,b)=>b[2]-a[2]);
+  return { rot:'esta semana', tot:tot, linhas:linhas, base:null, parcial:true,
+           nota:'Semana de segunda a sexta — por enquanto soma segunda e terça. Clientes não somam entre os dias (o mesmo cliente pode ter comprado nos dois), por isso a coluna fica em "—".' };
+})();
 function _comAbaMenu(v){ return COM_MENU.find(x=>x[0]===v) || COM_MENU[0]; }
 function setComercialView(v){
   hubView='comercial'; window._sbOrigemLixCfg=null;
@@ -12361,7 +12389,7 @@ function _comCorpoHTML(){
   const d=_comD(), t=d?d.tot:null, b=_comBase(), bt=b?b.tot:null;
   const chips=COM_PERIODOS.map(p=>`<button class="com-chip${_comPer===p[0]?' on':''}" onclick="_comSetPer('${p[0]}')">${p[1]}</button>`).join('');
   const kpi=(lab,val,extra)=>`<div class="cp-card" style="padding:13px 16px"><div class="cp-kpi"><s>${lab}</s><b>${val}</b></div>${extra?`<div style="font-size:11.5px;font-weight:600;margin-top:3px">${extra}</div>`:''}</div>`;
-  const cmp=(a,ba,moeda)=>{ if(!bt||ba==null) return ''; const dif=a-ba, pct=ba?dif/ba*100:0;
+  const cmp=(a,ba,moeda)=>{ if(!bt||a==null||ba==null) return ''; const dif=a-ba, pct=ba?dif/ba*100:0;
     const cor=dif>0?'var(--success)':(dif<0?'var(--danger)':'var(--text3)');
     const abs=moeda?_cpBRL(Math.abs(dif)):_cpNum(Math.abs(dif));
     return `<span style="color:${cor}">${dif>=0?'▲':'▼'} ${_cpNum(Math.abs(pct),1)}% · ${abs} ${dif>=0?'a mais':'a menos'}</span> <span style="color:var(--text3);font-weight:600">que ${b.rot}</span>`; };
@@ -12369,11 +12397,12 @@ function _comCorpoHTML(){
     ${kpi('Valor vendido', t?_cpBRL(t.valor):'—', t&&bt?cmp(t.valor,bt.valor,1):'')}
     ${kpi('Caixas', t?_cpNum(t.cx):'—', t&&bt?cmp(t.cx,bt.cx):'')}
     ${kpi('Pedidos', t?_cpNum(t.ped):'—', t&&bt?cmp(t.ped,bt.ped):'')}
-    ${kpi('Clientes', t?_cpNum(t.cli):'—', t&&bt?cmp(t.cli,bt.cli):'')}
+    ${kpi('Clientes', t?(t.cli!=null?_cpNum(t.cli):'até '+_cpNum(t.cliMax)):'—', (t&&bt&&t.cli!=null)?cmp(t.cli,bt.cli):((t&&t.cli==null)?'<span style="color:var(--text3)">pode ter cliente repetido nos dois dias</span>':''))}
     ${kpi('Ticket médio', t?_cpBRL(t.valor/t.ped):'—', t&&bt?cmp(t.valor/t.ped,bt.valor/bt.ped,1):'')}
   </div>
   <div style="font-size:11.5px;color:var(--text3);margin-bottom:16px">${
     !t?'Este período ainda não tem dado carregado.'
+    : d.nota?escapeHTML(d.nota)
     : bt?('Comparando com '+b.rot+(d.parcial?' — lembrando que o dia de hoje ainda não fechou.':'.'))
     : 'Sem período anterior carregado para comparar.'}</div>`;
   const abas=[['produtos','Produtos'],['representantes','Representantes'],['aberto','Pedidos em aberto']]
@@ -12413,13 +12442,13 @@ function _comProdutosHTML(){
     if(n) corpo+=`<tr class="com-sp"><td colspan="${nc}"></td></tr>`;
     corpo+=`<tr class="com-lin" onclick="_comToggleLinha(${g.i})">
       <td class="l"><i class="ti ti-chevron-${fechada?'right':'down'}" style="color:var(--text3);font-size:13px;margin-right:4px"></i>${escapeHTML(l[0])}</td>
-      <td>${_comPct(l[1])}</td><td>${_cpBRL(l[2])}</td>${vs(l[2], bl?bl.l[2]:null)}<td>${_cpNum(l[3])}</td><td>${_cpNum(l[4])}</td><td>${_cpNum(l[5])}</td></tr>`;
+      <td>${_comPct(l[1])}</td><td>${_cpBRL(l[2])}</td>${vs(l[2], bl?bl.l[2]:null)}<td>${_cpNum(l[3])}</td><td>${_comN(l[4])}</td><td>${_cpNum(l[5])}</td></tr>`;
     if(fechada) return;
     _comOrdenar(g.prods,true).forEach(p=>{
       const bp=bl?bl.p[p[0]]:null;
       corpo+=`<tr class="com-prod">
         <td class="l" style="padding-left:32px" title="${escapeAttr(p[1])}"><span class="com-cod">${p[0]} ·</span>${escapeHTML(p[1])}</td>
-        <td>${_comPct(p[2])}</td><td>${_cpBRL(p[3])}</td>${vs(p[3], bp?bp[3]:null)}<td>${_cpNum(p[4])}</td><td>${_cpNum(p[5])}</td><td>${_cpNum(p[6])}</td></tr>`;
+        <td>${_comPct(p[2])}</td><td>${_cpBRL(p[3])}</td>${vs(p[3], bp?bp[3]:null)}<td>${_cpNum(p[4])}</td><td>${_comN(p[5])}</td><td>${_cpNum(p[6])}</td></tr>`;
     });
   });
   if(!linhas.length) corpo=`<tr><td colspan="${nc}">${_cpVazio('Nenhum produto com esse nome.')}</td></tr>`;
@@ -12437,7 +12466,7 @@ function _comProdutosHTML(){
     if(rv>0.01) rodape+=`<tr class="com-sp"><td colspan="${nc}"></td></tr>
       <tr class="com-prod"><td class="l" style="font-style:italic">Demais linhas (não vieram no print)</td>
       <td>${_comPct(rv/d.tot.valor*100)}</td><td>${_cpBRL(rv)}</td>${cmp?'<td>—</td>':''}<td>${rc>0?_cpNum(rc):'—'}</td><td>—</td><td>—</td></tr>`;
-    rodape+=`<tr class="com-tot"><td class="l">Total</td><td>100,00%</td><td>${_cpBRL(d.tot.valor)}</td>${vs(d.tot.valor, b?b.tot.valor:null)}<td>${_cpNum(d.tot.cx)}</td><td>${_cpNum(d.tot.cli)}</td><td>${_cpNum(d.tot.ped)}</td></tr>`;
+    rodape+=`<tr class="com-tot"><td class="l">Total</td><td>100,00%</td><td>${_cpBRL(d.tot.valor)}</td>${vs(d.tot.valor, b?b.tot.valor:null)}<td>${_cpNum(d.tot.cx)}</td><td>${d.tot.cli!=null?_cpNum(d.tot.cli):'até '+_cpNum(d.tot.cliMax)}</td><td>${_cpNum(d.tot.ped)}</td></tr>`;
   }
   const fechadas=Object.keys(_comFechadas).length;
   const cols=cmp
@@ -12453,7 +12482,7 @@ function _comProdutosHTML(){
       <thead><tr>${th('nome','Linha / produto','l')}${th('valor','%','',1)}${th('valor','Valor')}${cmp?`<th>vs. ${b.rot}</th>`:''}${th('cx','Caixas')}${th('cli','Clientes')}${th('ped','Pedidos')}</tr></thead>
       <tbody>${corpo}${rodape}</tbody>
     </table>
-    <div class="com-nota">Clientes e pedidos não somam entre as linhas — o mesmo pedido leva produtos de linhas diferentes, por isso o total vem do relatório. As caixas por produto vêm arredondadas do Power BI (há produto com 0 caixa e valor acima de zero), então a soma delas também não fecha exatamente.<br>Transcrito do Power BI (${d.rot}): as linhas do print somam ${_cpBRL(sv)}; a diferença até o total está na linha "Demais linhas".</div>
+    <div class="com-nota">Clientes e pedidos não somam entre as linhas — o mesmo pedido leva produtos de linhas diferentes, por isso o total vem do relatório. As caixas por produto vêm arredondadas do Power BI (há produto com 0 caixa e valor acima de zero), então a soma delas também não fecha exatamente.<br>${_comPer==='semana'?`Somado dos dias já carregados: as linhas dão ${_cpBRL(sv)}; a diferença até o total está na linha "Demais linhas".`:`Transcrito do Power BI (${d.rot}): as linhas do print somam ${_cpBRL(sv)}; a diferença até o total está na linha "Demais linhas".`}</div>
   </div>`;
 }
 // ════ FIM DO BLOCO COMERCIAL ════
@@ -14406,7 +14435,11 @@ let _mcBusca='';
 let _mcDraft={};        // conversa → texto digitado (sobrevive a re-render e a troca de conversa)
 let _mcFeedN=-1;        // nº de mensagens desenhadas (para saber se chegou coisa nova)
 function _mcGuardar(){ try{ localStorage.setItem(LS_MC, JSON.stringify({aberto:!!_mc.aberto, sel:_mc.sel||null, view:_mc.view||'lista'})); }catch(e){} }
-function _mcVisivel(){ return !(typeof hubView!=='undefined' && hubView==='taskflow' && typeof currentTab!=='undefined' && currentTab==='chat'); }
+// (set/2026) O chat inteiro está ESCONDIDO a pedido do Diego — a pílula "Mensagens" não aparece em
+// tela nenhuma. O código continua pronto: para religar, devolva o `return` comentado abaixo.
+function _mcVisivel(){ return false;
+  // return !(typeof hubView!=='undefined' && hubView==='taskflow' && typeof currentTab!=='undefined' && currentTab==='chat');
+}
 function _mcEstreita(){ return window.innerWidth>0 && window.innerWidth<=760; }
 // Conversa aberta: {g} (existe) ou {pend:pessoaId} (direta que nasce no 1º envio) ou null.
 function _mcConv(){
@@ -16734,7 +16767,9 @@ function renderSidebar(){
     navSubItem('projetos-pro','ti-folders','Projetos', {badge: projectsPro.filter(p=>p.status==='ativo').length||null}) +
     navSubItem('processos','ti-route','Processos') +
     navSubItem('reunioes','ti-microphone','Reuniões', {badge: reunHoje||null, badgeClass:'warn'}) +
-    navSubItem('chat','ti-messages','Chat - Grupos', {badge: (typeof _chatTotalNaoLidas==='function' ? _chatTotalNaoLidas() : 0)||null}) +
+    // CHAT ESCONDIDO (set/2026, pedido do Diego: "tira tudo, mas deixa pronto no backend"). Todo o
+    // módulo continua no código e funcionando — só não aparece: saiu este item e a pílula flutuante
+    // (ver _mcVisivel). Para religar: repor esta linha e o `return true` do _mcVisivel.
     navSubItem('anotacoes','ti-notes','Notas') +
     navSubItem('rotinas','ti-repeat','Rotinas')
   , 'var(--blue-mid)');
@@ -16768,8 +16803,9 @@ function renderSidebar(){
         _areaItem('compras',_cv,'insumos','ti-cube','Insumos','setComprasView') +
         _areaItem('compras',_cv,'fornecedores','ti-building-store','Fornecedores','setComprasView') +
         _areaItem('compras',_cv,'historico','ti-file-invoice','Histórico de compras','setComprasView') +
-        _areaItem('compras',_cv,'ordens','ti-clipboard-list','Ordens de compra','setComprasView') +
-        _areaItem('compras',_cv,'noticias','ti-news','Notícias','setComprasView')
+        // "Notícias" saiu da sidebar (set/2026, pedido do Diego). A tela continua no código; para
+        // religar, é só repor o _areaItem aqui. (A aba Notícias DENTRO da ficha do item não foi mexida.)
+        _areaItem('compras',_cv,'ordens','ti-clipboard-list','Ordens de compra','setComprasView')
       , 'var(--text2)')
     + grupo('financeiro','ti-cash','Financeiro', _finSbHTML, 'var(--text2)')
     + grupo('manutencao','ti-tool','Manutenção',
@@ -42479,6 +42515,7 @@ function _tfRestoreRoute(){
     if(r.prodAba) prodAba=r.prodAba;
     if(r.hubView==='compras'){
       hubView='compras'; comprasView=r.comprasView||'painel';
+      if(comprasView==='noticias') comprasView='painel';   // aba saiu da sidebar (set/2026)
       _cpItemSel=r.cpItemSel||null; _cpFichaView=r.cpFichaView||'resumo';
       _cpItemOrigem=r.cpItemOrigem||'insumos'; _cpFornSel=r.cpFornSel||null;
       if(r.cpNotView) _cpNotView=r.cpNotView;
@@ -42500,8 +42537,8 @@ function _tfRestoreRoute(){
     if(r.hubView==='rh'){ hubView='rh'; rhView=r.rhView||'organograma'; renderSidebar(); renderRH(); return true; }
     if(r.hubView==='taskflow'){ hubView='taskflow'; currentTab=r.currentTab||'hoje';
       // Análise e Oficina saíram da sidebar (set/2026): rota antiga salva nelas volta ao Meu Dia
-      if(currentTab==='analise'||currentTab==='oficina') currentTab='hoje';
-      if(currentTab==='chat' && r.chatSel && typeof _chatSel!=='undefined') _chatSel=r.chatSel;
+      // Análise, Oficina e Chat saíram da sidebar: rota antiga salva neles volta ao Meu Dia
+      if(currentTab==='analise'||currentTab==='oficina'||currentTab==='chat') currentTab='hoje';
       const _tb=document.querySelector('.main .topbar'); if(_tb) _tb.style.display=''; renderSidebar(); render(); return true; }
   }catch(e){ console.warn('[rota] restore falhou',e); hubView='meudia'; }
   return false; // meudia (ou fallback): deixa o boot renderizar o padrão

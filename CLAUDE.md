@@ -422,6 +422,28 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-22 (c) — PC da Empresa — Comercial: período SEMANA (derivado) · sai a aba Notícias de Compras · CHAT ESCONDIDO
+- **Semana (seg–sex) DERIVADA, não transcrita.** Hoje é terça, então a semana até agora é segunda (ontem) + terça
+  (hoje): `_COM_DADOS.semana` é montado por um IIFE que soma os dias (chave `dias` no topo dele — para incluir
+  quarta, é só acrescentar a chave). Une por NOME da linha e CÓDIGO do produto, reordena por valor e recalcula o %.
+  Resultado: **29 linhas · 113 produtos · R$ 371.905,49 · 5.385 cx · 367 pedidos**, ticket R$ 1.013,37.
+  ⚠️ **Valor, caixas e PEDIDOS somam; CLIENTES NÃO** (o mesmo cliente pode ter comprado nos dois dias e o Power BI
+  conta sem repetir). Então a coluna Clientes vira **"—"** na semana e o card mostra **"até 332"** com o aviso
+  "pode ter cliente repetido nos dois dias". Nota da semana explica tudo isso sob os cards.
+- **Compras › Notícias saiu da sidebar** (pedido do Diego). A tela e o código continuam; religar = repor o
+  `_areaItem` de 'noticias'. Rota antiga salva em 'noticias' cai no Painel. ⚠️ A aba **Notícias DENTRO da ficha do
+  item** (mercado do amendoim) **não** foi tocada — se ele quiser tirar também, é outro ponto.
+- ⭐ **CHAT ESCONDIDO POR INTEIRO** ("tira tudo, mas deixa pronto no backend"): saiu o item **Chat - Grupos** da
+  sidebar (Gestão) e a **pílula flutuante "Mensagens"** — `_mcVisivel()` agora retorna `false` (o `return` original
+  ficou comentado na linha de baixo). **Nada foi removido:** `renderChatGrupos`, todo o mini-chat, as 3 pontes com o
+  Hub e os avisos automáticos continuam no arquivo e funcionando. **Religar = 2 linhas:** repor o `navSubItem('chat'…)`
+  e devolver o `return` do `_mcVisivel`. Rota antiga salva no chat volta ao Meu Dia.
+  ⚠️ Os **avisos automáticos** (OS aberta/concluída, necessidade da semana) continuam publicando nos grupos ao agir —
+  invisível e inofensivo, e quando o chat voltar o histórico estará lá. Se incomodar, é desligar em `CHAT_AVISOS`.
+- Testado em Edge headless: semana com 29 linhas e os totais acima (Amendoim R$ 56.335,51 = 38.953,82+17.381,69 ✓,
+  786 cx = 524+262 ✓, 231 pedidos = 166+65 ✓), clientes em "—", troca de período, ordenar por clientes (tudo nulo)
+  sem quebrar, sidebar sem Chat e sem Notícias, pílula do chat fora da tela mas funções intactas, **0 erros de JS**.
+
 ### 2026-09-22 (b) — PC da Empresa — Comercial › Pedidos: 2º período (HOJE) + **comparação ligada**
 O Diego mandou o print dos produtos de **hoje**. Os dados deixaram de ser um período só: agora `_COM_DADOS` tem uma
 entrada por período (`hoje` e `ontem`), cada uma com `tot`, `linhas` e **`base`** (com quem se compara) — acrescentar
