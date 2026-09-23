@@ -447,7 +447,9 @@ continuam no arquivo e **não têm relação** com o bloco novo — não confund
   (DDV < 7, é o ⚠) · **Folga 80** (10+ dias) · **A produzir 25** (vai faltar **e não tem OP/OC aberta** — definição
   minha, já que "a produzir" no SISPRO depende de um DDV-alvo que ele ainda não escolheu).
 - **Gráfico recolhido** numa faixa de uma linha; clicar num produto abre ali (área + linha + **média** tracejada +
-  17 meses). ⚠️ **Só o 1798 tem histórico mensal** (foi o único no print) — os outros mostram o aviso de "sem
+  17 meses). 🐞 **A própria faixa não abria** (o Diego clicou nela e nada acontecia — só a linha do produto abria):
+  agora ela tem `_ddvAbrirGrafPadrao()`, que escolhe o 1º produto **com histórico mensal** e cai no 1º da tela se
+  não houver nenhum. Mais uma vez o teste só pegou porque passou a **clicar de verdade** em vez de chamar a função. ⚠️ **Só o 1798 tem histórico mensal** (foi o único no print) — os outros mostram o aviso de "sem
   histórico". Acrescentar = uma entrada em `_DDV_SERIE` por código.
 - ⭐ **SEPARAÇÃO DOS 3 GRUPOS DE COLUNA** (2ª rodada; 5 mockups, ele pediu a **mistura do 5 com o 3**):
   cada grupo ganhou **tarja no acento com texto branco** (`th.g.on`) e as colunas dele levam um **fundo bem

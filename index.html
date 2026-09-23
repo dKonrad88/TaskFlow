@@ -12258,6 +12258,14 @@ function _ddvToggleMedias(){ _ddvMedias=!_ddvMedias; renderPCP(); }
 function _ddvToggleLinha(nome){ if(_ddvFechadas[nome]) delete _ddvFechadas[nome]; else _ddvFechadas[nome]=1; _ddvRefresh(); }
 function _ddvTodasLinhas(fechar){ _DDV_LINHAS.forEach(L=>{ if(fechar) _ddvFechadas[L[0]]=1; else delete _ddvFechadas[L[0]]; }); _ddvRefresh(); }
 function _ddvAbrirGraf(cod){ _ddvGraf=(String(_ddvGraf)===String(cod))?'':String(cod); renderPCP(); window.scrollTo(0,0); }
+// Clique na faixa recolhida: abre no 1º produto que JÁ tenha histórico mensal (hoje só o 1798);
+// não havendo nenhum, abre no 1º da tela — que ao menos mostra o aviso de "sem histórico".
+function _ddvAbrirGrafPadrao(){
+  const vis=_ddvFiltrados(); let alvo=null;
+  vis.some(L=>L.prods.some(p=>{ if(_DDV_SERIE[p[0]]){ alvo=p[0]; return true; } return false; }));
+  if(alvo==null && vis.length && vis[0].prods.length) alvo=vis[0].prods[0][0];
+  if(alvo!=null) _ddvAbrirGraf(alvo);
+}
 // ── Tela ────────────────────────────────────────────────────────────────────────────────────
 function _ddvCSS(){
   return `<style>
@@ -12313,10 +12321,12 @@ function _ddvCSS(){
 // Faixa do gráfico: fechada ocupa uma linha; abre ao clicar num produto da tabela.
 function _ddvGrafHTML(){
   const abrir=_ddvGraf?_ddvTodos().find(x=>String(x.p[0])===String(_ddvGraf)):null;
-  if(!abrir) return `<div class="ddv-graf"><div class="ddv-graf-head">
+  // ⚠️ a faixa recolhida também ABRE ao ser clicada (era o gesto mais natural e não fazia nada).
+  if(!abrir) return `<div class="ddv-graf"><div class="ddv-graf-head" onclick="_ddvAbrirGrafPadrao()">
+      <i class="ti ti-chevron-right" style="font-size:14px;color:var(--text3)"></i>
       <i class="ti ti-chart-area-line" style="font-size:15px;color:var(--text3)"></i>
       <b style="font-weight:700;color:var(--text)">Gráfico de vendas</b>
-      <span style="color:var(--text3)">— clique num produto da tabela para abrir aqui</span>
+      <span style="color:var(--text3)">— abrir, ou clicar direto num produto da tabela</span>
       <span style="margin-left:auto;color:var(--text3);font-size:10.5px">recolhido</span></div></div>`;
   const s=_DDV_SERIE[abrir.p[0]];
   const corpo=s?_ddvSvg(s):`<div style="padding:26px 14px;text-align:center;color:var(--text3);font-size:12px;font-style:italic">
