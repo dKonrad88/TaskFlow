@@ -12263,6 +12263,21 @@ function _ddvSortBy(c){ if(_ddvSort.campo===c) _ddvSort.dir*=-1; else { _ddvSort
 function _ddvToggleLinha(nome){ if(_ddvFechadas[nome]) delete _ddvFechadas[nome]; else _ddvFechadas[nome]=1; _ddvRefresh(); }
 function _ddvTodasLinhas(fechar){ _DDV_LINHAS.forEach(L=>{ if(fechar) _ddvFechadas[L[0]]=1; else delete _ddvFechadas[L[0]]; }); _ddvRefresh(); }
 function _ddvAbrirGraf(cod){ _ddvGraf=(String(_ddvGraf)===String(cod))?'':String(cod); renderPCP(); window.scrollTo(0,0); }
+// Gráfico da LINHA inteira: _ddvGraf guarda 'L:<nome da linha>' em vez do código do produto.
+function _ddvAbrirGrafLinha(nome){ const k='L:'+nome; _ddvGraf=(_ddvGraf===k)?'':k; renderPCP(); window.scrollTo(0,0); }
+// Soma as séries mensais de vários produtos, alinhando pelo mês (mês que um produto não tem entra como 0).
+function _ddvSomaSeries(list){
+  const yms=list.map(s=>_ddvSerieYM(s));
+  let ini=null, fim=null;
+  yms.forEach(ym=>{ if(!ini||ym[0]<ini) ini=ym[0]; const u=ym[ym.length-1]; if(!fim||u>fim) fim=u; });
+  const meses=[], vals=[];
+  for(let i=0, cur=ini; cur<=fim && i<600; i++, cur=_ddvYM(ini,i)){
+    let soma=0, rot=cur;
+    yms.forEach((ym,j)=>{ const k=ym.indexOf(cur); if(k>=0){ soma+=list[j].vals[k]; rot=list[j].meses[k]; } });
+    meses.push(rot); vals.push(soma);
+  }
+  return {de:ini, meses, vals};
+}
 // Clique na faixa recolhida: abre no 1º produto que JÁ tenha histórico mensal (hoje só o 1798);
 // não havendo nenhum, abre no 1º da tela — que ao menos mostra o aviso de "sem histórico".
 function _ddvAbrirGrafPadrao(){
@@ -12330,8 +12345,26 @@ function _ddvCSS(){
   </style>`;
 }
 // Faixa do gráfico: fechada ocupa uma linha; abre ao clicar num produto da tabela.
+// Devolve o que está aberto no gráfico: um PRODUTO (código) ou uma LINHA inteira ('L:<nome>').
+function _ddvGrafAlvo(){
+  if(!_ddvGraf) return null;
+  const k=String(_ddvGraf);
+  if(k.indexOf('L:')===0){
+    const nome=k.slice(2), L=_DDV_LINHAS.find(x=>x[0]===nome);
+    if(!L) return null;
+    const com=L[1].filter(p=>_DDV_SERIE[p[0]]);
+    return { chave:k, titulo:'Linha '+nome,
+      sub: com.length?`soma de ${_cpNum(com.length)} de ${_cpNum(L[1].length)} produtos (só esses têm histórico mensal)`:'',
+      serie: com.length?_ddvSomaSeries(com.map(p=>_DDV_SERIE[p[0]])):null,
+      semSerie:`Nenhum produto da linha ${escapeHTML(nome)} tem o histórico mês a mês carregado ainda.` };
+  }
+  const x=_ddvTodos().find(y=>String(y.p[0])===k);
+  if(!x) return null;
+  return { chave:k, titulo:x.p[0]+' · '+escapeHTML(x.p[1]), sub:'', serie:_DDV_SERIE[x.p[0]]||null,
+    semSerie:`Este produto ainda não tem o histórico mês a mês carregado — por enquanto só o total de ${_cpNum(DDV_DIAS_UTEIS)} dias úteis (${_ddvN(x.p[6])}).` };
+}
 function _ddvGrafHTML(){
-  const abrir=_ddvGraf?_ddvTodos().find(x=>String(x.p[0])===String(_ddvGraf)):null;
+  const abrir=_ddvGrafAlvo();
   // ⚠️ a faixa recolhida também ABRE ao ser clicada (era o gesto mais natural e não fazia nada).
   if(!abrir) return `<div class="ddv-graf"><div class="ddv-graf-head" onclick="_ddvAbrirGrafPadrao()">
       <i class="ti ti-chevron-right" style="font-size:14px;color:var(--text3)"></i>
@@ -12339,11 +12372,10 @@ function _ddvGrafHTML(){
       <b style="font-weight:700;color:var(--text)">Gráfico de vendas</b>
       <span style="color:var(--text3)">— abrir, ou clicar direto num produto da tabela</span>
       <span style="margin-left:auto;color:var(--text3);font-size:10.5px">recolhido</span></div></div>`;
-  const s=_DDV_SERIE[abrir.p[0]];
+  const s=abrir.serie;
   let corpo;
   if(!s){
-    corpo=`<div style="padding:26px 14px;text-align:center;color:var(--text3);font-size:12px;font-style:italic">
-      Este produto ainda não tem o histórico mês a mês carregado — por enquanto só o total de ${_cpNum(DDV_DIAS_UTEIS)} dias úteis (${_ddvN(abrir.p[6])}).</div>`;
+    corpo=`<div style="padding:26px 14px;text-align:center;color:var(--text3);font-size:12px;font-style:italic">${abrir.semSerie}</div>`;
   }else{
     const lim=_ddvLimites(s);
     const pIni=_ddvPer.ini||lim.ini, pFim=_ddvPer.fim||lim.fim;
@@ -12354,9 +12386,10 @@ function _ddvGrafHTML(){
       : `<div style="padding:22px 14px;text-align:center;color:var(--text3);font-size:12px;font-style:italic">Nenhum mês da série cai nesse período — a série vai de ${s.meses[0]} a ${s.meses[s.meses.length-1]}.</div>`);
   }
   return `<div class="ddv-graf">
-    <div class="ddv-graf-head" onclick="_ddvAbrirGraf('${abrir.p[0]}')">
+    <div class="ddv-graf-head" onclick="_ddvGraf='';renderPCP()">
       <i class="ti ti-chart-area-line" style="font-size:15px;color:var(--blue-mid)"></i>
-      <b style="font-weight:700;color:var(--text)">Vendas: ${abrir.p[0]} · ${escapeHTML(abrir.p[1])}</b>
+      <b style="font-weight:700;color:var(--text)">Vendas: ${abrir.titulo}</b>
+      ${abrir.sub?`<span style="color:var(--text3)">— ${abrir.sub}</span>`:''}
       <span style="margin-left:auto;color:var(--text3);font-size:11px"><i class="ti ti-x" style="font-size:13px;vertical-align:-2px"></i> fechar</span>
     </div>${corpo}</div>`;
 }
@@ -12450,8 +12483,12 @@ function _ddvTabelaHTML(){
   let cards='';
   linhas.forEach(L=>{
     const fechada=_ddvFechadas[L.nome]&&!buscando;
-    let rows=`<tr class="ddv-lin" onclick="_ddvToggleLinha('${escapeAttr(L.nome).replace(/'/g,"\\'")}')">
-      <td class="l" colspan="2"><i class="ti ti-chevron-${fechada?'right':'down'}" style="color:var(--text3);font-size:13px;margin-right:4px"></i>Linha ${escapeHTML(L.nome)}<span class="ddv-cnt">${_cpNum(L.prods.length)} produtos</span></td>
+    const jsNome=escapeAttr(L.nome).replace(/'/g,"\\'");
+    const abertoL=String(_ddvGraf)==='L:'+L.nome;
+    // ⚠️ dois gestos na mesma linha: o CHEVRON recolhe (com stopPropagation) e o resto da linha
+    // abre o gráfico da linha inteira. Sem o stopPropagation, recolher também abriria o gráfico.
+    let rows=`<tr class="ddv-lin" onclick="_ddvAbrirGrafLinha('${jsNome}')" title="Ver o gráfico de vendas desta linha"${abertoL?' style="background:color-mix(in srgb,var(--blue-mid) 14%,var(--bg2))"':''}>
+      <td class="l" colspan="2"><i class="ti ti-chevron-${fechada?'right':'down'}" onclick="event.stopPropagation();_ddvToggleLinha('${jsNome}')" title="${fechada?'Abrir':'Recolher'} a linha" style="color:var(--text3);font-size:13px;margin-right:4px;padding:3px;cursor:pointer"></i>Linha ${escapeHTML(L.nome)}<span class="ddv-cnt">${_cpNum(L.prods.length)} produtos</span></td>
       <td colspan="${nc-2}"></td></tr>`;
     if(!fechada) L.prods.forEach(p=>{
       const c=_ddvCalc(p), st=_ddvCor(c.ddv), aberto=String(_ddvGraf)===String(p[0]);

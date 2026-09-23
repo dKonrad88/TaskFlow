@@ -450,6 +450,12 @@ continuam no arquivo e **não têm relação** com o bloco novo — não confund
   17 meses). 🐞 **A própria faixa não abria** (o Diego clicou nela e nada acontecia — só a linha do produto abria):
   agora ela tem `_ddvAbrirGrafPadrao()`, que escolhe o 1º produto **com histórico mensal** e cai no 1º da tela se
   não houver nenhum. Mais uma vez o teste só pegou porque passou a **clicar de verdade** em vez de chamar a função.
+- ⭐ **Gráfico da LINHA inteira** (pedido dele): clicar na faixa da linha soma as séries dos produtos dela.
+  `_ddvGraf` passou a aceitar **`'L:<nome da linha>'`** além do código do produto (`_ddvGrafAlvo` resolve os dois
+  casos); `_ddvSomaSeries` alinha as séries por mês e soma. ⚠️ **Dois gestos na mesma linha:** o **chevron**
+  recolhe (com `stopPropagation`) e o **resto da faixa** abre o gráfico — sem o stopPropagation, recolher também
+  abriria o gráfico. ⚠️ Como só o 1798 tem histórico mensal, o cabeçalho diz **"soma de 1 de 8 produtos (só esses
+  têm histórico mensal)"** — sem essa frase o gráfico de PALITINHOS pareceria a linha inteira quando é 1 produto.
 - ⭐ **2 períodos no gráfico** (pedido dele, espelhando o SISPRO), discretos e **só quando o gráfico abre**:
   **Período do gráfico** (recorta a série) e **2ª média** (a linha vermelha pontilhada). Estado em `_ddvPer`
   (vazio = padrão: série toda + último mês na 2ª média, que é o que o SISPRO mostrava). ⚠️ A série é **mensal**,
