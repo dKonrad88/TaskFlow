@@ -6994,15 +6994,10 @@ function renderPCP(){
   const _tb=document.querySelector('.main .topbar'); if(_tb) _tb.style.display='none';
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
-  // (jul/2026) Conteúdo do PCP REMOVIDO a pedido do Diego — a ABA "PCP" continua no menu
-  // (Produção › PCP), mas a TELA foi esvaziada. O corpo original (tabela DDV, filtros, sub-abas,
-  // botão "Colar do SISPRO"), os helpers _pcp* e os dados LS_PCP ficam PRESERVADOS/dormentes —
-  // reverter = restaurar este bloco a partir do git.
-  main.innerHTML = `
-    <div style="padding:20px 4px 40px;">
-      ${hubHead('PCP','Planejamento e controle da produção · DDV.')}
-      <div style="padding:64px 0; text-align:center; color:var(--text3); font-size:13px;"><i class="ti ti-tools" style="font-size:26px; display:block; margin-bottom:10px;"></i>Em construção.</div>
-    </div>`;
+  // (set/2026) A tela do PCP foi REFEITA no bloco "PCP · DDV" (dado estático transcrito do SISPRO,
+  // visual da aba Comercial › Pedidos). O corpo antigo — tabela editável, sub-abas do SISPRO e
+  // "Colar do SISPRO" — continua no git; os helpers _pcp* e os dados LS_PCP seguem dormentes.
+  return renderDDV();
 }
 
 function _pcpTabsHTML(){
@@ -11971,6 +11966,465 @@ function _influConfigHTML(){
 }
 function _mktCfgSet(k, v){ _mktLoad(); if(!mktConfig.pontos) mktConfig.pontos={}; mktConfig.pontos[k]=Number(v)||0; saveMktConfig(); }
 function _mktCfgReset(){ _mktLoad(); mktConfig.pontos=Object.assign({},MKT_PONTOS_DEFAULT); saveMktConfig(); renderInfluenciadores(); toast('Pesos restaurados'); }
+
+// ════ INÍCIO DO BLOCO PCP · DDV ════
+// Espelho da aba "Histórico" do SISPRO (Produção › PCP), no visual da aba Comercial › Pedidos.
+// As outras abas do SISPRO (Lotes e OP's, Resumo, Ordens de compra/produção) ficaram de fora a
+// pedido do Diego — esta tela É o histórico.
+//
+// ⭐ SÓ 5 COLUNAS SÃO TRANSCRITAS: estoque, pedido, OP/OC, maras e vendas (261 dias úteis).
+// As outras 8 são CONTA, conferidas contra o print linha a linha:
+//   Saldo    = estoque + OP/OC + maras − pedido
+//   MDV      = vendas ÷ 261  ·  MSV = vendas ÷ 52  ·  MQV = vendas ÷ 24  ·  MMV = vendas ÷ 12
+//   DDV      = saldo ÷ MDV            (dias que o estoque ainda dura)
+//   DDV s/OP = (saldo − OP/OC) ÷ MDV  (idem, ignorando o que está em produção)
+// Menos transcrição = menos erro, e qualquer divergência com o SISPRO aparece na hora.
+// ⚠️ Os helpers antigos _pcp* (versão "colar do SISPRO", dormente desde jul/2026) continuam no
+// arquivo e NÃO têm relação com este bloco, que usa o prefixo _ddv*.
+let _ddvBusca='';
+let _ddvFiltro='';            // '' | 'ruptura' | 'atencao' | 'folga' | 'produzir'
+let _ddvMedias=true;          // mostrar as 4 médias (MDV/MSV/MQV/MMV)
+let _ddvGraf='';              // código do produto com o gráfico aberto ('' = faixa recolhida)
+let _ddvSort={campo:'nome',dir:1};
+const _ddvFechadas={};        // linhas recolhidas — estado de tela, não persiste
+
+// Corte do semáforo do DDV. No SISPRO o ⚠ acende exatamente abaixo de 7 dias.
+const DDV_ALERTA={vermelho:7, amarelo:10};
+const DDV_DIAS_UTEIS=261;
+const _DDV_POSICAO='23/09/2026 13:23';
+
+// [código, produto, estoque, pedido, OP/OC, maras, vendas 261 dias] — null = veio em branco no SISPRO
+const _DDV_LINHAS=[
+['AMENDOIM',[
+[9,'Biscoito Broa de Amendoim 250g (ES01)',640.27,568.87,666.67,null,37721.47],
+[71,'Biscoito de Amendoim com Chocolate Branco 250g (ES01)',81.53,121.13,null,null,9329.80],
+[70,'Biscoito de Amendoim com Chocolate ao Leite 250g (ES01)',1278.07,758.13,1166.67,null,55956.27]]],
+['PALITINHOS',[
+[1798,'Salgadinho Palitinho sabor Bacon 138g (ES08)',497.80,365.87,468.00,null,22068.40],
+[1793,'Salgadinho Palitinho sabor Calabresa 138g (ES08)',368.27,298.67,566.67,null,14281.93],
+[1795,'Salgadinho Palitinho sabor Churrasco 138g (ES08)',1181.07,446.93,null,null,32894.33],
+[1811,'Salgadinho Palitinho sabor Orégano 138g (ES08)',83.33,15.33,73.33,null,3104.80],
+[1794,'Salgadinho Palitinho sabor Original 138g (ES08)',626.47,162.13,280.00,null,15001.87],
+[1796,'Salgadinho Palitinho sabor Pizza 138g (ES08)',59.67,82.33,406.67,null,11040.73],
+[1815,'Salgadinho Palitinho sabor Queijo 138g (ES08)',244.20,29.47,null,null,4815.93],
+[1797,'Salgadinho Palitinho sabor Salsa 138g (ES08)',205.53,32.00,null,null,4337.67]]],
+['SUSPIRO',[
+[34,'Suspiro Tradicional 100g (ES22)',1125.00,59.27,null,null,8703.53],
+[3035,'Suspiro Tradicional 500g',null,null,null,null,null],
+[77,'Suspiro com Chocolate Branco 140g (ES22)',163.20,49.73,null,null,4654.13],
+[72,'Suspiro com Chocolate ao Leite 140g (ES22)',250.87,183.73,null,null,9877.87]]],
+['PÃO DE MEL',[
+[2,'Pão de Mel Menta com Choc. ao Leite 250g (ES02)',59.87,15.80,null,null,1912.73],
+[993,'Pão de Mel Natural 1kg',40.00,null,null,null,450.00],
+[1239,'Pão de Mel Natural 250g',54.00,null,null,null,54.00],
+[47,'Pão de Mel com Chocolate Branco 250g (ES02)',532.27,118.40,null,null,14818.27],
+[17,'Pão de Mel com Chocolate ao Leite 250g (ES02)',1406.60,466.27,999.00,null,39355.87]]],
+['SALGADÃO',[
+[930,'Salgadão Sabor Bacon 50g (ES10)',45.00,8.00,null,null,958.40],
+[931,'Salgadão Sabor Churrasco 50g (ES10)',31.00,3.07,null,null,553.60],
+[787,'Salgadão sabor Bacon 100g (ES10)',2077.00,1397.00,null,null,92690.50],
+[901,'Salgadão sabor Churrasco 100g (ES10)',852.00,252.00,null,null,20447.70]]],
+['POLVILHO',[
+[1249,'Biscoito de Polvilho sabor Queijo 140g',null,null,null,null,null],
+[878,'Biscoito de Polvilho sabor Queijo 60g (ES05)',503.13,36.33,null,null,3579.60],
+[1248,'Biscoito de Polvilho sabor Tradicional 140g',null,null,null,null,null],
+[874,'Biscoito de Polvilho sabor Tradicional 60g (ES05)',2687.33,243.00,null,null,17734.27]]],
+['CHOCOLOVERS',[
+[48,'Biscoito Choco Bola 180g (ES07)',112.33,39.73,null,null,2271.60],
+[12,'Biscoito Choco Rosca 250g (ES07)',84.13,116.00,null,null,4742.33],
+[29,'Biscoito Duetto 250g (ES07)',33.67,121.87,500.00,null,7188.60],
+[10,'Biscoito Mignon com Chocolate ao Leite 180g (ES07)',213.60,72.00,null,null,5053.40]]],
+['BISCOITOS SALGADOS',[
+[28,'Biscoito Mignon sabor Bacon 180g (ES05)',171.87,12.00,null,null,2239.47],
+[27,'Biscoito Mignon sabor Tradicional 180g (ES05)',142.87,111.00,null,null,4873.00]]],
+['COBERTURAS',[
+[510,'Cobertura Sab. Choc. KLAIN 1,010kg - Ao Leite (Pacote) (ES04)',132.63,83.50,475.00,null,9581.38],
+[511,'Cobertura Sab. Choc. KLAIN 1,010kg - Branco (Pacote) (ES04)',297.50,90.38,null,null,5766.63],
+[512,'Cobertura Sab. Choc. KLAIN 1,010kg - Meio Amargo (Pacote) (ES04)',209.63,64.25,null,null,8925.88]]],
+['RECHEIO FORNEÁVEL (1,010kg)',[
+[540,'Recheio Forn. KLAIN 1,010kg - Ao Leite (Bisnaga) (ES04)',null,38.13,68.75,null,2480.13],
+[543,'Recheio Forn. KLAIN 1,010kg - Avelã (Bisnaga) (ES04)',21.88,16.88,null,null,1298.25],
+[541,'Recheio Forn. KLAIN 1,010kg - Branco (Bisnaga) (ES04)',32.88,24.88,null,null,2061.25],
+[952,'Recheio Forn. KLAIN 1,010kg - Leitinho (Bisnaga) (ES04)',149.13,2.75,null,null,349.38],
+[542,'Recheio Forn. KLAIN 1,010kg - Meio Amargo (Bisnaga) (ES04)',186.13,15.63,null,null,548.38]]],
+['CLÁSSICOS',[
+[30,'Biscoito Amanteigado 240g (ES03)',732.73,224.33,null,null,15917.33],
+[743,'Biscoito Manteiguinha com Chocolate 240g (ES03)',124.27,60.00,null,null,6360.87],
+[1175,'Biscoito de Banana com Canela 240g (ES03)',357.20,99.40,null,null,4980.87],
+[1214,'Biscoito de Limão 240g (ES03)',226.87,76.53,null,null,1264.73],
+[69,'Biscoito de Maisena 240g (ES03)',134.27,81.67,250.00,null,8098.67],
+[1222,'Biscoito de Maracujá 240g (ES03)',332.67,92.27,null,null,1195.87],
+[39,'Biscoito de Milho 240g (ES03)',1245.87,309.40,null,null,24785.53]]],
+['ECONÔMICA',[
+[3,'Biscoito Manteiguinha Pacotão Econômico 500g (ES03)',1209.80,116.00,null,null,28411.40],
+[740,'Biscoito Manteiguinha de Choc Pacotão Econômico 500g (ES03)',201.50,77.00,null,null,6621.50],
+[1176,'Biscoito de Banana com Canela Pacotão Econômico 500g (ES03)',810.90,38.50,null,null,5883.60],
+[1216,'Biscoito de Limão Pacotão Econômico 500g (ES03)',804.40,23.50,null,null,429.60],
+[741,'Biscoito de Maisena Pacotão Econômico 500g (ES03)',178.90,35.50,600.00,null,15975.40],
+[1223,'Biscoito de Maracujá Pacotão Econômico 500g (ES03)',385.70,22.00,null,null,413.10],
+[742,'Biscoito de Milho Pacotão Econômico 500g (ES03)',1486.30,58.50,380.00,null,25262.10]]],
+['RECHEIO FORNEÁVEL (4kg)',[
+[545,'Recheio Forn. KLAIN 4kg - Ao Leite (BLD)',7.50,5.25,null,null,93.75],
+[548,'Recheio Forn. KLAIN 4kg - Avelã (BLD)',null,1.25,null,null,134.00],
+[546,'Recheio Forn. KLAIN 4kg - Branco (BLD)',2.75,3.00,null,null,178.75],
+[547,'Recheio Forn. KLAIN 4kg - Meio Amargo (BLD)',22.25,6.50,null,null,106.25]]],
+['MONODOSE',[
+[947,'MONODOSE - Biscoito Broa de Amendoim 38g',49.30,5.00,null,null,395.60],
+[946,'MONODOSE - Biscoito Choco Bola 30g',64.10,5.00,null,null,115.30],
+[948,'MONODOSE - Biscoito Choco Rosca 38g',7.00,5.00,null,null,77.50],
+[949,'MONODOSE - Biscoito Mignon sabor Tradicional 30g',null,null,null,null,71.90],
+[945,'MONODOSE - Biscoito de Amendoim com Choc ao Leite 44g',37.03,5.00,null,null,404.50],
+[944,'MONODOSE - Biscoito de Milho 34g',75.77,5.00,null,null,582.37],
+[961,'MONODOSE - Pão de Mel com Choc ao Leite 36g',37.77,5.00,null,null,208.93]]],
+['COBERTURA 20KG',[
+[520,'Cobertura Sabor Choc. KLAIN 20kg - Ao Leite (SC)',99.00,32.00,null,null,906.00],
+[521,'Cobertura Sabor Choc. KLAIN 20kg - Branco (SC)',125.00,23.00,null,null,2517.00],
+[522,'Cobertura Sabor Choc. KLAIN 20kg - Meio Amargo (SC)',83.00,32.00,null,null,2756.00]]],
+['APERITIVOS',[
+[1170,'Salgadinho Aperitivo Sabor Original 140g (ES12)',101.80,7.67,null,null,372.60],
+[790,'Salgadinho Aperitivo sabor Bacon 140g (ES12)',394.07,16.33,null,null,2326.13],
+[788,'Salgadinho Aperitivo sabor Churrasco 140g (ES12)',131.00,24.67,null,null,2900.67],
+[789,'Salgadinho Aperitivo sabor Costelinha com Limão 140g (ES12)',60.87,12.33,null,null,1782.40]]],
+['BISCOITOS DOCES',[
+[45,'Biscoito Folhadinho Doce 250g (ES05)',242.87,51.33,300.00,null,4651.00]]],
+['ROSQUINHAS',[
+[1097,'Biscoito Rosquinha de Coco 240g (ES03)',50.53,11.67,null,null,733.27],
+[885,'Biscoito Rosquinha de Coco 500g (ES03)',77.20,7.50,null,null,790.90],
+[1098,'Biscoito Rosquinha de Leite 240g (ES03)',60.27,8.07,null,null,725.47],
+[886,'Biscoito Rosquinha de Leite 500g (ES03)',72.00,5.50,null,null,946.10]]],
+['FRITAR',[
+[924,'Pastilha de Trigo 250g',331.60,30.13,null,null,3784.33]]],
+['PREMIUM',[
+[1151,'Alfajor Premium Branco 38g (ES09)',29.50,38.19,90.00,null,2196.88],
+[1150,'Alfajor Premium Meio Amargo 38g (ES09)',197.25,52.00,null,null,4137.75],
+[1152,'Alfajor Premium Pasta de Amendoim 38g (ES09)',57.94,30.19,null,null,1882.44]]],
+['FLOCOS DE ARROZ',[
+[311,'Flocos de Arroz Integral 100g',116.56,8.40,null,null,417.24],
+[310,'Flocos de Arroz Tradicional 100g',208.68,21.80,null,null,892.56]]],
+['POTES MOÇAS E PAÇOCAS',[
+[105,'Chocomoça (Pote 960g - 32 unid.)',53.03,5.09,null,null,573.25],
+[994,'Paçoca Tradicional 14g (Pote 196g - 14un.) (ES19)',364.00,28.00,null,null,6178.00],
+[990,'Paçoca Tradicional 14g (Pote 560g - 40un.) (ES19)',246.00,59.00,null,null,5912.15],
+[1014,'Paçoca Zero Açúcar 14g (Pote 196g - 14un.) (ES19)',263.00,46.00,null,null,2672.14],
+[991,'Paçoca Zero Açúcar 14g (Pote 560g - 40un.) (ES19)',180.00,38.00,null,null,1913.88],
+[104,'Pé de Moça (Pote 960g - 32 unid.)',70.03,10.00,null,null,819.22]]],
+['BITZ',[
+[926,'Salgadinho BITZ Sabor Bacon 38g (ES12)',42.73,5.17,null,null,456.90],
+[929,'Salgadinho BITZ Sabor Churrasco 38g (ES12)',36.57,5.17,null,null,488.13],
+[928,'Salgadinho BITZ Sabor Pão de Alho 38g (ES12)',28.33,6.17,null,null,326.07]]],
+['CASEIRA',[
+[903,'Massa Tipo Caseira N1 Bandeja 400g (ES14)',165.75,6.05,42.00,null,918.80],
+[904,'Massa Tipo Caseira N2 Bandeja 400g (ES14)',266.45,47.85,168.00,null,4568.25],
+[905,'Massa Tipo Caseira N3 Bandeja 400g (ES14)',161.95,36.20,168.00,null,2588.95],
+[906,'Massa Tipo Caseira N4 Bandeja 400g (ES14)',12.90,13.70,168.00,null,1494.10],
+[1231,'Massa Tipo Caseira Ninho N1 400g',null,null,42.00,null,null],
+[1232,'Massa Tipo Caseira Ninho N2 400g',null,null,166.00,null,null],
+[1233,'Massa Tipo Caseira Ninho N3 400g',null,null,150.00,null,null],
+[1235,'Massa Tipo Caseira Ninho N4 400g',null,null,42.00,null,null]]],
+['PASTA DE AMENDOIM',[
+[959,'Pasta de Amendoim Crunchy 450g (ES18)',23.33,11.00,null,null,356.50],
+[958,'Pasta de Amendoim Tradicional 450g (ES18)',36.00,15.17,null,null,611.00],
+[960,'Pasta de Amendoim Tradicional com Cacau 450g (ES18)',15.00,18.83,22.00,null,490.83]]],
+['INDÚSTRIA - SKIMO 14KG',[
+[975,'Skimo Choc. KLAIN 14kg - Ao Leite (BLD)',10.00,null,null,null,534.00],
+[976,'Skimo Choc. KLAIN 14kg - Branco (BLD)',85.00,null,null,null,221.00],
+[977,'Skimo Choc. KLAIN 14kg - Meio Amargo (BLD)',null,null,null,null,83.00]]],
+['PIPOCAS',[
+[943,'Pipoca Caramelizada 100g (ES16) (10 unid.)',425.00,48.60,450.00,null,5140.90],
+[1162,'Pipoca Doce Rosa 100g (ES16) (10 unid.)',220.00,94.00,null,null,10032.70],
+[941,'Pipoca Doce Tradicional 100g (ES16) (10 unid.)',342.70,122.40,null,null,14196.00]]],
+['BOLINHAS',[
+[1136,'Salgadinho de Bolinhas Sabor Bacon 138g (ES08)',205.40,22.67,null,null,4534.13],
+[1135,'Salgadinho de Bolinhas Sabor Churrasco 138g (ES08)',242.20,21.33,null,null,4039.80]]],
+['BATATAS',[
+[1181,'Batata Frita sabor Cebola e Salsa 85g (ES11)',104.45,46.95,480.00,null,1344.75],
+[24,'Batata Frita sabor Churrasco 40g (ES11)',255.44,33.40,240.00,null,1938.36],
+[1178,'Batata Frita sabor Churrasco 85g (ES11)',140.85,41.65,260.00,null,1130.75],
+[31,'Batata Frita sabor Original 40g (ES11)',441.08,46.80,340.00,null,3299.40],
+[1179,'Batata Frita sabor Original 85g (ES11)',25.00,64.10,480.00,null,1397.30],
+[215,'Batata Palha 80g (ES11)',158.76,9.44,226.67,null,831.16]]],
+['INTENSUS',[
+[1989,'Salgadinho Intensus Sabor Cebola e Salsa 10g',null,null,null,null,176.45],
+[1153,'Salgadinho Intensus Sabor Cebola e Salsa 130g (ES06)',76.08,49.50,null,null,2939.00],
+[1158,'Salgadinho Intensus Sabor Cebola e Salsa 70g (ES06)',115.08,9.67,null,null,1757.92],
+[2041,'Salgadinho Intensus Sabor Presunto 10g',null,null,null,null,794.78],
+[1154,'Salgadinho Intensus Sabor Presunto 140g (ES06)',33.33,40.67,139.75,null,2686.58],
+[1159,'Salgadinho Intensus Sabor Presunto 80g (ES06)',59.58,9.58,50.00,null,1606.50],
+[2042,'Salgadinho Intensus Sabor Queijo Parmesão 10g',null,null,null,null,171.23],
+[1156,'Salgadinho Intensus Sabor Queijo Parmesão 140g (ES06)',128.00,29.00,null,null,1320.92],
+[1161,'Salgadinho Intensus Sabor Queijo Parmesão 80g (ES06)',86.92,4.00,null,null,795.00],
+[2043,'Salgadinho Intensus Sabor Requeijão Cremoso 10g',92.00,null,null,null,129.55],
+[1155,'Salgadinho Intensus Sabor Requeijão Cremoso 140g (ES06)',33.83,37.00,null,null,2545.08],
+[1160,'Salgadinho Intensus Sabor Requeijão Cremoso 80g (ES06)',71.67,7.58,null,null,1394.00]]],
+['MEGA MILHO',[
+[1986,'Salgadinho MEGA MILHO Sabor Cebola e Salsa 10g',null,null,null,null,24.00],
+[986,'Salgadinho MEGA MILHO Sabor Cebola e Salsa 150g (ES21)',143.00,18.00,null,null,3411.10],
+[1985,'Salgadinho MEGA MILHO Sabor Presunto 10g',null,null,null,null,25.50],
+[985,'Salgadinho MEGA MILHO Sabor Presunto 150g (ES21)',91.00,16.00,171.00,null,3591.40],
+[1987,'Salgadinho MEGA MILHO Sabor Queijo 10g',null,null,null,null,22.38],
+[987,'Salgadinho MEGA MILHO Sabor Queijo 150g (ES21)',116.00,16.00,null,null,3355.50],
+[1988,'Salgadinho MEGA MILHO Sabor Requeijão 10g',null,null,null,null,24.75],
+[988,'Salgadinho MEGA MILHO Sabor Requeijão 150g (ES21)',90.00,34.00,null,null,3705.80]]],
+['PROTEICO',[
+[1237,'Salg. Protein Sabor Azeite de Oliva c/ Manjericão 10g',71.65,null,null,null,77.38],
+[1220,'Salg. Protein Sabor Azeite de Oliva c/ Manjericão 50g (ES13)',84.27,27.67,146.67,null,547.87],
+[1238,'Salg. Protein Sabor Barbecue 10g',57.45,null,null,null,62.10],
+[1221,'Salg. Protein Sabor Barbecue 50g (ES13)',14.27,20.53,146.67,null,394.07],
+[1219,'Salg. Protein Sabor Presunto Defumado 50g (ES13)',30.60,23.07,146.67,null,501.73]]]
+];
+
+// Histórico mensal de vendas por produto (o gráfico do topo). Só o 1798 veio no print — os demais
+// mostram o aviso de "sem histórico". Para acrescentar: uma entrada por código, com meses e valores.
+const _DDV_SERIE={
+  1798:{ meses:['mai/25','jun/25','jul/25','ago/25','set/25','out/25','nov/25','dez/25','jan/26','fev/26','mar/26','abr/26','mai/26','jun/26','jul/26','ago/26','set/26'],
+         vals:[609.60,1116.13,1869.33,1886.27,2217.07,2111.20,2277.13,1924.73,1275.33,1833.13,1744.40,1716.13,1786.40,1863.87,1717.80,1634.73,1550.80] }
+};
+// ── Conta ───────────────────────────────────────────────────────────────────────────────────
+// p = [cod, nome, est, ped, opoc, maras, vendas]
+function _ddvCalc(p){
+  const est=p[2], ped=p[3], op=p[4], mar=p[5], ven=p[6];
+  const temEstoque=[est,ped,op,mar].some(v=>v!=null);
+  const saldo=temEstoque ? (est||0)+(op||0)+(mar||0)-(ped||0) : null;
+  const mdv=ven?ven/DDV_DIAS_UTEIS:null;
+  return { saldo, mdv,
+    msv: ven?ven/52:null, mqv: ven?ven/24:null, mmv: ven?ven/12:null,
+    ddv: (saldo!=null&&mdv)?saldo/mdv:null,
+    ddvsop: (saldo!=null&&mdv)?(saldo-(op||0))/mdv:null };
+}
+function _ddvCor(v){
+  if(v==null) return '';
+  if(v<DDV_ALERTA.vermelho) return 'var(--danger)';
+  if(v<DDV_ALERTA.amarelo) return 'var(--amber)';
+  return 'var(--success)';
+}
+const _ddvN=(v,d)=>v==null?'—':_cpNum(v,d==null?2:d);
+const _ddvNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+// Lista plana de {linha, p, c} — base dos indicadores e dos filtros
+function _ddvTodos(){
+  const out=[];
+  _DDV_LINHAS.forEach(L=>L[1].forEach(p=>out.push({linha:L[0], p:p, c:_ddvCalc(p)})));
+  return out;
+}
+// Estado do produto. "atencao" = o ⚠ do SISPRO (DDV abaixo do corte vermelho).
+function _ddvStatus(x){
+  const c=x.c;
+  if(c.saldo!=null && c.saldo<0) return 'ruptura';
+  if(c.ddv==null) return '';
+  if(c.ddv<DDV_ALERTA.vermelho) return 'atencao';
+  if(c.ddv>=DDV_ALERTA.amarelo) return 'folga';
+  return 'meio';
+}
+function _ddvCasa(x){
+  if(!_ddvFiltro) return true;
+  const st=_ddvStatus(x);
+  if(_ddvFiltro==='produzir') return (st==='ruptura'||st==='atencao') && !x.p[4];   // vai faltar e não tem OP/OC
+  if(_ddvFiltro==='atencao') return st==='ruptura'||st==='atencao';                 // ruptura também precisa de atenção
+  return st===_ddvFiltro;
+}
+function _ddvFiltrados(){
+  const q=_ddvNorm(_ddvBusca);
+  const out=[];
+  _DDV_LINHAS.forEach(L=>{
+    const prods=L[1].filter(p=>{
+      const x={linha:L[0], p:p, c:_ddvCalc(p)};
+      if(!_ddvCasa(x)) return false;
+      if(!q) return true;
+      return _ddvNorm(p[1]).indexOf(q)>=0 || String(p[0]).indexOf(q)>=0 || _ddvNorm(L[0]).indexOf(q)>=0;
+    });
+    if(prods.length) out.push({nome:L[0], prods:_ddvOrdenar(prods)});
+  });
+  return out;
+}
+const _DDV_SC={cod:p=>p.p[0], nome:p=>_ddvNorm(p.p[1]), est:p=>p.p[2], ped:p=>p.p[3], opoc:p=>p.p[4],
+  maras:p=>p.p[5], saldo:p=>p.c.saldo, ddv:p=>p.c.ddv, ddvsop:p=>p.c.ddvsop,
+  mdv:p=>p.c.mdv, msv:p=>p.c.msv, mqv:p=>p.c.mqv, mmv:p=>p.c.mmv, vendas:p=>p.p[6]};
+function _ddvOrdenar(prods){
+  const f=_DDV_SC[_ddvSort.campo]||_DDV_SC.nome, d=_ddvSort.dir;
+  return prods.map(p=>({p:p,c:_ddvCalc(p)})).sort((a,b)=>{
+    const va=f(a), vb=f(b);
+    if(va==null&&vb==null) return 0;
+    if(va==null) return 1;                       // sem dado sempre no fim, nas duas direções
+    if(vb==null) return -1;
+    if(typeof va==='string') return va.localeCompare(vb,'pt-BR')*d;
+    return (va-vb)*d;
+  }).map(x=>x.p);
+}
+// ── Ações ───────────────────────────────────────────────────────────────────────────────────
+function _ddvRefresh(){ const el=document.getElementById('ddv-conteudo'); if(el) el.innerHTML=_ddvTabelaHTML(); else renderPCP(); }
+function _ddvBuscaInput(v){ _ddvBusca=v; _ddvRefresh(); }
+function _ddvSetFiltro(v){ _ddvFiltro=(_ddvFiltro===v?'':v); renderPCP(); }
+function _ddvSortBy(c){ if(_ddvSort.campo===c) _ddvSort.dir*=-1; else { _ddvSort.campo=c; _ddvSort.dir=(c==='nome'||c==='cod')?1:-1; } _ddvRefresh(); }
+function _ddvToggleMedias(){ _ddvMedias=!_ddvMedias; renderPCP(); }
+function _ddvToggleLinha(nome){ if(_ddvFechadas[nome]) delete _ddvFechadas[nome]; else _ddvFechadas[nome]=1; _ddvRefresh(); }
+function _ddvTodasLinhas(fechar){ _DDV_LINHAS.forEach(L=>{ if(fechar) _ddvFechadas[L[0]]=1; else delete _ddvFechadas[L[0]]; }); _ddvRefresh(); }
+function _ddvAbrirGraf(cod){ _ddvGraf=(String(_ddvGraf)===String(cod))?'':String(cod); renderPCP(); window.scrollTo(0,0); }
+// ── Tela ────────────────────────────────────────────────────────────────────────────────────
+function _ddvCSS(){
+  return `<style>
+  .ddv-grp{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:9px}
+  .ddv-hstrip{padding:0 1px;margin-bottom:5px}
+  .ddv-tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;table-layout:fixed}
+  .ddv-tbl th{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);text-align:right;padding:3px 8px 6px;white-space:nowrap;cursor:pointer;user-select:none}
+  .ddv-tbl th:hover{color:var(--text)}
+  .ddv-tbl th.l,.ddv-tbl td.l{text-align:left}
+  .ddv-tbl th.g{font-size:9.5px;letter-spacing:.07em;color:var(--blue-mid);text-align:center;padding:2px 8px 3px;cursor:default}
+  .ddv-tbl th.g:hover{color:var(--blue-mid)}
+  .ddv-tbl td{padding:8px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--text2);border-bottom:1px solid color-mix(in srgb,var(--text) 7%,transparent)}
+  .ddv-tbl td.l{white-space:normal;overflow:hidden;text-overflow:ellipsis}
+  .ddv-grp tr:last-child td{border-bottom:none}
+  .ddv-lin td{font-weight:700;color:var(--text);background:var(--bg2);border-bottom:1px solid var(--border);cursor:pointer}
+  .ddv-lin:hover td{background:color-mix(in srgb,var(--blue-mid) 9%,var(--bg2))}
+  .ddv-prod:hover td{background:color-mix(in srgb,var(--text) 4%,transparent);cursor:pointer}
+  .ddv-cod{color:var(--text3);font-size:11px;margin-right:7px}
+  .ddv-cnt{font-size:10.5px;font-weight:700;background:color-mix(in srgb,var(--text) 10%,transparent);color:var(--text3);border-radius:999px;padding:2px 8px;margin-left:8px;white-space:nowrap}
+  .ddv-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(152px,1fr));gap:10px;margin-bottom:12px}
+  .ddv-kpi{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--blue-mid);border-radius:11px;padding:11px 13px;min-width:0;cursor:pointer;font-family:inherit;text-align:left;width:100%}
+  .ddv-kpi:hover{background:color-mix(in srgb,var(--text) 3%,var(--card))}
+  .ddv-kpi.on{box-shadow:0 0 0 2px var(--blue-mid) inset}
+  .ddv-kpi .lab{display:block;font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);line-height:1.3}
+  .ddv-kpi .val{display:block;font-size:20px;font-weight:800;letter-spacing:-.015em;color:var(--text);margin-top:2px}
+  .ddv-kpi .sub{display:block;font-size:10.5px;color:var(--text3);margin-top:4px}
+  .ddv-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:9px}
+  .ddv-bar .t{font-size:11.5px;font-weight:600;color:var(--text3)}
+  .ddv-link{background:none;border:none;color:var(--text3);font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:7px}
+  .ddv-link:hover{background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--text)}
+  .ddv-link.on{color:var(--blue-mid)}
+  .ddv-graf{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden}
+  .ddv-graf-head{display:flex;align-items:center;gap:9px;padding:10px 14px;font-size:11.5px;color:var(--text2);cursor:pointer}
+  .ddv-graf-head:hover{background:color-mix(in srgb,var(--text) 3%,transparent)}
+  .ddv-buscaw{position:relative;display:inline-flex;align-items:center}
+  .ddv-buscaw i{position:absolute;left:11px;font-size:14px;color:var(--text3);pointer-events:none}
+  .ddv-busca{width:250px;height:34px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--text);font-family:inherit;font-size:12.5px;padding:0 11px 0 32px;outline:none}
+  .ddv-busca:focus{border-color:var(--blue-mid);box-shadow:0 0 0 3px color-mix(in srgb,var(--blue-mid) 14%,transparent)}
+  .ddv-nota{font-size:11.5px;color:var(--text3);line-height:1.5;margin-top:12px;padding:0 2px}
+  </style>`;
+}
+// Faixa do gráfico: fechada ocupa uma linha; abre ao clicar num produto da tabela.
+function _ddvGrafHTML(){
+  const abrir=_ddvGraf?_ddvTodos().find(x=>String(x.p[0])===String(_ddvGraf)):null;
+  if(!abrir) return `<div class="ddv-graf"><div class="ddv-graf-head">
+      <i class="ti ti-chart-area-line" style="font-size:15px;color:var(--text3)"></i>
+      <b style="font-weight:700;color:var(--text)">Gráfico de vendas</b>
+      <span style="color:var(--text3)">— clique num produto da tabela para abrir aqui</span>
+      <span style="margin-left:auto;color:var(--text3);font-size:10.5px">recolhido</span></div></div>`;
+  const s=_DDV_SERIE[abrir.p[0]];
+  const corpo=s?_ddvSvg(s):`<div style="padding:26px 14px;text-align:center;color:var(--text3);font-size:12px;font-style:italic">
+      Este produto ainda não tem o histórico mês a mês carregado — por enquanto só o total de ${_cpNum(DDV_DIAS_UTEIS)} dias úteis (${_ddvN(abrir.p[6])}).</div>`;
+  return `<div class="ddv-graf">
+    <div class="ddv-graf-head" onclick="_ddvAbrirGraf('${abrir.p[0]}')">
+      <i class="ti ti-chart-area-line" style="font-size:15px;color:var(--blue-mid)"></i>
+      <b style="font-weight:700;color:var(--text)">Vendas: ${abrir.p[0]} · ${escapeHTML(abrir.p[1])}</b>
+      <span style="margin-left:auto;color:var(--text3);font-size:11px"><i class="ti ti-x" style="font-size:13px;vertical-align:-2px"></i> fechar</span>
+    </div>${corpo}</div>`;
+}
+function _ddvSvg(s){
+  const v=s.vals, n=v.length, W=1000, H=190, pad=26;
+  const max=Math.max.apply(null,v)*1.08, med=v.reduce((a,b)=>a+b,0)/n;
+  const x=i=>pad+i*((W-pad*2)/(n-1)), y=t=>H-28-(t/max)*(H-52);
+  const pts=v.map((t,i)=>`${x(i).toFixed(1)},${y(t).toFixed(1)}`).join(' ');
+  const ym=y(med).toFixed(1);
+  const rot=s.meses.map((m,i)=>`<text x="${x(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--text3)">${m}</text>`).join('');
+  const bolas=v.map((t,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(t).toFixed(1)}" r="3" fill="var(--blue-mid)"><title>${s.meses[i]}: ${_ddvN(t)}</title></circle>`).join('');
+  return `<div style="padding:4px 10px 10px">
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+      <polygon points="${pad},${H-28} ${pts} ${W-pad},${H-28}" fill="var(--blue-mid)" fill-opacity=".14"/>
+      <polyline points="${pts}" fill="none" stroke="var(--blue-mid)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+      <line x1="${pad}" y1="${ym}" x2="${W-pad}" y2="${ym}" stroke="var(--success)" stroke-width="2" stroke-dasharray="6 5"/>
+      <text x="${W-pad}" y="${(+ym)-6}" text-anchor="end" font-size="11" font-weight="700" fill="var(--success)">média ${_ddvN(med)}</text>
+      ${bolas}${rot}
+    </svg></div>`;
+}
+function _ddvKPIsHTML(){
+  const todos=_ddvTodos();
+  const cnt=f=>todos.filter(f).length;
+  const rup=cnt(x=>_ddvStatus(x)==='ruptura');
+  const aten=cnt(x=>{const s=_ddvStatus(x);return s==='ruptura'||s==='atencao';});
+  const folga=cnt(x=>_ddvStatus(x)==='folga');
+  const prod=cnt(x=>{const s=_ddvStatus(x);return (s==='ruptura'||s==='atencao')&&!x.p[4];});
+  // o cartão "Itens" acende quando NÃO há filtro, mas sem o × (não há o que limpar)
+  const k=(id,lab,val,sub,cor)=>{ const act=id?(_ddvFiltro===id):!_ddvFiltro;
+    return `<button class="ddv-kpi${act?' on':''}" ${cor?`style="border-left-color:${cor}"`:''} onclick="_ddvSetFiltro('${id}')" title="${act&&id?'Mostrar todos':(id?'Ver só estes':'Todos os produtos')}">
+    <span class="lab">${lab}${act&&id?' <i class="ti ti-x" style="font-size:10px;vertical-align:1px"></i>':''}</span>
+    <span class="val"${cor?` style="color:${cor}"`:''}>${_cpNum(val)}</span>
+    <span class="sub">${sub}</span></button>`; };
+  return `<div class="ddv-kpis">
+    ${k('','Itens',todos.length,_cpNum(_DDV_LINHAS.length)+' linhas de produto')}
+    ${k('ruptura','Em ruptura',rup,'saldo negativo','var(--danger)')}
+    ${k('atencao','Atenção',aten,'menos de '+DDV_ALERTA.vermelho+' dias de estoque','var(--danger)')}
+    ${k('folga','Folga',folga,DDV_ALERTA.amarelo+' dias ou mais','var(--success)')}
+    ${k('produzir','A produzir',prod,'vai faltar e não tem OP/OC','var(--amber)')}
+  </div>`;
+}
+function _ddvTabelaHTML(){
+  const th=(c,lab,cls)=>{ const on=_ddvSort.campo===c;
+    return `<th class="${cls||''}" onclick="_ddvSortBy('${c}')" style="${on?'color:var(--blue-mid)':''}">${lab}${on?` <i class="ti ti-${_ddvSort.dir<0?'arrow-down':'arrow-up'}" style="font-size:11px"></i>`:''}</th>`; };
+  const med=_ddvMedias;
+  const cols=med
+    ? `<col style="width:4.5%"><col style="width:25%"><col style="width:6.5%"><col style="width:6%"><col style="width:6%"><col style="width:4.5%"><col style="width:6.5%"><col style="width:5.5%"><col style="width:6.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:7%">`
+    : `<col style="width:6%"><col style="width:34%"><col style="width:8%"><col style="width:8%"><col style="width:8%"><col style="width:7%"><col style="width:8%"><col style="width:6.5%"><col style="width:7.5%"><col style="width:7%">`;
+  const nc=med?14:10;
+  // cabeçalho em 2 níveis: os grupos em cima, as colunas embaixo
+  const grupos=`<tr>
+    <th class="g" colspan="2"></th>
+    <th class="g" colspan="5">Estoque e demanda</th>
+    <th class="g" colspan="2">Cobertura</th>
+    ${med?'<th class="g" colspan="4">Médias de venda</th>':''}
+    <th class="g"></th></tr>`;
+  const colunas=`<tr>${th('cod','Cód.','l')}${th('nome','Produto','l')}${th('est','Estoque')}${th('ped','Pedido')}${th('opoc','OP/OC')}${th('maras','Maras')}${th('saldo','Saldo')}${th('ddv','DDV')}${th('ddvsop','DDV s/OP')}${med?`${th('mdv','MDV')}${th('msv','MSV')}${th('mqv','MQV')}${th('mmv','MMV')}`:''}${th('vendas','Vendas '+DDV_DIAS_UTEIS+'d')}</tr>`;
+  const linhas=_ddvFiltrados();
+  const buscando=!!_ddvBusca.trim()||!!_ddvFiltro;
+  let cards='';
+  linhas.forEach(L=>{
+    const fechada=_ddvFechadas[L.nome]&&!buscando;
+    let rows=`<tr class="ddv-lin" onclick="_ddvToggleLinha('${escapeAttr(L.nome).replace(/'/g,"\\'")}')">
+      <td class="l" colspan="2"><i class="ti ti-chevron-${fechada?'right':'down'}" style="color:var(--text3);font-size:13px;margin-right:4px"></i>Linha ${escapeHTML(L.nome)}<span class="ddv-cnt">${_cpNum(L.prods.length)} produtos</span></td>
+      <td colspan="${nc-2}"></td></tr>`;
+    if(!fechada) L.prods.forEach(p=>{
+      const c=_ddvCalc(p), st=_ddvCor(c.ddv), aberto=String(_ddvGraf)===String(p[0]);
+      const alerta=(c.ddv!=null&&c.ddv<DDV_ALERTA.vermelho)?`<i class="ti ti-alert-triangle-filled" style="color:var(--danger);font-size:11px;margin-right:4px" title="menos de ${DDV_ALERTA.vermelho} dias de estoque"></i>`:'';
+      rows+=`<tr class="ddv-prod" onclick="_ddvAbrirGraf('${p[0]}')" title="Ver o gráfico de vendas deste produto"${aberto?' style="background:color-mix(in srgb,var(--blue-mid) 8%,transparent)"':''}>
+        <td class="l ddv-cod">${alerta}${p[0]}</td>
+        <td class="l" title="${escapeAttr(p[1])}">${escapeHTML(p[1])}</td>
+        <td>${_ddvN(p[2])}</td><td>${_ddvN(p[3])}</td><td>${_ddvN(p[4])}</td><td>${_ddvN(p[5])}</td>
+        <td style="color:${c.saldo==null?'':(c.saldo<0?'var(--danger)':'var(--blue-mid)')};font-weight:600">${_ddvN(c.saldo)}</td>
+        <td style="color:${st};font-weight:700">${_ddvN(c.ddv)}</td>
+        <td style="color:${_ddvCor(c.ddvsop)};font-weight:600">${_ddvN(c.ddvsop)}</td>
+        ${med?`<td>${_ddvN(c.mdv)}</td><td>${_ddvN(c.msv)}</td><td>${_ddvN(c.mqv)}</td><td>${_ddvN(c.mmv)}</td>`:''}
+        <td>${_ddvN(p[6])}</td></tr>`;
+    });
+    cards+=`<div class="ddv-grp"><table class="ddv-tbl"><colgroup>${cols}</colgroup><tbody>${rows}</tbody></table></div>`;
+  });
+  if(!cards) cards=`<div class="ddv-grp" style="padding:6px 2px">${_cpVazio('Nenhum produto com esse filtro.')}</div>`;
+  const nProd=linhas.reduce((s,L)=>s+L.prods.length,0);
+  const fechadas=Object.keys(_ddvFechadas).length;
+  return `<div class="ddv-bar">
+      <span class="t">${_cpNum(nProd)} produtos · ${_cpNum(linhas.length)} linhas</span>
+      <button class="ddv-link${_ddvMedias?' on':''}" onclick="_ddvToggleMedias()" style="margin-left:auto"><i class="ti ti-columns-3" style="font-size:12px;vertical-align:-1px"></i> ${_ddvMedias?'Ocultar médias':'Mostrar médias'}</button>
+      <button class="ddv-link" onclick="_ddvTodasLinhas(${fechadas?0:1})"><i class="ti ti-${fechadas?'chevrons-down':'chevrons-up'}" style="font-size:12px;vertical-align:-1px"></i> ${fechadas?'Abrir todas':'Recolher todas'}</button>
+    </div>
+    <div class="ddv-hstrip"><table class="ddv-tbl"><colgroup>${cols}</colgroup><thead>${grupos}${colunas}</thead></table></div>
+    ${cards}
+    <div class="ddv-nota">O ⚠ e o vermelho acendem abaixo de ${DDV_ALERTA.vermelho} dias de estoque; âmbar vai até ${DDV_ALERTA.amarelo} dias e verde daí em diante — é o corte do SISPRO, e fica num lugar só no código.<br>
+    <b>Em ruptura</b> = saldo negativo · <b>Atenção</b> = menos de ${DDV_ALERTA.vermelho} dias (inclui os em ruptura) · <b>Folga</b> = ${DDV_ALERTA.amarelo} dias ou mais · <b>A produzir</b> = vai faltar e não tem OP/OC aberta.<br>
+    Saldo, DDV e as médias são calculados aqui (não vieram transcritos) e conferem com o SISPRO. Produto sem estoque nem pedido lançado fica com "—" no saldo e no DDV.</div>`;
+}
+function renderDDV(){
+  const main=document.getElementById('task-container'); if(!main) return;
+  const _tb=document.querySelector('.main .topbar'); if(_tb) _tb.style.display='none';
+  const _st=document.getElementById('stats-box'); if(_st) _st.style.display='none';
+  const _pr=document.getElementById('progress-box'); if(_pr) _pr.style.display='none';
+  const busca=`<span class="ddv-buscaw"><i class="ti ti-search"></i><input id="ddv-busca" value="${escapeAttr(_ddvBusca)}" oninput="_ddvBuscaInput(this.value)" placeholder="Buscar produto, código ou linha" class="ddv-busca"></span>`;
+  const corpo=`${_ddvCSS()}
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <span style="font-size:11.5px;color:var(--text3)">Posição do SISPRO em ${_DDV_POSICAO}</span>
+      <span style="margin-left:auto">${busca}</span>
+    </div>
+    ${_ddvKPIsHTML()}
+    ${_ddvGrafHTML()}
+    <div id="ddv-conteudo">${_ddvTabelaHTML()}</div>`;
+  main.innerHTML=_cpTela('PCP','Quantos dias o estoque de cada produto ainda dura — o DDV do SISPRO.',corpo);
+}
+// ════ FIM DO BLOCO PCP · DDV ════
 
 // ════ INÍCIO DO BLOCO COMERCIAL ════
 // COMERCIAL › Pedidos (set/2026) — junta numa aba só as 3 telas que o comercial usa hoje no Power BI:

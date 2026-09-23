@@ -422,6 +422,44 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-09-23 (b) — PC da Empresa — **PCP · DDV** refeito (a aba Histórico do SISPRO dentro do HUB)
+O Diego quer o SISPRO tela a tela no HUB, começando pelo **Produção › PCP**. Mostrei 5 mockups e ele pediu uma
+**mistura**: indicadores clicáveis do formato 4 + planilha com **cabeçalho em 2 níveis** do 3 + **gráfico recolhível**
+do 1. Bloco novo entre `// ════ INÍCIO/FIM DO BLOCO PCP · DDV ════`, prefixo **`_ddv*`**; `renderPCP()` agora só
+faz `return renderDDV()`. ⚠️ Os helpers antigos **`_pcp*`** (versão "Colar do SISPRO", dormente desde jul/2026)
+continuam no arquivo e **não têm relação** com o bloco novo — não confundir os dois.
+- **As abas do SISPRO saíram** (Lotes e OP's, Resumo, Ordens de compra/produção) a pedido dele: a tela **é** o histórico.
+- ⭐⭐ **SÓ 5 COLUNAS SÃO TRANSCRITAS** — estoque, pedido, OP/OC, maras e **vendas (261 dias úteis)**. As outras 8 são
+  CONTA, decifrada dos prints e conferida linha a linha: `Saldo = estoque + OP/OC + maras − pedido`;
+  **`MDV = vendas ÷ 261`, `MSV = ÷52`, `MQV = ÷24`, `MMV = ÷12`** (as 4 médias saem todas das vendas — 261/52,
+  261/24 e 261/12 são semana, quinzena e mês úteis); `DDV = saldo ÷ MDV`; `DDV s/OP = (saldo − OP/OC) ÷ MDV`.
+  📌 **Isso é o método, não um atalho:** o Saldo e o DDV impressos no print viram **conferência** do que eu digitei —
+  qualquer erro de transcrição aparece como divergência. Conferidos no teste: 9 → 738,07 / 5,11 / 0,49 ✓, 1798 →
+  599,93 / 7,10 / 1,56 ✓, 906 → 167,20 / 29,21 / −0,14 ✓, 1179 → 440,90 / 82,36 / −7,30 ✓ (diferenças de 1 centavo
+  em alguns saldos são arredondamento do próprio SISPRO).
+- **Dado:** `_DDV_LINHAS` = **32 linhas · 144 produtos** (posição 23/09/2026 13:23). Formato
+  `[nomeLinha, [[cod, nome, est, ped, opoc, maras, vendas261], …]]`, `null` = veio em branco no SISPRO.
+  Produto sem nenhum dado de estoque fica com "—" em saldo/DDV (não vira ruptura fantasma).
+- ⭐ **Semáforo decifrado:** o **⚠ do SISPRO acende exatamente abaixo de 7 dias de DDV** (conferido: 6,74/6,36/6,26/
+  6,01 têm ⚠; 7,10/7,29/7,66/7,87 não têm). `DDV_ALERTA={vermelho:7, amarelo:10}` — vermelho <7, âmbar 7–10, verde
+  10+. Vale para o DDV e para o DDV s/OP. **Trocar o corte é trocar esses 2 números.**
+- **Indicadores clicáveis** (viram filtro): Itens 144 · **Em ruptura 5** (saldo negativo) · **Atenção 27**
+  (DDV < 7, é o ⚠) · **Folga 80** (10+ dias) · **A produzir 25** (vai faltar **e não tem OP/OC aberta** — definição
+  minha, já que "a produzir" no SISPRO depende de um DDV-alvo que ele ainda não escolheu).
+- **Gráfico recolhido** numa faixa de uma linha; clicar num produto abre ali (área + linha + **média** tracejada +
+  17 meses). ⚠️ **Só o 1798 tem histórico mensal** (foi o único no print) — os outros mostram o aviso de "sem
+  histórico". Acrescentar = uma entrada em `_DDV_SERIE` por código.
+- Mesma gramática da aba Pedidos: **1 cartão por linha**, faixa de títulos fora dos cartões (`.ddv-hstrip`,
+  `padding:0 1px` para compensar a borda do cartão — **alinhamento medido: 0px de desvio nas 14 colunas**),
+  ordenação por clique, busca, recolher linha/todas e **"Ocultar médias"** (14 → 10 colunas).
+- Testado em Edge headless: 32/144, KPIs acima, filtros (atenção 27, produzir 25, ruptura 5), médias on/off,
+  recolher todas, busca ("palitinho" → 8), ordenação por DDV nos 2 sentidos, gráfico abrindo/fechando e o aviso
+  de produto sem série, **0 erros de JS**.
+- ⏳ **Em aberto:** (1) o print termina no PROTEICO — se houver linha depois, falta; (2) os filtros do rail do
+  SISPRO (Redes, Marcas, Tipos de produção, Almoxarifados, Quantidades em pacotes/caixas/paletes) **não existem
+  aqui** porque esses campos não vêm nos prints; (3) "RECHEIO FORNEÁVEL" aparece **2×** no SISPRO (1,010kg e 4kg) —
+  aqui ficaram distinguidos no nome, vale conferir o cadastro; (4) confirmar o corte de 7/10 dias.
+
 ### 2026-09-23 — PC da Empresa — Comercial › Pedidos: VISUAL alinhado ao **HUB Oficial** (o do Guilherme)
 O Diego mandou as 2 telas lado a lado (Oficial "Minhas Tarefas" × Teste "Pedidos") e pediu o mesmo acabamento:
 "layout, tipo de tabela, modernidade — o oficial é mais bonito". **Só apresentação; nenhum número/regra mudou.**
