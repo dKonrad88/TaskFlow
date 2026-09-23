@@ -12479,8 +12479,15 @@ function _comRefresh(){ const el=document.getElementById('com-conteudo'); if(el)
 function _comSetPer(p){ _comPer=p; renderComercial(); }
 function _comSetAba(a){ _comAba=a; renderComercial(); }
 function _comBuscaInput(v){ _comBusca=v; _comRefresh(); }
-function _comToggleLinha(i){ if(_comFechadas[i]) delete _comFechadas[i]; else _comFechadas[i]=1; _comRefresh(); }
-function _comTodasLinhas(fechar){ _COM_LINHAS.forEach((l,i)=>{ if(fechar) _comFechadas[i]=1; else delete _comFechadas[i]; }); _comRefresh(); }
+// ⚠️ O recolhimento é guardado pelo NOME da linha, não pelo índice: cada período tem sua própria
+// ordem, e por índice "Amendoim" recolhido em Hoje recolhia outra linha qualquer ao trocar de período.
+function _comChaveLinha(i){ const d=_comD(); return (d&&d.linhas[i])?_comNorm(d.linhas[i][0]):String(i); }
+function _comToggleLinha(i){ const k=_comChaveLinha(i); if(_comFechadas[k]) delete _comFechadas[k]; else _comFechadas[k]=1; _comRefresh(); }
+function _comTodasLinhas(fechar){
+  const d=_comD(); if(!d) return;              // antes isto varria _COM_LINHAS, que não existe mais
+  d.linhas.forEach(l=>{ const k=_comNorm(l[0]); if(fechar) _comFechadas[k]=1; else delete _comFechadas[k]; });
+  _comRefresh();
+}
 function _comSortBy(c){ if(_comSort.campo===c) _comSort.dir*=-1; else { _comSort.campo=c; _comSort.dir=(c==='nome'?1:-1); } _comRefresh(); }
 function _comD(){ return _COM_DADOS[_comPer]||null; }
 function _comBase(){ const d=_comD(); return (d&&d.base&&_COM_DADOS[d.base])?_COM_DADOS[d.base]:null; }
@@ -12827,7 +12834,7 @@ function _comProdutosHTML(){
   const card=linhasHTML=>`<div class="com-grp"><table class="com-tbl"><colgroup>${cols}</colgroup><tbody>${linhasHTML}</tbody></table></div>`;
   let cards='';
   linhas.forEach(g=>{
-    const l=g.l, fechada=_comFechadas[g.i]&&!buscando, bl=bIdx?bIdx[_comNorm(l[0])]:null;
+    const l=g.l, fechada=_comFechadas[_comNorm(l[0])]&&!buscando, bl=bIdx?bIdx[_comNorm(l[0])]:null;
     let rows=`<tr class="com-lin" onclick="_comToggleLinha(${g.i})">
       <td class="l"><i class="ti ti-chevron-${fechada?'right':'down'}" style="color:var(--text3);font-size:13px;margin-right:4px"></i>${escapeHTML(l[0])}</td>
       <td>${_comPct(l[1])}</td><td>${_cpBRL(l[2])}</td>${vs(l[2], bl?bl.l[2]:null)}<td>${_cpNum(l[3])}</td><td>${_comN(l[4])}</td><td>${_cpNum(l[5])}</td></tr>`;

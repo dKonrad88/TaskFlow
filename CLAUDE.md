@@ -450,6 +450,14 @@ O Diego mandou as 2 telas lado a lado (Oficial "Minhas Tarefas" × Teste "Pedido
   na linha de baixo ("R$ 190.189,01 a menos que ontem"). Saiu do `cp-card` genérico. Ficaram ~25% mais baixos, então
   a tabela sobe na tela. Nos **pedidos em aberto** (que não tem com o que comparar) a pílula vira **alerta**
   ("2 com 15+") e o valor segue tingido de vermelho/âmbar.
+- 🐞 **"Recolher todas" estava QUEBRADO** (o Diego pegou): `_comTodasLinhas` varria **`_COM_LINHAS`**, constante que
+  deixou de existir em 22/09 quando o dado virou um array por período (`_COM_LINHAS_ONTEM`/`_HOJE`) — o clique
+  estourava `ReferenceError` e a tela não mudava. Agora varre `_comD().linhas`. ⚠️ **Por que os testes não pegaram:**
+  o harness chamava as funções direto (`w._comSetAba(...)`) em vez de **clicar no botão**, e erro dentro de handler
+  `onclick` não aparecia. O harness agora dá `.click()` de verdade e escuta `window.onerror` do iframe.
+- ⚠️ De quebra, o recolhimento passou a ser guardado pelo **NOME** da linha (`_comChaveLinha`), não pelo índice:
+  cada período tem sua própria ordem, então por índice "Amendoim" recolhido em Hoje recolhia outra linha qualquer
+  ao trocar para Semana.
 - ⏳ **Mini-gráfico preparado, mas ESCONDIDO de propósito:** `_comSparkHTML` só desenha com **3+ dias**
   (`COM_SERIE_DIAS`, hoje `['ontem','hoje']`) — com 2 pontos a linha é reta e não diz nada. **Ao carregar um dia
   novo, some a chave em `COM_SERIE_DIAS` e o gráfico aparece sozinho** nos 5 cartões.
