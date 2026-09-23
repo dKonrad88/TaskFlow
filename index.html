@@ -11983,7 +11983,9 @@ function _mktCfgReset(){ _mktLoad(); mktConfig.pontos=Object.assign({},MKT_PONTO
 // arquivo e NÃO têm relação com este bloco, que usa o prefixo _ddv*.
 let _ddvBusca='';
 let _ddvFiltro='';            // '' | 'ruptura' | 'atencao' | 'folga' | 'produzir'
-let _ddvMedias=true;          // mostrar as 4 médias (MDV/MSV/MQV/MMV)
+// As 4 médias (MDV/MSV/MQV/MMV) ficam sempre visíveis: o botão "Ocultar médias" saiu a pedido do
+// Diego. Para escondê-las de novo é só pôr false aqui (a tabela já se ajusta p/ 10 colunas).
+const _ddvMedias=true;
 let _ddvGraf='';              // código do produto com o gráfico aberto ('' = faixa recolhida)
 let _ddvSort={campo:'nome',dir:1};
 const _ddvFechadas={};        // linhas recolhidas — estado de tela, não persiste
@@ -12258,7 +12260,6 @@ function _ddvRefresh(){ const el=document.getElementById('ddv-conteudo'); if(el)
 function _ddvBuscaInput(v){ _ddvBusca=v; _ddvRefresh(); }
 function _ddvSetFiltro(v){ _ddvFiltro=(_ddvFiltro===v?'':v); renderPCP(); }
 function _ddvSortBy(c){ if(_ddvSort.campo===c) _ddvSort.dir*=-1; else { _ddvSort.campo=c; _ddvSort.dir=(c==='nome'||c==='cod')?1:-1; } _ddvRefresh(); }
-function _ddvToggleMedias(){ _ddvMedias=!_ddvMedias; renderPCP(); }
 function _ddvToggleLinha(nome){ if(_ddvFechadas[nome]) delete _ddvFechadas[nome]; else _ddvFechadas[nome]=1; _ddvRefresh(); }
 function _ddvTodasLinhas(fechar){ _DDV_LINHAS.forEach(L=>{ if(fechar) _ddvFechadas[L[0]]=1; else delete _ddvFechadas[L[0]]; }); _ddvRefresh(); }
 function _ddvAbrirGraf(cod){ _ddvGraf=(String(_ddvGraf)===String(cod))?'':String(cod); renderPCP(); window.scrollTo(0,0); }
@@ -12288,8 +12289,10 @@ function _ddvCSS(){
   .ddv-tbl th.g.on{background:color-mix(in srgb,var(--blue-mid) 84%,#0b1018);color:#fff;font-weight:800;border-radius:7px;padding:5px 8px;border-left:3px solid transparent;border-right:3px solid transparent;background-clip:padding-box}
   .ddv-tbl th.g:hover{color:var(--text3)}
   .ddv-tbl th.g.on:hover{color:#fff}
-  .ddv-tbl td.bnd,.ddv-tbl th.bnd{background:color-mix(in srgb,var(--blue-mid) 5%,transparent)}
-  .ddv-tbl th.bnd{background:color-mix(in srgb,var(--blue-mid) 8%,transparent)}
+  /* tom CRESCENTE da esquerda p/ a direita: cada área um pouco mais forte que a anterior */
+  .ddv-tbl td.b1,.ddv-tbl th.b1{background:color-mix(in srgb,var(--blue-mid) 4%,transparent)}
+  .ddv-tbl td.b2,.ddv-tbl th.b2{background:color-mix(in srgb,var(--blue-mid) 8.5%,transparent)}
+  .ddv-tbl td.b3,.ddv-tbl th.b3{background:color-mix(in srgb,var(--blue-mid) 13%,transparent)}
   .ddv-tbl td.bs,.ddv-tbl th.bs{border-left:1px solid color-mix(in srgb,var(--text) 11%,transparent)}
   .ddv-lin td.bnd{background:var(--bg2)}   /* a faixa da linha atravessa limpa, sem o tom do grupo */
   .ddv-tbl td{padding:8px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--text2);border-bottom:1px solid color-mix(in srgb,var(--text) 7%,transparent)}
@@ -12441,7 +12444,7 @@ function _ddvTabelaHTML(){
     <th class="g on" colspan="2">Cobertura</th>
     ${med?'<th class="g on" colspan="4">Médias de venda</th>':''}
     <th class="g"></th></tr>`;
-  const colunas=`<tr>${th('cod','Cód.','l')}${th('nome','Produto','l')}${th('est','Estoque','bnd bs')}${th('ped','Pedido','bnd')}${th('opoc','OP/OC','bnd')}${th('maras','Maras','bnd')}${th('saldo','Saldo','bnd')}${th('ddv','DDV','bnd bs')}${th('ddvsop','DDV s/OP','bnd')}${med?`${th('mdv','MDV','bnd bs')}${th('msv','MSV','bnd')}${th('mqv','MQV','bnd')}${th('mmv','MMV','bnd')}`:''}${th('vendas','Vendas '+DDV_DIAS_UTEIS+'d')}</tr>`;
+  const colunas=`<tr>${th('cod','Cód.','l')}${th('nome','Produto','l')}${th('est','Estoque','bnd b1 bs')}${th('ped','Pedido','bnd b1')}${th('opoc','OP/OC','bnd b1')}${th('maras','Maras','bnd b1')}${th('saldo','Saldo','bnd b1')}${th('ddv','DDV','bnd b2 bs')}${th('ddvsop','DDV s/OP','bnd b2')}${med?`${th('mdv','MDV','bnd b3 bs')}${th('msv','MSV','bnd b3')}${th('mqv','MQV','bnd b3')}${th('mmv','MMV','bnd b3')}`:''}${th('vendas','Vendas '+DDV_DIAS_UTEIS+'d')}</tr>`;
   const linhas=_ddvFiltrados();
   const buscando=!!_ddvBusca.trim()||!!_ddvFiltro;
   let cards='';
@@ -12456,11 +12459,11 @@ function _ddvTabelaHTML(){
       rows+=`<tr class="ddv-prod" onclick="_ddvAbrirGraf('${p[0]}')" title="Ver o gráfico de vendas deste produto"${aberto?' style="background:color-mix(in srgb,var(--blue-mid) 8%,transparent)"':''}>
         <td class="l ddv-cod">${alerta}${p[0]}</td>
         <td class="l" title="${escapeAttr(p[1])}">${escapeHTML(p[1])}</td>
-        <td class="bnd bs">${_ddvN(p[2])}</td><td class="bnd">${_ddvN(p[3])}</td><td class="bnd">${_ddvN(p[4])}</td><td class="bnd">${_ddvN(p[5])}</td>
-        <td class="bnd" style="color:${c.saldo==null?'':(c.saldo<0?'var(--danger)':'var(--blue-mid)')};font-weight:600">${_ddvN(c.saldo)}</td>
-        <td class="bnd bs" style="color:${st};font-weight:700">${_ddvN(c.ddv)}</td>
-        <td class="bnd" style="color:${_ddvCor(c.ddvsop)};font-weight:600">${_ddvN(c.ddvsop)}</td>
-        ${med?`<td class="bnd bs">${_ddvN(c.mdv)}</td><td class="bnd">${_ddvN(c.msv)}</td><td class="bnd">${_ddvN(c.mqv)}</td><td class="bnd">${_ddvN(c.mmv)}</td>`:''}
+        <td class="bnd b1 bs">${_ddvN(p[2])}</td><td class="bnd b1">${_ddvN(p[3])}</td><td class="bnd b1">${_ddvN(p[4])}</td><td class="bnd b1">${_ddvN(p[5])}</td>
+        <td class="bnd b1" style="color:${c.saldo==null?'':(c.saldo<0?'var(--danger)':'var(--blue-mid)')};font-weight:600">${_ddvN(c.saldo)}</td>
+        <td class="bnd b2 bs" style="color:${st};font-weight:700">${_ddvN(c.ddv)}</td>
+        <td class="bnd b2" style="color:${_ddvCor(c.ddvsop)};font-weight:600">${_ddvN(c.ddvsop)}</td>
+        ${med?`<td class="bnd b3 bs">${_ddvN(c.mdv)}</td><td class="bnd b3">${_ddvN(c.msv)}</td><td class="bnd b3">${_ddvN(c.mqv)}</td><td class="bnd b3">${_ddvN(c.mmv)}</td>`:''}
         <td>${_ddvN(p[6])}</td></tr>`;
     });
     cards+=`<div class="ddv-grp"><table class="ddv-tbl"><colgroup>${cols}</colgroup><tbody>${rows}</tbody></table></div>`;
@@ -12470,8 +12473,7 @@ function _ddvTabelaHTML(){
   const fechadas=Object.keys(_ddvFechadas).length;
   return `<div class="ddv-bar">
       <span class="t">${_cpNum(nProd)} produtos · ${_cpNum(linhas.length)} linhas</span>
-      <button class="ddv-link${_ddvMedias?' on':''}" onclick="_ddvToggleMedias()" style="margin-left:auto"><i class="ti ti-columns-3" style="font-size:12px;vertical-align:-1px"></i> ${_ddvMedias?'Ocultar médias':'Mostrar médias'}</button>
-      <button class="ddv-link" onclick="_ddvTodasLinhas(${fechadas?0:1})"><i class="ti ti-${fechadas?'chevrons-down':'chevrons-up'}" style="font-size:12px;vertical-align:-1px"></i> ${fechadas?'Abrir todas':'Recolher todas'}</button>
+      <button class="ddv-link" onclick="_ddvTodasLinhas(${fechadas?0:1})" style="margin-left:auto"><i class="ti ti-${fechadas?'chevrons-down':'chevrons-up'}" style="font-size:12px;vertical-align:-1px"></i> ${fechadas?'Abrir todas':'Recolher todas'}</button>
     </div>
     <div class="ddv-hstrip"><table class="ddv-tbl"><colgroup>${cols}</colgroup><thead>${grupos}${colunas}</thead></table></div>
     ${cards}
