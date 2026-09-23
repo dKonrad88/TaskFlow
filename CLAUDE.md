@@ -449,6 +449,13 @@ continuam no arquivo e **não têm relação** com o bloco novo — não confund
 - **Gráfico recolhido** numa faixa de uma linha; clicar num produto abre ali (área + linha + **média** tracejada +
   17 meses). ⚠️ **Só o 1798 tem histórico mensal** (foi o único no print) — os outros mostram o aviso de "sem
   histórico". Acrescentar = uma entrada em `_DDV_SERIE` por código.
+- ⭐ **SEPARAÇÃO DOS 3 GRUPOS DE COLUNA** (2ª rodada; 5 mockups, ele pediu a **mistura do 5 com o 3**):
+  cada grupo ganhou **tarja no acento com texto branco** (`th.g.on`) e as colunas dele levam um **fundo bem
+  leve no mesmo tom** (5%), com uma divisória de 1px no início de cada grupo (`.bs`). ⚠️ A tarja usa
+  `color-mix(--blue-mid 84%, #0b1018)`: **escurecer é obrigatório** — no tema Klain o `--blue-mid` é caramelo
+  claro e o texto branco sumiria. E o vão entre tarjas vizinhas é feito com **borda transparente de 3px +
+  `background-clip:padding-box`**, que separa sem alterar a largura da coluna (mexer nela desalinharia tudo).
+  A faixa da linha (`.ddv-lin`) atravessa limpa, sem o tom dos grupos.
 - Mesma gramática da aba Pedidos: **1 cartão por linha**, faixa de títulos fora dos cartões (`.ddv-hstrip`,
   `padding:0 1px` para compensar a borda do cartão — **alinhamento medido: 0px de desvio nas 14 colunas**),
   ordenação por clique, busca, recolher linha/todas e **"Ocultar médias"** (14 → 10 colunas).

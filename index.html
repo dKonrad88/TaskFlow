@@ -12267,8 +12267,19 @@ function _ddvCSS(){
   .ddv-tbl th{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);text-align:right;padding:3px 8px 6px;white-space:nowrap;cursor:pointer;user-select:none}
   .ddv-tbl th:hover{color:var(--text)}
   .ddv-tbl th.l,.ddv-tbl td.l{text-align:left}
-  .ddv-tbl th.g{font-size:9.5px;letter-spacing:.07em;color:var(--blue-mid);text-align:center;padding:2px 8px 3px;cursor:default}
-  .ddv-tbl th.g:hover{color:var(--blue-mid)}
+  /* Cabeçalho do grupo = tarja no acento (texto branco); as colunas do grupo levam um fundo bem leve
+     no MESMO tom, então a faixa e a área que ela cobre se lêem como um bloco só.
+     ⚠️ o 84% com quase-preto garante contraste do texto branco em qualquer tema (no Klain o
+     --blue-mid é caramelo claro; sem escurecer, o branco sumiria). */
+  .ddv-tbl th.g{font-size:9.5px;letter-spacing:.07em;text-align:center;padding:2px 8px 3px;cursor:default;color:var(--text3)}
+  /* as bordas transparentes + background-clip abrem um vão entre tarjas vizinhas sem mexer na largura da coluna */
+  .ddv-tbl th.g.on{background:color-mix(in srgb,var(--blue-mid) 84%,#0b1018);color:#fff;font-weight:800;border-radius:7px;padding:5px 8px;border-left:3px solid transparent;border-right:3px solid transparent;background-clip:padding-box}
+  .ddv-tbl th.g:hover{color:var(--text3)}
+  .ddv-tbl th.g.on:hover{color:#fff}
+  .ddv-tbl td.bnd,.ddv-tbl th.bnd{background:color-mix(in srgb,var(--blue-mid) 5%,transparent)}
+  .ddv-tbl th.bnd{background:color-mix(in srgb,var(--blue-mid) 8%,transparent)}
+  .ddv-tbl td.bs,.ddv-tbl th.bs{border-left:1px solid color-mix(in srgb,var(--text) 11%,transparent)}
+  .ddv-lin td.bnd{background:var(--bg2)}   /* a faixa da linha atravessa limpa, sem o tom do grupo */
   .ddv-tbl td{padding:8px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--text2);border-bottom:1px solid color-mix(in srgb,var(--text) 7%,transparent)}
   .ddv-tbl td.l{white-space:normal;overflow:hidden;text-overflow:ellipsis}
   .ddv-grp tr:last-child td{border-bottom:none}
@@ -12363,14 +12374,14 @@ function _ddvTabelaHTML(){
     ? `<col style="width:4.5%"><col style="width:25%"><col style="width:6.5%"><col style="width:6%"><col style="width:6%"><col style="width:4.5%"><col style="width:6.5%"><col style="width:5.5%"><col style="width:6.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:7%">`
     : `<col style="width:6%"><col style="width:34%"><col style="width:8%"><col style="width:8%"><col style="width:8%"><col style="width:7%"><col style="width:8%"><col style="width:6.5%"><col style="width:7.5%"><col style="width:7%">`;
   const nc=med?14:10;
-  // cabeçalho em 2 níveis: os grupos em cima, as colunas embaixo
+  // cabeçalho em 2 níveis: tarja do grupo em cima, colunas embaixo (as do grupo com o fundo leve)
   const grupos=`<tr>
     <th class="g" colspan="2"></th>
-    <th class="g" colspan="5">Estoque e demanda</th>
-    <th class="g" colspan="2">Cobertura</th>
-    ${med?'<th class="g" colspan="4">Médias de venda</th>':''}
+    <th class="g on" colspan="5">Estoque e demanda</th>
+    <th class="g on" colspan="2">Cobertura</th>
+    ${med?'<th class="g on" colspan="4">Médias de venda</th>':''}
     <th class="g"></th></tr>`;
-  const colunas=`<tr>${th('cod','Cód.','l')}${th('nome','Produto','l')}${th('est','Estoque')}${th('ped','Pedido')}${th('opoc','OP/OC')}${th('maras','Maras')}${th('saldo','Saldo')}${th('ddv','DDV')}${th('ddvsop','DDV s/OP')}${med?`${th('mdv','MDV')}${th('msv','MSV')}${th('mqv','MQV')}${th('mmv','MMV')}`:''}${th('vendas','Vendas '+DDV_DIAS_UTEIS+'d')}</tr>`;
+  const colunas=`<tr>${th('cod','Cód.','l')}${th('nome','Produto','l')}${th('est','Estoque','bnd bs')}${th('ped','Pedido','bnd')}${th('opoc','OP/OC','bnd')}${th('maras','Maras','bnd')}${th('saldo','Saldo','bnd')}${th('ddv','DDV','bnd bs')}${th('ddvsop','DDV s/OP','bnd')}${med?`${th('mdv','MDV','bnd bs')}${th('msv','MSV','bnd')}${th('mqv','MQV','bnd')}${th('mmv','MMV','bnd')}`:''}${th('vendas','Vendas '+DDV_DIAS_UTEIS+'d')}</tr>`;
   const linhas=_ddvFiltrados();
   const buscando=!!_ddvBusca.trim()||!!_ddvFiltro;
   let cards='';
@@ -12385,11 +12396,11 @@ function _ddvTabelaHTML(){
       rows+=`<tr class="ddv-prod" onclick="_ddvAbrirGraf('${p[0]}')" title="Ver o gráfico de vendas deste produto"${aberto?' style="background:color-mix(in srgb,var(--blue-mid) 8%,transparent)"':''}>
         <td class="l ddv-cod">${alerta}${p[0]}</td>
         <td class="l" title="${escapeAttr(p[1])}">${escapeHTML(p[1])}</td>
-        <td>${_ddvN(p[2])}</td><td>${_ddvN(p[3])}</td><td>${_ddvN(p[4])}</td><td>${_ddvN(p[5])}</td>
-        <td style="color:${c.saldo==null?'':(c.saldo<0?'var(--danger)':'var(--blue-mid)')};font-weight:600">${_ddvN(c.saldo)}</td>
-        <td style="color:${st};font-weight:700">${_ddvN(c.ddv)}</td>
-        <td style="color:${_ddvCor(c.ddvsop)};font-weight:600">${_ddvN(c.ddvsop)}</td>
-        ${med?`<td>${_ddvN(c.mdv)}</td><td>${_ddvN(c.msv)}</td><td>${_ddvN(c.mqv)}</td><td>${_ddvN(c.mmv)}</td>`:''}
+        <td class="bnd bs">${_ddvN(p[2])}</td><td class="bnd">${_ddvN(p[3])}</td><td class="bnd">${_ddvN(p[4])}</td><td class="bnd">${_ddvN(p[5])}</td>
+        <td class="bnd" style="color:${c.saldo==null?'':(c.saldo<0?'var(--danger)':'var(--blue-mid)')};font-weight:600">${_ddvN(c.saldo)}</td>
+        <td class="bnd bs" style="color:${st};font-weight:700">${_ddvN(c.ddv)}</td>
+        <td class="bnd" style="color:${_ddvCor(c.ddvsop)};font-weight:600">${_ddvN(c.ddvsop)}</td>
+        ${med?`<td class="bnd bs">${_ddvN(c.mdv)}</td><td class="bnd">${_ddvN(c.msv)}</td><td class="bnd">${_ddvN(c.mqv)}</td><td class="bnd">${_ddvN(c.mmv)}</td>`:''}
         <td>${_ddvN(p[6])}</td></tr>`;
     });
     cards+=`<div class="ddv-grp"><table class="ddv-tbl"><colgroup>${cols}</colgroup><tbody>${rows}</tbody></table></div>`;
