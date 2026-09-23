@@ -429,12 +429,21 @@ O Diego mandou as 2 telas lado a lado (Oficial "Minhas Tarefas" × Teste "Pedido
   com texto branco, e o nº de pedidos no selo (Ontem 268 · Hoje 99 · Semana 367). Período sem dado fica **apagado
   e sem selo** (`_comPerN` devolve null) — bate o olho e vê o que já foi carregado.
 - **Sub-abas com contador** (Produtos 28 · Representantes 22 · Pedidos em aberto 73), ativa com sublinhado + selo tingido.
-- **Tabela reformada** (`.com-card` no lugar do `.cp-card` genérico): cartão arredondado de 14px com **cabeçalho
-  próprio** (contagem à esquerda, ações à direita), **títulos de coluna em CAIXA-ALTA miúda com letter-spacing**,
-  linhas mais altas (9px) com divisória fininha, **faixa de grupo arredondada** e nota de rodapé como faixa
-  separada no pé do cartão. `border-collapse` passou a **separate** (é o que permite arredondar a faixa) — as
-  bordas viraram só `border-bottom`, e o **espaçador de 13px entre as linhas** (pedido antigo dele) continua.
-- **Total descolado**: agora entra um espaçador antes, então o rodapé é uma faixa própria em vez de colar na última linha.
+- ⭐⭐ **UM CARTÃO POR GRUPO — nada de cartão gigante** (2ª rodada; na 1ª eu tinha feito a tabela inteira dentro de
+  um cartão só e o Diego corrigiu: *"cada solicitante é um card; entre as linhas deveria aparecer o fundo da área
+  central, e não um card"*). Agora **cada linha de produto** (e cada representante, nos pedidos em aberto) é um
+  **`.com-grp`** próprio — cartão arredondado de 12px — e o **fundo da página aparece no vão de 9px entre eles**.
+  O total virou um cartão próprio no fim. O espaçador de linha (`.com-sp`) morreu: quem dá o respiro agora é a
+  margem entre cartões.
+- **Títulos de coluna ficam FORA dos cartões** (`.com-hstrip`), no fundo da página, em **CAIXA-ALTA miúda com
+  letter-spacing** — aparecem **uma vez só** (o oficial repete por grupo, mas ali são 3 grupos; aqui seriam 28).
+  ⚠️ **O alinhamento depende de um detalhe:** a faixa tem `padding:0 1px` para compensar a **borda de 1px** do
+  cartão; com o mesmo `<colgroup>` e `table-layout:fixed`, as colunas batem ao pixel (testado: desvio 0 à
+  esquerda e à direita, inclusive com a coluna de comparação ligada). **Mexeu no padding/borda de um, mexa no outro.**
+- Linhas mais altas (9px) com divisória fininha; `border-collapse` passou a **separate**, então as bordas são só
+  `border-bottom` e a última linha de cada cartão não tem divisória (`.com-grp tr:last-child td`).
+- Contagem e ações ("Recolher todas", filtros de dias/rota) viraram uma **barra leve acima dos cartões**
+  (`.com-bar`), e a nota de rodapé voltou a ser texto solto no fundo da página.
 - **Busca** ganhou lupa dentro do campo e anel de foco; virou CSS de verdade (`.com-busca`), sem estilo inline.
 - 🐞 **Bug real achado no caminho** (estava lá desde a 1ª versão): na sub-aba **Pedidos em aberto** a linha do
   representante tinha 1 coluna a mais, então **a contagem de pedidos caía embaixo de "Valor"** (e valor embaixo de

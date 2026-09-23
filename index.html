@@ -12526,10 +12526,16 @@ function _comFiltradas(){
 // caixa-alta miúda, faixa arredondada no grupo e chips-pílula com contador.
 function _comCSS(){
   return `<style>
-  .com-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden}
-  .com-card-head{display:flex;align-items:center;gap:10px;padding:11px 15px;border-bottom:1px solid var(--border);flex-wrap:wrap}
-  .com-card-head .t{font-size:11.5px;font-weight:600;color:var(--text3)}
-  .com-card-body{padding:5px 9px 9px}
+  /* Cada GRUPO é um cartão (linha de produto, representante) e o fundo da área aparece entre eles —
+     é o desenho do HUB oficial. Nada de um cartão gigante em volta da tabela inteira. */
+  .com-grp{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:9px}
+  .com-grp:last-child{margin-bottom:0}
+  /* faixa de títulos das colunas: fica FORA dos cartões, no fundo da página.
+     O padding de 1px casa com a borda do cartão, então as colunas alinham. */
+  .com-hstrip{padding:0 1px;margin-bottom:5px}
+  .com-hstrip th{border-bottom:none;padding:2px 12px 5px}
+  .com-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:9px}
+  .com-bar .t{font-size:11.5px;font-weight:600;color:var(--text3)}
   .com-tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px;table-layout:fixed}
   .com-tbl th{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);text-align:right;padding:10px 12px 9px;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
   .com-tbl th:hover{color:var(--text)}
@@ -12537,19 +12543,15 @@ function _comCSS(){
   .com-tbl td{padding:9px 12px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;border-bottom:1px solid color-mix(in srgb,var(--text) 7%,transparent)}
   .com-tbl td.l{white-space:normal;overflow:hidden;text-overflow:ellipsis}
   .com-lin td{font-weight:700;color:var(--text);background:var(--bg2);border-bottom:1px solid var(--border);cursor:pointer}
-  .com-lin td:first-child{border-radius:9px 0 0 9px}
-  .com-lin td:last-child{border-radius:0 9px 9px 0}
   .com-lin:hover td{background:color-mix(in srgb,var(--blue-mid) 9%,var(--bg2))}
   .com-lin.com-nolink td{cursor:default}
+  .com-grp tr:last-child td{border-bottom:none}
   .com-prod td{color:var(--text2)}
   .com-prod:hover td{background:color-mix(in srgb,var(--text) 4%,transparent)}
   .com-cod{color:var(--text3);font-size:11px;font-variant-numeric:tabular-nums;margin-right:7px}
   .com-cls{color:var(--text3);font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;background:color-mix(in srgb,var(--text) 8%,transparent);border-radius:999px;padding:2px 8px;margin-left:7px;white-space:nowrap}
   .com-cnt{font-size:10.5px;font-weight:700;white-space:nowrap;background:color-mix(in srgb,var(--text) 10%,transparent);color:var(--text3);border-radius:999px;padding:2px 8px;margin-left:8px;font-variant-numeric:tabular-nums}
-  .com-sp td{height:14px;padding:0;border:none;background:none}
   .com-tot td{font-weight:700;color:var(--text);border-bottom:none;background:color-mix(in srgb,var(--text) 5%,transparent)}
-  .com-tot td:first-child{border-radius:9px 0 0 9px}
-  .com-tot td:last-child{border-radius:0 9px 9px 0}
   .com-chip{font-size:12.5px;font-weight:600;padding:7px 14px;border-radius:999px;cursor:pointer;font-family:inherit;background:color-mix(in srgb,var(--text) 5%,transparent);border:1px solid transparent;color:var(--text2);display:inline-flex;align-items:center;gap:7px;transition:background .12s,color .12s}
   .com-chip:hover{background:color-mix(in srgb,var(--text) 10%,transparent);color:var(--text)}
   .com-chip.on{background:var(--blue-mid);border-color:var(--blue-mid);color:#fff}
@@ -12565,7 +12567,7 @@ function _comCSS(){
   .com-buscaw i{position:absolute;left:11px;font-size:14px;color:var(--text3);pointer-events:none}
   .com-busca{width:250px;height:34px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--text);font-family:inherit;font-size:12.5px;padding:0 11px 0 32px;outline:none}
   .com-busca:focus{border-color:var(--blue-mid);box-shadow:0 0 0 3px color-mix(in srgb,var(--blue-mid) 14%,transparent)}
-  .com-nota{font-size:11.5px;color:var(--text3);line-height:1.5;padding:11px 15px 13px;border-top:1px solid var(--border);background:color-mix(in srgb,var(--text) 2.5%,transparent)}
+  .com-nota{font-size:11.5px;color:var(--text3);line-height:1.5;margin-top:12px;padding:0 2px}
   .com-link{background:none;border:none;color:var(--text3);font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:7px}
   .com-link:hover{background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--text)}
   </style>`;
@@ -12675,11 +12677,12 @@ function _comAbertoHTML(){
     const cor=ok===false?'var(--danger)':'var(--success)';
     const tit=ok===false?`lançado na ${l} e a rota do cliente é ${r||'sem semana cadastrada'}`:`rota do cliente: ${r}`;
     return `<td title="${escapeAttr(tit)}"><span style="color:${cor}">${escapeHTML(l)}</span></td>`; };
-  let corpo='';
+  const cols=`<colgroup><col style="width:33%"><col style="width:11%"><col style="width:8%"><col style="width:10%"><col style="width:6%"><col style="width:15%"><col style="width:10%"><col style="width:7%"></colgroup>`;
+  let cards='';
   grupos.forEach((g,n)=>{
     const itens=porGrupo[g.cod]||[];
     if(filtrando && !itens.length) return;
-    if(corpo) corpo+=`<tr class="com-sp"><td colspan="8"></td></tr>`;
+    let corpo='';
     const sv=itens.reduce((s,i)=>s+i[3],0), sc=itens.reduce((s,i)=>s+i[4],0);
     // a contagem de pedidos vira selo ao lado do nome (como no HUB oficial) — assim as colunas
     // numéricas da faixa ficam alinhadas com as dos pedidos abaixo.
@@ -12698,21 +12701,19 @@ function _comAbertoHTML(){
       corpo+=`<tr class="com-prod"><td class="l" style="padding-left:26px;font-style:italic">restante do representante (não veio no print)</td>
         <td>${_cpBRL(rv)}</td><td>${rc>0?_cpNum(rc):'—'}</td><td colspan="4"></td><td></td></tr>`;
     }
+    cards+=`<div class="com-grp"><table class="com-tbl">${cols}<tbody>${corpo}</tbody></table></div>`;
   });
-  if(!corpo) corpo=`<tr><td colspan="8">${_cpVazio('Nenhum pedido com esse filtro.')}</td></tr>`;
-  return `<div class="com-card">
-    <div class="com-card-head">
+  if(!cards) cards=`<div class="com-grp" style="padding:6px 2px">${_cpVazio('Nenhum pedido com esse filtro.')}</div>`;
+  return `<div class="com-bar">
       <span class="t">${_cpNum(vis.length)} pedidos na tela · ${_cpNum(grupos.length)} representantes</span>
       <button class="com-chip${_comAbFiltro==='atraso'?' on':''}" onclick="_comAbSetFiltro('atraso')" style="margin-left:auto;padding:5px 12px;font-size:12px">${COM_ABERTO_ALERTA.vermelho}+ dias</button>
       <button class="com-chip${_comAbFiltro==='rota'?' on':''}" onclick="_comAbSetFiltro('rota')" style="padding:5px 12px;font-size:12px">Fora da semana de rota</button>
     </div>
-    <div class="com-card-body"><table class="com-tbl">
-      <colgroup><col style="width:33%"><col style="width:11%"><col style="width:8%"><col style="width:10%"><col style="width:6%"><col style="width:15%"><col style="width:10%"><col style="width:7%"></colgroup>
+    <div class="com-hstrip"><table class="com-tbl">${cols}
       <thead><tr><th class="l">Representante / pedido · cliente</th><th>Valor</th><th>Caixas</th><th>Emissão</th><th>Dias</th><th class="l">Cidade</th><th>Semana</th><th></th></tr></thead>
-      <tbody>${corpo}</tbody>
     </table></div>
-    <div class="com-nota">Os dias são contados da emissão até hoje, então continuam certos amanhã. A coluna Semana fica vermelha quando o pedido foi lançado numa semana diferente da rota do cliente.<br>Foto do relatório em ${_cpDt(_COM_ABERTO.atualizado)}. O print trouxe 5 representantes — em 2 deles a lista veio cortada, e o que falta está na linha "restante do representante".</div>
-  </div>`;
+    ${cards}
+    <div class="com-nota">Os dias são contados da emissão até hoje, então continuam certos amanhã. A coluna Semana fica vermelha quando o pedido foi lançado numa semana diferente da rota do cliente.<br>Foto do relatório em ${_cpDt(_COM_ABERTO.atualizado)}. O print trouxe 5 representantes — em 2 deles a lista veio cortada, e o que falta está na linha "restante do representante".</div>`;
 }
 // Representantes: lista plana (é assim no Power BI), mesma ordenação/busca/comparação dos produtos.
 const _COM_SCR={nome:2,valor:4,cx:5,cli:6,ped:7};
@@ -12743,28 +12744,26 @@ function _comRepsHTML(){
   let rodape='';
   if(buscando){
     const sv=reps.reduce((s,r)=>s+r[4],0), sc=reps.reduce((s,r)=>s+r[5],0), sp=reps.reduce((s,r)=>s+r[7],0);
-    rodape=`<tr class="com-sp"><td colspan="${cmp?7:6}"></td></tr><tr class="com-tot"><td class="l">${_cpNum(reps.length)} representantes encontrados</td><td></td><td>${_cpBRL(sv)}</td>${cmp?'<td></td>':''}<td>${_cpNum(sc)}</td><td></td><td>${_cpNum(sp)}</td></tr>`;
+    rodape=`<tr class="com-tot"><td class="l">${_cpNum(reps.length)} representantes encontrados</td><td></td><td>${_cpBRL(sv)}</td>${cmp?'<td></td>':''}<td>${_cpNum(sc)}</td><td></td><td>${_cpNum(sp)}</td></tr>`;
   }else{
-    rodape=`<tr class="com-sp"><td colspan="${cmp?7:6}"></td></tr><tr class="com-tot"><td class="l">Total</td><td>100,00%</td><td>${_cpBRL(d.tot.valor)}</td>${cmp?`<td>${_comVarHTML(d.tot.valor,b.tot.valor,1)}</td>`:''}<td>${_cpNum(d.tot.cx)}</td><td>${d.tot.cli!=null?_cpNum(d.tot.cli):'até '+_cpNum(d.tot.cliMax)}</td><td>${_cpNum(d.tot.ped)}</td></tr>`;
+    rodape=`<tr class="com-tot"><td class="l">Total</td><td>100,00%</td><td>${_cpBRL(d.tot.valor)}</td>${cmp?`<td>${_comVarHTML(d.tot.valor,b.tot.valor,1)}</td>`:''}<td>${_cpNum(d.tot.cx)}</td><td>${d.tot.cli!=null?_cpNum(d.tot.cli):'até '+_cpNum(d.tot.cliMax)}</td><td>${_cpNum(d.tot.ped)}</td></tr>`;
   }
   // quem vendeu ontem e não vendeu hoje: some da lista, então vale dizer quantos são
   const sumiram=(b&&b.reps&&!buscando)?b.reps.filter(r=>!d.reps.some(x=>x[0]===r[0])).length:0;
   const cols=cmp
     ? `<col style="width:40%"><col style="width:8%"><col style="width:15%"><col style="width:13%"><col style="width:8%"><col style="width:8%"><col style="width:8%">`
     : `<col style="width:48%"><col style="width:9%"><col style="width:16%"><col style="width:9%"><col style="width:9%"><col style="width:9%">`;
-  return `<div class="com-card">
-    <div class="com-card-head">
+  return `<div class="com-bar">
       <span class="t">${_cpNum(reps.length)} representantes com venda${sumiram?` · ${_cpNum(sumiram)} venderam ${b.rot} e ainda não hoje`:''}</span>
     </div>
-    <div class="com-card-body"><table class="com-tbl">
-      <colgroup>${cols}</colgroup>
+    <div class="com-hstrip"><table class="com-tbl"><colgroup>${cols}</colgroup>
       <thead><tr>${th('nome','Representante','l')}${th('valor','%','',1)}${th('valor','Valor')}${cmp?`<th>vs. ${b.rot}</th>`:''}${th('cx','Caixas')}${th('cli','Clientes')}${th('ped','Pedidos')}</tr></thead>
-      <tbody>${corpo}${rodape}</tbody>
     </table></div>
+    <div class="com-grp"><table class="com-tbl"><colgroup>${cols}</colgroup><tbody>${corpo}</tbody></table></div>
+    <div class="com-grp"><table class="com-tbl"><colgroup>${cols}</colgroup><tbody>${rodape}</tbody></table></div>
     <div class="com-nota">${_comPer==='semana'
       ? 'Somado dos dias já carregados. Clientes não somam entre os dias, por isso a coluna fica em "—".'
-      : `Transcrito do Power BI (${d.rot}). O total bate com o da aba Produtos — é o mesmo relatório, visto por outro corte.`}</div>
-  </div>`;
+      : `Transcrito do Power BI (${d.rot}). O total bate com o da aba Produtos — é o mesmo relatório, visto por outro corte.`}</div>`;
 }
 function _comProdutosHTML(){
   // semSeta = a coluna % ordena pelo mesmo campo do Valor; a seta aparece só uma vez, no Valor.
@@ -12775,54 +12774,52 @@ function _comProdutosHTML(){
   const vs=(atual,ant)=>cmp?`<td>${_comVarHTML(atual,ant,1)}</td>`:'';
   const linhas=_comFiltradas();
   const buscando=!!_comBusca.trim();
-  let corpo='';
-  linhas.forEach((g,n)=>{
+  const cols=cmp
+    ? `<col style="width:34%"><col style="width:8%"><col style="width:15%"><col style="width:13%"><col style="width:10%"><col style="width:10%"><col style="width:10%">`
+    : `<col style="width:42%"><col style="width:9%"><col style="width:16%"><col style="width:11%"><col style="width:11%"><col style="width:11%">`;
+  // 1 cartão por LINHA de produto (o fundo da área aparece entre eles) — desenho do HUB oficial.
+  const card=linhasHTML=>`<div class="com-grp"><table class="com-tbl"><colgroup>${cols}</colgroup><tbody>${linhasHTML}</tbody></table></div>`;
+  let cards='';
+  linhas.forEach(g=>{
     const l=g.l, fechada=_comFechadas[g.i]&&!buscando, bl=bIdx?bIdx[_comNorm(l[0])]:null;
-    if(n) corpo+=`<tr class="com-sp"><td colspan="${nc}"></td></tr>`;
-    corpo+=`<tr class="com-lin" onclick="_comToggleLinha(${g.i})">
+    let rows=`<tr class="com-lin" onclick="_comToggleLinha(${g.i})">
       <td class="l"><i class="ti ti-chevron-${fechada?'right':'down'}" style="color:var(--text3);font-size:13px;margin-right:4px"></i>${escapeHTML(l[0])}</td>
       <td>${_comPct(l[1])}</td><td>${_cpBRL(l[2])}</td>${vs(l[2], bl?bl.l[2]:null)}<td>${_cpNum(l[3])}</td><td>${_comN(l[4])}</td><td>${_cpNum(l[5])}</td></tr>`;
-    if(fechada) return;
-    _comOrdenar(g.prods,true).forEach(p=>{
+    if(!fechada) _comOrdenar(g.prods,true).forEach(p=>{
       const bp=bl?bl.p[p[0]]:null;
-      corpo+=`<tr class="com-prod">
+      rows+=`<tr class="com-prod">
         <td class="l" style="padding-left:32px" title="${escapeAttr(p[1])}"><span class="com-cod">${p[0]} ·</span>${escapeHTML(p[1])}</td>
         <td>${_comPct(p[2])}</td><td>${_cpBRL(p[3])}</td>${vs(p[3], bp?bp[3]:null)}<td>${_cpNum(p[4])}</td><td>${_comN(p[5])}</td><td>${_cpNum(p[6])}</td></tr>`;
     });
+    cards+=card(rows);
   });
-  if(!linhas.length) corpo=`<tr><td colspan="${nc}">${_cpVazio('Nenhum produto com esse nome.')}</td></tr>`;
+  if(!linhas.length) cards=`<div class="com-grp" style="padding:6px 2px">${_cpVazio('Nenhum produto com esse nome.')}</div>`;
   // Rodapé: sem busca mostra o TOTAL do relatório (com a sobra das linhas que não vieram no print);
-  // com busca, soma só o que está na tela.
+  // com busca, soma só o que está na tela. Vai num cartão próprio, no fim.
   const sv=d.linhas.reduce((s,l)=>s+l[2],0), sc=d.linhas.reduce((s,l)=>s+l[3],0);
   let rodape='';
   if(buscando){
     const fv=linhas.reduce((s,g)=>s+g.prods.reduce((a,p)=>a+p[3],0),0);
     const fc=linhas.reduce((s,g)=>s+g.prods.reduce((a,p)=>a+p[4],0),0);
     const np=linhas.reduce((s,g)=>s+g.prods.length,0);
-    rodape=`<tr class="com-sp"><td colspan="${nc}"></td></tr><tr class="com-tot"><td class="l">${_cpNum(np)} produtos encontrados</td><td></td><td>${_cpBRL(fv)}</td>${cmp?'<td></td>':''}<td>${_cpNum(fc)}</td><td></td><td></td></tr>`;
+    rodape=`<tr class="com-tot"><td class="l">${_cpNum(np)} produtos encontrados</td><td></td><td>${_cpBRL(fv)}</td>${cmp?'<td></td>':''}<td>${_cpNum(fc)}</td><td></td><td></td></tr>`;
   }else{
     const rv=d.tot.valor-sv, rc=d.tot.cx-sc;
-    if(rv>0.01) rodape+=`<tr class="com-sp"><td colspan="${nc}"></td></tr>
-      <tr class="com-prod"><td class="l" style="font-style:italic">Demais linhas (não vieram no print)</td>
+    if(rv>0.01) rodape+=`<tr class="com-prod"><td class="l" style="font-style:italic">Demais linhas (não vieram no print)</td>
       <td>${_comPct(rv/d.tot.valor*100)}</td><td>${_cpBRL(rv)}</td>${cmp?'<td>—</td>':''}<td>${rc>0?_cpNum(rc):'—'}</td><td>—</td><td>—</td></tr>`;
-    rodape+=`<tr class="com-sp"><td colspan="${nc}"></td></tr><tr class="com-tot"><td class="l">Total</td><td>100,00%</td><td>${_cpBRL(d.tot.valor)}</td>${vs(d.tot.valor, b?b.tot.valor:null)}<td>${_cpNum(d.tot.cx)}</td><td>${d.tot.cli!=null?_cpNum(d.tot.cli):'até '+_cpNum(d.tot.cliMax)}</td><td>${_cpNum(d.tot.ped)}</td></tr>`;
+    rodape+=`<tr class="com-tot"><td class="l">Total</td><td>100,00%</td><td>${_cpBRL(d.tot.valor)}</td>${vs(d.tot.valor, b?b.tot.valor:null)}<td>${_cpNum(d.tot.cx)}</td><td>${d.tot.cli!=null?_cpNum(d.tot.cli):'até '+_cpNum(d.tot.cliMax)}</td><td>${_cpNum(d.tot.ped)}</td></tr>`;
   }
+  cards+=card(rodape);
   const fechadas=Object.keys(_comFechadas).length;
-  const cols=cmp
-    ? `<col style="width:34%"><col style="width:8%"><col style="width:15%"><col style="width:13%"><col style="width:10%"><col style="width:10%"><col style="width:10%">`
-    : `<col style="width:42%"><col style="width:9%"><col style="width:16%"><col style="width:11%"><col style="width:11%"><col style="width:11%">`;
-  return `<div class="com-card">
-    <div class="com-card-head">
+  return `<div class="com-bar">
       <span class="t">${_cpNum(linhas.length)} linhas de produto</span>
       <button class="com-link" onclick="_comTodasLinhas(${fechadas?0:1})" style="margin-left:auto"><i class="ti ti-${fechadas?'chevrons-down':'chevrons-up'}" style="font-size:12px;vertical-align:-1px"></i> ${fechadas?'Abrir todas':'Recolher todas'}</button>
     </div>
-    <div class="com-card-body"><table class="com-tbl">
-      <colgroup>${cols}</colgroup>
+    <div class="com-hstrip"><table class="com-tbl"><colgroup>${cols}</colgroup>
       <thead><tr>${th('nome','Linha / produto','l')}${th('valor','%','',1)}${th('valor','Valor')}${cmp?`<th>vs. ${b.rot}</th>`:''}${th('cx','Caixas')}${th('cli','Clientes')}${th('ped','Pedidos')}</tr></thead>
-      <tbody>${corpo}${rodape}</tbody>
     </table></div>
-    <div class="com-nota">Clientes e pedidos não somam entre as linhas — o mesmo pedido leva produtos de linhas diferentes, por isso o total vem do relatório. As caixas por produto vêm arredondadas do Power BI (há produto com 0 caixa e valor acima de zero), então a soma delas também não fecha exatamente.<br>${_comPer==='semana'?`Somado dos dias já carregados: as linhas dão ${_cpBRL(sv)}; a diferença até o total está na linha "Demais linhas".`:`Transcrito do Power BI (${d.rot}): as linhas do print somam ${_cpBRL(sv)}; a diferença até o total está na linha "Demais linhas".`}</div>
-  </div>`;
+    ${cards}
+    <div class="com-nota">Clientes e pedidos não somam entre as linhas — o mesmo pedido leva produtos de linhas diferentes, por isso o total vem do relatório. As caixas por produto vêm arredondadas do Power BI (há produto com 0 caixa e valor acima de zero), então a soma delas também não fecha exatamente.<br>${_comPer==='semana'?`Somado dos dias já carregados: as linhas dão ${_cpBRL(sv)}; a diferença até o total está na linha "Demais linhas".`:`Transcrito do Power BI (${d.rot}): as linhas do print somam ${_cpBRL(sv)}; a diferença até o total está na linha "Demais linhas".`}</div>`;
 }
 // ════ FIM DO BLOCO COMERCIAL ════
 
