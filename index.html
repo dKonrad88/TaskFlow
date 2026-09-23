@@ -12427,7 +12427,8 @@ function _ddvTabelaHTML(){
     ${cards}
     <div class="ddv-nota">O ⚠ e o vermelho acendem abaixo de ${DDV_ALERTA.vermelho} dias de estoque; âmbar vai até ${DDV_ALERTA.amarelo} dias e verde daí em diante — é o corte do SISPRO, e fica num lugar só no código.<br>
     <b>Em ruptura</b> = saldo negativo · <b>Atenção</b> = menos de ${DDV_ALERTA.vermelho} dias (inclui os em ruptura) · <b>Folga</b> = ${DDV_ALERTA.amarelo} dias ou mais · <b>A produzir</b> = vai faltar e não tem OP/OC aberta.<br>
-    Saldo, DDV e as médias são calculados aqui (não vieram transcritos) e conferem com o SISPRO. Produto sem estoque nem pedido lançado fica com "—" no saldo e no DDV.</div>`;
+    Saldo, DDV e as médias são calculados aqui (não vieram transcritos) e conferem com o SISPRO. Produto sem estoque nem pedido lançado fica com "—" no saldo e no DDV.<br>
+    Posição do SISPRO em ${_DDV_POSICAO}.</div>`;
 }
 function renderDDV(){
   const main=document.getElementById('task-container'); if(!main) return;
@@ -12436,14 +12437,11 @@ function renderDDV(){
   const _pr=document.getElementById('progress-box'); if(_pr) _pr.style.display='none';
   const busca=`<span class="ddv-buscaw"><i class="ti ti-search"></i><input id="ddv-busca" value="${escapeAttr(_ddvBusca)}" oninput="_ddvBuscaInput(this.value)" placeholder="Buscar produto, código ou linha" class="ddv-busca"></span>`;
   const corpo=`${_ddvCSS()}
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-      <span style="font-size:11.5px;color:var(--text3)">Posição do SISPRO em ${_DDV_POSICAO}</span>
-      <span style="margin-left:auto">${busca}</span>
-    </div>
+    <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:12px">${busca}</div>
     ${_ddvKPIsHTML()}
     ${_ddvGrafHTML()}
     <div id="ddv-conteudo">${_ddvTabelaHTML()}</div>`;
-  main.innerHTML=_cpTela('PCP','Quantos dias o estoque de cada produto ainda dura — o DDV do SISPRO.',corpo);
+  main.innerHTML=_cpTela('PCP','Quantos dias o estoque de cada produto ainda dura.',corpo);
 }
 // ════ FIM DO BLOCO PCP · DDV ════
 
