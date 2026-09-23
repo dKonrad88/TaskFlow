@@ -422,6 +422,27 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-23 — PC da Empresa — Comercial › Pedidos: VISUAL alinhado ao **HUB Oficial** (o do Guilherme)
+O Diego mandou as 2 telas lado a lado (Oficial "Minhas Tarefas" × Teste "Pedidos") e pediu o mesmo acabamento:
+"layout, tipo de tabela, modernidade — o oficial é mais bonito". **Só apresentação; nenhum número/regra mudou.**
+- **Chips de período viraram pílulas com CONTADOR** (padrão do oficial): fundo suave, **ativo sólido no acento**
+  com texto branco, e o nº de pedidos no selo (Ontem 268 · Hoje 99 · Semana 367). Período sem dado fica **apagado
+  e sem selo** (`_comPerN` devolve null) — bate o olho e vê o que já foi carregado.
+- **Sub-abas com contador** (Produtos 28 · Representantes 22 · Pedidos em aberto 73), ativa com sublinhado + selo tingido.
+- **Tabela reformada** (`.com-card` no lugar do `.cp-card` genérico): cartão arredondado de 14px com **cabeçalho
+  próprio** (contagem à esquerda, ações à direita), **títulos de coluna em CAIXA-ALTA miúda com letter-spacing**,
+  linhas mais altas (9px) com divisória fininha, **faixa de grupo arredondada** e nota de rodapé como faixa
+  separada no pé do cartão. `border-collapse` passou a **separate** (é o que permite arredondar a faixa) — as
+  bordas viraram só `border-bottom`, e o **espaçador de 13px entre as linhas** (pedido antigo dele) continua.
+- **Total descolado**: agora entra um espaçador antes, então o rodapé é uma faixa própria em vez de colar na última linha.
+- **Busca** ganhou lupa dentro do campo e anel de foco; virou CSS de verdade (`.com-busca`), sem estilo inline.
+- 🐞 **Bug real achado no caminho** (estava lá desde a 1ª versão): na sub-aba **Pedidos em aberto** a linha do
+  representante tinha 1 coluna a mais, então **a contagem de pedidos caía embaixo de "Valor"** (e valor embaixo de
+  "Caixas"). A contagem virou **selo ao lado do nome** — como no oficial — e as colunas numéricas passaram a
+  alinhar com as dos pedidos. Colunas reequilibradas (nome 30→33%, cidade 17→15%).
+- Testado em Edge headless nos 2 temas: 28 linhas/105 produtos, 22 representantes, 5 grupos/75 linhas em aberto,
+  filtro "fora da rota" → 5, semana com total R$ 371.905,49, período sem dado no estado vazio, **0 erros de JS**.
+
 ### 2026-09-22 (e) — PC da Empresa — Comercial: 3ª sub-aba **Pedidos em aberto** (a tela "Atrasados")
 Fecha as 3 telas do Power BI numa aba só. `_COM_ABERTO` = `{atualizado, grupos:[{cod,cls,nome,ped,valor,cx,completo,itens}]}`,
 item = **[pedido, cód. cliente, cliente, valor, caixas, emissão, UF, cidade, semana lançada, semanas da região]**.

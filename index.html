@@ -12522,32 +12522,62 @@ function _comFiltradas(){
   });
   return _comOrdenar(out,false);
 }
+// Visual espelhando o HUB oficial: cartão arredondado com cabeçalho próprio, títulos de coluna em
+// caixa-alta miúda, faixa arredondada no grupo e chips-pílula com contador.
 function _comCSS(){
   return `<style>
-  .com-tbl{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed}
-  .com-tbl th{font-size:11px;font-weight:700;color:var(--text3);text-align:right;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
-  .com-tbl th:hover{color:var(--text2)}
+  .com-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+  .com-card-head{display:flex;align-items:center;gap:10px;padding:11px 15px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+  .com-card-head .t{font-size:11.5px;font-weight:600;color:var(--text3)}
+  .com-card-body{padding:5px 9px 9px}
+  .com-tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px;table-layout:fixed}
+  .com-tbl th{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);text-align:right;padding:10px 12px 9px;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
+  .com-tbl th:hover{color:var(--text)}
   .com-tbl th.l,.com-tbl td.l{text-align:left}
-  .com-tbl td{padding:7px 10px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .com-tbl td{padding:9px 12px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;border-bottom:1px solid color-mix(in srgb,var(--text) 7%,transparent)}
   .com-tbl td.l{white-space:normal;overflow:hidden;text-overflow:ellipsis}
-  .com-lin td{font-weight:700;color:var(--text);background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer}
-  .com-lin:hover td{background:color-mix(in srgb,var(--blue-mid) 8%,var(--bg2))}
+  .com-lin td{font-weight:700;color:var(--text);background:var(--bg2);border-bottom:1px solid var(--border);cursor:pointer}
+  .com-lin td:first-child{border-radius:9px 0 0 9px}
+  .com-lin td:last-child{border-radius:0 9px 9px 0}
+  .com-lin:hover td{background:color-mix(in srgb,var(--blue-mid) 9%,var(--bg2))}
+  .com-lin.com-nolink td{cursor:default}
   .com-prod td{color:var(--text2)}
   .com-prod:hover td{background:color-mix(in srgb,var(--text) 4%,transparent)}
-  .com-cod{color:var(--text3);font-size:11.5px;margin-right:6px}
-  .com-cls{color:var(--text3);font-size:10.5px;border:1px solid var(--border);border-radius:999px;padding:1px 7px;margin-left:6px;white-space:nowrap}
-  .com-sp td{height:13px;padding:0;border:none;background:none}
-  .com-tot td{font-weight:700;color:var(--text);border-top:2px solid var(--border);background:var(--bg2)}
-  .com-chip{font-size:12px;font-weight:600;padding:6px 13px;border-radius:999px;cursor:pointer;font-family:inherit;background:transparent;border:1px solid var(--border);color:var(--text2)}
-  .com-chip.on{border-color:var(--blue-mid);color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 12%,transparent)}
-  .com-sub{background:none;border:none;font-family:inherit;font-size:13.5px;font-weight:700;color:var(--text3);padding:9px 2px;cursor:pointer;border-bottom:2px solid transparent}
-  .com-sub.on{color:var(--blue-mid);border-bottom-color:var(--blue-mid)}
-  .com-nota{font-size:11.5px;color:var(--text3);margin-top:10px;line-height:1.5}
+  .com-cod{color:var(--text3);font-size:11px;font-variant-numeric:tabular-nums;margin-right:7px}
+  .com-cls{color:var(--text3);font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;background:color-mix(in srgb,var(--text) 8%,transparent);border-radius:999px;padding:2px 8px;margin-left:7px;white-space:nowrap}
+  .com-cnt{font-size:10.5px;font-weight:700;white-space:nowrap;background:color-mix(in srgb,var(--text) 10%,transparent);color:var(--text3);border-radius:999px;padding:2px 8px;margin-left:8px;font-variant-numeric:tabular-nums}
+  .com-sp td{height:14px;padding:0;border:none;background:none}
+  .com-tot td{font-weight:700;color:var(--text);border-bottom:none;background:color-mix(in srgb,var(--text) 5%,transparent)}
+  .com-tot td:first-child{border-radius:9px 0 0 9px}
+  .com-tot td:last-child{border-radius:0 9px 9px 0}
+  .com-chip{font-size:12.5px;font-weight:600;padding:7px 14px;border-radius:999px;cursor:pointer;font-family:inherit;background:color-mix(in srgb,var(--text) 5%,transparent);border:1px solid transparent;color:var(--text2);display:inline-flex;align-items:center;gap:7px;transition:background .12s,color .12s}
+  .com-chip:hover{background:color-mix(in srgb,var(--text) 10%,transparent);color:var(--text)}
+  .com-chip.on{background:var(--blue-mid);border-color:var(--blue-mid);color:#fff}
+  .com-chip.off{opacity:.5}
+  .com-chip .n{font-size:10.5px;font-weight:700;background:color-mix(in srgb,var(--text) 10%,transparent);color:var(--text3);border-radius:999px;padding:1px 7px;font-variant-numeric:tabular-nums}
+  .com-chip.on .n{background:rgba(255,255,255,.24);color:#fff}
+  .com-sub{background:none;border:none;font-family:inherit;font-size:13px;font-weight:700;color:var(--text3);padding:10px 2px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;display:inline-flex;align-items:center;gap:7px}
+  .com-sub:hover{color:var(--text2)}
+  .com-sub.on{color:var(--text);border-bottom-color:var(--blue-mid)}
+  .com-sub .n{font-size:10.5px;font-weight:700;background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--text3);border-radius:999px;padding:1px 7px;font-variant-numeric:tabular-nums}
+  .com-sub.on .n{background:color-mix(in srgb,var(--blue-mid) 16%,transparent);color:var(--blue-mid)}
+  .com-buscaw{position:relative;display:inline-flex;align-items:center}
+  .com-buscaw i{position:absolute;left:11px;font-size:14px;color:var(--text3);pointer-events:none}
+  .com-busca{width:250px;height:34px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--text);font-family:inherit;font-size:12.5px;padding:0 11px 0 32px;outline:none}
+  .com-busca:focus{border-color:var(--blue-mid);box-shadow:0 0 0 3px color-mix(in srgb,var(--blue-mid) 14%,transparent)}
+  .com-nota{font-size:11.5px;color:var(--text3);line-height:1.5;padding:11px 15px 13px;border-top:1px solid var(--border);background:color-mix(in srgb,var(--text) 2.5%,transparent)}
+  .com-link{background:none;border:none;color:var(--text3);font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:7px}
+  .com-link:hover{background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--text)}
   </style>`;
+}
+// Nº de pedidos de cada período (vira o contador do chip); null = período ainda sem dado.
+function _comPerN(per){
+  const d=_COM_DADOS[per]; return (d&&d.tot&&d.tot.ped!=null)?d.tot.ped:null;
 }
 function _comCorpoHTML(){
   const d=_comD(), t=d?d.tot:null, b=_comBase(), bt=b?b.tot:null;
-  const chips=COM_PERIODOS.map(p=>`<button class="com-chip${_comPer===p[0]?' on':''}" onclick="_comSetPer('${p[0]}')">${p[1]}</button>`).join('');
+  const chips=COM_PERIODOS.map(p=>{ const n=_comPerN(p[0]);
+    return `<button class="com-chip${_comPer===p[0]?' on':''}${n==null?' off':''}" onclick="_comSetPer('${p[0]}')" title="${n==null?'ainda sem dado carregado':_cpNum(n)+' pedidos'}">${p[1]}${n!=null?`<span class="n">${_cpNum(n)}</span>`:''}</button>`; }).join('');
   const kpi=(lab,val,extra)=>`<div class="cp-card" style="padding:13px 16px"><div class="cp-kpi"><s>${lab}</s><b>${val}</b></div>${extra?`<div style="font-size:11.5px;font-weight:600;margin-top:3px">${extra}</div>`:''}</div>`;
   const cmp=(a,ba,moeda)=>{ if(!bt||a==null||ba==null) return ''; const dif=a-ba, pct=ba?dif/ba*100:0;
     const cor=dif>0?'var(--success)':(dif<0?'var(--danger)':'var(--text3)');
@@ -12565,21 +12595,22 @@ function _comCorpoHTML(){
     : d.nota?escapeHTML(d.nota)
     : bt?('Comparando com '+b.rot+(d.parcial?' — lembrando que o dia de hoje ainda não fechou.':'.'))
     : 'Sem período anterior carregado para comparar.'}</div>`;
+  const nAbas={produtos:d?d.linhas.length:null, representantes:(d&&d.reps)?d.reps.length:null, aberto:_comAbItens().length};
   const abas=[['produtos','Produtos'],['representantes','Representantes'],['aberto','Pedidos em aberto']]
-    .map(a=>`<button class="com-sub${_comAba===a[0]?' on':''}" onclick="_comSetAba('${a[0]}')">${a[1]}</button>`).join('');
+    .map(a=>`<button class="com-sub${_comAba===a[0]?' on':''}" onclick="_comSetAba('${a[0]}')">${a[1]}${nAbas[a[0]]?`<span class="n">${_cpNum(nAbas[a[0]])}</span>`:''}</button>`).join('');
   // ⚠️ o campo PRECISA ter uma classe: existe uma regra global input:not([class]){height:40px} que
   // ignoraria a altura inline (mesma armadilha já documentada nos selects pequenos de Compras).
   const busca=(_comAba==='aberto'||((_comAba==='produtos'||_comAba==='representantes')&&_comTemDados()))
-    ? `<input id="com-busca" value="${escapeAttr(_comBusca)}" oninput="_comBuscaInput(this.value)" placeholder="${_comAba==='representantes'?'Buscar representante':(_comAba==='aberto'?'Buscar cliente, pedido ou cidade':'Buscar produto ou linha')}" class="com-busca" style="width:230px;height:32px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-family:inherit;font-size:12.5px;padding:0 10px">` : '';
+    ? `<span class="com-buscaw"><i class="ti ti-search"></i><input id="com-busca" value="${escapeAttr(_comBusca)}" oninput="_comBuscaInput(this.value)" placeholder="${_comAba==='representantes'?'Buscar representante':(_comAba==='aberto'?'Buscar cliente, pedido ou cidade':'Buscar produto ou linha')}" class="com-busca"></span>` : '';
   const btnCmp=(_comAba==='produtos'||_comAba==='representantes')&&b
-    ? `<button class="com-chip${_comCmp?' on':''}" onclick="_comToggleCmp()" style="padding:5px 11px"><i class="ti ti-arrows-left-right" style="font-size:12px"></i> Comparar com ${b.rot}</button>` : '';
+    ? `<button class="com-chip${_comCmp?' on':''}" onclick="_comToggleCmp()" style="padding:6px 13px;font-size:12px"><i class="ti ti-arrows-left-right" style="font-size:13px"></i> Comparar com ${b.rot}</button>` : '';
   // Pedidos em aberto é uma FOTO, não um período: os chips saem e os indicadores são outros.
   const topo=_comAba==='aberto' ? _comAbertoTopoHTML()
-    : `<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px">${chips}</div>${kpis}`;
+    : `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${chips}</div>${kpis}`;
   return `${_comCSS()}
     ${topo}
-    <div style="display:flex;align-items:center;gap:20px;border-bottom:1px solid var(--border);margin-bottom:12px">
-      ${abas}<div style="margin-left:auto;padding-bottom:6px;display:flex;align-items:center;gap:8px">${btnCmp}${busca}</div>
+    <div style="display:flex;align-items:flex-end;gap:22px;border-bottom:1px solid var(--border);margin-bottom:14px">
+      ${abas}<div style="margin-left:auto;padding-bottom:7px;display:flex;align-items:center;gap:9px">${btnCmp}${busca}</div>
     </div>
     <div id="com-conteudo">${_comConteudoHTML()}</div>`;
 }
@@ -12650,9 +12681,11 @@ function _comAbertoHTML(){
     if(filtrando && !itens.length) return;
     if(corpo) corpo+=`<tr class="com-sp"><td colspan="8"></td></tr>`;
     const sv=itens.reduce((s,i)=>s+i[3],0), sc=itens.reduce((s,i)=>s+i[4],0);
-    corpo+=`<tr class="com-lin"><td class="l"><span class="com-cod">${g.cod} ·</span>${escapeHTML(g.nome)} <span class="com-cls">${escapeHTML(g.cls)}</span></td>
-      <td>${filtrando?_cpNum(itens.length):(g.ped!=null?_cpNum(g.ped):_cpNum(g.itens.length)+'+')}</td>
-      <td>${_cpBRL(filtrando?sv:g.valor)}</td><td>${_cpNum(filtrando?sc:g.cx)}</td><td colspan="4"></td></tr>`;
+    // a contagem de pedidos vira selo ao lado do nome (como no HUB oficial) — assim as colunas
+    // numéricas da faixa ficam alinhadas com as dos pedidos abaixo.
+    const nPed=filtrando?_cpNum(itens.length):(g.ped!=null?_cpNum(g.ped):_cpNum(g.itens.length)+'+');
+    corpo+=`<tr class="com-lin com-nolink"><td class="l"><span class="com-cod">${g.cod} ·</span>${escapeHTML(g.nome)} <span class="com-cls">${escapeHTML(g.cls)}</span><span class="com-cnt">${nPed} pedidos</span></td>
+      <td>${_cpBRL(filtrando?sv:g.valor)}</td><td>${_cpNum(filtrando?sc:g.cx)}</td><td colspan="5"></td></tr>`;
     itens.forEach(it=>{
       const d=_comDias(it[5]);
       corpo+=`<tr class="com-prod">
@@ -12667,17 +12700,17 @@ function _comAbertoHTML(){
     }
   });
   if(!corpo) corpo=`<tr><td colspan="8">${_cpVazio('Nenhum pedido com esse filtro.')}</td></tr>`;
-  return `<div class="cp-card" style="padding:4px 6px 10px">
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px 4px;flex-wrap:wrap">
-      <span style="font-size:11.5px;color:var(--text3)">${_cpNum(vis.length)} pedidos na tela · ${_cpNum(grupos.length)} representantes</span>
-      <button class="com-chip${_comAbFiltro==='atraso'?' on':''}" onclick="_comAbSetFiltro('atraso')" style="margin-left:auto;padding:4px 10px">${COM_ABERTO_ALERTA.vermelho}+ dias</button>
-      <button class="com-chip${_comAbFiltro==='rota'?' on':''}" onclick="_comAbSetFiltro('rota')" style="padding:4px 10px">Fora da semana de rota</button>
+  return `<div class="com-card">
+    <div class="com-card-head">
+      <span class="t">${_cpNum(vis.length)} pedidos na tela · ${_cpNum(grupos.length)} representantes</span>
+      <button class="com-chip${_comAbFiltro==='atraso'?' on':''}" onclick="_comAbSetFiltro('atraso')" style="margin-left:auto;padding:5px 12px;font-size:12px">${COM_ABERTO_ALERTA.vermelho}+ dias</button>
+      <button class="com-chip${_comAbFiltro==='rota'?' on':''}" onclick="_comAbSetFiltro('rota')" style="padding:5px 12px;font-size:12px">Fora da semana de rota</button>
     </div>
-    <table class="com-tbl">
-      <colgroup><col style="width:30%"><col style="width:11%"><col style="width:8%"><col style="width:10%"><col style="width:7%"><col style="width:17%"><col style="width:10%"><col style="width:7%"></colgroup>
+    <div class="com-card-body"><table class="com-tbl">
+      <colgroup><col style="width:33%"><col style="width:11%"><col style="width:8%"><col style="width:10%"><col style="width:6%"><col style="width:15%"><col style="width:10%"><col style="width:7%"></colgroup>
       <thead><tr><th class="l">Representante / pedido · cliente</th><th>Valor</th><th>Caixas</th><th>Emissão</th><th>Dias</th><th class="l">Cidade</th><th>Semana</th><th></th></tr></thead>
       <tbody>${corpo}</tbody>
-    </table>
+    </table></div>
     <div class="com-nota">Os dias são contados da emissão até hoje, então continuam certos amanhã. A coluna Semana fica vermelha quando o pedido foi lançado numa semana diferente da rota do cliente.<br>Foto do relatório em ${_cpDt(_COM_ABERTO.atualizado)}. O print trouxe 5 representantes — em 2 deles a lista veio cortada, e o que falta está na linha "restante do representante".</div>
   </div>`;
 }
@@ -12710,24 +12743,24 @@ function _comRepsHTML(){
   let rodape='';
   if(buscando){
     const sv=reps.reduce((s,r)=>s+r[4],0), sc=reps.reduce((s,r)=>s+r[5],0), sp=reps.reduce((s,r)=>s+r[7],0);
-    rodape=`<tr class="com-tot"><td class="l">${_cpNum(reps.length)} representantes encontrados</td><td></td><td>${_cpBRL(sv)}</td>${cmp?'<td></td>':''}<td>${_cpNum(sc)}</td><td></td><td>${_cpNum(sp)}</td></tr>`;
+    rodape=`<tr class="com-sp"><td colspan="${cmp?7:6}"></td></tr><tr class="com-tot"><td class="l">${_cpNum(reps.length)} representantes encontrados</td><td></td><td>${_cpBRL(sv)}</td>${cmp?'<td></td>':''}<td>${_cpNum(sc)}</td><td></td><td>${_cpNum(sp)}</td></tr>`;
   }else{
-    rodape=`<tr class="com-tot"><td class="l">Total</td><td>100,00%</td><td>${_cpBRL(d.tot.valor)}</td>${cmp?`<td>${_comVarHTML(d.tot.valor,b.tot.valor,1)}</td>`:''}<td>${_cpNum(d.tot.cx)}</td><td>${d.tot.cli!=null?_cpNum(d.tot.cli):'até '+_cpNum(d.tot.cliMax)}</td><td>${_cpNum(d.tot.ped)}</td></tr>`;
+    rodape=`<tr class="com-sp"><td colspan="${cmp?7:6}"></td></tr><tr class="com-tot"><td class="l">Total</td><td>100,00%</td><td>${_cpBRL(d.tot.valor)}</td>${cmp?`<td>${_comVarHTML(d.tot.valor,b.tot.valor,1)}</td>`:''}<td>${_cpNum(d.tot.cx)}</td><td>${d.tot.cli!=null?_cpNum(d.tot.cli):'até '+_cpNum(d.tot.cliMax)}</td><td>${_cpNum(d.tot.ped)}</td></tr>`;
   }
   // quem vendeu ontem e não vendeu hoje: some da lista, então vale dizer quantos são
   const sumiram=(b&&b.reps&&!buscando)?b.reps.filter(r=>!d.reps.some(x=>x[0]===r[0])).length:0;
   const cols=cmp
     ? `<col style="width:40%"><col style="width:8%"><col style="width:15%"><col style="width:13%"><col style="width:8%"><col style="width:8%"><col style="width:8%">`
     : `<col style="width:48%"><col style="width:9%"><col style="width:16%"><col style="width:9%"><col style="width:9%"><col style="width:9%">`;
-  return `<div class="cp-card" style="padding:4px 6px 10px">
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px 2px">
-      <span style="font-size:11.5px;color:var(--text3)">${_cpNum(reps.length)} representantes com venda${sumiram?` · ${_cpNum(sumiram)} venderam ${b.rot} e ainda não hoje`:''}</span>
+  return `<div class="com-card">
+    <div class="com-card-head">
+      <span class="t">${_cpNum(reps.length)} representantes com venda${sumiram?` · ${_cpNum(sumiram)} venderam ${b.rot} e ainda não hoje`:''}</span>
     </div>
-    <table class="com-tbl">
+    <div class="com-card-body"><table class="com-tbl">
       <colgroup>${cols}</colgroup>
       <thead><tr>${th('nome','Representante','l')}${th('valor','%','',1)}${th('valor','Valor')}${cmp?`<th>vs. ${b.rot}</th>`:''}${th('cx','Caixas')}${th('cli','Clientes')}${th('ped','Pedidos')}</tr></thead>
       <tbody>${corpo}${rodape}</tbody>
-    </table>
+    </table></div>
     <div class="com-nota">${_comPer==='semana'
       ? 'Somado dos dias já carregados. Clientes não somam entre os dias, por isso a coluna fica em "—".'
       : `Transcrito do Power BI (${d.rot}). O total bate com o da aba Produtos — é o mesmo relatório, visto por outro corte.`}</div>
@@ -12766,28 +12799,28 @@ function _comProdutosHTML(){
     const fv=linhas.reduce((s,g)=>s+g.prods.reduce((a,p)=>a+p[3],0),0);
     const fc=linhas.reduce((s,g)=>s+g.prods.reduce((a,p)=>a+p[4],0),0);
     const np=linhas.reduce((s,g)=>s+g.prods.length,0);
-    rodape=`<tr class="com-tot"><td class="l">${_cpNum(np)} produtos encontrados</td><td></td><td>${_cpBRL(fv)}</td>${cmp?'<td></td>':''}<td>${_cpNum(fc)}</td><td></td><td></td></tr>`;
+    rodape=`<tr class="com-sp"><td colspan="${nc}"></td></tr><tr class="com-tot"><td class="l">${_cpNum(np)} produtos encontrados</td><td></td><td>${_cpBRL(fv)}</td>${cmp?'<td></td>':''}<td>${_cpNum(fc)}</td><td></td><td></td></tr>`;
   }else{
     const rv=d.tot.valor-sv, rc=d.tot.cx-sc;
     if(rv>0.01) rodape+=`<tr class="com-sp"><td colspan="${nc}"></td></tr>
       <tr class="com-prod"><td class="l" style="font-style:italic">Demais linhas (não vieram no print)</td>
       <td>${_comPct(rv/d.tot.valor*100)}</td><td>${_cpBRL(rv)}</td>${cmp?'<td>—</td>':''}<td>${rc>0?_cpNum(rc):'—'}</td><td>—</td><td>—</td></tr>`;
-    rodape+=`<tr class="com-tot"><td class="l">Total</td><td>100,00%</td><td>${_cpBRL(d.tot.valor)}</td>${vs(d.tot.valor, b?b.tot.valor:null)}<td>${_cpNum(d.tot.cx)}</td><td>${d.tot.cli!=null?_cpNum(d.tot.cli):'até '+_cpNum(d.tot.cliMax)}</td><td>${_cpNum(d.tot.ped)}</td></tr>`;
+    rodape+=`<tr class="com-sp"><td colspan="${nc}"></td></tr><tr class="com-tot"><td class="l">Total</td><td>100,00%</td><td>${_cpBRL(d.tot.valor)}</td>${vs(d.tot.valor, b?b.tot.valor:null)}<td>${_cpNum(d.tot.cx)}</td><td>${d.tot.cli!=null?_cpNum(d.tot.cli):'até '+_cpNum(d.tot.cliMax)}</td><td>${_cpNum(d.tot.ped)}</td></tr>`;
   }
   const fechadas=Object.keys(_comFechadas).length;
   const cols=cmp
     ? `<col style="width:34%"><col style="width:8%"><col style="width:15%"><col style="width:13%"><col style="width:10%"><col style="width:10%"><col style="width:10%">`
     : `<col style="width:42%"><col style="width:9%"><col style="width:16%"><col style="width:11%"><col style="width:11%"><col style="width:11%">`;
-  return `<div class="cp-card" style="padding:4px 6px 10px">
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px 2px">
-      <span style="font-size:11.5px;color:var(--text3)">${_cpNum(linhas.length)} linhas de produto</span>
-      <button onclick="_comTodasLinhas(${fechadas?0:1})" style="margin-left:auto;background:none;border:none;color:var(--text3);font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer">${fechadas?'Abrir todas':'Recolher todas'}</button>
+  return `<div class="com-card">
+    <div class="com-card-head">
+      <span class="t">${_cpNum(linhas.length)} linhas de produto</span>
+      <button class="com-link" onclick="_comTodasLinhas(${fechadas?0:1})" style="margin-left:auto"><i class="ti ti-${fechadas?'chevrons-down':'chevrons-up'}" style="font-size:12px;vertical-align:-1px"></i> ${fechadas?'Abrir todas':'Recolher todas'}</button>
     </div>
-    <table class="com-tbl">
+    <div class="com-card-body"><table class="com-tbl">
       <colgroup>${cols}</colgroup>
       <thead><tr>${th('nome','Linha / produto','l')}${th('valor','%','',1)}${th('valor','Valor')}${cmp?`<th>vs. ${b.rot}</th>`:''}${th('cx','Caixas')}${th('cli','Clientes')}${th('ped','Pedidos')}</tr></thead>
       <tbody>${corpo}${rodape}</tbody>
-    </table>
+    </table></div>
     <div class="com-nota">Clientes e pedidos não somam entre as linhas — o mesmo pedido leva produtos de linhas diferentes, por isso o total vem do relatório. As caixas por produto vêm arredondadas do Power BI (há produto com 0 caixa e valor acima de zero), então a soma delas também não fecha exatamente.<br>${_comPer==='semana'?`Somado dos dias já carregados: as linhas dão ${_cpBRL(sv)}; a diferença até o total está na linha "Demais linhas".`:`Transcrito do Power BI (${d.rot}): as linhas do print somam ${_cpBRL(sv)}; a diferença até o total está na linha "Demais linhas".`}</div>
   </div>`;
 }
