@@ -444,6 +444,15 @@ O Diego mandou as 2 telas lado a lado (Oficial "Minhas Tarefas" × Teste "Pedido
   `border-bottom` e a última linha de cada cartão não tem divisória (`.com-grp tr:last-child td`).
 - Contagem e ações ("Recolher todas", filtros de dias/rota) viraram uma **barra leve acima dos cartões**
   (`.com-bar`), e a nota de rodapé voltou a ser texto solto no fundo da página.
+- ⭐ **CARTÕES DE INDICADOR redesenhados** (3ª rodada; mostrei 5 mockups de formato + 5 de estilo, ele escolheu
+  **"faixa fina na lateral"**): `.com-kpi` = cartão branco com **filete de 3px no acento à esquerda**, rótulo em
+  caixa-alta miúda, **pílula de variação no canto direito** (só o %, verde/vermelha/cinza) e a diferença em número
+  na linha de baixo ("R$ 190.189,01 a menos que ontem"). Saiu do `cp-card` genérico. Ficaram ~25% mais baixos, então
+  a tabela sobe na tela. Nos **pedidos em aberto** (que não tem com o que comparar) a pílula vira **alerta**
+  ("2 com 15+") e o valor segue tingido de vermelho/âmbar.
+- ⏳ **Mini-gráfico preparado, mas ESCONDIDO de propósito:** `_comSparkHTML` só desenha com **3+ dias**
+  (`COM_SERIE_DIAS`, hoje `['ontem','hoje']`) — com 2 pontos a linha é reta e não diz nada. **Ao carregar um dia
+  novo, some a chave em `COM_SERIE_DIAS` e o gráfico aparece sozinho** nos 5 cartões.
 - **Busca** ganhou lupa dentro do campo e anel de foco; virou CSS de verdade (`.com-busca`), sem estilo inline.
 - 🐞 **Bug real achado no caminho** (estava lá desde a 1ª versão): na sub-aba **Pedidos em aberto** a linha do
   representante tinha 1 coluna a mais, então **a contagem de pedidos caía embaixo de "Valor"** (e valor embaixo de

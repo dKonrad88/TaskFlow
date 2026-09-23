@@ -12536,6 +12536,18 @@ function _comCSS(){
   .com-hstrip th{border-bottom:none;padding:2px 12px 5px}
   .com-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:9px}
   .com-bar .t{font-size:11.5px;font-weight:600;color:var(--text3)}
+  /* Indicadores: faixa fina no acento à esquerda (o cartão segue branco) + pílula de variação. */
+  .com-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(152px,1fr));gap:10px;margin-bottom:7px}
+  .com-kpi{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--blue-mid);border-radius:11px;padding:11px 13px;min-width:0}
+  .com-kpi .lab{font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);line-height:1.3}
+  .com-kpi .val{font-size:20px;font-weight:800;letter-spacing:-.015em;color:var(--text);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .com-kpi .sub{font-size:10.5px;color:var(--text3);margin-top:5px;line-height:1.4}
+  .com-kpirow{display:flex;align-items:flex-start;justify-content:space-between;gap:7px}
+  .com-pill{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;border-radius:999px;padding:2px 7px;white-space:nowrap;flex:none}
+  .com-pill.dn{background:color-mix(in srgb,var(--danger) 14%,transparent);color:var(--danger)}
+  .com-pill.up{background:color-mix(in srgb,var(--success) 16%,transparent);color:var(--success)}
+  .com-pill.nt{background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--text3)}
+  .com-spark{width:100%;height:26px;display:block;margin-top:7px}
   .com-tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px;table-layout:fixed}
   .com-tbl th{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);text-align:right;padding:10px 12px 9px;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
   .com-tbl th:hover{color:var(--text)}
@@ -12576,21 +12588,54 @@ function _comCSS(){
 function _comPerN(per){
   const d=_COM_DADOS[per]; return (d&&d.tot&&d.tot.ped!=null)?d.tot.ped:null;
 }
+// ── Mini-gráfico dos indicadores ────────────────────────────────────────────────────────────
+// Série = os DIAS carregados, em ordem. ⚠️ Ao acrescentar um dia novo em _COM_DADOS, some a chave
+// aqui — o gráfico passa a aparecer sozinho. Com menos de 3 dias ele NÃO é desenhado: 2 pontos
+// viram uma reta, que não diz nada sobre tendência.
+const COM_SERIE_DIAS=['ontem','hoje'];
+function _comSerieKPI(f){
+  const v=[];
+  COM_SERIE_DIAS.forEach(p=>{ const d=_COM_DADOS[p];
+    if(d&&d.tot){ const x=f(d.tot); if(x!=null&&isFinite(x)) v.push(x); } });
+  return v;
+}
+function _comSparkHTML(v){
+  if(!v||v.length<3) return '';
+  const max=Math.max.apply(null,v), min=Math.min.apply(null,v), amp=(max-min)||1;
+  const pts=v.map((y,i)=>`${(i/(v.length-1)*120).toFixed(1)},${(22-((y-min)/amp)*18).toFixed(1)}`).join(' ');
+  return `<svg class="com-spark" viewBox="0 0 120 26" preserveAspectRatio="none">
+    <polygon points="0,26 ${pts} 120,26" fill="var(--blue-mid)" fill-opacity=".14"/>
+    <polyline points="${pts}" fill="none" stroke="var(--blue-mid)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+  </svg>`;
+}
+// Cartão de indicador (modelo escolhido pelo Diego: faixa fina na lateral).
+function _comKPI(lab, val, pill, sub, spark, cor){
+  return `<div class="com-kpi">
+    <div class="com-kpirow"><span class="lab">${lab}</span>${pill||''}</div>
+    <div class="val"${cor?` style="color:${cor}"`:''}>${val}</div>
+    ${sub?`<div class="sub">${sub}</div>`:''}${spark||''}</div>`;
+}
 function _comCorpoHTML(){
   const d=_comD(), t=d?d.tot:null, b=_comBase(), bt=b?b.tot:null;
   const chips=COM_PERIODOS.map(p=>{ const n=_comPerN(p[0]);
     return `<button class="com-chip${_comPer===p[0]?' on':''}${n==null?' off':''}" onclick="_comSetPer('${p[0]}')" title="${n==null?'ainda sem dado carregado':_cpNum(n)+' pedidos'}">${p[1]}${n!=null?`<span class="n">${_cpNum(n)}</span>`:''}</button>`; }).join('');
-  const kpi=(lab,val,extra)=>`<div class="cp-card" style="padding:13px 16px"><div class="cp-kpi"><s>${lab}</s><b>${val}</b></div>${extra?`<div style="font-size:11.5px;font-weight:600;margin-top:3px">${extra}</div>`:''}</div>`;
-  const cmp=(a,ba,moeda)=>{ if(!bt||a==null||ba==null) return ''; const dif=a-ba, pct=ba?dif/ba*100:0;
-    const cor=dif>0?'var(--success)':(dif<0?'var(--danger)':'var(--text3)');
-    const abs=moeda?_cpBRL(Math.abs(dif)):_cpNum(Math.abs(dif));
-    return `<span style="color:${cor}">${dif>=0?'▲':'▼'} ${_cpNum(Math.abs(pct),1)}% · ${abs} ${dif>=0?'a mais':'a menos'}</span> <span style="color:var(--text3);font-weight:600">que ${b.rot}</span>`; };
-  const kpis=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:6px">
-    ${kpi('Valor vendido', t?_cpBRL(t.valor):'—', t&&bt?cmp(t.valor,bt.valor,1):'')}
-    ${kpi('Caixas', t?_cpNum(t.cx):'—', t&&bt?cmp(t.cx,bt.cx):'')}
-    ${kpi('Pedidos', t?_cpNum(t.ped):'—', t&&bt?cmp(t.ped,bt.ped):'')}
-    ${kpi('Clientes', t?(t.cli!=null?_cpNum(t.cli):'até '+_cpNum(t.cliMax)):'—', (t&&bt&&t.cli!=null)?cmp(t.cli,bt.cli):((t&&t.cli==null)?'<span style="color:var(--text3)">pode ter cliente repetido nos dois dias</span>':''))}
-    ${kpi('Ticket médio', t?_cpBRL(t.valor/t.ped):'—', t&&bt?cmp(t.valor/t.ped,bt.valor/bt.ped,1):'')}
+  // pílula = só o %; a diferença em número vai na linha de baixo (não cabe tudo na pílula)
+  const pil=(a,ba)=>{ if(!bt||a==null||ba==null) return '';
+    const dif=a-ba, pct=ba?dif/ba*100:0, igual=Math.abs(pct)<0.05;
+    return `<span class="com-pill ${igual?'nt':(dif>0?'up':'dn')}">${igual?'igual':`${dif>0?'▲':'▼'} ${_cpNum(Math.abs(pct),1)}%`}</span>`; };
+  const dsub=(a,ba,moeda)=>{ if(!bt||a==null||ba==null) return '';
+    const dif=a-ba; if(Math.abs(dif)<0.005) return `mesmo valor de ${b.rot}`;
+    return `${moeda?_cpBRL(Math.abs(dif)):_cpNum(Math.abs(dif))} ${dif>0?'a mais':'a menos'} que ${b.rot}`; };
+  const sp=f=>_comSparkHTML(_comSerieKPI(f));
+  const kpis=`<div class="com-kpis">
+    ${_comKPI('Valor vendido', t?_cpBRL(t.valor):'—', pil(t?t.valor:null, bt?bt.valor:null), dsub(t?t.valor:null, bt?bt.valor:null, 1), sp(x=>x.valor))}
+    ${_comKPI('Caixas', t?_cpNum(t.cx):'—', pil(t?t.cx:null, bt?bt.cx:null), dsub(t?t.cx:null, bt?bt.cx:null), sp(x=>x.cx))}
+    ${_comKPI('Pedidos', t?_cpNum(t.ped):'—', pil(t?t.ped:null, bt?bt.ped:null), dsub(t?t.ped:null, bt?bt.ped:null), sp(x=>x.ped))}
+    ${_comKPI('Clientes', t?(t.cli!=null?_cpNum(t.cli):'até '+_cpNum(t.cliMax)):'—',
+        (t&&t.cli!=null)?pil(t.cli, bt?bt.cli:null):'',
+        (t&&t.cli==null)?'pode ter cliente repetido nos dois dias':dsub(t?t.cli:null, bt?bt.cli:null),
+        sp(x=>x.cli))}
+    ${_comKPI('Ticket médio', t?_cpBRL(t.valor/t.ped):'—', pil(t?t.valor/t.ped:null, bt?bt.valor/bt.ped:null), dsub(t?t.valor/t.ped:null, bt?bt.valor/bt.ped:null, 1), sp(x=>x.valor/x.ped))}
   </div>
   <div style="font-size:11.5px;color:var(--text3);margin-bottom:16px">${
     !t?'Este período ainda não tem dado carregado.'
@@ -12654,13 +12699,14 @@ function _comAbertoTopoHTML(){
   const maior=dias.length?Math.max.apply(null,dias):null;
   const atrasados=itens.filter(x=>_comDias(x.it[5])>=COM_ABERTO_ALERTA.vermelho).length;
   const fora=itens.filter(x=>_comSemOK(x.it[8],x.it[9])===false).length;
-  const kpi=(lab,val,extra,cor)=>`<div class="cp-card" style="padding:13px 16px"><div class="cp-kpi"><s>${lab}</s><b${cor?` style="color:${cor}"`:''}>${val}</b></div>${extra?`<div style="font-size:11.5px;font-weight:600;color:var(--text3);margin-top:3px">${extra}</div>`:''}</div>`;
-  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:6px">
-    ${kpi('Valor em aberto',_cpBRL(valor),_cpNum(gs.length)+' representantes')}
-    ${kpi('Caixas',_cpNum(cx),'')}
-    ${kpi('Pedidos na tela',_cpNum(itens.length),'2 representantes vieram cortados')}
-    ${kpi('Mais antigo',maior!=null?_cpNum(maior)+' dias':'—',_cpNum(atrasados)+' com '+COM_ABERTO_ALERTA.vermelho+'+ dias', maior>=COM_ABERTO_ALERTA.vermelho?'var(--danger)':'')}
-    ${kpi('Fora da semana de rota',_cpNum(fora),'lançados em semana diferente', fora?'var(--amber)':'')}
+  // não é período, então não há com o que comparar: a pílula vira alerta (quando há) em vez de variação
+  const alerta=(n,txt)=>n?`<span class="com-pill dn">${txt}</span>`:'';
+  return `<div class="com-kpis">
+    ${_comKPI('Valor em aberto',_cpBRL(valor),'',_cpNum(gs.length)+' representantes')}
+    ${_comKPI('Caixas',_cpNum(cx),'','')}
+    ${_comKPI('Pedidos na tela',_cpNum(itens.length),'','2 representantes vieram cortados')}
+    ${_comKPI('Mais antigo',maior!=null?_cpNum(maior)+' dias':'—',alerta(atrasados,_cpNum(atrasados)+' com '+COM_ABERTO_ALERTA.vermelho+'+'),'contados da emissão até hoje','', maior>=COM_ABERTO_ALERTA.vermelho?'var(--danger)':'')}
+    ${_comKPI('Fora da semana de rota',_cpNum(fora),'','lançados em semana diferente da rota','', fora?'var(--amber)':'')}
   </div>
   <div style="font-size:11.5px;color:var(--text3);margin-bottom:16px">Foto do que está em aberto — não é um período, por isso os botões de dia e semana não valem aqui.</div>`;
 }
