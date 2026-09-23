@@ -449,7 +449,14 @@ continuam no arquivo e **não têm relação** com o bloco novo — não confund
 - **Gráfico recolhido** numa faixa de uma linha; clicar num produto abre ali (área + linha + **média** tracejada +
   17 meses). 🐞 **A própria faixa não abria** (o Diego clicou nela e nada acontecia — só a linha do produto abria):
   agora ela tem `_ddvAbrirGrafPadrao()`, que escolhe o 1º produto **com histórico mensal** e cai no 1º da tela se
-  não houver nenhum. Mais uma vez o teste só pegou porque passou a **clicar de verdade** em vez de chamar a função. ⚠️ **Só o 1798 tem histórico mensal** (foi o único no print) — os outros mostram o aviso de "sem
+  não houver nenhum. Mais uma vez o teste só pegou porque passou a **clicar de verdade** em vez de chamar a função.
+- ⭐ **2 períodos no gráfico** (pedido dele, espelhando o SISPRO), discretos e **só quando o gráfico abre**:
+  **Período do gráfico** (recorta a série) e **2ª média** (a linha vermelha pontilhada). Estado em `_ddvPer`
+  (vazio = padrão: série toda + último mês na 2ª média, que é o que o SISPRO mostrava). ⚠️ A série é **mensal**,
+  então o recorte é **por mês** — a data escolhida entra pelo mês dela. Trocar a data re-renderiza **só o
+  `#ddv-graf-box`**, não a tabela. Período que não pega nenhum mês mostra aviso em vez de gráfico vazio, e há
+  "voltar ao padrão" quando alguma data foi mexida. Os rótulos das duas médias têm contorno na cor do cartão e
+  o da 2ª média vai **abaixo** da linha — sem isso a linha da média cortava o texto (as duas ficam próximas). ⚠️ **Só o 1798 tem histórico mensal** (foi o único no print) — os outros mostram o aviso de "sem
   histórico". Acrescentar = uma entrada em `_DDV_SERIE` por código.
 - ⭐ **SEPARAÇÃO DOS 3 GRUPOS DE COLUNA** (2ª rodada; 5 mockups, ele pediu a **mistura do 5 com o 3**):
   cada grupo ganhou **tarja no acento com texto branco** (`th.g.on`) e as colunas dele levam um **fundo bem

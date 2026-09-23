@@ -11987,6 +11987,9 @@ let _ddvMedias=true;          // mostrar as 4 médias (MDV/MSV/MQV/MMV)
 let _ddvGraf='';              // código do produto com o gráfico aberto ('' = faixa recolhida)
 let _ddvSort={campo:'nome',dir:1};
 const _ddvFechadas={};        // linhas recolhidas — estado de tela, não persiste
+// Períodos do gráfico (vazio = padrão: mostra a série toda e a 2ª média pega o último mês).
+// ⚠️ A série é MENSAL, então o recorte é por mês: a data escolhida entra pelo mês dela.
+let _ddvPer={ini:'',fim:'',m2ini:'',m2fim:''};
 
 // Corte do semáforo do DDV. No SISPRO o ⚠ acende exatamente abaixo de 7 dias.
 const DDV_ALERTA={vermelho:7, amarelo:10};
@@ -12176,7 +12179,8 @@ const _DDV_LINHAS=[
 // Histórico mensal de vendas por produto (o gráfico do topo). Só o 1798 veio no print — os demais
 // mostram o aviso de "sem histórico". Para acrescentar: uma entrada por código, com meses e valores.
 const _DDV_SERIE={
-  1798:{ meses:['mai/25','jun/25','jul/25','ago/25','set/25','out/25','nov/25','dez/25','jan/26','fev/26','mar/26','abr/26','mai/26','jun/26','jul/26','ago/26','set/26'],
+  1798:{ de:'2025-05',
+         meses:['mai/25','jun/25','jul/25','ago/25','set/25','out/25','nov/25','dez/25','jan/26','fev/26','mar/26','abr/26','mai/26','jun/26','jul/26','ago/26','set/26'],
          vals:[609.60,1116.13,1869.33,1886.27,2217.07,2111.20,2277.13,1924.73,1275.33,1833.13,1744.40,1716.13,1786.40,1863.87,1717.80,1634.73,1550.80] }
 };
 // ── Conta ───────────────────────────────────────────────────────────────────────────────────
@@ -12311,6 +12315,10 @@ function _ddvCSS(){
   .ddv-graf{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden}
   .ddv-graf-head{display:flex;align-items:center;gap:9px;padding:10px 14px;font-size:11.5px;color:var(--text2);cursor:pointer}
   .ddv-graf-head:hover{background:color-mix(in srgb,var(--text) 3%,transparent)}
+  .ddv-filtros{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:9px 14px 0;font-size:11px;color:var(--text3);border-top:1px solid var(--border)}
+  .ddv-filtros b{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-right:3px}
+  .ddv-dt{height:28px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:11.5px;padding:0 6px;outline:none}
+  .ddv-dt:focus{border-color:var(--blue-mid);box-shadow:0 0 0 3px color-mix(in srgb,var(--blue-mid) 14%,transparent)}
   .ddv-buscaw{position:relative;display:inline-flex;align-items:center}
   .ddv-buscaw i{position:absolute;left:11px;font-size:14px;color:var(--text3);pointer-events:none}
   .ddv-busca{width:250px;height:34px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--text);font-family:inherit;font-size:12.5px;padding:0 11px 0 32px;outline:none}
@@ -12329,8 +12337,19 @@ function _ddvGrafHTML(){
       <span style="color:var(--text3)">— abrir, ou clicar direto num produto da tabela</span>
       <span style="margin-left:auto;color:var(--text3);font-size:10.5px">recolhido</span></div></div>`;
   const s=_DDV_SERIE[abrir.p[0]];
-  const corpo=s?_ddvSvg(s):`<div style="padding:26px 14px;text-align:center;color:var(--text3);font-size:12px;font-style:italic">
+  let corpo;
+  if(!s){
+    corpo=`<div style="padding:26px 14px;text-align:center;color:var(--text3);font-size:12px;font-style:italic">
       Este produto ainda não tem o histórico mês a mês carregado — por enquanto só o total de ${_cpNum(DDV_DIAS_UTEIS)} dias úteis (${_ddvN(abrir.p[6])}).</div>`;
+  }else{
+    const lim=_ddvLimites(s);
+    const pIni=_ddvPer.ini||lim.ini, pFim=_ddvPer.fim||lim.fim;
+    const m2Ini=_ddvPer.m2ini||lim.ultIni, m2Fim=_ddvPer.m2fim||lim.fim;
+    const rec=_ddvRecorte(s,pIni,pFim), r2=_ddvRecorte(s,m2Ini,m2Fim);
+    corpo=_ddvFiltrosGrafHTML(pIni,pFim,m2Ini,m2Fim)+(rec.vals.length
+      ? _ddvSvg(rec,_ddvMedia(r2))
+      : `<div style="padding:22px 14px;text-align:center;color:var(--text3);font-size:12px;font-style:italic">Nenhum mês da série cai nesse período — a série vai de ${s.meses[0]} a ${s.meses[s.meses.length-1]}.</div>`);
+  }
   return `<div class="ddv-graf">
     <div class="ddv-graf-head" onclick="_ddvAbrirGraf('${abrir.p[0]}')">
       <i class="ti ti-chart-area-line" style="font-size:15px;color:var(--blue-mid)"></i>
@@ -12338,12 +12357,43 @@ function _ddvGrafHTML(){
       <span style="margin-left:auto;color:var(--text3);font-size:11px"><i class="ti ti-x" style="font-size:13px;vertical-align:-2px"></i> fechar</span>
     </div>${corpo}</div>`;
 }
-function _ddvSvg(s){
+// ── Períodos do gráfico ─────────────────────────────────────────────────────────────────────
+const _ddvYM=(de,i)=>{ const p=de.split('-'); let m=(+p[1])-1+i; const y=(+p[0])+Math.floor(m/12); m=((m%12)+12)%12; return y+'-'+String(m+1).padStart(2,'0'); };
+const _ddvSerieYM=s=>s.vals.map((v,i)=>_ddvYM(s.de,i));
+const _ddvFimDoMes=ym=>{ const p=ym.split('-'); return ym+'-'+String(new Date(+p[0],+p[1],0).getDate()).padStart(2,'0'); };
+function _ddvLimites(s){ const ym=_ddvSerieYM(s); return { ini:ym[0]+'-01', fim:_ddvFimDoMes(ym[ym.length-1]), ultIni:ym[ym.length-1]+'-01' }; }
+// Recorte por MÊS: entra o mês que estiver entre o mês da data inicial e o da final.
+function _ddvRecorte(s,ini,fim){
+  const ym=_ddvSerieYM(s), a=(ini||'').slice(0,7), b=(fim||'').slice(0,7), out={meses:[],vals:[]};
+  ym.forEach((m,i)=>{ if((!a||m>=a)&&(!b||m<=b)){ out.meses.push(s.meses[i]); out.vals.push(s.vals[i]); } });
+  return out;
+}
+const _ddvMedia=r=>r.vals.length?r.vals.reduce((a,b)=>a+b,0)/r.vals.length:null;
+function _ddvSetPer(campo,v){ _ddvPer[campo]=v||''; const el=document.getElementById('ddv-graf-box'); if(el) el.innerHTML=_ddvGrafHTML(); else renderPCP(); }
+function _ddvPerReset(){ _ddvPer={ini:'',fim:'',m2ini:'',m2fim:''}; const el=document.getElementById('ddv-graf-box'); if(el) el.innerHTML=_ddvGrafHTML(); else renderPCP(); }
+function _ddvFiltrosGrafHTML(pIni,pFim,m2Ini,m2Fim){
+  // ⚠️ os campos PRECISAM de classe: a regra global input:not([class]){height:40px} atropelaria a altura
+  const dt=(campo,val)=>`<input type="date" class="ddv-dt" value="${val}" onchange="_ddvSetPer('${campo}',this.value)">`;
+  const sujo=_ddvPer.ini||_ddvPer.fim||_ddvPer.m2ini||_ddvPer.m2fim;
+  return `<div class="ddv-filtros">
+    <span><b>Período do gráfico</b> ${dt('ini',pIni)} <span style="opacity:.6">a</span> ${dt('fim',pFim)}</span>
+    <span><b>2ª média</b> ${dt('m2ini',m2Ini)} <span style="opacity:.6">a</span> ${dt('m2fim',m2Fim)}</span>
+    ${sujo?`<button class="ddv-link" onclick="_ddvPerReset()" style="font-size:10.5px;padding:3px 7px">voltar ao padrão</button>`:''}
+  </div>`;
+}
+function _ddvSvg(s,med2){
   const v=s.vals, n=v.length, W=1000, H=190, pad=26;
   const max=Math.max.apply(null,v)*1.08, med=v.reduce((a,b)=>a+b,0)/n;
-  const x=i=>pad+i*((W-pad*2)/(n-1)), y=t=>H-28-(t/max)*(H-52);
+  const x=i=>n>1?pad+i*((W-pad*2)/(n-1)):W/2, y=t=>H-28-(t/max)*(H-52);
   const pts=v.map((t,i)=>`${x(i).toFixed(1)},${y(t).toFixed(1)}`).join(' ');
   const ym=y(med).toFixed(1);
+  // a 2ª média só é desenhada se o recorte dela tiver algum mês E couber na escala do gráfico
+  const ym2=(med2!=null&&med2<=max)?y(med2).toFixed(1):null;
+  // o rótulo da 2ª média vai ABAIXO da linha dela (as duas médias costumam ficar próximas, e acima
+  // o texto era cortado pela linha da média do período); o contorno na cor do cartão garante leitura
+  const halo='paint-order="stroke" stroke="var(--card)" stroke-width="3.5" stroke-linejoin="round"';
+  const l2=ym2?`<line x1="${pad}" y1="${ym2}" x2="${W-pad}" y2="${ym2}" stroke="var(--danger)" stroke-width="2" stroke-dasharray="2 4"/>
+      <text x="${pad}" y="${(+ym2)+14}" font-size="11" font-weight="700" fill="var(--danger)" ${halo}>2ª média ${_ddvN(med2)}</text>`:'';
   const rot=s.meses.map((m,i)=>`<text x="${x(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--text3)">${m}</text>`).join('');
   const bolas=v.map((t,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(t).toFixed(1)}" r="3" fill="var(--blue-mid)"><title>${s.meses[i]}: ${_ddvN(t)}</title></circle>`).join('');
   return `<div style="padding:4px 10px 10px">
@@ -12351,8 +12401,8 @@ function _ddvSvg(s){
       <polygon points="${pad},${H-28} ${pts} ${W-pad},${H-28}" fill="var(--blue-mid)" fill-opacity=".14"/>
       <polyline points="${pts}" fill="none" stroke="var(--blue-mid)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
       <line x1="${pad}" y1="${ym}" x2="${W-pad}" y2="${ym}" stroke="var(--success)" stroke-width="2" stroke-dasharray="6 5"/>
-      <text x="${W-pad}" y="${(+ym)-6}" text-anchor="end" font-size="11" font-weight="700" fill="var(--success)">média ${_ddvN(med)}</text>
-      ${bolas}${rot}
+      <text x="${W-pad}" y="${(+ym)-6}" text-anchor="end" font-size="11" font-weight="700" fill="var(--success)" ${halo}>média ${_ddvN(med)}</text>
+      ${l2}${bolas}${rot}
     </svg></div>`;
 }
 function _ddvKPIsHTML(){
@@ -12439,7 +12489,7 @@ function renderDDV(){
   const corpo=`${_ddvCSS()}
     <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:12px">${busca}</div>
     ${_ddvKPIsHTML()}
-    ${_ddvGrafHTML()}
+    <div id="ddv-graf-box">${_ddvGrafHTML()}</div>
     <div id="ddv-conteudo">${_ddvTabelaHTML()}</div>`;
   main.innerHTML=_cpTela('PCP','Quantos dias o estoque de cada produto ainda dura.',corpo);
 }
