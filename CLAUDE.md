@@ -567,6 +567,18 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
   - **O total do bloco subiu para o cabeçalho**, junto de base, horário e duração: `Bloco 1 · Pão de mel · 07:00 às
     12:30 · 5h30 · 24.438 pacotes`. É a resposta, e fica onde o olho bate primeiro.
   - **Altura caiu de 937 para 820px** — a reorganização enxugou em vez de inchar.
+- ⭐ **LINHA DO TEMPO LIMPA** (8ª rodada — ele achou a faixa "bagunçada e confusa"). ⚠️ **O que poluía era
+  REDUNDÂNCIA, não falta de organização** — vale a lição para as próximas telas:
+  - A **limpeza era desenhada nas 8 trilhas**: virava uma coluna rosa dominando a tela e, como cada trilha sai
+    deslocada pelo trânsito, **parecia três paradas diferentes**. Agora só no **Corte**, que é onde ela é decidida
+    e arrastada; nas outras o **vão vazio já diz que parou**. De 8 blocos para 1.
+  - O **horário saiu das 7 trilhas de baixo**: o rótulo do grupo já diz "+15min"/"+20min", então 07:15 e 07:20
+    eram a mesma informação sete vezes. Ficou no corte e no tooltip.
+  - **Canal parado deixou de ter retângulo tracejado** — virou só o vão. Os tracejados competiam com as barras de
+    verdade (de 8 para 0). Mesma coisa com o "livre" do fim do turno e com a textura do vão de trânsito.
+  - **Um tom por estágio e mais nada**: o "sem cobertura" perdeu a cor própria (usa a da cobertura; o texto diz o
+    que é). Sobraram 3 tons + o rosa do setup + o vermelho do alerta, que é semântico.
+  - A cobertura mostra **só o %**; os pacotes foram para o tooltip.
 - ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
   (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
   reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);
