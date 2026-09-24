@@ -12132,7 +12132,7 @@ function _pgmSetEmb(i, campo, el){
 function _pgmCalc(b){
   const B=_pgmBase(b.base);
   const bisc=(+b.cortes||0)*(B.bpc||0);          // biscoitos/min saindo do corte
-  const cru=_pgmCru(b), horas=(+b.horas||0);
+  const cru=_pgmCru(b), horas=_pgmHorasB(b);
   const assado=cru*(1-B.evap/100), coberto=assado*(1+B.cob/100);
   const mix=_pgmMix(b);
   // ⚠️ o peso médio do biscoito acabado depende do MIX: sem cobertura ele sai mais leve, então a mesma
@@ -12176,12 +12176,32 @@ function _pgmSetSetup(i, estId, el){ const arr=_pgmBlocos().slice(); if(!arr[i])
   arr[i].setup=s; _pgmSetBlocos(arr); _pgmRefresh();
   const tt=document.getElementById('pgm-dia-res'); if(tt) tt.innerHTML=_pgmDiaResHTML(); }
 function _pgmSetupAntes(i){ return _pgmSetupMin(i)/60; }
-function _pgmHoras(){ return _pgmBlocos().reduce((s,b,i)=>s+(+b.horas||0)+_pgmSetupAntes(i),0); }
+// ⭐⭐ O BLOCO É CONTADO EM MASSADAS, NÃO EM HORAS. A masseira é batelada — não se roda meia massada —
+// então o bloco guarda `massadas` e a DURAÇÃO é RESULTADO (massadas × ciclo).
+// ⚠️ Consequência do modelo, e ela é o certo: acelerar o corte NÃO faz mais pacotes no mesmo bloco
+// (mesma massa = mesmos pacotes) — faz o bloco TERMINAR ANTES. O ganho aparece como SOBRA DE TURNO, e é
+// a sobra que vira massada a mais. Quem espera "mais cpm = mais pacotes no bloco" está olhando errado.
+// ⚠️ Bloco antigo (que guardava `horas`) continua abrindo: as massadas são deduzidas do tempo dele.
+function _pgmMassadasB(b){ if(!b) return 1;
+  if(b.massadas!=null) return Math.max(1,Math.round(+b.massadas||0));
+  const c=_pgmMassadaCalc(b); return c>0 ? Math.max(1,Math.round((+b.horas||0)*3600/c)) : 1; }
+function _pgmHorasB(b){ if(!b) return 0; const c=_pgmMassadaCalc(b);
+  return c>0 ? _pgmMassadasB(b)*c/3600 : (+b.horas||0); }
+function _pgmEsperaB(b){ return Math.max(0, +((b||{}).espera) || 0)/60; }   // espera MARCADA antes do bloco
+function _pgmHoras(){ return _pgmBlocos().reduce((s,b,i)=>s+_pgmSetupAntes(i)+_pgmEsperaB(b)+_pgmHorasB(b),0); }
 function _pgmHhmm(h){ const H=Math.floor(h), M=Math.round((h-H)*60); return H+'h'+(M<10?'0':'')+M; }
 function _pgmRelogio(h){ const L=_pgmL(); const base=(+L.ini.split(':')[0])*60+(+L.ini.split(':')[1]);
   const t=Math.round(base+h*60), hh=Math.floor(t/60)%24, mm=t%60;
   return (hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm; }
-function _pgmInicio(i){ let h=0; for(let k=0;k<i;k++) h+=(+_pgmBlocos()[k].horas||0)+_pgmSetupAntes(k); return h+_pgmSetupAntes(i); }
+// início NATURAL = o bloco colado no anterior, só com o setup no meio. O início REAL soma a espera que
+// o PCP marcou no campo "Início" (é assim que se pendura um bloco num horário sem grudar no anterior).
+function _pgmIniNatural(i){ const bs=_pgmBlocos(); let h=0;
+  for(let k=0;k<i;k++) h+=_pgmSetupAntes(k)+_pgmEsperaB(bs[k])+_pgmHorasB(bs[k]);
+  return h+_pgmSetupAntes(i); }
+function _pgmInicio(i){ return _pgmIniNatural(i)+_pgmEsperaB(_pgmBlocos()[i]); }
+function _pgmMinIni(){ const p=String(_pgmL().ini||'07:00').split(':'); return (+p[0])*60+(+p[1]); }
+function _pgmParseHora(v){ const m=String(v||'').match(/^(\d{1,2}):(\d{2})$/); if(!m) return null;
+  const h=+m[1], mi=+m[2]; return (h>23||mi>59)?null:h*60+mi; }
 // ── AÇÕES (nunca no render)
 function _pgmSel_(i){ _pgmSel=i; renderPCPDia(); }
 function _pgmSetLive(campo, el){       // digitar: guarda e atualiza só a linha do tempo e o resultado
@@ -12209,8 +12229,22 @@ function _pgmRefresh(semEmb){
 function _pgmAddBloco(){ const L=_pgmL(); if(!L.bases) return;
   const arr=_pgmBlocos().slice(), P=L.padrao||{};
   const u=arr[arr.length-1]||{base:L.bases[0].id, cortes:Math.round(_pgmCpmPadrao({base:L.bases[0].id})), cru:P.cru};
-  arr.push({base:u.base, horas:1, cortes:u.cortes, cru:u.cru});
+  arr.push({base:u.base, massadas:8, cortes:u.cortes, cru:u.cru});
   _pgmSetBlocos(arr); _pgmSel=arr.length-1; renderPCPDia(); }
+// ⭐ MARCAR A HORA EXATA do bloco selecionado.
+//  · Início → vira ESPERA antes do bloco (não dá para começar antes do anterior terminar, então hora
+//    anterior ao natural simplesmente cola no natural e zera a espera).
+//  · Fim → vira nº de MASSADAS, arredondado para a massada cheia mais próxima. ⚠️ O campo volta
+//    mostrando o fim REAL, não o digitado: a masseira não faz meia batelada e a tela não finge que faz.
+function _pgmSetHora(qual, el){
+  const i=_pgmSel, arr=_pgmBlocos().slice(), b=arr[i]; if(!b) return renderPCPDia();
+  const min=_pgmParseHora(el.value); if(min==null) return renderPCPDia();
+  const alvo=(min-_pgmMinIni())/60;                       // horas desde o início do turno
+  if(qual==='ini'){ b.espera=Math.max(0, Math.round((alvo-_pgmIniNatural(i))*60)); }
+  else { const c=_pgmMassadaCalc(b), dur=alvo-_pgmInicio(i);
+    if(c>0){ b.massadas=Math.max(1, Math.min(400, Math.round(dur*3600/c))); delete b.horas; } }
+  _pgmSetBlocos(arr); renderPCPDia();
+}
 function _pgmDelBloco(i){ const arr=_pgmBlocos().slice(); arr.splice(i,1); _pgmSetBlocos(arr);
   if(_pgmSel>=arr.length) _pgmSel=Math.max(0,arr.length-1); renderPCPDia(); }
 // ── ARRASTAR AS BARRAS (pedido do Diego): puxar a borda direita muda a duração e o tempo disponível
@@ -12223,7 +12257,7 @@ function _pgmDragStart(ev, tipo, i){
   const L=_pgmL(), atr=L.estagios.map(e=>(e.atraso||0)/60);
   _pgmDrag={tipo:tipo, i:i, x0:ev.clientX, w:t.getBoundingClientRect().width,
     TOT:L.horas+Math.max.apply(null,atr),
-    v0: tipo==='bloco' ? (+_pgmBlocos()[i].horas||0) : _pgmSetupObj(i).corte};
+    v0: tipo==='bloco' ? _pgmMassadasB(_pgmBlocos()[i]) : _pgmSetupObj(i).corte};
   document.addEventListener('mousemove',_pgmDragMove);
   document.addEventListener('mouseup',_pgmDragEnd);
   document.body.style.cursor='col-resize';
@@ -12231,7 +12265,10 @@ function _pgmDragStart(ev, tipo, i){
 function _pgmDragMove(ev){
   const D=_pgmDrag; if(!D||!D.w) return;
   const dh=(ev.clientX-D.x0)/D.w*D.TOT, arr=_pgmBlocos().slice(); if(!arr[D.i]) return;
-  if(D.tipo==='bloco') arr[D.i].horas=Math.max(0.25, Math.min(12, Math.round((D.v0+dh)*4)/4));   // passo de 15min
+  // ⭐ O arraste do bloco anda de MASSADA EM MASSADA (1 em 1): converte o deslocamento em horas para
+  // ciclos da masseira. Quanto mais rápido o ciclo, mais fino o passo em pixels — é a linha, não a régua.
+  if(D.tipo==='bloco'){ const c=_pgmMassadaCalc(arr[D.i]), dm=c>0?dh*3600/c:0;
+         arr[D.i].massadas=Math.max(1, Math.min(400, Math.round(D.v0+dm))); delete arr[D.i].horas; }
   else { const s=_pgmSetupObj(D.i); s.corte=Math.max(0, Math.min(480, Math.round(D.v0+dh*60)));  // passo de 1min
          arr[D.i].setup=s; }
   _pgmSetBlocos(arr); _pgmRefresh();
@@ -12276,26 +12313,25 @@ function _pgmMassadaReset(){ _pgmMassada=null; renderPCPDia(); }
 function _pgmMassadaResumoHTML(){
   const bs=_pgmBlocos(), sel=bs[_pgmSel], L=_pgmL(), P=L.padrao||{};
   if(!bs.length||!sel) return `<div class="pgm-sku">Sem bloco no dia para simular.</div>`;
-  const horas=bs.reduce((s,b)=>s+(+b.horas||0),0);   // só produção — o setup não faz massada
-  const massadas=(fn)=>bs.reduce((s,b)=>{ const t=fn(b); return s+(t>0?(+b.horas||0)*3600/t:0); },0);
-  const pacote=(mod)=>bs.reduce((s,b)=>s+_pgmCalc(mod?Object.assign({},b,mod):b).total,0);
-  // o PADRÃO é o mesmo dia rodando com o ritmo e o peso de referência
-  const padMod={cortes:_pgmCpmPadrao(sel), cru:P.cru};
-  const mPad=horas*3600/(P.massadaSeg||1), pacPad=pacote(padMod);
-  const mAgo=massadas(_pgmMassadaCalc), pacAgo=pacote(null);
+  // ⭐⭐ Com o bloco contado em MASSADAS, mudar o ritmo não muda mais quantas massadas o dia faz — muda
+  // QUANTO TEMPO elas levam. Por isso este cartão passou a comparar TEMPO, não quantidade: a massada a
+  // mais aparece na sobra do turno, e quem mostra isso é o cartão "Resultado do dia".
+  const nTot=bs.reduce((s,b)=>s+_pgmMassadasB(b),0);
+  const horas=bs.reduce((s,b)=>s+_pgmHorasB(b),0);   // só produção — setup e espera não fazem massada
+  const hPad=nTot*(P.massadaSeg||0)/3600;
   const fator=_pgmMassadaFator(), simulando=Math.abs(fator-1)>0.001;
+  const hSim=horas*fator;
   const med=_pgmHistMed(+sel.cortes||0), calcSel=_pgmMassadaCalc(sel);
-  const mSim=fator>0?mAgo/fator:mAgo, pacSim=fator>0?pacAgo/fator:pacAgo;
-  const sinal=v=>(v>0?'+':'')+_pgmN(v);
-  const delta=(a,b_)=>{ const d=a-b_, c=d>0?'var(--success)':(d<0?'var(--danger)':'var(--text3)');
-    return `<b style="color:${c}">${sinal(d)}</b>`; };
+  // diferença em MINUTOS: menos tempo para as mesmas massadas é ganho (verde)
+  const dur=m=>m<60?m+'min':_pgmHhmm(m/60);
+  const delta=(a,b_)=>{ const d=Math.round((a-b_)*60); if(!d) return '';
+    return `<b style="color:${d<0?'var(--success)':'var(--danger)'}">${d>0?'+':'−'}${dur(Math.abs(d))}</b>`; };
   return `<div class="pgm-out">
-    <div class="pgm-r"><span>Padrão <i style="font-style:normal;opacity:.7">${_pgmMS(P.massadaSeg||0)} · ${_pgmN(_pgmCpmPadrao(sel),1)} cpm · ${_pgmN(P.cru,2)} g</i></span><b>${_pgmN(mPad)} massadas</b></div>
-    <div class="pgm-r"><span>Agora <i style="font-style:normal;opacity:.7">${_pgmMS(_pgmMassadaCalc(sel))} · ${_pgmN(sel.cortes)} cpm · ${_pgmN(_pgmCru(sel),2)} g</i></span><b>${_pgmN(mAgo)} massadas ${delta(mAgo,mPad)}</b></div>
-    ${simulando?`<div class="pgm-r"><span>Com ${_pgmMS(_pgmMassadaSeg())}</span><b>${_pgmN(mSim)} massadas ${delta(mSim,mPad)}</b></div>`:''}
-    ${simulando?`<div class="pgm-r tot"><span>Pacotes no dia</span><b>${_pgmN(pacSim)} ${delta(pacSim, pacPad)}</b></div>`:''}
+    <div class="pgm-r"><span>Padrão <i style="font-style:normal;opacity:.7">${_pgmMS(P.massadaSeg||0)} · ${_pgmN(_pgmCpmPadrao(sel),1)} cpm · ${_pgmN(P.cru,2)} g</i></span><b>${_pgmHhmm(hPad)}</b></div>
+    <div class="pgm-r"><span>Agora <i style="font-style:normal;opacity:.7">${_pgmMS(_pgmMassadaCalc(sel))} · ${_pgmN(sel.cortes)} cpm · ${_pgmN(_pgmCru(sel),2)} g</i></span><b>${_pgmHhmm(horas)} ${delta(horas,hPad)}</b></div>
+    ${simulando?`<div class="pgm-r"><span>Com ${_pgmMS(_pgmMassadaSeg())}</span><b>${_pgmHhmm(hSim)} ${delta(hSim,hPad)}</b></div>`:''}
     ${med?`<div class="pgm-r"><span>Medido a ${_pgmN(sel.cortes)} cpm <i style="font-style:normal;opacity:.7">${med.n} produç${med.n>1?'ões':'ão'}</i></span><b>${_pgmMS(med.seg)} <span style="color:var(--text3);font-weight:400">(calc. ${_pgmMS(calcSel)})</span></b></div>`:''}
-    <div class="pgm-sku">${_cpNum(P.massadaKg,3)} kg por massada · ${_pgmHhmm(horas)} de produção · diferenças vs. padrão<br>
+    <div class="pgm-sku">${_cpNum(P.massadaKg,3)} kg por massada · ${_pgmN(nTot)} massadas no dia · o tempo é para fazer ESSAS massadas<br>
       Últimas: ${_pgmCpmsMedidos().map(c=>{const m=_pgmHistMed(c);return c+' cpm → '+_pgmMS(m.seg);}).join(' · ')}</div>
   </div>`;
 }
@@ -12313,7 +12349,7 @@ function _pgmTimelineHTML(){
     .concat((L.embaladoras||[]).map((e,i)=>({tipo:'emb', est:'emb', idx:i, nome:e.nome, atraso:embAtr, grupo:i===0?'Embalagem':''})));
   // ⚠️ A escala tem que caber a trilha que termina MAIS TARDE: com setup próprio na cobertura ou na
   // embalagem, não é mais o corte quem manda no fim do desenho.
-  const fimDe=C=>C.atraso+blocos.reduce((s,b,i)=>s+_pgmSetupAcum(i,C.est)/60+(+b.horas||0),0);
+  const fimDe=C=>C.atraso+blocos.reduce((s,b,i)=>s+_pgmSetupAcum(i,C.est)/60+_pgmEsperaB(b)+_pgmHorasB(b),0);
   const TOT=Math.max(L.horas, Math.max.apply(null, canais.map(fimDe))), esc=100/TOT;
   const cx=(f,txt,cls,tit)=>`<div class="pgm-b ${cls||''}" style="flex:${f.toFixed(3)}"${tit?` title="${escapeAttr(tit)}"`:''}>${txt||''}</div>`;
   const trilhas=canais.map((C,k)=>{
@@ -12330,9 +12366,18 @@ function _pgmTimelineHTML(){
             'Setup do corte · '+Math.round(meu*60)+' min')
         : cx(meu*esc, Math.round(meu*60)+'min', 'setup', 'Setup · '+Math.round(meu*60)+' min');
         pos+=meu; }
-      const f=(+b.horas||0)*esc, ini=_pgmRelogio(pos), fim=_pgmRelogio(pos+(+b.horas||0)); pos+=(+b.horas||0);
+      // espera marcada no campo "Início": vão vazio antes do bloco, em todas as trilhas
+      const esp=_pgmEsperaB(b);
+      if(esp>0){ html+=cx(esp*esc,'','nada','Espera de '+Math.round(esp*60)+' min antes deste bloco'); pos+=esp; }
+      const hb=_pgmHorasB(b);
+      const f=hb*esc, ini=_pgmRelogio(pos), fim=_pgmRelogio(pos+hb); pos+=hb;
       let txt='', cls='', tit='';
-      if(C.tipo==='corte'){ txt=`<b class="h">${ini}</b>`+escapeHTML(B.nome); cls='base'; tit=B.nome; }
+      // ⚠️ o horário SAIU da barra (o Diego pediu): quem marca hora agora são os campos Início/Fim do
+      // editor e a régua. Na barra fica o que se decide arrastando — o produto e as MASSADAS.
+      // o número vem PRIMEIRO porque é o que muda ao arrastar — numa barra curta, é ele que sobrevive ao corte
+      if(C.tipo==='corte'){ const nm=_pgmMassadasB(b);
+        txt=`<b class="h">${nm} massada${nm>1?'s':''}</b>`+escapeHTML(B.nome); cls='base';
+        tit=B.nome+' · '+nm+' massada'+(nm>1?'s':''); }
       else if(C.tipo==='cob'){ const sh=c.mix[C.dest.id]||0;
         // canal parado = NENHUM elemento, só o vão. Retângulo tracejado competia com as barras de verdade.
         if(sh<=0){ html+=cx(f,'','nada'); return; }
@@ -12373,9 +12418,8 @@ function _pgmTimelineHTML(){
 function _pgmDiaResHTML(){
   const L=_pgmL(), bs=_pgmBlocos(), P=L.padrao||{}, sel=bs[_pgmSel]||bs[0];
   const u=_pgmHoras(), pac=bs.reduce((s,b)=>s+_pgmCalc(b).total,0);
-  const horas=bs.reduce((s,b)=>s+(+b.horas||0),0);
-  const mAgo=bs.reduce((s,b)=>{ const t=_pgmMassadaCalc(b); return s+(t>0?(+b.horas||0)*3600/t:0); },0);
-  const mPad=P.massadaSeg? horas*3600/P.massadaSeg : 0;
+  const mAgo=bs.reduce((s,b)=>s+_pgmMassadasB(b),0);   // massadas são o que o bloco GUARDA: soma exata
+  const mPad=mAgo;
   // o padrão é o MESMO dia rodando com o ritmo e o peso de referência (o trio da Valesca)
   const pacPad=sel&&P.cru ? bs.reduce((s,b)=>s+_pgmCalc(Object.assign({},b,{cortes:_pgmCpmPadrao(sel),cru:P.cru})).total,0) : pac;
   const dif=(a,b_)=>{ const x=a-b_; if(!b_||Math.abs(x)<0.5) return '';
@@ -12386,7 +12430,10 @@ function _pgmDiaResHTML(){
     <div class="pgm-res-b" style="margin-bottom:0"><span>Turno</span>
       <b>${_pgmHhmm(u)}<i class="de">de ${_pgmHhmm(L.horas)}</i></b>
       <div class="pgm-barra"><span style="width:${oc.toFixed(1)}%${over>0.01?';background:var(--danger)':''}"></span></div>
-      ${over>0.01?`<div class="pgm-res-al"><i class="ti ti-alert-triangle"></i> passa do turno em ${Math.round(over*60)} min</div>`:''}</div>`;
+      ${over>0.01?`<div class="pgm-res-al"><i class="ti ti-alert-triangle"></i> passa do turno em ${Math.round(over*60)} min</div>`
+        // ⭐ a sobra do turno vira o número que ele decide: quantas massadas ainda cabem no ritmo de agora
+        :(function(){ const c=sel?_pgmMassadaCalc(sel):0, cabe=c>0?Math.floor(-over*3600/c):0, m=Math.round(-over*60);
+           return over<-0.01 ? `<div class="pgm-res-ok">sobra ${m<60?m+'min':_pgmHhmm(-over)}${cabe>0?` · cabe +${cabe} massada${cabe>1?'s':''}`:''}</div>` : ''; })()}</div>`;
 }
 // ── EDITOR do bloco selecionado
 function _pgmEditorHTML(){
@@ -12394,6 +12441,14 @@ function _pgmEditorHTML(){
   const L=_pgmL(), B=_pgmBase(b.base), P=L.padrao||{};
   const campo=(lab,dica,campo_,val,extra)=>`<label class="pgm-f"><span>${lab}${dica?`<i>${dica}</i>`:''}</span>
     <input type="number" class="pgm-inp" value="${val}" ${extra||''} oninput="_pgmSetLive('${campo_}',this)" onchange="renderPCPDia()"></label>`;
+  // ⚠️ hora é type=time (relógio nativo) e só grava no CHANGE — o `input` dispara com a hora ainda pela
+  // metade ("1:") e reescreveria o bloco a cada tecla. Os dois ficam na MESMA célula da grade: são um par,
+  // e separá-los somava uma 3ª linha de campos à coluna do Corte.
+  const hora=(a,b_)=>`<label class="pgm-f"><span>Horário<i>marcar início atrasa o começo</i></span>
+    <div class="pgm-hpar">
+      <input type="time" class="pgm-inp" value="${_pgmRelogio(a)}" onchange="_pgmSetHora('ini',this)" title="Início do bloco">
+      <i class="ti ti-arrow-narrow-right"></i>
+      <input type="time" class="pgm-inp" value="${_pgmRelogio(b_)}" onchange="_pgmSetHora('fim',this)" title="Fim do bloco — encaixa na massada cheia mais próxima"></div></label>`;
   const bases=L.bases.map(x=>`<option value="${x.id}"${x.id===b.base?' selected':''}>${escapeHTML(x.nome)}</option>`).join('');
   // SETUP por estágio, sempre visível: zero = sem parada. A regra só propõe o do corte na troca de base.
   const ant=_pgmBlocos()[_pgmSel-1], so=_pgmSetupObj(_pgmSel);
@@ -12418,7 +12473,7 @@ function _pgmEditorHTML(){
           <select class="pgm-inp" oninput="_pgmSetLive('base',this)" onchange="renderPCPDia()">${bases}</select></label>
         ${campo('Cortes por minuto',_pgmCpmsMedidos().join('·')+' já rodados','cortes',b.cortes,'min="1" max="200" step="1"')}
         ${campo('Biscoito cru (g)','padrão '+_pgmN(P.cru,2),'cru',_pgmCru(b),'min="1" max="200" step="0.01"')}
-        ${campo('Duração (horas)','','horas',b.horas,'min="0.5" max="10" step="0.5"')}
+        ${hora(_pgmInicio(_pgmSel), _pgmInicio(_pgmSel)+_pgmHorasB(b))}
       </div>
       ${setupHTML}
       <div id="pgm-out">${_pgmResultadoHTML()}</div>
@@ -12552,6 +12607,11 @@ function _pgmCSS(){ return `<style>
   .pgm-inp{height:28px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:12.5px;padding:0 8px;outline:none;width:100%;box-sizing:border-box}
   .pgm-inp:focus{border-color:var(--blue-mid)}
   /* a setinha do type=number come a largura útil dos campos estreitos — e aqui ninguém clica nela */
+  /* o par Início → Fim divide uma célula da grade; o relógio nativo sai porque comia a largura do valor */
+  .pgm-hpar{display:flex;align-items:center;gap:4px;min-width:0}
+  .pgm-hpar>i{font-size:13px;color:var(--text3);flex:none}
+  .pgm-inp[type=time]{padding:0 4px;text-align:center;min-width:0}
+  .pgm-inp[type=time]::-webkit-calendar-picker-indicator{display:none}
   .pgm-inp[type=number]{-moz-appearance:textfield}
   .pgm-inp[type=number]::-webkit-outer-spin-button,.pgm-inp[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   .pgm-rg{width:100%;accent-color:var(--blue-mid)}
@@ -12583,6 +12643,7 @@ function _pgmCSS(){ return `<style>
   .pgm-barra{height:4px;border-radius:2px;background:var(--border);margin-top:7px;overflow:hidden}
   .pgm-barra span{display:block;height:100%;border-radius:2px;background:var(--success)}
   .pgm-res-al{font-size:10px;color:var(--danger);margin-top:6px;line-height:1.35}
+  .pgm-res-ok{font-size:10px;color:var(--text3);margin-top:6px;line-height:1.35}
   .pgm-massv{font-size:15px;font-weight:800;letter-spacing:-.015em;color:var(--text);line-height:1.2}
   /* navegação semana › dia › linha */
   .pgm-nav{margin-bottom:10px}
@@ -12673,7 +12734,8 @@ function renderPCPDia(){
           <div class="pgm-blocos">${chips}</div>
           ${(function(){ const bl=_pgmBlocos()[_pgmSel]; if(!bl) return '';
             const cc=_pgmCalc(bl);
-            return `<span class="pgm-blocoinfo">${_pgmRelogio(_pgmInicio(_pgmSel))} às ${_pgmRelogio(_pgmInicio(_pgmSel)+(+bl.horas||0))} · ${_pgmHhmm(+bl.horas||0)} · ${_pgmN(cc.total)} pacotes no bloco</span>`; })()}
+            const nb=_pgmMassadasB(bl), hb=_pgmHorasB(bl);
+            return `<span class="pgm-blocoinfo">${nb} massada${nb>1?'s':''} · ${_pgmHhmm(hb)} · ${_pgmN(cc.total)} pacotes no bloco</span>`; })()}
         </div>
         ${_pgmEditorHTML()}
       </div>`;
@@ -12685,14 +12747,14 @@ function renderPCPDia(){
 (function(){ const q=_pgmDias()[3], L=_PGM_LINHAS[0], P=L.padrao, B=L.bases[0];
   const cpm=Math.round((P.massadaKg*1000)/((P.massadaSeg/60)*B.bpc*P.cru));
   _PGM_PLANO['forno|'+_pgmIso(q)]=[
-    {base:'paodemel', horas:5.5, cortes:cpm, cru:P.cru},
-    {base:'paodemel', horas:1.5, cortes:cpm, cru:P.cru,
+    {base:'paodemel', massadas:38, cortes:cpm, cru:P.cru},
+    {base:'paodemel', massadas:11, cortes:cpm, cru:P.cru,
      // exemplo com os 3 formatos na mesma linha do dia: marca própria, terceiro com etiqueta e impresso
      emb:[{on:true,fmt:'klain',cli:'Klain',sku:'natural',nom:48,real:37},
           {on:true,fmt:'etiqueta',cli:'Quitanda',sku:'natural',nom:48,real:37},
           {on:true,fmt:'impresso',cli:'Bella Massa',sku:'leite',nom:48,real:37},
           {on:false,fmt:'klain',cli:'Klain',sku:'leite',nom:48,real:37}]},
-    {base:'menta',    horas:2.3, cortes:cpm, cru:P.cru}
+    {base:'menta',    massadas:16, cortes:cpm, cru:P.cru}
   ];
 })();
 // ════ FIM DO BLOCO PCP · PROGRAMAÇÃO DO DIA ════
