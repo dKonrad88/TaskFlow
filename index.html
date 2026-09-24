@@ -12005,6 +12005,8 @@ function _mktCfgReset(){ _mktLoad(); mktConfig.pontos=Object.assign({},MKT_PONTO
 //
 // ⚠️ DADO: o cadastro abaixo é ESTÁTICO e o dia vive em MEMÓRIA (`_PGM_DIA`) — nada aqui grava no
 // localStorage (regra P0). Recarregar a página volta ao dia de exemplo.
+// As 9 linhas da fábrica. ⚠️ SÓ o Forno contínuo tem cadastro (estágios, capacidade, bases) — as outras
+// aparecem na navegação e dizem que falta cadastrar, em vez de fingir que sabem produzir.
 const _PGM_LINHAS=[{
   id:'forno', nome:'Forno contínuo', ini:'07:00', fim:'17:00', horas:10,
   estagios:[
@@ -12019,15 +12021,37 @@ const _PGM_LINHAS=[{
     {id:'menta',    nome:'Pão de mel menta', bpc:21, cru:11, evap:17, cob:34, gPac:250, pacCx:null},
     {id:'amanteigada', nome:'Massa amanteigada', bpc:21, cru:11, evap:17, cob:34, gPac:250, pacCx:null}
   ]
-}];
-// O dia: lista de blocos. `nat` = % natural (o resto é coberto); `leite` = % do coberto que vai p/ ao leite.
-let _PGM_DIA=[
-  {base:'paodemel', horas:5.5, cortes:85, ritmo:37, nat:0,   leite:60},
-  {base:'paodemel', horas:1.5, cortes:85, ritmo:37, nat:100, leite:0},
-  {base:'menta',    horas:2.3, cortes:85, ritmo:37, nat:0,   leite:100}
+},
+  {id:'palitinhos', nome:'Palitinhos'}, {id:'salgadao', nome:'Salgadão'}, {id:'extrusados', nome:'Extrusados'},
+  {id:'pipoca', nome:'Pipoca'},         {id:'refino', nome:'Refino'},     {id:'alfajor', nome:'Alfajor'},
+  {id:'pacoca', nome:'Paçoca'},         {id:'lascas', nome:'Lascas'}
 ];
-let _pgmSel=0;                                   // bloco selecionado (índice)
-function _pgmL(){ return _PGM_LINHAS[0]; }
+// ── NAVEGAÇÃO: semana › dia › linha (ideia do Diego, espelhando a sub-navbar da ficha do item de Compras).
+// O plano é guardado por LINHA + DIA (`forno|2026-09-25`), então cada dia de cada linha é independente.
+let _pgmSemOff=0;            // 0 = semana corrente, −1 anterior, +1 próxima…
+let _pgmDiaIdx=null;         // 0..5 (segunda a sábado); null = escolhe hoje no 1º render
+let _pgmLinhaId='forno';
+let _pgmSel=0;               // bloco selecionado dentro do dia
+const _PGM_PLANO={};         // chave `${linha}|${iso}` → lista de blocos
+const _PGM_DOW=['seg','ter','qua','qui','sex','sáb'];
+const _PGM_MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+// ⚠️ ISO próprio: o `_isoLocal` do app mora muito adiante no arquivo e pode estar noutro <script>.
+function _pgmIso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function _pgmSegunda(off){ const t=new Date(today+'T00:00:00');
+  t.setDate(t.getDate()-((t.getDay()+6)%7)+off*7); return t; }
+function _pgmDias(){ const s=_pgmSegunda(_pgmSemOff), out=[];
+  for(let i=0;i<6;i++){ const d=new Date(s); d.setDate(s.getDate()+i); out.push(d); } return out; }
+function _pgmDiaSel(){ const ds=_pgmDias();
+  if(_pgmDiaIdx==null){ const h=ds.findIndex(d=>_pgmIso(d)===today); _pgmDiaIdx=h<0?0:h; }
+  return ds[Math.min(_pgmDiaIdx, ds.length-1)]; }
+function _pgmL(){ return _PGM_LINHAS.find(l=>l.id===_pgmLinhaId)||_PGM_LINHAS[0]; }
+function _pgmChave(linha, d){ return (linha||_pgmLinhaId)+'|'+_pgmIso(d||_pgmDiaSel()); }
+function _pgmBlocos(linha, d){ return _PGM_PLANO[_pgmChave(linha,d)]||[]; }
+function _pgmSetBlocos(arr){ _PGM_PLANO[_pgmChave()]=arr; }
+function _pgmSemLabel(){ const ds=_pgmDias(), a=ds[0], b=ds[5];
+  return a.getMonth()===b.getMonth()
+    ? a.getDate()+' a '+b.getDate()+' de '+_PGM_MES[a.getMonth()]            // 21 a 26 de set
+    : a.getDate()+' '+_PGM_MES[a.getMonth()]+' a '+b.getDate()+' '+_PGM_MES[b.getMonth()]; }  // 28 set a 3 out
 function _pgmBase(id){ return _pgmL().bases.find(b=>b.id===id)||_pgmL().bases[0]; }
 function _pgmN(v,d){ return _cpNum(v, d==null?0:d); }
 // ── CÁLCULO — tudo sai daqui, nenhuma conta na tela.
@@ -12047,17 +12071,17 @@ function _pgmCalc(b){
     falta: raias>_pgmL().estagios[2].canais };
 }
 // Setup entre blocos: só quando a BASE muda (trocar cobertura não para a linha).
-function _pgmSetupAntes(i){ return (i>0 && _PGM_DIA[i-1].base!==_PGM_DIA[i].base) ? _pgmL().setup.base/60 : 0; }
-function _pgmHoras(){ return _PGM_DIA.reduce((s,b,i)=>s+(+b.horas||0)+_pgmSetupAntes(i),0); }
+function _pgmSetupAntes(i){ return (i>0 && _pgmBlocos()[i-1].base!==_pgmBlocos()[i].base) ? _pgmL().setup.base/60 : 0; }
+function _pgmHoras(){ return _pgmBlocos().reduce((s,b,i)=>s+(+b.horas||0)+_pgmSetupAntes(i),0); }
 function _pgmHhmm(h){ const H=Math.floor(h), M=Math.round((h-H)*60); return H+'h'+(M<10?'0':'')+M; }
 function _pgmRelogio(h){ const L=_pgmL(); const base=(+L.ini.split(':')[0])*60+(+L.ini.split(':')[1]);
   const t=Math.round(base+h*60), hh=Math.floor(t/60)%24, mm=t%60;
   return (hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm; }
-function _pgmInicio(i){ let h=0; for(let k=0;k<i;k++) h+=(+_PGM_DIA[k].horas||0)+_pgmSetupAntes(k); return h+_pgmSetupAntes(i); }
+function _pgmInicio(i){ let h=0; for(let k=0;k<i;k++) h+=(+_pgmBlocos()[k].horas||0)+_pgmSetupAntes(k); return h+_pgmSetupAntes(i); }
 // ── AÇÕES (nunca no render)
 function _pgmSel_(i){ _pgmSel=i; renderPCPDia(); }
 function _pgmSetLive(campo, el){       // digitar: guarda e atualiza só a linha do tempo e o resultado
-  const b=_PGM_DIA[_pgmSel]; if(!b) return;
+  const b=_pgmBlocos()[_pgmSel]; if(!b) return;
   b[campo]= (campo==='base') ? el.value : (el.value===''?'':+el.value);
   _pgmRefresh();
 }
@@ -12066,16 +12090,23 @@ function _pgmRefresh(){
   const out=document.getElementById('pgm-out'); if(out) out.innerHTML=_pgmResultadoHTML();
   const tot=document.getElementById('pgm-tot'); if(tot) tot.innerHTML=_pgmTotalHTML();
 }
-function _pgmAddBloco(){ const u=_PGM_DIA[_PGM_DIA.length-1]||{base:'paodemel',cortes:85,ritmo:37};
-  _PGM_DIA.push({base:u.base, horas:1, cortes:u.cortes, ritmo:u.ritmo, nat:0, leite:100});
-  _pgmSel=_PGM_DIA.length-1; renderPCPDia(); }
-function _pgmDelBloco(i){ _PGM_DIA.splice(i,1); if(_pgmSel>=_PGM_DIA.length) _pgmSel=Math.max(0,_PGM_DIA.length-1); renderPCPDia(); }
+// ⚠️ os dois GRAVAM, então passam por _pgmSetBlocos: `_pgmBlocos()` devolve um array NOVO quando o dia
+// ainda não existe no plano, e um push nele se perderia.
+function _pgmAddBloco(){ const L=_pgmL(); if(!L.bases) return;
+  const arr=_pgmBlocos().slice(), u=arr[arr.length-1]||{base:L.bases[0].id,cortes:85,ritmo:37};
+  arr.push({base:u.base, horas:1, cortes:u.cortes, ritmo:u.ritmo, nat:0, leite:100});
+  _pgmSetBlocos(arr); _pgmSel=arr.length-1; renderPCPDia(); }
+function _pgmDelBloco(i){ const arr=_pgmBlocos().slice(); arr.splice(i,1); _pgmSetBlocos(arr);
+  if(_pgmSel>=arr.length) _pgmSel=Math.max(0,arr.length-1); renderPCPDia(); }
+function _pgmSetSem(off){ _pgmSemOff=off; _pgmDiaIdx=null; _pgmSel=0; renderPCPDia(); }
+function _pgmSetDia(i){ _pgmDiaIdx=i; _pgmSel=0; renderPCPDia(); }
+function _pgmSetLinha(id){ _pgmLinhaId=id; _pgmSel=0; renderPCPDia(); }
 // ── LINHA DO TEMPO — uma trilha por estágio; largura de cada bloco = horas ÷ turno.
 function _pgmTimelineHTML(){
   const L=_pgmL(), TOT=L.horas, esc=100/TOT;
   const cx=(f,txt,cls,tit)=>`<div class="pgm-b ${cls||''}" style="flex:${f.toFixed(3)}"${tit?` title="${escapeAttr(tit)}"`:''}>${txt||''}</div>`;
   let t1='',t2='',t3='';
-  _PGM_DIA.forEach((b,i)=>{
+  _pgmBlocos().forEach((b,i)=>{
     const s=_pgmSetupAntes(i), c=_pgmCalc(b), B=_pgmBase(b.base), on=(i===_pgmSel?' on':'');
     if(s){ t1+=cx(s*esc,'','setup','Limpeza para trocar a base · '+Math.round(s*60)+' min');
            t2+=cx(s*esc,'','setup'); t3+=cx(s*esc,'','setup'); }
@@ -12095,12 +12126,12 @@ function _pgmTimelineHTML(){
 }
 function _pgmTotalHTML(){
   const L=_pgmL(), u=_pgmHoras();
-  const pac=_PGM_DIA.reduce((s,b)=>s+_pgmCalc(b).total,0);
+  const pac=_pgmBlocos().reduce((s,b)=>s+_pgmCalc(b).total,0);
   return `${_pgmHhmm(u)} de ${_pgmHhmm(L.horas)} · ${_pgmN(pac)} pacotes no dia`;
 }
 // ── EDITOR do bloco selecionado
 function _pgmEditorHTML(){
-  const b=_PGM_DIA[_pgmSel]; if(!b) return `<div class="pgm-vazio">${_cpVazio('Nenhum bloco no dia. Use "Novo bloco" para começar.')}</div>`;
+  const b=_pgmBlocos()[_pgmSel]; if(!b) return `<div class="pgm-vazio">${_cpVazio('Nenhum bloco no dia. Use "Novo bloco" para começar.')}</div>`;
   const L=_pgmL(), B=_pgmBase(b.base);
   const campo=(lab,dica,campo_,val,extra)=>`<label class="pgm-f"><span>${lab}${dica?`<i>${dica}</i>`:''}</span>
     <input type="number" class="pgm-inp" value="${val}" ${extra||''} oninput="_pgmSetLive('${campo_}',this)" onchange="renderPCPDia()"></label>`;
@@ -12123,7 +12154,7 @@ function _pgmEditorHTML(){
   </div>`;
 }
 function _pgmResultadoHTML(){
-  const b=_PGM_DIA[_pgmSel]; if(!b) return '';
+  const b=_pgmBlocos()[_pgmSel]; if(!b) return '';
   const L=_pgmL(), c=_pgmCalc(b), B=_pgmBase(b.base);
   const ln=(a,v,cor)=>`<div class="pgm-r"><span>${a}</span><b${cor?` style="color:${cor}"`:''}>${v}</b></div>`;
   const skus=[c.leite>0?'Ao leite '+_pgmN(c.leite):'', c.branco>0?'Branco '+_pgmN(c.branco):'', c.natural>0?'Natural '+_pgmN(c.natural):'']
@@ -12175,33 +12206,97 @@ function _pgmCSS(){ return `<style>
   .pgm-r.tot b{font-size:15px}
   .pgm-sku{font-size:11px;color:var(--text3);margin-top:8px;line-height:1.6}
   .pgm-vazio{padding:18px 14px}
+  /* navegação semana › dia › linha */
+  .pgm-nav{margin-bottom:13px}
+  .pgm-sem{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px}
+  .pgm-sem>button{width:26px;height:26px;border:1px solid var(--border);background:var(--card);border-radius:7px;cursor:pointer;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;font-family:inherit}
+  .pgm-sem>button:hover{border-color:var(--blue-mid);color:var(--blue-mid)}
+  .pgm-sem .lbl{font-size:13px;font-weight:700;color:var(--text);min-width:150px;text-align:center}
+  .pgm-sem button.hoje{width:auto;padding:0 10px;font-size:11px;color:var(--blue-mid);border-color:var(--blue-mid)}
+  .pgm-dias{display:flex;gap:5px;margin-left:10px}
+  .pgm-dia{position:relative;width:46px;height:44px;border:1px solid var(--border);background:var(--card);border-radius:9px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:var(--text2)}
+  .pgm-dia:hover{border-color:var(--blue-mid)}
+  .pgm-dia .dw{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)}
+  .pgm-dia .dd{font-size:15px;font-weight:700;color:var(--text)}
+  .pgm-dia.hoje .dd{color:var(--blue-mid)}
+  .pgm-dia.on{background:var(--blue-mid);border-color:var(--blue-mid)}
+  .pgm-dia.on .dw,.pgm-dia.on .dd{color:#fff}
+  .pgm-dia .pt{position:absolute;bottom:5px;width:4px;height:4px;border-radius:2px;background:var(--blue-mid)}
+  .pgm-dia.on .pt{background:#fff}
+  .pgm-linhas{display:flex;gap:6px;flex-wrap:wrap}
+  .pgm-ln{font-size:12px;border:1px solid var(--border);background:var(--card);color:var(--text2);border-radius:8px;padding:6px 11px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+  .pgm-ln:hover{border-color:var(--blue-mid)}
+  .pgm-ln.on{background:var(--blue-mid);border-color:var(--blue-mid);color:#fff;font-weight:700}
+  .pgm-ln .n{font-size:10px;font-weight:700;background:color-mix(in srgb,var(--blue-mid) 16%,transparent);color:var(--blue-mid);border-radius:999px;padding:1px 6px}
+  .pgm-ln.on .n{background:rgba(255,255,255,.25);color:#fff}
   @media(max-width:900px){ .pgm-ed{grid-template-columns:1fr} }
 </style>`; }
+// ── NAVEGAÇÃO semana › dia › linha. O ponto do dia e o da linha marcam ONDE JÁ TEM PLANO — sem isso o
+// PCP teria que entrar em 6 dias × 9 linhas para descobrir o que já montou.
+function _pgmNavHTML(){
+  const ds=_pgmDias(), sel=_pgmDiaSel(), iso=_pgmIso(sel);
+  const dias=ds.map((d,i)=>{ const on=_pgmIso(d)===iso, hoje=_pgmIso(d)===today;
+    const tem=_PGM_LINHAS.some(l=>_pgmBlocos(l.id,d).length);
+    return `<button class="pgm-dia${on?' on':''}${hoje?' hoje':''}" onclick="_pgmSetDia(${i})">
+      <span class="dw">${_PGM_DOW[i]}</span><span class="dd">${d.getDate()}</span>${tem?'<span class="pt"></span>':''}</button>`; }).join('');
+  const linhas=_PGM_LINHAS.map(l=>{ const on=l.id===_pgmLinhaId, tem=_pgmBlocos(l.id,sel).length;
+    return `<button class="pgm-ln${on?' on':''}" onclick="_pgmSetLinha('${l.id}')" title="${l.bases?'':'cadastro da linha ainda não feito'}">
+      ${escapeHTML(l.nome)}${tem?`<span class="n">${tem}</span>`:''}${l.bases?'':'<i class="ti ti-dots" style="font-size:12px;opacity:.5;margin-left:5px"></i>'}</button>`; }).join('');
+  return `<div class="pgm-nav">
+    <div class="pgm-sem">
+      <button onclick="_pgmSetSem(${_pgmSemOff-1})" title="Semana anterior"><i class="ti ti-chevron-left"></i></button>
+      <span class="lbl">${_pgmSemLabel()}</span>
+      <button onclick="_pgmSetSem(${_pgmSemOff+1})" title="Próxima semana"><i class="ti ti-chevron-right"></i></button>
+      ${_pgmSemOff!==0?`<button class="hoje" onclick="_pgmSetSem(0)">esta semana</button>`:''}
+      <div class="pgm-dias">${dias}</div>
+    </div>
+    <div class="pgm-linhas">${linhas}</div>
+  </div>`;
+}
 function renderPCPDia(){
   const main=document.getElementById('task-container'); if(!main) return;
   const _tb=document.querySelector('.main .topbar'); if(_tb) _tb.style.display='none';
   const _st=document.getElementById('stats-box'); if(_st) _st.style.display='none';
   const _pr=document.getElementById('progress-box'); if(_pr) _pr.style.display='none';
-  const L=_pgmL();
-  const chips=_PGM_DIA.map((b,i)=>`<button class="pgm-chip${i===_pgmSel?' on':''}" onclick="_pgmSel_(${i})">
-      ${_pgmRelogio(_pgmInicio(i))} · ${escapeHTML(_pgmBase(b.base).nome)}
-      <i class="ti ti-x x" onclick="event.stopPropagation();_pgmDelBloco(${i})" title="Tirar do dia"></i></button>`).join('')
-    + `<button class="pgm-chip" onclick="_pgmAddBloco()"><i class="ti ti-plus" style="font-size:13px"></i> Novo bloco</button>`;
-  const corpo=`${_pgmCSS()}
-    <div class="pgm-card">
-      <div class="pgm-head"><i class="ti ti-flame" style="font-size:15px"></i><b>${escapeHTML(L.nome)}</b>
-        <span>· quinta, 24/09 · ${L.ini} às ${L.fim}</span>
-        <span id="pgm-tot" style="margin-left:auto;color:var(--text3)">${_pgmTotalHTML()}</span></div>
-      <div class="pgm-tlbox"><div id="pgm-tl">${_pgmTimelineHTML()}</div></div>
-      <div class="pgm-blocos">${chips}</div>
-    </div>
-    <div class="pgm-card">
-      <div class="pgm-head"><i class="ti ti-adjustments" style="font-size:15px"></i>
-        <b>Bloco ${_pgmSel+1}</b><span>· ${_PGM_DIA[_pgmSel]?_pgmRelogio(_pgmInicio(_pgmSel)):''}</span></div>
-      ${_pgmEditorHTML()}
-    </div>`;
-  main.innerHTML=_cpTela('PCP','Monte o dia de uma linha: o que ela roda, em que ordem e se cabe no turno.',corpo);
+  const L=_pgmL(), d=_pgmDiaSel();
+  const dataTxt=_PGM_DOW[Math.min(_pgmDiaIdx,5)]+', '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
+  let corpo;
+  if(!L.bases){   // linha sem cadastro: diz o que falta em vez de inventar capacidade
+    corpo=`${_pgmCSS()}${_pgmNavHTML()}
+      <div class="pgm-card"><div class="pgm-vazio" style="text-align:center;padding:34px 14px">
+        <i class="ti ti-tools" style="font-size:30px;color:var(--text3);opacity:.6"></i>
+        <div style="font-size:14px;font-weight:700;color:var(--text2);margin-top:11px">${escapeHTML(L.nome)} ainda não tem cadastro</div>
+        <div style="font-size:12.5px;color:var(--text3);margin-top:5px;line-height:1.6">Para montar o dia desta linha faltam os estágios dela — capacidade de cada um,<br>quantos canais tem e o que exige setup. É o mesmo que já está feito no Forno contínuo.</div>
+      </div></div>`;
+  } else {
+    const chips=_pgmBlocos().map((b,i)=>`<button class="pgm-chip${i===_pgmSel?' on':''}" onclick="_pgmSel_(${i})">
+        ${_pgmRelogio(_pgmInicio(i))} · ${escapeHTML(_pgmBase(b.base).nome)}
+        <i class="ti ti-x x" onclick="event.stopPropagation();_pgmDelBloco(${i})" title="Tirar do dia"></i></button>`).join('')
+      + `<button class="pgm-chip" onclick="_pgmAddBloco()"><i class="ti ti-plus" style="font-size:13px"></i> Novo bloco</button>`;
+    corpo=`${_pgmCSS()}${_pgmNavHTML()}
+      <div class="pgm-card">
+        <div class="pgm-head"><i class="ti ti-flame" style="font-size:15px"></i><b>${escapeHTML(L.nome)}</b>
+          <span>· ${dataTxt} · ${L.ini} às ${L.fim}</span>
+          <span id="pgm-tot" style="margin-left:auto;color:var(--text3)">${_pgmTotalHTML()}</span></div>
+        <div class="pgm-tlbox"><div id="pgm-tl">${_pgmTimelineHTML()}</div></div>
+        <div class="pgm-blocos">${chips}</div>
+      </div>
+      <div class="pgm-card">
+        <div class="pgm-head"><i class="ti ti-adjustments" style="font-size:15px"></i>
+          <b>Bloco ${_pgmSel+1}</b><span>· ${_pgmBlocos()[_pgmSel]?_pgmRelogio(_pgmInicio(_pgmSel)):''}</span></div>
+        ${_pgmEditorHTML()}
+      </div>`;
+  }
+  main.innerHTML=_cpTela('PCP','Escolha a semana, o dia e a linha — e monte o que ela roda.',corpo);
 }
+// Dia de exemplo (só p/ a tela não abrir vazia): o Forno contínuo na quinta desta semana.
+(function(){ const q=_pgmDias()[3];
+  _PGM_PLANO['forno|'+_pgmIso(q)]=[
+    {base:'paodemel', horas:5.5, cortes:85, ritmo:37, nat:0,   leite:60},
+    {base:'paodemel', horas:1.5, cortes:85, ritmo:37, nat:100, leite:0},
+    {base:'menta',    horas:2.3, cortes:85, ritmo:37, nat:0,   leite:100}
+  ];
+})();
 // ════ FIM DO BLOCO PCP · PROGRAMAÇÃO DO DIA ════
 
 // ════ INÍCIO DO BLOCO PCP · DDV ════
