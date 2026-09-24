@@ -422,6 +422,33 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-09-24 (b) — PC da Empresa — **PCP vira "Cobertura"**, entra **Programação** no menu de Produção
+O Diego chegou na conclusão certa sozinho: *"talvez essa tela [a do dia por linha] seja de fato o PCP, e a outra,
+onde estão olhando estoque, pedidos em carteira, DDV, seja outro nome"*. **PCP é o SETOR, não uma tela** — as duas
+são dele: uma **diagnostica** (o que está acabando), a outra **decide** (o que a linha faz no dia). Ele aprovou a
+tabela de renomeação.
+- **Menu de ÁREAS › Produção** passou a ser, nesta ordem (que é a do trabalho — primeiro o diagnóstico):
+  **Cobertura · Programação · Ordens de Produção · Produtos · Check list**.
+- `producaoView` ganhou os ids **`cobertura`** (era `pcp`) e **`programacao`**. ⚠️ **Rota antiga salva em `'pcp'`
+  continua abrindo a tela certa** — o dispatch aceita os dois e o `setProducaoView` normaliza (`pcp→cobertura`).
+  Não removi o id antigo: o `tf_route` é por aparelho e cada máquina tem o seu.
+- ⭐ **Produção › Programação renderiza a MESMA grade semanal** que o Meu Dia › Produção já mostrava
+  (`_prodRootHTML`), **sobre o mesmo dado** (`taskflow_prod_prog`) e **reusando o id `#prod-root`** — então
+  `_prodRerender()` vale nos dois caminhos e **não há como divergirem**. Não é duplicação de tela, é duas portas
+  para o mesmo componente. A sub-navbar interna da grade **some quando `PROD_ABAS` tem um assunto só** (era um
+  botão solitário que não levava a lugar nenhum).
+  📌 **Quando a tela do DIA por linha entrar** (estágios, capacidade, setup — o mockup aprovado em 24/09), **ela
+  vira esta Programação** e a grade semanal passa a ser a visão "semana" dela.
+- **Topo da Cobertura enxugado** (mesmo pedido de "clean" da aba Pedidos): a **busca subiu p/ o canto superior
+  direito** (slot `acao` do `_cpTela` — ocupava uma faixa inteira só dela) e os cartões ficaram **menores (168px
+  fixos, fonte 17px) e SEM a tarja de cor na lateral**. ⚠️ A cor não se perdeu: ela já vivia **no número**
+  (5 vermelho, 27 âmbar, 80 verde). Os cartões continuam **clicáveis como filtro** e o `.on` (contorno azul) segue
+  marcando qual está ativo.
+- Testado em Edge headless: 0 erros de JS; menu na ordem nova; Programação abre a grade (36 células) sem sub-navbar;
+  voltar p/ Cobertura traz os 5 indicadores; cartões 168×68 com `border-left:1px`; busca no topo; rota antiga `pcp` ok.
+- ⏳ **Em aberto:** a linha "144 produtos · 32 linhas" + "Recolher todas" da Cobertura é o mesmo tipo de faixa que
+  saiu da aba Pedidos — ele não marcou, mas provavelmente vai querer igual.
+
 ### 2026-09-24 — PC da Empresa — Comercial › Pedidos: período vira ÍCONE DE FILTRO no topo + regra da comparação por trecho
 Três pedidos do Diego na mesma leva, todos na aba Comercial › Pedidos.
 - ⭐ **Os 8 chips de período SAÍRAM da tela** e viraram um **popover atrás de um botão no canto superior direito**
