@@ -12507,7 +12507,11 @@ function _pgmCSS(){ return `<style>
   .pgm-b.nada{background:none}   /* canal parado: só o vão, sem retângulo concorrendo com as barras */
   .pgm-b.on{box-shadow:0 0 0 2px rgba(0,0,0,.34) inset}
   .pgm-alerta{font-size:11px;color:var(--danger);margin-top:7px}
-  .pgm-blocos{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 9px}
+  /* ⚠️ Os chips de bloco viviam SOLTOS no rodapé do cartão da linha do tempo e ficavam "perdidos". Agora
+     são a barra de abas do cartão do EDITOR — que é o que eles comandam: escolher o bloco a editar. */
+  .pgm-blocos{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+  .pgm-headblocos{flex-wrap:wrap;padding:6px 11px;gap:8px}
+  .pgm-blocoinfo{margin-left:auto;color:var(--text3);white-space:nowrap}
   .pgm-chip{font-size:11.5px;border:1px solid var(--border);background:var(--card);color:var(--text2);border-radius:8px;padding:4px 9px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px}
   .pgm-chip.on{border-color:var(--blue-mid);color:var(--blue-mid);font-weight:700}
   .pgm-chip i.x{font-size:13px;color:var(--text3)}
@@ -12576,12 +12580,12 @@ function _pgmCSS(){ return `<style>
   .pgm-massv{font-size:15px;font-weight:800;letter-spacing:-.015em;color:var(--text);line-height:1.2}
   /* navegação semana › dia › linha */
   .pgm-nav{margin-bottom:10px}
-  .pgm-sem{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px}
+  .pgm-sem{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
   .pgm-sem>button{width:26px;height:26px;border:1px solid var(--border);background:var(--card);border-radius:7px;cursor:pointer;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;font-family:inherit}
   .pgm-sem>button:hover{border-color:var(--blue-mid);color:var(--blue-mid)}
   .pgm-sem .lbl{font-size:13px;font-weight:700;color:var(--text);min-width:150px;text-align:center}
   .pgm-sem button.hoje{width:auto;padding:0 10px;font-size:11px;color:var(--blue-mid);border-color:var(--blue-mid)}
-  .pgm-dias{display:flex;gap:5px;margin-left:10px}
+  .pgm-dias{display:flex;gap:5px;margin-left:18px}
   .pgm-dia{position:relative;width:44px;height:38px;border:1px solid var(--border);background:var(--card);border-radius:9px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:var(--text2)}
   .pgm-dia:hover{border-color:var(--blue-mid)}
   .pgm-dia .dw{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)}
@@ -12591,12 +12595,15 @@ function _pgmCSS(){ return `<style>
   .pgm-dia.on .dw,.pgm-dia.on .dd{color:#fff}
   .pgm-dia .pt{position:absolute;bottom:5px;width:4px;height:4px;border-radius:2px;background:var(--blue-mid)}
   .pgm-dia.on .pt{background:#fff}
-  .pgm-linhas{display:flex;gap:6px;flex-wrap:wrap}
-  .pgm-ln{font-size:12px;border:1px solid var(--border);background:var(--card);color:var(--text2);border-radius:8px;padding:5px 10px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
-  .pgm-ln:hover{border-color:var(--blue-mid)}
-  .pgm-ln.on{background:var(--blue-mid);border-color:var(--blue-mid);color:#fff;font-weight:700}
+  /* ⚠️ As 9 linhas eram 9 PÍLULAS com borda — uma parede de caixas ("filtros amontoados"). Viraram a
+     sub-navbar de sublinhado que o resto do HUB já usa (Comercial, Projeto, Reunião): sem borda, sem
+     fundo, só texto; a ativa acende e ganha o traço. Linha sem cadastro fica apagada (o "···" saiu). */
+  .pgm-linhas{display:flex;gap:2px;flex-wrap:wrap;border-bottom:1px solid var(--border)}
+  .pgm-ln{font-size:12.5px;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;background:none;color:var(--text3);border-radius:0;padding:7px 11px 7px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+  .pgm-ln:hover{color:var(--text)}
+  .pgm-ln.on{color:var(--blue-mid);border-bottom-color:var(--blue-mid);font-weight:700}
+  .pgm-ln.semcad{opacity:.5}
   .pgm-ln .n{font-size:10px;font-weight:700;background:color-mix(in srgb,var(--blue-mid) 16%,transparent);color:var(--blue-mid);border-radius:999px;padding:1px 6px}
-  .pgm-ln.on .n{background:rgba(255,255,255,.25);color:#fff}
   @media(max-width:900px){ .pgm-ed{grid-template-columns:1fr}
     .pgm-topo{flex-direction:column} .pgm-rescard{width:auto}
     .pgm-resbox{display:flex;flex-wrap:wrap;gap:4px 26px} .pgm-res-b{margin-bottom:0;min-width:120px} }
@@ -12610,8 +12617,8 @@ function _pgmNavHTML(){
     return `<button class="pgm-dia${on?' on':''}${hoje?' hoje':''}" onclick="_pgmSetDia(${i})">
       <span class="dw">${_PGM_DOW[i]}</span><span class="dd">${d.getDate()}</span>${tem?'<span class="pt"></span>':''}</button>`; }).join('');
   const linhas=_PGM_LINHAS.map(l=>{ const on=l.id===_pgmLinhaId, tem=_pgmBlocos(l.id,sel).length;
-    return `<button class="pgm-ln${on?' on':''}" onclick="_pgmSetLinha('${l.id}')" title="${l.bases?'':'cadastro da linha ainda não feito'}">
-      ${escapeHTML(l.nome)}${tem?`<span class="n">${tem}</span>`:''}${l.bases?'':'<i class="ti ti-dots" style="font-size:12px;opacity:.5;margin-left:5px"></i>'}</button>`; }).join('');
+    return `<button class="pgm-ln${on?' on':''}${l.bases?'':' semcad'}" onclick="_pgmSetLinha('${l.id}')" title="${l.bases?'':'cadastro da linha ainda não feito'}">
+      ${escapeHTML(l.nome)}${tem?`<span class="n">${tem}</span>`:''}</button>`; }).join('');
   return `<div class="pgm-nav">
     <div class="pgm-sem">
       <button onclick="_pgmSetSem(${_pgmSemOff-1})" title="Semana anterior"><i class="ti ti-chevron-left"></i></button>
@@ -12649,7 +12656,6 @@ function renderPCPDia(){
           <div class="pgm-head"><i class="ti ti-flame" style="font-size:15px"></i><b>${escapeHTML(L.nome)}</b>
             <span>· ${dataTxt} · ${L.ini} às ${L.fim}</span></div>
           <div class="pgm-tlbox"><div id="pgm-tl">${_pgmTimelineHTML()}</div></div>
-          <div class="pgm-blocos">${chips}</div>
         </div>
         <div class="pgm-card pgm-rescard">
           <div class="pgm-head"><i class="ti ti-chart-bar" style="font-size:15px"></i><b>Resultado do dia</b></div>
@@ -12657,11 +12663,12 @@ function renderPCPDia(){
         </div>
       </div>
       <div class="pgm-card">
-        <div class="pgm-head"><i class="ti ti-adjustments" style="font-size:15px"></i>
-          <b>Bloco ${_pgmSel+1}</b>${(function(){ const bl=_pgmBlocos()[_pgmSel]; if(!bl) return '';
+        <div class="pgm-head pgm-headblocos">
+          <div class="pgm-blocos">${chips}</div>
+          ${(function(){ const bl=_pgmBlocos()[_pgmSel]; if(!bl) return '';
             const cc=_pgmCalc(bl);
-            return `<span>· ${escapeHTML(_pgmBase(bl.base).nome)} · ${_pgmRelogio(_pgmInicio(_pgmSel))} às ${_pgmRelogio(_pgmInicio(_pgmSel)+(+bl.horas||0))} · ${_pgmHhmm(+bl.horas||0)}</span>
-              <span style="margin-left:auto;color:var(--text3)">${_pgmN(cc.total)} pacotes no bloco</span>`; })()}</div>
+            return `<span class="pgm-blocoinfo">${_pgmRelogio(_pgmInicio(_pgmSel))} às ${_pgmRelogio(_pgmInicio(_pgmSel)+(+bl.horas||0))} · ${_pgmHhmm(+bl.horas||0)} · ${_pgmN(cc.total)} pacotes no bloco</span>`; })()}
+        </div>
         ${_pgmEditorHTML()}
       </div>`;
   }
