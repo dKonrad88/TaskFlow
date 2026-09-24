@@ -6366,7 +6366,8 @@ function _prodCellHTML(key,arr,leitor){
 }
 function _prodRootHTML(){
   if(!PROD_ABAS.some(a=>a.id===prodAba)) prodAba='programacao';
-  const subnav=`<div class="prod-subnav">`+PROD_ABAS.map(a=>`<button class="${a.id===prodAba?'on':''}" onclick="_prodSetAba('${a.id}')"><i class="ti ${a.icon}" style="font-size:15px"></i> ${escapeHTML(a.label)}</button>`).join('')+`</div>`;
+  // com um assunto só, a sub-navbar é um botão solitário que não leva a lugar nenhum — some
+  const subnav=PROD_ABAS.length<2 ? '' : `<div class="prod-subnav">`+PROD_ABAS.map(a=>`<button class="${a.id===prodAba?'on':''}" onclick="_prodSetAba('${a.id}')"><i class="ti ${a.icon}" style="font-size:15px"></i> ${escapeHTML(a.label)}</button>`).join('')+`</div>`;
   const content = prodAba==='programacao' ? _prodProgramacaoHTML() : _prodEmConstrucaoHTML(PROD_ABAS.find(a=>a.id===prodAba));
   return _prodCSS()+subnav+content;
 }
@@ -6397,6 +6398,16 @@ function _prodProgramacaoHTML(){
   return topbar+`<div class="prod-2col">${grid}${cad}</div>`+hint;
 }
 function _prodRerender(){ const el=document.getElementById('prod-root'); if(el) el.innerHTML=_prodRootHTML(); }
+// ÁREAS › Produção › Programação — a MESMA grade semanal que o Meu Dia mostra, no lugar onde o PCP
+// trabalha. ⚠️ É o mesmo componente sobre o mesmo dado (`taskflow_prod_prog`), então os dois caminhos
+// nunca divergem — e por reusar o id #prod-root, o `_prodRerender` continua valendo nos dois.
+// 📌 Quando a tela do DIA por linha (estágios, capacidade, setup) entrar, ela vira esta Programação e
+// esta grade semanal passa a ser a visão "semana" dela.
+function renderProgramacao(){
+  const main=document.getElementById('task-container'); if(!main) return;
+  main.innerHTML=_cpTela('Programação','O que cada linha produz na semana.',
+    `<div id="prod-root">${_prodRootHTML()}</div>`);
+}
 function _prodSetSemana(i){ prodSemana=i; _prodRerender(); }
 // Cada célula guarda uma LISTA de itens: prog[key] = [{p,t}, ...]. Compat: valor antigo {p,t} vira [{p,t}].
 function _prodCellArr(p,key){ const v=p[key]; if(Array.isArray(v)) return v; if(v&&v.p) return [{p:v.p,t:v.t?1:0}]; return []; }
@@ -6894,7 +6905,7 @@ function switchToProducao(){
 }
 function setProducaoView(v){
   hubView='producao'; window._sbOrigemLixCfg=null; // sai de Lixeira/Config se estávamos em overlay
-  producaoView = v;
+  producaoView = (v==='pcp' ? 'cobertura' : v);    // 'pcp' = nome antigo da Cobertura (rota salva antiga)
   fichaProdutoAberta = null;
   renderSidebar();
   renderProducao();
@@ -6906,7 +6917,9 @@ function renderProducao(){
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
 
-  if(producaoView === 'pcp') return renderPCP();
+  // 'pcp' era o nome antigo da Cobertura — rota salva em aparelho velho continua abrindo a tela certa
+  if(producaoView === 'cobertura' || producaoView === 'pcp') return renderPCP();
+  if(producaoView === 'programacao') return renderProgramacao();
   if(producaoView !== 'produtos'){
     const titulo = producaoView==='ordens'?'Ordens de Produção':'Checklists';
     main.innerHTML = `<div style="padding:20px 4px;">
@@ -12318,13 +12331,15 @@ function _ddvCSS(){
   .ddv-prod:hover td{background:color-mix(in srgb,var(--text) 4%,transparent);cursor:pointer}
   .ddv-cod{color:var(--text3);font-size:11px;margin-right:7px}
   .ddv-cnt{font-size:10.5px;font-weight:700;background:color-mix(in srgb,var(--text) 10%,transparent);color:var(--text3);border-radius:999px;padding:2px 8px;margin-left:8px;white-space:nowrap}
-  .ddv-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(152px,1fr));gap:10px;margin-bottom:12px}
-  .ddv-kpi{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--blue-mid);border-radius:11px;padding:11px 13px;min-width:0;cursor:pointer;font-family:inherit;text-align:left;width:100%}
+  /* cartões MENORES e SEM a tarja de cor na lateral (Diego, 24/09) — a cor vive no número, que já a tinha.
+     Largura fixa: antes era grid auto-fit,1fr e eles esticavam na tela toda. */
+  .ddv-kpis{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .ddv-kpi{flex:0 0 168px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 11px;min-width:0;cursor:pointer;font-family:inherit;text-align:left}
   .ddv-kpi:hover{background:color-mix(in srgb,var(--text) 3%,var(--card))}
   .ddv-kpi.on{box-shadow:0 0 0 2px var(--blue-mid) inset}
-  .ddv-kpi .lab{display:block;font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);line-height:1.3}
-  .ddv-kpi .val{display:block;font-size:20px;font-weight:800;letter-spacing:-.015em;color:var(--text);margin-top:2px}
-  .ddv-kpi .sub{display:block;font-size:10.5px;color:var(--text3);margin-top:4px}
+  .ddv-kpi .lab{display:block;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);line-height:1.3}
+  .ddv-kpi .val{display:block;font-size:17px;font-weight:800;letter-spacing:-.015em;color:var(--text);margin-top:1px}
+  .ddv-kpi .sub{display:block;font-size:10px;color:var(--text3);margin-top:2px;line-height:1.35}
   .ddv-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:9px}
   .ddv-bar .t{font-size:11.5px;font-weight:600;color:var(--text3)}
   .ddv-link{background:none;border:none;color:var(--text3);font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:7px}
@@ -12451,7 +12466,7 @@ function _ddvKPIsHTML(){
   const prod=cnt(x=>{const s=_ddvStatus(x);return (s==='ruptura'||s==='atencao')&&!x.p[4];});
   // o cartão "Itens" acende quando NÃO há filtro, mas sem o × (não há o que limpar)
   const k=(id,lab,val,sub,cor)=>{ const act=id?(_ddvFiltro===id):!_ddvFiltro;
-    return `<button class="ddv-kpi${act?' on':''}" ${cor?`style="border-left-color:${cor}"`:''} onclick="_ddvSetFiltro('${id}')" title="${act&&id?'Mostrar todos':(id?'Ver só estes':'Todos os produtos')}">
+    return `<button class="ddv-kpi${act?' on':''}" onclick="_ddvSetFiltro('${id}')" title="${act&&id?'Mostrar todos':(id?'Ver só estes':'Todos os produtos')}">
     <span class="lab">${lab}${act&&id?' <i class="ti ti-x" style="font-size:10px;vertical-align:1px"></i>':''}</span>
     <span class="val"${cor?` style="color:${cor}"`:''}>${_cpNum(val)}</span>
     <span class="sub">${sub}</span></button>`; };
@@ -12525,13 +12540,13 @@ function renderDDV(){
   const _tb=document.querySelector('.main .topbar'); if(_tb) _tb.style.display='none';
   const _st=document.getElementById('stats-box'); if(_st) _st.style.display='none';
   const _pr=document.getElementById('progress-box'); if(_pr) _pr.style.display='none';
+  // a busca subiu p/ o canto superior direito (slot `acao` do _cpTela) — ocupava uma faixa só dela
   const busca=`<span class="ddv-buscaw"><i class="ti ti-search"></i><input id="ddv-busca" value="${escapeAttr(_ddvBusca)}" oninput="_ddvBuscaInput(this.value)" placeholder="Buscar produto, código ou linha" class="ddv-busca"></span>`;
   const corpo=`${_ddvCSS()}
-    <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:12px">${busca}</div>
     ${_ddvKPIsHTML()}
     <div id="ddv-graf-box">${_ddvGrafHTML()}</div>
     <div id="ddv-conteudo">${_ddvTabelaHTML()}</div>`;
-  main.innerHTML=_cpTela('PCP','Quantos dias o estoque de cada produto ainda dura.',corpo);
+  main.innerHTML=_cpTela('Cobertura','Quantos dias o estoque de cada produto ainda dura.',corpo,null,busca);
 }
 // ════ FIM DO BLOCO PCP · DDV ════
 
@@ -17819,9 +17834,12 @@ function renderSidebar(){
         _areaItem('marketing',_kv,'influenciadores','ti-heart-handshake','Influenciadores','setMarketingView')
       , 'var(--text2)')
     + grupo('producao','ti-building-factory-2','Produção',
-        _areaItem('producao',_pv,'produtos','ti-package','Produtos','setProducaoView') +
-        _areaItem('producao',_pv,'pcp','ti-calendar-stats','PCP','setProducaoView') +
+        // "PCP" é o SETOR, não uma tela: as duas primeiras são dele. Cobertura diagnostica (o que está
+        // acabando), Programação decide (o que a linha faz no dia) — nessa ordem, que é a do trabalho.
+        _areaItem('producao',_pv,'cobertura','ti-calendar-stats','Cobertura','setProducaoView') +
+        _areaItem('producao',_pv,'programacao','ti-calendar-week','Programação','setProducaoView') +
         _areaItem('producao',_pv,'ordens','ti-clipboard-list','Ordens de Produção','setProducaoView') +
+        _areaItem('producao',_pv,'produtos','ti-package','Produtos','setProducaoView') +
         _areaItem('producao',_pv,'checklists','ti-checkup-list','Check list','setProducaoView')
       , 'var(--text2)')
     + grupo('qualidade','ti-certificate','Qualidade',
