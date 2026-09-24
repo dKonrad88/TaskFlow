@@ -450,6 +450,8 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
   (não recria os campos, senão perde o foco); o `onchange` (blur) é que faz o render completo.
 - ⚠️ **DADO ESTÁTICO + dia em MEMÓRIA** (`_PGM_DIA`): **nada aqui grava no localStorage** (regra P0). F5 volta ao
   dia de exemplo. Quando for persistir, é uma chave `taskflow_*` gravada nas AÇÕES, nunca no render.
+  ⚠️⚠️ **SUPERADO em 24/09** — o plano PASSOU A PERSISTIR em `taskflow_pcp_plano` (ver "O PLANO AGORA PERSISTE"
+  mais adiante nesta mesma seção). A receita descrita acima foi exatamente a seguida.
 - Testado em Edge headless: 0 erros de JS; menu na ordem nova; 3 blocos + 3 trilhas; total 9h58 de 10h00 e 46.748
   pacotes; bloco 1 confere com o mockup (1.785 bisc/min · 87/min · 5.241/h · 2,4 de 4 raias · 28.826 pacotes · ao
   leite 17.296 / branco 11.530 · 6.480 kg de massa); mudar cortes p/ 60 recalcula tudo; o bloco de menta começa
@@ -697,6 +699,23 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
     - Testado em Edge headless: 0 erros; barras com "38 massadas Pão de mel"; Fim 11:00 → 28 massadas e o campo
       volta 10:59; Início 08:00 → espera de 1h e tudo desloca; CPM 76→85 mantém massadas e pacotes e encurta o
       turno; campos de hora com 63px sem corte; a grade do Corte voltou a 2 linhas e a página a **959px**.
+  - ⭐⭐ **O PLANO AGORA PERSISTE** (14ª rodada — *"se eu atualizo, volta pro normal, quero que mantenha as
+    informações ou coloque um salvar"*). Escolhi **salvar sozinho** em vez de botão: o resto do HUB já é assim
+    (tarefa, nota, OS) e um botão de salvar cria o estado "mexi e esqueci de salvar", que é pior que não ter.
+    - Chave **`taskflow_pcp_plano`** = o `_PGM_PLANO` inteiro (todas as linhas × dias). Prefixo `taskflow` →
+      **entra no sync da nuvem** junto com o resto, então o dia montado no PC da Empresa aparece no de casa.
+    - ⚠️ **REGRA P0 RESPEITADA:** grava só nas AÇÕES — `_pgmSetBlocos` (add/del/arraste/setup/horário),
+      `_pgmSetLive` (base, cpm, cru) e `_pgmSetEmb` (embaladoras). **Nenhuma função de render grava.**
+      Conferido no teste: ao ABRIR a tela a chave ainda não existe; ela só nasce no primeiro clique.
+    - ⚠️ **`_pgmLoad()` roda DEPOIS do dia de exemplo**, no fim do bloco — o salvo manda sobre o exemplo.
+      Isso é o que faz um dia **esvaziado de propósito** voltar vazio, em vez de reaparecer semeado.
+    - Indicador discreto **"salva sozinho"** no cabeçalho do cartão do dia; se o `safeSetItem` falhar (cota),
+      ele vira **"não foi possível salvar"** em vermelho. É a única forma de o PCP saber que perdeu algo.
+    - Testado em Edge headless com **F5 de verdade** (reload do iframe): mudar o CPM para 95 → gravou →
+      recarregou → voltou com **cpm 95 e os 3 blocos**. E o caminho de carga isolado: apagar o plano da
+      memória deixa 0 blocos, `_pgmLoad()` traz os 3 de volta. 0 erros de JS.
+    - ⏳ Fica em aberto se o plano deve ser **por pessoa ou compartilhado** — hoje é do aparelho (e da conta,
+      via nuvem). No sistema do Guilherme isso é uma tabela, não um localStorage.
 - ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
   (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
   reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);

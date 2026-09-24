@@ -12074,7 +12074,24 @@ function _pgmDiaSel(){ const ds=_pgmDias();
 function _pgmL(){ return _PGM_LINHAS.find(l=>l.id===_pgmLinhaId)||_PGM_LINHAS[0]; }
 function _pgmChave(linha, d){ return (linha||_pgmLinhaId)+'|'+_pgmIso(d||_pgmDiaSel()); }
 function _pgmBlocos(linha, d){ return _PGM_PLANO[_pgmChave(linha,d)]||[]; }
-function _pgmSetBlocos(arr){ _PGM_PLANO[_pgmChave()]=arr; }
+// ⭐ O PLANO PERSISTE (pedido do Diego: "se eu atualizo, volta pro normal"). Chave com prefixo taskflow
+// → entra no sync da nuvem junto com o resto.
+// ⚠️ REGRA P0 DO PROJETO: gravar é só nas AÇÕES. `_pgmSave` é chamado por quem MUDA o plano
+// (`_pgmSetBlocos`, `_pgmSetLive`, `_pgmSetEmb`) e NUNCA por uma função de render.
+const LS_PGM='taskflow_pcp_plano';
+let _pgmSalvoOk=true;
+function _pgmSave(){ try{ _pgmSalvoOk = safeSetItem(LS_PGM, JSON.stringify(_PGM_PLANO))!==false; }
+  catch(e){ _pgmSalvoOk=false; }
+  const el=document.getElementById('pgm-salvo'); if(el) el.innerHTML=_pgmSalvoHTML(); }
+function _pgmSalvoHTML(){ return _pgmSalvoOk
+  ? `<i class="ti ti-device-floppy" style="font-size:13px"></i> salva sozinho`
+  : `<i class="ti ti-alert-triangle" style="font-size:13px"></i> não foi possível salvar`; }
+// ⚠️ Roda DEPOIS do dia de exemplo (no fim do bloco): o que foi salvo manda sobre o exemplo — inclusive
+// um dia que o PCP esvaziou de propósito, que volta vazio em vez de reaparecer semeado.
+function _pgmLoad(){ try{ const v=JSON.parse(localStorage.getItem(LS_PGM)||'null');
+  if(v && typeof v==='object') Object.keys(v).forEach(k=>{ if(Array.isArray(v[k])) _PGM_PLANO[k]=v[k]; });
+  }catch(e){} }
+function _pgmSetBlocos(arr){ _PGM_PLANO[_pgmChave()]=arr; _pgmSave(); }
 function _pgmSemLabel(){ const ds=_pgmDias(), a=ds[0], b=ds[5];
   return a.getMonth()===b.getMonth()
     ? a.getDate()+' a '+b.getDate()+' de '+_PGM_MES[a.getMonth()]            // 21 a 26 de set
@@ -12126,6 +12143,7 @@ function _pgmSetEmb(i, campo, el){
     else if(b.emb[i].cli==='Klain') b.emb[i].cli=''; }
   // ⚠️ digitar cliente/velocidade NÃO pode redesenhar a tabela: o campo perderia o foco a cada tecla.
   // A coluna de pacotes só acerta no blur (onchange → renderPCPDia). Checkbox e sabor podem redesenhar.
+  _pgmSave();
   _pgmRefresh(campo==='cli'||campo==='nom'||campo==='real');
   if(campo==='fmt') renderPCPDia();   // trocar o formato habilita/desabilita o campo do cliente
 }
@@ -12210,7 +12228,7 @@ function _pgmSetLive(campo, el){       // digitar: guarda e atualiza só a linha
   // ⚠️ peso e ritmo do corte MUDAM o tempo calculado da massada — a simulação feita sobre o valor antigo
   // deixaria de fazer sentido, então cai fora e o cálculo volta a mandar.
   if(campo==='cru'||campo==='cortes') _pgmMassada=null;
-  _pgmRefresh();
+  _pgmSave(); _pgmRefresh();
 }
 function _pgmRefresh(semEmb){
   const tl=document.getElementById('pgm-tl'); if(tl) tl.innerHTML=_pgmTimelineHTML();
@@ -12721,7 +12739,8 @@ function renderPCPDia(){
       <div class="pgm-topo">
         <div class="pgm-card pgm-card-tl">
           <div class="pgm-head"><i class="ti ti-flame" style="font-size:15px"></i><b>${escapeHTML(L.nome)}</b>
-            <span>· ${dataTxt} · ${L.ini} às ${L.fim}</span></div>
+            <span>· ${dataTxt} · ${L.ini} às ${L.fim}</span>
+            <span id="pgm-salvo" style="margin-left:auto;color:var(--text3);display:inline-flex;align-items:center;gap:4px">${_pgmSalvoHTML()}</span></div>
           <div class="pgm-tlbox"><div id="pgm-tl">${_pgmTimelineHTML()}</div></div>
         </div>
         <div class="pgm-card pgm-rescard">
@@ -12757,6 +12776,7 @@ function renderPCPDia(){
     {base:'menta',    massadas:16, cortes:cpm, cru:P.cru}
   ];
 })();
+_pgmLoad();   // ⚠️ DEPOIS do exemplo, de propósito: o que foi salvo manda sobre ele
 // ════ FIM DO BLOCO PCP · PROGRAMAÇÃO DO DIA ════
 
 // ════ INÍCIO DO BLOCO PCP · DDV ════
