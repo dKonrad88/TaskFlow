@@ -634,6 +634,23 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
     44.639 / 72 / **10h58 de 10h00 + "passa do turno em 58 min"** com a barra vermelha; digitar 60 cpm atualiza ao
     vivo; nenhum aviso duplicado na linha do tempo. **Altura idêntica à de antes** (979px na mesma viewport, medida
     nas duas versões) — o cartão é mais baixo que as 8 trilhas.
+  - ⭐ **NAVEGAÇÃO E CHIPS** (12ª rodada — "esses filtros amontoados" e "os filtros dos blocos estão perdidos ali").
+    - **As 9 linhas eram 9 PÍLULAS com borda e fundo** — uma parede de caixas logo abaixo dos 6 dias, que também
+      são caixas. Viraram a **sub-navbar de sublinhado** que o resto do HUB já usa (Comercial, Projeto, Reunião):
+      sem borda, sem fundo, só texto; a ativa acende no acento e ganha o traço. **Linha sem cadastro fica a 50% de
+      opacidade** e o ícone "···" saiu (o tooltip continua explicando). Mais 8px de respiro entre semana e dias.
+    - **Os chips de bloco saíram do rodapé do cartão da linha do tempo** — ali eram uma fileira solta, sem rótulo,
+      no fim de um cartão que fala de outra coisa. Agora são a **barra de abas do cartão do EDITOR**, que é o que
+      eles comandam (escolher o bloco a editar), com o resumo do bloco na mesma barra, à direita
+      ("07:00 às 12:30 · 5h30 · 24.438 pacotes no bloco"). Saiu o título "Bloco N": a aba acesa já diz qual é.
+    - 🐞 **CAÍ NA ARMADILHA DA CRASE** (a que o próprio CLAUDE.md documenta desde 01/09): pus uma crase num
+      COMENTÁRIO dentro do template literal do `_pgmCSS()` → fechou a string e **o arquivo inteiro parou de
+      carregar** ("setProducaoView is not a function", tela em branco). ⚠️ **Nunca usar crase em comentário dentro
+      de `_cpCSS()`/`_pgmCSS()`** — e o `window.onerror` do harness **NÃO pega isso**, porque é erro de PARSE e
+      acontece antes de o listener existir. O sintoma é "função global não existe", não "erro de JS".
+    - Testado em Edge headless: 0 erros; 9 abas sem fundo/borda, 8 apagadas, 0 "···"; 0 chips no cartão da linha do
+      tempo e 4 na barra do editor; clicar na 2ª aba troca o resumo para "12:30 às 14:00 · 1h30 · 5.538 pacotes";
+      trocar para Palitinhos cai no aviso de "sem cadastro". Altura da página caiu de 979 para **959px**.
 - ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
   (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
   reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);
