@@ -12009,10 +12009,14 @@ function _mktCfgReset(){ _mktLoad(); mktConfig.pontos=Object.assign({},MKT_PONTO
 // aparecem na navegação e dizem que falta cadastrar, em vez de fingir que sabem produzir.
 const _PGM_LINHAS=[{
   id:'forno', nome:'Forno contínuo', ini:'07:00', fim:'17:00', horas:10,
+  // `atraso` = minutos que o produto leva do CORTE até aquele estágio (trânsito pelo forno e pela esteira).
+  // ⚠️ Não é enfeite: se o corte começa 07:00, a cobrideira só recebe 07:15 e a embaladora 07:20 — e no fim
+  // do bloco os estágios também param nessa ordem. ⏳ O Diego avisou que **varia por produto e pela
+  // velocidade do corte**; por ora é um número fixo por estágio, cadastrado na linha.
   estagios:[
-    {nome:'Corte de arame', canais:1, cap:'85 cortes/min', setup:'troca de base'},
-    {nome:'Cobrideira',     canais:2, cap:'a cadastrar',   setup:'troca de cobertura'},
-    {nome:'Empacotamento',  canais:4, cap:'48 nominal · 37 real', setup:'bobina ou etiqueta'}
+    {nome:'Corte',       canais:1, cap:'85 cortes/min', setup:'troca de base',   atraso:0},
+    {nome:'Cobrideira',  canais:2, cap:'a cadastrar',   setup:'troca de cobertura', atraso:15},
+    {nome:'Embaladoras', canais:4, cap:'48 nominal · 37 real', setup:'bobina ou etiqueta', atraso:20}
   ],
   // setups em MINUTOS — ⚠️ chutados no mockup, o Diego ainda não passou os reais
   setup:{base:40, bobina:8},
@@ -12101,27 +12105,35 @@ function _pgmDelBloco(i){ const arr=_pgmBlocos().slice(); arr.splice(i,1); _pgmS
 function _pgmSetSem(off){ _pgmSemOff=off; _pgmDiaIdx=null; _pgmSel=0; renderPCPDia(); }
 function _pgmSetDia(i){ _pgmDiaIdx=i; _pgmSel=0; renderPCPDia(); }
 function _pgmSetLinha(id){ _pgmLinhaId=id; _pgmSel=0; renderPCPDia(); }
-// ── LINHA DO TEMPO — uma trilha por estágio; largura de cada bloco = horas ÷ turno.
+// ── LINHA DO TEMPO — uma trilha por estágio, cada uma DEFASADA pelo tempo de trânsito do estágio.
+// ⚠️ A escala é `turno + maior atraso`, senão a ponta da trilha das embaladoras (que termina 20min depois
+// do corte) sairia fora do desenho num dia cheio.
 function _pgmTimelineHTML(){
-  const L=_pgmL(), TOT=L.horas, esc=100/TOT;
+  const L=_pgmL(), atr=L.estagios.map(e=>(e.atraso||0)/60), maxA=Math.max.apply(null,atr);
+  const TOT=L.horas+maxA, esc=100/TOT, blocos=_pgmBlocos();
   const cx=(f,txt,cls,tit)=>`<div class="pgm-b ${cls||''}" style="flex:${f.toFixed(3)}"${tit?` title="${escapeAttr(tit)}"`:''}>${txt||''}</div>`;
-  let t1='',t2='',t3='';
-  _pgmBlocos().forEach((b,i)=>{
-    const s=_pgmSetupAntes(i), c=_pgmCalc(b), B=_pgmBase(b.base), on=(i===_pgmSel?' on':'');
-    if(s){ t1+=cx(s*esc,'','setup','Limpeza para trocar a base · '+Math.round(s*60)+' min');
-           t2+=cx(s*esc,'','setup'); t3+=cx(s*esc,'','setup'); }
-    const f=(+b.horas||0)*esc;
-    t1+=cx(f,escapeHTML(B.nome),'base'+on, B.nome+' · '+_pgmHhmm(+b.horas||0));
-    const mix = b.nat>=100?'Natural' : (b.leite>=100?'Ao leite' : (b.leite<=0?'Branco' : 'Ao leite '+b.leite+' · branco '+(100-b.leite)));
-    t2+=cx(f, b.nat>0&&b.nat<100 ? mix+' + natural '+b.nat+'%' : mix, (b.nat>=100?'nat':'cob')+on);
-    t3+=cx(f, c.falta ? 'faltam raias' : Math.ceil(c.raias)+' de '+L.estagios[2].canais, (c.falta?'alerta':'emb')+on,
-      'Precisa de '+c.raias.toFixed(1).replace('.',',')+' raias');
-  });
-  const livre=TOT-_pgmHoras();
-  if(livre>0.01){ t1+=cx(livre*esc,'','livre'); t2+=cx(livre*esc,'','livre'); t3+=cx(livre*esc,'livre','livre'); }
-  const trilha=(lab,html)=>`<div class="pgm-tr"><span class="pgm-lab">${lab}</span><div class="pgm-t">${html}</div></div>`;
-  const excesso=_pgmHoras()-TOT;
-  return trilha(L.estagios[0].nome.split(' ')[0],t1)+trilha(L.estagios[1].nome,t2)+trilha('Embaladoras',t3)
+  const mixTxt=b=>{ const m = b.nat>=100?'Natural' : (b.leite>=100?'Ao leite' : (b.leite<=0?'Branco' : 'Ao leite '+b.leite+' · branco '+(100-b.leite)));
+    return (b.nat>0&&b.nat<100) ? m+' + natural '+b.nat+'%' : m; };
+  const usado=_pgmHoras();
+  const trilhas=L.estagios.map((E,k)=>{
+    let html = atr[k]>0 ? cx(atr[k]*esc,'','gap','O produto do corte só chega aqui '+Math.round(atr[k]*60)+' min depois') : '';
+    blocos.forEach((b,i)=>{
+      const s=_pgmSetupAntes(i), c=_pgmCalc(b), B=_pgmBase(b.base), on=(i===_pgmSel?' on':'');
+      if(s) html+=cx(s*esc,'','setup','Limpeza para trocar a base · '+Math.round(s*60)+' min');
+      const f=(+b.horas||0)*esc, ini=_pgmRelogio(_pgmInicio(i)+atr[k]), fim=_pgmRelogio(_pgmInicio(i)+atr[k]+(+b.horas||0));
+      const txt = k===0 ? escapeHTML(B.nome)
+                : k===1 ? mixTxt(b)
+                : (c.falta ? 'faltam raias' : Math.ceil(c.raias)+' de '+E.canais);
+      const cls = k===0 ? 'base' : k===1 ? (b.nat>=100?'nat':'cob') : (c.falta?'alerta':'emb');
+      html+=cx(f, `<b class="h">${ini}</b>${txt}`, cls+on, E.nome+' · '+ini+' às '+fim+' · '+txt);
+    });
+    const livre=TOT-atr[k]-usado;
+    if(livre>0.01) html+=cx(livre*esc, k===2?'livre':'', 'livre');
+    const lab=E.atraso?`${escapeHTML(E.nome)}<i>+${E.atraso}min</i>`:escapeHTML(E.nome);
+    return `<div class="pgm-tr"><span class="pgm-lab">${lab}</span><div class="pgm-t">${html}</div></div>`;
+  }).join('');
+  const excesso=usado-L.horas;
+  return trilhas
     + (excesso>0.01?`<div class="pgm-alerta"><i class="ti ti-alert-triangle"></i> Passa do turno em ${Math.round(excesso*60)} min</div>`:'');
 }
 function _pgmTotalHTML(){
@@ -12173,9 +12185,13 @@ function _pgmCSS(){ return `<style>
   .pgm-head b{font-size:12.5px;color:var(--text)}
   .pgm-tlbox{padding:11px 14px 12px}
   .pgm-tr{display:flex;align-items:center;gap:9px;margin-bottom:3px}
-  .pgm-lab{width:96px;flex:none;text-align:right;font-size:10.5px;color:var(--text3)}
+  .pgm-lab{width:112px;flex:none;text-align:right;font-size:10.5px;color:var(--text3)}
+  .pgm-lab i{font-style:normal;opacity:.6;margin-left:4px;font-size:9.5px}
   .pgm-t{flex:1;display:flex;gap:2px;height:22px}
-  .pgm-b{border-radius:4px;font-size:10.5px;display:flex;align-items:center;justify-content:center;overflow:hidden;white-space:nowrap;padding:0 5px;min-width:0}
+  .pgm-b{border-radius:4px;font-size:10.5px;display:flex;align-items:center;justify-content:center;gap:6px;overflow:hidden;white-space:nowrap;padding:0 5px;min-width:0}
+  /* o horário de entrada do estágio, dentro da barrinha */
+  .pgm-b .h{font-size:10px;font-weight:700;opacity:.8;flex:none}
+  .pgm-b.gap{background:repeating-linear-gradient(135deg,transparent,transparent 3px,color-mix(in srgb,var(--text) 7%,transparent) 3px,color-mix(in srgb,var(--text) 7%,transparent) 6px)}
   .pgm-b.base{background:color-mix(in srgb,var(--blue-mid) 16%,var(--card));color:var(--text2)}
   .pgm-b.cob{background:color-mix(in srgb,var(--purple,#7f77dd) 15%,var(--card));color:var(--text2)}
   .pgm-b.nat{background:var(--bg2);color:var(--text3)}
