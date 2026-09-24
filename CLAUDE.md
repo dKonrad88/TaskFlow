@@ -716,6 +716,38 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
       memória deixa 0 blocos, `_pgmLoad()` traz os 3 de volta. 0 erros de JS.
     - ⏳ Fica em aberto se o plano deve ser **por pessoa ou compartilhado** — hoje é do aparelho (e da conta,
       via nuvem). No sistema do Guilherme isso é uma tabela, não um localStorage.
+  - ⭐⭐⭐ **OS ESTÁGIOS DEIXARAM DE ANDAR AMARRADOS AO BLOCO** (15ª rodada — *"o bloco não é sincronizado…
+    posso fazer tudo ao leite até um X horário e depois branco… posso embalar na emb 1 Klain até as 09h00 e
+    depois outra marca"*). É a 2ª mudança grande de modelo do dia, e a que mais mexe no cálculo.
+    - **O dia guarda DUAS linhas do tempo independentes:** `{blocos, emb}`. `blocos` é o CORTE (base +
+      massadas, como estava); **`emb` são JANELAS DE EMBALAGEM** — `{ini (min do turno), maq:[cfg × 4]}` —
+      com horário próprio, sem nenhuma relação com as fronteiras dos blocos. A **cobertura segue DERIVADA**,
+      agora instante a instante.
+    - ⭐ **`_pgmFatias()` é a peça central:** os pedaços de tempo em que **tudo** é constante (o bloco E a
+      janela). É o corte de um plano pelo outro. **Todo total do dia passa por lá** (`_pgmTotais`), porque o
+      mix — e portanto o peso médio e os pacotes/min — pode mudar no meio de um bloco.
+      ⚠️ `_pgmCalc(b, maq)` virou **INSTANTÂNEO** (por minuto) e recebe a configuração das máquinas; perdeu
+      `total`, `porDest`, `porMaq` e `massa`, que agora são somados por fatia.
+    - ⚠️ **A janela vale para as 4 máquinas, mas a trilha MESCLA barras vizinhas quando aquela máquina não
+      mudou.** É o que faz "trocar só a Emb 1 às 09:00" quebrar **só a barra da Emb 1** — as outras seguem
+      inteiras. Sem essa mescla, uma janela comum riscaria as 7 trilhas de uma vez.
+      ⚠️ A mescla **nunca atravessa blocos diferentes** (`u.bi===f.bi`): setup e espera têm que partir o desenho.
+    - **Chips de troca na seção Embalagem**, mesma gramática dos chips do corte, com a hora editável ao lado.
+      ⚠️ A troca nova **nasce clonada da que está SELECIONADA** e no meio do caminho até a próxima — clonar a
+      última (como fiz primeiro) fazia a troca, ao ser puxada para um horário anterior, mudar a configuração
+      das outras máquinas sem ninguém pedir. Pego no teste.
+    - 🐞 **Lasca de 1 minuto:** a migração das janelas arredondava o início do bloco para o minuto, e o bloco
+      não começa em minuto redondo — sobrava 1 min do bloco novo rodando com a config antiga (5 pacotes de
+      diferença no dia). O `ini` passou a guardar **minuto com decimais**; o campo é que arredonda para exibir.
+    - ⚠️ **Formato antigo migra na leitura** (`_pgmDia`): chave que era só o array de blocos vira
+      `{blocos, emb:null}`, e as janelas são deduzidas do `emb` que cada BLOCO carregava (uma janela no início
+      de cada bloco, pulando as que não mudavam nada). O dia de exemplo continua idêntico.
+    - Saiu a comparação "vs. padrão" do cartão do dia: com massadas fixas o padrão faz os MESMOS pacotes, só em
+      outro tempo — a comparação com o padrão é de TEMPO e vive no cartão da Massada.
+    - Testado em Edge headless: 0 erros; 3 janelas migradas (07:00 · 12:24 · 14:38); criar troca às 09:42,
+      mover para 09:00 e mudar só a Emb 1 → **só a Emb 1 parte**, a Emb 2 segue inteira; pôr todas em branca a
+      partir das 09:00 → "Ao leite" some e "Branca" vai a 100% naquele trecho; **F5 preserva as janelas**;
+      total do dia estável em 39.917 pacotes. Altura 968px.
 - ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
   (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
   reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);
