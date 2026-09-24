@@ -438,6 +438,12 @@ Três pedidos do Diego na mesma leva, todos na aba Comercial › Pedidos.
   da barra acima da tabela. ⚠️ O `<div>` da nota **não foi removido**: ele ainda mostra a explicação da SEMANA
   (clientes não somam) e o "este período ainda não tem dado carregado" — só as 2 frases saíram.
   `.com-kpis` foi de `margin-bottom:7px` p/ **16px** porque a nota era quem dava o respiro até as sub-abas.
+- **A sub-aba Pedidos em aberto perdeu as 3 explicações** (2ª rodada, mesmo dia): "Foto do que está em aberto — não
+  é um período…", a contagem "73 pedidos na tela · 5 representantes" e a **nota de rodapé** (dias contados da
+  emissão / foto do relatório em 22/09 / 2 representantes cortados). ⚠️ **O que elas diziam continua valendo** — os
+  dias seguem calculados (`_comDias`), a semana fora de rota segue pintada e a linha "restante do representante"
+  continua fechando o total dos grupos cortados; só o texto saiu. Se um dia alguém estranhar de onde vem o "24
+  dias" ou o "restante", a explicação está aqui e no código, não mais na tela.
 - ⭐⭐ **REGRA DA COMPARAÇÃO POR TRECHO** (pedido: "hoje compara com ontem, semana com a semana anterior, mês com o
   mês anterior — mas respeitando o mesmo período; se estou na quinta com o filtro semana, comparo com seg–qui da
   semana passada"). O IIFE que derivava a semana virou **`_comDerivado(chaves, rot, base, nota)`** genérico, e a
