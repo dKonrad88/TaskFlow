@@ -607,27 +607,33 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
 - ⭐⭐ **RESULTADO DO DIA EM EVIDÊNCIA + COR NAS BARRAS** (11ª rodada). Mostrei **5 mockups de layout/paleta**
   (três cartões · gaveta do bloco · editor em abas · planejar+resultado · faixa de comando); ele não escolheu um
   arranjo inteiro — pinçou **duas coisas**: o painel de resultado do modelo 4 e as **cores das barras** do modelo 5.
-  - **O painel `Resultado do dia`** (`_pgmDiaResHTML`, id `pgm-dia-res`) vive numa coluna de **186px à direita da
-    linha do tempo**, dentro do mesmo cartão (`.pgm-main` = `.pgm-esq` + `.pgm-res`): **pacotes · massadas · turno**
-    em 21px, cada um com a diferença vs. padrão, e a barra de ocupação do turno embaixo.
+  - **O cartão `Resultado do dia`** (`_pgmDiaResHTML`, corpo no id `pgm-dia-res`) é um **cartão PRÓPRIO de 206px
+    ao lado do da linha do tempo** (`.pgm-topo` = `.pgm-card-tl` + `.pgm-rescard`, 9px entre eles), com cabeçalho e
+    borda iguais aos demais. ⚠️ Na 1ª versão ele era uma COLUNA dentro do cartão da linha do tempo; o Diego pediu
+    separado — se voltar a juntar, é `.pgm-topo` que some. Mostra **pacotes · massadas · turno** em 21px, cada um
+    com a diferença vs. padrão, e a barra de ocupação do turno embaixo.
     ⚠️ **`_pgmTotalHTML` MORREU** — a frase miúda "9h58 de 10h00 · 40.196 pacotes" no canto do cabeçalho virou este
-    painel. Quem atualizava `#pgm-tot` (o `_pgmRefresh` e o `_pgmSetSetup`) agora atualiza `#pgm-dia-res`.
-  - ⚠️ **O aviso de "passa do turno" SAIU de debaixo das trilhas** e foi para o painel, colado na barra do turno —
+    cartão. Quem atualizava `#pgm-tot` (o `_pgmRefresh` e o `_pgmSetSetup`) agora atualiza `#pgm-dia-res`.
+  - ⚠️ **O aviso de "passa do turno" SAIU de debaixo das trilhas** e foi para o cartão, colado na barra do turno —
     que é o que o explica. A classe `.pgm-alerta` ficou sem uso (mantida).
   - ⚠️ **O cartão da Massada perdeu a linha "Pacotes no dia"** quando NÃO há simulação: era o mesmo número do
     painel, a 30cm de distância. Com o cursor mexido ela volta, porque aí mostra o valor **simulado**, que é outro.
-  - ⭐ **COR DAS BARRAS — a causa do "estranhas" era a DILUIÇÃO, não o matiz.** Elas usavam o acento do tema
-    diluído a 13–16% no fundo do cartão (`color-mix`), o que devolve pastel acinzentado em qualquer tema. Agora são
-    **4 hexes fixos, tom cheio, com texto branco**: corte `#5182b6` · cobertura `#7367ad` · embalagem `#4a8a64` ·
-    setup `#a8762f` (o vermelho do rosa saiu; setup virou âmbar) e alerta `#c0554d`.
+  - ⭐⭐ **COR DAS BARRAS — foram DOIS extremos até acertar, e a lição vale para o HUB todo.** (1) O original era o
+    acento do tema **diluído a 13–16% no fundo do cartão** (`color-mix`): devolve pastel acinzentado, e ele chamou
+    de "estranhas". (2) Troquei por **tom cheio com texto branco** (os hexes que ele tinha gostado num mockup de
+    fundo escuro): ficou **"muito forte"** — o que funciona sobre fundo escuro grita sobre fundo claro.
+    (3) O certo é **matiz vivo + claridade alta, com o texto num tom escuro da MESMA família** (nunca preto):
+    corte `#abc7e3`/`#1d4a75` · cobertura `#beb7e1`/`#453a7c` · embalagem `#b1dcc1`/`#1d5a38` ·
+    setup `#e8caa5`/`#7a5214` (o rosa avermelhado virou âmbar) · alerta `#ebb2ad`/`#8c322a`.
     ⚠️ **São FIXOS de propósito — não seguem o tema.** A linha do tempo é leitura de dado, como o semáforo do DDV:
-    o tom precisa ser o mesmo em qualquer tema. Mexeu num, mexa nos quatro.
-    ⚠️ O anel do bloco selecionado (`.pgm-b.on`) virou **branco por dentro** — o `var(--blue-mid)` sumia em cima da
-    barra azul; e a alça de arraste passou a acender em branco pelo mesmo motivo.
-  - Testado em Edge headless: 0 erros de JS; painel com "40.196 · 65 · 9h58 de 10h00"; as 4 cores conferidas no
-    estilo computado; "Novo bloco" leva o painel a 44.639 / 72 / **10h58 de 10h00 + "passa do turno em 58 min"** com
-    a barra vermelha; digitar 60 cpm atualiza o painel ao vivo; nenhum aviso duplicado na linha do tempo.
-    **Altura idêntica à de antes** (medida nos dois: 979px na mesma viewport) — o painel é mais baixo que as 8 trilhas.
+    o tom precisa significar a mesma coisa em qualquer tema. Mexeu num, mexa nos cinco.
+    ⚠️ O anel do bloco selecionado (`.pgm-b.on`) e a alça de arraste acendem em **preto a 34%/40%** — o
+    `var(--blue-mid)` sumia em cima da barra azul.
+  - Testado em Edge headless: 0 erros de JS; 2 cartões no topo (206px o da direita, com borda própria); corpo com
+    "40.196 · 65 · 9h58 de 10h00"; as 5 cores conferidas no estilo computado; "Novo bloco" leva o cartão a
+    44.639 / 72 / **10h58 de 10h00 + "passa do turno em 58 min"** com a barra vermelha; digitar 60 cpm atualiza ao
+    vivo; nenhum aviso duplicado na linha do tempo. **Altura idêntica à de antes** (979px na mesma viewport, medida
+    nas duas versões) — o cartão é mais baixo que as 8 trilhas.
 - ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
   (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
   reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);
