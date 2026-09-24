@@ -12544,8 +12544,10 @@ function renderDDV(){
 // Regra P0: esta tela só LÊ — nada aqui grava no localStorage.
 let comercialView='pedidos';
 let _comAba='produtos';          // sub-aba: produtos | representantes | aberto
-let _comPer='hoje';              // período dos chips (hoje e ontem têm dado)
+let _comPer='hoje';              // período (hoje e ontem têm dado) — escolhido no ícone de filtro do topo
+let _comPerAberto=false;         // popover do período aberto?
 let _comBusca='';
+let _comBuscaAberta=false;       // a busca virou lupa no topo (padrão de Compras)
 let _comCmp=false;               // coluna "vs. período anterior" na tabela (os cards já comparam sempre)
 let _comAbFiltro='';             // pedidos em aberto: '' | 'atraso' | 'rota'
 let _comSort={campo:'valor',dir:-1};
@@ -12830,8 +12832,8 @@ const _COM_LINHAS_HOJE=[
 // Um período por chave. Para acrescentar (semana, mês…): mais uma entrada aqui e o chip já funciona.
 // 'base' = com quem esse período se compara nos cards e na coluna "vs.".
 const _COM_DADOS={
-  hoje:{rot:'hoje',tot:_COM_TOT_HOJE,linhas:_COM_LINHAS_HOJE,base:'ontem',parcial:true},
-  ontem:{rot:'ontem',tot:_COM_TOT_ONTEM,linhas:_COM_LINHAS_ONTEM,base:null},
+  hoje:{rot:'hoje',tot:_COM_TOT_HOJE,linhas:_COM_LINHAS_HOJE,base:'ontem',parcial:true,dias:1},
+  ontem:{rot:'ontem',tot:_COM_TOT_ONTEM,linhas:_COM_LINHAS_ONTEM,base:'anteontem',dias:1},
 };   // os representantes (reps) são plugados logo abaixo, depois das listas — const não pode ser usada antes de declarada
 // RESUMO DE REPRESENTANTES — [cód, classe, nome, %, valor, caixas, clientes, pedidos].
 // Os totais batem com os de produtos do mesmo período (mesmo relatório, outro corte).
@@ -12988,13 +12990,23 @@ const _COM_ABERTO={ atualizado:'2026-09-22', grupos:[
 const _comNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
 const _comPct=p=>Number(p||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
 const _comN=v=>v==null?'—':_cpNum(v);   // clientes não somam entre dias → célula fica em "—"
-// SEMANA (segunda a sexta) — DERIVADA, não transcrita: hoje é terça, então a semana até agora é
-// segunda (ontem) + terça (hoje). Valor, caixas e PEDIDOS somam (cada pedido é um pedido).
-// CLIENTES não: o mesmo cliente pode ter comprado nos dois dias e o Power BI conta sem repetir —
-// aqui não dá, então a coluna fica em "—" e o card mostra "até N". Ao entrar um dia novo, é só
-// incluir a chave em `dias` abaixo.
-_COM_DADOS.semana=(function(){
-  const dias=['ontem','hoje'].map(k=>_COM_DADOS[k]).filter(Boolean);
+// PERÍODOS DERIVADOS (semana, mês) — SOMADOS dos dias carregados, nunca transcritos. Valor, caixas
+// e PEDIDOS somam (cada pedido é um pedido). CLIENTES não: o mesmo cliente pode ter comprado em mais
+// de um dia e o Power BI conta sem repetir — aqui a coluna fica em "—" e o card mostra "até N".
+// Acrescentar um dia = pôr a chave na lista do período abaixo.
+// ⭐⭐ REGRA DA COMPARAÇÃO (Diego, 24/09): o período-base respeita o MESMO TRECHO. Se hoje é quinta e
+// a semana corrente tem seg–qui, a semana anterior entra também só com seg–qui — comparar 4 dias
+// contra uma semana inteira daria queda sempre e seria mentira. Por isso a base é cortada em
+// `_comTrecho(base, atual)` = base.slice(0, atual.length). Vale igual para o mês.
+// ⚠️ As duas listas têm que estar na MESMA ORDEM (segunda → sexta / dia 1 → dia N), senão o corte
+// pega os dias errados e a comparação fica torta sem avisar.
+const COM_DIAS_SEMANA=['ontem','hoje'];   // desta semana: segunda e terça
+const COM_DIAS_SEMANA_ANT=[];             // da semana passada, mesma ordem — quando vier o print, listar aqui
+const COM_DIAS_MES=[];                    // ⚠️ VAZIO de propósito: com 2 dias o chip "Mês" mostraria a
+const COM_DIAS_MES_ANT=[];                // semana no lugar do mês, que é pior que ficar apagado
+function _comTrecho(base, atual){ return base.slice(0, atual.length); }
+function _comDerivado(chaves, rot, base, nota){
+  const dias=chaves.map(k=>_COM_DADOS[k]).filter(Boolean);
   if(dias.length<2) return null;
   const mapa={}, ordem=[];
   dias.forEach(d=>d.linhas.forEach(l=>{
@@ -13020,9 +13032,16 @@ _COM_DADOS.semana=(function(){
   }));
   const reps=rOrdem.map(c=>{ const e=rm[c]; return [e.cod,e.cls,e.nome,e.valor/tot.valor*100,e.valor,e.cx,null,e.ped]; })
                    .sort((a,b)=>b[4]-a[4]);
-  return { rot:'esta semana', tot:tot, linhas:linhas, reps:reps, base:null, parcial:true,
-           nota:'Semana de segunda a sexta — por enquanto soma segunda e terça. Clientes não somam entre os dias (o mesmo cliente pode ter comprado nos dois), por isso a coluna fica em "—".' };
-})();
+  return { rot:rot, tot:tot, linhas:linhas, reps:reps, base:base||null, parcial:true,
+           dias:dias.length, nota:nota||'' };
+}
+_COM_DADOS.semana=_comDerivado(COM_DIAS_SEMANA,'esta semana','semanaAnt',
+  'Semana de segunda a sexta — por enquanto soma segunda e terça. Clientes não somam entre os dias (o mesmo cliente pode ter comprado nos dois), por isso a coluna fica em "—".');
+_COM_DADOS.semanaAnt=_comDerivado(_comTrecho(COM_DIAS_SEMANA_ANT, COM_DIAS_SEMANA),'a semana anterior','semanaRetr',
+  'Só os mesmos dias da semana corrente, para a comparação ficar justa.');
+_COM_DADOS.mes=_comDerivado(COM_DIAS_MES,'este mês','mesAnt','');
+_COM_DADOS.mesAnt=_comDerivado(_comTrecho(COM_DIAS_MES_ANT, COM_DIAS_MES),'o mês anterior',null,
+  'Só os mesmos dias do mês corrente, para a comparação ficar justa.');
 function _comAbaMenu(v){ return COM_MENU.find(x=>x[0]===v) || COM_MENU[0]; }
 function setComercialView(v){
   hubView='comercial'; window._sbOrigemLixCfg=null;
@@ -13035,11 +13054,43 @@ function renderComercial(){
   const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
-  main.innerHTML=_cpTela('Pedidos','O que foi vendido no período — por produto, por representante e o que está em aberto.', _comCorpoHTML());
+  main.innerHTML=_cpTela('Pedidos','O que foi vendido no período — por produto, por representante e o que está em aberto.', _comCorpoHTML(), null, _comAcaoHTML());
+  // fecha o popover do período ao clicar fora (mesmo padrão dos filtros de Compras)
+  if(!window.__comFiltrosCloser){
+    window.__comFiltrosCloser=function(e){
+      const t=e&&e.target; if(t&&t.closest&&t.closest('.cp-pop-wrap')) return;   // dentro do popover → o toggle cuida
+      if(_comPerAberto){ _comPerAberto=false; if(hubView==='comercial') renderComercial(); }
+    };
+    document.addEventListener('mousedown', window.__comFiltrosCloser);
+  }
 }
+// PERÍODO + BUSCA no canto superior direito (pedido do Diego, 24/09): os 8 chips saíram da tela e
+// viraram um popover atrás do ícone de filtro. ⚠️ O botão mostra o período ATIVO ao lado do funil —
+// sem isso, esconder os chips faria perder o "em que período eu estou?", que era o que eles diziam.
+function _comAcaoHTML(){
+  const ph=_comAba==='representantes' ? 'Buscar representante'
+         : _comAba==='aberto' ? 'Buscar cliente, pedido ou cidade' : 'Buscar produto ou linha';
+  const lupa=(tras)=>_cpLupa(_comBuscaAberta,_comBusca,'_comToggleBusca','_comBuscaEl','com-busca',ph,tras);
+  // "Pedidos em aberto" é uma FOTO, não um período: ali o filtro de período não faz sentido.
+  if(_comAba==='aberto') return lupa('');
+  const p=COM_PERIODOS.find(x=>x[0]===_comPer)||['','Período'], n=_comPerN(_comPer);
+  const btn=`<button onclick="_comPerToggle()" title="Escolher o período" style="background:var(--card);border:1px solid ${_comPerAberto?'var(--blue-mid)':'var(--border)'};border-radius:9px;cursor:pointer;color:${_comPerAberto?'var(--blue-mid)':'var(--text2)'};height:38px;padding:0 11px;display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600"><i class="ti ti-filter" style="font-size:16px"></i>${escapeHTML(p[1])}${n!=null?`<span style="font-size:11px;font-weight:700;color:var(--text3)">${_cpNum(n)}</span>`:''}<i class="ti ti-chevron-down" style="font-size:13px;color:var(--text3)"></i></button>`;
+  return lupa(`<div class="cp-pop-wrap" style="position:relative">${btn}${_comPerPopHTML()}</div>`);
+}
+function _comPerPopHTML(){
+  if(!_comPerAberto) return '';
+  const itens=COM_PERIODOS.map(x=>{ const n=_comPerN(x[0]), vazio=(n==null);
+    return `<button class="com-perit${_comPer===x[0]?' on':''}"${vazio?' disabled title="ainda sem dado carregado"':''} onclick="_comSetPer('${x[0]}')">${x[1]}<span class="n">${vazio?'—':_cpNum(n)}</span></button>`;
+  }).join('');
+  return `<div class="com-pop">${itens}</div>`;
+}
+function _comPerToggle(){ _comPerAberto=!_comPerAberto; renderComercial(); }
+function _comToggleBusca(){ _comBuscaAberta=!_comBuscaAberta; if(!_comBuscaAberta) _comBusca=''; renderComercial();
+  if(_comBuscaAberta){ const el=document.getElementById('com-busca'); if(el) el.focus(); } }
+function _comBuscaEl(el){ _comBuscaInput(el.value); }
 // Re-render só do miolo: os chips, os cards e a busca ficam de fora, então o foco do campo não se perde.
 function _comRefresh(){ const el=document.getElementById('com-conteudo'); if(el) el.innerHTML=_comConteudoHTML(); else renderComercial(); }
-function _comSetPer(p){ _comPer=p; renderComercial(); }
+function _comSetPer(p){ _comPer=p; _comPerAberto=false; renderComercial(); }
 function _comSetAba(a){ _comAba=a; renderComercial(); }
 function _comBuscaInput(v){ _comBusca=v; _comRefresh(); }
 // ⚠️ O recolhimento é guardado pelo NOME da linha, não pelo índice: cada período tem sua própria
@@ -13107,7 +13158,15 @@ function _comCSS(){
   .com-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:9px}
   .com-bar .t{font-size:11.5px;font-weight:600;color:var(--text3)}
   /* Indicadores: faixa fina no acento à esquerda (o cartão segue branco) + pílula de variação. */
-  .com-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(152px,1fr));gap:10px;margin-bottom:7px}
+  .com-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(152px,1fr));gap:10px;margin-bottom:16px}
+  /* popover do período (o ícone de filtro do topo) */
+  .com-pop{position:absolute;top:44px;right:0;z-index:40;background:var(--card);border:1px solid var(--border);border-radius:11px;box-shadow:0 10px 28px rgba(0,0,0,.18);padding:6px;min-width:196px;display:flex;flex-direction:column;gap:2px}
+  .com-perit{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;border-radius:8px;padding:8px 10px;font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer}
+  .com-perit:hover:not([disabled]){background:var(--bg2)}
+  .com-perit.on{background:var(--blue-mid);color:#fff}
+  .com-perit[disabled]{opacity:.42;cursor:default;font-weight:500}
+  .com-perit .n{margin-left:auto;font-size:11px;font-weight:700;color:var(--text3)}
+  .com-perit.on .n{color:#fff}
   .com-kpi{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--blue-mid);border-radius:11px;padding:11px 13px;min-width:0}
   .com-kpi .lab{font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);line-height:1.3}
   .com-kpi .val{font-size:20px;font-weight:800;letter-spacing:-.015em;color:var(--text);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -13187,8 +13246,6 @@ function _comKPI(lab, val, pill, sub, spark, cor){
 }
 function _comCorpoHTML(){
   const d=_comD(), t=d?d.tot:null, b=_comBase(), bt=b?b.tot:null;
-  const chips=COM_PERIODOS.map(p=>{ const n=_comPerN(p[0]);
-    return `<button class="com-chip${_comPer===p[0]?' on':''}${n==null?' off':''}" onclick="_comSetPer('${p[0]}')" title="${n==null?'ainda sem dado carregado':_cpNum(n)+' pedidos'}">${p[1]}${n!=null?`<span class="n">${_cpNum(n)}</span>`:''}</button>`; }).join('');
   // pílula = só o %; a diferença em número vai na linha de baixo (não cabe tudo na pílula)
   const pil=(a,ba)=>{ if(!bt||a==null||ba==null) return '';
     const dif=a-ba, pct=ba?dif/ba*100:0, igual=Math.abs(pct)<0.05;
@@ -13207,27 +13264,19 @@ function _comCorpoHTML(){
         sp(x=>x.cli))}
     ${_comKPI('Ticket médio', t?_cpBRL(t.valor/t.ped):'—', pil(t?t.valor/t.ped:null, bt?bt.valor/bt.ped:null), dsub(t?t.valor/t.ped:null, bt?bt.valor/bt.ped:null, 1), sp(x=>x.valor/x.ped))}
   </div>
-  <div style="font-size:11.5px;color:var(--text3);margin-bottom:16px">${
-    !t?'Este período ainda não tem dado carregado.'
-    : d.nota?escapeHTML(d.nota)
-    : bt?('Comparando com '+b.rot+(d.parcial?' — lembrando que o dia de hoje ainda não fechou.':'.'))
-    : 'Sem período anterior carregado para comparar.'}</div>`;
+  ${(!t||d.nota)?`<div style="font-size:11.5px;color:var(--text3);margin-bottom:16px">${
+    !t?'Este período ainda não tem dado carregado.':escapeHTML(d.nota)}</div>`:''}`;
   const nAbas={produtos:d?d.linhas.length:null, representantes:(d&&d.reps)?d.reps.length:null, aberto:_comAbItens().length};
   const abas=[['produtos','Produtos'],['representantes','Representantes'],['aberto','Pedidos em aberto']]
     .map(a=>`<button class="com-sub${_comAba===a[0]?' on':''}" onclick="_comSetAba('${a[0]}')">${a[1]}${nAbas[a[0]]?`<span class="n">${_cpNum(nAbas[a[0]])}</span>`:''}</button>`).join('');
-  // ⚠️ o campo PRECISA ter uma classe: existe uma regra global input:not([class]){height:40px} que
-  // ignoraria a altura inline (mesma armadilha já documentada nos selects pequenos de Compras).
-  const busca=(_comAba==='aberto'||((_comAba==='produtos'||_comAba==='representantes')&&_comTemDados()))
-    ? `<span class="com-buscaw"><i class="ti ti-search"></i><input id="com-busca" value="${escapeAttr(_comBusca)}" oninput="_comBuscaInput(this.value)" placeholder="${_comAba==='representantes'?'Buscar representante':(_comAba==='aberto'?'Buscar cliente, pedido ou cidade':'Buscar produto ou linha')}" class="com-busca"></span>` : '';
   const btnCmp=(_comAba==='produtos'||_comAba==='representantes')&&b
     ? `<button class="com-chip${_comCmp?' on':''}" onclick="_comToggleCmp()" style="padding:6px 13px;font-size:12px"><i class="ti ti-arrows-left-right" style="font-size:13px"></i> Comparar com ${b.rot}</button>` : '';
-  // Pedidos em aberto é uma FOTO, não um período: os chips saem e os indicadores são outros.
-  const topo=_comAba==='aberto' ? _comAbertoTopoHTML()
-    : `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${chips}</div>${kpis}`;
+  // Pedidos em aberto é uma FOTO, não um período: o filtro de período some e os indicadores são outros.
+  const topo=_comAba==='aberto' ? _comAbertoTopoHTML() : kpis;
   return `${_comCSS()}
     ${topo}
     <div style="display:flex;align-items:flex-end;gap:22px;border-bottom:1px solid var(--border);margin-bottom:14px">
-      ${abas}<div style="margin-left:auto;padding-bottom:7px;display:flex;align-items:center;gap:9px">${btnCmp}${busca}</div>
+      ${abas}<div style="margin-left:auto;padding-bottom:7px;display:flex;align-items:center;gap:9px">${btnCmp}</div>
     </div>
     <div id="com-conteudo">${_comConteudoHTML()}</div>`;
 }
@@ -13428,7 +13477,6 @@ function _comProdutosHTML(){
   cards+=card(rodape);
   const fechadas=Object.keys(_comFechadas).length;
   return `<div class="com-bar">
-      <span class="t">${_cpNum(linhas.length)} linhas de produto</span>
       <button class="com-link" onclick="_comTodasLinhas(${fechadas?0:1})" style="margin-left:auto"><i class="ti ti-${fechadas?'chevrons-down':'chevrons-up'}" style="font-size:12px;vertical-align:-1px"></i> ${fechadas?'Abrir todas':'Recolher todas'}</button>
     </div>
     <div class="com-hstrip"><table class="com-tbl"><colgroup>${cols}</colgroup>

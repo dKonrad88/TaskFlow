@@ -422,6 +422,39 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-24 — PC da Empresa — Comercial › Pedidos: período vira ÍCONE DE FILTRO no topo + regra da comparação por trecho
+Três pedidos do Diego na mesma leva, todos na aba Comercial › Pedidos.
+- ⭐ **Os 8 chips de período SAÍRAM da tela** e viraram um **popover atrás de um botão no canto superior direito**
+  (slot `acao` do `_cpTela`, o mesmo padrão já documentado em Compras), com a **busca virando LUPA** ao lado
+  (`_cpLupa`, com `_comToggleBusca`/`_comBuscaEl`). ⚠️ **O botão mostra o período ATIVO ao lado do funil**
+  ("⧩ Hoje 99 ▾") — sem isso, esconder os chips faria perder o "em que período eu estou?", que era justamente o
+  que eles informavam. Período sem dado aparece **desabilitado com "—"** na lista. Novos: `_comAcaoHTML`,
+  `_comPerPopHTML`, `_comPerToggle`, `_comPerAberto`/`_comBuscaAberta`, CSS `.com-pop`/`.com-perit`.
+  Fecha ao clicar fora por `window.__comFiltrosCloser` (mesma receita do `_cpComprasCloseFiltros`).
+  Na sub-aba **Pedidos em aberto** o filtro de período **não aparece** (é uma foto, não um período) — só a lupa.
+  A `.com-buscaw`/`.com-busca` do campo antigo ficaram no CSS **sem uso** (limpeza futura).
+- **Saíram 2 linhas** que o Diego marcou: a nota **"Comparando com ontem — lembrando que o dia de hoje ainda não
+  fechou"** (os cards já dizem "R$ X a menos que ontem", era a mesma informação 2×) e o **"28 linhas de produto"**
+  da barra acima da tabela. ⚠️ O `<div>` da nota **não foi removido**: ele ainda mostra a explicação da SEMANA
+  (clientes não somam) e o "este período ainda não tem dado carregado" — só as 2 frases saíram.
+  `.com-kpis` foi de `margin-bottom:7px` p/ **16px** porque a nota era quem dava o respiro até as sub-abas.
+- ⭐⭐ **REGRA DA COMPARAÇÃO POR TRECHO** (pedido: "hoje compara com ontem, semana com a semana anterior, mês com o
+  mês anterior — mas respeitando o mesmo período; se estou na quinta com o filtro semana, comparo com seg–qui da
+  semana passada"). O IIFE que derivava a semana virou **`_comDerivado(chaves, rot, base, nota)`** genérico, e a
+  base é cortada por **`_comTrecho(base, atual) = base.slice(0, atual.length)`** — mesma quantidade de dias, mesma
+  ordem. Listas novas: `COM_DIAS_SEMANA` (hoje `['ontem','hoje']`), `COM_DIAS_SEMANA_ANT`, `COM_DIAS_MES`,
+  `COM_DIAS_MES_ANT`. ⚠️ **As duas listas têm que estar na MESMA ORDEM** (segunda → sexta), senão o corte pega os
+  dias errados e a comparação fica torta **sem avisar**. `_COM_DADOS` ganhou `dias` (quantos dias o período tem) e
+  a cadeia de bases: hoje→ontem, ontem→anteontem, semana→semanaAnt, semanaAnt→semanaRetr, mes→mesAnt.
+  ⏳ **Hoje só "Hoje × ontem" acende de verdade** — não existe dado de semana/mês anteriores. `COM_DIAS_MES` ficou
+  **vazio de propósito**: com 2 dias o chip "Mês" mostraria a semana no lugar do mês, o que é pior que ficar
+  apagado. Quando vier o print, é **só listar os dias** na constante e o botão de comparar aparece sozinho, já com
+  o rótulo certo ("Comparar com a semana anterior" sai do `rot` do período-base).
+- Testado em Edge headless (harness com `.click()` de verdade + `window.onerror`): **0 erros de JS**; botão do topo
+  "Hoje 99"; popover com 8 itens, 5 desabilitados; trocar p/ Semana muda o botão e o total (R$ 371.905,49) e o
+  botão de comparar **some** (semanaAnt sem dado); em Hoje o "Comparar com ontem" liga a coluna **VS. ONTEM**;
+  lupa abre, busca filtra; em Pedidos em aberto o filtro de período some e a lupa fica. Foto conferida.
+
 ### ⭐ 2026-09-23 (b) — PC da Empresa — **PCP · DDV** refeito (a aba Histórico do SISPRO dentro do HUB)
 O Diego quer o SISPRO tela a tela no HUB, começando pelo **Produção › PCP**. Mostrei 5 mockups e ele pediu uma
 **mistura**: indicadores clicáveis do formato 4 + planilha com **cabeçalho em 2 níveis** do 3 + **gráfico recolhível**
