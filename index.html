@@ -13326,8 +13326,7 @@ function _comAbertoTopoHTML(){
     ${_comKPI('Pedidos na tela',_cpNum(itens.length),'','2 representantes vieram cortados')}
     ${_comKPI('Mais antigo',maior!=null?_cpNum(maior)+' dias':'—',alerta(atrasados,_cpNum(atrasados)+' com '+COM_ABERTO_ALERTA.vermelho+'+'),'contados da emissão até hoje','', maior>=COM_ABERTO_ALERTA.vermelho?'var(--danger)':'')}
     ${_comKPI('Fora da semana de rota',_cpNum(fora),'','lançados em semana diferente da rota','', fora?'var(--amber)':'')}
-  </div>
-  <div style="font-size:11.5px;color:var(--text3);margin-bottom:16px">Foto do que está em aberto — não é um período, por isso os botões de dia e semana não valem aqui.</div>`;
+  </div>`;
 }
 function _comAbertoHTML(){
   const grupos=_COM_ABERTO.grupos||[];
@@ -13370,15 +13369,13 @@ function _comAbertoHTML(){
   });
   if(!cards) cards=`<div class="com-grp" style="padding:6px 2px">${_cpVazio('Nenhum pedido com esse filtro.')}</div>`;
   return `<div class="com-bar">
-      <span class="t">${_cpNum(vis.length)} pedidos na tela · ${_cpNum(grupos.length)} representantes</span>
       <button class="com-chip${_comAbFiltro==='atraso'?' on':''}" onclick="_comAbSetFiltro('atraso')" style="margin-left:auto;padding:5px 12px;font-size:12px">${COM_ABERTO_ALERTA.vermelho}+ dias</button>
       <button class="com-chip${_comAbFiltro==='rota'?' on':''}" onclick="_comAbSetFiltro('rota')" style="padding:5px 12px;font-size:12px">Fora da semana de rota</button>
     </div>
     <div class="com-hstrip"><table class="com-tbl">${cols}
       <thead><tr><th class="l">Representante / pedido · cliente</th><th>Valor</th><th>Caixas</th><th>Emissão</th><th>Dias</th><th class="l">Cidade</th><th>Semana</th><th></th></tr></thead>
     </table></div>
-    ${cards}
-    <div class="com-nota">Os dias são contados da emissão até hoje, então continuam certos amanhã. A coluna Semana fica vermelha quando o pedido foi lançado numa semana diferente da rota do cliente.<br>Foto do relatório em ${_cpDt(_COM_ABERTO.atualizado)}. O print trouxe 5 representantes — em 2 deles a lista veio cortada, e o que falta está na linha "restante do representante".</div>`;
+    ${cards}`;
 }
 // Representantes: lista plana (é assim no Power BI), mesma ordenação/busca/comparação dos produtos.
 const _COM_SCR={nome:2,valor:4,cx:5,cli:6,ped:7};
