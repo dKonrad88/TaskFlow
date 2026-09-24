@@ -514,6 +514,30 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
   esse seletor quebra em silêncio (o número atualiza e o cursor não).
 - **Arraste do setup passou de 5 em 5 para 1 em 1 minuto** (a duração do bloco segue em 15min, que é o passo que
   faz sentido para horas). Conferido: 40 → 41 → 42 → 43 → 46min, com o total do dia acompanhando.
+- ⭐⭐ **O PADRÃO — números REAIS da Valesca** (24/09, Pão de mel): **massada 142,106 kg · tempo 8min30 · biscoito
+  cru 10,43 g**. ⚠️ Ela avisou que "o tempo depende muito do CPM", e de fato **os três não fecham com os 85
+  cortes/min** que o Diego tinha dado de cabeça: 142,106 ÷ 8,5min = 16,72 kg/min ÷ (21 × 10,43g) = **76,3
+  cortes/min**. Então o **CPM do padrão é DERIVADO do trio** (`_pgmCpmPadrao`), não digitado — é o único ritmo que
+  torna os números coerentes. Se um dia o CPM real medido for outro, é conferir qual dos três se ajusta.
+  O resumo da massada passou a comparar **"padrão" × "agora" × "simulação"**, em massadas E em pacotes — era o
+  pedido dele: *"quero usar essas referências e, em cima disso, ver o que ganhamos ou perdemos"*.
+- ⭐⭐ **A LINHA DO TEMPO VIROU UMA TRILHA POR CANAL, não por estágio** (8 no total): Corte · **Ao leite · Branca ·
+  Sem cobertura** · **Emb 1 a 4**. Cada barra da cobrideira mostra o **% e os pacotes** daquele destino; cada
+  embaladora mostra **cliente · cobertura** e, na tabela, quantos pacotes faz.
+- ⭐⭐ **O MIX DA COBRIDEIRA É DERIVADO DAS EMBALADORAS** (`_pgmMix`): 2 máquinas no ao leite e 1 na branca = 2/3 e
+  1/3, **ponderado pela velocidade real** de cada uma. É como a linha funciona — quem decide o mix é para onde cada
+  máquina aponta. **Por isso os cursores de mix não voltaram** e `b.nat`/`b.leite` saíram do modelo.
+  ⚠️ O peso médio do biscoito acabado passou a depender do mix (sem cobertura sai mais leve), então **ligar uma
+  máquina no natural REDUZ os pacotes do dia** — conferido: 24.438 → 22.888 ao ligar a 4ª em "sem cobertura".
+- **As 4 embaladoras são individuais**: tabela com liga/desliga, **cliente**, cobertura, **velocidade nominal e
+  real por máquina** e os pacotes que cada uma produz (fatia da sua velocidade dentro do que o corte entrega).
+  ⚠️ Digitar cliente/velocidade **não redesenha a tabela** (`_pgmRefresh(semEmb)`) — senão o campo perde o foco a
+  cada tecla; a coluna de pacotes só acerta no blur.
+- **SETUP MANUAL** (pedido dele): `setupOn` manda sobre a regra — `null` = automático (só quando a base muda),
+  `true` = limpeza forçada mesmo com a mesma base, `false` = sem limpeza mesmo trocando de base. Links "pôr
+  limpeza" / "tirar" no editor. Conferido: pôr no bloco 2 → 10h38; tirar no bloco 3 → 9h58.
+- **Altura:** com 8 trilhas a tela voltou a estourar (997px); cortada para **919px** (trilhas 22→19px, paddings,
+  chips e cartões menores). ⏳ Se ele reclamar de novo, o que mais pesa é a coluna "resultado + massada".
 - ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
   (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
   reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);
