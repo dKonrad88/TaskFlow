@@ -12014,18 +12014,26 @@ const _PGM_LINHAS=[{
   // do bloco os estágios também param nessa ordem. ⏳ O Diego avisou que **varia por produto e pela
   // velocidade do corte**; por ora é um número fixo por estágio, cadastrado na linha.
   estagios:[
-    {nome:'Corte',       canais:1, cap:'85 cortes/min', setup:'troca de base',   atraso:0},
-    {nome:'Cobrideira',  canais:2, cap:'a cadastrar',   setup:'troca de cobertura', atraso:15},
-    {nome:'Embaladoras', canais:4, cap:'48 nominal · 37 real', setup:'bobina ou etiqueta', atraso:20}
+    {nome:'Corte',       canais:1, setup:'troca de base',      atraso:0},
+    {nome:'Cobrideira',  canais:2, setup:'troca de cobertura', atraso:15}
+  ],
+  // ⭐ As 4 embaladoras são INDIVIDUAIS: cada uma tem sua velocidade e leva um cliente/sabor.
+  // O `atraso` delas é o mesmo (20min do corte até a embalagem).
+  embAtraso:20,
+  embaladoras:[
+    {nome:'Emb 1', nominal:48, real:37}, {nome:'Emb 2', nominal:48, real:37},
+    {nome:'Emb 3', nominal:48, real:37}, {nome:'Emb 4', nominal:48, real:37}
   ],
   // setups em MINUTOS — ⚠️ chutados no mockup, o Diego ainda não passou os reais
   setup:{base:40, bobina:8},
-  // ⭐ RENDIMENTO da massada, em kg. É ELE a constante da masseira — o TEMPO da massada é CALCULADO:
-  //    tempo = rendimento ÷ (kg/min que o corte consome). Por isso engordar o biscoito faz a massada
-  //    durar menos e caber mais massadas no dia, que foi o que o Diego descreveu.
-  // ⚠️ Os 140 kg vieram da conta inversa do número que ele deu (7min10 com 85 cortes × 21 × 11g =
-  //    19,6 kg/min → 140,7 kg). Quando ele disser o rendimento real, é trocar aqui.
-  massadaKg:140,
+  // ⭐⭐ O PADRÃO — os números que a Valesca passou em 24/09 para o Pão de mel. É o ponto de partida:
+  //    toda simulação da tela se compara com ELE ("ganhamos X massadas em relação ao padrão").
+  //    ⚠️ Ela avisou que o tempo "depende muito do CPM", e de fato os três não fecham com 85 cortes/min:
+  //    142,106 kg ÷ 8min30 = 16,72 kg/min ÷ (21 × 10,43g) = **76,3 cortes/min**. Esse é o CPM que torna
+  //    o trio coerente, então é ele o CPM do padrão — os 85 eram o exemplo que o Diego deu de cabeça.
+  //    Quando vier o CPM real medido, é conferir qual dos três números se ajusta.
+  padrao:{ massadaKg:142.106, massadaSeg:510, cru:10.43 },
+  massadaKg:142.106,
   bases:[
     {id:'paodemel', nome:'Pão de mel', bpc:21, cru:11, evap:17, cob:34, gPac:250, pacCx:null},
     {id:'menta',    nome:'Pão de mel menta', bpc:21, cru:11, evap:17, cob:34, gPac:250, pacCx:null},
@@ -12070,29 +12078,71 @@ function _pgmN(v,d){ return _cpNum(v, d==null?0:d); }
 // Peso do biscoito CRU: vem do cadastro da base, mas é editável no bloco — mudar aqui muda o peso
 // assado, o coberto, os pacotes E o tempo da massada (o corte passa a consumir mais/menos kg por minuto).
 function _pgmCru(b){ const B=_pgmBase(b.base); return (b.cru==null||b.cru==='')?B.cru:(+b.cru||0); }
+// ── DESTINOS da cobrideira. `cob:0` = sem cobertura (o biscoito sai no peso assado, mais leve).
+const _PGM_DEST=[{id:'leite',nome:'Ao leite',cob:1},{id:'branco',nome:'Branca',cob:1},{id:'natural',nome:'Sem cobertura',cob:0}];
+function _pgmDest(id){ return _PGM_DEST.find(d=>d.id===id)||_PGM_DEST[0]; }
+// ── EMBALADORAS do bloco: uma entrada por máquina, com cliente, sabor e velocidades próprias.
+// Nasce do cadastro da linha; o bloco só guarda o que foi mexido.
+function _pgmEmb(b){ const L=_pgmL(), cad=L.embaladoras||[];
+  if(!Array.isArray(b.emb) || b.emb.length!==cad.length)
+    b.emb=cad.map((e,i)=>({on:i<3, cli:'Klain', sku:i===2?'branco':'leite', nom:e.nominal, real:e.real}));
+  return b.emb.map((e,i)=>({ on:!!e.on, cli:e.cli||'', sku:e.sku||'leite',
+    nom:(e.nom==null||e.nom==='')?cad[i].nominal:+e.nom,
+    real:(e.real==null||e.real==='')?cad[i].real:+e.real, nome:cad[i].nome, i:i })); }
+function _pgmEmbAtivas(b){ return _pgmEmb(b).filter(e=>e.on && e.real>0); }
+function _pgmEmbCap(b){ return _pgmEmbAtivas(b).reduce((s,e)=>s+e.real,0); }   // pacotes/min disponíveis
+// ⭐ O MIX DA COBRIDEIRA É DERIVADO DAS EMBALADORAS: se 2 máquinas rodam ao leite e 1 branca, a cobrideira
+// divide 2/3 e 1/3 (ponderado pela velocidade real de cada uma). É como a linha funciona de verdade —
+// por isso não existe cursor de mix: quem decide é para onde cada máquina está apontada.
+function _pgmMix(b){ const at=_pgmEmbAtivas(b), tot=at.reduce((s,e)=>s+e.real,0), m={leite:0,branco:0,natural:0};
+  if(!tot) return m;
+  at.forEach(e=>{ m[e.sku]=(m[e.sku]||0)+e.real/tot; });
+  return m; }
+function _pgmSetEmb(i, campo, el){
+  const b=_pgmBlocos()[_pgmSel]; if(!b) return; _pgmEmb(b);
+  b.emb[i][campo] = (campo==='on') ? el.checked : (campo==='cli'||campo==='sku' ? el.value : (el.value===''?'':+el.value));
+  // ⚠️ digitar cliente/velocidade NÃO pode redesenhar a tabela: o campo perderia o foco a cada tecla.
+  // A coluna de pacotes só acerta no blur (onchange → renderPCPDia). Checkbox e sabor podem redesenhar.
+  _pgmRefresh(campo==='cli'||campo==='nom'||campo==='real');
+}
 function _pgmCalc(b){
   const B=_pgmBase(b.base);
   const bisc=(+b.cortes||0)*(B.bpc||0);          // biscoitos/min saindo do corte
-  const cru=_pgmCru(b);
+  const cru=_pgmCru(b), horas=(+b.horas||0);
   const assado=cru*(1-B.evap/100), coberto=assado*(1+B.cob/100);
-  const fNat=(+b.nat||0)/100, fCob=1-fNat;
-  const gMin=bisc*(fCob*coberto+fNat*assado);    // gramas/min de produto acabado
+  const mix=_pgmMix(b);
+  // ⚠️ o peso médio do biscoito acabado depende do MIX: sem cobertura ele sai mais leve, então a mesma
+  // saída do corte dá MAIS pacotes quando há coberto e menos quando há natural.
+  const pesoMed=_PGM_DEST.reduce((s,d)=>s+(mix[d.id]||0)*(d.cob?coberto:assado),0) || coberto;
+  const gMin=bisc*pesoMed;
   const pacMin=B.gPac?gMin/B.gPac:0;
-  const raias=(+b.ritmo>0)?pacMin/b.ritmo:0;
-  const total=pacMin*60*(+b.horas||0);
-  const fLeite=(+b.leite||0)/100;
-  return { bisc, assado, coberto, pacMin, raias, total,
-    leite: total*fCob*fLeite, branco: total*fCob*(1-fLeite), natural: total*fNat,
-    massa: bisc*cru*60*(+b.horas||0)/1000,       // kg de massa crua
-    falta: raias>_pgmL().estagios[2].canais };
+  const cap=_pgmEmbCap(b), ativas=_pgmEmbAtivas(b).length;
+  const total=pacMin*60*horas;
+  const porDest={}; _PGM_DEST.forEach(d=>{ porDest[d.id]=total*(mix[d.id]||0); });
+  // cada máquina fica com a fatia da sua velocidade dentro do que o corte entrega
+  const porMaq=_pgmEmb(b).map(e=>(e.on&&cap>0)?total*e.real/cap:0);
+  return { bisc, assado, coberto, pesoMed, mix, pacMin, total, cap, ativas, porDest, porMaq,
+    massa: bisc*cru*60*horas/1000,               // kg de massa crua
+    falta: pacMin>cap+0.001 };
 }
 // Setup entre blocos: só quando a BASE muda (trocar cobertura não para a linha).
 // Setup só existe quando a BASE muda. O tempo fica no PRÓPRIO bloco (`b.setup`, em minutos) porque
 // depende da transição — pão de mel → menta não custa o mesmo que → amanteigada. Sem valor no bloco,
 // cai no padrão da linha.
+// `setupOn` manda sobre a regra: null = automático (só quando a base muda), true = limpeza forçada
+// (mesmo com a mesma base), false = sem limpeza (mesmo trocando de base). O PCP põe e tira na mão.
+function _pgmSetupAuto(i){ const bs=_pgmBlocos();
+  return !!(i>0 && bs[i-1] && bs[i] && bs[i-1].base!==bs[i].base); }
+function _pgmSetupLigado(i){ const bs=_pgmBlocos(); if(i<=0||!bs[i]) return false;
+  return (bs[i].setupOn==null) ? _pgmSetupAuto(i) : !!bs[i].setupOn; }
 function _pgmSetupMin(i){ const bs=_pgmBlocos();
-  if(!(i>0 && bs[i-1] && bs[i] && bs[i-1].base!==bs[i].base)) return 0;
+  if(!_pgmSetupLigado(i)) return 0;
   return (bs[i].setup==null || bs[i].setup==='') ? _pgmL().setup.base : (+bs[i].setup||0); }
+function _pgmSetupToggle(i){ const arr=_pgmBlocos().slice(); if(!arr[i]) return;
+  const ligado=_pgmSetupLigado(i);
+  arr[i].setupOn=!ligado;
+  if(!ligado && (arr[i].setup==null||arr[i].setup==='')) arr[i].setup=_pgmL().setup.base;
+  _pgmSetBlocos(arr); renderPCPDia(); }
 function _pgmSetupAntes(i){ return _pgmSetupMin(i)/60; }
 function _pgmHoras(){ return _pgmBlocos().reduce((s,b,i)=>s+(+b.horas||0)+_pgmSetupAntes(i),0); }
 function _pgmHhmm(h){ const H=Math.floor(h), M=Math.round((h-H)*60); return H+'h'+(M<10?'0':'')+M; }
@@ -12110,11 +12160,12 @@ function _pgmSetLive(campo, el){       // digitar: guarda e atualiza só a linha
   if(campo==='cru'||campo==='cortes') _pgmMassada=null;
   _pgmRefresh();
 }
-function _pgmRefresh(){
+function _pgmRefresh(semEmb){
   const tl=document.getElementById('pgm-tl'); if(tl) tl.innerHTML=_pgmTimelineHTML();
   const out=document.getElementById('pgm-out'); if(out) out.innerHTML=_pgmResultadoHTML();
   const tot=document.getElementById('pgm-tot'); if(tot) tot.innerHTML=_pgmTotalHTML();
   const ms=document.getElementById('pgm-mass-out'); if(ms) ms.innerHTML=_pgmMassadaResumoHTML();
+  const em=document.getElementById('pgm-emb'); if(em && !semEmb) em.innerHTML=_pgmEmbHTML();
   // ⚠️ o tempo da massada é CALCULADO: mudar o peso ou o ritmo do corte tem que mexer no número grande
   // e no cursor também, senão eles ficam mostrando o valor de antes.
   const mv=document.getElementById('pgm-mass-v'), seg=_pgmMassadaSeg();
@@ -12124,8 +12175,9 @@ function _pgmRefresh(){
 // ⚠️ os dois GRAVAM, então passam por _pgmSetBlocos: `_pgmBlocos()` devolve um array NOVO quando o dia
 // ainda não existe no plano, e um push nele se perderia.
 function _pgmAddBloco(){ const L=_pgmL(); if(!L.bases) return;
-  const arr=_pgmBlocos().slice(), u=arr[arr.length-1]||{base:L.bases[0].id,cortes:85,ritmo:37};
-  arr.push({base:u.base, horas:1, cortes:u.cortes, ritmo:u.ritmo, nat:0, leite:100});
+  const arr=_pgmBlocos().slice(), P=L.padrao||{};
+  const u=arr[arr.length-1]||{base:L.bases[0].id, cortes:Math.round(_pgmCpmPadrao({base:L.bases[0].id})), cru:P.cru};
+  arr.push({base:u.base, horas:1, cortes:u.cortes, cru:u.cru});
   _pgmSetBlocos(arr); _pgmSel=arr.length-1; renderPCPDia(); }
 function _pgmDelBloco(i){ const arr=_pgmBlocos().slice(); arr.splice(i,1); _pgmSetBlocos(arr);
   if(_pgmSel>=arr.length) _pgmSel=Math.max(0,arr.length-1); renderPCPDia(); }
@@ -12164,6 +12216,10 @@ function _pgmDragEnd(){
 function _pgmMS(seg){ const m=Math.floor(seg/60), s=Math.round(seg%60);
   return m+'min'+(s?(s<10?'0':'')+s:''); }
 function _pgmConsumo(b){ const B=_pgmBase(b.base); return (+b.cortes||0)*(B.bpc||0)*_pgmCru(b)/1000; } // kg/min
+// ⭐ O CPM DO PADRÃO é DERIVADO do trio da Valesca (142,106 kg · 8min30 · 10,43 g), não digitado:
+// é o único ritmo de corte que faz os três números fecharem. Dá ~76,3 cortes/min.
+function _pgmCpmPadrao(b){ const L=_pgmL(), P=L.padrao||{}, B=_pgmBase(b.base);
+  const m=(P.massadaSeg||0)/60; return (m&&B.bpc&&P.cru) ? (P.massadaKg*1000)/(m*B.bpc*P.cru) : 0; }
 function _pgmMassadaCalc(b){ const kg=_pgmL().massadaKg||0, c=_pgmConsumo(b); return c>0?kg/c*60:0; }   // segundos
 function _pgmMassadaSeg(){ const b=_pgmBlocos()[_pgmSel];
   return _pgmMassada!=null ? _pgmMassada : (b?_pgmMassadaCalc(b):0); }
@@ -12175,26 +12231,29 @@ function _pgmSetMassada(el){ _pgmMassada=+el.value;
   const v=document.getElementById('pgm-mass-v'); if(v) v.textContent=_pgmMS(_pgmMassada);
   const r=document.getElementById('pgm-mass-out'); if(r) r.innerHTML=_pgmMassadaResumoHTML(); }
 function _pgmMassadaReset(){ _pgmMassada=null; renderPCPDia(); }
+// ⭐ Tudo se compara com o PADRÃO (o trio da Valesca). "Agora" é o dia como está montado; o cursor
+// simula um ciclo diferente por cima. As duas diferenças aparecem em massadas E em pacotes.
 function _pgmMassadaResumoHTML(){
-  const bs=_pgmBlocos(), sel=bs[_pgmSel];
+  const bs=_pgmBlocos(), sel=bs[_pgmSel], L=_pgmL(), P=L.padrao||{};
   if(!bs.length||!sel) return `<div class="pgm-sku">Sem bloco no dia para simular.</div>`;
-  const calc=_pgmMassadaCalc(sel), atual=_pgmMassadaSeg(), fator=_pgmMassadaFator();
   const horas=bs.reduce((s,b)=>s+(+b.horas||0),0);   // só produção — o setup não faz massada
-  const pac=bs.reduce((s,b)=>s+_pgmCalc(b).total,0);
-  // massadas por bloco = horas ÷ tempo daquele bloco (cada um pode ter ritmo e peso próprios)
-  const mCalc=bs.reduce((s,b)=>{ const t=_pgmMassadaCalc(b); return s+(t>0?(+b.horas||0)*3600/t:0); },0);
-  const mSim=fator>0?mCalc/fator:mCalc, pacSim=fator>0?pac/fator:pac;
-  const porMassada=mCalc?pac/mCalc:0, mudou=Math.abs(fator-1)>0.001;
-  const dM=mSim-mCalc, dP=pacSim-pac, sinal=v=>(v>0?'+':'')+_pgmN(v);
-  const cor=dP>0?'var(--success)':(dP<0?'var(--danger)':'var(--text3)');
+  const massadas=(fn)=>bs.reduce((s,b)=>{ const t=fn(b); return s+(t>0?(+b.horas||0)*3600/t:0); },0);
+  const pacote=(mod)=>bs.reduce((s,b)=>s+_pgmCalc(mod?Object.assign({},b,mod):b).total,0);
+  // o PADRÃO é o mesmo dia rodando com o ritmo e o peso de referência
+  const padMod={cortes:_pgmCpmPadrao(sel), cru:P.cru};
+  const mPad=horas*3600/(P.massadaSeg||1), pacPad=pacote(padMod);
+  const mAgo=massadas(_pgmMassadaCalc), pacAgo=pacote(null);
+  const fator=_pgmMassadaFator(), simulando=Math.abs(fator-1)>0.001;
+  const mSim=fator>0?mAgo/fator:mAgo, pacSim=fator>0?pacAgo/fator:pacAgo;
+  const sinal=v=>(v>0?'+':'')+_pgmN(v);
+  const delta=(a,b_)=>{ const d=a-b_, c=d>0?'var(--success)':(d<0?'var(--danger)':'var(--text3)');
+    return `<b style="color:${c}">${sinal(d)}</b>`; };
   return `<div class="pgm-out">
-    <div class="pgm-r"><span>Consumo do corte</span><b>${_cpNum(_pgmConsumo(sel),1)} kg/min</b></div>
-    <div class="pgm-r"><span>Tempo da massada <i style="font-style:normal;opacity:.7">calculado</i></span><b>${_pgmMS(calc)}</b></div>
-    <div class="pgm-r"><span>Massadas no dia</span><b>${_pgmN(mCalc)}${mudou?` → ${_pgmN(mSim)}`:''}</b></div>
-    <div class="pgm-r"><span>Cada massada rende</span><b>${_pgmN(porMassada)} pacotes</b></div>
-    <div class="pgm-r"><span>Pacotes no dia</span><b>${_pgmN(pac)}${mudou?` → ${_pgmN(pacSim)}`:''}</b></div>
-    ${mudou?`<div class="pgm-r tot"><span>Com ${_pgmMS(atual)} por massada</span><b style="color:${cor}">${sinal(dM)} massadas · ${sinal(dP)} pacotes</b></div>`:''}
-    <div class="pgm-sku">${_cpNum(_pgmL().massadaKg,0)} kg por massada · ${_pgmHhmm(horas)} de produção no dia</div>
+    <div class="pgm-r"><span>Padrão <i style="font-style:normal;opacity:.7">${_pgmMS(P.massadaSeg||0)} · ${_pgmN(_pgmCpmPadrao(sel),1)} cpm · ${_pgmN(P.cru,2)} g</i></span><b>${_pgmN(mPad)} massadas</b></div>
+    <div class="pgm-r"><span>Agora <i style="font-style:normal;opacity:.7">${_pgmMS(_pgmMassadaCalc(sel))} · ${_pgmN(sel.cortes)} cpm · ${_pgmN(_pgmCru(sel),2)} g</i></span><b>${_pgmN(mAgo)} massadas ${delta(mAgo,mPad)}</b></div>
+    ${simulando?`<div class="pgm-r"><span>Com ${_pgmMS(_pgmMassadaSeg())}</span><b>${_pgmN(mSim)} massadas ${delta(mSim,mPad)}</b></div>`:''}
+    <div class="pgm-r tot"><span>Pacotes no dia</span><b>${_pgmN(simulando?pacSim:pacAgo)} ${delta(simulando?pacSim:pacAgo, pacPad)}</b></div>
+    <div class="pgm-sku">${_cpNum(P.massadaKg,3)} kg por massada · ${_pgmHhmm(horas)} de produção · diferenças em relação ao padrão</div>
   </div>`;
 }
 function _pgmSetSem(off){ _pgmSemOff=off; _pgmDiaIdx=null; _pgmSel=0; renderPCPDia(); }
@@ -12204,30 +12263,38 @@ function _pgmSetLinha(id){ _pgmLinhaId=id; _pgmSel=0; renderPCPDia(); }
 // ⚠️ A escala é `turno + maior atraso`, senão a ponta da trilha das embaladoras (que termina 20min depois
 // do corte) sairia fora do desenho num dia cheio.
 function _pgmTimelineHTML(){
-  const L=_pgmL(), atr=L.estagios.map(e=>(e.atraso||0)/60), maxA=Math.max.apply(null,atr);
-  const TOT=L.horas+maxA, esc=100/TOT, blocos=_pgmBlocos();
+  const L=_pgmL(), cobAtr=(L.estagios[1].atraso||0)/60, embAtr=(L.embAtraso||0)/60;
+  const TOT=L.horas+Math.max(cobAtr,embAtr), esc=100/TOT, blocos=_pgmBlocos();
   const cx=(f,txt,cls,tit)=>`<div class="pgm-b ${cls||''}" style="flex:${f.toFixed(3)}"${tit?` title="${escapeAttr(tit)}"`:''}>${txt||''}</div>`;
-  const mixTxt=b=>{ const m = b.nat>=100?'Natural' : (b.leite>=100?'Ao leite' : (b.leite<=0?'Branco' : 'Ao leite '+b.leite+' · branco '+(100-b.leite)));
-    return (b.nat>0&&b.nat<100) ? m+' + natural '+b.nat+'%' : m; };
   const usado=_pgmHoras();
-  const trilhas=L.estagios.map((E,k)=>{
-    let html = atr[k]>0 ? cx(atr[k]*esc,'','gap','O produto do corte só chega aqui '+Math.round(atr[k]*60)+' min depois') : '';
+  // Uma trilha por CANAL, não por estágio: corte · 3 destinos da cobrideira · 4 embaladoras.
+  const canais=[{tipo:'corte', nome:'Corte', atraso:0}]
+    .concat(_PGM_DEST.map(d=>({tipo:'cob', dest:d, nome:d.nome, atraso:cobAtr})))
+    .concat((L.embaladoras||[]).map((e,i)=>({tipo:'emb', idx:i, nome:e.nome, atraso:embAtr})));
+  const trilhas=canais.map((C,k)=>{
+    let html = C.atraso>0 ? cx(C.atraso*esc,'','gap','O produto do corte só chega aqui '+Math.round(C.atraso*60)+' min depois') : '';
     blocos.forEach((b,i)=>{
       const s=_pgmSetupAntes(i), c=_pgmCalc(b), B=_pgmBase(b.base), on=(i===_pgmSel?' on':'');
-      if(s) html+=cx(s*esc, Math.round(s*60)+'min'+(k===0?`<i class="pgm-rz" onmousedown="_pgmDragStart(event,'setup',${i})" title="Arraste para mudar a limpeza"></i>`:''), 'setup',
-        'Limpeza para trocar a base · '+Math.round(s*60)+' min · começa '+_pgmRelogio(_pgmInicio(i)-s+atr[k]));
-      const f=(+b.horas||0)*esc, ini=_pgmRelogio(_pgmInicio(i)+atr[k]), fim=_pgmRelogio(_pgmInicio(i)+atr[k]+(+b.horas||0));
-      const txt = k===0 ? escapeHTML(B.nome)
-                : k===1 ? mixTxt(b)
-                : (c.falta ? 'faltam raias' : Math.ceil(c.raias)+' de '+E.canais);
-      const cls = k===0 ? 'base' : k===1 ? (b.nat>=100?'nat':'cob') : (c.falta?'alerta':'emb');
-      html+=cx(f, `<b class="h">${ini}</b>${txt}${k===0?`<i class="pgm-rz" onmousedown="_pgmDragStart(event,'bloco',${i})" title="Arraste para mudar a duração"></i>`:''}`,
-        cls+on, E.nome+' · '+ini+' às '+fim+' · '+txt);
+      if(s) html+=cx(s*esc, Math.round(s*60)+'min'+(C.tipo==='corte'?`<i class="pgm-rz" onmousedown="_pgmDragStart(event,'setup',${i})" title="Arraste para mudar a limpeza"></i>`:''), 'setup',
+        'Limpeza para trocar a base · '+Math.round(s*60)+' min · começa '+_pgmRelogio(_pgmInicio(i)-s+C.atraso));
+      const f=(+b.horas||0)*esc, ini=_pgmRelogio(_pgmInicio(i)+C.atraso), fim=_pgmRelogio(_pgmInicio(i)+C.atraso+(+b.horas||0));
+      let txt='', cls='', tit='';
+      if(C.tipo==='corte'){ txt=escapeHTML(B.nome); cls='base'; tit=B.nome; }
+      else if(C.tipo==='cob'){ const sh=c.mix[C.dest.id]||0;
+        if(sh<=0){ html+=cx(f,'','vazio','Nada vai para '+C.dest.nome+' neste bloco'); return; }
+        txt=Math.round(sh*100)+'% · '+_pgmN(c.porDest[C.dest.id])+' pac';
+        cls=C.dest.cob?'cob':'nat'; tit=C.dest.nome+' · '+Math.round(sh*100)+'% do que sai do corte'; }
+      else { const e=_pgmEmb(b)[C.idx];
+        if(!e.on){ html+=cx(f,'','vazio','Embaladora parada neste bloco'); return; }
+        txt=escapeHTML(e.cli||'—')+' · '+_pgmDest(e.sku).nome;
+        cls=c.falta?'alerta':'emb'; tit=e.nome+' · '+e.cli+' · '+_pgmDest(e.sku).nome+' · '+_pgmN(c.porMaq[C.idx])+' pacotes a '+e.real+'/min'; }
+      html+=cx(f, `<b class="h">${ini}</b>${txt}${C.tipo==='corte'?`<i class="pgm-rz" onmousedown="_pgmDragStart(event,'bloco',${i})" title="Arraste para mudar a duração"></i>`:''}`,
+        cls+on, C.nome+' · '+ini+' às '+fim+' · '+tit);
     });
-    const livre=TOT-atr[k]-usado;
-    if(livre>0.01) html+=cx(livre*esc, k===2?'livre':'', 'livre');
-    const lab=E.atraso?`${escapeHTML(E.nome)}<i>+${E.atraso}min</i>`:escapeHTML(E.nome);
-    return `<div class="pgm-tr"><span class="pgm-lab">${lab}</span><div class="pgm-t">${html}</div></div>`;
+    const livre=TOT-C.atraso-usado;
+    if(livre>0.01) html+=cx(livre*esc,'','livre');
+    const lab=C.atraso?`${escapeHTML(C.nome)}<i>+${Math.round(C.atraso*60)}min</i>`:escapeHTML(C.nome);
+    return `<div class="pgm-tr${C.tipo==='cob'&&C.dest.id==='leite'?' sep':(C.tipo==='emb'&&C.idx===0?' sep':'')}"><span class="pgm-lab">${lab}</span><div class="pgm-t">${html}</div></div>`;
   }).join('');
   // Régua de horas — o horário tem que se ler batendo o olho, não só passando o mouse (pedido do Diego).
   let reg='';
@@ -12248,68 +12315,89 @@ function _pgmTotalHTML(){
 // ── EDITOR do bloco selecionado
 function _pgmEditorHTML(){
   const b=_pgmBlocos()[_pgmSel]; if(!b) return `<div class="pgm-vazio">${_cpVazio('Nenhum bloco no dia. Use "Novo bloco" para começar.')}</div>`;
-  const L=_pgmL(), B=_pgmBase(b.base);
+  const L=_pgmL(), B=_pgmBase(b.base), P=L.padrao||{};
   const campo=(lab,dica,campo_,val,extra)=>`<label class="pgm-f"><span>${lab}${dica?`<i>${dica}</i>`:''}</span>
     <input type="number" class="pgm-inp" value="${val}" ${extra||''} oninput="_pgmSetLive('${campo_}',this)" onchange="renderPCPDia()"></label>`;
   const bases=L.bases.map(x=>`<option value="${x.id}"${x.id===b.base?' selected':''}>${escapeHTML(x.nome)}</option>`).join('');
-  // O setup é da TRANSIÇÃO, então só aparece quando a base muda em relação ao bloco anterior.
-  const ant=_pgmBlocos()[_pgmSel-1], mudou=!!(ant && ant.base!==b.base);
+  // A limpeza é da TRANSIÇÃO. A regra propõe (base mudou → tem limpeza), mas o PCP põe e tira na mão.
+  const ant=_pgmBlocos()[_pgmSel-1], ligado=_pgmSetupLigado(_pgmSel), auto=_pgmSetupAuto(_pgmSel);
   const setupHTML = _pgmSel===0
     ? `<div class="pgm-nota">Primeiro bloco do dia — a linha já entra montada.</div>`
-    : mudou
-      ? campo('Limpeza antes (min)', escapeHTML(_pgmBase(ant.base).nome)+' → '+escapeHTML(B.nome),
+    : ligado
+      ? campo('Limpeza antes (min)',
+              (ant?escapeHTML(_pgmBase(ant.base).nome)+' → '+escapeHTML(B.nome):'')+
+              ` <b class="lnk" onclick="_pgmSetupToggle(${_pgmSel})">tirar</b>`,
               'setup', (b.setup==null||b.setup==='')?L.setup.base:b.setup, 'min="0" max="480" step="1"')
-      : `<div class="pgm-nota">Mesma base do bloco anterior — só troca a cobertura, a linha não para.</div>`;
+      : `<div class="pgm-nota">${auto?'Troca de base sem limpeza.':'Mesma base — a linha não precisa parar.'}
+         <b class="lnk" onclick="_pgmSetupToggle(${_pgmSel})">pôr limpeza</b></div>`;
   // 3 colunas: campos (em grade de 2) · resultado do bloco · massada. Tudo num cartão só, para caber na
   // tela sem rolar — era o pedido do Diego, que tinha os campos ocupando meia tela cada.
   return `<div class="pgm-ed">
     <div class="pgm-campos">
       <label class="pgm-f"><span>Base da massa<i>manda no setup</i></span>
         <select class="pgm-inp" oninput="_pgmSetLive('base',this)" onchange="renderPCPDia()">${bases}</select></label>
-      ${campo('Cortes por minuto','padrão 85','cortes',b.cortes,'min="1" max="200" step="1"')}
-      ${campo('Biscoito cru (g)','muda a massada','cru',_pgmCru(b),'min="1" max="200" step="0.5"')}
-      ${campo('Ritmo da embaladora','nominal 48','ritmo',b.ritmo,'min="1" max="60" step="1"')}
+      ${campo('Cortes por minuto','padrão '+_pgmN(_pgmCpmPadrao(b),1),'cortes',b.cortes,'min="1" max="200" step="1"')}
+      ${campo('Biscoito cru (g)','padrão '+_pgmN(P.cru,2),'cru',_pgmCru(b),'min="1" max="200" step="0.01"')}
       ${campo('Duração (horas)','','horas',b.horas,'min="0.5" max="10" step="0.5"')}
       ${setupHTML}
     </div>
-    <div><div id="pgm-out">${_pgmResultadoHTML()}</div></div>
     <div class="pgm-col">
+      <div id="pgm-out">${_pgmResultadoHTML()}</div>
       <div class="pgm-f"><span>Tempo da massada<i>calculado</i>${_pgmMassada!=null?` <b class="lnk" onclick="_pgmMassadaReset()">voltar ao padrão</b>`:''}</span>
         <div id="pgm-mass-v" class="pgm-massv">${_pgmMS(_pgmMassadaSeg())}</div>
         <input type="range" class="pgm-rg" min="180" max="900" step="5" value="${Math.round(_pgmMassadaSeg())}" oninput="_pgmSetMassada(this)"></div>
       <div id="pgm-mass-out">${_pgmMassadaResumoHTML()}</div>
     </div>
+    <div><div id="pgm-emb">${_pgmEmbHTML()}</div></div>
   </div>`;
+}
+// ── AS 4 EMBALADORAS: cliente, sabor e velocidades por máquina. É aqui que se decide o mix — a
+// cobrideira só obedece à soma das máquinas apontadas para cada destino.
+function _pgmEmbHTML(){
+  const b=_pgmBlocos()[_pgmSel]; if(!b) return '';
+  const c=_pgmCalc(b), es=_pgmEmb(b);
+  const linhas=es.map(e=>{
+    const dest=_PGM_DEST.map(d=>`<option value="${d.id}"${d.id===e.sku?' selected':''}>${escapeHTML(d.nome)}</option>`).join('');
+    return `<tr class="${e.on?'':'off'}">
+      <td><input type="checkbox" class="pgm-ck"${e.on?' checked':''} onchange="_pgmSetEmb(${e.i},'on',this)" title="${e.on?'Parar esta embaladora':'Ligar esta embaladora'}"></td>
+      <td class="nm">${escapeHTML(e.nome)}</td>
+      <td><input class="pgm-inp mini" value="${escapeAttr(e.cli)}" oninput="_pgmSetEmb(${e.i},'cli',this)" onchange="renderPCPDia()" placeholder="cliente"></td>
+      <td><select class="pgm-inp mini" oninput="_pgmSetEmb(${e.i},'sku',this)" onchange="renderPCPDia()">${dest}</select></td>
+      <td><input type="number" class="pgm-inp num" value="${e.nom}" min="1" max="200" oninput="_pgmSetEmb(${e.i},'nom',this)" onchange="renderPCPDia()"></td>
+      <td><input type="number" class="pgm-inp num" value="${e.real}" min="1" max="200" oninput="_pgmSetEmb(${e.i},'real',this)" onchange="renderPCPDia()"></td>
+      <td class="qt">${e.on?_pgmN(c.porMaq[e.i]):'—'}</td></tr>`;
+  }).join('');
+  return `<table class="pgm-emb"><thead><tr><th></th><th></th><th>Cliente</th><th>Cobertura</th><th title="velocidade nominal">Nom.</th><th title="velocidade real">Real</th><th>Pacotes</th></tr></thead><tbody>${linhas}</tbody></table>
+    <div class="pgm-sku">Capacidade ligada ${_pgmN(c.cap)} pac/min · o corte entrega ${_pgmN(c.pacMin)}${c.falta?` — <b style="color:var(--danger)">falta embaladora</b>`:''}</div>`;
 }
 function _pgmResultadoHTML(){
   const b=_pgmBlocos()[_pgmSel]; if(!b) return '';
   const L=_pgmL(), c=_pgmCalc(b), B=_pgmBase(b.base);
   const ln=(a,v,cor)=>`<div class="pgm-r"><span>${a}</span><b${cor?` style="color:${cor}"`:''}>${v}</b></div>`;
-  const skus=[c.leite>0?'Ao leite '+_pgmN(c.leite):'', c.branco>0?'Branco '+_pgmN(c.branco):'', c.natural>0?'Natural '+_pgmN(c.natural):'']
-    .filter(Boolean).join(' · ');
+  const skus=_PGM_DEST.filter(d=>c.porDest[d.id]>0).map(d=>d.nome+' '+_pgmN(c.porDest[d.id])).join(' · ');
   return `<div class="pgm-out">
     ${ln('Saída do corte', _pgmN(c.bisc)+' bisc/min')}
     ${ln('Pacotes de '+B.gPac+'g', _pgmN(c.pacMin)+'/min · '+_pgmN(c.pacMin*60)+'/h')}
-    ${ln('Raias necessárias', c.raias.toFixed(1).replace('.',',')+' de '+L.estagios[2].canais, c.falta?'var(--danger)':'')}
+    ${ln('Embaladoras ligadas', c.ativas+' de '+(L.embaladoras||[]).length, c.falta?'var(--danger)':'')}
     <div class="pgm-r tot"><span>Total do bloco</span><b>${_pgmN(c.total)} pacotes</b></div>
-    <div class="pgm-sku">${skus}<br>Massa crua ${_pgmN(c.massa)} kg${B.pacCx?'':' · pacotes por caixa a cadastrar'}</div>
+    <div class="pgm-sku">${skus||'nenhuma embaladora ligada'}<br>Massa crua ${_pgmN(c.massa)} kg${B.pacCx?'':' · pacotes por caixa a cadastrar'}</div>
   </div>`;
 }
 function _pgmCSS(){ return `<style>
-  .pgm-card{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden}
-  .pgm-head{display:flex;align-items:center;gap:9px;padding:9px 14px;font-size:12px;color:var(--text2);background:var(--bg2);border-bottom:1px solid var(--border)}
+  .pgm-card{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:9px;overflow:hidden}
+  .pgm-head{display:flex;align-items:center;gap:9px;padding:7px 14px;font-size:12px;color:var(--text2);background:var(--bg2);border-bottom:1px solid var(--border)}
   .pgm-head b{font-size:12.5px;color:var(--text)}
-  .pgm-tlbox{padding:11px 14px 12px}
-  .pgm-tr{display:flex;align-items:center;gap:9px;margin-bottom:3px}
+  .pgm-tlbox{padding:8px 14px 9px}
+  .pgm-tr{display:flex;align-items:center;gap:9px;margin-bottom:2px}
   .pgm-lab{width:112px;flex:none;text-align:right;font-size:10.5px;color:var(--text3)}
   .pgm-lab i{font-style:normal;opacity:.6;margin-left:4px;font-size:9.5px}
-  .pgm-t{flex:1;display:flex;gap:2px;height:22px}
+  .pgm-t{flex:1;display:flex;gap:2px;height:19px}
   .pgm-b{position:relative;border-radius:4px;font-size:10.5px;display:flex;align-items:center;justify-content:center;gap:6px;overflow:hidden;white-space:nowrap;padding:0 5px;min-width:0}
   /* o horário de entrada do estágio, dentro da barrinha */
   .pgm-b .h{font-size:10px;font-weight:700;opacity:.8;flex:none}
   .pgm-b.gap{background:repeating-linear-gradient(135deg,transparent,transparent 3px,color-mix(in srgb,var(--text) 7%,transparent) 3px,color-mix(in srgb,var(--text) 7%,transparent) 6px)}
   /* régua de horas acima das trilhas */
-  .pgm-regua{position:relative;flex:1;height:17px;margin-bottom:2px}
+  .pgm-regua{position:relative;flex:1;height:15px;margin-bottom:1px}
   .pgm-regua span{position:absolute;top:0;transform:translateX(-50%);font-size:9.5px;color:var(--text3);white-space:nowrap;padding-top:6px}
   .pgm-regua span::before{content:'';position:absolute;top:0;left:50%;width:1px;height:4px;background:var(--border)}
   .pgm-regua span:first-child::before{left:0}
@@ -12322,12 +12410,24 @@ function _pgmCSS(){ return `<style>
   .pgm-b.livre{border:1px dashed var(--border);color:var(--text3)}
   .pgm-b.on{box-shadow:0 0 0 1.5px var(--blue-mid) inset}
   .pgm-alerta{font-size:11px;color:var(--danger);margin-top:7px}
-  .pgm-blocos{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 12px}
-  .pgm-chip{font-size:11.5px;border:1px solid var(--border);background:var(--card);color:var(--text2);border-radius:8px;padding:5px 10px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px}
+  .pgm-blocos{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 9px}
+  .pgm-chip{font-size:11.5px;border:1px solid var(--border);background:var(--card);color:var(--text2);border-radius:8px;padding:4px 9px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px}
   .pgm-chip.on{border-color:var(--blue-mid);color:var(--blue-mid);font-weight:700}
   .pgm-chip i.x{font-size:13px;color:var(--text3)}
   /* 3 colunas: campos · resultado · massada — tudo num cartão só, para caber sem rolar */
-  .pgm-ed{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr);gap:16px;padding:11px 14px 13px;align-items:start}
+  .pgm-ed{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1fr) minmax(0,1.35fr);gap:16px;padding:9px 14px 11px;align-items:start}
+  /* tabela das 4 embaladoras */
+  .pgm-emb{width:100%;border-collapse:collapse;font-size:10.5px}
+  .pgm-emb th{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);text-align:left;padding:0 4px 4px}
+  .pgm-emb td{padding:1px 4px;vertical-align:middle}
+  .pgm-emb tr.off td{opacity:.45}
+  .pgm-emb td.nm{font-weight:700;color:var(--text2);white-space:nowrap}
+  .pgm-emb td.qt{text-align:right;font-weight:700;color:var(--text);white-space:nowrap}
+  .pgm-emb .mini{height:22px;font-size:11px;padding:0 6px}
+  .pgm-emb .num{height:22px;font-size:11px;padding:0 4px;width:44px;text-align:center}
+  .pgm-ck{width:14px;height:14px;accent-color:var(--blue-mid);cursor:pointer;margin:0}
+  .pgm-tr.sep{margin-top:7px}
+  .pgm-b.vazio{border:1px dashed var(--border)}
   .pgm-campos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;align-content:start}
   .pgm-col{display:flex;flex-direction:column;gap:8px}
   .pgm-f{display:flex;flex-direction:column;gap:3px;min-width:0}
@@ -12339,26 +12439,27 @@ function _pgmCSS(){ return `<style>
   .pgm-inp:focus{border-color:var(--blue-mid)}
   .pgm-rg{width:100%;accent-color:var(--blue-mid)}
   .pgm-out{background:var(--bg2);border-radius:9px;padding:9px 11px}
-  .pgm-r{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:10.5px;color:var(--text3);margin-bottom:3px}
+  .pgm-r{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:10.5px;color:var(--text3);margin-bottom:2px}
   .pgm-r b{font-size:12px;color:var(--text);font-weight:700;white-space:nowrap}
   .pgm-r.tot{border-top:1px solid var(--border);margin-top:6px;padding-top:6px}
   .pgm-r.tot b{font-size:13px}
   .pgm-sku{font-size:10px;color:var(--text3);margin-top:7px;line-height:1.55}
   .pgm-vazio{padding:18px 14px}
   .pgm-nota{font-size:10px;color:var(--text3);line-height:1.45;border-left:2px solid var(--border);padding-left:8px;align-self:center}
+  .pgm-nota .lnk{color:var(--blue-mid);font-weight:700;cursor:pointer;white-space:nowrap}
   /* alça de arraste na borda direita da barra (só na trilha do Corte) */
   .pgm-rz{position:absolute;right:0;top:0;bottom:0;width:8px;cursor:col-resize;border-right:2px solid transparent}
   .pgm-b:hover .pgm-rz{border-right-color:color-mix(in srgb,var(--text) 35%,transparent)}
-  .pgm-massv{font-size:17px;font-weight:800;letter-spacing:-.015em;color:var(--text);line-height:1.2}
+  .pgm-massv{font-size:15px;font-weight:800;letter-spacing:-.015em;color:var(--text);line-height:1.2}
   /* navegação semana › dia › linha */
-  .pgm-nav{margin-bottom:13px}
-  .pgm-sem{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px}
+  .pgm-nav{margin-bottom:10px}
+  .pgm-sem{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px}
   .pgm-sem>button{width:26px;height:26px;border:1px solid var(--border);background:var(--card);border-radius:7px;cursor:pointer;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;font-family:inherit}
   .pgm-sem>button:hover{border-color:var(--blue-mid);color:var(--blue-mid)}
   .pgm-sem .lbl{font-size:13px;font-weight:700;color:var(--text);min-width:150px;text-align:center}
   .pgm-sem button.hoje{width:auto;padding:0 10px;font-size:11px;color:var(--blue-mid);border-color:var(--blue-mid)}
   .pgm-dias{display:flex;gap:5px;margin-left:10px}
-  .pgm-dia{position:relative;width:46px;height:44px;border:1px solid var(--border);background:var(--card);border-radius:9px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:var(--text2)}
+  .pgm-dia{position:relative;width:44px;height:38px;border:1px solid var(--border);background:var(--card);border-radius:9px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:var(--text2)}
   .pgm-dia:hover{border-color:var(--blue-mid)}
   .pgm-dia .dw{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)}
   .pgm-dia .dd{font-size:15px;font-weight:700;color:var(--text)}
@@ -12368,7 +12469,7 @@ function _pgmCSS(){ return `<style>
   .pgm-dia .pt{position:absolute;bottom:5px;width:4px;height:4px;border-radius:2px;background:var(--blue-mid)}
   .pgm-dia.on .pt{background:#fff}
   .pgm-linhas{display:flex;gap:6px;flex-wrap:wrap}
-  .pgm-ln{font-size:12px;border:1px solid var(--border);background:var(--card);color:var(--text2);border-radius:8px;padding:6px 11px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+  .pgm-ln{font-size:12px;border:1px solid var(--border);background:var(--card);color:var(--text2);border-radius:8px;padding:5px 10px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
   .pgm-ln:hover{border-color:var(--blue-mid)}
   .pgm-ln.on{background:var(--blue-mid);border-color:var(--blue-mid);color:#fff;font-weight:700}
   .pgm-ln .n{font-size:10px;font-weight:700;background:color-mix(in srgb,var(--blue-mid) 16%,transparent);color:var(--blue-mid);border-radius:999px;padding:1px 6px}
@@ -12434,11 +12535,15 @@ function renderPCPDia(){
   main.innerHTML=_cpTela('PCP','Escolha a semana, o dia e a linha — e monte o que ela roda.',corpo);
 }
 // Dia de exemplo (só p/ a tela não abrir vazia): o Forno contínuo na quinta desta semana.
-(function(){ const q=_pgmDias()[3];
+// Os valores do bloco saem do PADRÃO da linha (o trio da Valesca): 76 cortes/min e 10,43 g.
+(function(){ const q=_pgmDias()[3], L=_PGM_LINHAS[0], P=L.padrao, B=L.bases[0];
+  const cpm=Math.round((P.massadaKg*1000)/((P.massadaSeg/60)*B.bpc*P.cru));
   _PGM_PLANO['forno|'+_pgmIso(q)]=[
-    {base:'paodemel', horas:5.5, cortes:85, ritmo:37, nat:0,   leite:60},
-    {base:'paodemel', horas:1.5, cortes:85, ritmo:37, nat:100, leite:0},
-    {base:'menta',    horas:2.3, cortes:85, ritmo:37, nat:0,   leite:100}
+    {base:'paodemel', horas:5.5, cortes:cpm, cru:P.cru},
+    {base:'paodemel', horas:1.5, cortes:cpm, cru:P.cru,
+     emb:[{on:true,cli:'Klain',sku:'natural',nom:48,real:37},{on:true,cli:'Klain',sku:'natural',nom:48,real:37},
+          {on:false,cli:'',sku:'leite',nom:48,real:37},{on:false,cli:'',sku:'leite',nom:48,real:37}]},
+    {base:'menta',    horas:2.3, cortes:cpm, cru:P.cru}
   ];
 })();
 // ════ FIM DO BLOCO PCP · PROGRAMAÇÃO DO DIA ════
