@@ -12285,9 +12285,9 @@ function _pgmTimelineHTML(){
   const cx=(f,txt,cls,tit)=>`<div class="pgm-b ${cls||''}" style="flex:${f.toFixed(3)}"${tit?` title="${escapeAttr(tit)}"`:''}>${txt||''}</div>`;
   const usado=_pgmHoras();
   // Uma trilha por CANAL, não por estágio: corte · 3 destinos da cobrideira · 4 embaladoras.
-  const canais=[{tipo:'corte', nome:'Corte', atraso:0}]
-    .concat(_PGM_DEST.map(d=>({tipo:'cob', dest:d, nome:d.nome, atraso:cobAtr})))
-    .concat((L.embaladoras||[]).map((e,i)=>({tipo:'emb', idx:i, nome:e.nome, atraso:embAtr})));
+  const canais=[{tipo:'corte', nome:'Corte', atraso:0, grupo:'Corte'}]
+    .concat(_PGM_DEST.map((d,j)=>({tipo:'cob', dest:d, nome:d.nome, atraso:cobAtr, grupo:j===0?'Cobertura':''})))
+    .concat((L.embaladoras||[]).map((e,i)=>({tipo:'emb', idx:i, nome:e.nome, atraso:embAtr, grupo:i===0?'Embalagem':''})));
   const trilhas=canais.map((C,k)=>{
     let html = C.atraso>0 ? cx(C.atraso*esc,'','gap','O produto do corte só chega aqui '+Math.round(C.atraso*60)+' min depois') : '';
     blocos.forEach((b,i)=>{
@@ -12310,8 +12310,10 @@ function _pgmTimelineHTML(){
     });
     const livre=TOT-C.atraso-usado;
     if(livre>0.01) html+=cx(livre*esc,'','livre');
-    const lab=C.atraso?`${escapeHTML(C.nome)}<i>+${Math.round(C.atraso*60)}min</i>`:escapeHTML(C.nome);
-    return `<div class="pgm-tr${C.tipo==='cob'&&C.dest.id==='leite'?' sep':(C.tipo==='emb'&&C.idx===0?' sep':'')}"><span class="pgm-lab">${lab}</span><div class="pgm-t">${html}</div></div>`;
+    // o nome do GRUPO aparece uma vez só, na 1ª trilha dele, e leva junto o atraso do estágio —
+    // assim dá para bater o olho e saber onde termina o corte e começa a cobertura, sem linha extra.
+    const grp=C.grupo?`${escapeHTML(C.grupo)}${C.atraso?`<i>+${Math.round(C.atraso*60)}min</i>`:''}`:'';
+    return `<div class="pgm-tr${C.grupo&&C.tipo!=='corte'?' sep':''}"><span class="pgm-grp">${grp}</span><span class="pgm-lab">${escapeHTML(C.nome)}</span><div class="pgm-t">${html}</div></div>`;
   }).join('');
   // Régua de horas — o horário tem que se ler batendo o olho, não só passando o mouse (pedido do Diego).
   let reg='';
@@ -12319,7 +12321,7 @@ function _pgmTimelineHTML(){
     const p=(h/TOT*100).toFixed(3);
     reg+=`<span style="left:${p}%${h===0?';transform:none':''}">${_pgmRelogio(h)}</span>`;
   }
-  const regua=`<div class="pgm-tr"><span class="pgm-lab"></span><div class="pgm-regua">${reg}</div></div>`;
+  const regua=`<div class="pgm-tr"><span class="pgm-grp"></span><span class="pgm-lab"></span><div class="pgm-regua">${reg}</div></div>`;
   const excesso=usado-L.horas;
   return regua+trilhas
     + (excesso>0.01?`<div class="pgm-alerta"><i class="ti ti-alert-triangle"></i> Passa do turno em ${Math.round(excesso*60)} min</div>`:'');
@@ -12349,23 +12351,32 @@ function _pgmEditorHTML(){
          <b class="lnk" onclick="_pgmSetupToggle(${_pgmSel})">pôr limpeza</b></div>`;
   // 3 colunas: campos (em grade de 2) · resultado do bloco · massada. Tudo num cartão só, para caber na
   // tela sem rolar — era o pedido do Diego, que tinha os campos ocupando meia tela cada.
+  // 3 seções com o nome do ESTÁGIO, na mesma ordem da linha do tempo: corte · massada (que alimenta o
+  // corte) · embalagem. A cobertura não tem seção própria porque ela é DERIVADA das embaladoras e já
+  // aparece inteira na linha do tempo — repetir aqui só somaria ruído.
   return `<div class="pgm-ed">
-    <div class="pgm-campos">
-      <label class="pgm-f"><span>Base da massa<i>manda no setup</i></span>
-        <select class="pgm-inp" oninput="_pgmSetLive('base',this)" onchange="renderPCPDia()">${bases}</select></label>
-      ${campo('Cortes por minuto','já rodados: '+_pgmCpmsMedidos().join(' · '),'cortes',b.cortes,'min="1" max="200" step="1"')}
-      ${campo('Biscoito cru (g)','padrão '+_pgmN(P.cru,2),'cru',_pgmCru(b),'min="1" max="200" step="0.01"')}
-      ${campo('Duração (horas)','','horas',b.horas,'min="0.5" max="10" step="0.5"')}
+    <div class="pgm-col">
+      <div class="pgm-sec">Corte</div>
+      <div class="pgm-campos">
+        <label class="pgm-f"><span>Base da massa<i>manda no setup</i></span>
+          <select class="pgm-inp" oninput="_pgmSetLive('base',this)" onchange="renderPCPDia()">${bases}</select></label>
+        ${campo('Cortes por minuto',_pgmCpmsMedidos().join('·')+' já rodados','cortes',b.cortes,'min="1" max="200" step="1"')}
+        ${campo('Biscoito cru (g)','padrão '+_pgmN(P.cru,2),'cru',_pgmCru(b),'min="1" max="200" step="0.01"')}
+        ${campo('Duração (horas)','','horas',b.horas,'min="0.5" max="10" step="0.5"')}
+      </div>
       ${setupHTML}
+      <div id="pgm-out">${_pgmResultadoHTML()}</div>
     </div>
     <div class="pgm-col">
-      <div id="pgm-out">${_pgmResultadoHTML()}</div>
-      <div class="pgm-f"><span>Tempo da massada<i>calculado</i>${_pgmMassada!=null?` <b class="lnk" onclick="_pgmMassadaReset()">voltar ao padrão</b>`:''}</span>
-        <div id="pgm-mass-v" class="pgm-massv">${_pgmMS(_pgmMassadaSeg())}</div>
-        <input type="range" class="pgm-rg" min="180" max="900" step="5" value="${Math.round(_pgmMassadaSeg())}" oninput="_pgmSetMassada(this)"></div>
+      <div class="pgm-sec">Massada<span>${_pgmMassada!=null?`<b class="lnk" onclick="_pgmMassadaReset()">voltar ao padrão</b>`:'o ciclo que alimenta o corte'}</span></div>
+      <div id="pgm-mass-v" class="pgm-massv">${_pgmMS(_pgmMassadaSeg())}</div>
+      <input type="range" class="pgm-rg" min="180" max="900" step="5" value="${Math.round(_pgmMassadaSeg())}" oninput="_pgmSetMassada(this)">
       <div id="pgm-mass-out">${_pgmMassadaResumoHTML()}</div>
     </div>
-    <div><div id="pgm-emb">${_pgmEmbHTML()}</div></div>
+    <div class="pgm-col">
+      <div class="pgm-sec">Embalagem<span>quem embala o quê, e para quem</span></div>
+      <div id="pgm-emb">${_pgmEmbHTML()}</div>
+    </div>
   </div>`;
 }
 // ── AS 4 EMBALADORAS: cliente, sabor e velocidades por máquina. É aqui que se decide o mix — a
@@ -12385,19 +12396,18 @@ function _pgmEmbHTML(){
       <td class="qt">${e.on?_pgmN(c.porMaq[e.i]):'—'}</td></tr>`;
   }).join('');
   return `<table class="pgm-emb"><thead><tr><th></th><th></th><th>Cliente</th><th>Cobertura</th><th title="velocidade nominal">Nom.</th><th title="velocidade real">Real</th><th>Pacotes</th></tr></thead><tbody>${linhas}</tbody></table>
-    <div class="pgm-sku">Capacidade ligada ${_pgmN(c.cap)} pac/min · o corte entrega ${_pgmN(c.pacMin)}${c.falta?` — <b style="color:var(--danger)">falta embaladora</b>`:''}</div>`;
+    <div class="pgm-sku">Capacidade ligada ${_pgmN(c.cap)} pac/min · o corte entrega ${_pgmN(c.pacMin)}${c.falta?` — <b style="color:var(--danger)">falta embaladora</b>`:''}<br>
+      ${_PGM_DEST.filter(d=>c.porDest[d.id]>0).map(d=>d.nome+' '+_pgmN(c.porDest[d.id])).join(' · ')||'nenhuma embaladora ligada'}</div>`;
 }
 function _pgmResultadoHTML(){
   const b=_pgmBlocos()[_pgmSel]; if(!b) return '';
   const L=_pgmL(), c=_pgmCalc(b), B=_pgmBase(b.base);
   const ln=(a,v,cor)=>`<div class="pgm-r"><span>${a}</span><b${cor?` style="color:${cor}"`:''}>${v}</b></div>`;
-  const skus=_PGM_DEST.filter(d=>c.porDest[d.id]>0).map(d=>d.nome+' '+_pgmN(c.porDest[d.id])).join(' · ');
+  // só o que é do CORTE — o resto do dado migrou para a seção do estágio a que pertence
   return `<div class="pgm-out">
     ${ln('Saída do corte', _pgmN(c.bisc)+' bisc/min')}
-    ${ln('Pacotes de '+B.gPac+'g', _pgmN(c.pacMin)+'/min · '+_pgmN(c.pacMin*60)+'/h')}
-    ${ln('Embaladoras ligadas', c.ativas+' de '+(L.embaladoras||[]).length, c.falta?'var(--danger)':'')}
-    <div class="pgm-r tot"><span>Total do bloco</span><b>${_pgmN(c.total)} pacotes</b></div>
-    <div class="pgm-sku">${skus||'nenhuma embaladora ligada'}<br>Massa crua ${_pgmN(c.massa)} kg${B.pacCx?'':' · pacotes por caixa a cadastrar'}</div>
+    ${ln('Dá para', _pgmN(c.pacMin)+' pacotes/min')}
+    ${ln('Massa crua', _pgmN(c.massa)+' kg no bloco')}
   </div>`;
 }
 function _pgmCSS(){ return `<style>
@@ -12406,7 +12416,10 @@ function _pgmCSS(){ return `<style>
   .pgm-head b{font-size:12.5px;color:var(--text)}
   .pgm-tlbox{padding:8px 14px 9px}
   .pgm-tr{display:flex;align-items:center;gap:9px;margin-bottom:2px}
-  .pgm-lab{width:112px;flex:none;text-align:right;font-size:10.5px;color:var(--text3)}
+  /* rótulo em 2 partes: o GRUPO (uma vez por estágio) e o canal */
+  .pgm-grp{width:86px;flex:none;text-align:right;font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)}
+  .pgm-grp i{font-style:normal;font-weight:400;letter-spacing:0;text-transform:none;color:var(--text3);margin-left:4px}
+  .pgm-lab{width:84px;flex:none;text-align:right;font-size:10.5px;color:var(--text3)}
   .pgm-lab i{font-style:normal;opacity:.6;margin-left:4px;font-size:9.5px}
   .pgm-t{flex:1;display:flex;gap:2px;height:19px}
   .pgm-b{position:relative;border-radius:4px;font-size:10.5px;display:flex;align-items:center;justify-content:center;gap:6px;overflow:hidden;white-space:nowrap;padding:0 5px;min-width:0}
@@ -12446,6 +12459,9 @@ function _pgmCSS(){ return `<style>
   .pgm-tr.sep{margin-top:7px}
   .pgm-b.vazio{border:1px dashed var(--border)}
   .pgm-campos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;align-content:start}
+  /* título de cada seção do editor — diz de que estágio é o bloco de controles */
+  .pgm-sec{display:flex;align-items:baseline;gap:8px;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:2px}
+  .pgm-sec span{font-size:9.5px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--text3);margin-left:auto}
   .pgm-col{display:flex;flex-direction:column;gap:8px}
   .pgm-f{display:flex;flex-direction:column;gap:3px;min-width:0}
   .pgm-f>span{font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -12545,7 +12561,10 @@ function renderPCPDia(){
       </div>
       <div class="pgm-card">
         <div class="pgm-head"><i class="ti ti-adjustments" style="font-size:15px"></i>
-          <b>Bloco ${_pgmSel+1}</b><span>· ${_pgmBlocos()[_pgmSel]?_pgmRelogio(_pgmInicio(_pgmSel)):''}</span></div>
+          <b>Bloco ${_pgmSel+1}</b>${(function(){ const bl=_pgmBlocos()[_pgmSel]; if(!bl) return '';
+            const cc=_pgmCalc(bl);
+            return `<span>· ${escapeHTML(_pgmBase(bl.base).nome)} · ${_pgmRelogio(_pgmInicio(_pgmSel))} às ${_pgmRelogio(_pgmInicio(_pgmSel)+(+bl.horas||0))} · ${_pgmHhmm(+bl.horas||0)}</span>
+              <span style="margin-left:auto;color:var(--text3)">${_pgmN(cc.total)} pacotes no bloco</span>`; })()}</div>
         ${_pgmEditorHTML()}
       </div>`;
   }
