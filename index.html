@@ -12034,6 +12034,13 @@ const _PGM_LINHAS=[{
   //    Quando vier o CPM real medido, é conferir qual dos três números se ajusta.
   padrao:{ massadaKg:142.106, massadaSeg:510, cru:10.43 },
   massadaKg:142.106,
+  // ⭐ MEDIÇÕES REAIS das últimas produções (o Diego mandou em 24/09): CPM × tempo de massada observado.
+  // Servem de REFERÊNCIA ao lado do calculado — é o teste do modelo contra o chão de fábrica.
+  // ⚠️ O que elas revelam: o rendimento IMPLÍCITO (cpm × 21 × 10,43g × tempo) varia de 131 a 146 kg e dá
+  //    média ~139,9 kg — abaixo dos 142,106 nominais. Massada é batelada, varia mesmo; o nominal é receita.
+  hist:[ {d:'23/set',cpm:85,seg:465}, {d:'16/set',cpm:80,seg:495}, {d:'10/set',cpm:80,seg:499},
+         {d:'02/set',cpm:75,seg:515}, {d:'26/ago',cpm:75,seg:485}, {d:'20/ago',cpm:75,seg:508},
+         {d:'14/ago',cpm:75,seg:480}, {d:'07/ago',cpm:75,seg:512} ],
   bases:[
     {id:'paodemel', nome:'Pão de mel', bpc:21, cru:11, evap:17, cob:34, gPac:250, pacCx:null},
     {id:'menta',    nome:'Pão de mel menta', bpc:21, cru:11, evap:17, cob:34, gPac:250, pacCx:null},
@@ -12220,6 +12227,13 @@ function _pgmConsumo(b){ const B=_pgmBase(b.base); return (+b.cortes||0)*(B.bpc|
 // é o único ritmo de corte que faz os três números fecharem. Dá ~76,3 cortes/min.
 function _pgmCpmPadrao(b){ const L=_pgmL(), P=L.padrao||{}, B=_pgmBase(b.base);
   const m=(P.massadaSeg||0)/60; return (m&&B.bpc&&P.cru) ? (P.massadaKg*1000)/(m*B.bpc*P.cru) : 0; }
+// Média das produções REAIS naquele CPM. Devolve null quando nunca se rodou nesse ritmo — nesse caso a
+// tela mostra só o calculado, em vez de inventar uma medição.
+function _pgmHistMed(cpm){ const h=(_pgmL().hist||[]).filter(x=>x.cpm===Math.round(cpm));
+  if(!h.length) return null;
+  return { seg:h.reduce((s,x)=>s+x.seg,0)/h.length, n:h.length }; }
+function _pgmCpmsMedidos(){ const s=[]; (_pgmL().hist||[]).forEach(x=>{ if(s.indexOf(x.cpm)<0) s.push(x.cpm); });
+  return s.sort((a,b)=>a-b); }
 function _pgmMassadaCalc(b){ const kg=_pgmL().massadaKg||0, c=_pgmConsumo(b); return c>0?kg/c*60:0; }   // segundos
 function _pgmMassadaSeg(){ const b=_pgmBlocos()[_pgmSel];
   return _pgmMassada!=null ? _pgmMassada : (b?_pgmMassadaCalc(b):0); }
@@ -12244,6 +12258,7 @@ function _pgmMassadaResumoHTML(){
   const mPad=horas*3600/(P.massadaSeg||1), pacPad=pacote(padMod);
   const mAgo=massadas(_pgmMassadaCalc), pacAgo=pacote(null);
   const fator=_pgmMassadaFator(), simulando=Math.abs(fator-1)>0.001;
+  const med=_pgmHistMed(+sel.cortes||0), calcSel=_pgmMassadaCalc(sel);
   const mSim=fator>0?mAgo/fator:mAgo, pacSim=fator>0?pacAgo/fator:pacAgo;
   const sinal=v=>(v>0?'+':'')+_pgmN(v);
   const delta=(a,b_)=>{ const d=a-b_, c=d>0?'var(--success)':(d<0?'var(--danger)':'var(--text3)');
@@ -12253,7 +12268,9 @@ function _pgmMassadaResumoHTML(){
     <div class="pgm-r"><span>Agora <i style="font-style:normal;opacity:.7">${_pgmMS(_pgmMassadaCalc(sel))} · ${_pgmN(sel.cortes)} cpm · ${_pgmN(_pgmCru(sel),2)} g</i></span><b>${_pgmN(mAgo)} massadas ${delta(mAgo,mPad)}</b></div>
     ${simulando?`<div class="pgm-r"><span>Com ${_pgmMS(_pgmMassadaSeg())}</span><b>${_pgmN(mSim)} massadas ${delta(mSim,mPad)}</b></div>`:''}
     <div class="pgm-r tot"><span>Pacotes no dia</span><b>${_pgmN(simulando?pacSim:pacAgo)} ${delta(simulando?pacSim:pacAgo, pacPad)}</b></div>
-    <div class="pgm-sku">${_cpNum(P.massadaKg,3)} kg por massada · ${_pgmHhmm(horas)} de produção · diferenças em relação ao padrão</div>
+    ${med?`<div class="pgm-r"><span>Medido a ${_pgmN(sel.cortes)} cpm <i style="font-style:normal;opacity:.7">${med.n} produç${med.n>1?'ões':'ão'}</i></span><b>${_pgmMS(med.seg)} <span style="color:var(--text3);font-weight:400">(calc. ${_pgmMS(calcSel)})</span></b></div>`:''}
+    <div class="pgm-sku">${_cpNum(P.massadaKg,3)} kg por massada · ${_pgmHhmm(horas)} de produção · diferenças vs. padrão<br>
+      Últimas: ${_pgmCpmsMedidos().map(c=>{const m=_pgmHistMed(c);return c+' cpm → '+_pgmMS(m.seg);}).join(' · ')}</div>
   </div>`;
 }
 function _pgmSetSem(off){ _pgmSemOff=off; _pgmDiaIdx=null; _pgmSel=0; renderPCPDia(); }
@@ -12336,7 +12353,7 @@ function _pgmEditorHTML(){
     <div class="pgm-campos">
       <label class="pgm-f"><span>Base da massa<i>manda no setup</i></span>
         <select class="pgm-inp" oninput="_pgmSetLive('base',this)" onchange="renderPCPDia()">${bases}</select></label>
-      ${campo('Cortes por minuto','padrão '+_pgmN(_pgmCpmPadrao(b),1),'cortes',b.cortes,'min="1" max="200" step="1"')}
+      ${campo('Cortes por minuto','já rodados: '+_pgmCpmsMedidos().join(' · '),'cortes',b.cortes,'min="1" max="200" step="1"')}
       ${campo('Biscoito cru (g)','padrão '+_pgmN(P.cru,2),'cru',_pgmCru(b),'min="1" max="200" step="0.01"')}
       ${campo('Duração (horas)','','horas',b.horas,'min="0.5" max="10" step="0.5"')}
       ${setupHTML}
