@@ -604,6 +604,30 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
     turno em 18 min" **sempre**, porque a embalagem termina 20min depois por trânsito. O aviso voltou a medir a
     **ocupação do corte**, que é o que de fato ocupa o turno da linha.
   - **12px de respiro entre os grupos** da linha do tempo, a pedido dele.
+- ⭐⭐ **RESULTADO DO DIA EM EVIDÊNCIA + COR NAS BARRAS** (11ª rodada). Mostrei **5 mockups de layout/paleta**
+  (três cartões · gaveta do bloco · editor em abas · planejar+resultado · faixa de comando); ele não escolheu um
+  arranjo inteiro — pinçou **duas coisas**: o painel de resultado do modelo 4 e as **cores das barras** do modelo 5.
+  - **O painel `Resultado do dia`** (`_pgmDiaResHTML`, id `pgm-dia-res`) vive numa coluna de **186px à direita da
+    linha do tempo**, dentro do mesmo cartão (`.pgm-main` = `.pgm-esq` + `.pgm-res`): **pacotes · massadas · turno**
+    em 21px, cada um com a diferença vs. padrão, e a barra de ocupação do turno embaixo.
+    ⚠️ **`_pgmTotalHTML` MORREU** — a frase miúda "9h58 de 10h00 · 40.196 pacotes" no canto do cabeçalho virou este
+    painel. Quem atualizava `#pgm-tot` (o `_pgmRefresh` e o `_pgmSetSetup`) agora atualiza `#pgm-dia-res`.
+  - ⚠️ **O aviso de "passa do turno" SAIU de debaixo das trilhas** e foi para o painel, colado na barra do turno —
+    que é o que o explica. A classe `.pgm-alerta` ficou sem uso (mantida).
+  - ⚠️ **O cartão da Massada perdeu a linha "Pacotes no dia"** quando NÃO há simulação: era o mesmo número do
+    painel, a 30cm de distância. Com o cursor mexido ela volta, porque aí mostra o valor **simulado**, que é outro.
+  - ⭐ **COR DAS BARRAS — a causa do "estranhas" era a DILUIÇÃO, não o matiz.** Elas usavam o acento do tema
+    diluído a 13–16% no fundo do cartão (`color-mix`), o que devolve pastel acinzentado em qualquer tema. Agora são
+    **4 hexes fixos, tom cheio, com texto branco**: corte `#5182b6` · cobertura `#7367ad` · embalagem `#4a8a64` ·
+    setup `#a8762f` (o vermelho do rosa saiu; setup virou âmbar) e alerta `#c0554d`.
+    ⚠️ **São FIXOS de propósito — não seguem o tema.** A linha do tempo é leitura de dado, como o semáforo do DDV:
+    o tom precisa ser o mesmo em qualquer tema. Mexeu num, mexa nos quatro.
+    ⚠️ O anel do bloco selecionado (`.pgm-b.on`) virou **branco por dentro** — o `var(--blue-mid)` sumia em cima da
+    barra azul; e a alça de arraste passou a acender em branco pelo mesmo motivo.
+  - Testado em Edge headless: 0 erros de JS; painel com "40.196 · 65 · 9h58 de 10h00"; as 4 cores conferidas no
+    estilo computado; "Novo bloco" leva o painel a 44.639 / 72 / **10h58 de 10h00 + "passa do turno em 58 min"** com
+    a barra vermelha; digitar 60 cpm atualiza o painel ao vivo; nenhum aviso duplicado na linha do tempo.
+    **Altura idêntica à de antes** (medida nos dois: 979px na mesma viewport) — o painel é mais baixo que as 8 trilhas.
 - ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
   (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
   reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);
