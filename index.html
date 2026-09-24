@@ -12349,9 +12349,9 @@ function _ddvCSS(){
   /* mesma tarja cinza das faixas de linha da tabela (--bg2) */
   .ddv-graf-head{display:flex;align-items:center;gap:9px;padding:10px 14px;font-size:11.5px;color:var(--text2);cursor:pointer;background:var(--bg2);border-bottom:1px solid var(--border)}
   .ddv-graf-head:hover{background:color-mix(in srgb,var(--blue-mid) 9%,var(--bg2))}
-  .ddv-filtros{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:9px 14px 0;font-size:11px;color:var(--text3)}
-  .ddv-filtros b{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-right:3px}
-  .ddv-dt{height:28px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:11.5px;padding:0 6px;outline:none}
+  .ddv-filtros{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:8px 14px 0;font-size:10.5px;color:var(--text3)}
+  .ddv-filtros b{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-right:3px}
+  .ddv-dt{height:24px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text2);font-family:inherit;font-size:10.5px;padding:0 5px;outline:none}
   .ddv-dt:focus{border-color:var(--blue-mid);box-shadow:0 0 0 3px color-mix(in srgb,var(--blue-mid) 14%,transparent)}
   .ddv-buscaw{position:relative;display:inline-flex;align-items:center}
   .ddv-buscaw i{position:absolute;left:11px;font-size:14px;color:var(--text3);pointer-events:none}
@@ -12433,8 +12433,12 @@ function _ddvFiltrosGrafHTML(pIni,pFim,m2Ini,m2Fim){
     ${sujo?`<button class="ddv-link" onclick="_ddvPerReset()" style="font-size:10.5px;padding:3px 7px">voltar ao padrão</button>`:''}
   </div>`;
 }
+// ⚠️ PESO VISUAL: o SVG tem width:100%, então TUDO escala junto com a largura do cartão (~1500px).
+// Com viewBox de 1000 o fator era 1,5× — traço de 2,5 virava 3,75 e texto de 11 virava 16, e o gráfico
+// saía com 285px de altura. Com W=1400 o fator cai para ~1,07 e o desenho sai quase 1:1.
+// Se mexer no W, lembre que a ALTURA na tela é H×(largura do cartão ÷ W).
 function _ddvSvg(s,med2){
-  const v=s.vals, n=v.length, W=1000, H=190, pad=26;
+  const v=s.vals, n=v.length, W=1250, H=160, pad=26;
   const max=Math.max.apply(null,v)*1.08, med=v.reduce((a,b)=>a+b,0)/n;
   const x=i=>n>1?pad+i*((W-pad*2)/(n-1)):W/2, y=t=>H-28-(t/max)*(H-52);
   const pts=v.map((t,i)=>`${x(i).toFixed(1)},${y(t).toFixed(1)}`).join(' ');
@@ -12443,18 +12447,21 @@ function _ddvSvg(s,med2){
   const ym2=(med2!=null&&med2<=max)?y(med2).toFixed(1):null;
   // o rótulo da 2ª média vai ABAIXO da linha dela (as duas médias costumam ficar próximas, e acima
   // o texto era cortado pela linha da média do período); o contorno na cor do cartão garante leitura
-  const halo='paint-order="stroke" stroke="var(--card)" stroke-width="3.5" stroke-linejoin="round"';
-  const l2=ym2?`<line x1="${pad}" y1="${ym2}" x2="${W-pad}" y2="${ym2}" stroke="var(--danger)" stroke-width="2" stroke-dasharray="2 4"/>
-      <text x="${pad}" y="${(+ym2)+14}" font-size="11" font-weight="700" fill="var(--danger)" ${halo}>2ª média ${_ddvN(med2)}</text>`:'';
-  const rot=s.meses.map((m,i)=>`<text x="${x(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--text3)">${m}</text>`).join('');
-  const bolas=v.map((t,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(t).toFixed(1)}" r="3" fill="var(--blue-mid)"><title>${s.meses[i]}: ${_ddvN(t)}</title></circle>`).join('');
-  return `<div style="padding:4px 10px 10px">
+  const halo='paint-order="stroke" stroke="var(--card)" stroke-width="3" stroke-linejoin="round"';
+  const l2=ym2?`<line x1="${pad}" y1="${ym2}" x2="${W-pad}" y2="${ym2}" stroke="var(--danger)" stroke-width="1" stroke-dasharray="2 4" opacity=".75"/>
+      <text x="${pad}" y="${(+ym2)+13}" font-size="10.5" font-weight="600" fill="var(--danger)" ${halo}>2ª média ${_ddvN(med2)}</text>`:'';
+  const rot=s.meses.map((m,i)=>`<text x="${x(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--text3)">${m}</text>`).join('');
+  // bolinha só no ÚLTIMO mês — as 17 bolinhas engrossavam a linha inteira. O <title> de cada mês fica
+  // num círculo transparente por cima, então o valor ao passar o mouse continua existindo.
+  const alvo=v.map((t,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(t).toFixed(1)}" r="9" fill="transparent"><title>${s.meses[i]}: ${_ddvN(t)}</title></circle>`).join('');
+  const ult=n?`<circle cx="${x(n-1).toFixed(1)}" cy="${y(v[n-1]).toFixed(1)}" r="2.6" fill="var(--blue-mid)"/>`:'';
+  return `<div style="padding:2px 10px 8px">
     <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
-      <polygon points="${pad},${H-28} ${pts} ${W-pad},${H-28}" fill="var(--blue-mid)" fill-opacity=".14"/>
-      <polyline points="${pts}" fill="none" stroke="var(--blue-mid)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-      <line x1="${pad}" y1="${ym}" x2="${W-pad}" y2="${ym}" stroke="var(--success)" stroke-width="2" stroke-dasharray="6 5"/>
-      <text x="${W-pad}" y="${(+ym)-6}" text-anchor="end" font-size="11" font-weight="700" fill="var(--success)" ${halo}>média ${_ddvN(med)}</text>
-      ${l2}${bolas}${rot}
+      <polygon points="${pad},${H-28} ${pts} ${W-pad},${H-28}" fill="var(--blue-mid)" fill-opacity=".06"/>
+      <polyline points="${pts}" fill="none" stroke="var(--blue-mid)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+      <line x1="${pad}" y1="${ym}" x2="${W-pad}" y2="${ym}" stroke="var(--success)" stroke-width="1" stroke-dasharray="5 5" opacity=".75"/>
+      <text x="${W-pad}" y="${(+ym)-6}" text-anchor="end" font-size="10.5" font-weight="600" fill="var(--success)" ${halo}>média ${_ddvN(med)}</text>
+      ${l2}${ult}${rot}${alvo}
     </svg></div>`;
 }
 function _ddvKPIsHTML(){
@@ -12529,11 +12536,7 @@ function _ddvTabelaHTML(){
       <button class="ddv-link" onclick="_ddvTodasLinhas(${fechadas?0:1})" style="margin-left:auto"><i class="ti ti-${fechadas?'chevrons-down':'chevrons-up'}" style="font-size:12px;vertical-align:-1px"></i> ${fechadas?'Abrir todas':'Recolher todas'}</button>
     </div>
     <div class="ddv-hstrip"><table class="ddv-tbl"><colgroup>${cols}</colgroup><thead>${grupos}${colunas}</thead></table></div>
-    ${cards}
-    <div class="ddv-nota">O ⚠ e o vermelho acendem abaixo de ${DDV_ALERTA.vermelho} dias de estoque; âmbar vai até ${DDV_ALERTA.amarelo} dias e verde daí em diante — é o corte do SISPRO, e fica num lugar só no código.<br>
-    <b>Em ruptura</b> = saldo negativo · <b>Atenção</b> = menos de ${DDV_ALERTA.vermelho} dias (inclui os em ruptura) · <b>Folga</b> = ${DDV_ALERTA.amarelo} dias ou mais · <b>A produzir</b> = vai faltar e não tem OP/OC aberta.<br>
-    Saldo, DDV e as médias são calculados aqui (não vieram transcritos) e conferem com o SISPRO. Produto sem estoque nem pedido lançado fica com "—" no saldo e no DDV.<br>
-    Posição do SISPRO em ${_DDV_POSICAO}.</div>`;
+    ${cards}`;
 }
 function renderDDV(){
   const main=document.getElementById('task-container'); if(!main) return;
