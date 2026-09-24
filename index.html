@@ -12056,7 +12056,8 @@ const _PGM_LINHAS=[{
 let _pgmSemOff=0;            // 0 = semana corrente, −1 anterior, +1 próxima…
 let _pgmDiaIdx=null;         // 0..5 (segunda a sábado); null = escolhe hoje no 1º render
 let _pgmLinhaId='forno';
-let _pgmSel=0;               // bloco selecionado dentro do dia
+let _pgmSel=0;               // bloco selecionado dentro do dia (o CORTE)
+let _pgmJan=0;               // janela de embalagem selecionada (a EMBALAGEM tem linha do tempo própria)
 let _pgmMassada=null;        // simulação do tempo da massada, em segundos; null = o padrão da linha
 let _pgmDrag=null;           // arraste de barra em curso
 const _PGM_PLANO={};         // chave `${linha}|${iso}` → lista de blocos
@@ -12073,7 +12074,18 @@ function _pgmDiaSel(){ const ds=_pgmDias();
   return ds[Math.min(_pgmDiaIdx, ds.length-1)]; }
 function _pgmL(){ return _PGM_LINHAS.find(l=>l.id===_pgmLinhaId)||_PGM_LINHAS[0]; }
 function _pgmChave(linha, d){ return (linha||_pgmLinhaId)+'|'+_pgmIso(d||_pgmDiaSel()); }
-function _pgmBlocos(linha, d){ return _PGM_PLANO[_pgmChave(linha,d)]||[]; }
+// ⭐⭐⭐ O DIA NÃO É MAIS UM BLOCO SÓ QUE ATRAVESSA OS TRÊS ESTÁGIOS.
+// O Diego: *"o bloco não é sincronizado… posso fazer tudo ao leite até um X horário e depois branco…
+// posso embalar na emb 1 Klain até as 09h00 e depois outra marca"*. Então o dia guarda DUAS linhas do
+// tempo independentes:
+//   · `blocos` = o CORTE (base + massadas), que é o que a masseira manda;
+//   · `emb`    = JANELAS DE EMBALAGEM (`{ini em minutos do turno, maq:[cfg × 4]}`), com horário próprio.
+// A COBERTURA continua DERIVADA: o mix em cada instante sai de para onde as máquinas apontam ali.
+// ⚠️ Formato antigo (a chave era só o array de blocos) é migrado ao ser lido, aqui no `_pgmDia`.
+function _pgmDia(linha, d){ const k=_pgmChave(linha,d), v=_PGM_PLANO[k];
+  if(Array.isArray(v)){ _PGM_PLANO[k]={blocos:v, emb:null}; return _PGM_PLANO[k]; }
+  return v||null; }
+function _pgmBlocos(linha, d){ const o=_pgmDia(linha,d); return (o&&o.blocos)||[]; }
 // ⭐ O PLANO PERSISTE (pedido do Diego: "se eu atualizo, volta pro normal"). Chave com prefixo taskflow
 // → entra no sync da nuvem junto com o resto.
 // ⚠️ REGRA P0 DO PROJETO: gravar é só nas AÇÕES. `_pgmSave` é chamado por quem MUDA o plano
@@ -12089,9 +12101,13 @@ function _pgmSalvoHTML(){ return _pgmSalvoOk
 // ⚠️ Roda DEPOIS do dia de exemplo (no fim do bloco): o que foi salvo manda sobre o exemplo — inclusive
 // um dia que o PCP esvaziou de propósito, que volta vazio em vez de reaparecer semeado.
 function _pgmLoad(){ try{ const v=JSON.parse(localStorage.getItem(LS_PGM)||'null');
-  if(v && typeof v==='object') Object.keys(v).forEach(k=>{ if(Array.isArray(v[k])) _PGM_PLANO[k]=v[k]; });
+  if(v && typeof v==='object') Object.keys(v).forEach(k=>{ const x=v[k];
+    if(Array.isArray(x)) _PGM_PLANO[k]={blocos:x, emb:null};                       // formato antigo
+    else if(x && typeof x==='object' && Array.isArray(x.blocos)) _PGM_PLANO[k]=x; });
   }catch(e){} }
-function _pgmSetBlocos(arr){ _PGM_PLANO[_pgmChave()]=arr; _pgmSave(); }
+function _pgmDiaObj(){ const k=_pgmChave(); return _pgmDia() || (_PGM_PLANO[k]={blocos:[], emb:null}); }
+function _pgmSetBlocos(arr){ _pgmDiaObj().blocos=arr; _pgmSave(); }
+function _pgmSetJanelas(js){ _pgmDiaObj().emb=js; _pgmSave(); }
 function _pgmSemLabel(){ const ds=_pgmDias(), a=ds[0], b=ds[5];
   return a.getMonth()===b.getMonth()
     ? a.getDate()+' a '+b.getDate()+' de '+_PGM_MES[a.getMonth()]            // 21 a 26 de set
@@ -12119,54 +12135,97 @@ function _pgmEmbRotulo(e){ const f=_pgmFmt(e.fmt);
   return f.terc ? (e.cli||'sem cliente')+' · '+f.curto : 'Klain'; }
 // ── EMBALADORAS do bloco: uma entrada por máquina, com cliente, sabor e velocidades próprias.
 // Nasce do cadastro da linha; o bloco só guarda o que foi mexido.
-function _pgmEmb(b){ const L=_pgmL(), cad=L.embaladoras||[];
-  if(!Array.isArray(b.emb) || b.emb.length!==cad.length)
-    b.emb=cad.map((e,i)=>({on:i<3, fmt:'klain', cli:'Klain', sku:i===2?'branco':'leite', nom:e.nominal, real:e.real}));
-  return b.emb.map((e,i)=>({ on:!!e.on, fmt:e.fmt||'klain', cli:e.cli||'', sku:e.sku||'leite',
+function _pgmMaqPadrao(){ const cad=_pgmL().embaladoras||[];
+  return cad.map((e,i)=>({on:i<3, fmt:'klain', cli:'Klain', sku:i===2?'branco':'leite', nom:e.nominal, real:e.real})); }
+function _pgmMaqNorm(src){ const cad=_pgmL().embaladoras||[];
+  const s=(Array.isArray(src)&&src.length===cad.length)?src:_pgmMaqPadrao();
+  return s.map((e,i)=>({ on:!!e.on, fmt:e.fmt||'klain', cli:e.cli||'', sku:e.sku||'leite',
     nom:(e.nom==null||e.nom==='')?cad[i].nominal:+e.nom,
     real:(e.real==null||e.real==='')?cad[i].real:+e.real, nome:cad[i].nome, i:i })); }
-function _pgmEmbAtivas(b){ return _pgmEmb(b).filter(e=>e.on && e.real>0); }
-function _pgmEmbCap(b){ return _pgmEmbAtivas(b).reduce((s,e)=>s+e.real,0); }   // pacotes/min disponíveis
+// ── JANELAS DE EMBALAGEM. A 1ª sempre começa em 0 (início do turno); as outras têm horário próprio.
+// ⚠️ Uma janela vale para as 4 máquinas — mas a trilha MESCLA barras vizinhas quando a máquina não mudou,
+// então trocar só a Emb 1 às 09:00 aparece como uma quebra só na Emb 1, que é o que o Diego descreveu.
+function _pgmJanelas(){ const o=_pgmDia(); if(!o) return [];
+  if(!Array.isArray(o.emb) || !o.emb.length) o.emb=_pgmJanelasDeBlocos(o.blocos||[]);
+  o.emb.sort((a,b)=>(a.ini||0)-(b.ini||0));
+  if(o.emb[0]) o.emb[0].ini=0;
+  return o.emb; }
+// migração: antes cada BLOCO carregava a configuração das máquinas. Vira uma janela no início de cada bloco,
+// pulando as que não mudaram nada em relação à anterior.
+function _pgmJanelasDeBlocos(bs){ const out=[];
+  bs.forEach((b,i)=>{ const cfg=_pgmMaqNorm(b.emb).map(e=>({on:e.on,fmt:e.fmt,cli:e.cli,sku:e.sku,nom:e.nom,real:e.real}));
+    const ant=out[out.length-1];
+    if(ant && JSON.stringify(ant.maq)===JSON.stringify(cfg)) return;
+    // ⚠️ SEM arredondar: o início do bloco não cai em minuto redondo, e arredondar deixava uma "lasca"
+    // de 1 min do bloco novo rodando com a configuração antiga (5 pacotes de diferença no total do dia).
+    out.push({ini: i===0?0:_pgmInicio(i)*60, maq:cfg}); });
+  return out.length?out:[{ini:0, maq:_pgmMaqPadrao()}]; }
+function _pgmMaq(j){ const js=_pgmJanelas(); return _pgmMaqNorm((js[j]||js[0]||{}).maq); }
+function _pgmJanelaEm(h){ const js=_pgmJanelas(); let k=0;
+  for(let i=0;i<js.length;i++) if((js[i].ini||0)/60 <= h+1e-9) k=i;
+  return k; }
+function _pgmAtivas(maq){ return maq.filter(e=>e.on && e.real>0); }
+function _pgmCap(maq){ return _pgmAtivas(maq).reduce((s,e)=>s+e.real,0); }   // pacotes/min disponíveis
 // ⭐ O MIX DA COBRIDEIRA É DERIVADO DAS EMBALADORAS: se 2 máquinas rodam ao leite e 1 branca, a cobrideira
 // divide 2/3 e 1/3 (ponderado pela velocidade real de cada uma). É como a linha funciona de verdade —
 // por isso não existe cursor de mix: quem decide é para onde cada máquina está apontada.
-function _pgmMix(b){ const at=_pgmEmbAtivas(b), tot=at.reduce((s,e)=>s+e.real,0), m={leite:0,branco:0,natural:0};
+function _pgmMixM(maq){ const at=_pgmAtivas(maq), tot=at.reduce((s,e)=>s+e.real,0), m={leite:0,branco:0,natural:0};
   if(!tot) return m;
   at.forEach(e=>{ m[e.sku]=(m[e.sku]||0)+e.real/tot; });
   return m; }
 function _pgmSetEmb(i, campo, el){
-  const b=_pgmBlocos()[_pgmSel]; if(!b) return; _pgmEmb(b);
-  b.emb[i][campo] = (campo==='on') ? el.checked : (campo==='cli'||campo==='sku'||campo==='fmt' ? el.value : (el.value===''?'':+el.value));
+  const js=_pgmJanelas(); if(!js[_pgmJan]) return;
+  const maq=_pgmMaq(_pgmJan).map(e=>({on:e.on,fmt:e.fmt,cli:e.cli,sku:e.sku,nom:e.nom,real:e.real}));
+  maq[i][campo] = (campo==='on') ? el.checked : (campo==='cli'||campo==='sku'||campo==='fmt' ? el.value : (el.value===''?'':+el.value));
   // Klain é marca própria: o cliente é ele mesmo. Ao voltar de um terceiro, o campo se recompõe sozinho.
   if(campo==='fmt'){ const f=_pgmFmt(el.value);
-    if(!f.terc) b.emb[i].cli='Klain';
-    else if(b.emb[i].cli==='Klain') b.emb[i].cli=''; }
+    if(!f.terc) maq[i].cli='Klain';
+    else if(maq[i].cli==='Klain') maq[i].cli=''; }
+  js[_pgmJan].maq=maq; _pgmSetJanelas(js);   // _pgmSetJanelas já grava
   // ⚠️ digitar cliente/velocidade NÃO pode redesenhar a tabela: o campo perderia o foco a cada tecla.
   // A coluna de pacotes só acerta no blur (onchange → renderPCPDia). Checkbox e sabor podem redesenhar.
-  _pgmSave();
   _pgmRefresh(campo==='cli'||campo==='nom'||campo==='real');
   if(campo==='fmt') renderPCPDia();   // trocar o formato habilita/desabilita o campo do cliente
 }
-function _pgmCalc(b){
+// ⚠️ `_pgmCalc` é INSTANTÂNEO agora (por minuto), porque o mix muda dentro de um mesmo bloco quando uma
+// embaladora troca de destino no meio dele. Quem soma ao longo do tempo é `_pgmTotais`.
+function _pgmCalc(b, maq){
   const B=_pgmBase(b.base);
   const bisc=(+b.cortes||0)*(B.bpc||0);          // biscoitos/min saindo do corte
-  const cru=_pgmCru(b), horas=_pgmHorasB(b);
+  const cru=_pgmCru(b);
   const assado=cru*(1-B.evap/100), coberto=assado*(1+B.cob/100);
-  const mix=_pgmMix(b);
+  const M=maq||_pgmMaq(0);
+  const mix=_pgmMixM(M);
   // ⚠️ o peso médio do biscoito acabado depende do MIX: sem cobertura ele sai mais leve, então a mesma
   // saída do corte dá MAIS pacotes quando há coberto e menos quando há natural.
   const pesoMed=_PGM_DEST.reduce((s,d)=>s+(mix[d.id]||0)*(d.cob?coberto:assado),0) || coberto;
   const gMin=bisc*pesoMed;
   const pacMin=B.gPac?gMin/B.gPac:0;
-  const cap=_pgmEmbCap(b), ativas=_pgmEmbAtivas(b).length;
-  const total=pacMin*60*horas;
-  const porDest={}; _PGM_DEST.forEach(d=>{ porDest[d.id]=total*(mix[d.id]||0); });
-  // cada máquina fica com a fatia da sua velocidade dentro do que o corte entrega
-  const porMaq=_pgmEmb(b).map(e=>(e.on&&cap>0)?total*e.real/cap:0);
-  return { bisc, assado, coberto, pesoMed, mix, pacMin, total, cap, ativas, porDest, porMaq,
-    massa: bisc*cru*60*horas/1000,               // kg de massa crua
+  const cap=_pgmCap(M), ativas=_pgmAtivas(M).length;
+  return { bisc, assado, coberto, pesoMed, mix, pacMin, cap, ativas, maq:M,
+    massaMin: bisc*cru/1000,                     // kg de massa crua por minuto
     falta: pacMin>cap+0.001 };
 }
+// ⭐ FATIAS = os pedaços de tempo em que TUDO é constante: o corte (bloco) e a janela de embalagem.
+// É o corte de um plano pelo outro. Toda soma do dia passa por aqui.
+function _pgmFatias(){ const bs=_pgmBlocos(), js=_pgmJanelas(), out=[];
+  bs.forEach((b,i)=>{ const ini=_pgmInicio(i), fim=ini+_pgmHorasB(b);
+    let t=ini, guard=0;
+    while(t<fim-1e-9 && guard++<200){
+      const j=_pgmJanelaEm(t), prox=js[j+1]?(js[j+1].ini||0)/60:Infinity;
+      const f=Math.min(fim, prox>t?prox:fim);
+      out.push({ini:t, fim:f, b:b, bi:i, j:j});
+      t=f; } });
+  return out; }
+function _pgmTotais(){ const cad=_pgmL().embaladoras||[];
+  const R={total:0, massa:0, porDest:{leite:0,branco:0,natural:0}, porMaq:cad.map(()=>0), porBloco:{}, falta:false};
+  _pgmFatias().forEach(f=>{ const c=_pgmCalc(f.b,_pgmMaq(f.j)), h=f.fim-f.ini, tot=c.pacMin*60*h;
+    R.total+=tot; R.massa+=c.massaMin*60*h;
+    _PGM_DEST.forEach(d=>{ R.porDest[d.id]+=tot*(c.mix[d.id]||0); });
+    if(c.cap>0) c.maq.forEach(e=>{ if(e.on) R.porMaq[e.i]+=tot*e.real/c.cap; });
+    R.porBloco[f.bi]=(R.porBloco[f.bi]||0)+tot;
+    if(c.falta) R.falta=true; });
+  return R; }
 // Setup entre blocos: só quando a BASE muda (trocar cobertura não para a linha).
 // Setup só existe quando a BASE muda. O tempo fica no PRÓPRIO bloco (`b.setup`, em minutos) porque
 // depende da transição — pão de mel → menta não custa o mesmo que → amanteigada. Sem valor no bloco,
@@ -12263,6 +12322,25 @@ function _pgmSetHora(qual, el){
     if(c>0){ b.massadas=Math.max(1, Math.min(400, Math.round(dur*3600/c))); delete b.horas; } }
   _pgmSetBlocos(arr); renderPCPDia();
 }
+// ── AÇÕES das JANELAS DE EMBALAGEM (a linha do tempo própria da embalagem)
+function _pgmJanSel(i){ _pgmJan=i; renderPCPDia(); }
+// ⚠️ A troca nova entra LOGO DEPOIS da que está selecionada e nasce CLONADA dela — não da última da
+// lista. Clonar a última fazia a troca nova, ao ser puxada para um horário anterior, trocar a
+// configuração das outras máquinas sem que ninguém tivesse pedido.
+function _pgmJanAdd(){ const js=_pgmJanelas().slice(), L=_pgmL(), cur=js[_pgmJan]||js[0]||{ini:0};
+  const fimTurno=Math.round(L.horas*60), prox=js[_pgmJan+1]?js[_pgmJan+1].ini:fimTurno;
+  const ini=Math.max(1, Math.min(prox-1, (cur.ini||0)+Math.max(30, Math.round((prox-(cur.ini||0))/2))));
+  const nova={ini:ini, maq:_pgmMaq(_pgmJan).map(e=>({on:e.on,fmt:e.fmt,cli:e.cli,sku:e.sku,nom:e.nom,real:e.real}))};
+  js.push(nova); _pgmSetJanelas(js);
+  _pgmJan=Math.max(0,_pgmJanelas().indexOf(nova)); renderPCPDia(); }
+function _pgmJanDel(i){ if(i===0) return; const js=_pgmJanelas().slice(); js.splice(i,1);
+  _pgmSetJanelas(js); if(_pgmJan>=js.length) _pgmJan=js.length-1; renderPCPDia(); }
+function _pgmJanHora(el){ const js=_pgmJanelas(), w=js[_pgmJan]; if(!w||_pgmJan===0) return renderPCPDia();
+  const m=_pgmParseHora(el.value); if(m==null) return renderPCPDia();
+  w.ini=Math.max(1, m-_pgmMinIni());
+  _pgmSetJanelas(js.slice());
+  // a lista é reordenada por horário: reencontra a janela que estava selecionada
+  _pgmJan=Math.max(0, _pgmJanelas().indexOf(w)); renderPCPDia(); }
 function _pgmDelBloco(i){ const arr=_pgmBlocos().slice(); arr.splice(i,1); _pgmSetBlocos(arr);
   if(_pgmSel>=arr.length) _pgmSel=Math.max(0,arr.length-1); renderPCPDia(); }
 // ── ARRASTAR AS BARRAS (pedido do Diego): puxar a borda direita muda a duração e o tempo disponível
@@ -12353,9 +12431,9 @@ function _pgmMassadaResumoHTML(){
       Últimas: ${_pgmCpmsMedidos().map(c=>{const m=_pgmHistMed(c);return c+' cpm → '+_pgmMS(m.seg);}).join(' · ')}</div>
   </div>`;
 }
-function _pgmSetSem(off){ _pgmSemOff=off; _pgmDiaIdx=null; _pgmSel=0; renderPCPDia(); }
-function _pgmSetDia(i){ _pgmDiaIdx=i; _pgmSel=0; renderPCPDia(); }
-function _pgmSetLinha(id){ _pgmLinhaId=id; _pgmSel=0; renderPCPDia(); }
+function _pgmSetSem(off){ _pgmSemOff=off; _pgmDiaIdx=null; _pgmSel=0; _pgmJan=0; renderPCPDia(); }
+function _pgmSetDia(i){ _pgmDiaIdx=i; _pgmSel=0; _pgmJan=0; renderPCPDia(); }
+function _pgmSetLinha(id){ _pgmLinhaId=id; _pgmSel=0; _pgmJan=0; renderPCPDia(); }
 // ── LINHA DO TEMPO — uma trilha por estágio, cada uma DEFASADA pelo tempo de trânsito do estágio.
 // ⚠️ A escala é `turno + maior atraso`, senão a ponta da trilha das embaladoras (que termina 20min depois
 // do corte) sairia fora do desenho num dia cheio.
@@ -12370,11 +12448,24 @@ function _pgmTimelineHTML(){
   const fimDe=C=>C.atraso+blocos.reduce((s,b,i)=>s+_pgmSetupAcum(i,C.est)/60+_pgmEsperaB(b)+_pgmHorasB(b),0);
   const TOT=Math.max(L.horas, Math.max.apply(null, canais.map(fimDe))), esc=100/TOT;
   const cx=(f,txt,cls,tit)=>`<div class="pgm-b ${cls||''}" style="flex:${f.toFixed(3)}"${tit?` title="${escapeAttr(tit)}"`:''}>${txt||''}</div>`;
+  const fatias=_pgmFatias();
+  // ⭐ MESCLA as fatias vizinhas quando o que ESTA trilha mostra não muda. É o que faz uma troca só na
+  // Emb 1 às 09:00 quebrar só a barra da Emb 1 — as outras seguem inteiras, apesar de a janela ser comum.
+  // ⚠️ Nunca mescla por cima de um bloco diferente: setup e espera precisam partir o desenho.
+  const segmentos=(assin)=>{ const out=[];
+    fatias.forEach(f=>{ const k=assin(f), u=out[out.length-1];
+      if(u && u.bi===f.bi && u.k===k && Math.abs(u.fim-f.ini)<1e-9) u.fim=f.fim;
+      else out.push({ini:f.ini, fim:f.fim, bi:f.bi, j:f.j, b:f.b, k:k}); });
+    return out; };
   const trilhas=canais.map((C,k)=>{
     let pos=C.atraso;
     let html = C.atraso>0 ? cx(C.atraso*esc,'','gap','O produto do corte só chega aqui '+Math.round(C.atraso*60)+' min depois') : '';
+    const segs = C.tipo==='corte' ? null : segmentos(f=>{
+      const c=_pgmCalc(f.b,_pgmMaq(f.j));
+      if(C.tipo==='cob') return Math.round((c.mix[C.dest.id]||0)*1000);
+      const e=c.maq[C.idx]; return e.on ? e.fmt+'|'+e.cli+'|'+e.sku+'|'+e.real : 'off'; });
     blocos.forEach((b,i)=>{
-      const c=_pgmCalc(b), B=_pgmBase(b.base), on=(i===_pgmSel?' on':'');
+      const B=_pgmBase(b.base), on=(i===_pgmSel?' on':'');
       // ⚠️ Cada grupo mostra o SEU setup e espera os anteriores do fluxo. O do corte aparece só no corte,
       // o da cobertura só na cobertura — assim a barra rosa é informação, não a mesma parada repetida 8×.
       const espera=_pgmSetupAcum(i,C.est)/60, meu=(_pgmSetupObj(i)[C.est]||0)/60, antes=espera-meu;
@@ -12388,29 +12479,31 @@ function _pgmTimelineHTML(){
       const esp=_pgmEsperaB(b);
       if(esp>0){ html+=cx(esp*esc,'','nada','Espera de '+Math.round(esp*60)+' min antes deste bloco'); pos+=esp; }
       const hb=_pgmHorasB(b);
-      const f=hb*esc, ini=_pgmRelogio(pos), fim=_pgmRelogio(pos+hb); pos+=hb;
-      let txt='', cls='', tit='';
       // ⚠️ o horário SAIU da barra (o Diego pediu): quem marca hora agora são os campos Início/Fim do
       // editor e a régua. Na barra fica o que se decide arrastando — o produto e as MASSADAS.
       // o número vem PRIMEIRO porque é o que muda ao arrastar — numa barra curta, é ele que sobrevive ao corte
-      if(C.tipo==='corte'){ const nm=_pgmMassadasB(b);
-        txt=`<b class="h">${nm} massada${nm>1?'s':''}</b>`+escapeHTML(B.nome); cls='base';
-        tit=B.nome+' · '+nm+' massada'+(nm>1?'s':''); }
-      else if(C.tipo==='cob'){ const sh=c.mix[C.dest.id]||0;
-        // canal parado = NENHUM elemento, só o vão. Retângulo tracejado competia com as barras de verdade.
-        if(sh<=0){ html+=cx(f,'','nada'); return; }
-        txt=Math.round(sh*100)+'%'; cls='cob';
-        tit=C.dest.nome+' · '+Math.round(sh*100)+'% do corte · '+_pgmN(c.porDest[C.dest.id])+' pacotes'; }
-      else { const e=_pgmEmb(b)[C.idx];
-        if(!e.on){ html+=cx(f,'','nada'); return; }
+      if(C.tipo==='corte'){ const nm=_pgmMassadasB(b), ini=_pgmRelogio(pos), fim=_pgmRelogio(pos+hb);
+        html+=cx(hb*esc, `<b class="h">${nm} massada${nm>1?'s':''}</b>`+escapeHTML(B.nome)
+          +`<i class="pgm-rz" onmousedown="_pgmDragStart(event,'bloco',${i})" title="Arraste para mudar a duração"></i>`,
+          'base'+on, C.nome+' · '+ini+' às '+fim+' · '+B.nome+' · '+nm+' massada'+(nm>1?'s':''));
+        pos+=hb; return; }
+      // os demais estágios desenham por SEGMENTO: um pedaço por janela de embalagem dentro deste bloco
+      segs.filter(s=>s.bi===i).forEach(s=>{
+        const dur=s.fim-s.ini, f=dur*esc, c=_pgmCalc(s.b,_pgmMaq(s.j));
+        const ini=_pgmRelogio(pos), fim=_pgmRelogio(pos+dur); pos+=dur;
+        const jon=(s.j===_pgmJan?' on':'');
+        if(C.tipo==='cob'){ const sh=c.mix[C.dest.id]||0;
+          // canal parado = NENHUM elemento, só o vão. Retângulo tracejado competia com as barras de verdade.
+          if(sh<=0){ html+=cx(f,'','nada'); return; }
+          html+=cx(f, Math.round(sh*100)+'%', 'cob',
+            C.dest.nome+' · '+ini+' às '+fim+' · '+Math.round(sh*100)+'% do corte'); return; }
+        const e=c.maq[C.idx];
+        if(!e.on){ html+=cx(f,'','nada', C.nome+' · parada das '+ini+' às '+fim); return; }
         // na barra vão os nomes CURTOS: ela é estreita e o texto longo era cortado no meio
-        txt=escapeHTML(_pgmEmbRotulo(e))+' · '+_pgmDest(e.sku).curto;
-        cls=c.falta?'alerta':'emb';
-        tit=e.nome+' · '+_pgmFmt(e.fmt).nome+(_pgmFmt(e.fmt).terc?' ('+(e.cli||'sem cliente')+')':'')+' · '+_pgmDest(e.sku).nome+' · '+_pgmN(c.porMaq[C.idx])+' pacotes a '+e.real+'/min'; }
-      // ⚠️ O horário fica SÓ no corte: o rótulo do grupo já diz "+15min"/"+20min", então repetir 07:15 e
-      // 07:20 em sete trilhas era a mesma informação sete vezes. O horário exato vai no tooltip.
-      html+=cx(f, txt+(C.tipo==='corte'?`<i class="pgm-rz" onmousedown="_pgmDragStart(event,'bloco',${i})" title="Arraste para mudar a duração"></i>`:''),
-        cls+on, C.nome+' · '+ini+' às '+fim+' · '+tit);
+        html+=cx(f, escapeHTML(_pgmEmbRotulo(e))+' · '+_pgmDest(e.sku).curto, (c.falta?'alerta':'emb')+jon,
+          e.nome+' · '+ini+' às '+fim+' · '+_pgmFmt(e.fmt).nome+(_pgmFmt(e.fmt).terc?' ('+(e.cli||'sem cliente')+')':'')
+          +' · '+_pgmDest(e.sku).nome+' · '+_pgmN(c.pacMin*60*dur*(c.cap>0?e.real/c.cap:0))+' pacotes a '+e.real+'/min');
+      });
     });
     if(TOT-pos>0.01) html+=cx((TOT-pos)*esc,'','nada');
     // o nome do GRUPO aparece uma vez só, na 1ª trilha dele, e leva junto o atraso do estágio —
@@ -12434,17 +12527,15 @@ function _pgmTimelineHTML(){
 // quanto do turno foi ocupado. Ficam ao lado da linha do tempo, grandes; o aviso de estouro mora aqui
 // (e saiu debaixo das trilhas) porque é a barra do turno que o explica.
 function _pgmDiaResHTML(){
-  const L=_pgmL(), bs=_pgmBlocos(), P=L.padrao||{}, sel=bs[_pgmSel]||bs[0];
-  const u=_pgmHoras(), pac=bs.reduce((s,b)=>s+_pgmCalc(b).total,0);
+  const L=_pgmL(), bs=_pgmBlocos(), sel=bs[_pgmSel]||bs[0];
+  const u=_pgmHoras(), pac=_pgmTotais().total;
   const mAgo=bs.reduce((s,b)=>s+_pgmMassadasB(b),0);   // massadas são o que o bloco GUARDA: soma exata
-  const mPad=mAgo;
-  // o padrão é o MESMO dia rodando com o ritmo e o peso de referência (o trio da Valesca)
-  const pacPad=sel&&P.cru ? bs.reduce((s,b)=>s+_pgmCalc(Object.assign({},b,{cortes:_pgmCpmPadrao(sel),cru:P.cru})).total,0) : pac;
-  const dif=(a,b_)=>{ const x=a-b_; if(!b_||Math.abs(x)<0.5) return '';
-    return `<i style="color:${x>0?'var(--success)':'var(--danger)'}">${x>0?'+':''}${_pgmN(x)}</i>`; };
+  // ⚠️ SAIU a comparação "vs. padrão" daqui: com o bloco contado em massadas, o padrão faz as MESMAS
+  // massadas e os MESMOS pacotes — só em outro tempo. A comparação com o padrão virou de TEMPO e vive no
+  // cartão da Massada; este cartão diz o que o dia, como está montado, entrega.
   const over=u-L.horas, oc=L.horas>0?Math.min(1,u/L.horas)*100:0;
-  return `<div class="pgm-res-b"><span>Pacotes</span><b>${_pgmN(pac)}${dif(pac,pacPad)}</b></div>
-    <div class="pgm-res-b"><span>Massadas</span><b>${_pgmN(mAgo)}${dif(mAgo,mPad)}</b></div>
+  return `<div class="pgm-res-b"><span>Pacotes</span><b>${_pgmN(pac)}</b></div>
+    <div class="pgm-res-b"><span>Massadas</span><b>${_pgmN(mAgo)}</b></div>
     <div class="pgm-res-b" style="margin-bottom:0"><span>Turno</span>
       <b>${_pgmHhmm(u)}<i class="de">de ${_pgmHhmm(L.horas)}</i></b>
       <div class="pgm-barra"><span style="width:${oc.toFixed(1)}%${over>0.01?';background:var(--danger)':''}"></span></div>
@@ -12511,8 +12602,22 @@ function _pgmEditorHTML(){
 // ── AS 4 EMBALADORAS: cliente, sabor e velocidades por máquina. É aqui que se decide o mix — a
 // cobrideira só obedece à soma das máquinas apontadas para cada destino.
 function _pgmEmbHTML(){
-  const b=_pgmBlocos()[_pgmSel]; if(!b) return '';
-  const c=_pgmCalc(b), es=_pgmEmb(b);
+  const bs=_pgmBlocos(); if(!bs.length) return '';
+  const js=_pgmJanelas(); if(_pgmJan>=js.length) _pgmJan=js.length-1;
+  const es=_pgmMaq(_pgmJan), TT=_pgmTotais();
+  // o bloco que está rodando quando esta janela começa — é dele que sai a capacidade/ritmo mostrados
+  const hIni=(js[_pgmJan].ini||0)/60;
+  const bi=bs.map((b,i)=>({i:i, ini:_pgmInicio(i), fim:_pgmInicio(i)+_pgmHorasB(b)}))
+    .filter(x=>hIni<x.fim-1e-9).sort((a,b_)=>a.ini-b_.ini)[0];
+  const c=_pgmCalc(bs[bi?bi.i:0], es);
+  // ⭐ CHIPS DAS JANELAS — mesma gramática dos blocos do corte, mas para a EMBALAGEM. É aqui que se diz
+  // "a Emb 1 vira outra marca às 09:00": abre uma troca e muda só aquela máquina.
+  const chips=js.map((w,i)=>`<button class="pgm-chip${i===_pgmJan?' on':''}" onclick="_pgmJanSel(${i})">
+      ${_pgmRelogio((w.ini||0)/60)}${i===0?'':`<i class="ti ti-x x" onclick="event.stopPropagation();_pgmJanDel(${i})" title="Tirar esta troca"></i>`}</button>`).join('')
+    + `<button class="pgm-chip" onclick="_pgmJanAdd()"><i class="ti ti-plus" style="font-size:13px"></i> Nova troca</button>`;
+  const horaJan = _pgmJan===0
+    ? `<span class="pgm-sku" style="padding:0">começa junto com o turno</span>`
+    : `<label class="pgm-jh">a partir das <input type="time" class="pgm-inp" value="${_pgmRelogio((js[_pgmJan].ini||0)/60)}" onchange="_pgmJanHora(this)"></label>`;
   const linhas=es.map(e=>{
     const dest=_PGM_DEST.map(d=>`<option value="${d.id}"${d.id===e.sku?' selected':''}>${escapeHTML(d.nome)}</option>`).join('');
     const fmts=_PGM_FMT.map(x=>`<option value="${x.id}"${x.id===e.fmt?' selected':''}>${escapeHTML(x.nome)}</option>`).join('');
@@ -12526,21 +12631,24 @@ function _pgmEmbHTML(){
       <td><select class="pgm-inp mini" oninput="_pgmSetEmb(${e.i},'sku',this)" onchange="renderPCPDia()">${dest}</select></td>
       <td><input type="number" class="pgm-inp num" value="${e.nom}" min="1" max="200" oninput="_pgmSetEmb(${e.i},'nom',this)" onchange="renderPCPDia()"></td>
       <td><input type="number" class="pgm-inp num" value="${e.real}" min="1" max="200" oninput="_pgmSetEmb(${e.i},'real',this)" onchange="renderPCPDia()"></td>
-      <td class="qt">${e.on?_pgmN(c.porMaq[e.i]):'—'}</td></tr>`;
+      <td class="qt">${e.on?_pgmN(TT.porMaq[e.i]):'—'}</td></tr>`;
   }).join('');
-  return `<table class="pgm-emb"><thead><tr><th></th><th></th><th>Embala</th><th>Cliente</th><th>Cobertura</th><th title="velocidade nominal">Nom.</th><th title="velocidade real">Real</th><th>Pacotes</th></tr></thead><tbody>${linhas}</tbody></table>
-    <div class="pgm-sku">Capacidade ligada ${_pgmN(c.cap)} pac/min · o corte entrega ${_pgmN(c.pacMin)}${c.falta?` — <b style="color:var(--danger)">falta embaladora</b>`:''}<br>
-      ${_PGM_DEST.filter(d=>c.porDest[d.id]>0).map(d=>d.nome+' '+_pgmN(c.porDest[d.id])).join(' · ')||'nenhuma embaladora ligada'}</div>`;
+  return `<div class="pgm-janbar">${chips}${horaJan}</div>
+    <table class="pgm-emb"><thead><tr><th></th><th></th><th>Embala</th><th>Cliente</th><th>Cobertura</th><th title="velocidade nominal">Nom.</th><th title="velocidade real">Real</th><th title="no dia inteiro">Pacotes</th></tr></thead><tbody>${linhas}</tbody></table>
+    <div class="pgm-sku">Nesta troca: ${_pgmN(c.cap)} pac/min ligados · o corte entrega ${_pgmN(c.pacMin)}${TT.falta?` — <b style="color:var(--danger)">falta embaladora</b>`:''}<br>
+      No dia: ${_PGM_DEST.filter(d=>TT.porDest[d.id]>0).map(d=>d.nome+' '+_pgmN(TT.porDest[d.id])).join(' · ')||'nenhuma embaladora ligada'}</div>`;
 }
 function _pgmResultadoHTML(){
   const b=_pgmBlocos()[_pgmSel]; if(!b) return '';
-  const L=_pgmL(), c=_pgmCalc(b), B=_pgmBase(b.base);
+  // ⚠️ "Dá para X pacotes/min" depende do MIX, que pode mudar no meio do bloco — aqui vale a janela de
+  // embalagem vigente no INÍCIO do bloco. O número do bloco inteiro está no cabeçalho, somado por fatia.
+  const c=_pgmCalc(b, _pgmMaq(_pgmJanelaEm(_pgmInicio(_pgmSel))));
   const ln=(a,v,cor)=>`<div class="pgm-r"><span>${a}</span><b${cor?` style="color:${cor}"`:''}>${v}</b></div>`;
   // só o que é do CORTE — o resto do dado migrou para a seção do estágio a que pertence
   return `<div class="pgm-out">
     ${ln('Saída do corte', _pgmN(c.bisc)+' bisc/min')}
     ${ln('Dá para', _pgmN(c.pacMin)+' pacotes/min')}
-    ${ln('Massa crua', _pgmN(c.massa)+' kg no bloco')}
+    ${ln('Massa crua', _pgmN(c.massaMin*60*_pgmHorasB(b))+' kg no bloco')}
   </div>`;
 }
 function _pgmCSS(){ return `<style>
@@ -12584,6 +12692,11 @@ function _pgmCSS(){ return `<style>
      são a barra de abas do cartão do EDITOR — que é o que eles comandam: escolher o bloco a editar. */
   .pgm-blocos{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
   .pgm-headblocos{flex-wrap:wrap;padding:6px 11px;gap:8px}
+  /* barra das janelas de embalagem — mesma gramática dos chips de bloco, dentro da seção Embalagem */
+  .pgm-janbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:7px}
+  .pgm-janbar .pgm-chip{font-size:11px;padding:3px 8px}
+  .pgm-jh{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--text3);margin-left:auto}
+  .pgm-jh .pgm-inp{width:74px;height:24px;font-size:11.5px}
   .pgm-blocoinfo{margin-left:auto;color:var(--text3);white-space:nowrap}
   .pgm-chip{font-size:11.5px;border:1px solid var(--border);background:var(--card);color:var(--text2);border-radius:8px;padding:4px 9px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px}
   .pgm-chip.on{border-color:var(--blue-mid);color:var(--blue-mid);font-weight:700}
@@ -12752,7 +12865,7 @@ function renderPCPDia(){
         <div class="pgm-head pgm-headblocos">
           <div class="pgm-blocos">${chips}</div>
           ${(function(){ const bl=_pgmBlocos()[_pgmSel]; if(!bl) return '';
-            const cc=_pgmCalc(bl);
+            const cc={total:_pgmTotais().porBloco[_pgmSel]||0};   // somado por fatia: o mix pode mudar no meio
             const nb=_pgmMassadasB(bl), hb=_pgmHorasB(bl);
             return `<span class="pgm-blocoinfo">${nb} massada${nb>1?'s':''} · ${_pgmHhmm(hb)} · ${_pgmN(cc.total)} pacotes no bloco</span>`; })()}
         </div>
@@ -12765,7 +12878,7 @@ function renderPCPDia(){
 // Os valores do bloco saem do PADRÃO da linha (o trio da Valesca): 76 cortes/min e 10,43 g.
 (function(){ const q=_pgmDias()[3], L=_PGM_LINHAS[0], P=L.padrao, B=L.bases[0];
   const cpm=Math.round((P.massadaKg*1000)/((P.massadaSeg/60)*B.bpc*P.cru));
-  _PGM_PLANO['forno|'+_pgmIso(q)]=[
+  _PGM_PLANO['forno|'+_pgmIso(q)]={emb:null, blocos:[
     {base:'paodemel', massadas:38, cortes:cpm, cru:P.cru},
     {base:'paodemel', massadas:11, cortes:cpm, cru:P.cru,
      // exemplo com os 3 formatos na mesma linha do dia: marca própria, terceiro com etiqueta e impresso
@@ -12774,7 +12887,7 @@ function renderPCPDia(){
           {on:true,fmt:'impresso',cli:'Bella Massa',sku:'leite',nom:48,real:37},
           {on:false,fmt:'klain',cli:'Klain',sku:'leite',nom:48,real:37}]},
     {base:'menta',    massadas:16, cortes:cpm, cru:P.cru}
-  ];
+  ]};
 })();
 _pgmLoad();   // ⚠️ DEPOIS do exemplo, de propósito: o que foi salvo manda sobre ele
 // ════ FIM DO BLOCO PCP · PROGRAMAÇÃO DO DIA ════
