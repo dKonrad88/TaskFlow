@@ -651,6 +651,18 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
     - Testado em Edge headless: 0 erros; 9 abas sem fundo/borda, 8 apagadas, 0 "···"; 0 chips no cartão da linha do
       tempo e 4 na barra do editor; clicar na 2ª aba troca o resumo para "12:30 às 14:00 · 1h30 · 5.538 pacotes";
       trocar para Palitinhos cai no aviso de "sem cadastro". Altura da página caiu de 979 para **959px**.
+  - 🐞 **NÚMERO CORTADO NOS 3 CAMPOS DE SETUP** (ele mandou o print: o campo do Corte mostrava meio dígito).
+    Eles tinham **38px de largura** herdando os **8px de padding de cada lado** do .pgm-inp, MAIS a **setinha
+    nativa do type=number** — sobravam ~6px para o valor. Agora a setinha some em **todo campo numérico do bloco**
+    (`appearance:none` no webkit + `-moz-appearance:textfield`) e o campo foi para **54×25px, fonte 12px,
+    centralizado**. ⚠️ **Campo estreito com type=number sempre tem esse imposto** — ao criar outro, esconda a
+    setinha ou reserve ~16px só para ela. Medido: valor "40" com scrollWidth == clientWidth (sem corte) nos três.
+  - 🐞🐞 **CAÍ NA ARMADILHA DA CRASE DUAS VEZES NO MESMO DIA** (comentário com crase dentro do template literal do
+    `_pgmCSS()` → a string fecha e o arquivo inteiro deixa de carregar). **Checagem barata que fica valendo:**
+    depois de editar o CSS de um bloco, rodar `awk 'NR>INICIO && NR<=FIM && /crase/ {print NR}'` sobre o range da
+    função — tem que dar **zero**. O sintoma no navegador é enganoso: não aparece "erro de JS", aparece
+    **"função global não existe"** (aqui, `setProducaoView is not a function`), porque é erro de PARSE e acontece
+    antes de qualquer `window.onerror` existir.
 - ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
   (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
   reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);
