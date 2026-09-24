@@ -12381,8 +12381,7 @@ function _pgmDiaResHTML(){
   const dif=(a,b_)=>{ const x=a-b_; if(!b_||Math.abs(x)<0.5) return '';
     return `<i style="color:${x>0?'var(--success)':'var(--danger)'}">${x>0?'+':''}${_pgmN(x)}</i>`; };
   const over=u-L.horas, oc=L.horas>0?Math.min(1,u/L.horas)*100:0;
-  return `<div class="pgm-res-t">Resultado do dia</div>
-    <div class="pgm-res-b"><span>Pacotes</span><b>${_pgmN(pac)}${dif(pac,pacPad)}</b></div>
+  return `<div class="pgm-res-b"><span>Pacotes</span><b>${_pgmN(pac)}${dif(pac,pacPad)}</b></div>
     <div class="pgm-res-b"><span>Massadas</span><b>${_pgmN(mAgo)}${dif(mAgo,mPad)}</b></div>
     <div class="pgm-res-b" style="margin-bottom:0"><span>Turno</span>
       <b>${_pgmHhmm(u)}<i class="de">de ${_pgmHhmm(L.horas)}</i></b>
@@ -12494,17 +12493,19 @@ function _pgmCSS(){ return `<style>
   .pgm-regua span::before{content:'';position:absolute;top:0;left:50%;width:1px;height:4px;background:var(--border)}
   .pgm-regua span:first-child::before{left:0}
   /* um tom por ESTÁGIO e nada mais — quanto menos tratamentos, mais rápido se lê */
-  /* ⚠️ COR DAS BARRAS: tom cheio, médio, com texto branco. As antigas eram o acento do tema diluído a
-     13–16% no fundo do cartão — davam pastéis acinzentados que o Diego chamou de "estranhas". Estes 4
-     hexes são FIXOS de propósito (não seguem o tema): a linha do tempo é leitura de dado, como o
-     semáforo do DDV, e o tom tem que ser o mesmo em qualquer tema. Mexer aqui = mexer nos 4 juntos. */
-  .pgm-b.base{background:#5182b6;color:#fff}
-  .pgm-b.cob{background:#7367ad;color:#fff}
-  .pgm-b.emb{background:#4a8a64;color:#fff}
-  .pgm-b.alerta{background:#c0554d;color:#fff;font-weight:700}
-  .pgm-b.setup{background:#a8762f;color:#fff}
+  /* ⚠️ COR DAS BARRAS — foram dois extremos antes de chegar aqui: (1) o acento do tema diluído a 13–16%
+     no fundo do cartão dava pastel acinzentado ("estranhas"); (2) o tom cheio com texto branco ficou
+     "muito forte". O certo é MATIZ VIVO + CLARIDADE ALTA: mesma cor saturada, mas clara, com o texto
+     num tom escuro da MESMA família (nunca preto). Estes hexes são FIXOS de propósito (não seguem o
+     tema) — a linha do tempo é leitura de dado, como o semáforo do DDV, e o tom tem que significar a
+     mesma coisa em qualquer tema. Mexeu num, mexa nos cinco. */
+  .pgm-b.base{background:#abc7e3;color:#1d4a75}
+  .pgm-b.cob{background:#beb7e1;color:#453a7c}
+  .pgm-b.emb{background:#b1dcc1;color:#1d5a38}
+  .pgm-b.alerta{background:#ebb2ad;color:#8c322a;font-weight:700}
+  .pgm-b.setup{background:#e8caa5;color:#7a5214}
   .pgm-b.nada{background:none}   /* canal parado: só o vão, sem retângulo concorrendo com as barras */
-  .pgm-b.on{box-shadow:0 0 0 2px rgba(255,255,255,.92) inset}
+  .pgm-b.on{box-shadow:0 0 0 2px rgba(0,0,0,.34) inset}
   .pgm-alerta{font-size:11px;color:var(--danger);margin-top:7px}
   .pgm-blocos{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 9px}
   .pgm-chip{font-size:11.5px;border:1px solid var(--border);background:var(--card);color:var(--text2);border-radius:8px;padding:4px 9px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px}
@@ -12555,13 +12556,15 @@ function _pgmCSS(){ return `<style>
   .pgm-nota .lnk{color:var(--blue-mid);font-weight:700;cursor:pointer;white-space:nowrap}
   /* alça de arraste na borda direita da barra (só na trilha do Corte) */
   .pgm-rz{position:absolute;right:0;top:0;bottom:0;width:8px;cursor:col-resize;border-right:2px solid transparent}
-  .pgm-b:hover .pgm-rz{border-right-color:rgba(255,255,255,.75)}
-  /* ── RESULTADO DO DIA — a resposta em evidência, ao lado da linha do tempo (não mais uma frase miúda
-     no canto do cabeçalho). É a única casa dos números do dia; o cartão da Massada compara cenários. */
-  .pgm-main{display:flex;align-items:stretch}
-  .pgm-esq{flex:1;min-width:0}
-  .pgm-res{flex:none;width:186px;border-left:1px solid var(--border);background:var(--bg2);padding:9px 14px 11px}
-  .pgm-res-t{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:10px}
+  .pgm-b:hover .pgm-rz{border-right-color:rgba(0,0,0,.4)}
+  /* ── RESULTADO DO DIA — a resposta em evidência, num CARTÃO PRÓPRIO ao lado da linha do tempo (não é
+     uma coluna dentro dela: o Diego quis os dois separados). É a única casa dos números do dia; o
+     cartão da Massada compara cenários. */
+  .pgm-topo{display:flex;align-items:stretch;gap:9px;margin-bottom:9px}
+  .pgm-topo>.pgm-card{margin-bottom:0}
+  .pgm-card-tl{flex:1;min-width:0}
+  .pgm-rescard{flex:none;width:206px}
+  .pgm-resbox{padding:11px 14px 13px}
   .pgm-res-b{margin-bottom:12px}
   .pgm-res-b>span{display:block;font-size:10px;color:var(--text3);margin-bottom:1px}
   .pgm-res-b>b{display:flex;align-items:baseline;gap:6px;font-size:21px;font-weight:800;letter-spacing:-.02em;color:var(--text);line-height:1.15}
@@ -12595,8 +12598,8 @@ function _pgmCSS(){ return `<style>
   .pgm-ln .n{font-size:10px;font-weight:700;background:color-mix(in srgb,var(--blue-mid) 16%,transparent);color:var(--blue-mid);border-radius:999px;padding:1px 6px}
   .pgm-ln.on .n{background:rgba(255,255,255,.25);color:#fff}
   @media(max-width:900px){ .pgm-ed{grid-template-columns:1fr}
-    .pgm-main{flex-direction:column} .pgm-res{width:auto;border-left:0;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:4px 26px}
-    .pgm-res-t{width:100%} .pgm-res-b{margin-bottom:0;min-width:120px} }
+    .pgm-topo{flex-direction:column} .pgm-rescard{width:auto}
+    .pgm-resbox{display:flex;flex-wrap:wrap;gap:4px 26px} .pgm-res-b{margin-bottom:0;min-width:120px} }
 </style>`; }
 // ── NAVEGAÇÃO semana › dia › linha. O ponto do dia e o da linha marcam ONDE JÁ TEM PLANO — sem isso o
 // PCP teria que entrar em 6 dias × 9 linhas para descobrir o que já montou.
@@ -12641,15 +12644,16 @@ function renderPCPDia(){
         <i class="ti ti-x x" onclick="event.stopPropagation();_pgmDelBloco(${i})" title="Tirar do dia"></i></button>`).join('')
       + `<button class="pgm-chip" onclick="_pgmAddBloco()"><i class="ti ti-plus" style="font-size:13px"></i> Novo bloco</button>`;
     corpo=`${_pgmCSS()}${_pgmNavHTML()}
-      <div class="pgm-card">
-        <div class="pgm-head"><i class="ti ti-flame" style="font-size:15px"></i><b>${escapeHTML(L.nome)}</b>
-          <span>· ${dataTxt} · ${L.ini} às ${L.fim}</span></div>
-        <div class="pgm-main">
-          <div class="pgm-esq">
-            <div class="pgm-tlbox"><div id="pgm-tl">${_pgmTimelineHTML()}</div></div>
-            <div class="pgm-blocos">${chips}</div>
-          </div>
-          <div class="pgm-res" id="pgm-dia-res">${_pgmDiaResHTML()}</div>
+      <div class="pgm-topo">
+        <div class="pgm-card pgm-card-tl">
+          <div class="pgm-head"><i class="ti ti-flame" style="font-size:15px"></i><b>${escapeHTML(L.nome)}</b>
+            <span>· ${dataTxt} · ${L.ini} às ${L.fim}</span></div>
+          <div class="pgm-tlbox"><div id="pgm-tl">${_pgmTimelineHTML()}</div></div>
+          <div class="pgm-blocos">${chips}</div>
+        </div>
+        <div class="pgm-card pgm-rescard">
+          <div class="pgm-head"><i class="ti ti-chart-bar" style="font-size:15px"></i><b>Resultado do dia</b></div>
+          <div class="pgm-resbox" id="pgm-dia-res">${_pgmDiaResHTML()}</div>
         </div>
       </div>
       <div class="pgm-card">
