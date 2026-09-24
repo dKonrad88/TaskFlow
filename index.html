@@ -12086,14 +12086,26 @@ function _pgmN(v,d){ return _cpNum(v, d==null?0:d); }
 // assado, o coberto, os pacotes E o tempo da massada (o corte passa a consumir mais/menos kg por minuto).
 function _pgmCru(b){ const B=_pgmBase(b.base); return (b.cru==null||b.cru==='')?B.cru:(+b.cru||0); }
 // ── DESTINOS da cobrideira. `cob:0` = sem cobertura (o biscoito sai no peso assado, mais leve).
-const _PGM_DEST=[{id:'leite',nome:'Ao leite',cob:1},{id:'branco',nome:'Branca',cob:1},{id:'natural',nome:'Sem cobertura',cob:0}];
+const _PGM_DEST=[{id:'leite',nome:'Ao leite',curto:'leite',cob:1},{id:'branco',nome:'Branca',curto:'branca',cob:1},{id:'natural',nome:'Sem cobertura',curto:'sem cob.',cob:0}];
 function _pgmDest(id){ return _PGM_DEST.find(d=>d.id===id)||_PGM_DEST[0]; }
+// ── FORMATOS de embalagem (Diego, 24/09): a mesma embaladora pode rodar os três no mesmo dia.
+// `terc` marca que o cliente é de fora (aí o nome do cliente é digitável); Klain é marca própria.
+// ⚠️ Trocar de formato numa raia custa tempo (bobina/etiqueta) — ainda NÃO descontado, ver pendências.
+const _PGM_FMT=[
+  {id:'klain',    nome:'Klain',          curto:'',         terc:0},
+  {id:'etiqueta', nome:'Terc. etiqueta', curto:'etiqueta', terc:1},
+  {id:'impresso', nome:'Terc. impresso', curto:'impresso', terc:1}
+];
+function _pgmFmt(id){ return _PGM_FMT.find(f=>f.id===id)||_PGM_FMT[0]; }
+// Como a barra da embaladora se lê: Klain aparece só como "Klain"; terceiro leva o cliente e o formato.
+function _pgmEmbRotulo(e){ const f=_pgmFmt(e.fmt);
+  return f.terc ? (e.cli||'sem cliente')+' · '+f.curto : 'Klain'; }
 // ── EMBALADORAS do bloco: uma entrada por máquina, com cliente, sabor e velocidades próprias.
 // Nasce do cadastro da linha; o bloco só guarda o que foi mexido.
 function _pgmEmb(b){ const L=_pgmL(), cad=L.embaladoras||[];
   if(!Array.isArray(b.emb) || b.emb.length!==cad.length)
-    b.emb=cad.map((e,i)=>({on:i<3, cli:'Klain', sku:i===2?'branco':'leite', nom:e.nominal, real:e.real}));
-  return b.emb.map((e,i)=>({ on:!!e.on, cli:e.cli||'', sku:e.sku||'leite',
+    b.emb=cad.map((e,i)=>({on:i<3, fmt:'klain', cli:'Klain', sku:i===2?'branco':'leite', nom:e.nominal, real:e.real}));
+  return b.emb.map((e,i)=>({ on:!!e.on, fmt:e.fmt||'klain', cli:e.cli||'', sku:e.sku||'leite',
     nom:(e.nom==null||e.nom==='')?cad[i].nominal:+e.nom,
     real:(e.real==null||e.real==='')?cad[i].real:+e.real, nome:cad[i].nome, i:i })); }
 function _pgmEmbAtivas(b){ return _pgmEmb(b).filter(e=>e.on && e.real>0); }
@@ -12107,10 +12119,15 @@ function _pgmMix(b){ const at=_pgmEmbAtivas(b), tot=at.reduce((s,e)=>s+e.real,0)
   return m; }
 function _pgmSetEmb(i, campo, el){
   const b=_pgmBlocos()[_pgmSel]; if(!b) return; _pgmEmb(b);
-  b.emb[i][campo] = (campo==='on') ? el.checked : (campo==='cli'||campo==='sku' ? el.value : (el.value===''?'':+el.value));
+  b.emb[i][campo] = (campo==='on') ? el.checked : (campo==='cli'||campo==='sku'||campo==='fmt' ? el.value : (el.value===''?'':+el.value));
+  // Klain é marca própria: o cliente é ele mesmo. Ao voltar de um terceiro, o campo se recompõe sozinho.
+  if(campo==='fmt'){ const f=_pgmFmt(el.value);
+    if(!f.terc) b.emb[i].cli='Klain';
+    else if(b.emb[i].cli==='Klain') b.emb[i].cli=''; }
   // ⚠️ digitar cliente/velocidade NÃO pode redesenhar a tabela: o campo perderia o foco a cada tecla.
   // A coluna de pacotes só acerta no blur (onchange → renderPCPDia). Checkbox e sabor podem redesenhar.
   _pgmRefresh(campo==='cli'||campo==='nom'||campo==='real');
+  if(campo==='fmt') renderPCPDia();   // trocar o formato habilita/desabilita o campo do cliente
 }
 function _pgmCalc(b){
   const B=_pgmBase(b.base);
@@ -12309,8 +12326,10 @@ function _pgmTimelineHTML(){
         tit=C.dest.nome+' · '+Math.round(sh*100)+'% do corte · '+_pgmN(c.porDest[C.dest.id])+' pacotes'; }
       else { const e=_pgmEmb(b)[C.idx];
         if(!e.on){ html+=cx(f,'','nada'); return; }
-        txt=escapeHTML(e.cli||'—')+' · '+_pgmDest(e.sku).nome;
-        cls=c.falta?'alerta':'emb'; tit=e.nome+' · '+e.cli+' · '+_pgmDest(e.sku).nome+' · '+_pgmN(c.porMaq[C.idx])+' pacotes a '+e.real+'/min'; }
+        // na barra vão os nomes CURTOS: ela é estreita e o texto longo era cortado no meio
+        txt=escapeHTML(_pgmEmbRotulo(e))+' · '+_pgmDest(e.sku).curto;
+        cls=c.falta?'alerta':'emb';
+        tit=e.nome+' · '+_pgmFmt(e.fmt).nome+(_pgmFmt(e.fmt).terc?' ('+(e.cli||'sem cliente')+')':'')+' · '+_pgmDest(e.sku).nome+' · '+_pgmN(c.porMaq[C.idx])+' pacotes a '+e.real+'/min'; }
       // ⚠️ O horário fica SÓ no corte: o rótulo do grupo já diz "+15min"/"+20min", então repetir 07:15 e
       // 07:20 em sete trilhas era a mesma informação sete vezes. O horário exato vai no tooltip.
       html+=cx(f, txt+(C.tipo==='corte'?`<i class="pgm-rz" onmousedown="_pgmDragStart(event,'bloco',${i})" title="Arraste para mudar a duração"></i>`:''),
@@ -12394,16 +12413,20 @@ function _pgmEmbHTML(){
   const c=_pgmCalc(b), es=_pgmEmb(b);
   const linhas=es.map(e=>{
     const dest=_PGM_DEST.map(d=>`<option value="${d.id}"${d.id===e.sku?' selected':''}>${escapeHTML(d.nome)}</option>`).join('');
+    const fmts=_PGM_FMT.map(x=>`<option value="${x.id}"${x.id===e.fmt?' selected':''}>${escapeHTML(x.nome)}</option>`).join('');
+    const terc=_pgmFmt(e.fmt).terc;
     return `<tr class="${e.on?'':'off'}">
       <td><input type="checkbox" class="pgm-ck"${e.on?' checked':''} onchange="_pgmSetEmb(${e.i},'on',this)" title="${e.on?'Parar esta embaladora':'Ligar esta embaladora'}"></td>
       <td class="nm">${escapeHTML(e.nome)}</td>
-      <td><input class="pgm-inp mini" value="${escapeAttr(e.cli)}" oninput="_pgmSetEmb(${e.i},'cli',this)" onchange="renderPCPDia()" placeholder="cliente"></td>
+      <td><select class="pgm-inp mini" oninput="_pgmSetEmb(${e.i},'fmt',this)">${fmts}</select></td>
+      <td>${terc?`<input class="pgm-inp mini" value="${escapeAttr(e.cli)}" oninput="_pgmSetEmb(${e.i},'cli',this)" onchange="renderPCPDia()" placeholder="qual cliente">`
+                 :`<span class="marca">—</span>`}</td>
       <td><select class="pgm-inp mini" oninput="_pgmSetEmb(${e.i},'sku',this)" onchange="renderPCPDia()">${dest}</select></td>
       <td><input type="number" class="pgm-inp num" value="${e.nom}" min="1" max="200" oninput="_pgmSetEmb(${e.i},'nom',this)" onchange="renderPCPDia()"></td>
       <td><input type="number" class="pgm-inp num" value="${e.real}" min="1" max="200" oninput="_pgmSetEmb(${e.i},'real',this)" onchange="renderPCPDia()"></td>
       <td class="qt">${e.on?_pgmN(c.porMaq[e.i]):'—'}</td></tr>`;
   }).join('');
-  return `<table class="pgm-emb"><thead><tr><th></th><th></th><th>Cliente</th><th>Cobertura</th><th title="velocidade nominal">Nom.</th><th title="velocidade real">Real</th><th>Pacotes</th></tr></thead><tbody>${linhas}</tbody></table>
+  return `<table class="pgm-emb"><thead><tr><th></th><th></th><th>Embala</th><th>Cliente</th><th>Cobertura</th><th title="velocidade nominal">Nom.</th><th title="velocidade real">Real</th><th>Pacotes</th></tr></thead><tbody>${linhas}</tbody></table>
     <div class="pgm-sku">Capacidade ligada ${_pgmN(c.cap)} pac/min · o corte entrega ${_pgmN(c.pacMin)}${c.falta?` — <b style="color:var(--danger)">falta embaladora</b>`:''}<br>
       ${_PGM_DEST.filter(d=>c.porDest[d.id]>0).map(d=>d.nome+' '+_pgmN(c.porDest[d.id])).join(' · ')||'nenhuma embaladora ligada'}</div>`;
 }
@@ -12463,7 +12486,8 @@ function _pgmCSS(){ return `<style>
   .pgm-emb td.nm{font-weight:700;color:var(--text2);white-space:nowrap}
   .pgm-emb td.qt{text-align:right;font-weight:700;color:var(--text);white-space:nowrap}
   .pgm-emb .mini{height:22px;font-size:11px;padding:0 6px}
-  .pgm-emb .num{height:22px;font-size:11px;padding:0 4px;width:44px;text-align:center}
+  .pgm-emb .num{height:22px;font-size:11px;padding:0 4px;width:42px;text-align:center}
+  .pgm-emb .marca{font-size:10px;color:var(--text3);font-style:italic}
   .pgm-ck{width:14px;height:14px;accent-color:var(--blue-mid);cursor:pointer;margin:0}
   .pgm-tr.sep{margin-top:7px}
   .pgm-b.vazio{border:1px dashed var(--border)}
@@ -12586,8 +12610,11 @@ function renderPCPDia(){
   _PGM_PLANO['forno|'+_pgmIso(q)]=[
     {base:'paodemel', horas:5.5, cortes:cpm, cru:P.cru},
     {base:'paodemel', horas:1.5, cortes:cpm, cru:P.cru,
-     emb:[{on:true,cli:'Klain',sku:'natural',nom:48,real:37},{on:true,cli:'Klain',sku:'natural',nom:48,real:37},
-          {on:false,cli:'',sku:'leite',nom:48,real:37},{on:false,cli:'',sku:'leite',nom:48,real:37}]},
+     // exemplo com os 3 formatos na mesma linha do dia: marca própria, terceiro com etiqueta e impresso
+     emb:[{on:true,fmt:'klain',cli:'Klain',sku:'natural',nom:48,real:37},
+          {on:true,fmt:'etiqueta',cli:'Quitanda',sku:'natural',nom:48,real:37},
+          {on:true,fmt:'impresso',cli:'Bella Massa',sku:'leite',nom:48,real:37},
+          {on:false,fmt:'klain',cli:'Klain',sku:'leite',nom:48,real:37}]},
     {base:'menta',    horas:2.3, cortes:cpm, cru:P.cru}
   ];
 })();
