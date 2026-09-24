@@ -479,6 +479,15 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
   depois do corte, sairia do desenho num dia cheio. O vão inicial aparece **hachurado** e o tooltip de cada barra
   traz "estágio · início às fim · o que roda". ⏳ O Diego avisou que **o atraso varia por produto e pela
   velocidade do corte** — hoje é um número fixo por estágio no cadastro da linha.
+- ⭐ **RÉGUA DE HORAS + SETUP EDITÁVEL** (4ª rodada): régua de 07:00 a 17:00 acima das trilhas, com tique a cada
+  hora — *"quero ver visualmente o horário, não pôr o mouse em cima"*. A barra do setup passou a mostrar a
+  **duração** ("40min") em vez de ficar muda.
+  ⭐ **O tempo do setup saiu do cadastro fixo e virou campo do BLOCO** (`b.setup`, em minutos): ele depende da
+  **transição**, não da linha — pão de mel → menta não custa o mesmo que → amanteigada. Sem valor no bloco, cai no
+  padrão da linha (`L.setup.base`). ⚠️ **O campo só aparece quando a base muda**; nos outros casos a tela **diz por
+  que não há parada** ("primeiro bloco do dia" / "mesma base — só troca a cobertura, a linha não para"), em vez de
+  mostrar um campo morto. Testado: pôr 90min empurra o 3º bloco de 14:40 para 15:30 e o dia passa a 10h48 (estoura
+  o turno, com o aviso).
 - ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
   (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
   reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);
