@@ -12148,7 +12148,7 @@ function _pgmDragMove(ev){
   const D=_pgmDrag; if(!D||!D.w) return;
   const dh=(ev.clientX-D.x0)/D.w*D.TOT, arr=_pgmBlocos().slice(); if(!arr[D.i]) return;
   if(D.tipo==='bloco') arr[D.i].horas=Math.max(0.25, Math.min(12, Math.round((D.v0+dh)*4)/4));   // passo de 15min
-  else                 arr[D.i].setup=Math.max(0, Math.min(480, Math.round((D.v0+dh*60)/5)*5));  // passo de 5min
+  else                 arr[D.i].setup=Math.max(0, Math.min(480, Math.round(D.v0+dh*60)));        // passo de 1min
   _pgmSetBlocos(arr); _pgmRefresh();
 }
 function _pgmDragEnd(){
@@ -12194,7 +12194,7 @@ function _pgmMassadaResumoHTML(){
     <div class="pgm-r"><span>Cada massada rende</span><b>${_pgmN(porMassada)} pacotes</b></div>
     <div class="pgm-r"><span>Pacotes no dia</span><b>${_pgmN(pac)}${mudou?` → ${_pgmN(pacSim)}`:''}</b></div>
     ${mudou?`<div class="pgm-r tot"><span>Com ${_pgmMS(atual)} por massada</span><b style="color:${cor}">${sinal(dM)} massadas · ${sinal(dP)} pacotes</b></div>`:''}
-    <div class="pgm-sku">Rendimento de ${_cpNum(_pgmL().massadaKg,0)} kg por massada e ${_pgmHhmm(horas)} de produção no dia. Mexer no peso do biscoito ou no ritmo do corte já muda o tempo calculado; o cursor simula um ciclo diferente por cima disso.</div>
+    <div class="pgm-sku">${_cpNum(_pgmL().massadaKg,0)} kg por massada · ${_pgmHhmm(horas)} de produção no dia</div>
   </div>`;
 }
 function _pgmSetSem(off){ _pgmSemOff=off; _pgmDiaIdx=null; _pgmSel=0; renderPCPDia(); }
@@ -12257,21 +12257,27 @@ function _pgmEditorHTML(){
   const setupHTML = _pgmSel===0
     ? `<div class="pgm-nota">Primeiro bloco do dia — a linha já entra montada.</div>`
     : mudou
-      ? campo('Limpeza antes deste bloco (min)', escapeHTML(_pgmBase(ant.base).nome)+' → '+escapeHTML(B.nome),
-              'setup', (b.setup==null||b.setup==='')?L.setup.base:b.setup, 'min="0" max="480" step="5"')
+      ? campo('Limpeza antes (min)', escapeHTML(_pgmBase(ant.base).nome)+' → '+escapeHTML(B.nome),
+              'setup', (b.setup==null||b.setup==='')?L.setup.base:b.setup, 'min="0" max="480" step="1"')
       : `<div class="pgm-nota">Mesma base do bloco anterior — só troca a cobertura, a linha não para.</div>`;
+  // 3 colunas: campos (em grade de 2) · resultado do bloco · massada. Tudo num cartão só, para caber na
+  // tela sem rolar — era o pedido do Diego, que tinha os campos ocupando meia tela cada.
   return `<div class="pgm-ed">
-    <div class="pgm-col">
+    <div class="pgm-campos">
       <label class="pgm-f"><span>Base da massa<i>manda no setup</i></span>
         <select class="pgm-inp" oninput="_pgmSetLive('base',this)" onchange="renderPCPDia()">${bases}</select></label>
       ${campo('Cortes por minuto','padrão 85','cortes',b.cortes,'min="1" max="200" step="1"')}
-      ${campo('Gramas do biscoito cru','muda a massada','cru',_pgmCru(b),'min="1" max="200" step="0.5"')}
-      ${campo('Ritmo real da embaladora','nominal 48','ritmo',b.ritmo,'min="1" max="60" step="1"')}
-      ${campo('Duração do bloco (horas)','','horas',b.horas,'min="0.5" max="10" step="0.5"')}
+      ${campo('Biscoito cru (g)','muda a massada','cru',_pgmCru(b),'min="1" max="200" step="0.5"')}
+      ${campo('Ritmo da embaladora','nominal 48','ritmo',b.ritmo,'min="1" max="60" step="1"')}
+      ${campo('Duração (horas)','','horas',b.horas,'min="0.5" max="10" step="0.5"')}
       ${setupHTML}
     </div>
+    <div><div id="pgm-out">${_pgmResultadoHTML()}</div></div>
     <div class="pgm-col">
-      <div id="pgm-out">${_pgmResultadoHTML()}</div>
+      <div class="pgm-f"><span>Tempo da massada<i>calculado</i>${_pgmMassada!=null?` <b class="lnk" onclick="_pgmMassadaReset()">voltar ao padrão</b>`:''}</span>
+        <div id="pgm-mass-v" class="pgm-massv">${_pgmMS(_pgmMassadaSeg())}</div>
+        <input type="range" class="pgm-rg" min="180" max="900" step="5" value="${Math.round(_pgmMassadaSeg())}" oninput="_pgmSetMassada(this)"></div>
+      <div id="pgm-mass-out">${_pgmMassadaResumoHTML()}</div>
     </div>
   </div>`;
 }
@@ -12320,28 +12326,30 @@ function _pgmCSS(){ return `<style>
   .pgm-chip{font-size:11.5px;border:1px solid var(--border);background:var(--card);color:var(--text2);border-radius:8px;padding:5px 10px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px}
   .pgm-chip.on{border-color:var(--blue-mid);color:var(--blue-mid);font-weight:700}
   .pgm-chip i.x{font-size:13px;color:var(--text3)}
-  .pgm-ed{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:22px;padding:13px 14px 15px}
-  .pgm-col{display:flex;flex-direction:column;gap:11px}
-  .pgm-f{display:flex;flex-direction:column;gap:4px}
-  .pgm-f>span{font-size:11px;color:var(--text3)}
-  .pgm-f>span i{font-style:normal;color:var(--text3);opacity:.7;margin-left:6px;font-size:10px}
-  .pgm-f>span b{color:var(--text);font-weight:700}
+  /* 3 colunas: campos · resultado · massada — tudo num cartão só, para caber sem rolar */
+  .pgm-ed{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr);gap:16px;padding:11px 14px 13px;align-items:start}
+  .pgm-campos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;align-content:start}
+  .pgm-col{display:flex;flex-direction:column;gap:8px}
+  .pgm-f{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .pgm-f>span{font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pgm-f>span i{font-style:normal;color:var(--text3);opacity:.7;margin-left:5px;font-size:9.5px}
+  .pgm-f>span b.lnk{color:var(--blue-mid);font-weight:700;cursor:pointer;margin-left:5px;font-size:9.5px}
   /* ⚠️ input/select PRECISAM de classe: a regra global input:not([class]){height:40px} ignoraria isto */
-  .pgm-inp{height:32px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px;padding:0 9px;outline:none;width:100%;box-sizing:border-box}
+  .pgm-inp{height:28px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:12.5px;padding:0 8px;outline:none;width:100%;box-sizing:border-box}
   .pgm-inp:focus{border-color:var(--blue-mid)}
   .pgm-rg{width:100%;accent-color:var(--blue-mid)}
-  .pgm-out{background:var(--bg2);border-radius:9px;padding:10px 12px;margin-top:2px}
-  .pgm-r{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:11.5px;color:var(--text3);margin-bottom:4px}
-  .pgm-r b{font-size:12.5px;color:var(--text);font-weight:700}
-  .pgm-r.tot{border-top:1px solid var(--border);margin-top:7px;padding-top:7px}
-  .pgm-r.tot b{font-size:15px}
-  .pgm-sku{font-size:11px;color:var(--text3);margin-top:8px;line-height:1.6}
+  .pgm-out{background:var(--bg2);border-radius:9px;padding:9px 11px}
+  .pgm-r{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:10.5px;color:var(--text3);margin-bottom:3px}
+  .pgm-r b{font-size:12px;color:var(--text);font-weight:700;white-space:nowrap}
+  .pgm-r.tot{border-top:1px solid var(--border);margin-top:6px;padding-top:6px}
+  .pgm-r.tot b{font-size:13px}
+  .pgm-sku{font-size:10px;color:var(--text3);margin-top:7px;line-height:1.55}
   .pgm-vazio{padding:18px 14px}
-  .pgm-nota{font-size:11px;color:var(--text3);line-height:1.5;border-left:2px solid var(--border);padding-left:9px}
+  .pgm-nota{font-size:10px;color:var(--text3);line-height:1.45;border-left:2px solid var(--border);padding-left:8px;align-self:center}
   /* alça de arraste na borda direita da barra (só na trilha do Corte) */
   .pgm-rz{position:absolute;right:0;top:0;bottom:0;width:8px;cursor:col-resize;border-right:2px solid transparent}
   .pgm-b:hover .pgm-rz{border-right-color:color-mix(in srgb,var(--text) 35%,transparent)}
-  .pgm-massv{font-size:19px;font-weight:800;letter-spacing:-.015em;color:var(--text)}
+  .pgm-massv{font-size:17px;font-weight:800;letter-spacing:-.015em;color:var(--text);line-height:1.2}
   /* navegação semana › dia › linha */
   .pgm-nav{margin-bottom:13px}
   .pgm-sem{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px}
@@ -12421,19 +12429,6 @@ function renderPCPDia(){
         <div class="pgm-head"><i class="ti ti-adjustments" style="font-size:15px"></i>
           <b>Bloco ${_pgmSel+1}</b><span>· ${_pgmBlocos()[_pgmSel]?_pgmRelogio(_pgmInicio(_pgmSel)):''}</span></div>
         ${_pgmEditorHTML()}
-      </div>
-      <div class="pgm-card">
-        <div class="pgm-head"><i class="ti ti-rotate-clockwise" style="font-size:15px"></i><b>Massada</b>
-          <span>· quanto muda no dia se o ciclo da masseira acelerar ou atrasar</span>
-          ${_pgmMassada!=null?`<button class="pgm-chip" style="margin-left:auto;padding:3px 9px;font-size:11px" onclick="_pgmMassadaReset()">voltar ao padrão</button>`:''}</div>
-        <div class="pgm-ed">
-          <div class="pgm-col">
-            <div class="pgm-f"><span>Tempo de uma massada<i>calculado do peso e do ritmo do corte</i></span>
-              <div id="pgm-mass-v" class="pgm-massv">${_pgmMS(_pgmMassadaSeg())}</div>
-              <input type="range" class="pgm-rg" min="180" max="900" step="5" value="${Math.round(_pgmMassadaSeg())}" oninput="_pgmSetMassada(this)"></div>
-          </div>
-          <div class="pgm-col"><div id="pgm-mass-out">${_pgmMassadaResumoHTML()}</div></div>
-        </div>
       </div>`;
   }
   main.innerHTML=_cpTela('PCP','Escolha a semana, o dia e a linha — e monte o que ela roda.',corpo);
