@@ -12075,7 +12075,13 @@ function _pgmCalc(b){
     falta: raias>_pgmL().estagios[2].canais };
 }
 // Setup entre blocos: só quando a BASE muda (trocar cobertura não para a linha).
-function _pgmSetupAntes(i){ return (i>0 && _pgmBlocos()[i-1].base!==_pgmBlocos()[i].base) ? _pgmL().setup.base/60 : 0; }
+// Setup só existe quando a BASE muda. O tempo fica no PRÓPRIO bloco (`b.setup`, em minutos) porque
+// depende da transição — pão de mel → menta não custa o mesmo que → amanteigada. Sem valor no bloco,
+// cai no padrão da linha.
+function _pgmSetupMin(i){ const bs=_pgmBlocos();
+  if(!(i>0 && bs[i-1] && bs[i] && bs[i-1].base!==bs[i].base)) return 0;
+  return (bs[i].setup==null || bs[i].setup==='') ? _pgmL().setup.base : (+bs[i].setup||0); }
+function _pgmSetupAntes(i){ return _pgmSetupMin(i)/60; }
 function _pgmHoras(){ return _pgmBlocos().reduce((s,b,i)=>s+(+b.horas||0)+_pgmSetupAntes(i),0); }
 function _pgmHhmm(h){ const H=Math.floor(h), M=Math.round((h-H)*60); return H+'h'+(M<10?'0':'')+M; }
 function _pgmRelogio(h){ const L=_pgmL(); const base=(+L.ini.split(':')[0])*60+(+L.ini.split(':')[1]);
@@ -12119,7 +12125,8 @@ function _pgmTimelineHTML(){
     let html = atr[k]>0 ? cx(atr[k]*esc,'','gap','O produto do corte só chega aqui '+Math.round(atr[k]*60)+' min depois') : '';
     blocos.forEach((b,i)=>{
       const s=_pgmSetupAntes(i), c=_pgmCalc(b), B=_pgmBase(b.base), on=(i===_pgmSel?' on':'');
-      if(s) html+=cx(s*esc,'','setup','Limpeza para trocar a base · '+Math.round(s*60)+' min');
+      if(s) html+=cx(s*esc, Math.round(s*60)+'min', 'setup',
+        'Limpeza para trocar a base · '+Math.round(s*60)+' min · começa '+_pgmRelogio(_pgmInicio(i)-s+atr[k]));
       const f=(+b.horas||0)*esc, ini=_pgmRelogio(_pgmInicio(i)+atr[k]), fim=_pgmRelogio(_pgmInicio(i)+atr[k]+(+b.horas||0));
       const txt = k===0 ? escapeHTML(B.nome)
                 : k===1 ? mixTxt(b)
@@ -12132,8 +12139,15 @@ function _pgmTimelineHTML(){
     const lab=E.atraso?`${escapeHTML(E.nome)}<i>+${E.atraso}min</i>`:escapeHTML(E.nome);
     return `<div class="pgm-tr"><span class="pgm-lab">${lab}</span><div class="pgm-t">${html}</div></div>`;
   }).join('');
+  // Régua de horas — o horário tem que se ler batendo o olho, não só passando o mouse (pedido do Diego).
+  let reg='';
+  for(let h=0; h<=Math.floor(TOT); h++){
+    const p=(h/TOT*100).toFixed(3);
+    reg+=`<span style="left:${p}%${h===0?';transform:none':''}">${_pgmRelogio(h)}</span>`;
+  }
+  const regua=`<div class="pgm-tr"><span class="pgm-lab"></span><div class="pgm-regua">${reg}</div></div>`;
   const excesso=usado-L.horas;
-  return trilhas
+  return regua+trilhas
     + (excesso>0.01?`<div class="pgm-alerta"><i class="ti ti-alert-triangle"></i> Passa do turno em ${Math.round(excesso*60)} min</div>`:'');
 }
 function _pgmTotalHTML(){
@@ -12148,6 +12162,14 @@ function _pgmEditorHTML(){
   const campo=(lab,dica,campo_,val,extra)=>`<label class="pgm-f"><span>${lab}${dica?`<i>${dica}</i>`:''}</span>
     <input type="number" class="pgm-inp" value="${val}" ${extra||''} oninput="_pgmSetLive('${campo_}',this)" onchange="renderPCPDia()"></label>`;
   const bases=L.bases.map(x=>`<option value="${x.id}"${x.id===b.base?' selected':''}>${escapeHTML(x.nome)}</option>`).join('');
+  // O setup é da TRANSIÇÃO, então só aparece quando a base muda em relação ao bloco anterior.
+  const ant=_pgmBlocos()[_pgmSel-1], mudou=!!(ant && ant.base!==b.base);
+  const setupHTML = _pgmSel===0
+    ? `<div class="pgm-nota">Primeiro bloco do dia — a linha já entra montada.</div>`
+    : mudou
+      ? campo('Limpeza antes deste bloco (min)', escapeHTML(_pgmBase(ant.base).nome)+' → '+escapeHTML(B.nome),
+              'setup', (b.setup==null||b.setup==='')?L.setup.base:b.setup, 'min="0" max="480" step="5"')
+      : `<div class="pgm-nota">Mesma base do bloco anterior — só troca a cobertura, a linha não para.</div>`;
   return `<div class="pgm-ed">
     <div class="pgm-col">
       <label class="pgm-f"><span>Base da massa<i>manda no setup</i></span>
@@ -12155,6 +12177,7 @@ function _pgmEditorHTML(){
       ${campo('Cortes por minuto','padrão 85','cortes',b.cortes,'min="1" max="200" step="1"')}
       ${campo('Ritmo real da embaladora','nominal 48','ritmo',b.ritmo,'min="1" max="60" step="1"')}
       ${campo('Duração do bloco (horas)','','horas',b.horas,'min="0.5" max="10" step="0.5"')}
+      ${setupHTML}
     </div>
     <div class="pgm-col">
       <label class="pgm-f"><span>Natural <b>${b.nat}%</b> · coberto <b>${100-b.nat}%</b></span>
@@ -12192,6 +12215,11 @@ function _pgmCSS(){ return `<style>
   /* o horário de entrada do estágio, dentro da barrinha */
   .pgm-b .h{font-size:10px;font-weight:700;opacity:.8;flex:none}
   .pgm-b.gap{background:repeating-linear-gradient(135deg,transparent,transparent 3px,color-mix(in srgb,var(--text) 7%,transparent) 3px,color-mix(in srgb,var(--text) 7%,transparent) 6px)}
+  /* régua de horas acima das trilhas */
+  .pgm-regua{position:relative;flex:1;height:17px;margin-bottom:2px}
+  .pgm-regua span{position:absolute;top:0;transform:translateX(-50%);font-size:9.5px;color:var(--text3);white-space:nowrap;padding-top:6px}
+  .pgm-regua span::before{content:'';position:absolute;top:0;left:50%;width:1px;height:4px;background:var(--border)}
+  .pgm-regua span:first-child::before{left:0}
   .pgm-b.base{background:color-mix(in srgb,var(--blue-mid) 16%,var(--card));color:var(--text2)}
   .pgm-b.cob{background:color-mix(in srgb,var(--purple,#7f77dd) 15%,var(--card));color:var(--text2)}
   .pgm-b.nat{background:var(--bg2);color:var(--text3)}
@@ -12222,6 +12250,7 @@ function _pgmCSS(){ return `<style>
   .pgm-r.tot b{font-size:15px}
   .pgm-sku{font-size:11px;color:var(--text3);margin-top:8px;line-height:1.6}
   .pgm-vazio{padding:18px 14px}
+  .pgm-nota{font-size:11px;color:var(--text3);line-height:1.5;border-left:2px solid var(--border);padding-left:9px}
   /* navegação semana › dia › linha */
   .pgm-nav{margin-bottom:13px}
   .pgm-sem{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px}
