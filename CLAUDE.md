@@ -454,6 +454,23 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
   pacotes; bloco 1 confere com o mockup (1.785 bisc/min · 87/min · 5.241/h · 2,4 de 4 raias · 28.826 pacotes · ao
   leite 17.296 / branco 11.530 · 6.480 kg de massa); mudar cortes p/ 60 recalcula tudo; o bloco de menta começa
   **14:40** (com o setup de 40min antes); "Novo bloco" estoura o turno e o aviso acende.
+- ⭐ **NAVEGAÇÃO semana › dia › linha** (2ª rodada, ideia dele espelhando a sub-navbar da ficha do item de
+  Compras): seletor de semana com **‹ ›** (rótulo "21 a 26 de set"; quando a semana cruza o mês vira "28 set a
+  3 out"), os **6 dias** (segunda a sábado, com o número do dia; hoje em azul) e as **9 linhas** em abas —
+  Forno contínuo · Palitinhos · Salgadão · Extrusados · Pipoca · Refino · Alfajor · Paçoca · Lascas.
+  - ⭐ **O plano passa a ser por LINHA + DIA**: `_PGM_PLANO['forno|2026-09-25']` → lista de blocos. Cada dia de
+    cada linha é independente. ⚠️ `_pgmBlocos()` devolve **array novo** quando o dia ainda não existe, então
+    **quem grava tem que passar por `_pgmSetBlocos`** — um `push` direto no retorno se perde.
+  - ⭐ **Ponto no dia e selo na linha marcam ONDE JÁ TEM PLANO.** Sem isso o PCP teria que entrar em 6 dias × 9
+    linhas para descobrir o que já montou.
+  - ⚠️ **Só o Forno contínuo tem cadastro.** As outras 8 aparecem na navegação e mostram **o que falta**
+    (estágios, capacidade, canais) em vez de fingir que sabem produzir. É o mesmo princípio do "a cadastrar" de
+    Compras — a tela não inventa capacidade.
+  - ⚠️ ISO próprio (`_pgmIso`) em vez do `_isoLocal` do app: aquele mora ~26 mil linhas adiante e pode estar
+    noutro `<script>`.
+  - Testado: semana "21 a 26 de set", dias SEG21…SÁB26, quinta (hoje) selecionada com ponto, 9 linhas com o selo
+    "3" no Forno; linha sem cadastro mostra o aviso e esconde o editor; sexta abre vazia, "Novo bloco" acrescenta
+    e o total vira 1h00; voltar p/ quinta traz os 3 blocos de volta; próxima semana abre vazia. 0 erros de JS.
 - ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
   (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
   reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);
