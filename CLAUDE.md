@@ -438,6 +438,22 @@ Três pedidos do Diego na mesma leva, todos na aba Comercial › Pedidos.
   da barra acima da tabela. ⚠️ O `<div>` da nota **não foi removido**: ele ainda mostra a explicação da SEMANA
   (clientes não somam) e o "este período ainda não tem dado carregado" — só as 2 frases saíram.
   `.com-kpis` foi de `margin-bottom:7px` p/ **16px** porque a nota era quem dava o respiro até as sub-abas.
+- **Cartões de indicador sem a tarja azul e com LARGURA FIXA** (4ª rodada): saiu o filete de 3px no acento
+  (`border-left`) e o `.com-kpis` deixou de ser grid `auto-fit,1fr` (que esticava na tela toda) → virou **flex com
+  `.com-kpi{flex:0 0 196px}`**. ⚠️ É o flex que garante "todos do mesmo tamanho": a altura vem do `align-items:stretch`
+  (a linha inteira pega a altura do cartão mais alto). Medido: 196px de largura e altura igual nos 3 contextos
+  (hoje 91px, ontem 65px, em aberto 100px), **0 valores cortados** — "R$ 281.047,25" a 20px/800 cabe nos 196px.
+- **A lupa passou para ANTES do filtro de período** (pedido dele). ⚠️ Por isso o `_comAcaoHTML` **não usa o slot
+  `extra` do `_cpLupa`** — aquele slot renderiza o conteúdo ATRÁS do campo/botão, que é a ordem contrária.
+- ⭐ **VARREDURA de textos explicativos** (o Diego foi marcando de print em print): saíram **7 no total** — em
+  Pedidos em aberto as 3 já listadas abaixo; em **Produtos** a nota de rodapé ("clientes e pedidos não somam entre
+  as linhas / caixas arredondadas / Transcrito do Power BI: as linhas somam R$ X, a diferença está em Demais
+  linhas"); em **Representantes** a nota ("é o mesmo relatório, visto por outro corte") e a contagem "29
+  representantes com venda" (redundante com o selo da sub-aba). ⚠️ **O que FICOU de propósito:** o aviso
+  **"N venderam ontem e ainda não hoje"** (só aparece quando há alguém a reportar — é sinal, não explicação) e a
+  nota da **Semana** sob os indicadores (clientes não somam entre os dias), que explica um número que não fecha.
+  ⚠️ **As regras que os textos explicavam continuam todas valendo** — "Demais linhas", o total vindo do relatório e
+  as caixas arredondadas seguem no código; só a legenda saiu da tela.
 - **A sub-aba Pedidos em aberto perdeu as 3 explicações** (2ª rodada, mesmo dia): "Foto do que está em aberto — não
   é um período…", a contagem "73 pedidos na tela · 5 representantes" e a **nota de rodapé** (dias contados da
   emissão / foto do relatório em 22/09 / 2 representantes cortados). ⚠️ **O que elas diziam continua valendo** — os
