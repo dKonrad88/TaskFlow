@@ -527,6 +527,14 @@ tabela de renomeação.
   Junto: traço 2,5→1,5 · área 14%→6% · médias 2→1 com opacidade · rótulos 700→600 e menores · campos de data
   menores. ⭐ **As 17 bolinhas viraram UMA** (o último mês) — elas engrossavam a linha inteira; o valor no hover
   não se perdeu porque há um **círculo transparente r=9 por mês** carregando o `<title>`.
+- ⭐ **VALOR DE CADA MÊS ESCRITO NO GRÁFICO** (ele mandou o print do SISPRO: "queria os números de quanto vende,
+  mês a mês"). Cada ponto ganhou o valor acima e uma **bolinha r=2** para ancorar — número solto no ar não diz a
+  qual ponto pertence. Regras que a densidade obrigou: **sem casas decimais a partir de 100** ("1.714" se lê,
+  "1.713,77" vira borrão com 17 meses lado a lado); **acima de 24 pontos escreve um mês sim, um não**; e perto do
+  topo o rótulo **desce** para não ser cortado. `H` foi de 160 → 190 e o teto da escala de 1,08 → 1,16 para caber.
+  ⚠️ **Os rótulos das médias saíram de dentro do desenho e viraram legenda em HTML** acima do gráfico
+  (`.ddv-leg`, com tracinho verde tracejado e vermelho pontilhado): com os valores escritos eles se sobrepunham —
+  saía "1.635média 1.713,77" na tela. Quem for mexer nos rótulos do SVG, lembre que esse espaço é disputado.
 - **Saiu a nota de rodapé da Cobertura** (corte do semáforo, definições de ruptura/atenção/folga/a produzir, "saldo
   e DDV são calculados aqui", posição do SISPRO). ⚠️ **As regras continuam valendo**: o corte 7/10 dias segue em
   `DDV_ALERTA` (um lugar só) e as definições dos filtros estão nos `title` dos cartões e neste handoff.
