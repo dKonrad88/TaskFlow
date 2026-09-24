@@ -663,6 +663,40 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
     função — tem que dar **zero**. O sintoma no navegador é enganoso: não aparece "erro de JS", aparece
     **"função global não existe"** (aqui, `setProducaoView is not a function`), porque é erro de PARSE e acontece
     antes de qualquer `window.onerror` existir.
+  - ⭐⭐⭐ **O BLOCO PASSOU A SER CONTADO EM MASSADAS** (13ª rodada, e é a maior mudança de modelo desde que a
+    tela nasceu). Pedido dele: *"deixa o produto, e coloca massadas… poderia mudar direto na barra, somente
+    número de massadas, e sempre 1 em 1. E o horário, coloca na frente da barra, um formato de marcar
+    exatamente o horário que inicia e termina"*. Perguntei as duas decisões que mudavam o trabalho e ele
+    escolheu: **campos de horário no editor** e **o bloco mantém as MASSADAS** quando o CPM muda.
+    - **`b.massadas` virou a fonte da verdade; `b.horas` virou RESULTADO** (`massadas × ciclo`). A masseira é
+      batelada — não se roda meia massada. Helpers novos: `_pgmMassadasB` / `_pgmHorasB` / `_pgmEsperaB`.
+      ⚠️ Bloco antigo com `horas` continua abrindo: as massadas são deduzidas do tempo (e daí em diante o
+      tempo passa a ser múltiplo da massada).
+    - ⚠️⚠️ **CONSEQUÊNCIA QUE MUDA A LEITURA DA TELA — e é a física correta:** acelerar o corte **NÃO faz mais
+      pacotes no mesmo bloco**. Mesma massa = mesmos pacotes. O que muda é o bloco **terminar antes**, e é a
+      **sobra do turno** que vira massada a mais. Conferido no teste: 76 → 85 cpm manteve 65 massadas e
+      39.917 pacotes, e o turno caiu de 9h55 para 9h21, liberando "cabe +5 massadas".
+      📌 Por isso **o cartão da Massada deixou de comparar quantidade e passou a comparar TEMPO** (padrão 9h13
+      × agora 8h41, −32min) — comparar massadas daria zero para sempre, o que seria uma mentira educada.
+      E o **"Resultado do dia" ganhou a conversão da sobra** ("sobra 39min · cabe +5 massadas"), que é onde o
+      ganho de ritmo aparece agora.
+    - **A barra do Corte mostra `38 massadas · Pão de mel`** — o número vem PRIMEIRO de propósito: é o que muda
+      ao arrastar e é o que sobrevive quando a barra é curta (ela corta o excedente). **O horário SAIU da barra.**
+    - **Arrastar anda de 1 em 1 massada** (era 15 em 15 minutos): o deslocamento em pixels vira horas e as horas
+      viram ciclos. ⚠️ O passo em pixels **depende do ciclo** — ritmo mais rápido, passo menor.
+    - **"Duração (horas)" deu lugar ao par `Início → Fim`** (`type=time`, os dois na MESMA célula da grade —
+      separá-los somava uma 3ª linha de campos). `_pgmSetHora`: **Início** marca **espera** antes do bloco
+      (`b.espera`, em minutos; hora anterior ao natural cola no natural e zera a espera) e **Fim** define as
+      **massadas**, arredondando para a massada cheia. ⚠️ **O campo volta mostrando o fim REAL, não o digitado**
+      — pedir 11:00 devolve 10:59. A masseira não faz meia batelada e a tela não finge que faz.
+      ⚠️ O relógio nativo (`::-webkit-calendar-picker-indicator`) foi escondido: comia a largura do valor.
+    - ⚠️ `_pgmHoras()` (ocupação do turno) e `_pgmInicio()` passaram a somar a **espera**; `_pgmIniNatural(i)` é
+      o início sem ela. A espera aparece na linha do tempo como **vão vazio com tooltip**, em todas as trilhas.
+    - Dia de exemplo virou **38 + 11 + 16 = 65 massadas** (era 5,5h + 1,5h + 2,3h). ⚠️ Com 39 no 1º bloco o dia
+      abria **estourado em 3 min** — o arredondamento para massada cheia empurrou; 38 fecha em 9h55 de 10h00.
+    - Testado em Edge headless: 0 erros; barras com "38 massadas Pão de mel"; Fim 11:00 → 28 massadas e o campo
+      volta 10:59; Início 08:00 → espera de 1h e tudo desloca; CPM 76→85 mantém massadas e pacotes e encurta o
+      turno; campos de hora com 63px sem corte; a grade do Corte voltou a 2 linhas e a página a **959px**.
 - ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
   (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
   reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);
