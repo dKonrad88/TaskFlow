@@ -589,6 +589,21 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
     tempo NAQUELA raia** (`L.setup.bobina`, 8min, ainda não descontado de nada); (2) blocos consecutivos de mesma
     base aparecem como **duas barras no Corte**, o que é ruído visual — daria para mesclar na renderização quando
     base e mix não mudam. Decidir com ele qual dos dois incomoda primeiro.
+- ⭐⭐ **SETUP POR ESTÁGIO, manual** (10ª rodada). ⚠️ **É "SETUP", nunca "limpeza"** — ele corrigiu o vocabulário.
+  O setup deixou de ser um valor único do bloco e virou **um por estágio: corte · cobertura · embalagem**.
+  Parar a cobrideira **não obriga** a parar o corte, que era o ponto ("entre setores que hoje não precisam, pois
+  por algum motivo posso precisar").
+  - **Três campos sempre visíveis, zero = sem parada.** Sumiu o par pôr/tirar: com campos numéricos, pôr é digitar
+    e tirar é zerar — mais direto e mais flexível. A regra só **PROPÕE** o do corte quando a base muda.
+  - **Os setups se ACUMULAM no fluxo**: o da cobertura atrasa cobertura e embalagem; o do corte atrasa tudo.
+    Cada trilha desenha o **seu** setup e espera os anteriores (`_pgmSetupAcum`).
+  - ⚠️ `b.setup` virou **objeto** `{corte,cob,emb}`; `_pgmSetupObj` ainda lê o formato antigo (número = só o corte).
+  - ⚠️ A escala passou a caber **a trilha que termina mais tarde** — com setup próprio na cobertura, não é mais o
+    corte quem manda no fim do desenho. Cada trilha acumula a própria posição (`pos`) em vez de usar um total único.
+  - 🐞 **Falso positivo pego no teste:** ao medir o estouro pelo fim do desenho, a tela passou a avisar "passa do
+    turno em 18 min" **sempre**, porque a embalagem termina 20min depois por trânsito. O aviso voltou a medir a
+    **ocupação do corte**, que é o que de fato ocupa o turno da linha.
+  - **12px de respiro entre os grupos** da linha do tempo, a pedido dele.
 - ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
   (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
   reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);
