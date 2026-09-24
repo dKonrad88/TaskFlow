@@ -13070,12 +13070,13 @@ function renderComercial(){
 function _comAcaoHTML(){
   const ph=_comAba==='representantes' ? 'Buscar representante'
          : _comAba==='aberto' ? 'Buscar cliente, pedido ou cidade' : 'Buscar produto ou linha';
-  const lupa=(tras)=>_cpLupa(_comBuscaAberta,_comBusca,'_comToggleBusca','_comBuscaEl','com-busca',ph,tras);
+  const lupa=_cpLupa(_comBuscaAberta,_comBusca,'_comToggleBusca','_comBuscaEl','com-busca',ph,'');
   // "Pedidos em aberto" é uma FOTO, não um período: ali o filtro de período não faz sentido.
-  if(_comAba==='aberto') return lupa('');
+  if(_comAba==='aberto') return lupa;
   const p=COM_PERIODOS.find(x=>x[0]===_comPer)||['','Período'], n=_comPerN(_comPer);
   const btn=`<button onclick="_comPerToggle()" title="Escolher o período" style="background:var(--card);border:1px solid ${_comPerAberto?'var(--blue-mid)':'var(--border)'};border-radius:9px;cursor:pointer;color:${_comPerAberto?'var(--blue-mid)':'var(--text2)'};height:38px;padding:0 11px;display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600"><i class="ti ti-filter" style="font-size:16px"></i>${escapeHTML(p[1])}${n!=null?`<span style="font-size:11px;font-weight:700;color:var(--text3)">${_cpNum(n)}</span>`:''}<i class="ti ti-chevron-down" style="font-size:13px;color:var(--text3)"></i></button>`;
-  return lupa(`<div class="cp-pop-wrap" style="position:relative">${btn}${_comPerPopHTML()}</div>`);
+  // lupa ANTES do período (pedido do Diego) — por isso não uso o slot `extra` do _cpLupa, que renderia atrás.
+  return `<div style="display:inline-flex;align-items:flex-end;gap:9px">${lupa}<div class="cp-pop-wrap" style="position:relative">${btn}${_comPerPopHTML()}</div></div>`;
 }
 function _comPerPopHTML(){
   if(!_comPerAberto) return '';
@@ -13415,17 +13416,12 @@ function _comRepsHTML(){
   const cols=cmp
     ? `<col style="width:40%"><col style="width:8%"><col style="width:15%"><col style="width:13%"><col style="width:8%"><col style="width:8%"><col style="width:8%">`
     : `<col style="width:48%"><col style="width:9%"><col style="width:16%"><col style="width:9%"><col style="width:9%"><col style="width:9%">`;
-  return `<div class="com-bar">
-      <span class="t">${_cpNum(reps.length)} representantes com venda${sumiram?` · ${_cpNum(sumiram)} venderam ${b.rot} e ainda não hoje`:''}</span>
-    </div>
+  return `${sumiram?`<div class="com-bar"><span class="t">${_cpNum(sumiram)} venderam ${b.rot} e ainda não hoje</span></div>`:''}
     <div class="com-hstrip"><table class="com-tbl"><colgroup>${cols}</colgroup>
       <thead><tr>${th('nome','Representante','l')}${th('valor','%','',1)}${th('valor','Valor')}${cmp?`<th>vs. ${b.rot}</th>`:''}${th('cx','Caixas')}${th('cli','Clientes')}${th('ped','Pedidos')}</tr></thead>
     </table></div>
     <div class="com-grp"><table class="com-tbl"><colgroup>${cols}</colgroup><tbody>${corpo}</tbody></table></div>
-    <div class="com-grp"><table class="com-tbl"><colgroup>${cols}</colgroup><tbody>${rodape}</tbody></table></div>
-    <div class="com-nota">${_comPer==='semana'
-      ? 'Somado dos dias já carregados. Clientes não somam entre os dias, por isso a coluna fica em "—".'
-      : `Transcrito do Power BI (${d.rot}). O total bate com o da aba Produtos — é o mesmo relatório, visto por outro corte.`}</div>`;
+    <div class="com-grp"><table class="com-tbl"><colgroup>${cols}</colgroup><tbody>${rodape}</tbody></table></div>`;
 }
 function _comProdutosHTML(){
   // semSeta = a coluna % ordena pelo mesmo campo do Valor; a seta aparece só uma vez, no Valor.
@@ -13479,8 +13475,7 @@ function _comProdutosHTML(){
     <div class="com-hstrip"><table class="com-tbl"><colgroup>${cols}</colgroup>
       <thead><tr>${th('nome','Linha / produto','l')}${th('valor','%','',1)}${th('valor','Valor')}${cmp?`<th>vs. ${b.rot}</th>`:''}${th('cx','Caixas')}${th('cli','Clientes')}${th('ped','Pedidos')}</tr></thead>
     </table></div>
-    ${cards}
-    <div class="com-nota">Clientes e pedidos não somam entre as linhas — o mesmo pedido leva produtos de linhas diferentes, por isso o total vem do relatório. As caixas por produto vêm arredondadas do Power BI (há produto com 0 caixa e valor acima de zero), então a soma delas também não fecha exatamente.<br>${_comPer==='semana'?`Somado dos dias já carregados: as linhas dão ${_cpBRL(sv)}; a diferença até o total está na linha "Demais linhas".`:`Transcrito do Power BI (${d.rot}): as linhas do print somam ${_cpBRL(sv)}; a diferença até o total está na linha "Demais linhas".`}</div>`;
+    ${cards}`;
 }
 // ════ FIM DO BLOCO COMERCIAL ════
 
