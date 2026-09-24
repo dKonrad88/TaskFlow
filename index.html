@@ -12292,24 +12292,32 @@ function _pgmTimelineHTML(){
     let html = C.atraso>0 ? cx(C.atraso*esc,'','gap','O produto do corte só chega aqui '+Math.round(C.atraso*60)+' min depois') : '';
     blocos.forEach((b,i)=>{
       const s=_pgmSetupAntes(i), c=_pgmCalc(b), B=_pgmBase(b.base), on=(i===_pgmSel?' on':'');
-      if(s) html+=cx(s*esc, Math.round(s*60)+'min'+(C.tipo==='corte'?`<i class="pgm-rz" onmousedown="_pgmDragStart(event,'setup',${i})" title="Arraste para mudar a limpeza"></i>`:''), 'setup',
-        'Limpeza para trocar a base · '+Math.round(s*60)+' min · começa '+_pgmRelogio(_pgmInicio(i)-s+C.atraso));
+      // ⚠️ A limpeza é desenhada SÓ na trilha do corte. Repetida nas 8 trilhas virava uma coluna rosa que
+      // dominava a tela e ainda parecia 3 paradas diferentes (elas saem deslocadas pelo trânsito).
+      // Nas outras trilhas entra um espaçador invisível: a linha simplesmente não tem barra ali.
+      if(s) html+= C.tipo==='corte'
+        ? cx(s*esc, Math.round(s*60)+`min<i class="pgm-rz" onmousedown="_pgmDragStart(event,'setup',${i})" title="Arraste para mudar a limpeza"></i>`, 'setup',
+            'Limpeza para trocar a base · '+Math.round(s*60)+' min')
+        : cx(s*esc,'','nada');
       const f=(+b.horas||0)*esc, ini=_pgmRelogio(_pgmInicio(i)+C.atraso), fim=_pgmRelogio(_pgmInicio(i)+C.atraso+(+b.horas||0));
       let txt='', cls='', tit='';
-      if(C.tipo==='corte'){ txt=escapeHTML(B.nome); cls='base'; tit=B.nome; }
+      if(C.tipo==='corte'){ txt=`<b class="h">${ini}</b>`+escapeHTML(B.nome); cls='base'; tit=B.nome; }
       else if(C.tipo==='cob'){ const sh=c.mix[C.dest.id]||0;
-        if(sh<=0){ html+=cx(f,'','vazio','Nada vai para '+C.dest.nome+' neste bloco'); return; }
-        txt=Math.round(sh*100)+'% · '+_pgmN(c.porDest[C.dest.id])+' pac';
-        cls=C.dest.cob?'cob':'nat'; tit=C.dest.nome+' · '+Math.round(sh*100)+'% do que sai do corte'; }
+        // canal parado = NENHUM elemento, só o vão. Retângulo tracejado competia com as barras de verdade.
+        if(sh<=0){ html+=cx(f,'','nada'); return; }
+        txt=Math.round(sh*100)+'%'; cls='cob';
+        tit=C.dest.nome+' · '+Math.round(sh*100)+'% do corte · '+_pgmN(c.porDest[C.dest.id])+' pacotes'; }
       else { const e=_pgmEmb(b)[C.idx];
-        if(!e.on){ html+=cx(f,'','vazio','Embaladora parada neste bloco'); return; }
+        if(!e.on){ html+=cx(f,'','nada'); return; }
         txt=escapeHTML(e.cli||'—')+' · '+_pgmDest(e.sku).nome;
         cls=c.falta?'alerta':'emb'; tit=e.nome+' · '+e.cli+' · '+_pgmDest(e.sku).nome+' · '+_pgmN(c.porMaq[C.idx])+' pacotes a '+e.real+'/min'; }
-      html+=cx(f, `<b class="h">${ini}</b>${txt}${C.tipo==='corte'?`<i class="pgm-rz" onmousedown="_pgmDragStart(event,'bloco',${i})" title="Arraste para mudar a duração"></i>`:''}`,
+      // ⚠️ O horário fica SÓ no corte: o rótulo do grupo já diz "+15min"/"+20min", então repetir 07:15 e
+      // 07:20 em sete trilhas era a mesma informação sete vezes. O horário exato vai no tooltip.
+      html+=cx(f, txt+(C.tipo==='corte'?`<i class="pgm-rz" onmousedown="_pgmDragStart(event,'bloco',${i})" title="Arraste para mudar a duração"></i>`:''),
         cls+on, C.nome+' · '+ini+' às '+fim+' · '+tit);
     });
     const livre=TOT-C.atraso-usado;
-    if(livre>0.01) html+=cx(livre*esc,'','livre');
+    if(livre>0.01) html+=cx(livre*esc,'','nada');
     // o nome do GRUPO aparece uma vez só, na 1ª trilha dele, e leva junto o atraso do estágio —
     // assim dá para bater o olho e saber onde termina o corte e começa a cobertura, sem linha extra.
     const grp=C.grupo?`${escapeHTML(C.grupo)}${C.atraso?`<i>+${Math.round(C.atraso*60)}min</i>`:''}`:'';
@@ -12425,19 +12433,20 @@ function _pgmCSS(){ return `<style>
   .pgm-b{position:relative;border-radius:4px;font-size:10.5px;display:flex;align-items:center;justify-content:center;gap:6px;overflow:hidden;white-space:nowrap;padding:0 5px;min-width:0}
   /* o horário de entrada do estágio, dentro da barrinha */
   .pgm-b .h{font-size:10px;font-weight:700;opacity:.8;flex:none}
-  .pgm-b.gap{background:repeating-linear-gradient(135deg,transparent,transparent 3px,color-mix(in srgb,var(--text) 7%,transparent) 3px,color-mix(in srgb,var(--text) 7%,transparent) 6px)}
+  /* o vão de trânsito não precisa de textura: a barra já começa deslocada e o rótulo do grupo diz "+15min" */
+  .pgm-b.gap{background:none}
   /* régua de horas acima das trilhas */
   .pgm-regua{position:relative;flex:1;height:15px;margin-bottom:1px}
   .pgm-regua span{position:absolute;top:0;transform:translateX(-50%);font-size:9.5px;color:var(--text3);white-space:nowrap;padding-top:6px}
   .pgm-regua span::before{content:'';position:absolute;top:0;left:50%;width:1px;height:4px;background:var(--border)}
   .pgm-regua span:first-child::before{left:0}
+  /* um tom por ESTÁGIO e nada mais — quanto menos tratamentos, mais rápido se lê */
   .pgm-b.base{background:color-mix(in srgb,var(--blue-mid) 16%,var(--card));color:var(--text2)}
-  .pgm-b.cob{background:color-mix(in srgb,var(--purple,#7f77dd) 15%,var(--card));color:var(--text2)}
-  .pgm-b.nat{background:var(--bg2);color:var(--text3)}
-  .pgm-b.emb{background:color-mix(in srgb,var(--success) 14%,var(--card));color:var(--text2)}
+  .pgm-b.cob{background:color-mix(in srgb,var(--purple,#7f77dd) 14%,var(--card));color:var(--text2)}
+  .pgm-b.emb{background:color-mix(in srgb,var(--success) 13%,var(--card));color:var(--text2)}
   .pgm-b.alerta{background:color-mix(in srgb,var(--danger) 16%,var(--card));color:var(--danger);font-weight:700}
-  .pgm-b.setup{background:color-mix(in srgb,var(--danger) 22%,var(--card))}
-  .pgm-b.livre{border:1px dashed var(--border);color:var(--text3)}
+  .pgm-b.setup{background:color-mix(in srgb,var(--danger) 20%,var(--card));color:var(--text2)}
+  .pgm-b.nada{background:none}   /* canal parado: só o vão, sem retângulo concorrendo com as barras */
   .pgm-b.on{box-shadow:0 0 0 1.5px var(--blue-mid) inset}
   .pgm-alerta{font-size:11px;color:var(--danger);margin-top:7px}
   .pgm-blocos{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 9px}
