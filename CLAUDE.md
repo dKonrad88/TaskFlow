@@ -538,6 +538,22 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
   limpeza" / "tirar" no editor. Conferido: pôr no bloco 2 → 10h38; tirar no bloco 3 → 9h58.
 - **Altura:** com 8 trilhas a tela voltou a estourar (997px); cortada para **919px** (trilhas 22→19px, paddings,
   chips e cartões menores). ⏳ Se ele reclamar de novo, o que mais pesa é a coluna "resultado + massada".
+- ⭐⭐ **MEDIÇÕES REAIS (8 produções, 07/ago a 23/set) — e elas COLOCAM O MODELO EM DÚVIDA.** O Diego mandou
+  CPM × tempo de massada observado. A tela passou a mostrar, ao lado do **calculado**, o **medido** naquele CPM
+  (com quantas produções sustentam a média), o campo de cortes/min sugere os ritmos já rodados e o rodapé lista a
+  média de cada um. Sem medição naquele CPM, a linha não aparece — nada de inventar.
+  | CPM | medições | tempo médio | o modelo prevê |
+  |---|---|---|---|
+  | 75 | 5 | **8min20** | 8min39 |
+  | 80 | 2 | **8min17** | 8min07 |
+  | 85 | 1 | **7min45** | 7min38 |
+  - ⚠️⚠️ **75 e 80 cpm dão praticamente o MESMO tempo (8min20 × 8min17), quando o modelo prevê 32s de diferença.**
+    Só a 85 o tempo cai de verdade. A hipótese (não confirmada — 8 pontos, 1 só a 85) é que **a masseira tem um
+    ciclo mínimo próprio de ~8min20**: abaixo de ~80 cpm quem manda é ela, e só acima disso o corte é que puxa.
+    Se for isso, a fórmula `tempo = kg ÷ consumo` **é um teto, não o tempo real**, e faltaria cadastrar o ciclo
+    mínimo da masseira. **Levar isso ao Diego/Valesca antes de confiar na simulação em CPM baixo.**
+  - O **rendimento implícito** de cada medição (cpm × 21 × 10,43g × tempo) varia de **131 a 146 kg**, média
+    **~139,9 kg** — abaixo dos **142,106** nominais. Massada é batelada; o nominal é receita, não medição.
 - ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
   (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
   reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);
