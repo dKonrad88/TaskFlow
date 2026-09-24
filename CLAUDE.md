@@ -444,6 +444,18 @@ tabela de renomeação.
   fixos, fonte 17px) e SEM a tarja de cor na lateral**. ⚠️ A cor não se perdeu: ela já vivia **no número**
   (5 vermelho, 27 âmbar, 80 verde). Os cartões continuam **clicáveis como filtro** e o `.on` (contorno azul) segue
   marcando qual está ativo.
+- ⭐ **GRÁFICO MAIS LEVE** (ele achou "grotesco, muito pesado visualmente"). ⚠️ **A causa não era o traço, era a
+  ESCALA:** o `<svg>` tem `width:100%`, então **tudo escala junto com a largura do cartão**. Com `viewBox` de
+  **1000** num cartão de ~1220px o fator era 1,22× (e 1,5× em tela larga) — traço de 2,5 virava 3, texto de 11
+  virava 13,4, e o gráfico saía com **231px de altura**. Trocado para **`viewBox 1250×160`** → desenho quase 1:1 e
+  altura **~152px**. 📌 **Regra: a altura na tela é `H × (largura do cartão ÷ W)`** — mexeu no W, recalcule.
+  Junto: traço 2,5→1,5 · área 14%→6% · médias 2→1 com opacidade · rótulos 700→600 e menores · campos de data
+  menores. ⭐ **As 17 bolinhas viraram UMA** (o último mês) — elas engrossavam a linha inteira; o valor no hover
+  não se perdeu porque há um **círculo transparente r=9 por mês** carregando o `<title>`.
+- **Saiu a nota de rodapé da Cobertura** (corte do semáforo, definições de ruptura/atenção/folga/a produzir, "saldo
+  e DDV são calculados aqui", posição do SISPRO). ⚠️ **As regras continuam valendo**: o corte 7/10 dias segue em
+  `DDV_ALERTA` (um lugar só) e as definições dos filtros estão nos `title` dos cartões e neste handoff.
+  `_DDV_POSICAO` e o CSS `.ddv-nota` ficaram sem uso — mantidos (a const documenta a data do dado).
 - Testado em Edge headless: 0 erros de JS; menu na ordem nova; Programação abre a grade (36 células) sem sub-navbar;
   voltar p/ Cobertura traz os 5 indicadores; cartões 168×68 com `border-left:1px`; busca no topo; rota antiga `pcp` ok.
 - ⏳ **Em aberto:** a linha "144 produtos · 32 linhas" + "Recolher todas" da Cobertura é o mesmo tipo de faixa que
