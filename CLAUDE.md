@@ -506,6 +506,14 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
   - ⏳ **Os 140 kg são conta inversa, não dado.** Quando ele disser o rendimento real da masseira, é trocar 1 número.
 - **Saíram os dois cursores de mix** (natural / ao leite–branco) a pedido dele. ⚠️ O cálculo do mix **continua**
   (`b.nat`/`b.leite` seguem alimentando a trilha da Cobrideira e a quebra por SKU) — só os controles sumiram.
+- **TUDO NUM CARTÃO SÓ, sem rolar** (6ª rodada — "quero todas as informações sem precisar rolar; está muito
+  largo, deixa tudo menor"): o editor virou **3 colunas** — campos (numa grade interna de 2) · resultado do bloco ·
+  massada. O cartão separado da Massada foi **absorvido**. Campos menores (input 32→28px, rótulos 11→10px) e as
+  caixas de resultado mais justas. **Medido: o conteúdo termina em 728px**, cabe numa viewport de 900.
+  ⚠️ O `_pgmRefresh` acha o cursor da massada por `#pgm-mass-v ~ .pgm-rg` — se a ordem dentro do `.pgm-f` mudar,
+  esse seletor quebra em silêncio (o número atualiza e o cursor não).
+- **Arraste do setup passou de 5 em 5 para 1 em 1 minuto** (a duração do bloco segue em 15min, que é o passo que
+  faz sentido para horas). Conferido: 40 → 41 → 42 → 43 → 46min, com o total do dia acompanhando.
 - ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
   (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
   reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);
