@@ -422,6 +422,47 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐⭐ 2026-09-24 (c) — PC da Empresa — NOVA ABA **Produção › PCP**: montar o DIA de uma linha
+Depois de um debate longo (o Diego explicou a linha do Forno contínuo estágio por estágio) e de 5 mockups, ele
+pediu a aba. Bloco novo entre `// ════ INÍCIO/FIM DO BLOCO PCP · PROGRAMAÇÃO DO DIA ════`, **prefixo `_pgm*`**,
+entrada `renderPCPDia()`. ⚠️ **NÃO usar `_pcp*` nem `renderPCP`**: já existem e são outra coisa (a Cobertura e o
+código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arquivo — não confundir.
+- **Menu de Produção agora:** Cobertura · **PCP** · Programação · Ordens de Produção · Produtos · Check list.
+  ⚠️ O id `pcp` **era** o da Cobertura (compat de rota antiga) e agora é esta tela — rota salva num aparelho velho
+  cai aqui uma vez só; o menu resolve no 1º clique.
+- ⭐ **O MODELO (decifrado com ele, vale para as outras linhas):** uma linha é uma **cadeia de estágios em série**,
+  cada um com capacidade e nº de canais — Corte (1 canal, 85 cortes/min × 21 biscoitos) → Cobrideira (até 2
+  destinos) → Empacotamento (4 embaladoras, 48 nominal / ~37 real). O dia é uma **sequência de blocos**, e quem
+  manda no setup é a **BASE DA MASSA**: trocar cobertura (ao leite → branco → natural) **não para nada**; trocar a
+  base (menta, amanteigada) exige limpeza em cada estágio (40min, **chutado** — falta o número real).
+- ⚠️⚠️ **O GARGALO É O CORTE, não o empacotamento** — e é contraintuitivo, eu mesmo errei antes de fazer a conta.
+  Com pacote de **250g**: assado = 11g − 17% = **9,13g**; coberto = 9,13 × 1,34 = **12,23g**. O corte entrega 1.785
+  bisc/min = **~87 pacotes/min** de coberto, e as 4 embaladoras fazem **148/min**. **Sobram ~1,6 raias sempre** —
+  daí vem a folga para embalar marca de cliente junto, e é por isso que **trocar bobina numa raia não custa
+  produção**. Quem for "otimizar o empacotamento" está otimizando o que não é o limite.
+- **A tela:** linha do tempo com **uma trilha por estágio** (largura = horas ÷ turno, setup em vermelho entre
+  blocos de base diferente), os blocos como **chips** (clicar seleciona, × tira, "Novo bloco" acrescenta) e, abaixo,
+  o **editor do bloco**: base, cortes/min, ritmo real da embaladora, duração, e 2 réguas (% natural · divisão do
+  coberto entre ao leite e branco). O resultado recalcula ao vivo: bisc/min, pacotes/min e /h, **raias necessárias**
+  (vermelho quando passa de 4), total do bloco, quebra por SKU e massa crua. O topo mostra **horas usadas do turno**
+  e avisa quando **passa do turno**.
+  ⚠️ Digitar usa `oninput` → `_pgmSetLive` → **`_pgmRefresh()`, que atualiza só a linha do tempo e o resultado**
+  (não recria os campos, senão perde o foco); o `onchange` (blur) é que faz o render completo.
+- ⚠️ **DADO ESTÁTICO + dia em MEMÓRIA** (`_PGM_DIA`): **nada aqui grava no localStorage** (regra P0). F5 volta ao
+  dia de exemplo. Quando for persistir, é uma chave `taskflow_*` gravada nas AÇÕES, nunca no render.
+- Testado em Edge headless: 0 erros de JS; menu na ordem nova; 3 blocos + 3 trilhas; total 9h58 de 10h00 e 46.748
+  pacotes; bloco 1 confere com o mockup (1.785 bisc/min · 87/min · 5.241/h · 2,4 de 4 raias · 28.826 pacotes · ao
+  leite 17.296 / branco 11.530 · 6.480 kg de massa); mudar cortes p/ 60 recalcula tudo; o bloco de menta começa
+  **14:40** (com o setup de 40min antes); "Novo bloco" estoura o turno e o aviso acende.
+- ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
+  (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
+  reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);
+  **quebra/refugo**; se sempre há gente para as 4 embaladoras. E a **2ª linha (fritura de palitinhos)**, que é o
+  teste de se o cadastro `estágios × canais` serve para todas ou se cada linha precisa de desenho próprio.
+- ⏳ **Relação com a Programação:** a grade semanal continua em Produção › Programação (e no Meu Dia). A ideia
+  discutida é que **esta tela vire a Programação** e a grade semanal passe a ser a visão "semana" dela — ainda não
+  foi decidido, por isso as duas convivem.
+
 ### ⭐ 2026-09-24 (b) — PC da Empresa — **PCP vira "Cobertura"**, entra **Programação** no menu de Produção
 O Diego chegou na conclusão certa sozinho: *"talvez essa tela [a do dia por linha] seja de fato o PCP, e a outra,
 onde estão olhando estoque, pedidos em carteira, DDV, seja outro nome"*. **PCP é o SETOR, não uma tela** — as duas
