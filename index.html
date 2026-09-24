@@ -13054,7 +13054,8 @@ function renderComercial(){
   const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
-  main.innerHTML=_cpTela('Pedidos','O que foi vendido no período — por produto, por representante e o que está em aberto.', _comCorpoHTML(), null, _comAcaoHTML());
+  // sem subtítulo: ele repetia em voz alta as 3 sub-abas logo abaixo (Diego, 24/09 — "queria algo clean")
+  main.innerHTML=_cpTela('Pedidos','', _comCorpoHTML(), null, _comAcaoHTML());
   // fecha o popover do período ao clicar fora (mesmo padrão dos filtros de Compras)
   if(!window.__comFiltrosCloser){
     window.__comFiltrosCloser=function(e){
@@ -13097,11 +13098,14 @@ function _comBuscaInput(v){ _comBusca=v; _comRefresh(); }
 // ⚠️ O recolhimento é guardado pelo NOME da linha, não pelo índice: cada período tem sua própria
 // ordem, e por índice "Amendoim" recolhido em Hoje recolhia outra linha qualquer ao trocar de período.
 function _comChaveLinha(i){ const d=_comD(); return (d&&d.linhas[i])?_comNorm(d.linhas[i][0]):String(i); }
-function _comToggleLinha(i){ const k=_comChaveLinha(i); if(_comFechadas[k]) delete _comFechadas[k]; else _comFechadas[k]=1; _comRefresh(); }
+// ⚠️ Os dois re-renderizam a TELA, não só o miolo: o ícone de recolher/abrir mora na linha das sub-abas,
+// que fica FORA do #com-conteudo — com _comRefresh() ele não trocaria de seta. Quem usa _comRefresh é a
+// busca, que precisa preservar o foco do campo.
+function _comToggleLinha(i){ const k=_comChaveLinha(i); if(_comFechadas[k]) delete _comFechadas[k]; else _comFechadas[k]=1; renderComercial(); }
 function _comTodasLinhas(fechar){
   const d=_comD(); if(!d) return;              // antes isto varria _COM_LINHAS, que não existe mais
   d.linhas.forEach(l=>{ const k=_comNorm(l[0]); if(fechar) _comFechadas[k]=1; else delete _comFechadas[k]; });
-  _comRefresh();
+  renderComercial();
 }
 function _comSortBy(c){ if(_comSort.campo===c) _comSort.dir*=-1; else { _comSort.campo=c; _comSort.dir=(c==='nome'?1:-1); } _comRefresh(); }
 function _comD(){ return _COM_DADOS[_comPer]||null; }
@@ -13159,7 +13163,7 @@ function _comCSS(){
   .com-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:9px}
   .com-bar .t{font-size:11.5px;font-weight:600;color:var(--text3)}
   /* Indicadores: faixa fina no acento à esquerda (o cartão segue branco) + pílula de variação. */
-  .com-kpis{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+  .com-kpis{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 30px;margin-bottom:16px}
   /* popover do período (o ícone de filtro do topo) */
   .com-pop{position:absolute;top:44px;right:0;z-index:40;background:var(--card);border:1px solid var(--border);border-radius:11px;box-shadow:0 10px 28px rgba(0,0,0,.18);padding:6px;min-width:196px;display:flex;flex-direction:column;gap:2px}
   .com-perit{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;border-radius:8px;padding:8px 10px;font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer}
@@ -13168,12 +13172,11 @@ function _comCSS(){
   .com-perit[disabled]{opacity:.42;cursor:default;font-weight:500}
   .com-perit .n{margin-left:auto;font-size:11px;font-weight:700;color:var(--text3)}
   .com-perit.on .n{color:#fff}
-  /* largura FIXA (não estica na tela toda) e mesma altura — o flex estica a linha pelo cartão mais alto */
-  .com-kpi{flex:0 0 196px;background:var(--card);border:1px solid var(--border);border-radius:11px;padding:11px 13px;min-width:0}
+  /* indicadores em linha de texto, sem cartão (mockup 2) — o 1º é o número que manda, sai maior */
+  .com-kpi{display:flex;flex-direction:column;gap:2px;min-width:0}
   .com-kpi .lab{font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);line-height:1.3}
-  .com-kpi .val{font-size:20px;font-weight:800;letter-spacing:-.015em;color:var(--text);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .com-kpi .sub{font-size:10.5px;color:var(--text3);margin-top:5px;line-height:1.4}
-  .com-kpirow{display:flex;align-items:flex-start;justify-content:space-between;gap:7px}
+  .com-kpi .val{display:flex;align-items:center;gap:7px;font-size:17px;font-weight:800;letter-spacing:-.015em;color:var(--text);white-space:nowrap}
+  .com-kpi:first-child .val{font-size:22px}
   .com-pill{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;border-radius:999px;padding:2px 7px;white-space:nowrap;flex:none}
   .com-pill.dn{background:color-mix(in srgb,var(--danger) 14%,transparent);color:var(--danger)}
   .com-pill.up{background:color-mix(in srgb,var(--success) 16%,transparent);color:var(--success)}
@@ -13240,11 +13243,14 @@ function _comSparkHTML(v){
   </svg>`;
 }
 // Cartão de indicador (modelo escolhido pelo Diego: faixa fina na lateral).
+// Indicador em LINHA DE TEXTO (Diego escolheu o mockup 2, 24/09) — sem cartão: rótulo miúdo em cima,
+// número embaixo, a pílula de variação colada nele. ⚠️ O `sub` (a diferença em número, "R$ 190.189,01 a
+// menos que ontem", e os avisos da foto em aberto) virou TOOLTIP: some da tela, não do app.
+// O 1º indicador de cada tela sai maior por CSS (`:first-child`) — é o número que manda.
 function _comKPI(lab, val, pill, sub, spark, cor){
-  return `<div class="com-kpi">
-    <div class="com-kpirow"><span class="lab">${lab}</span>${pill||''}</div>
-    <div class="val"${cor?` style="color:${cor}"`:''}>${val}</div>
-    ${sub?`<div class="sub">${sub}</div>`:''}${spark||''}</div>`;
+  return `<div class="com-kpi"${sub?` title="${escapeAttr(sub)}"`:''}>
+    <span class="lab">${lab}</span>
+    <span class="val"${cor?` style="color:${cor}"`:''}>${val}${pill||''}${spark||''}</span></div>`;
 }
 function _comCorpoHTML(){
   const d=_comD(), t=d?d.tot:null, b=_comBase(), bt=b?b.tot:null;
@@ -13271,6 +13277,10 @@ function _comCorpoHTML(){
   const nAbas={produtos:d?d.linhas.length:null, representantes:(d&&d.reps)?d.reps.length:null, aberto:_comAbItens().length};
   const abas=[['produtos','Produtos'],['representantes','Representantes'],['aberto','Pedidos em aberto']]
     .map(a=>`<button class="com-sub${_comAba===a[0]?' on':''}" onclick="_comSetAba('${a[0]}')">${a[1]}${nAbas[a[0]]?`<span class="n">${_cpNum(nAbas[a[0]])}</span>`:''}</button>`).join('');
+  // "Recolher todas" saiu da faixa própria acima da tabela (era a faixa mais vazia da tela) e virou ícone aqui
+  const fech=Object.keys(_comFechadas).length;
+  const btnRec=(_comAba==='produtos'&&d)
+    ? `<button class="com-link" onclick="_comTodasLinhas(${fech?0:1})" title="${fech?'Abrir todas as linhas':'Recolher todas as linhas'}" style="padding:4px 6px"><i class="ti ti-${fech?'chevrons-down':'chevrons-up'}" style="font-size:15px;vertical-align:-2px"></i></button>` : '';
   const btnCmp=(_comAba==='produtos'||_comAba==='representantes')&&b
     ? `<button class="com-chip${_comCmp?' on':''}" onclick="_comToggleCmp()" style="padding:6px 13px;font-size:12px"><i class="ti ti-arrows-left-right" style="font-size:13px"></i> Comparar com ${b.rot}</button>` : '';
   // Pedidos em aberto é uma FOTO, não um período: o filtro de período some e os indicadores são outros.
@@ -13278,7 +13288,7 @@ function _comCorpoHTML(){
   return `${_comCSS()}
     ${topo}
     <div style="display:flex;align-items:flex-end;gap:22px;border-bottom:1px solid var(--border);margin-bottom:14px">
-      ${abas}<div style="margin-left:auto;padding-bottom:7px;display:flex;align-items:center;gap:9px">${btnCmp}</div>
+      ${abas}<div style="margin-left:auto;padding-bottom:7px;display:flex;align-items:center;gap:9px">${btnCmp}${btnRec}</div>
     </div>
     <div id="com-conteudo">${_comConteudoHTML()}</div>`;
 }
@@ -13469,11 +13479,7 @@ function _comProdutosHTML(){
     rodape+=`<tr class="com-tot"><td class="l">Total</td><td>100,00%</td><td>${_cpBRL(d.tot.valor)}</td>${vs(d.tot.valor, b?b.tot.valor:null)}<td>${_cpNum(d.tot.cx)}</td><td>${d.tot.cli!=null?_cpNum(d.tot.cli):'até '+_cpNum(d.tot.cliMax)}</td><td>${_cpNum(d.tot.ped)}</td></tr>`;
   }
   cards+=card(rodape);
-  const fechadas=Object.keys(_comFechadas).length;
-  return `<div class="com-bar">
-      <button class="com-link" onclick="_comTodasLinhas(${fechadas?0:1})" style="margin-left:auto"><i class="ti ti-${fechadas?'chevrons-down':'chevrons-up'}" style="font-size:12px;vertical-align:-1px"></i> ${fechadas?'Abrir todas':'Recolher todas'}</button>
-    </div>
-    <div class="com-hstrip"><table class="com-tbl"><colgroup>${cols}</colgroup>
+  return `<div class="com-hstrip"><table class="com-tbl"><colgroup>${cols}</colgroup>
       <thead><tr>${th('nome','Linha / produto','l')}${th('valor','%','',1)}${th('valor','Valor')}${cmp?`<th>vs. ${b.rot}</th>`:''}${th('cx','Caixas')}${th('cli','Clientes')}${th('ped','Pedidos')}</tr></thead>
     </table></div>
     ${cards}`;
