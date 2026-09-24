@@ -471,6 +471,14 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
   - Testado: semana "21 a 26 de set", dias SEG21…SÁB26, quinta (hoje) selecionada com ponto, 9 linhas com o selo
     "3" no Forno; linha sem cadastro mostra o aviso e esconde o editor; sexta abre vazia, "Novo bloco" acrescenta
     e o total vira 1h00; voltar p/ quinta traz os 3 blocos de volta; próxima semana abre vazia. 0 erros de JS.
+- ⭐ **HORÁRIO NAS BARRINHAS + DEFASAGEM ENTRE ESTÁGIOS** (3ª rodada, pedido dele): cada estágio ganhou
+  **`atraso` em minutos** — o tempo que o produto leva do corte até ali (corte 0 · cobrideira 15 · embaladoras 20).
+  A trilha inteira começa **deslocada** e cada barrinha mostra a **hora de entrada naquele estágio**: corte 07:00 →
+  cobrideira 07:15 → embaladoras 07:20 (conferido no teste, inclusive depois do setup: 14:40 / 14:55 / 15:00).
+  ⚠️ **A escala virou `turno + maior atraso`** — sem isso a ponta da trilha das embaladoras, que termina 20min
+  depois do corte, sairia do desenho num dia cheio. O vão inicial aparece **hachurado** e o tooltip de cada barra
+  traz "estágio · início às fim · o que roda". ⏳ O Diego avisou que **o atraso varia por produto e pela
+  velocidade do corte** — hoje é um número fixo por estágio no cadastro da linha.
 - ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
   (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
   reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);
