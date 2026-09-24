@@ -12153,20 +12153,28 @@ function _pgmCalc(b){
 // Setup só existe quando a BASE muda. O tempo fica no PRÓPRIO bloco (`b.setup`, em minutos) porque
 // depende da transição — pão de mel → menta não custa o mesmo que → amanteigada. Sem valor no bloco,
 // cai no padrão da linha.
-// `setupOn` manda sobre a regra: null = automático (só quando a base muda), true = limpeza forçada
-// (mesmo com a mesma base), false = sem limpeza (mesmo trocando de base). O PCP põe e tira na mão.
+// ⭐ SETUP POR ESTÁGIO (Diego, 24/09 — e é "setup", nunca "limpeza"): cada bloco pode ter um tempo de
+// preparação PRÓPRIO no corte, na cobertura e na embalagem. Parar a cobrideira não obriga a parar o corte.
+// A regra só PROPÕE: ao trocar a base da massa, o corte nasce com o tempo padrão. Zero = sem setup.
+// ⚠️ Os setups se ACUMULAM no fluxo: o da cobertura atrasa a cobertura e a embalagem; o do corte atrasa tudo.
+const _PGM_EST=[{id:'corte',nome:'Corte'},{id:'cob',nome:'Cobertura'},{id:'emb',nome:'Embalagem'}];
 function _pgmSetupAuto(i){ const bs=_pgmBlocos();
   return !!(i>0 && bs[i-1] && bs[i] && bs[i-1].base!==bs[i].base); }
-function _pgmSetupLigado(i){ const bs=_pgmBlocos(); if(i<=0||!bs[i]) return false;
-  return (bs[i].setupOn==null) ? _pgmSetupAuto(i) : !!bs[i].setupOn; }
-function _pgmSetupMin(i){ const bs=_pgmBlocos();
-  if(!_pgmSetupLigado(i)) return 0;
-  return (bs[i].setup==null || bs[i].setup==='') ? _pgmL().setup.base : (+bs[i].setup||0); }
-function _pgmSetupToggle(i){ const arr=_pgmBlocos().slice(); if(!arr[i]) return;
-  const ligado=_pgmSetupLigado(i);
-  arr[i].setupOn=!ligado;
-  if(!ligado && (arr[i].setup==null||arr[i].setup==='')) arr[i].setup=_pgmL().setup.base;
-  _pgmSetBlocos(arr); renderPCPDia(); }
+function _pgmSetupObj(i){ const bs=_pgmBlocos(), b=bs[i];
+  if(!b || i<=0) return {corte:0, cob:0, emb:0};
+  const s=b.setup;
+  if(s && typeof s==='object') return {corte:+s.corte||0, cob:+s.cob||0, emb:+s.emb||0};
+  if(s!=null && s!=='') return {corte:+s||0, cob:0, emb:0};      // formato antigo: um número = só o corte
+  return {corte:_pgmSetupAuto(i)?_pgmL().setup.base:0, cob:0, emb:0};   // proposta da regra
+}
+// quanto cada GRUPO espera antes de recomeçar: os setups anteriores no fluxo somam
+function _pgmSetupAcum(i, estId){ const s=_pgmSetupObj(i);
+  return estId==='corte' ? s.corte : estId==='cob' ? s.corte+s.cob : s.corte+s.cob+s.emb; }
+function _pgmSetupMin(i){ return _pgmSetupObj(i).corte; }        // o que ocupa o turno da linha
+function _pgmSetSetup(i, estId, el){ const arr=_pgmBlocos().slice(); if(!arr[i]) return;
+  const s=_pgmSetupObj(i); s[estId]= el.value===''?0:Math.max(0,+el.value||0);
+  arr[i].setup=s; _pgmSetBlocos(arr); _pgmRefresh();
+  const tt=document.getElementById('pgm-tot'); if(tt) tt.innerHTML=_pgmTotalHTML(); }
 function _pgmSetupAntes(i){ return _pgmSetupMin(i)/60; }
 function _pgmHoras(){ return _pgmBlocos().reduce((s,b,i)=>s+(+b.horas||0)+_pgmSetupAntes(i),0); }
 function _pgmHhmm(h){ const H=Math.floor(h), M=Math.round((h-H)*60); return H+'h'+(M<10?'0':'')+M; }
@@ -12215,7 +12223,7 @@ function _pgmDragStart(ev, tipo, i){
   const L=_pgmL(), atr=L.estagios.map(e=>(e.atraso||0)/60);
   _pgmDrag={tipo:tipo, i:i, x0:ev.clientX, w:t.getBoundingClientRect().width,
     TOT:L.horas+Math.max.apply(null,atr),
-    v0: tipo==='bloco' ? (+_pgmBlocos()[i].horas||0) : _pgmSetupMin(i)};
+    v0: tipo==='bloco' ? (+_pgmBlocos()[i].horas||0) : _pgmSetupObj(i).corte};
   document.addEventListener('mousemove',_pgmDragMove);
   document.addEventListener('mouseup',_pgmDragEnd);
   document.body.style.cursor='col-resize';
@@ -12224,7 +12232,8 @@ function _pgmDragMove(ev){
   const D=_pgmDrag; if(!D||!D.w) return;
   const dh=(ev.clientX-D.x0)/D.w*D.TOT, arr=_pgmBlocos().slice(); if(!arr[D.i]) return;
   if(D.tipo==='bloco') arr[D.i].horas=Math.max(0.25, Math.min(12, Math.round((D.v0+dh)*4)/4));   // passo de 15min
-  else                 arr[D.i].setup=Math.max(0, Math.min(480, Math.round(D.v0+dh*60)));        // passo de 1min
+  else { const s=_pgmSetupObj(D.i); s.corte=Math.max(0, Math.min(480, Math.round(D.v0+dh*60)));  // passo de 1min
+         arr[D.i].setup=s; }
   _pgmSetBlocos(arr); _pgmRefresh();
 }
 function _pgmDragEnd(){
@@ -12297,26 +12306,31 @@ function _pgmSetLinha(id){ _pgmLinhaId=id; _pgmSel=0; renderPCPDia(); }
 // ⚠️ A escala é `turno + maior atraso`, senão a ponta da trilha das embaladoras (que termina 20min depois
 // do corte) sairia fora do desenho num dia cheio.
 function _pgmTimelineHTML(){
-  const L=_pgmL(), cobAtr=(L.estagios[1].atraso||0)/60, embAtr=(L.embAtraso||0)/60;
-  const TOT=L.horas+Math.max(cobAtr,embAtr), esc=100/TOT, blocos=_pgmBlocos();
-  const cx=(f,txt,cls,tit)=>`<div class="pgm-b ${cls||''}" style="flex:${f.toFixed(3)}"${tit?` title="${escapeAttr(tit)}"`:''}>${txt||''}</div>`;
-  const usado=_pgmHoras();
+  const L=_pgmL(), cobAtr=(L.estagios[1].atraso||0)/60, embAtr=(L.embAtraso||0)/60, blocos=_pgmBlocos();
   // Uma trilha por CANAL, não por estágio: corte · 3 destinos da cobrideira · 4 embaladoras.
-  const canais=[{tipo:'corte', nome:'Corte', atraso:0, grupo:'Corte'}]
-    .concat(_PGM_DEST.map((d,j)=>({tipo:'cob', dest:d, nome:d.nome, atraso:cobAtr, grupo:j===0?'Cobertura':''})))
-    .concat((L.embaladoras||[]).map((e,i)=>({tipo:'emb', idx:i, nome:e.nome, atraso:embAtr, grupo:i===0?'Embalagem':''})));
+  const canais=[{tipo:'corte', est:'corte', nome:'Corte', atraso:0, grupo:'Corte'}]
+    .concat(_PGM_DEST.map((d,j)=>({tipo:'cob', est:'cob', dest:d, nome:d.nome, atraso:cobAtr, grupo:j===0?'Cobertura':''})))
+    .concat((L.embaladoras||[]).map((e,i)=>({tipo:'emb', est:'emb', idx:i, nome:e.nome, atraso:embAtr, grupo:i===0?'Embalagem':''})));
+  // ⚠️ A escala tem que caber a trilha que termina MAIS TARDE: com setup próprio na cobertura ou na
+  // embalagem, não é mais o corte quem manda no fim do desenho.
+  const fimDe=C=>C.atraso+blocos.reduce((s,b,i)=>s+_pgmSetupAcum(i,C.est)/60+(+b.horas||0),0);
+  const TOT=Math.max(L.horas, Math.max.apply(null, canais.map(fimDe))), esc=100/TOT;
+  const cx=(f,txt,cls,tit)=>`<div class="pgm-b ${cls||''}" style="flex:${f.toFixed(3)}"${tit?` title="${escapeAttr(tit)}"`:''}>${txt||''}</div>`;
   const trilhas=canais.map((C,k)=>{
+    let pos=C.atraso;
     let html = C.atraso>0 ? cx(C.atraso*esc,'','gap','O produto do corte só chega aqui '+Math.round(C.atraso*60)+' min depois') : '';
     blocos.forEach((b,i)=>{
-      const s=_pgmSetupAntes(i), c=_pgmCalc(b), B=_pgmBase(b.base), on=(i===_pgmSel?' on':'');
-      // ⚠️ A limpeza é desenhada SÓ na trilha do corte. Repetida nas 8 trilhas virava uma coluna rosa que
-      // dominava a tela e ainda parecia 3 paradas diferentes (elas saem deslocadas pelo trânsito).
-      // Nas outras trilhas entra um espaçador invisível: a linha simplesmente não tem barra ali.
-      if(s) html+= C.tipo==='corte'
-        ? cx(s*esc, Math.round(s*60)+`min<i class="pgm-rz" onmousedown="_pgmDragStart(event,'setup',${i})" title="Arraste para mudar a limpeza"></i>`, 'setup',
-            'Limpeza para trocar a base · '+Math.round(s*60)+' min')
-        : cx(s*esc,'','nada');
-      const f=(+b.horas||0)*esc, ini=_pgmRelogio(_pgmInicio(i)+C.atraso), fim=_pgmRelogio(_pgmInicio(i)+C.atraso+(+b.horas||0));
+      const c=_pgmCalc(b), B=_pgmBase(b.base), on=(i===_pgmSel?' on':'');
+      // ⚠️ Cada grupo mostra o SEU setup e espera os anteriores do fluxo. O do corte aparece só no corte,
+      // o da cobertura só na cobertura — assim a barra rosa é informação, não a mesma parada repetida 8×.
+      const espera=_pgmSetupAcum(i,C.est)/60, meu=(_pgmSetupObj(i)[C.est]||0)/60, antes=espera-meu;
+      if(antes>0){ html+=cx(antes*esc,'','nada'); pos+=antes; }
+      if(meu>0){ html+= C.tipo==='corte'
+        ? cx(meu*esc, Math.round(meu*60)+`min<i class="pgm-rz" onmousedown="_pgmDragStart(event,'setup',${i})" title="Arraste para mudar o setup do corte"></i>`, 'setup',
+            'Setup do corte · '+Math.round(meu*60)+' min')
+        : cx(meu*esc, Math.round(meu*60)+'min', 'setup', 'Setup · '+Math.round(meu*60)+' min');
+        pos+=meu; }
+      const f=(+b.horas||0)*esc, ini=_pgmRelogio(pos), fim=_pgmRelogio(pos+(+b.horas||0)); pos+=(+b.horas||0);
       let txt='', cls='', tit='';
       if(C.tipo==='corte'){ txt=`<b class="h">${ini}</b>`+escapeHTML(B.nome); cls='base'; tit=B.nome; }
       else if(C.tipo==='cob'){ const sh=c.mix[C.dest.id]||0;
@@ -12335,8 +12349,7 @@ function _pgmTimelineHTML(){
       html+=cx(f, txt+(C.tipo==='corte'?`<i class="pgm-rz" onmousedown="_pgmDragStart(event,'bloco',${i})" title="Arraste para mudar a duração"></i>`:''),
         cls+on, C.nome+' · '+ini+' às '+fim+' · '+tit);
     });
-    const livre=TOT-C.atraso-usado;
-    if(livre>0.01) html+=cx(livre*esc,'','nada');
+    if(TOT-pos>0.01) html+=cx((TOT-pos)*esc,'','nada');
     // o nome do GRUPO aparece uma vez só, na 1ª trilha dele, e leva junto o atraso do estágio —
     // assim dá para bater o olho e saber onde termina o corte e começa a cobertura, sem linha extra.
     const grp=C.grupo?`${escapeHTML(C.grupo)}${C.atraso?`<i>+${Math.round(C.atraso*60)}min</i>`:''}`:'';
@@ -12349,7 +12362,9 @@ function _pgmTimelineHTML(){
     reg+=`<span style="left:${p}%${h===0?';transform:none':''}">${_pgmRelogio(h)}</span>`;
   }
   const regua=`<div class="pgm-tr"><span class="pgm-grp"></span><span class="pgm-lab"></span><div class="pgm-regua">${reg}</div></div>`;
-  const excesso=usado-L.horas;
+  // ⚠️ O estouro se mede pela ocupação do CORTE, não pelo fim do desenho: a embalagem sempre termina
+  // 20min depois por causa do trânsito, e isso não é passar do turno.
+  const excesso=_pgmHoras()-L.horas;
   return regua+trilhas
     + (excesso>0.01?`<div class="pgm-alerta"><i class="ti ti-alert-triangle"></i> Passa do turno em ${Math.round(excesso*60)} min</div>`:'');
 }
@@ -12365,17 +12380,16 @@ function _pgmEditorHTML(){
   const campo=(lab,dica,campo_,val,extra)=>`<label class="pgm-f"><span>${lab}${dica?`<i>${dica}</i>`:''}</span>
     <input type="number" class="pgm-inp" value="${val}" ${extra||''} oninput="_pgmSetLive('${campo_}',this)" onchange="renderPCPDia()"></label>`;
   const bases=L.bases.map(x=>`<option value="${x.id}"${x.id===b.base?' selected':''}>${escapeHTML(x.nome)}</option>`).join('');
-  // A limpeza é da TRANSIÇÃO. A regra propõe (base mudou → tem limpeza), mas o PCP põe e tira na mão.
-  const ant=_pgmBlocos()[_pgmSel-1], ligado=_pgmSetupLigado(_pgmSel), auto=_pgmSetupAuto(_pgmSel);
+  // SETUP por estágio, sempre visível: zero = sem parada. A regra só propõe o do corte na troca de base.
+  const ant=_pgmBlocos()[_pgmSel-1], so=_pgmSetupObj(_pgmSel);
   const setupHTML = _pgmSel===0
     ? `<div class="pgm-nota">Primeiro bloco do dia — a linha já entra montada.</div>`
-    : ligado
-      ? campo('Limpeza antes (min)',
-              (ant?escapeHTML(_pgmBase(ant.base).nome)+' → '+escapeHTML(B.nome):'')+
-              ` <b class="lnk" onclick="_pgmSetupToggle(${_pgmSel})">tirar</b>`,
-              'setup', (b.setup==null||b.setup==='')?L.setup.base:b.setup, 'min="0" max="480" step="1"')
-      : `<div class="pgm-nota">${auto?'Troca de base sem limpeza.':'Mesma base — a linha não precisa parar.'}
-         <b class="lnk" onclick="_pgmSetupToggle(${_pgmSel})">pôr limpeza</b></div>`;
+    : `<div class="pgm-setup">
+        <span class="pgm-setup-t">Setup antes (min)</span>
+        ${_PGM_EST.map(E=>`<label title="Setup do ${E.nome.toLowerCase()} antes deste bloco, em minutos"><span>${E.nome.slice(0,5)}</span>
+          <input type="number" class="pgm-inp num" value="${so[E.id]}" min="0" max="480" step="1"
+            oninput="_pgmSetSetup(${_pgmSel},'${E.id}',this)" onchange="renderPCPDia()"></label>`).join('')}
+      </div>`;
   // 3 colunas: campos (em grade de 2) · resultado do bloco · massada. Tudo num cartão só, para caber na
   // tela sem rolar — era o pedido do Diego, que tinha os campos ocupando meia tela cada.
   // 3 seções com o nome do ESTÁGIO, na mesma ordem da linha do tempo: corte · massada (que alimenta o
@@ -12489,7 +12503,13 @@ function _pgmCSS(){ return `<style>
   .pgm-emb .num{height:22px;font-size:11px;padding:0 4px;width:42px;text-align:center}
   .pgm-emb .marca{font-size:10px;color:var(--text3);font-style:italic}
   .pgm-ck{width:14px;height:14px;accent-color:var(--blue-mid);cursor:pointer;margin:0}
-  .pgm-tr.sep{margin-top:7px}
+  .pgm-tr.sep{margin-top:12px}   /* respiro entre os estágios, para ler os grupos separados */
+  /* setup por estágio: 3 campos curtos com o nome do estágio ao lado */
+  .pgm-setup{display:flex;align-items:center;flex-wrap:wrap;gap:4px 9px;border-top:1px solid var(--border);padding-top:7px}
+  .pgm-setup-t{font-size:10px;color:var(--text3);width:100%}
+  .pgm-setup label{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--text3)}
+  .pgm-setup label span{white-space:nowrap}
+  .pgm-setup .num{width:38px;height:21px;font-size:10.5px}
   .pgm-b.vazio{border:1px dashed var(--border)}
   .pgm-campos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;align-content:start}
   /* título de cada seção do editor — diz de que estágio é o bloco de controles */
