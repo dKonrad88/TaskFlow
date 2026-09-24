@@ -554,6 +554,19 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
     mínimo da masseira. **Levar isso ao Diego/Valesca antes de confiar na simulação em CPM baixo.**
   - O **rendimento implícito** de cada medição (cpm × 21 × 10,43g × tempo) varia de **131 a 146 kg**, média
     **~139,9 kg** — abaixo dos **142,106** nominais. Massada é batelada; o nominal é receita, não medição.
+- ⭐⭐ **TELA SEGMENTADA POR ESTÁGIO** (7ª rodada — "muita coisa jogada e atirada, vamos segmentar de uma forma que
+  dê para entender o que é cada coisa… MAS NÃO QUERO POLUIÇÃO VISUAL"). A régua de decisão foi: **agrupar pelo
+  modelo que ele já tem na cabeça (corte · cobertura · embalagem) e não acrescentar nenhum enfeite**.
+  - **Linha do tempo:** o nome do GRUPO aparece **uma vez por estágio**, na 1ª trilha dele, levando junto o atraso
+    (CORTE · COBERTURA +15min · EMBALAGEM +20min). ⚠️ **Custou ZERO linha nova**: o rótulo virou duas colunas
+    (`.pgm-grp` + `.pgm-lab`) em vez de uma linha de cabeçalho por grupo, que teria somado ~42px de altura.
+  - **Editor: 3 seções tituladas** na mesma ordem — **CORTE** (o que roda e o que sai), **MASSADA** (o ciclo que
+    alimenta o corte) e **EMBALAGEM** (quem embala o quê e para quem). Cada número foi para o estágio a que pertence.
+  - ⚠️ **A cobertura NÃO ganhou seção no editor de propósito:** ela é **derivada** das embaladoras e já aparece
+    inteira na linha do tempo (% e pacotes por destino). Repetir ali só somaria ruído — que era exatamente a queixa.
+  - **O total do bloco subiu para o cabeçalho**, junto de base, horário e duração: `Bloco 1 · Pão de mel · 07:00 às
+    12:30 · 5h30 · 24.438 pacotes`. É a resposta, e fica onde o olho bate primeiro.
+  - **Altura caiu de 937 para 820px** — a reorganização enxugou em vez de inchar.
 - ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
   (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
   reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);
