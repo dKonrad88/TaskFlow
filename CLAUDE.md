@@ -579,6 +579,16 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
   - **Um tom por estágio e mais nada**: o "sem cobertura" perdeu a cor própria (usa a da cobertura; o texto diz o
     que é). Sobraram 3 tons + o rosa do setup + o vermelho do alerta, que é semântico.
   - A cobertura mostra **só o %**; os pacotes foram para o tooltip.
+- ⭐ **3 FORMATOS DE EMBALAGEM** (9ª rodada): **Klain** (marca própria) · **Terc. etiqueta** · **Terc. impresso**.
+  Coluna "Embala" na tabela; nos dois de terceiros o campo do **cliente** abre, no Klain ele se preenche sozinho e
+  some da tela. Na barra: "Klain" ou "Cliente · formato", com os nomes **curtos** das coberturas (leite / branca /
+  sem cob.) — o texto longo era cortado no meio da barra estreita.
+  - ⏳ **O QUE FALTA AQUI, e ele já avisou que precisa:** *"posso fazer isso tudo na mesma embaladora no mesmo
+    dia"*. Hoje o formato é **por bloco**, então trocar de formato numa raia exige **dividir o bloco** (o que
+    funciona — mesma base não gera limpeza). Duas coisas ficaram por fazer: (1) a **troca de bobina/etiqueta custa
+    tempo NAQUELA raia** (`L.setup.bobina`, 8min, ainda não descontado de nada); (2) blocos consecutivos de mesma
+    base aparecem como **duas barras no Corte**, o que é ruído visual — daria para mesclar na renderização quando
+    base e mix não mudam. Decidir com ele qual dos dois incomoda primeiro.
 - ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
   (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
   reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);
