@@ -438,7 +438,24 @@ Três pedidos do Diego na mesma leva, todos na aba Comercial › Pedidos.
   da barra acima da tabela. ⚠️ O `<div>` da nota **não foi removido**: ele ainda mostra a explicação da SEMANA
   (clientes não somam) e o "este período ainda não tem dado carregado" — só as 2 frases saíram.
   `.com-kpis` foi de `margin-bottom:7px` p/ **16px** porque a nota era quem dava o respiro até as sub-abas.
-- **Cartões de indicador sem a tarja azul e com LARGURA FIXA** (4ª rodada): saiu o filete de 3px no acento
+- ⭐⭐ **TOPO ENXUTO — mockup 2** (5ª e última rodada; ele disse "é muita coisa, muita informação, queria algo
+  clean" e escolheu entre 5 mockups). O topo tinha **5 faixas empilhadas** antes do 1º número (título+subtítulo ·
+  cartões · sub-abas · vão · "Recolher todas" sozinho). Ficaram **3**, e a tabela começa em **271px**:
+  - **Os cartões viraram LINHA DE TEXTO**: `_comKPI` não monta mais um cartão — é rótulo miúdo em cima, número
+    embaixo e a **pílula de variação colada no número**. `.com-kpi` virou flex-column sem fundo/borda e o **1º de
+    cada tela sai maior** (`:first-child`, 22px × 17px) — é o número que manda (Valor vendido / Valor em aberto).
+  - ⚠️ **O `sub` virou TOOLTIP** (`title`), não sumiu: "R$ 190.189,01 a menos que ontem", "2 representantes vieram
+    cortados", "contados da emissão até hoje" seguem lá, só não pesam na tela. **Quem mexer no `_comKPI` não pode
+    deixar o `sub` cair fora do `title`** — é a última casa dessa informação.
+  - **Sai o subtítulo** do `_cpTela` (repetia as 3 sub-abas) e a **faixa própria do "Recolher todas"**, que virou
+    **ícone na linha das sub-abas**, ao lado do "Comparar com ontem", só na sub-aba Produtos.
+  - 🐞 **Armadilha que isso criou e já foi resolvida:** o ícone de recolher mora **FORA do `#com-conteudo`**, então
+    `_comToggleLinha`/`_comTodasLinhas` passaram a chamar **`renderComercial()`** em vez de `_comRefresh()` — senão
+    a seta não trocava. **`_comRefresh` continua sendo o certo só para a BUSCA**, que precisa preservar o foco.
+  - Testado: 0 erros de JS; indicadores 44px (o 1º) × 36px; 5 pílulas; tooltip presente; recolher todas → 1 linha e
+    seta invertida, abrir → 105 de volta; em Pedidos em aberto os 5 indicadores ficam e o ícone de recolher some.
+- **Cartões de indicador sem a tarja azul e com LARGURA FIXA** (4ª rodada, **substituída pelo mockup 2 acima** —
+  fica como histórico de por que o `.com-kpi` deixou de ser cartão): saiu o filete de 3px no acento
   (`border-left`) e o `.com-kpis` deixou de ser grid `auto-fit,1fr` (que esticava na tela toda) → virou **flex com
   `.com-kpi{flex:0 0 196px}`**. ⚠️ É o flex que garante "todos do mesmo tamanho": a altura vem do `align-items:stretch`
   (a linha inteira pega a altura do cartão mais alto). Medido: 196px de largura e altura igual nos 3 contextos
