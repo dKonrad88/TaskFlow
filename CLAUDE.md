@@ -488,6 +488,24 @@ código dormente do "Colar do SISPRO"). São **três** coisas parecidas no arqui
   que não há parada** ("primeiro bloco do dia" / "mesma base — só troca a cobertura, a linha não para"), em vez de
   mostrar um campo morto. Testado: pôr 90min empurra o 3º bloco de 14:40 para 15:30 e o dia passa a 10h48 (estoura
   o turno, com o aviso).
+- ⭐ **ARRASTAR AS BARRAS** (5ª rodada): a borda direita de cada barra da trilha do **Corte** tem alça —
+  arrastar muda a **duração do bloco** (passo de 15min) e a **limpeza** (passo de 5min), com o tempo disponível
+  do dia acompanhando ao vivo. ⚠️ **A alça existe SÓ no Corte**: as outras duas trilhas são a mesma barra
+  deslocada pelo trânsito, e arrastar ali daria a impressão de que se muda um estágio isolado. A conversão
+  pixel → hora usa a largura REAL da trilha, medida no `mousedown` (`_pgmDrag`).
+- ⭐⭐ **MASSADA — o tempo é CALCULADO, não digitado.** O invariante é o **rendimento da masseira em kg**
+  (`massadaKg`, 140 — veio da conta inversa do 7min10 que ele deu: 85 × 21 × 11g = 19,6 kg/min × 7,17min);
+  o tempo sai de **rendimento ÷ consumo do corte**. Por isso o novo campo **"Gramas do biscoito cru"** (por bloco)
+  mexe na massada: biscoito mais pesado → o corte consome mais kg/min → a massada **esvazia mais rápido** → cabem
+  **mais massadas no dia**. Conferido: 11g → 19,6 kg/min → 7min08 → 78 massadas/dia · 46.748 pacotes;
+  **13g → 23,2 kg/min → 6min02 → 87 massadas/dia · 51.989 pacotes**. É exatamente o efeito que o Diego descreveu.
+  - O cursor simula **outro ciclo por cima do calculado**, como um **fator** (não um tempo absoluto), porque cada
+    bloco pode ter ritmo e peso próprios. Mexer em peso ou cortes/min **zera a simulação** — a base mudou.
+  - ⚠️ `_pgmRefresh` tem que atualizar **o número grande e o cursor** da massada, não só o resumo: como o tempo é
+    derivado, eles ficavam mostrando o valor de antes (bug pego no teste).
+  - ⏳ **Os 140 kg são conta inversa, não dado.** Quando ele disser o rendimento real da masseira, é trocar 1 número.
+- **Saíram os dois cursores de mix** (natural / ao leite–branco) a pedido dele. ⚠️ O cálculo do mix **continua**
+  (`b.nat`/`b.leite` seguem alimentando a trilha da Cobrideira e a quebra por SKU) — só os controles sumiram.
 - ⏳ **O que falta para sair do protótipo** (tudo perguntado ao Diego e ainda sem resposta): **pacotes por caixa**
   (sem isso a tela fala em pacotes e a Cobertura fala em caixas — os dois não se encontram); **tempos de setup
   reais** (base e bobina); **capacidade da cobrideira** (hoje ela nunca é gargalo porque não tem número);
