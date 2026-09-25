@@ -12009,7 +12009,10 @@ function _mktCfgReset(){ _mktLoad(); mktConfig.pontos=Object.assign({},MKT_PONTO
 // As 9 linhas da fábrica. ⚠️ SÓ o Forno contínuo tem cadastro (estágios, capacidade, bases) — as outras
 // aparecem na navegação e dizem que falta cadastrar, em vez de fingir que sabem produzir.
 const _PGM_LINHAS=[{
-  id:'forno', nome:'Forno contínuo', ini:'07:00', fim:'17:00', horas:10,
+  // ⭐ O TURNO REAL do Forno contínuo (Diego, 25/09): 05h40 às 15h00 = 9h20. Era 07:00–17:00 de mockup.
+  // ⚠️ `horas` sai da conta dos dois, não de um número solto — as duas fontes se contradiriam na primeira
+  // vez que alguém mexesse só num lado, e é `horas` que decide quantas massadas cabem no turno.
+  id:'forno', nome:'Forno contínuo', ini:'05:40', fim:'15:00', horas:(15*60-(5*60+40))/60,
   // `atraso` = minutos que o produto leva do CORTE até aquele estágio (trânsito pelo forno e pela esteira).
   // ⚠️ Não é enfeite: se o corte começa 07:00, a cobrideira só recebe 07:15 e a embaladora 07:20 — e no fim
   // do bloco os estágios também param nessa ordem. ⏳ O Diego avisou que **varia por produto e pela
