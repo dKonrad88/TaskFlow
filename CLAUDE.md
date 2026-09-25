@@ -422,6 +422,43 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-09-25 (c) — PC da Empresa — Cobertura: sai a coluna VENDAS · a tela passa a LEMBRAR DE VOCÊ
+Dois pedidos na mesma mensagem. Commit `5c08c677`, pushado; `main == origin/main`.
+- **A coluna "Vendas 261d" SAIU** da tabela. A largura dela (7%) foi **toda para o nome do produto** (25 → 32%),
+  que era quem vivia com reticências — medido: 396px e **sem corte**. A tabela foi de 14 para **13 colunas**.
+  ⚠️ **O DADO CONTINUA** (`p[6]`): é dele que saem as 4 médias E o DDV inteiro (MDV = vendas ÷ 261 → DDV =
+  saldo ÷ MDV). Tirar o número do modelo quebraria a tela toda — saiu só a coluna.
+  📌 O total de vendas ainda aparece **no aviso do gráfico** de quem não tem histórico mensal.
+  ⚠️ Mexeu em coluna, mexa em **quatro** lugares: o `<colgroup>` (nas DUAS variantes, med e não-med), o `nc`
+  (13/9, que vira o `colspan` da faixa de linha), a **linha de grupos** (o `<th class="g">` vazio do fim saiu) e
+  a linha de `<td>`. Conferido no teste: 13 th, 13 td, faixa de linha com colspan 11 (2+11=13).
+  `_DDV_SC.vendas` ficou no mapa de ordenação de propósito — se a coluna voltar, já está pronta.
+- ⭐⭐ **A TELA GANHOU MEMÓRIA** (1º item da fila de personalização de 25/09). Guarda **busca · filtro ·
+  ordenação · linhas recolhidas · gráfico aberto · período do gráfico** em **`taskflow_ddv_view`**.
+  Antes o bloco DDV **não gravava absolutamente nada** — um F5 zerava a tela inteira.
+  - ⚠️ **REGRA P0 RESPEITADA:** grava só nas AÇÕES (`_ddvSetFiltro`, `_ddvSortBy`, `_ddvBuscaInput`,
+    `_ddvToggleLinha`, `_ddvTodasLinhas`, `_ddvAbrirGraf`, `_ddvAbrirGrafLinha`, `_ddvSetPer`, `_ddvPerReset`).
+    **Nenhum render grava** — conferido no teste: ao ABRIR a tela a chave ainda não existe; ela nasce no 1º clique.
+  - ⚠️ **`_ddvLoad()` é LAZY, uma vez por sessão** (flag `_ddvCarregado`, no topo do `renderDDV`). Ler não é
+    gravar, mas carregar a cada render jogaria fora o que a pessoa acabou de mexer.
+  - ⚠️ **Valida TUDO o que vem do storage**: filtro fora da lista, `sort.campo` que não existe mais (a coluna
+    Vendas saiu hoje — é exatamente esse caso) e nome de linha que sumiu do export são **descartados**. Sem isso,
+    um estado quebrado voltaria a cada F5 e não haveria UI para desfazer. O `graf` se resolve sozinho:
+    `_ddvGrafAlvo()` devolve null quando o alvo não existe mais.
+  - **Prefixo `taskflow` → entra no sync da nuvem**: o jeito deixado no PC da Empresa aparece igual em casa.
+  - ⚠️ **É a LENTE, nunca a CONTA** — régua acordada com o Diego. Corte do semáforo, fórmulas e dado seguem
+    iguais para todo mundo; senão "temos 5 em ruptura" deixaria de ser um fato compartilhado.
+  - 📌 Comportamento pré-existente que confunde no teste: com **busca ou filtro ativo**, a tabela **força todas
+    as linhas abertas** (`const buscando=...` em `_ddvTabelaHTML`). O recolhimento continua salvo — só não é
+    aplicado enquanto se filtra.
+- Testado em Edge headless com **F5 de verdade** (troca do src do iframe), 0 erros de JS: mexer em filtro
+  (Atenção), ordenação (DDV ↓), busca ("bisc") e recolher 2 linhas → recarregar → **tudo volta igual**
+  (cartão aceso, seta da coluna, texto na busca, PALITINHOS e SUSPIRO recolhidas, 132 produtos na tela) e o
+  gráfico reabre no mesmo alvo (Linha AMENDOIM).
+- ⏳ Da fila de personalização seguem em aberto: **"minhas linhas"** (favoritar/fixar), **colunas visíveis e
+  ordem**, **corte do semáforo** editável (componente pronto em `_cpPlanBands*`), **DDV-alvo** e **visões
+  salvas com nome**. E a **coluna Maras vazia** continua sem decisão (esconder × deixar como lembrete).
+
 ### ⭐ 2026-09-25 (b) — PC da Empresa — Cobertura: O LUGAR dos 6 filtros do SISPRO (ícone + popover)
 O Diego mandou 3 prints do rail do SISPRO com os filtros que faltam (mais um, Marcas, na sequência) e pediu **só o layout**: *"cria o lugar onde
 os filtros ficarão, o resto nosso TI... de uma forma leve, discreta e eficiente"*. Commit `b9d5e59d`, pushado.
