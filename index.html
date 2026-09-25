@@ -14070,6 +14070,11 @@ function _ddvCloseFiltros(e){
     if(typeof hubView!=='undefined' && hubView==='producao' && typeof renderPCP==='function') renderPCP(); }
 }
 // O popover é O LUGAR dos filtros do SISPRO — ver o comentário em _DDV_JANELAS.
+// ⚠️ A NOTA DE RODAPÉ SAIU a pedido do Diego (25/09) — ela explicava que os controles estão `disabled` e
+// que o marcado é a foto em que o export foi tirado. **A regra continua valendo**: todo campo aqui nasce
+// desabilitado de propósito, porque filtro que mexe e não muda número nenhum é pior que filtro nenhum.
+// O que falta para cada um virar controle vivo está na tabela do handoff de 2026-09-25 (b).
+// A classe CSS `.ddv-fnota` ficou sem uso — repor o texto é uma linha só, se um dia fizer falta.
 function _ddvFiltrosPopHTML(){
   if(!_ddvFiltrosAberto) return '';
   const J=_DDV_JANELAS;
@@ -14087,7 +14092,6 @@ function _ddvFiltrosPopHTML(){
     ${sel('Tipos Produção','Todos',_DDV_TIPOS,'')}
     <div class="ddv-fgrp"><b>Quantidades em</b>${_DDV_UNID.map(u=>opt('radio',u,u==='Caixas')).join('')}</div>
     <div class="ddv-fgrp"><b>Almoxarifados</b>${_DDV_ALMOX.map(a=>opt('checkbox',a,a==='Klain')).join('')}</div>
-    <div class="ddv-fnota">Ainda sem dado para filtrar: o que está marcado é a <b>foto em que o export foi tirado</b> (${_DDV_POSICAO}). Cada controle abre quando a TI mandar o campo dele.</div>
   </div>`;
 }
 function renderDDV(){

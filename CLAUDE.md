@@ -422,6 +422,17 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-25 (g) — PC da Empresa — Cobertura: sai a nota de rodapé do popover de Filtros
+O Diego marcou no print e pediu para tirar: *"Ainda sem dado para filtrar: o que está marcado é a foto em que o export
+foi tirado (23/09/2026 13:23). Cada controle abre quando a TI mandar o campo dele."*
+- ⚠️ **A REGRA CONTINUA VALENDO** — os 11 campos do popover seguem **`disabled` de propósito** (filtro que mexe e não
+  muda número nenhum é pior que filtro nenhum) e o marcado segue sendo a foto do export. Só o TEXTO saiu; a explicação
+  está no comentário acima de `_ddvFiltrosPopHTML` e a tabela do "que falta para cada um" está na entrada **(b)** de hoje.
+- `_DDV_POSICAO` volta a ficar **sem uso** (a const documenta a data do dado) e a classe `.ddv-fnota` ficou sem uso —
+  repor o texto é uma linha só.
+- Testado em Edge headless: popover abre com os **6 grupos e 11 campos desabilitados**, sem a nota, **404px** de altura
+  (era 458), fecha no 2º clique e ao clicar fora; tabela (144 produtos) e os 6 cartões intactos. 0 erros de JS.
+
 ### ⭐⭐ 2026-09-25 (f) — PC da Empresa — PCP: "Resultado do dia" vira **PADRÃO × AGORA × DIFERENÇA** (`a29be663`)
 Pedido do Diego (com print do cartão): *"preciso enxergar o que seria nosso padrão, ou seja, nosso padrão para Pão de
 mel é de 08min06 + 10,43g + 75 cortes por minuto e isso dá um total de X pacotes, X massadas, X caixas, X horas. E daí
