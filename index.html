@@ -12527,6 +12527,21 @@ function _pgmTimelineHTML(){
 // ⭐ RESULTADO DO DIA — os três números que respondem "o que este dia entrega": pacotes, massadas e
 // quanto do turno foi ocupado. Ficam ao lado da linha do tempo, grandes; o aviso de estouro mora aqui
 // (e saiu debaixo das trilhas) porque é a barra do turno que o explica.
+// ⭐⭐ TRAVA DA ESTEIRA 6 (Diego, 25/09 — confirmada por ele com o desenho da linha na mão).
+// A esteira 6 recebe do caminho SEM COBERTURA (3 → 4) e da COBRIDEIRA BRANCA (5). É uma correia só:
+// os dois produtos se misturariam nela e não haveria como separar depois. A preta é o único caminho
+// com correia própria (7 → cobrideira preta → 8), e é por isso que ela convive com qualquer um.
+// ⚠️ Aqui é AVISO, não bloqueio: a linha pode alternar dentro do turno, e quem decide é o PCP.
+// Cada janela de embalagem é um instante; basta uma delas apontar para os dois destinos.
+function _pgmTravaEsteira6(){
+  const js=(typeof _pgmJanelas==='function')?_pgmJanelas():[];
+  let bateu=false;
+  js.forEach((j,i)=>{ const maq=_pgmMaq(i)||[];
+    let sem=false, br=false;
+    maq.forEach(e=>{ if(!e.on) return; if(e.sku==='natural') sem=true; if(e.sku==='branco') br=true; });
+    if(sem&&br) bateu=true; });
+  return bateu ? `<div class="pgm-res-al" style="margin-top:6px"><i class="ti ti-lock"></i> sem cobertura e branca na esteira 6 — não rodam ao mesmo tempo</div>` : '';
+}
 function _pgmDiaResHTML(){
   const L=_pgmL(), bs=_pgmBlocos(), sel=bs[_pgmSel]||bs[0];
   const u=_pgmHoras(), pac=_pgmTotais().total;
@@ -12543,7 +12558,8 @@ function _pgmDiaResHTML(){
       ${over>0.01?`<div class="pgm-res-al"><i class="ti ti-alert-triangle"></i> passa do turno em ${Math.round(over*60)} min</div>`
         // ⭐ a sobra do turno vira o número que ele decide: quantas massadas ainda cabem no ritmo de agora
         :(function(){ const c=sel?_pgmMassadaCalc(sel):0, cabe=c>0?Math.floor(-over*3600/c):0, m=Math.round(-over*60);
-           return over<-0.01 ? `<div class="pgm-res-ok">sobra ${m<60?m+'min':_pgmHhmm(-over)}${cabe>0?` · cabe +${cabe} massada${cabe>1?'s':''}`:''}</div>` : ''; })()}</div>`;
+           return over<-0.01 ? `<div class="pgm-res-ok">sobra ${m<60?m+'min':_pgmHhmm(-over)}${cabe>0?` · cabe +${cabe} massada${cabe>1?'s':''}`:''}</div>` : ''; })()}
+      ${_pgmTravaEsteira6()}</div>`;
 }
 // ── EDITOR do bloco selecionado
 function _pgmEditorHTML(){
