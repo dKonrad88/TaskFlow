@@ -12374,6 +12374,27 @@ function _pgmSetCiclo(seg){
 }
 function _pgmStepCiclo(dir){ const b=_pgmBlocos()[_pgmSel]; if(!b) return;
   _pgmSetCiclo(Math.round(_pgmMassadaCalc(b)) + dir); }
+// ⭐ O TRÂNSITO até a cobrideira (Diego, 25/09: "o horário da cobertura, quero poder mudar"). O cadastro
+// da linha traz 15min, mas o próprio handoff avisa que ele **varia por produto e pela velocidade do corte**
+// — então virou um valor da SIMULAÇÃO, editável pelo campo de horário.
+// ⚠️ Fica no DIA, não no bloco: a trilha da cobertura tem um atraso só no desenho, e um valor por bloco
+// exigiria reescrever o loop da linha do tempo (a função mais delicada deste arquivo) para ganhar pouco.
+function _pgmAtrCob(){ const o=_pgmDia(), L=_pgmL();
+  return (o && o.atrCob!=null) ? (+o.atrCob||0)/60 : ((L.estagios[1]||{}).atraso||0)/60; }
+// Início → muda o trânsito. Fim → muda as massadas, que é o que define a duração (a cobertura dura o
+// mesmo que o corte). ⚠️ O campo volta mostrando o valor REAL: pedir um fim no meio de uma massada
+// arredonda para a massada cheia, como já acontece no corte.
+function _pgmSetHoraCob(qual, el){
+  const i=_pgmSel, arr=_pgmBlocos().slice(), b=arr[i]; if(!b) return renderPCPDia();
+  const min=_pgmParseHora(el.value); if(min==null) return renderPCPDia();
+  const alvo=(min-_pgmMinIni())/60;
+  if(qual==='ini'){ const o=_pgmDiaObj();
+    o.atrCob=Math.max(0, Math.min(240, Math.round((alvo-_pgmInicio(i)-_pgmSetupObj(i).cob/60)*60)));
+    _pgmSave(); return renderPCPDia(); }
+  const ini=_pgmInicio(i)+_pgmSetupObj(i).cob/60+_pgmAtrCob(), c=_pgmMassadaCalc(b);
+  if(c>0){ b.massadas=Math.max(1, Math.min(400, Math.round((alvo-ini)*3600/c))); delete b.horas; }
+  _pgmSetBlocos(arr); renderPCPDia();
+}
 // aceita "7min02" (o que a tela escreve), "7:02", "7 02", "7min" e segundos puros
 function _pgmParseMS(v){ const s=String(v||'').trim().toLowerCase();
   let m=s.match(/^(\d+)\s*(?:min|m|:)?\s*(\d{1,2})$/);
@@ -12406,6 +12427,7 @@ function _pgmNoPadrao(){
   if(pot && _pgmMassadasB(b)!==pot.n) return false;
   if(_pgmEsperaB(b)>0.0001) return false;
   const so=_pgmSetupObj(0); if(so.corte||so.cob||so.emb) return false;
+  const o=_pgmDia(); if(o && o.atrCob!=null && Math.abs((+o.atrCob||0)-((L.estagios[1]||{}).atraso||0))>0.5) return false;
   const js=_pgmJanelas(); if(js.length!==1) return false;
   const pad=_pgmMaqNorm(null), cur=_pgmMaq(0);
   for(let i=0;i<pad.length;i++){ const a=pad[i], c=cur[i];
@@ -12419,10 +12441,11 @@ function _pgmZerar(){
   const P=L.padrao||{}, base=L.bases[0].id, pot=_pgmPot(base, _pgmCpmPadrao({base:base}), P.cru);
   const d=_pgmDiaObj();
   d.blocos=[{base:base, massadas:(pot?pot.n:1), cortes:_pgmCpmPadrao({base:base}), cru:P.cru, cob:_pgmBase(base).cob}];
-  d.emb=null;
+  d.emb=null; delete d.atrCob;                 // o trânsito volta ao do cadastro da linha
   _pgmSel=0; _pgmJan=0; _pgmSave(); renderPCPDia();
   toast('Simulação zerada no padrão', {undoFn:function(){
     const o=_pgmDiaObj(); o.blocos=antes.blocos||[]; o.emb=antes.emb||null;
+    if(antes.atrCob!=null) o.atrCob=antes.atrCob; else delete o.atrCob;
     _pgmSel=0; _pgmJan=0; _pgmSave(); renderPCPDia(); }});
 }
 // ⚠️ [SUPERSEDED 25/09] O "voltar ao padrão" da seção Corte SAIU a pedido do Diego — o botão Zerar cobre
@@ -12625,7 +12648,7 @@ function _pgmSetLinha(id){ _pgmLinhaId=id; _pgmSel=0; _pgmJan=0; renderPCPDia();
 // ⚠️ A escala é `turno + maior atraso`, senão a ponta da trilha das embaladoras (que termina 20min depois
 // do corte) sairia fora do desenho num dia cheio.
 function _pgmTimelineHTML(){
-  const L=_pgmL(), cobAtr=(L.estagios[1].atraso||0)/60, embAtr=(L.embAtraso||0)/60, blocos=_pgmBlocos();
+  const L=_pgmL(), cobAtr=_pgmAtrCob(), embAtr=(L.embAtraso||0)/60, blocos=_pgmBlocos();
   // Uma trilha por CANAL, não por estágio: corte · 3 destinos da cobrideira · 4 embaladoras.
   const canais=[{tipo:'corte', est:'corte', nome:'Corte', atraso:0, grupo:'Corte'}]
     .concat(_PGM_DEST.map((d,j)=>({tipo:'cob', est:'cob', dest:d, nome:d.nome, atraso:cobAtr, grupo:j===0?'Cobertura':''})))
@@ -12853,13 +12876,15 @@ function _pgmEditorHTML(){
   // ⭐ O MESMO PAR DE HORÁRIOS NA COBERTURA (Diego, 25/09), mas de LEITURA: ela não tem horário próprio —
   // é o do corte + o trânsito do estágio (+15min) + o setup da cobrideira. Editar aqui seria uma terceira
   // porta para o mesmo setup, que já tem campo logo abaixo. Por isso são células, não inputs.
-  const horaCob=()=>{ const atr=((L.estagios[1]||{}).atraso||0)/60, s=_pgmSetupObj(_pgmSel).cob/60;
+  const horaCob=()=>{ const atr=_pgmAtrCob(), s=_pgmSetupObj(_pgmSel).cob/60;
     const ini=_pgmInicio(_pgmSel)+s+atr;
     return `<label class="pgm-f"><span>Horário<i>+${Math.round(atr*60)}min de trânsito</i></span>
       <div class="pgm-hpar">
-        <div class="pgm-inp ro" title="O produto chega na cobrideira ${Math.round(atr*60)} min depois de ser cortado">${_pgmRelogio(ini)}</div>
+        <input type="time" class="pgm-inp" value="${_pgmRelogio(ini)}" onchange="_pgmSetHoraCob('ini',this)"
+          title="Quando o produto chega na cobrideira — adiantar ou atrasar aqui muda o tempo de trânsito do corte até ela">
         <i class="ti ti-arrow-narrow-right"></i>
-        <div class="pgm-inp ro" title="Termina o mesmo tanto depois do fim do corte">${_pgmRelogio(ini+_pgmHorasB(b))}</div></div></label>`; };
+        <input type="time" class="pgm-inp" value="${_pgmRelogio(ini+_pgmHorasB(b))}" onchange="_pgmSetHoraCob('fim',this)"
+          title="Fim na cobrideira — encaixa na massada cheia mais próxima, como no corte"></div></label>`; };
   const bases=L.bases.map(x=>`<option value="${x.id}"${x.id===b.base?' selected':''}>${escapeHTML(x.nome)}</option>`).join('');
   // SETUP por estágio, sempre visível: zero = sem parada. A regra só propõe o do corte na troca de base.
   const ant=_pgmBlocos()[_pgmSel-1], so=_pgmSetupObj(_pgmSel);
@@ -13050,7 +13075,7 @@ function _pgmCSS(){ return `<style>
   /* 3 colunas: campos · resultado · massada — tudo num cartão só, para caber sem rolar */
   /* a embalagem era 1.35fr de quando a tabela tinha Cliente e Nom.; sem as duas ela sobrava espaco.
      E o gap subiu de 16 para 28: com as 3 secoes tituladas, 16px nao separava o suficiente. */
-  .pgm-ed{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.05fr);gap:28px;padding:9px 14px 11px;align-items:start}
+  .pgm-ed{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.05fr);gap:28px;padding:9px 14px 11px;align-items:stretch}
   /* tabela das 4 embaladoras */
   .pgm-emb{width:100%;border-collapse:collapse;font-size:10.5px}
   .pgm-emb th{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);text-align:left;padding:0 4px 4px}
@@ -13078,6 +13103,9 @@ function _pgmCSS(){ return `<style>
   .pgm-sec{display:flex;align-items:baseline;gap:8px;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:2px}
   .pgm-sec span{font-size:9.5px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--text3);margin-left:auto}
   .pgm-col{display:flex;flex-direction:column;gap:8px}
+  /* ⭐ os dois cartões de resultado (corte e cobertura) descem para o FUNDO da coluna, então ficam
+     alinhados entre si mesmo com quantidades diferentes de campos acima. Exige o stretch no .pgm-ed. */
+  #pgm-out,#pgm-cob-out{margin-top:auto}
   .pgm-f{display:flex;flex-direction:column;gap:3px;min-width:0}
   .pgm-f>span{font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .pgm-f>span i{font-style:normal;color:var(--text3);opacity:.7;margin-left:5px;font-size:9.5px}
