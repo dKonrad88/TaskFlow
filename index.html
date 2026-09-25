@@ -12386,6 +12386,30 @@ function _pgmCicloInput(el){ const seg=_pgmParseMS(el.value);
 // manda (`emb:null` faz a janela nascer do padrão). Somem os blocos extras, os setups e as trocas.
 // ⚠️ O "voltar ao padrão" da seção Corte CONTINUA e é outra coisa: o ajuste fino do bloco selecionado.
 // Este é o botão de recomeçar — por isso oferece DESFAZER no toast, já que apaga o que a pessoa montou.
+// ⭐ O botão Zerar fica CINZA enquanto a simulação está no padrão e ACENDE quando algo mudou (Diego,
+// 25/09). A régua é honesta: "mudou" = o Zerar faria alguma diferença. Por isso compara TUDO o que ele
+// reescreve — o nº de blocos, o trio do bloco, as massadas, espera e setup, e a configuração das
+// embaladoras. Basta uma embaladora desligada para acender.
+function _pgmNoPadrao(){
+  const L=_pgmL(); if(!L.bases) return true;
+  const P=L.padrao||{}, bs=_pgmBlocos();
+  if(bs.length!==1) return false;
+  const b=bs[0], base0=L.bases[0].id;
+  if(b.base!==base0) return false;
+  if(Math.abs((+b.cortes||0)-_pgmCpmPadrao(b))>0.005) return false;
+  if(Math.abs(_pgmCru(b)-(P.cru||0))>0.005) return false;
+  if(Math.abs(_pgmCob(b)-_pgmBase(base0).cob)>0.005) return false;
+  const pot=_pgmPot(base0,_pgmCpmPadrao({base:base0}),P.cru);
+  if(pot && _pgmMassadasB(b)!==pot.n) return false;
+  if(_pgmEsperaB(b)>0.0001) return false;
+  const so=_pgmSetupObj(0); if(so.corte||so.cob||so.emb) return false;
+  const js=_pgmJanelas(); if(js.length!==1) return false;
+  const pad=_pgmMaqNorm(null), cur=_pgmMaq(0);
+  for(let i=0;i<pad.length;i++){ const a=pad[i], c=cur[i];
+    if(!c || a.on!==c.on || a.fmt!==c.fmt || a.sku!==c.sku || (+a.real||0)!==(+c.real||0)) return false; }
+  return true;
+}
+function _pgmZerarCls(){ return 'pgm-zerar'+(_pgmNoPadrao()?'':' on'); }
 function _pgmZerar(){
   const L=_pgmL(); if(!L.bases) return;
   const antes=JSON.parse(JSON.stringify(_pgmDiaObj()));
@@ -12398,7 +12422,10 @@ function _pgmZerar(){
     const o=_pgmDiaObj(); o.blocos=antes.blocos||[]; o.emb=antes.emb||null;
     _pgmSel=0; _pgmJan=0; _pgmSave(); renderPCPDia(); }});
 }
-// volta o bloco selecionado ao padrão — ritmo, gramas e cobertura. Só aparece quando ele está fora dele.
+// ⚠️ [SUPERSEDED 25/09] O "voltar ao padrão" da seção Corte SAIU a pedido do Diego — o botão Zerar cobre
+// o caso, e dois botões de reset com escopos diferentes na mesma tela confundiam mais do que ajudavam.
+// `_pgmCorteReset` ficou sem chamador; mantido porque é o reset FINO (só o bloco selecionado), que volta
+// a fazer falta no dia em que a tela tiver vários blocos de verdade.
 function _pgmCorteReset(){
   const arr=_pgmBlocos().slice(), b=arr[_pgmSel], P=_pgmL().padrao||{}; if(!b) return;
   b.cortes=_pgmCpmPadrao(b); b.cru=P.cru; b.cob=_pgmBase(b.base).cob;
@@ -12409,6 +12436,9 @@ function _pgmRefresh(semEmb){
   const out=document.getElementById('pgm-out'); if(out) out.innerHTML=_pgmResultadoHTML();
   const tot=document.getElementById('pgm-dia-res'); if(tot) tot.innerHTML=_pgmDiaResHTML();
   const cb=document.getElementById('pgm-cob-out'); if(cb) cb.innerHTML=_pgmCobResumoHTML();
+  // ⚠️ o Zerar mora no cabeçalho do cartão, que o _pgmRefresh não repinta — sem esta linha ele só
+  // acenderia no próximo render completo, e digitar um campo não mudaria a cor dele.
+  const zr=document.getElementById('pgm-zerar'); if(zr) zr.className=_pgmZerarCls();
   const em=document.getElementById('pgm-emb'); if(em && !semEmb) em.innerHTML=_pgmEmbHTML();
   // ⚠️ o tempo da massada é CALCULADO do ritmo do corte: digitar cortes/min ou gramas tem que mexer no
   // campo do ciclo também, senão ele fica mostrando o valor de antes.
@@ -12813,8 +12843,7 @@ function _pgmEditorHTML(){
   // aparece inteira na linha do tempo — repetir aqui só somaria ruído.
   return `<div class="pgm-ed">
     <div class="pgm-col">
-      <div class="pgm-sec">Corte${((+b.cortes!==_pgmCpmPadrao(b))||Math.abs(_pgmCru(b)-(P.cru||0))>0.001)
-        ? `<span><b class="lnk" onclick="_pgmCorteReset()">voltar ao padrão</b></span>` : ''}</div>
+      <div class="pgm-sec">Corte<span>o que a linha corta e em que ritmo</span></div>
       <div class="pgm-campos">
         <label class="pgm-f"><span>Base da massa<i>manda no setup</i></span>
           <select class="pgm-inp" oninput="_pgmSetLive('base',this)" onchange="renderPCPDia()">${bases}</select></label>
@@ -13010,6 +13039,7 @@ function _pgmCSS(){ return `<style>
   .pgm-zerar{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-family:inherit;color:var(--text3);
     background:none;border:1px solid transparent;border-radius:6px;padding:2px 7px;cursor:pointer}
   .pgm-zerar:hover{color:var(--blue-mid);border-color:var(--border);background:var(--card)}
+  .pgm-zerar.on{color:var(--blue-mid);font-weight:700}
   .pgm-zerar i{font-size:13px}
   /* campo com setas próprias: a do type=number fica escondida (regra abaixo) e é alvo pequeno demais */
   .pgm-step{display:flex;align-items:stretch;gap:4px;min-width:0}
@@ -13139,7 +13169,7 @@ function renderPCPDia(){
         <div class="pgm-card pgm-card-tl">
           <div class="pgm-head"><i class="ti ti-flame" style="font-size:15px"></i><b>${escapeHTML(L.nome)}</b>
             <span>· ${dataTxt} · ${L.ini} às ${L.fim}</span>
-            <button class="pgm-zerar" style="margin-left:auto" onclick="_pgmZerar()"
+            <button id="pgm-zerar" class="${_pgmZerarCls()}" style="margin-left:auto" onclick="_pgmZerar()"
               title="Volta a linha ao padrão: um bloco só, no trio do padrão, com as massadas que cabem no turno"><i class="ti ti-rotate-2"></i> Zerar</button>
             <span id="pgm-salvo" style="color:var(--text3);display:inline-flex;align-items:center;gap:4px">${_pgmSalvoHTML()}</span></div>
           <div class="pgm-tlbox"><div id="pgm-tl">${_pgmTimelineHTML()}</div></div>
