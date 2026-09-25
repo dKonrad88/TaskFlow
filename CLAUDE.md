@@ -422,6 +422,17 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-25 (o) — PC da Empresa — PCP: a tabela ganha **biscoitos/h** e **biscoitos no dia**, e sai a nota (`90191d68`)
+- ⭐ As duas linhas falam do **CORTE** e saem do próprio `_pgmPot` (`bisc/min × 60` e `bisc/min × minutos de
+  produção`), então acompanham o ritmo: **+2 no corte → +2.520 biscoitos/h e +12.757 no dia**. No padrão:
+  **94.500/h** e **880.268 no dia**.
+- Elas abrem o 2º grupo da tabela (a classe `gini` passou para "Biscoitos/h"), na ordem da cadeia física:
+  biscoitos → pacotes → massadas → caixas → turno.
+- **Saiu a frase** "turno cheio de 9h20 · 15 pacotes por caixa" do rodapé do cartão. `.pgm-cmp-nota` ficou sem
+  uso, anotada no CSS.
+- Conferido contra a conta feita por fora (77 × 21 × 60 = 97.020 bate com a função). 0 células com texto cortado,
+  0 erros de JS. Página em **1098px**.
+
 ### 2026-09-25 (n) — PC da Empresa — PCP: trilhas distribuídas no cartão · some a linha solta da tabela (`db6e02dd`)
 - ⭐ **As trilhas se espalham na altura do cartão.** Elas ficavam empilhadas no topo com **~100px de vão morto**
   embaixo: o cartão da linha do tempo é **esticado pelo cartão do Resultado ao lado** (`align-items:stretch`), mas
