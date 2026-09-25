@@ -422,6 +422,20 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-25 (p) — PC da Empresa — PCP: horário da Cobertura **editável** e cartões de resultado alinhados (`585a3eef`)
+- ⭐ **O par de horários da Cobertura era de leitura; agora edita.** O **Início** muda o **tempo de trânsito** do
+  corte até a cobrideira — o cadastro traz 15min, mas o próprio handoff avisa que ele *"varia por produto e pela
+  velocidade do corte"*. O **Fim** muda as **massadas**, que é o que define a duração.
+  - ⚠️ **O trânsito fica no DIA (`o.atrCob`), não no bloco.** A trilha da cobertura tem **um** atraso só no
+    desenho, e um valor por bloco exigiria reescrever o loop da linha do tempo — a função mais delicada do
+    arquivo — para ganhar pouco. O **Zerar** limpa o valor, e `_pgmNoPadrao` o compara (o botão acende).
+  - Conferido: início em 06:10 → a dica vira **"+30min de trânsito"**, a trilha acompanha e o Zerar acende;
+    fim em 13:00 → **51 massadas** e o corte recuando para 12:33.
+- ⭐ **Os dois cartões de resultado (corte e cobertura) ficaram alinhados**: `margin-top:auto` empurra os dois para
+  o **fundo** da coluna, e o `.pgm-ed` passou de `align-items:start` para **`stretch`** (sem isso as colunas têm
+  alturas próprias e não há fundo comum). Medido: **0px de desvio**.
+- F5 preserva tudo; 0 erros de JS; página em 1098px.
+
 ### 2026-09-25 (o) — PC da Empresa — PCP: a tabela ganha **biscoitos/h** e **biscoitos no dia**, e sai a nota (`90191d68`)
 - ⭐ As duas linhas falam do **CORTE** e saem do próprio `_pgmPot` (`bisc/min × 60` e `bisc/min × minutos de
   produção`), então acompanham o ritmo: **+2 no corte → +2.520 biscoitos/h e +12.757 no dia**. No padrão:
