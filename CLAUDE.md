@@ -422,6 +422,18 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-25 (l) — PC da Empresa — PCP: o turno do Forno vira o REAL, 05h40 às 15h00 (`0e921bd7`)
+*"Padrão de horário no corte também podemos ajustar: é das 05h40 até as 15h00."* Era 07:00–17:00, herdado do mockup.
+- ⚠️ **`horas` passou a sair da conta dos dois extremos** (`(15*60-(5*60+40))/60`), não de um número solto: as duas
+  fontes se contradiriam na primeira vez que alguém mexesse só num lado — e é `horas` que decide quantas massadas
+  cabem no turno, a régua da linha do tempo e o aviso de estouro.
+- ⭐ **O padrão do dia mudou junto**, e é bom saber de cor: **69 massadas** (era 74) · **40.845 pacotes** ·
+  **2.723 caixas** · **9h19 de 9h20**. O bloco padrão vai de **05:40 às 14:59**.
+- ⚠️ Quem tiver plano salvo com as massadas do turno antigo vai abrir **estourando o turno** — é o que o botão
+  **Zerar** resolve num clique.
+- Testado em Edge headless: cabeçalho e régua em 05:40 (a régua anda de hora em hora a partir do início do turno,
+  então mostra 05:40 · 06:40 · …), dica do campo de massadas em "padrão 69", Zerar cinza no padrão. 0 erros de JS.
+
 ### 2026-09-25 (k) — PC da Empresa — PCP: o **Zerar** vira o único reset, e **acende** quando algo mudou (`1fbefeb3`, `c6a6e533`)
 - **Saiu o "voltar ao padrão" da seção Corte**: *"não precisa mais, pois tem o ZERAR"*. Dois botões de reset com
   escopos diferentes na mesma tela confundiam mais do que ajudavam. ⚠️ `_pgmCorteReset` ficou **sem chamador**,
