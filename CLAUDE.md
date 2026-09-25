@@ -422,6 +422,65 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-09-25 (b) — PC da Empresa — Cobertura: O LUGAR dos 5 filtros do SISPRO (ícone + popover)
+O Diego mandou 3 prints do rail do SISPRO com os filtros que faltam e pediu **só o layout**: *"cria o lugar onde
+os filtros ficarão, o resto nosso TI... de uma forma leve, discreta e eficiente"*. Commit `b9d5e59d`, pushado.
+- **Onde ficou:** ícone `ti-filter` de 34×34 **ao lado da busca** (slot `acao` do `_cpTela`), abrindo um popover de
+  272px. É a mesma gramática dos filtros de Compras/Comercial — nada de rail lateral, que comeria largura fixa da
+  tabela e é justamente o que ele vem pedindo para tirar das telas. Fechado, custa um ícone.
+  ⚠️ O `.cp-pop-wrap` em volta do botão é o que faz o **clique fora fechar** (`_ddvCloseFiltros`, registrado 1×
+  por `window.__ddvFiltrosCloser`). Sem essa classe no wrapper, o próprio clique no botão fecharia o popover.
+- ⚠️⚠️ **OS CONTROLES SAEM DESABILITADOS DE PROPÓSITO.** Nenhum dos cinco opera com o que foi transcrito, e
+  **filtro que mexe e não muda número nenhum é pior que filtro nenhum** — a pessoa confia. Marcados, eles mostram
+  a **FOTO em que o export foi tirado** (a nota do rodapé diz isso, com a data da posição). Assim o popover já é
+  útil hoje: ele é a **procedência do dado**, que a tela não dizia em lugar nenhum.
+- 📋 **O que falta para cada um virar controle vivo** (também está no comentário do `_DDV_JANELAS`):
+  | Filtro | O que falta |
+  |---|---|
+  | **Almoxarifados** (Klain/Maras) | o mesmo export **com o Maras marcado** — é só refazer |
+  | **Tipos Produção** | uma coluna: o tipo de produção por produto (hoje só temos a Linha, que é outra coisa) |
+  | **Quantidades em** (Pac/Cx/Pal) | **pacotes por caixa** e **caixas por palete**, por produto |
+  | **Período Vendas** | a série de vendas **por mês, por produto** (o formato já existe: `_DDV_SERIE`) |
+  | **Período Pedidos** | a carteira **pedido a pedido, com data** (hoje `ped` é 1 número fechado) |
+- ⭐⭐ **ACHADO: a coluna Maras está `null` nos 144 produtos** — conferido um a um. O print do Diego explica: o
+  checkbox do **Maras estava DESMARCADO** quando o export saiu. Hoje ela é uma **coluna morta** ocupando largura
+  com "—" em todas as linhas. ⏳ Decidir com ele: esconder até o dado chegar ou deixar como lembrete.
+  📌 E o print **resolve uma dúvida aberta desde jun/2026**: "Maras = 2º almoxarifado ou marca?" → é **almoxarifado**.
+- ⭐ **"Quantidades em" é o filtro mais estratégico dos cinco**, e não pela unidade: é a **ponte que falta entre esta
+  tela e o PCP**. A Cobertura fala em **caixas** e a Programação do dia fala em **pacotes** — pendência anotada
+  desde que a tela do PCP nasceu. Com pacotes/caixa por produto, "faltam 300 caixas" vira "são N massadas".
+  📌 Pista que confirma a conversão: os números transcritos são **quebrados** (81,53 · 1.278,07 caixas) — caixa
+  quebrada é assinatura de conversão; lá dentro o número é inteiro, em pacotes.
+  📌 E trocar a unidade **NÃO mexe no DDV**: saldo e MDV mudam na mesma proporção e a divisão se cancela. O
+  semáforo, os 6 cartões e o DDV médio ficam idênticos. É troca de lente pura.
+- ⭐ **"Tipos Produção" liga a Cobertura ao PCP** (filtrar "Forno Contínuo" = exatamente os itens que disputam a
+  linha que se está programando) **e conserta o indicador "A produzir"**: a regra é "vai faltar e não tem OP/OC",
+  então **Produto de Revenda** e **Amostras** com estoque baixo estão sendo contados como coisa a produzir hoje.
+- ⭐ **"Período Vendas" é o de maior impacto analítico:** MDV = vendas ÷ dias úteis → DDV → semáforo → os 6 cartões.
+  É a resposta ao problema da média velha (261 dias = 1 ano; produto que dobrou em 90 dias tem o DDV inflado).
+  ⚠️ **Mexer nele mexe na CONTA, não só no filtro:** as 4 médias (MDV ÷261, MSV ÷52, MQV ÷24, MMV ÷12) estão todas
+  ancoradas em "o período é um ano". Com janela de 90 dias esses divisores ficam errados — têm que sair do próprio
+  intervalo. A favor: os 261 são simplesmente os dias de seg a sex do ano (365−104), sem tirar feriado, então dá
+  para reproduzir o método do SISPRO exatamente.
+- ⚠️ **ARMADILHA DE CSS repetida:** todo campo do popover PRECISA de classe (`ddv-fdt`/`ddv-fsel`/`ddv-fchk`) — a
+  regra global `input:not([class]){height:40px}` (e `select:not([class])` com `!important`) incharia o popover.
+  Os checkboxes são os que mais doem: sem classe, cada um viraria uma caixa de 40px.
+- Testado em Edge headless: 0 erros de JS; botão 34×34 alinhado com a busca (topo idêntico); popover 272×402
+  dentro da tela; 5 grupos na ordem dos prints; **10 campos, todos `disabled`**; datas, "Caixas" e "Klain"
+  marcados; 10 opções em Tipos Produção; botão acende no acento (`rgb(24,95,165)`) com o popover aberto; fecha
+  ao clicar fora; tabela e cartões intactos (144 produtos · 6 cartões).
+- ⏳ **Os 4 pedidos para a TI**, do mais barato ao mais caro: (1) refazer o export com o **Maras marcado**;
+  (2) **3 colunas a mais** no mesmo export — tipo de produção, pacotes/caixa, caixas/palete; (3) a **série mensal
+  de vendas por produto** (hoje temos 1 dos 144); (4) a **carteira pedido a pedido com data**.
+- ⏳ Da conversa sobre personalização (o Diego: "quanto mais personalizável, mais as pessoas gostam"), ficou
+  acordada a régua e **nada foi codado**: **personalizar a LENTE (o que eu vejo, em que ordem), nunca a CONTA** —
+  se cada um define o próprio vermelho, "temos 5 em ruptura" deixa de ser fato compartilhado. A fila proposta:
+  (1) **a tela lembrar de mim** (hoje o bloco DDV **não grava NADA** — zero `safeSetItem`: filtro, busca,
+  ordenação, linhas recolhidas e gráfico voltam ao zero a cada F5); (2) **"minhas linhas"** (32 linhas, ninguém
+  cuida de todas); (3) **colunas visíveis e ordem** (14 fixas; as 4 médias são a mesma venda dividida por 4
+  números e ocupam 1/3 da largura); (4) **corte do semáforo** editável — o componente já existe pronto no
+  Planejamento de Compras (`_cpPlanBands*`, paleta com faixas); (5) **DDV-alvo**; (6) **visões salvas com nome**.
+
 ### 2026-09-25 — PC da Empresa — Cobertura: saldo/DDV negativos em VERMELHO CHEIO · Pedidos: indicadores voltam a ser CARTÕES
 Dois pedidos do Diego, telas diferentes. Commit `94dc329b`, pushado; `main == origin/main`.
 - ⭐ **Saldo e DDV abaixo de zero pintam a CÉLULA INTEIRA** (`background:var(--danger)`, fonte **branca**, 700) na
