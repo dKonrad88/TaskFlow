@@ -422,6 +422,75 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐⭐ 2026-09-25 (f) — PC da Empresa — PCP: "Resultado do dia" vira **PADRÃO × AGORA × DIFERENÇA** (`a29be663`)
+Pedido do Diego (com print do cartão): *"preciso enxergar o que seria nosso padrão, ou seja, nosso padrão para Pão de
+mel é de 08min06 + 10,43g + 75 cortes por minuto e isso dá um total de X pacotes, X massadas, X caixas, X horas. E daí
+do lado a diferença em cima do que eu mudar — por exemplo, aumentei o corte em 1, dá tanto — e mais uma coluna com a
+diferença do que deu a mais ou a menos."*
+
+#### ⭐⭐ O PADRÃO VIROU DADO — e a inversão é a decisão que sustenta a tela
+Antes o dado era o **rendimento nominal** (142,106 kg da receita) e o **CPM saía da conta inversa** (76,3). Agora o
+**trio é o dado** (`padrao:{cpm:75, cru:10.43, massadaSeg:486}`) e o **rendimento é que se deduz**: 75 × 21 × 10,43 g ×
+8,1 min = **133,1 kg** (`_pgmMassadaKg`, nova).
+- ⚠️⚠️ **Por que inverter:** sem isso, digitar no bloco exatamente o trio do padrão daria **8min39** na coluna "Agora"
+  contra os **8min06** do "Padrão" — a tela acusaria uma diferença que não existe, e a comparação nasceria mentindo.
+  Com a inversão, **trio igual = número igual** nos dois lados, e a diferença isola só o que se mexeu. Conferido no
+  teste: 75 cpm devolve ciclo de **486,0 s** exatos.
+- ⚠️ Os 133,1 kg estão **abaixo do nominal** mas **dentro da faixa das 8 medições reais** (131 a 146 kg, média 139,9) —
+  massada é batelada, o nominal é receita. O 142,106 ficou em **`massadaKgNominal`** e aparece como nota no cartão da
+  Massada ("133,1 kg por massada (sai do trio do padrão; a receita nominal é 142,106 kg)").
+- `_pgmCpmPadrao` devolve `P.cpm` direto; o ramo da conta inversa ficou só como compatibilidade de cadastro antigo.
+
+#### ⭐⭐ AS DUAS COLUNAS MEDEM **POTENCIAL DE TURNO CHEIO**, não o dia montado (`_pgmPot`, nova)
+É o que faz "aumentei o corte em 1" virar número. **Com o bloco contado em massadas, acelerar o corte não muda os
+pacotes daquele bloco** — muda **quantas massadas cabem no turno**. Se um lado fosse o dia montado (65 massadas porque
+o PCP quis) e o outro o turno cheio, a diferença misturaria duas coisas: o efeito do ritmo e a escolha de quanto montar.
+- `_pgmPot(base, cortes, cru)` → `{ciclo, n, horas, pac, cx}`: ciclo da massada naquele ritmo, massadas **cheias** que
+  cabem no turno, horas ocupadas, pacotes e caixas.
+- ⚠️ As duas colunas usam **as mesmas embaladoras** (a 1ª janela): o mix decide o peso médio do biscoito, e trocá-lo no
+  meio da comparação sujaria a conta com algo que não está sendo comparado.
+- Conferido: **75 → 74 massadas · 43.805 pacotes · 2.920 caixas · 9h59**; **+1 no corte (76) → +1 massada, +592 pacotes,
+  +40 caixas, +1min**; 90 cpm → +14 massadas/+8.288 pacotes; 60 cpm → −15/−8.879; **12 g (mesmo cpm) → +11 massadas**.
+
+#### ⭐ CAIXAS entraram na tela
+`pacCx:15` nas 3 bases de 250 g (veio do **BANCO INFORMAÇÕES**: 15 no 240/250 g · 10 no 500 g · 30 na monodose · 5 no
+1 kg). É a ponte com a **Cobertura**, que fala em caixas enquanto o PCP falava só em pacotes. Base sem `pacCx` mostra "—",
+não inventa. No dia montado a soma é **por bloco** (bases diferentes podem ter caixas diferentes).
+
+#### O QUE FICOU NO CARTÃO
+Tabela de 4 colunas (rótulo · Padrão · Agora · Dif.) × 4 linhas (**Pacotes · Massadas · Caixas · Turno**). O **trio de
+cada lado vive no cabeçalho da coluna a que pertence** — em nota de rodapé ocupava 3 linhas e obrigava a ligar "Padrão"
+lá embaixo com a coluna aqui em cima. Verde = mais produção, vermelho = menos; **o Turno não ganha cor** (ocupar mais do
+turno não é pior nem melhor, é consequência de caber mais massada).
+- **O DIA MONTADO não sumiu** — virou o rodapé do cartão ("No dia montado": turno · massadas · pacotes · caixas + barra
+  de ocupação + aviso de estouro/sobra). São perguntas diferentes: *"quanto este ritmo pode entregar"* × *"quanto o dia
+  que montei entrega"*.
+- ⚠️ **Tentei pendurar o dia montado no rodapé da LINHA DO TEMPO e voltei atrás** — medido: a comparação usa 207px de
+  conteúdo contra os ~254px das 8 trilhas, então ela tem folga e a timeline é quem manda na altura. Pendurado lá, o
+  rodapé somava 51px **a quem já era o mais alto** (página foi a 1003px). No cartão, entra no espaço que já sobrava.
+- **Cartão de 206 → 346px** de largura (a timeline foi de 925 para 785px, sem corte de texto em nenhuma célula).
+  **Página em 979px** (era 911) — mesma ordem das versões anteriores desta tela.
+
+#### 🐞 Dois bugs de arredondamento achados no teste (afetam a tela toda)
+1. **`_pgmHhmm` escrevia "9h60"**: 9,9917 h dava H=9 e M=round(59,5)=60. Agora arredonda o **total em minutos** e
+   reparte a partir dele. 2. **`_pgmMS` escrevia "7min60"** pelo mesmo motivo (479,6 s). 3. A **coluna de diferença**
+   saía dos valores **brutos**: 2.920,3 e 2.959,8 davam "+39" embaixo de 2.920 e 2.960 — desmentindo as outras duas
+   colunas. Agora a diferença sai dos **valores arredondados que estão na tela** (e o turno trabalha em minutos inteiros,
+   para 9h59 × 10h00 diferirem de 1min e não de 0).
+
+#### Testado em Edge headless — 0 erros de JS em todas as levas
+Abertura no padrão com a diferença zerada (o dia de exemplo passou a nascer **no** padrão: `cpm` do seed vem de `P.cpm`);
++1 no corte; 90 e 60 cpm; 12 g; dia estourado (aviso "passa do turno em 4h02" — antes dizia "242 min"); setup repintando
+o cartão; linha sem cadastro (aviso, sem cartão, sem erro); **F5 preservando tudo**; 0 células com texto cortado;
+sem rolagem horizontal; cores da diferença conferidas no estilo computado.
+
+#### ⏳ O que este trabalho deixou em aberto
+1. **O trio do padrão vale só para o Pão de mel** — as outras bases (menta, amanteigada) usam o mesmo, e o padrão delas
+   não foi levantado. Quando vier, é uma entrada de `padrao` por base, não por linha.
+2. **`pacCx` só existe nas 3 bases do forno** e todas em 250 g. Produto de 500 g/monodose/1 kg vai precisar da própria.
+3. O **rendimento de 133,1 kg** é consequência do trio. Se o Diego disser que a massada rende mesmo 142,106 kg, então é
+   o ciclo ou o CPM do padrão que se ajusta — e o comentário no cadastro já diz onde mexer.
+
 ### ⭐⭐⭐ 2026-09-25 (d) — PC da Empresa — NOVA ABA **Produção › Regras** + a Cobertura passa a falar em MASSADAS
 Sessão longa com o Diego levantando a física da linha do Forno contínuo, e **autônoma no fim** ("estou de saída,
 pode fazer tudo sem pedir permissão"). Commits `61bae2ff` (Regras + Cobertura) e `3c5f32a2` (trava no PCP), pushados.
