@@ -12074,7 +12074,13 @@ function _pgmDiaSel(){ const ds=_pgmDias();
   if(_pgmDiaIdx==null){ const h=ds.findIndex(d=>_pgmIso(d)===today); _pgmDiaIdx=h<0?0:h; }
   return ds[Math.min(_pgmDiaIdx, ds.length-1)]; }
 function _pgmL(){ return _PGM_LINHAS.find(l=>l.id===_pgmLinhaId)||_PGM_LINHAS[0]; }
-function _pgmChave(linha, d){ return (linha||_pgmLinhaId)+'|'+_pgmIso(d||_pgmDiaSel()); }
+// ⭐⭐ A TELA VIROU SIMULADOR (Diego, 25/09: "vou usar essa tela só para um simulador mesmo, para
+// testes de aumento ou diminuir produção"). Saíram a semana e os 6 dias; sobrou a escolha da LINHA.
+// ⚠️ Por isso a chave do plano deixou de ter data: é `linha|sim`, uma por linha. Se continuasse
+// datada, a simulação sumiria à meia-noite — o dia seguinte abriria vazio e o trabalho pareceria perdido.
+// ⏳ Quando a programação por data voltar (ela é a Programação do Oficial), é devolver o ISO aqui e
+// repor a navegação — o resto do bloco não sabe a diferença.
+function _pgmChave(linha, d){ return (linha||_pgmLinhaId)+'|sim'; }
 // ⭐⭐⭐ O DIA NÃO É MAIS UM BLOCO SÓ QUE ATRAVESSA OS TRÊS ESTÁGIOS.
 // O Diego: *"o bloco não é sincronizado… posso fazer tudo ao leite até um X horário e depois branco…
 // posso embalar na emb 1 Klain até as 09h00 e depois outra marca"*. Então o dia guarda DUAS linhas do
@@ -12105,7 +12111,21 @@ function _pgmLoad(){ try{ const v=JSON.parse(localStorage.getItem(LS_PGM)||'null
   if(v && typeof v==='object') Object.keys(v).forEach(k=>{ const x=v[k];
     if(Array.isArray(x)) _PGM_PLANO[k]={blocos:x, emb:null};                       // formato antigo
     else if(x && typeof x==='object' && Array.isArray(x.blocos)) _PGM_PLANO[k]=x; });
-  }catch(e){} }
+  }catch(e){}
+  // ⚠️ MIGRAÇÃO das chaves DATADAS para a chave de simulação. Sem isso, quem já tinha um dia montado
+  // abriria a tela vazia e acharia que perdeu o trabalho. Pega o dia com MAIS blocos de cada linha e
+  // copia para `linha|sim`. As chaves antigas ficam no lugar — nada é apagado, e dá para voltar atrás.
+  try{ _PGM_LINHAS.forEach(l=>{
+    const alvo=l.id+'|sim';
+    if(_PGM_PLANO[alvo] && (_PGM_PLANO[alvo].blocos||[]).length) return;
+    let melhor=null, n=0;
+    Object.keys(_PGM_PLANO).forEach(k=>{
+      if(k.indexOf(l.id+'|')!==0 || k===alvo) return;
+      const q=((_PGM_PLANO[k]||{}).blocos||[]).length;
+      if(q>n){ n=q; melhor=k; }
+    });
+    if(melhor) _PGM_PLANO[alvo]=JSON.parse(JSON.stringify(_PGM_PLANO[melhor]));
+  }); }catch(e){} }
 function _pgmDiaObj(){ const k=_pgmChave(); return _pgmDia() || (_PGM_PLANO[k]={blocos:[], emb:null}); }
 function _pgmSetBlocos(arr){ _pgmDiaObj().blocos=arr; _pgmSave(); }
 function _pgmSetJanelas(js){ _pgmDiaObj().emb=js; _pgmSave(); }
@@ -12432,6 +12452,10 @@ function _pgmMassadaResumoHTML(){
       Últimas: ${_pgmCpmsMedidos().map(c=>{const m=_pgmHistMed(c);return c+' cpm → '+_pgmMS(m.seg);}).join(' · ')}</div>
   </div>`;
 }
+// ⚠️ CÓDIGO DORMENTE desde 25/09, quando a tela virou simulador e a navegação por data saiu:
+// _pgmSetSem, _pgmSetDia, _pgmSemLabel, _pgmDiaSel, _pgmDias, _PGM_DOW, _PGM_MES, _pgmSemOff e
+// _pgmDiaIdx ficaram sem chamador. MANTIDOS de propósito — é tudo que a programação por data precisa
+// de volta: repor o bloco `.pgm-sem` no _pgmNavHTML e devolver o ISO no _pgmChave. Não apagar.
 function _pgmSetSem(off){ _pgmSemOff=off; _pgmDiaIdx=null; _pgmSel=0; _pgmJan=0; renderPCPDia(); }
 function _pgmSetDia(i){ _pgmDiaIdx=i; _pgmSel=0; _pgmJan=0; renderPCPDia(); }
 function _pgmSetLinha(id){ _pgmLinhaId=id; _pgmSel=0; _pgmJan=0; renderPCPDia(); }
@@ -12823,27 +12847,14 @@ function _pgmCSS(){ return `<style>
     .pgm-topo{flex-direction:column} .pgm-rescard{width:auto}
     .pgm-resbox{display:flex;flex-wrap:wrap;gap:4px 26px} .pgm-res-b{margin-bottom:0;min-width:120px} }
 </style>`; }
-// ── NAVEGAÇÃO semana › dia › linha. O ponto do dia e o da linha marcam ONDE JÁ TEM PLANO — sem isso o
-// PCP teria que entrar em 6 dias × 9 linhas para descobrir o que já montou.
+// ── NAVEGAÇÃO: só a LINHA. A semana e os 6 dias saíram quando a tela virou simulador — ver o
+// comentário do _pgmChave. O selo na linha marca ONDE JÁ TEM SIMULAÇÃO, para não ter que entrar
+// nas 9 para descobrir.
 function _pgmNavHTML(){
-  const ds=_pgmDias(), sel=_pgmDiaSel(), iso=_pgmIso(sel);
-  const dias=ds.map((d,i)=>{ const on=_pgmIso(d)===iso, hoje=_pgmIso(d)===today;
-    const tem=_PGM_LINHAS.some(l=>_pgmBlocos(l.id,d).length);
-    return `<button class="pgm-dia${on?' on':''}${hoje?' hoje':''}" onclick="_pgmSetDia(${i})">
-      <span class="dw">${_PGM_DOW[i]}</span><span class="dd">${d.getDate()}</span>${tem?'<span class="pt"></span>':''}</button>`; }).join('');
-  const linhas=_PGM_LINHAS.map(l=>{ const on=l.id===_pgmLinhaId, tem=_pgmBlocos(l.id,sel).length;
+  const linhas=_PGM_LINHAS.map(l=>{ const on=l.id===_pgmLinhaId, tem=_pgmBlocos(l.id).length;
     return `<button class="pgm-ln${on?' on':''}${l.bases?'':' semcad'}" onclick="_pgmSetLinha('${l.id}')" title="${l.bases?'':'cadastro da linha ainda não feito'}">
       ${escapeHTML(l.nome)}${tem?`<span class="n">${tem}</span>`:''}</button>`; }).join('');
-  return `<div class="pgm-nav">
-    <div class="pgm-sem">
-      <button onclick="_pgmSetSem(${_pgmSemOff-1})" title="Semana anterior"><i class="ti ti-chevron-left"></i></button>
-      <span class="lbl">${_pgmSemLabel()}</span>
-      <button onclick="_pgmSetSem(${_pgmSemOff+1})" title="Próxima semana"><i class="ti ti-chevron-right"></i></button>
-      ${_pgmSemOff!==0?`<button class="hoje" onclick="_pgmSetSem(0)">esta semana</button>`:''}
-      <div class="pgm-dias">${dias}</div>
-    </div>
-    <div class="pgm-linhas">${linhas}</div>
-  </div>`;
+  return `<div class="pgm-nav"><div class="pgm-linhas">${linhas}</div></div>`;
 }
 function renderPCPDia(){
   const main=document.getElementById('task-container'); if(!main) return;
@@ -12889,7 +12900,7 @@ function renderPCPDia(){
         ${_pgmEditorHTML()}
       </div>`;
   }
-  main.innerHTML=_cpTela('PCP','Escolha a semana, o dia e a linha — e monte o que ela roda.',corpo);
+  main.innerHTML=_cpTela('PCP','Simulador da linha: monte um turno e veja o que muda ao aumentar ou diminuir a produção.',corpo);
 }
 // Dia de exemplo (só p/ a tela não abrir vazia): o Forno contínuo na quinta desta semana.
 // Os valores do bloco saem do PADRÃO da linha (o trio da Valesca): 76 cortes/min e 10,43 g.
