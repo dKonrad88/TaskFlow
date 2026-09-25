@@ -533,6 +533,21 @@ a chave só nasce no 1º clique. Cobertura: 13 → 12 colunas ao alternar, grupo
 massadas, e o alvo das Regras mudando a Cobertura. PCP: trava apagada no mix padrão, **acesa** ao pôr uma
 embaladora em sem cobertura e outra em branca.
 
+#### 2026-09-25 (e) — a tela do PCP virou SIMULADOR (`49ed9685`)
+O Diego: *"aqui pode tirar fora as datas, vou usar essa tela somente para um simulador mesmo, ou seja, só para
+testes de aumento ou diminuir produção"*. Saíram o seletor de semana e os 6 chips de dia; sobrou a escolha da LINHA.
+- ⚠️⚠️ **A chave do plano deixou de ter data: virou `linha|sim`**, uma por linha. Se continuasse datada, a
+  simulação sumiria à meia-noite — o dia seguinte abriria vazio e o trabalho pareceria perdido.
+- ⚠️ **MIGRAÇÃO:** o dia com MAIS blocos de cada linha é copiado para a chave de simulação. As chaves datadas
+  **ficam no lugar** — nada é apagado, e dá para voltar atrás. Conferido no teste: `forno|2026-09-24` sobrevive.
+- ⚠️ **CÓDIGO DORMENTE, não apagar:** `_pgmSetSem`, `_pgmSetDia`, `_pgmSemLabel`, `_pgmDiaSel`, `_pgmDias`,
+  `_PGM_DOW`, `_PGM_MES`, `_pgmSemOff` e `_pgmDiaIdx` ficaram sem chamador. É tudo que a programação por data
+  precisa de volta: repor o bloco `.pgm-sem` no `_pgmNavHTML` e devolver o ISO no `_pgmChave`.
+- Subtítulo novo: "Simulador da linha: monte um turno e veja o que muda ao aumentar ou diminuir a produção."
+- Testado em Edge headless com F5 de verdade: 0 chips de dia, 0 seletor de semana, 9 linhas com o selo de quem
+  tem simulação, migração trazendo os 3 blocos do dia de exemplo, novo bloco persistindo pelo reload, troca de
+  linha ida e volta, linha sem cadastro mostrando o aviso. 0 erros de JS.
+
 #### ⏳ O QUE FICOU EM ABERTO
 1. **O amanteigado (30) na matriz 2** — não veio na lista do Diego, ficou por vizinhança.
 2. **O tempo da troca de matriz** — 30 min é chute; muda a ordem da semana.
