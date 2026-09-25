@@ -422,6 +422,141 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐⭐⭐ 2026-09-25 (d) — PC da Empresa — NOVA ABA **Produção › Regras** + a Cobertura passa a falar em MASSADAS
+Sessão longa com o Diego levantando a física da linha do Forno contínuo, e **autônoma no fim** ("estou de saída,
+pode fazer tudo sem pedir permissão"). Commits `61bae2ff` (Regras + Cobertura) e `3c5f32a2` (trava no PCP), pushados.
+Bloco novo entre `// ════ INÍCIO/FIM DO BLOCO PCP · REGRAS ════`, **prefixo `_reg*`**, entrada `renderRegras()`.
+Menu de Produção agora: **Cobertura · PCP · Regras · Programação · Ordens de Produção · Produtos · Check list**.
+
+#### ⭐⭐ A FÍSICA DA LINHA, decifrada com ele (vale para tudo que vier depois)
+O Diego mandou um **artifact com o mapa e as rotas** (planta em SVG, 36 produtos com rota, regras de operação) e
+depois o **desenho da planta**. Isso **corrigiu um erro do nosso cadastro** e revelou uma camada inteira de restrição.
+- ⚠️⚠️ **SÃO DUAS COBRIDEIRAS FÍSICAS, não uma com 2 canais** (o `_PGM_LINHAS` está errado). Branca e preta,
+  cada uma com esteira de entrada e saída própria:
+  ```
+  sem cobertura    forno → 1 → 2 → 3 → 4 → 6
+  cobertura BRANCA forno → 1 → 2 → 5 → cobrideira branca → 6
+  cobertura PRETA  forno → 1 → 2 → 7 → cobrideira preta  → 8
+  ```
+- ⭐⭐ **A ESTEIRA 6 É UMA TRAVA** (confirmado pelo Diego: *"não tem como rodar 02 produtos diferentes ao mesmo
+  tempo na esteira 6"*). Sem cobertura e branca desembocam **na mesma correia** — se excluem. A **preta tem a 8 só
+  para ela**, e é por isso que ela convive com qualquer um. Toda a lógica de "dois fluxos simultâneos" sai daqui:
+  **um na 6 e um na 8**, nunca dois na 6.
+- ⭐⭐ **PASSAGEM SECA PELA PRETA** — rota que não existia em cadastro nenhum. O **manteiguinha com chocolate
+  (743/740) NÃO É COBERTO** ("o chocolate é só o nome"); ele atravessa a **cobrideira preta desligada**, porque já
+  é escuro e a máquina suja de chocolate não o estraga. **E isso LIBERA a esteira 6.** É a válvula de escape do dia
+  — e é exatamente por isso que a regra manda emparelhar suspiro branco (que ocupa a 6) com o manteiguinha.
+  ⚠️ **É preferência, não trava:** produto CLARO também pode passar seco — *"evitamos, mas fizemos, naqueles casos
+  onde não temos opção e precisamos produzir, para não dar ruptura"*. Ou seja, **a Cobertura justifica quebrar a
+  preferência** — as duas telas se encontram aí.
+- ⭐ **OS ELEVADORES DECIDEM QUAIS EMBALADORAS** cada fluxo alcança: esteira 8 → só a 9 → **só o Elevador 1**
+  (as 4 embaladoras); a 6 escolhe entre a 9 e o **Elevador 2**, que alcança **só E1 e E2**. Com dois fluxos, a
+  divisão natural é preta pelo Elev 1 nas E3/E4 e o fluxo da 6 pelo Elev 2 nas E1/E2.
+- ⭐⭐ **A CÂMARA FRIA É UM TÚNEL, não uma sala** (ele desenhou): atravessa as esteiras **6, 8 e 15** no mesmo
+  trecho. **Uma temperatura por vez para tudo que estiver lá dentro**, padrão **2 °C**. Isso resolve a contradição
+  que parecia existir: a regra nunca foi "não pode biscoito com cobertura junto do suspiro", é **"não pode outra
+  temperatura na câmara"**. Preta convive com os 12 °C do suspiro; **lascas e as coberturas 510/511/512 não**,
+  porque passam na **15** — mesma câmara. O suspiro é raro e se encaixa numa janela tranquila, de preferência
+  quando o forno roda algo **sem cobertura** (que não precisa de cristalização e ainda sai seco pela preta).
+- ⭐⭐ **MATRIZ DO CORTE DE ARAME** — a régua que dá formato e espessura. **São 3, e cada massa só passa na sua:**
+  **mz1** pão de mel e amendoim · **mz2** milho, banana com canela, maisena, manteiguinha, manteiguinha choc,
+  maracujá, choco rosca, duetto e limão · **mz3** rosquinha de leite e de coco. **Trocar é uma parada PRÓPRIA**,
+  somada à limpeza quando a massa também muda. ⏳ O **amanteigado não veio na lista** — ficou na mz2 por vizinhança,
+  confirmar. ⏳ E o **tempo da troca (30 min) é chute meu** — ele muda a ordem da semana.
+- **29, 12 e 948 levam 50% preta e 50% branca**, passando nas DUAS cobrideiras. ⚠️ Consequência de modelo: o mix
+  **nem sempre é livre** — nesses o mix é propriedade do produto, não escolha de quem programa (hoje o `_pgmMix`
+  deriva tudo das embaladoras).
+
+#### ⭐⭐ O BANCO DE INFORMAÇÕES DO PCP — e o que ele corrigiu
+O Diego mandou `G:\g_PCP\Controles Produção\BANCO INFORMAÇÕES.xlsx` (11 abas). As duas que importam: **BANCO**
+(317 linhas × 56 colunas, o mestre por SKU) e **peso biscoitos** (a engenharia por biscoito).
+**Tudo o que eu vinha assumindo estava errado**, e de forma que muda o número:
+
+| Eu assumia | O real |
+|---|---|
+| 12 pacotes por caixa | **15** (240/250g) · **10** (500g) · **30** (monodose) · 5 (1kg) |
+| massada de 142,1 kg para tudo | **varia**: 98,4 (amendoim) a 162,9 (manteiguinha choc) |
+| pacotes/massada pela física (evap × cob ÷ gramatura) | **já vem calculado** na planilha — 671 no pão de mel 250g |
+| ciclo único de 8min30 | **por produto**: pão de mel 6,7 min · manteiguinha 500g 10,3 min |
+
+⭐ **Por isso a semana passou a ser medida em HORAS, não em massadas** — um dia de pão de mel cabe ~89 massadas;
+um de manteiguinha 500g, ~58. O `min/massada` é derivado dos **pacotes por hora** da engenharia.
+📌 A coluna **COBRIDEIRA PADRÃO** do BANCO (SEM COBERTURA · AO LEITE · BRANCO · AMBOS · LASCA) **confirmou item
+por item** tudo o que tínhamos conversado, inclusive o 743/740 como sem cobertura e os 29/12/948 como "ambos".
+📌 E os **códigos batem**: conferi 10 deles contra `_DDV_LINHAS` — o código do produto **já é a chave comum** entre
+Cobertura, Programação e o mapa de rotas. O que faltava era o cadastro que liga código → massa → matriz → caminho.
+
+#### A ABA REGRAS (`_reg*`, `LS_REG='taskflow_pcp_regras'`)
+- ⭐⭐ **O PRINCÍPIO: toda regra FAZ ALGUMA COISA ACONTECER.** Cada uma tem uma coluna dizendo o efeito. Regra sem
+  efeito vira documentação e, em seis meses, mentira — foi exatamente o que aconteceu com a planilha, onde o
+  cadastro dizia que o 743 era sem cobertura e a regra dizia que ele passa na preta, as duas certas, e ninguém via
+  que discordavam.
+- **26 regras**, filtráveis por setor (forno · cobrideira · empacotamento · qualidade · pcp · fritura), cada uma
+  com **tipo**: **trava** (o sistema impede) · **preferência** (avisa e deixa passar) · **parâmetro** (um número).
+  ⚠️ O catálogo (`_REG_CAT`) fica **em CÓDIGO de propósito**: regra de linha é conhecimento de engenharia, evolui
+  pelo git com histórico de quem mudou. Só os **parâmetros** são editáveis e vão para o localStorage.
+- ⭐⭐ **A REGRA-MÃE (o Diego formulou):** *"uma regra importante é tentar não fazer setup, porém o limite é o DDV
+  dos itens, pois envolve qualidade — não posso fazer um produto ficar 30 dias no estoque"*. Ou seja:
+  **o setup é o CUSTO, o DDV máximo é o LIMITE, e o plano vive entre os dois.** A necessidade deixou de ser um
+  número e virou uma **faixa**: `mínimo = alvo × MDV − saldo` e `teto = ddvMáx × MDV − saldo`.
+  📌 Consequência que ele previu e que se confirma: quando a massa do dia bate no teto e o turno ainda tem espaço,
+  **quebra-se o dia com outra massa que também tem pouco a fazer**. E o "dia perfeito" (uma massa, dois caminhos —
+  17 na preta + 47 na branca) é justamente a forma de encher o turno **sem estourar o teto de nenhum item**.
+- **DDV máximo CASCATEIA: item → família → global.** Campo pontilhado = herdado. `_regTeto(cod)` devolve
+  `{v, o}` com a origem, que aparece no tooltip.
+- **Cadastro de engenharia dos 27 produtos do forno** (`_REG_ENG`), com a **massa editável** — o BANCO agrupa por
+  família, mas quem manda na limpeza é a massa de verdade, e a **matriz vem da massa** (`_REG_MZ`).
+- **Mapa do forno** desenhado na tela (duas cobrideiras, as três rotas, os dois elevadores).
+- ⚠️ **REGRA P0 RESPEITADA:** grava só nas ações `_regSet*`. Conferido no teste: ao ABRIR a tela a chave não existe.
+
+#### A COBERTURA PASSOU A FALAR EM MASSADAS
+- ⭐ O **3º grupo de colunas ALTERNA** entre as 4 médias de venda e a faixa de **produção** (Produzir · Massadas ·
+  Caminho), pelo botão "Ver produção". ⚠️ **Alternar em vez de somar** mantém a largura: com as duas juntas seriam
+  16 colunas, e o Diego acabou de mandar tirar uma. A infra já existia (`_ddvMedias` preparado para 10 colunas).
+- `_ddvProd(p,c)` devolve **null** para produto sem cadastro de engenharia — a tela **não inventa capacidade**
+  (117 dos 144 mostram "sem cadastro", que são os de fora do forno). Mesmo princípio do "a cadastrar" de Compras.
+- A barra resume: **"16 a produzir · 239 massadas · 29,5h de forno"**, e **muda junto com o DDV-alvo das Regras** —
+  é a prova de que as duas telas estão ligadas (alvo 15 → 239 massadas; alvo 25 → 625 massadas / 78,7h).
+- Colunas ordenáveis (`produzir`, `massadas`) e o modo escolhido entra na memória da tela (`ver` no `LS_DDV`).
+
+#### A TRAVA DA ESTEIRA 6 NO PCP (`3c5f32a2`)
+`_pgmTravaEsteira6()` acende no cartão do dia quando uma janela de embalagem aponta para **sem cobertura E branca
+ao mesmo tempo**. ⚠️ **Aviso, não bloqueio** — a linha alterna dentro do turno e quem decide é o PCP.
+⚠️ **NÃO refatorei a linha do tempo** do `_pgm*` (o bloco mais delicado do arquivo) com o Diego fora. O cadastro
+`estagios` ainda diz "uma cobrideira com 2 canais" — está ERRADO e deve ser corrigido numa sessão com ele por perto.
+
+#### Testado em Edge headless (0 erros de JS em todas as levas)
+Regras: 26 regras, 12 travas · 7 preferências · 7 parâmetros; filtro por setor (forno = 8); os 5 parâmetros;
+5 famílias e 27 produtos; a cascata conferida (`_regTeto(17)` = 12 pela família, `_regTeto(39)` = 18 pelo global);
+a chave só nasce no 1º clique. Cobertura: 13 → 12 colunas ao alternar, grupos com colspan certo, números reais
+(cód 9 → 1.430 cx = 62,3 massadas sem cobertura, matriz 1; cód 743 → seca na preta, matriz 2), ordenação por
+massadas, e o alvo das Regras mudando a Cobertura. PCP: trava apagada no mix padrão, **acesa** ao pôr uma
+embaladora em sem cobertura e outra em branca.
+
+#### ⏳ O QUE FICOU EM ABERTO
+1. **O amanteigado (30) na matriz 2** — não veio na lista do Diego, ficou por vizinhança.
+2. **O tempo da troca de matriz** — 30 min é chute; muda a ordem da semana.
+3. **A massa de cada produto** — derivei do sabor. Se manteiguinha, amanteigado e banana com canela compartilham
+   a mesma massa, o plano muda bastante. É o campo editável da aba Regras.
+4. **Os DDV máximos reais** por família e por item (25 dias é o padrão que pus).
+5. **`_PGM_LINHAS` ainda tem a cobrideira errada** (uma com 2 canais) e não conhece matriz, elevadores nem câmara.
+6. **A proposta da semana** (o planejador que agrupa por matriz → massa e empurra até o teto) **só existe no
+   simulador**, não no HUB. É o próximo passo natural: vira o zoom "semana" do PCP, **não** a grade antiga daqui
+   (que é uma versão pobre da Programação que já roda no Oficial e deveria ser aposentada).
+7. **A volta**: o plano virar produção prevista no saldo da Cobertura — o que fecha o ciclo.
+
+#### 📎 SIMULADOR (artifact, fora deste git)
+**https://claude.ai/artifact/FL6bxzu2aAvsABptxwZLq9** — o laboratório onde as regras foram validadas antes de
+entrar aqui: a faixa de DDV, o agrupamento por matriz e massa, o custo das paradas, os avisos e a proposta da
+semana. ⚠️ **Não é o HUB** (o Diego estranhou e tem razão): é página separada, com link próprio, sem compartilhar
+dado nenhum com o `index.html`. Serve para (a) iterar rápido enquanto o modelo ainda muda e (b) **ser a
+especificação viva para o Guilherme** — é mais fácil ele ler o simulador do que um documento.
+
+#### 📎 Como extrair a planilha de novo (não tem Python nesta máquina)
+PowerShell + Excel COM: `$x=New-Object -ComObject Excel.Application`, `$wb=$x.Workbooks.Open(caminho,0,$true)`,
+ler em BLOCO com `$ws.Range($ws.Cells(1,1),$ws.Cells($nr,$nc)).Value2` (ler coluna única devolve 1D e quebra),
+gravar com `[IO.File]::WriteAllText($out,$sb.ToString(),[Text.Encoding]::UTF8)` e fechar com `$x.Quit()`.
+
 ### ⭐ 2026-09-25 (c) — PC da Empresa — Cobertura: sai a coluna VENDAS · a tela passa a LEMBRAR DE VOCÊ
 Dois pedidos na mesma mensagem. Commit `5c08c677`, pushado; `main == origin/main`.
 - **A coluna "Vendas 261d" SAIU** da tabela. A largura dela (7%) foi **toda para o nome do produto** (25 → 32%),
