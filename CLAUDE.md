@@ -422,6 +422,38 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-25 — PC da Empresa — Cobertura: saldo/DDV negativos em VERMELHO CHEIO · Pedidos: indicadores voltam a ser CARTÕES
+Dois pedidos do Diego, telas diferentes. Commit `94dc329b`, pushado; `main == origin/main`.
+- ⭐ **Saldo e DDV abaixo de zero pintam a CÉLULA INTEIRA** (`background:var(--danger)`, fonte **branca**, 700) na
+  tabela da Cobertura. Antes era só o texto em vermelho — e sobre o tom do grupo (`.b1`/`.b2`, que já tingem a
+  coluna) ele não gritava o suficiente para o que é um **buraco de estoque**, não "pouco estoque".
+  - ⚠️ **A cor INLINE da célula some quando a classe entra** (`negS`/`negD` em `_ddvTabelaHTML`): `style` vence
+    classe, e a fonte não ficaria branca. Célula positiva segue com o inline de sempre (`--blue-mid` no saldo,
+    `_ddvCor` no DDV).
+  - ⚠️ A regra `.ddv-tbl td.ddv-neg,.ddv-prod:hover td.ddv-neg` mora **depois** das regras de tom do grupo e do
+    hover: as três têm a **mesma especificidade** (0,2,1), então quem decide é a ORDEM. Mexeu de lugar, quebrou.
+  - Saldo e DDV viram **juntos** por construção (DDV = saldo ÷ MDV, e a MDV é sempre positiva) — nos dados de hoje
+    são os mesmos 5 produtos, 10 células.
+  - ⏳ **O DDV s/OP NÃO foi marcado** (fica só com o texto vermelho): ele fica negativo em **14** produtos, quase 3×
+    mais, e o Diego pediu saldo e DDV. Se quiser, é acrescentar `negSop` do mesmo jeito.
+  - Testado em Edge headless: 0 erros de JS; 10 células `.ddv-neg`, todas `rgb(163,45,45)` com `#fff` e peso 700,
+    sem estilo inline; célula de saldo positivo intacta (fundo do grupo + azul).
+- ⭐ **Comercial › Pedidos: os indicadores voltaram a ser CARTÕES pequenos**, com a **mesma gramática da Cobertura**
+  (`.ddv-kpi`): fundo `--card`, borda, raio 10, `padding:8px 11px`, rótulo 9px em caixa-alta, número 17px.
+  ⚠️ Isso **reverte o mockup 2** de 24/09 (que tinha tirado o cartão e deixado linha de texto solta).
+  - **A pílula de variação foi para a 3ª linha** (`<span class="sub">`), que é o lugar que na Cobertura é do "sub".
+    Assim o cartão tem as mesmas 3 linhas e a largura não precisa segurar número + pílula lado a lado.
+  - **Todos do mesmo tamanho:** caiu a regra `.com-kpi:first-child .val{font-size:22px}` — na Cobertura os 6 cartões
+    são idênticos, e um maior quebraria a fileira. O número que manda agora se lê pela ordem, não pelo tamanho.
+  - **182px** de largura (a Cobertura usa 168): "R$ 173.407,35" a 17px/800 não cabe em 168 com o padding.
+  - ⚠️ **O `sub` continua sendo TOOLTIP** ("R$ 190.189,01 a menos que ontem", "2 representantes vieram cortados") —
+    é a última casa dessa informação, como já estava escrito no handoff de 24/09.
+  - ⚠️ A altura se iguala **sozinha** pelo `stretch` do flex: cartão sem pílula (Caixas, em aberto) acompanha os
+    outros. Não há `min-height` — se alguém puser `align-items` no `.com-kpis`, eles despareiam.
+  - Testado em Edge headless nas duas sub-abas: 0 erros; 5 cartões de **182×74** em cada, fundo branco, borda 1px,
+    raio 10; nenhum valor cortado (`scrollWidth == clientWidth`); pílulas na 3ª linha; tooltips preservados;
+    alturas idênticas inclusive nos cartões sem pílula.
+
 ### ⭐⭐ 2026-09-24 (c) — PC da Empresa — NOVA ABA **Produção › PCP**: montar o DIA de uma linha
 Depois de um debate longo (o Diego explicou a linha do Forno contínuo estágio por estágio) e de 5 mockups, ele
 pediu a aba. Bloco novo entre `// ════ INÍCIO/FIM DO BLOCO PCP · PROGRAMAÇÃO DO DIA ════`, **prefixo `_pgm*`**,
