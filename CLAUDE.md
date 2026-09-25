@@ -422,21 +422,22 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
-### ⭐ 2026-09-25 (b) — PC da Empresa — Cobertura: O LUGAR dos 5 filtros do SISPRO (ícone + popover)
-O Diego mandou 3 prints do rail do SISPRO com os filtros que faltam e pediu **só o layout**: *"cria o lugar onde
+### ⭐ 2026-09-25 (b) — PC da Empresa — Cobertura: O LUGAR dos 6 filtros do SISPRO (ícone + popover)
+O Diego mandou 3 prints do rail do SISPRO com os filtros que faltam (mais um, Marcas, na sequência) e pediu **só o layout**: *"cria o lugar onde
 os filtros ficarão, o resto nosso TI... de uma forma leve, discreta e eficiente"*. Commit `b9d5e59d`, pushado.
 - **Onde ficou:** ícone `ti-filter` de 34×34 **ao lado da busca** (slot `acao` do `_cpTela`), abrindo um popover de
   272px. É a mesma gramática dos filtros de Compras/Comercial — nada de rail lateral, que comeria largura fixa da
   tabela e é justamente o que ele vem pedindo para tirar das telas. Fechado, custa um ícone.
   ⚠️ O `.cp-pop-wrap` em volta do botão é o que faz o **clique fora fechar** (`_ddvCloseFiltros`, registrado 1×
   por `window.__ddvFiltrosCloser`). Sem essa classe no wrapper, o próprio clique no botão fecharia o popover.
-- ⚠️⚠️ **OS CONTROLES SAEM DESABILITADOS DE PROPÓSITO.** Nenhum dos cinco opera com o que foi transcrito, e
+- ⚠️⚠️ **OS CONTROLES SAEM DESABILITADOS DE PROPÓSITO.** Nenhum dos seis opera com o que foi transcrito, e
   **filtro que mexe e não muda número nenhum é pior que filtro nenhum** — a pessoa confia. Marcados, eles mostram
   a **FOTO em que o export foi tirado** (a nota do rodapé diz isso, com a data da posição). Assim o popover já é
   útil hoje: ele é a **procedência do dado**, que a tela não dizia em lugar nenhum.
 - 📋 **O que falta para cada um virar controle vivo** (também está no comentário do `_DDV_JANELAS`):
   | Filtro | O que falta |
   |---|---|
+  | **Marcas** | a marca de cada produto (⭐ separa Klain de marca própria) |
   | **Almoxarifados** (Klain/Maras) | o mesmo export **com o Maras marcado** — é só refazer |
   | **Tipos Produção** | uma coluna: o tipo de produção por produto (hoje só temos a Linha, que é outra coisa) |
   | **Quantidades em** (Pac/Cx/Pal) | **pacotes por caixa** e **caixas por palete**, por produto |
@@ -446,7 +447,7 @@ os filtros ficarão, o resto nosso TI... de uma forma leve, discreta e eficiente
   checkbox do **Maras estava DESMARCADO** quando o export saiu. Hoje ela é uma **coluna morta** ocupando largura
   com "—" em todas as linhas. ⏳ Decidir com ele: esconder até o dado chegar ou deixar como lembrete.
   📌 E o print **resolve uma dúvida aberta desde jun/2026**: "Maras = 2º almoxarifado ou marca?" → é **almoxarifado**.
-- ⭐ **"Quantidades em" é o filtro mais estratégico dos cinco**, e não pela unidade: é a **ponte que falta entre esta
+- ⭐ **"Quantidades em" é o filtro mais estratégico dos seis**, e não pela unidade: é a **ponte que falta entre esta
   tela e o PCP**. A Cobertura fala em **caixas** e a Programação do dia fala em **pacotes** — pendência anotada
   desde que a tela do PCP nasceu. Com pacotes/caixa por produto, "faltam 300 caixas" vira "são N massadas".
   📌 Pista que confirma a conversão: os números transcritos são **quebrados** (81,53 · 1.278,07 caixas) — caixa
@@ -465,12 +466,19 @@ os filtros ficarão, o resto nosso TI... de uma forma leve, discreta e eficiente
 - ⚠️ **ARMADILHA DE CSS repetida:** todo campo do popover PRECISA de classe (`ddv-fdt`/`ddv-fsel`/`ddv-fchk`) — a
   regra global `input:not([class]){height:40px}` (e `select:not([class])` com `!important`) incharia o popover.
   Os checkboxes são os que mais doem: sem classe, cada um viraria uma caixa de 40px.
+- ⭐ **6º filtro: MARCAS** (Diego, mesmo dia, mais um print) — dropdown com **Klain** marcado, como na foto.
+  ⚠️ **Só a marca que apareceu no print entra na lista** (`_DDV_MARCAS`): o dropdown veio fechado, então não dá
+  para saber as outras. A lista inteira — e a marca de CADA produto — vem no export. Não inventar.
+  📌 É o filtro que separa **Klain de marca própria**, e conversa direto com o PCP, onde cada embaladora já
+  escolhe entre Klain · Terc. etiqueta · Terc. impresso. Entra no mesmo pedido das outras colunas à TI.
+  ⚠️ Com 6 grupos o popover foi a **458px** → ganhou `max-height:calc(100vh - 150px)` com rolagem, senão numa
+  tela baixa ele sairia embaixo.
 - Testado em Edge headless: 0 erros de JS; botão 34×34 alinhado com a busca (topo idêntico); popover 272×402
   dentro da tela; 5 grupos na ordem dos prints; **10 campos, todos `disabled`**; datas, "Caixas" e "Klain"
   marcados; 10 opções em Tipos Produção; botão acende no acento (`rgb(24,95,165)`) com o popover aberto; fecha
   ao clicar fora; tabela e cartões intactos (144 produtos · 6 cartões).
 - ⏳ **Os 4 pedidos para a TI**, do mais barato ao mais caro: (1) refazer o export com o **Maras marcado**;
-  (2) **3 colunas a mais** no mesmo export — tipo de produção, pacotes/caixa, caixas/palete; (3) a **série mensal
+  (2) **4 colunas a mais** no mesmo export — marca, tipo de produção, pacotes/caixa, caixas/palete; (3) a **série mensal
   de vendas por produto** (hoje temos 1 dos 144); (4) a **carteira pedido a pedido com data**.
 - ⏳ Da conversa sobre personalização (o Diego: "quanto mais personalizável, mais as pessoas gostam"), ficou
   acordada a régua e **nada foi codado**: **personalizar a LENTE (o que eu vejo, em que ordem), nunca a CONTA** —
