@@ -12381,6 +12381,23 @@ function _pgmParseMS(v){ const s=String(v||'').trim().toLowerCase();
 function _pgmCicloInput(el){ const seg=_pgmParseMS(el.value);
   if(seg==null) return renderPCPDia();    // não entendeu: volta a mostrar o valor de verdade
   _pgmSetCiclo(seg); }
+// ⭐⭐ ZERAR A SIMULAÇÃO (Diego, 25/09) — devolve a LINHA INTEIRA ao padrão, não só os campos do bloco:
+// um bloco só, no trio do padrão, com as massadas que cabem no turno, e as embaladoras como o cadastro
+// manda (`emb:null` faz a janela nascer do padrão). Somem os blocos extras, os setups e as trocas.
+// ⚠️ O "voltar ao padrão" da seção Corte CONTINUA e é outra coisa: o ajuste fino do bloco selecionado.
+// Este é o botão de recomeçar — por isso oferece DESFAZER no toast, já que apaga o que a pessoa montou.
+function _pgmZerar(){
+  const L=_pgmL(); if(!L.bases) return;
+  const antes=JSON.parse(JSON.stringify(_pgmDiaObj()));
+  const P=L.padrao||{}, base=L.bases[0].id, pot=_pgmPot(base, _pgmCpmPadrao({base:base}), P.cru);
+  const d=_pgmDiaObj();
+  d.blocos=[{base:base, massadas:(pot?pot.n:1), cortes:_pgmCpmPadrao({base:base}), cru:P.cru, cob:_pgmBase(base).cob}];
+  d.emb=null;
+  _pgmSel=0; _pgmJan=0; _pgmSave(); renderPCPDia();
+  toast('Simulação zerada no padrão', {undoFn:function(){
+    const o=_pgmDiaObj(); o.blocos=antes.blocos||[]; o.emb=antes.emb||null;
+    _pgmSel=0; _pgmJan=0; _pgmSave(); renderPCPDia(); }});
+}
 // volta o bloco selecionado ao padrão — ritmo, gramas e cobertura. Só aparece quando ele está fora dele.
 function _pgmCorteReset(){
   const arr=_pgmBlocos().slice(), b=arr[_pgmSel], P=_pgmL().padrao||{}; if(!b) return;
@@ -12988,6 +13005,10 @@ function _pgmCSS(){ return `<style>
   .pgm-inp[type=time]{padding:0 4px;text-align:center;min-width:0}
   .pgm-inp[type=time]::-webkit-calendar-picker-indicator{display:none}
   .pgm-sec b.lnk{color:var(--blue-mid);font-weight:700;cursor:pointer}
+  .pgm-zerar{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-family:inherit;color:var(--text3);
+    background:none;border:1px solid transparent;border-radius:6px;padding:2px 7px;cursor:pointer}
+  .pgm-zerar:hover{color:var(--blue-mid);border-color:var(--border);background:var(--card)}
+  .pgm-zerar i{font-size:13px}
   /* campo com setas próprias: a do type=number fica escondida (regra abaixo) e é alvo pequeno demais */
   .pgm-step{display:flex;align-items:stretch;gap:4px;min-width:0}
   .pgm-step>.pgm-inp{flex:1;min-width:0}
@@ -13116,7 +13137,9 @@ function renderPCPDia(){
         <div class="pgm-card pgm-card-tl">
           <div class="pgm-head"><i class="ti ti-flame" style="font-size:15px"></i><b>${escapeHTML(L.nome)}</b>
             <span>· ${dataTxt} · ${L.ini} às ${L.fim}</span>
-            <span id="pgm-salvo" style="margin-left:auto;color:var(--text3);display:inline-flex;align-items:center;gap:4px">${_pgmSalvoHTML()}</span></div>
+            <button class="pgm-zerar" style="margin-left:auto" onclick="_pgmZerar()"
+              title="Volta a linha ao padrão: um bloco só, no trio do padrão, com as massadas que cabem no turno"><i class="ti ti-rotate-2"></i> Zerar</button>
+            <span id="pgm-salvo" style="color:var(--text3);display:inline-flex;align-items:center;gap:4px">${_pgmSalvoHTML()}</span></div>
           <div class="pgm-tlbox"><div id="pgm-tl">${_pgmTimelineHTML()}</div></div>
         </div>
         <div class="pgm-card pgm-rescard">
