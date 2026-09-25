@@ -13241,6 +13241,10 @@ function _ddvCSS(){
   .ddv-lin td{font-weight:700;color:var(--text);background:var(--bg2);border-bottom:1px solid var(--border);cursor:pointer}
   .ddv-lin:hover td{background:color-mix(in srgb,var(--blue-mid) 9%,var(--bg2))}
   .ddv-prod:hover td{background:color-mix(in srgb,var(--text) 4%,transparent);cursor:pointer}
+  /* Saldo/DDV abaixo de zero: a célula INTEIRA fica vermelha com fonte branca. Vem DEPOIS das
+     regras de tom do grupo e do hover, que têm a mesma especificidade — a ordem é que decide.
+     ⚠️ A cor inline da célula sai quando isto entra: style vence classe e a fonte não ficaria branca. */
+  .ddv-tbl td.ddv-neg,.ddv-prod:hover td.ddv-neg{background:var(--danger);color:#fff;font-weight:700}
   .ddv-cod{color:var(--text3);font-size:11px;margin-right:7px}
   .ddv-cnt{font-size:10.5px;font-weight:700;background:color-mix(in srgb,var(--text) 10%,transparent);color:var(--text3);border-radius:999px;padding:2px 8px;margin-left:8px;white-space:nowrap}
   /* cartões MENORES e SEM a tarja de cor na lateral (Diego, 24/09) — a cor vive no número, que já a tinha.
@@ -13473,12 +13477,15 @@ function _ddvTabelaHTML(){
     if(!fechada) L.prods.forEach(p=>{
       const c=_ddvCalc(p), st=_ddvCor(c.ddv), aberto=String(_ddvGraf)===String(p[0]);
       const alerta=(c.ddv!=null&&c.ddv<DDV_ALERTA.vermelho)?`<i class="ti ti-alert-triangle-filled" style="color:var(--danger);font-size:11px;margin-right:4px" title="menos de ${DDV_ALERTA.vermelho} dias de estoque"></i>`:'';
+      // Abaixo de zero não é "pouco estoque", é buraco: a célula vira vermelha com fonte branca.
+      // Saldo e DDV viram juntos (DDV = saldo ÷ MDV, e a MDV é sempre positiva).
+      const negS=(c.saldo!=null&&c.saldo<0), negD=(c.ddv!=null&&c.ddv<0);
       rows+=`<tr class="ddv-prod" onclick="_ddvAbrirGraf('${p[0]}')" title="Ver o gráfico de vendas deste produto"${aberto?' style="background:color-mix(in srgb,var(--blue-mid) 8%,transparent)"':''}>
         <td class="l ddv-cod">${alerta}${p[0]}</td>
         <td class="l" title="${escapeAttr(p[1])}">${escapeHTML(p[1])}</td>
         <td class="bnd b1 bs">${_ddvN(p[2])}</td><td class="bnd b1">${_ddvN(p[3])}</td><td class="bnd b1">${_ddvN(p[4])}</td><td class="bnd b1">${_ddvN(p[5])}</td>
-        <td class="bnd b1" style="color:${c.saldo==null?'':(c.saldo<0?'var(--danger)':'var(--blue-mid)')};font-weight:600">${_ddvN(c.saldo)}</td>
-        <td class="bnd b2 bs" style="color:${st};font-weight:700">${_ddvN(c.ddv)}</td>
+        <td class="bnd b1${negS?' ddv-neg':''}"${negS?'':` style="color:${c.saldo==null?'':'var(--blue-mid)'};font-weight:600"`}>${_ddvN(c.saldo)}</td>
+        <td class="bnd b2 bs${negD?' ddv-neg':''}"${negD?'':` style="color:${st};font-weight:700"`}>${_ddvN(c.ddv)}</td>
         <td class="bnd b2" style="color:${_ddvCor(c.ddvsop)};font-weight:600">${_ddvN(c.ddvsop)}</td>
         ${med?`<td class="bnd b3 bs">${_ddvN(c.mdv)}</td><td class="bnd b3">${_ddvN(c.msv)}</td><td class="bnd b3">${_ddvN(c.mqv)}</td><td class="bnd b3">${_ddvN(c.mmv)}</td>`:''}
         <td>${_ddvN(p[6])}</td></tr>`;
@@ -14137,8 +14144,8 @@ function _comCSS(){
   .com-hstrip th{border-bottom:none;padding:2px 12px 5px}
   .com-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:9px}
   .com-bar .t{font-size:11.5px;font-weight:600;color:var(--text3)}
-  /* Indicadores: faixa fina no acento à esquerda (o cartão segue branco) + pílula de variação. */
-  .com-kpis{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 30px;margin-bottom:16px}
+  /* Indicadores em CARTÃO PEQUENO, mesma gramática da Cobertura (.ddv-kpi/.ddv-kpis). */
+  .com-kpis{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
   /* popover do período (o ícone de filtro do topo) */
   .com-pop{position:absolute;top:44px;right:0;z-index:40;background:var(--card);border:1px solid var(--border);border-radius:11px;box-shadow:0 10px 28px rgba(0,0,0,.18);padding:6px;min-width:196px;display:flex;flex-direction:column;gap:2px}
   .com-perit{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;border-radius:8px;padding:8px 10px;font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer}
@@ -14147,11 +14154,13 @@ function _comCSS(){
   .com-perit[disabled]{opacity:.42;cursor:default;font-weight:500}
   .com-perit .n{margin-left:auto;font-size:11px;font-weight:700;color:var(--text3)}
   .com-perit.on .n{color:#fff}
-  /* indicadores em linha de texto, sem cartão (mockup 2) — o 1º é o número que manda, sai maior */
-  .com-kpi{display:flex;flex-direction:column;gap:2px;min-width:0}
-  .com-kpi .lab{font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);line-height:1.3}
-  .com-kpi .val{display:flex;align-items:center;gap:7px;font-size:17px;font-weight:800;letter-spacing:-.015em;color:var(--text);white-space:nowrap}
-  .com-kpi:first-child .val{font-size:22px}
+  /* Cartões iguais aos da Cobertura: rótulo miúdo, número, e a pílula de variação na 3ª linha —
+     o lugar que lá é do "sub". Todos do MESMO tamanho (o 1º não sai mais maior), e a altura se
+     iguala sozinha pelo stretch do flex, mesmo no cartão sem pílula. */
+  .com-kpi{flex:0 0 182px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 11px;min-width:0}
+  .com-kpi .lab{display:block;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);line-height:1.3}
+  .com-kpi .val{display:block;font-size:17px;font-weight:800;letter-spacing:-.015em;color:var(--text);white-space:nowrap;margin-top:1px}
+  .com-kpi .sub{display:block;margin-top:3px}
   .com-pill{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;border-radius:999px;padding:2px 7px;white-space:nowrap;flex:none}
   .com-pill.dn{background:color-mix(in srgb,var(--danger) 14%,transparent);color:var(--danger)}
   .com-pill.up{background:color-mix(in srgb,var(--success) 16%,transparent);color:var(--success)}
@@ -14218,14 +14227,15 @@ function _comSparkHTML(v){
   </svg>`;
 }
 // Cartão de indicador (modelo escolhido pelo Diego: faixa fina na lateral).
-// Indicador em LINHA DE TEXTO (Diego escolheu o mockup 2, 24/09) — sem cartão: rótulo miúdo em cima,
-// número embaixo, a pílula de variação colada nele. ⚠️ O `sub` (a diferença em número, "R$ 190.189,01 a
-// menos que ontem", e os avisos da foto em aberto) virou TOOLTIP: some da tela, não do app.
-// O 1º indicador de cada tela sai maior por CSS (`:first-child`) — é o número que manda.
+// Indicador em CARTÃO PEQUENO, igual ao da Cobertura (Diego, 25/09): rótulo miúdo, número, e a
+// PÍLULA de variação na 3ª linha — o lugar que na Cobertura é do "sub". Todos do mesmo tamanho.
+// ⚠️ O `sub` (a diferença em número, "R$ 190.189,01 a menos que ontem", e os avisos da foto em
+// aberto) continua sendo TOOLTIP do cartão: some da tela, não do app.
 function _comKPI(lab, val, pill, sub, spark, cor){
   return `<div class="com-kpi"${sub?` title="${escapeAttr(sub)}"`:''}>
     <span class="lab">${lab}</span>
-    <span class="val"${cor?` style="color:${cor}"`:''}>${val}${pill||''}${spark||''}</span></div>`;
+    <span class="val"${cor?` style="color:${cor}"`:''}>${val}</span>
+    ${pill?`<span class="sub">${pill}</span>`:''}${spark||''}</div>`;
 }
 function _comCorpoHTML(){
   const d=_comD(), t=d?d.tot:null, b=_comBase(), bt=b?b.tot:null;
