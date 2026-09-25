@@ -473,9 +473,10 @@ os filtros ficarão, o resto nosso TI... de uma forma leve, discreta e eficiente
   escolhe entre Klain · Terc. etiqueta · Terc. impresso. Entra no mesmo pedido das outras colunas à TI.
   ⚠️ Com 6 grupos o popover foi a **458px** → ganhou `max-height:calc(100vh - 150px)` com rolagem, senão numa
   tela baixa ele sairia embaixo.
-- Testado em Edge headless: 0 erros de JS; botão 34×34 alinhado com a busca (topo idêntico); popover 272×402
-  dentro da tela; 5 grupos na ordem dos prints; **10 campos, todos `disabled`**; datas, "Caixas" e "Klain"
-  marcados; 10 opções em Tipos Produção; botão acende no acento (`rgb(24,95,165)`) com o popover aberto; fecha
+- Testado em Edge headless: 0 erros de JS; botão 34×34 alinhado com a busca (topo idêntico); popover 272×458
+  dentro da tela; **6 grupos** na ordem dos prints; **11 campos, todos `disabled`**; datas, "Caixas", "Klain" na
+  marca e "Klain" no almoxarifado marcados; 10 opções em Tipos Produção (com "Todos" selecionado) e 2 em Marcas
+  (com "Klain"); botão acende no acento (`rgb(24,95,165)`) com o popover aberto; fecha
   ao clicar fora; tabela e cartões intactos (144 produtos · 6 cartões).
 - ⏳ **Os 4 pedidos para a TI**, do mais barato ao mais caro: (1) refazer o export com o **Maras marcado**;
   (2) **4 colunas a mais** no mesmo export — marca, tipo de produção, pacotes/caixa, caixas/palete; (3) a **série mensal
