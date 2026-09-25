@@ -13248,6 +13248,8 @@ function _ddvCSS(){
   .ddv-kpis{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
   .ddv-kpi{flex:0 0 168px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 11px;min-width:0;cursor:pointer;font-family:inherit;text-align:left}
   .ddv-kpi:hover{background:color-mix(in srgb,var(--text) 3%,var(--card))}
+  /* o DDV médio é leitura, não filtro — fica no fim da fila, sem cursor nem hover de clique */
+  .ddv-kpi.info,.ddv-kpi.info:hover{cursor:default;background:var(--bg2)}
   .ddv-kpi.on{box-shadow:0 0 0 2px var(--blue-mid) inset}
   .ddv-kpi .lab{display:block;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);line-height:1.3}
   .ddv-kpi .val{display:block;font-size:17px;font-weight:800;letter-spacing:-.015em;color:var(--text);margin-top:1px}
@@ -13394,6 +13396,26 @@ function _ddvSvg(s,med2){
       ${l2}${bolas}${num}${rot}${alvo}
     </svg></div>`;
 }
+// ⭐ COBERTURA MÉDIA DO ESTOQUE INTEIRO. ⚠️ NÃO é a média da coluna DDV: a média simples é dominada
+// pelos itens de giro baixo (um item parado com 800 dias puxa o número todo para cima e some com a
+// ruptura do lado). O número honesto é o AGREGADO — saldo total ÷ venda diária total — que responde
+// "o estoque que temos dura quantos dias no ritmo de venda de hoje". A média simples e a mediana vão
+// no tooltip, para dar a noção da distribuição.
+// ⚠️ Item sem venda (mdv=0) ou sem dado de estoque fica FORA das três contas — entrar como zero
+// inventaria cobertura que não existe.
+function _ddvCobertura(){
+  let saldo=0, mdv=0; const lista=[];
+  _ddvTodos().forEach(x=>{ const c=x.c;
+    if(c.saldo==null || !c.mdv) return;
+    saldo+=c.saldo; mdv+=c.mdv; lista.push(c.ddv); });
+  if(!lista.length || !mdv) return null;
+  lista.sort((a,b)=>a-b);
+  const meio=Math.floor(lista.length/2);
+  return { agregada: saldo/mdv,
+    simples: lista.reduce((s,v)=>s+v,0)/lista.length,
+    mediana: lista.length%2 ? lista[meio] : (lista[meio-1]+lista[meio])/2,
+    n: lista.length };
+}
 function _ddvKPIsHTML(){
   const todos=_ddvTodos();
   const cnt=f=>todos.filter(f).length;
@@ -13413,6 +13435,11 @@ function _ddvKPIsHTML(){
     ${k('atencao','Atenção',aten,'menos de '+DDV_ALERTA.vermelho+' dias de estoque','var(--danger)')}
     ${k('folga','Folga',folga,DDV_ALERTA.amarelo+' dias ou mais','var(--success)')}
     ${k('produzir','A produzir',prod,'vai faltar e não tem OP/OC','var(--amber)')}
+    ${(function(){ const m=_ddvCobertura(); if(!m) return '';
+      return `<div class="ddv-kpi info" title="Saldo total ÷ venda diária total — quantos dias o estoque inteiro dura no ritmo de hoje.&#10;Média simples dos itens: ${_ddvN(m.simples,1)} dias · mediana: ${_ddvN(m.mediana,1)} dias.&#10;${_cpNum(m.n)} produtos entram na conta (os sem venda ou sem estoque ficam de fora).">
+        <span class="lab">DDV médio</span>
+        <span class="val" style="color:${_ddvCor(m.agregada)}">${_ddvN(m.agregada,1)}</span>
+        <span class="sub">dias — o estoque todo</span></div>`; })()}
   </div>`;
 }
 function _ddvTabelaHTML(){
