@@ -422,6 +422,51 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐⭐ 2026-09-25 (m) — PC da Empresa — PCP: a linha do tempo vira **PONTO → LINHA → PONTO** · tabela completa · horário na Cobertura (`1c75150d`)
+
+#### ⭐⭐ AS BARRAS VIRARAM TRAÇO COM DOIS PONTOS
+Mostrei **5 modelos** de como repensar a faixa (rio da produção · relógio do turno · grade por hora · ficha do
+bloco · agenda de marcos). O Diego gostou da **agenda de marcos** mas pediu **deitada**: *"no lugar da barra,
+deitado e no comprido igual a barra, mas não precisa fazer uma barra, e sim um ponto de quando inicia e outro
+quando termina"*.
+- ⚠️ **É 100% CSS — a lógica não mudou.** Flex, segmentos, mescla e arraste continuam iguais; trocar só a Emb 1
+  às 09:00 segue partindo só a trilha dela (conferido no teste: trilha do leite em 2 segmentos, as outras em 1).
+- **Como é feito:** a **linha** é o `::before` e os **dois pontos** são `radial-gradient` nas pontas do próprio
+  elemento — 2 pseudo-elementos não dariam conta de linha + 2 pontos. Tudo em `currentColor`, então cada estágio
+  só declara a sua cor.
+- ⚠️ **As 5 cores fixas mudaram de papel**: o que era FUNDO virou a cor do TRAÇO, então passaram para os tons
+  escuros da mesma família (`#2d6396` corte · `#5b4fa0` cobertura · `#2a7a4e` embalagem · `#976615` setup ·
+  `#a8433a` alerta). Seguem **fixas de propósito** — a linha do tempo é leitura de dado, como o semáforo do DDV.
+- ⚠️ **O texto foi para um `<span class="tx">` com fundo do cartão** porque precisa **cortar** a linha, senão o
+  traço passa por trás das letras. E a **alça de arraste ficou FORA dele** (novo parâmetro `extra` do `cx`): ela é
+  `position:absolute` e, dentro do `.tx` (que é relative para subir acima da linha), se mediria pelo texto.
+- A trilha ficou mais alta (19 → 24px) porque o desenho é leve e o cartão ao lado é mais alto.
+
+#### ⭐ O TRIO VIROU LINHA DA TABELA
+*"Esse padrão e agora também poderia estar igual pacotes e massadas, em formato de planilha de comparação, com uma
+última coluna de diferença."* No cabeçalho o trio era texto corrido e **a diferença não tinha onde aparecer** —
+"75 cpm × 77 cpm" obrigava a fazer a conta de cabeça.
+- A tabela ficou com **dois blocos separados por uma linha mais forte**: em cima **o que se mexe** (tempo/massada ·
+  cortes/min · biscoito cru · cobertura) e embaixo **o que dá** (pacotes · massadas · caixas · turno). Sem a
+  separação, as 8 linhas viram uma lista só e causa e efeito se misturam.
+- Formatadores por linha: segundos (`−3s`), cpm com casas (`+0,47`), gramas (`+0,10 g`), `%` e `min`.
+
+#### A Cobertura ganhou o par de horários
+⚠️ **De LEITURA** (células, não inputs): a cobertura não tem horário próprio — é o do corte **+ o trânsito
+(+15min) + o setup da cobrideira**. Editar ali seria uma terceira porta para o mesmo setup, que já tem campo logo
+abaixo. Conferido: bloco 2 com setup de cobertura de 30min → corte 14:39, cobertura **15:24** (14:39+30+15).
+
+#### 🐞 A ARMADILHA DA CRASE, terceira vez no mesmo dia
+Crase num **comentário do `_pgmCSS`** ("declarar a sua \`color\`") e o arquivo inteiro parou de carregar. Sintoma:
+**o harness não passa da primeira linha**. A checagem barata segue valendo:
+`awk` sobre o range da função tem que achar **1 crase** (a de abertura) nas primeiras 200 linhas.
+
+#### Altura
+⚠️ **A página foi de 990 para 1091px** — o custo das 4 linhas novas na tabela, que é o que o Diego pediu. O cartão
+(405px) é o gargalo, não a linha do tempo (270px de conteúdo). Compensei em parte: padding das linhas 5→3px e
+trilhas mais altas para o vazio ao lado ficar menor. Se incomodar, o que sobra para cortar é a nota de rodapé do
+cartão e o bloco "No dia montado".
+
 ### 2026-09-25 (l) — PC da Empresa — PCP: o turno do Forno vira o REAL, 05h40 às 15h00 (`0e921bd7`)
 *"Padrão de horário no corte também podemos ajustar: é das 05h40 até as 15h00."* Era 07:00–17:00, herdado do mockup.
 - ⚠️ **`horas` passou a sair da conta dos dois extremos** (`(15*60-(5*60+40))/60`), não de um número solto: as duas
