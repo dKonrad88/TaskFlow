@@ -6921,6 +6921,7 @@ function renderProducao(){
   // velho cai no PCP em vez da Cobertura — uma vez só, e o menu resolve no primeiro clique.
   if(producaoView === 'cobertura') return renderPCP();
   if(producaoView === 'pcp') return renderPCPDia();
+  if(producaoView === 'regras') return renderRegras();
   if(producaoView === 'programacao') return renderProgramacao();
   if(producaoView !== 'produtos'){
     const titulo = producaoView==='ordens'?'Ordens de Produção':'Checklists';
@@ -12892,6 +12893,327 @@ function renderPCPDia(){
 _pgmLoad();   // ⚠️ DEPOIS do exemplo, de propósito: o que foi salvo manda sobre ele
 // ════ FIM DO BLOCO PCP · PROGRAMAÇÃO DO DIA ════
 
+// ════ INÍCIO DO BLOCO PCP · REGRAS ════
+// Catálogo das regras da produção + cadastro de engenharia por produto + os parâmetros que
+// alimentam o plano. Prefixo _reg*, entrada renderRegras() (Produção › Regras).
+//
+// ⭐⭐ O PRINCÍPIO (Diego, 25/09): TODA REGRA AQUI FAZ ALGUMA COISA ACONTECER.
+//   trava      → o sistema impede
+//   preferência→ o sistema avisa e deixa passar
+//   parâmetro  → um número que entra na conta
+// Regra sem efeito vira documentação e, em seis meses, mentira. Foi exatamente o que aconteceu
+// com a planilha: o cadastro dizia que o 743 era sem cobertura e a regra dizia que ele passa na
+// cobrideira preta — as duas certas, ninguém via que discordavam.
+//
+// ⭐⭐ A REGRA-MÃE: o setup é o CUSTO, o DDV máximo é o LIMITE, e o plano vive entre os dois.
+// Sozinho, "evitar setup" leva a fazer uma massa a semana inteira e envelhecer o estoque.
+//
+// ⚠️ REGRA P0 RESPEITADA: grava só nas AÇÕES (_regSet*). Nenhuma função de render grava.
+const LS_REG='taskflow_pcp_regras';
+let _REG={alvo:15, maxg:25, limp:40, tmz:30, turno:10, famMax:{}, itemMax:{}};
+let _regFiltro='todos', _regCarregado=false;
+
+// ⭐ MATRIZ DO CORTE DE ARAME — a régua que dá o formato e a espessura. Cada massa só passa na sua,
+// e trocar é uma parada PRÓPRIA, somada à limpeza quando a massa também muda. Por isso a semana se
+// agrupa por matriz ANTES de se agrupar por massa: pão de mel e amendoim são massas diferentes mas
+// dividem a matriz 1 — entre eles paga-se só a limpeza.
+// ⏳ O amanteigado não veio na lista do Diego; ficou na 2 por vizinhança. Confirmar.
+const _REG_MZ={'pão de mel':1,'menta':1,'amendoim':1,
+  'milho':2,'banana com canela':2,'maisena':2,'manteiguinha':2,'manteiguinha choc':2,
+  'choco rosca':2,'duetto':2,'amanteigado':2,'maracujá':2,'limão':2,
+  'rosquinha coco':3,'rosquinha leite':3};
+const _REG_MASSAS=['milho','maisena','manteiguinha','manteiguinha choc','amanteigado','banana com canela',
+  'amendoim','pão de mel','menta','rosquinha coco','rosquinha leite','choco rosca','duetto','maracujá','limão'];
+function _regMz(massa){ return _REG_MZ[massa]||2; }
+
+// Caminhos do forno. ⚠️ São DUAS cobrideiras físicas (branca e preta), cada uma com esteira própria —
+// não uma com 2 canais. A "seca" é a passagem pela preta DESLIGADA: não cobre, mas sai pela 8 e por
+// isso LIBERA a esteira 6. É a válvula de escape do dia.
+const _REG_CAM={
+  preta: {n:'ao leite',      rota:'7 → cobrideira preta → 8',  esteira:8, cob:1},
+  branca:{n:'branco',        rota:'5 → cobrideira branca → 6', esteira:6, cob:1},
+  sem:   {n:'sem cobertura', rota:'3 → 4 → 6',                 esteira:6, cob:0},
+  seca:  {n:'seca na preta', rota:'7 → preta desligada → 8',   esteira:8, cob:0},
+  ambos: {n:'ambos',         rota:'50% preta e 50% branca',    esteira:0, cob:1}
+};
+
+// ⭐ CADASTRO DE ENGENHARIA — do "BANCO INFORMAÇÕES.xlsx" do PCP (25/09). NÃO é chute:
+// [cód, nome, família, massa, caminho, pacotes/massada, pacotes/caixa, min por massada, embaladoras]
+// ⚠️ pacotes/massada JÁ VEM CALCULADO da planilha — não recalcular pela física (evaporação ×
+//    cobertura ÷ gramatura); a conta deles é a que vale.
+// ⚠️ kg da massada VARIA por produto (98,4 no amendoim a 162,9 no manteiguinha choc) — por isso o
+//    min/massada é por produto, derivado dos pacotes por hora da engenharia. O pão de mel roda uma
+//    massada a cada 6,7 min; o manteiguinha 500g, a cada 10,3.
+const _REG_ENG=[
+ [2,'Pão de mel menta com choc ao leite 250g','PÃO DE MEL','menta','preta',671,15,6.71,3.6],
+ [3,'Manteiguinha pacotão econômico 500g','CLÁSSICOS','manteiguinha','sem',261,10,9.74,1],
+ [9,'Broa de amendoim 250g','AMENDOIM','amendoim','sem',344,15,6.65,1.8],
+ [12,'Choco rosca 250g','CHOCOLOVERS','choco rosca','ambos',700,15,8.5,0],
+ [17,'Pão de mel com choc ao leite 250g','PÃO DE MEL','pão de mel','preta',671,15,6.71,3.6],
+ [29,'Biscoito duetto 250g','CHOCOLOVERS','duetto','ambos',611,15,8.5,0],
+ [30,'Biscoito amanteigado 240g','CLÁSSICOS','amanteigado','sem',545,15,9.76,2],
+ [39,'Biscoito de milho 240g','CLÁSSICOS','milho','sem',472,15,8.46,2],
+ [47,'Pão de mel com choc branco 250g','PÃO DE MEL','pão de mel','branca',694,15,6.94,3.6],
+ [69,'Biscoito de maisena 240g','CLÁSSICOS','maisena','sem',440,15,7.88,2],
+ [70,'Amendoim com choc ao leite 250g','AMENDOIM','amendoim','preta',434,15,6.05,2.6],
+ [71,'Amendoim com choc branco 250g','AMENDOIM','amendoim','branca',434,15,6.05,2.6],
+ [740,'Manteiguinha de choc pacotão 500g','CLÁSSICOS','manteiguinha choc','seca',275,10,10.26,1],
+ [741,'Maisena pacotão econômico 500g','CLÁSSICOS','maisena','sem',211,10,7.87,1],
+ [742,'Milho pacotão econômico 500g','CLÁSSICOS','milho','sem',226,10,8.43,1],
+ [743,'Manteiguinha com chocolate 240g','CLÁSSICOS','manteiguinha choc','seca',573,15,10.26,2],
+ [885,'Rosquinha de coco 500g','ROSQUINHA','rosquinha coco','sem',271,10,9.76,0],
+ [886,'Rosquinha de leite 500g','ROSQUINHA','rosquinha leite','sem',272,10,9.76,0],
+ [944,'Monodose biscoito de milho 34g','CLÁSSICOS','milho','sem',3592,30,8.46,0],
+ [945,'Monodose amendoim choc ao leite 44g','AMENDOIM','amendoim','preta',3625,30,6.05,0],
+ [947,'Monodose broa de amendoim 38g','AMENDOIM','amendoim','sem',3526,30,6.65,0],
+ [948,'Monodose choco rosca 38g','CHOCOLOVERS','choco rosca','ambos',4789,30,8.5,0],
+ [961,'Monodose pão de mel choc ao leite 36g','PÃO DE MEL','pão de mel','preta',7833,30,6.71,0],
+ [1097,'Rosquinha de coco 240g','ROSQUINHA','rosquinha coco','sem',558,15,9.76,0],
+ [1098,'Rosquinha de leite 240g','ROSQUINHA','rosquinha leite','sem',559,15,9.76,0],
+ [1175,'Banana com canela 240g','CLÁSSICOS','banana com canela','sem',571,15,9.76,0],
+ [1176,'Banana com canela pacotão 500g','CLÁSSICOS','banana com canela','sem',274,10,9.76,0]
+];
+const _REG_FAMS=['PÃO DE MEL','AMENDOIM','CLÁSSICOS','ROSQUINHA','CHOCOLOVERS'];
+let _REG_IDX=null;
+function _regEng(cod){
+  if(!_REG_IDX){ _REG_IDX={}; _REG_ENG.forEach(function(r){
+    _REG_IDX[r[0]]={cod:r[0],nome:r[1],fam:r[2],massa:r[3],cam:r[4],pm:r[5],px:r[6],mm:r[7],emb:r[8]}; }); }
+  return _REG_IDX[cod]||null;
+}
+// Cascata do DDV máximo: item sobrescreve família, família sobrescreve o global.
+function _regTeto(cod){
+  const e=_regEng(cod); if(!e) return {v:_REG.maxg, o:'global'};
+  if(_REG.itemMax[cod]>0) return {v:_REG.itemMax[cod], o:'item'};
+  if(_REG.famMax[e.fam]>0) return {v:_REG.famMax[e.fam], o:'família'};
+  return {v:_REG.maxg, o:'global'};
+}
+const _REG_SETORES=['todos','forno','cobrideira','empacotamento','qualidade','pcp','fritura'];
+const _REG_TIPOS={trava:'trava', pref:'preferência', param:'parâmetro'};
+// ⚠️ Catálogo em CÓDIGO de propósito: regra de linha não é dado de usuário, é conhecimento de
+// engenharia — evolui pelo git, com histórico de quem mudou e por quê. O que é editável (os
+// parâmetros) vive no localStorage, separado.
+const _REG_CAT=[
+ {s:'forno',t:'trava',e:'toda a linha',r:'A esteira 6 recebe da 3 · 4 e da cobrideira branca. Um produto por vez — sem cobertura e branco não rodam ao mesmo tempo.',ef:'Acende aviso no dia que tiver os dois.'},
+ {s:'forno',t:'trava',e:'toda a linha',r:'A esteira 8 só cai na 9, e a 9 só vai para o elevador 1. A cobertura preta é obrigada a subir por ali.',ef:'Define quais embaladoras cada fluxo alcança.'},
+ {s:'forno',t:'trava',e:'matriz 1 · 2 · 3',r:'A matriz do corte de arame é a régua que dá o formato e a espessura, e cada massa só passa na sua. Matriz 1: pão de mel e amendoim. Matriz 2: milho, banana com canela, maisena, manteiguinha, manteiguinha com chocolate, maracujá, choco rosca, duetto e limão. Matriz 3: rosquinha de leite e de coco.',ef:'Agrupa a semana por matriz antes de agrupar por massa.'},
+ {s:'forno',t:'param',e:'toda a linha',r:'Trocar a matriz é uma parada própria, somada à limpeza quando a massa também muda.',ef:'Desconta o tempo do turno.'},
+ {s:'forno',t:'trava',e:'29 · 12 · 948',r:'Duetto, choco rosca e a monodose levam 50% cobertura preta e 50% branca: passam nas DUAS cobrideiras. O mix é do produto, não é escolha de quem programa.',ef:'Ocupa a esteira 6 e a 8 ao mesmo tempo.'},
+ {s:'forno',t:'pref',e:'produto escuro',r:'Passagem seca pela cobrideira preta desligada: não cobre, mas sai pela esteira 8 e libera a 6. Vale para o manteiguinha com chocolate, que já é escuro.',ef:'Com produto claro, avisa e deixa passar — só contra ruptura.'},
+ {s:'forno',t:'pref',e:'toda a linha',r:'Trocar a base da massa exige limpeza. Trocar a cobertura não para a linha.',ef:'Cada troca de massa desconta o tempo de limpeza.'},
+ {s:'forno',t:'pref',e:'suspiro',r:'Com suspiro branco na cobrideira branca, programar junto um produto da preta para não parar o forno.',ef:'Sugere o par no dia do suspiro.'},
+ {s:'cobrideira',t:'param',e:'as duas',r:'Há sempre 1 pessoa nas cobrideiras, mesmo rodando as duas.',ef:'Entra no cálculo de pessoas do dia.'},
+ {s:'cobrideira',t:'trava',e:'entrada direta',r:'Produto que não passa pelo forno entra direto: preto na esteira 7, branco na 5. Suspiro, mignon e choco bola consomem cobrideira e embaladora, não consomem forno.',ef:'São o encaixe natural de um dia cheio.'},
+ {s:'empacotamento',t:'trava',e:'toda a linha',r:'O elevador 2 alcança só as embaladoras 1 e 2. O elevador 1 alcança as quatro.',ef:'Limita a divisão dos fluxos entre as embaladoras.'},
+ {s:'empacotamento',t:'param',e:'por formato',r:'100% clássicos 240g pede 3 embaladoras. 100% de 500g pede 2. Os dois juntos, 2.',ef:'Mostra quantas das 4 o dia exige.'},
+ {s:'qualidade',t:'trava',e:'esteiras 6 · 8 · 15',r:'A câmara fria atravessa as esteiras 6, 8 e 15 no mesmo trecho. Uma temperatura por vez para tudo que estiver lá dentro. O padrão é 2 °C.',ef:'Bloqueia combinação de temperaturas incompatíveis.'},
+ {s:'qualidade',t:'trava',e:'510 · 511 · 512',r:'Não produzir as coberturas de chocolate junto com o pão de mel 2, 17 e 47: a cristalização a 2 °C não aguenta e a temperatura sobe.',ef:'Bloqueia o par no mesmo dia.'},
+ {s:'qualidade',t:'trava',e:'suspiro · lascas',r:'A cobertura do suspiro exige a câmara a 12 °C. Cobertura preta convive; lascas e as coberturas de chocolate, que passam na 15, não.',ef:'Bloqueia quem precisa de 2 °C junto do suspiro.'},
+ {s:'qualidade',t:'param',e:'global · família · item',r:'DDV máximo: quantos dias o produto pode ficar parado antes de perder qualidade. Não é a validade — 30 dias parados num produto de 8 meses ainda estão na validade e já são ruins.',ef:'Define o teto de produção de cada item.'},
+ {s:'pcp',t:'param',e:'global · família · item',r:'DDV-alvo: quantos dias de cobertura perseguir.',ef:'Define o mínimo a produzir de cada item.'},
+ {s:'pcp',t:'pref',e:'toda a linha',r:'Evitar setup — mas só até onde o DDV máximo deixar. Quando a massa do dia bate no teto e o turno ainda tem espaço, quebra-se o dia com outra massa que também tem pouco a fazer.',ef:'É a regra que governa a proposta da semana.'},
+ {s:'pcp',t:'param',e:'por produto',r:'Cada produto tem o próprio ciclo de massada, derivado dos pacotes por hora da engenharia.',ef:'A semana é medida em horas, não em massadas.'},
+ {s:'pcp',t:'pref',e:'mesma massa',r:'O dia mais barato é uma massa só com os dois caminhos ligados: ao leite pela preta e branco pela branca. Zero limpeza, quatro embaladoras, e nenhum item empurrado além do seu teto.',ef:'É o alvo da proposta da semana.'},
+ {s:'fritura',t:'trava',e:'fritadeira S1',r:'Um formato por vez: palitinho, aperitivo ou bolinha. As três entram na mesma fritadeira.',ef:'Bloqueia dois formatos simultâneos.'},
+ {s:'fritura',t:'trava',e:'aperitivo · bolinha',r:'Nunca no mesmo dia, e sempre como primeiro item — 2h de crescimento antes de fritar.',ef:'Fixa a posição no dia.'},
+ {s:'fritura',t:'pref',e:'aperitivo · bolinha',r:'Ao fazer aperitivo, fazer os 4 sabores e os bitz. Ao fazer bolinha, fazer os 2 sabores.',ef:'Sugere o grupo inteiro quando um entra.'},
+ {s:'fritura',t:'pref',e:'salgadão · tortilhos',r:'Salgadão 50g antes do 100g: 930 antes do 787, 931 antes do 901. O 935 seguido do 933.',ef:'Ordena a sequência do dia.'},
+ {s:'fritura',t:'trava',e:'949 · 926 · 928 · 929',r:'Não rodam na E5 nem na E6. O 924 só roda na E5 e na E6.',ef:'Restringe a embaladora do item.'},
+ {s:'fritura',t:'param',e:'S1 · S2 · S3',r:'As três fritadeiras são independentes: palitinho, salgadão e extrusado podem rodar ao mesmo tempo. A regra de um formato por vez é da entrada do S1, não da linha inteira.',ef:'Define a capacidade paralela da fritura.'}
+];
+// Carrega uma vez por sessão. Chamado pela tela de Regras E pela Cobertura, que usa os mesmos
+// parâmetros — sem isso, abrir a Cobertura primeiro mostraria o DDV-alvo padrão em vez do salvo.
+function _regInit(){ if(_regCarregado) return; _regCarregado=true; _regLoad(); }
+function _regLoad(){
+  const o=(typeof safeJSON==='function')?safeJSON(LS_REG,null):null;
+  if(!o||typeof o!=='object') return;
+  ['alvo','maxg','limp','tmz','turno'].forEach(function(k){ if(typeof o[k]==='number'&&o[k]>0) _REG[k]=o[k]; });
+  if(o.famMax&&typeof o.famMax==='object') _REG_FAMS.forEach(function(f){ if(o.famMax[f]>0) _REG.famMax[f]=o.famMax[f]; });
+  if(o.itemMax&&typeof o.itemMax==='object') _REG_ENG.forEach(function(r){ if(o.itemMax[r[0]]>0) _REG.itemMax[r[0]]=o.itemMax[r[0]]; });
+}
+function _regSave(){ try{ safeSetItem(LS_REG, JSON.stringify(_REG)); }catch(e){} }
+function _regSetNum(campo, v){
+  const n=parseFloat(String(v).replace(',','.'));
+  if(isFinite(n)&&n>0) _REG[campo]=n;
+  _regSave(); renderRegras();
+}
+function _regSetFam(fam, v){
+  const n=parseFloat(String(v).replace(',','.'));
+  if(isFinite(n)&&n>0) _REG.famMax[fam]=n; else delete _REG.famMax[fam];
+  _regSave(); renderRegras();
+}
+function _regSetItem(cod, v){
+  const n=parseFloat(String(v).replace(',','.'));
+  if(isFinite(n)&&n>0) _REG.itemMax[cod]=n; else delete _REG.itemMax[cod];
+  _regSave(); renderRegras();
+}
+function _regSetMassa(cod, v){
+  const e=_regEng(cod); if(e) e.massa=v;
+  for(let i=0;i<_REG_ENG.length;i++){ if(_REG_ENG[i][0]===cod) _REG_ENG[i][3]=v; }
+  _regSave(); renderRegras();
+}
+function _regSetFiltro(s){ _regFiltro=s; renderRegras(); }
+function _regCSS(){
+  return `<style>
+  .reg-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .reg-chip{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--border);
+    background:var(--card);color:var(--text2);border-radius:999px;padding:4px 12px;cursor:pointer;font-family:inherit}
+  .reg-chip.on{background:var(--blue-mid);color:#fff;border-color:var(--blue-mid)}
+  .reg-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px}
+  .reg-h{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg2)}
+  .reg-h b{font-size:14px;font-weight:700}
+  .reg-h .r{margin-left:auto;font-size:11.5px;color:var(--text3)}
+  .reg-row{display:grid;grid-template-columns:84px 124px minmax(0,1fr) 150px;gap:11px;padding:9px 14px;
+    border-bottom:1px solid color-mix(in srgb,var(--text) 7%,transparent);align-items:start;font-size:12.5px;line-height:1.45}
+  .reg-row:last-child{border-bottom:none}
+  .reg-row .esc{font-size:11px;color:var(--text3);line-height:1.35}
+  .reg-row .ef{font-size:11px;color:var(--text3);line-height:1.35}
+  .reg-t{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:5px;white-space:nowrap}
+  .reg-t.trava{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger)}
+  .reg-t.pref{background:color-mix(in srgb,var(--amber) 20%,transparent);color:var(--amber)}
+  .reg-t.param{background:color-mix(in srgb,var(--success) 16%,transparent);color:var(--success)}
+  .reg-par{display:grid;grid-template-columns:repeat(auto-fit,minmax(152px,1fr));gap:12px;padding:13px 14px}
+  .reg-f label{display:block;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:3px}
+  .reg-f .hint{font-size:10.5px;color:var(--text3);margin-top:3px;line-height:1.35}
+  .reg-inp{width:100%;height:32px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);
+    font-family:inherit;font-size:13px;padding:0 8px;outline:none}
+  .reg-inp:focus{border-color:var(--blue-mid);box-shadow:0 0 0 3px color-mix(in srgb,var(--blue-mid) 14%,transparent)}
+  .reg-mini{width:56px;height:26px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);
+    font-family:inherit;font-size:12px;padding:0 6px;text-align:right;outline:none}
+  .reg-mini.herd{color:var(--text3);border-style:dashed}
+  .reg-mini:focus{border-color:var(--blue-mid);border-style:solid}
+  .reg-fams{display:grid;grid-template-columns:repeat(auto-fit,minmax(172px,1fr));gap:10px;padding:0 14px 13px}
+  .reg-fi{display:flex;align-items:center;gap:8px;font-size:12.5px}
+  .reg-fi span{flex:1;min-width:0}
+  .reg-tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;table-layout:fixed}
+  .reg-tbl th{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);
+    text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+  .reg-tbl th.l,.reg-tbl td.l{text-align:left}
+  .reg-tbl td{padding:5px 8px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;
+    border-bottom:1px solid color-mix(in srgb,var(--text) 6%,transparent);color:var(--text2)}
+  .reg-tbl tr:last-child td{border-bottom:none}
+  .reg-sel{font-family:inherit;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--bg);
+    color:var(--text);padding:2px 4px;max-width:142px;height:26px}
+  .reg-cam{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;white-space:nowrap}
+  .reg-map{padding:14px}
+  .reg-mrow{display:grid;grid-template-columns:78px 30px minmax(0,1fr) 132px;gap:8px;align-items:stretch;font-size:11.5px}
+  .reg-mb{border-radius:7px;padding:8px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.25;font-weight:600}
+  .reg-mt{display:flex;flex-direction:column;gap:6px;min-width:0}
+  .reg-ml{display:flex;gap:6px;min-width:0}
+  .reg-ml .e{flex:0 0 32px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+  .reg-ml .c{flex:1;border-radius:7px;padding:7px 9px;min-width:0;line-height:1.3}
+  .reg-me{display:flex;flex-direction:column;gap:6px}
+  .reg-me div{flex:1;border-radius:7px;padding:7px 9px;background:var(--bg2);border:1px solid var(--border);color:var(--text2);
+    font-size:11px;display:flex;align-items:center}
+  .reg-nota{font-size:11.5px;color:var(--text3);line-height:1.5;padding:10px 14px;border-top:1px solid var(--border)}
+  @media(max-width:760px){.reg-row{grid-template-columns:1fr;gap:4px}.reg-mrow{grid-template-columns:1fr}}
+  </style>`;
+}
+function _regCamHTML(k){
+  const c=_REG_CAM[k]||_REG_CAM.sem;
+  const cores={preta:['#ece5f2','#4b3a5b'],branca:['#e0edf5','#25566f'],sem:['#f7edd6','#7a5410'],
+               seca:['#e9e5dd','#4a443b'],ambos:['#f2e3ea','#6d2f4b']};
+  const cc=cores[k]||cores.sem;
+  return `<span class="reg-cam" style="background:${cc[0]};color:${cc[1]}" title="${escapeAttr(c.rota)}">${c.n}</span>`;
+}
+function _regMapaHTML(){
+  const b=(bg,fg,txt)=>`<div class="reg-mb" style="background:${bg};color:${fg}">${txt}</div>`;
+  const l=(bg,fg,est,txt)=>`<div class="reg-ml"><div class="e" style="background:${bg};color:${fg}">${est}</div>`+
+    `<div class="c" style="background:${bg};color:${fg}">${txt}</div></div>`;
+  return `<div class="reg-map"><div class="reg-mrow">
+    ${b('#eaf3de','#173404','forno<br>contínuo')}
+    ${b('#e6f1fb','#042c53','2')}
+    <div class="reg-mt">
+      ${l('#f7edd6','#7a5410','3·4','sem cobertura → esteira 6')}
+      ${l('#e0edf5','#25566f','5','cobrideira branca → esteira 6')}
+      ${l('#ece5f2','#4b3a5b','7','cobrideira preta → esteira 8')}
+    </div>
+    <div class="reg-me"><div>esteira 6 → elevador 2 → E1 E2</div><div>esteira 8 → 9 → elevador 1 → E1 a E4</div></div>
+  </div></div>`;
+}
+function renderRegras(){
+  const main=document.getElementById('task-container'); if(!main) return;
+  const _tb=document.querySelector('.main .topbar'); if(_tb) _tb.style.display='none';
+  const _st=document.getElementById('stats-box'); if(_st) _st.style.display='none';
+  const _pr=document.getElementById('progress-box'); if(_pr) _pr.style.display='none';
+  _regInit();
+
+  const chips=_REG_SETORES.map(s=>`<button class="reg-chip${_regFiltro===s?' on':''}" onclick="_regSetFiltro('${s}')">${s}</button>`).join('');
+  const lista=_REG_CAT.filter(r=>_regFiltro==='todos'||r.s===_regFiltro);
+  const linhas=lista.map(r=>`<div class="reg-row">
+      <span><span class="reg-t ${r.t}">${_REG_TIPOS[r.t]}</span></span>
+      <span class="esc"><b>${r.s}</b><br>${escapeHTML(r.e)}</span>
+      <span>${escapeHTML(r.r)}</span>
+      <span class="ef">${escapeHTML(r.ef)}</span>
+    </div>`).join('') || `<div style="padding:14px">${_cpVazio('Nenhuma regra neste setor ainda.')}</div>`;
+
+  const par=(id,lab,campo,hint)=>`<div class="reg-f"><label for="${id}">${lab}</label>
+    <input id="${id}" class="reg-inp" type="number" min="1" step="1" value="${_REG[campo]}"
+      onchange="_regSetNum('${campo}',this.value)"><div class="hint">${hint}</div></div>`;
+
+  const fams=_REG_FAMS.map(f=>`<label class="reg-fi"><span>${escapeHTML(f)}</span>
+    <input class="reg-mini${_REG.famMax[f]>0?'':' herd'}" type="number" min="1" step="1"
+      value="${_REG.famMax[f]>0?_REG.famMax[f]:''}" placeholder="${_cpNum(_REG.maxg,0)}"
+      onchange="_regSetFam('${escapeAttr(f).replace(/'/g,"\\'")}',this.value)"></label>`).join('');
+
+  const eng=_REG_ENG.slice().sort((a,b)=>(_regMz(a[3])-_regMz(b[3]))||String(a[3]).localeCompare(String(b[3]))||a[0]-b[0])
+    .map(r=>{ const e=_regEng(r[0]), t=_regTeto(r[0]);
+      const opts=_REG_MASSAS.map(m=>`<option${m===e.massa?' selected':''}>${m}</option>`).join('');
+      return `<tr>
+        <td class="l" style="color:var(--text3);font-size:11px">${e.cod}</td>
+        <td class="l" title="${escapeAttr(e.nome)}" style="overflow:hidden;text-overflow:ellipsis">${escapeHTML(e.nome)}</td>
+        <td class="l"><select class="reg-sel" onchange="_regSetMassa(${e.cod},this.value)">${opts}</select></td>
+        <td>${_regMz(e.massa)}</td>
+        <td class="l">${_regCamHTML(e.cam)}</td>
+        <td>${_cpNum(e.pm,0)}</td><td>${e.px}</td><td>${_cpNum(e.mm,1)}</td>
+        <td><input class="reg-mini${_REG.itemMax[e.cod]>0?'':' herd'}" type="number" min="1" step="1"
+          value="${_REG.itemMax[e.cod]>0?_REG.itemMax[e.cod]:''}" placeholder="${_cpNum(t.v,0)}"
+          title="herdado da ${t.o}" onchange="_regSetItem(${e.cod},this.value)"></td></tr>`;
+    }).join('');
+
+  const corpo=`${_regCSS()}
+    <div class="reg-chips">${chips}</div>
+    <div class="reg-card">
+      <div class="reg-h"><b>Regras da produção</b><span class="r">${lista.length} de ${_REG_CAT.length}</span></div>
+      ${linhas}
+      <div class="reg-nota"><b>Trava</b> o sistema impede · <b>preferência</b> ele avisa e deixa passar ·
+        <b>parâmetro</b> é um número que entra na conta. Toda regra aqui faz alguma coisa acontecer — regra sem
+        efeito vira documentação e, em seis meses, mentira.</div>
+    </div>
+    <div class="reg-card">
+      <div class="reg-h"><b>Parâmetros do plano</b><span class="r">o setup é o custo, o DDV máximo é o limite</span></div>
+      <div class="reg-par">
+        ${par('reg-alvo','DDV-alvo','alvo','o que não pode faltar')}
+        ${par('reg-maxg','DDV máximo','maxg','o que não pode envelhecer')}
+        ${par('reg-turno','Horas do turno','turno','por dia, por linha')}
+        ${par('reg-limp','Limpeza (min)','limp','troca de base da massa')}
+        ${par('reg-tmz','Troca de matriz (min)','tmz','régua do corte de arame')}
+      </div>
+      <div class="reg-nota" style="border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+        DDV máximo por família — em branco usa o global de ${_cpNum(_REG.maxg,0)} dias:</div>
+      <div class="reg-fams">${fams}</div>
+    </div>
+    <div class="reg-card">
+      <div class="reg-h"><b>Mapa do forno contínuo</b><span class="r">duas cobrideiras, dois elevadores</span></div>
+      ${_regMapaHTML()}
+      <div class="reg-nota">A esteira 6 recebe do caminho sem cobertura E da cobrideira branca — por isso os dois
+        não rodam juntos. A preta tem a 8 só para ela, e é isso que faz a passagem seca liberar a 6.</div>
+    </div>
+    <div class="reg-card">
+      <div class="reg-h"><b>Engenharia por produto</b><span class="r">${_REG_ENG.length} produtos do forno</span></div>
+      <div style="overflow-x:auto"><table class="reg-tbl">
+        <colgroup><col style="width:7%"><col style="width:30%"><col style="width:16%"><col style="width:5%">
+          <col style="width:12%"><col style="width:9%"><col style="width:7%"><col style="width:7%"><col style="width:7%"></colgroup>
+        <thead><tr><th class="l">cód</th><th class="l">produto</th><th class="l">massa</th><th>mz</th>
+          <th class="l">caminho</th><th>pac/mass</th><th>pac/cx</th><th>min/mass</th><th>ddv máx</th></tr></thead>
+        <tbody>${eng}</tbody>
+      </table></div>
+      <div class="reg-nota">Pacotes por massada, pacotes por caixa e o ciclo saem do banco de informações do PCP.
+        A <b>massa</b> é editável e a <b>matriz</b> vem dela: trocar a massa pode trocar a régua do corte junto.</div>
+    </div>`;
+  main.innerHTML=_cpTela('Regras','O que o sistema impede, o que ele avisa e os números que entram na conta.',corpo);
+}
+// ════ FIM DO BLOCO PCP · REGRAS ════
+
 // ════ INÍCIO DO BLOCO PCP · DDV ════
 // Espelho da aba "Histórico" do SISPRO (Produção › PCP), no visual da aba Comercial › Pedidos.
 // As outras abas do SISPRO (Lotes e OP's, Resumo, Ordens de compra/produção) ficaram de fora a
@@ -12908,8 +13230,11 @@ _pgmLoad();   // ⚠️ DEPOIS do exemplo, de propósito: o que foi salvo manda 
 // arquivo e NÃO têm relação com este bloco, que usa o prefixo _ddv*.
 let _ddvBusca='';
 let _ddvFiltro='';            // '' | 'ruptura' | 'atencao' | 'folga' | 'produzir'
-// As 4 médias (MDV/MSV/MQV/MMV) ficam sempre visíveis: o botão "Ocultar médias" saiu a pedido do
-// Diego. Para escondê-las de novo é só pôr false aqui (a tabela já se ajusta p/ 10 colunas).
+// ⭐ O 3º grupo de colunas alterna entre as 4 MÉDIAS de venda e a faixa de PRODUÇÃO (produzir ·
+// massadas · caminho). São as duas leituras da mesma linha: quanto vende × quanto fazer. Alternar
+// em vez de somar mantém a tabela na mesma largura — com as duas juntas seriam 16 colunas.
+// ⚠️ A produção só aparece para produto com cadastro de engenharia (_regEng); o resto mostra "—".
+let _ddvVer='medias';   // 'medias' | 'producao'
 const _ddvMedias=true;
 let _ddvGraf='';              // código do produto com o gráfico aberto ('' = faixa recolhida)
 let _ddvSort={campo:'nome',dir:1};
@@ -13144,6 +13469,30 @@ function _ddvCalc(p){
     ddv: (saldo!=null&&mdv)?saldo/mdv:null,
     ddvsop: (saldo!=null&&mdv)?(saldo-(op||0))/mdv:null };
 }
+// ⭐ A PONTE COM O CHÃO DE FÁBRICA: a necessidade em caixas vira massadas e horas de forno.
+// Devolve null para produto sem cadastro de engenharia — a tela não inventa capacidade.
+// ⚠️ É uma FAIXA, não um número: mínimo = o que não pode faltar (ddv-alvo), teto = o que não pode
+// envelhecer (ddv máximo, que cascateia item → família → global). O planejador vive entre os dois.
+function _ddvProd(p,c){
+  if(typeof _regEng!=='function') return null;
+  const e=_regEng(p[0]);
+  if(!e || c.saldo==null || !c.mdv) return null;
+  const min=Math.max(0, _REG.alvo*c.mdv - c.saldo);
+  const t=_regTeto(p[0]);
+  const max=Math.max(min, Math.max(0, t.v*c.mdv - c.saldo));
+  return { e:e, min:min, max:max, teto:t, mass:min*e.px/e.pm, horas:min*e.px/e.pm*e.mm/60 };
+}
+function _ddvProdCels(p,c){
+  const x=_ddvProd(p,c);
+  if(!x) return '<td class="bnd b3 bs">—</td><td class="bnd b3">—</td>'+
+    '<td class="bnd b3 l" style="color:var(--text3);font-size:11px">sem cadastro</td>';
+  const tit='teto '+_cpNum(x.max,0)+' cx ('+_cpNum(x.teto.v,0)+' dias, '+x.teto.o+') · '+
+    _cpNum(x.horas,1)+'h de forno · matriz '+_regMz(x.e.massa)+' · massa '+x.e.massa;
+  return '<td class="bnd b3 bs" title="'+escapeAttr(tit)+'">'+(x.min>0.5?_cpNum(x.min,0):'—')+'</td>'+
+    '<td class="bnd b3" style="font-weight:600">'+(x.mass>0.05?_cpNum(x.mass,1):'—')+'</td>'+
+    '<td class="bnd b3 l">'+_regCamHTML(x.e.cam)+'</td>';
+}
+function _ddvSetVer(v){ _ddvVer=v; _ddvSave(); _ddvRefresh(); }
 function _ddvCor(v){
   if(v==null) return '';
   if(v<DDV_ALERTA.vermelho) return 'var(--danger)';
@@ -13190,7 +13539,9 @@ function _ddvFiltrados(){
 }
 const _DDV_SC={cod:p=>p.p[0], nome:p=>_ddvNorm(p.p[1]), est:p=>p.p[2], ped:p=>p.p[3], opoc:p=>p.p[4],
   maras:p=>p.p[5], saldo:p=>p.c.saldo, ddv:p=>p.c.ddv, ddvsop:p=>p.c.ddvsop,
-  mdv:p=>p.c.mdv, msv:p=>p.c.msv, mqv:p=>p.c.mqv, mmv:p=>p.c.mmv, vendas:p=>p.p[6]};
+  mdv:p=>p.c.mdv, msv:p=>p.c.msv, mqv:p=>p.c.mqv, mmv:p=>p.c.mmv, vendas:p=>p.p[6],
+  produzir:p=>{const x=_ddvProd(p.p,p.c); return x?x.min:null;},
+  massadas:p=>{const x=_ddvProd(p.p,p.c); return x?x.mass:null;}};
 function _ddvOrdenar(prods){
   const f=_DDV_SC[_ddvSort.campo]||_DDV_SC.nome, d=_ddvSort.dir;
   return prods.map(p=>({p:p,c:_ddvCalc(p)})).sort((a,b)=>{
@@ -13215,7 +13566,7 @@ const _DDV_FILTROS=['','ruptura','atencao','folga','produzir'];
 let _ddvCarregado=false;
 function _ddvSave(){
   try{ safeSetItem(LS_DDV, JSON.stringify({ busca:_ddvBusca, filtro:_ddvFiltro, sort:_ddvSort,
-    graf:_ddvGraf, per:_ddvPer, fechadas:Object.keys(_ddvFechadas) })); }catch(e){}
+    graf:_ddvGraf, per:_ddvPer, ver:_ddvVer, fechadas:Object.keys(_ddvFechadas) })); }catch(e){}
 }
 // ⚠️ Valida TUDO o que vem do storage: coluna que deixou de existir (a Vendas saiu hoje), filtro
 // desconhecido ou linha renomeada no export voltariam como estado quebrado, sem UI para desfazer.
@@ -13226,6 +13577,7 @@ function _ddvLoad(){
   if(_DDV_FILTROS.indexOf(o.filtro)>=0) _ddvFiltro=o.filtro;
   if(o.sort && _DDV_SC[o.sort.campo]) _ddvSort={campo:o.sort.campo, dir:o.sort.dir<0?-1:1};
   if(typeof o.graf==='string') _ddvGraf=o.graf;   // some sozinho se o alvo não existir mais (_ddvGrafAlvo devolve null)
+  if(o.ver==='producao'||o.ver==='medias') _ddvVer=o.ver;
   if(o.per && typeof o.per==='object') ['ini','fim','m2ini','m2fim'].forEach(k=>{ if(typeof o.per[k]==='string') _ddvPer[k]=o.per[k]; });
   if(Array.isArray(o.fechadas)){ const nomes={}; _DDV_LINHAS.forEach(L=>{ nomes[L[0]]=1; });
     o.fechadas.forEach(n=>{ if(nomes[n]) _ddvFechadas[n]=1; }); }
@@ -13522,17 +13874,20 @@ function _ddvTabelaHTML(){
   // ⚠️ A coluna "Vendas 261d" SAIU a pedido do Diego (25/09) — a largura dela foi toda para o nome do
   // produto, que era quem vivia cortado. O DADO continua (`p[6]`): é dele que saem as 4 médias e o
   // DDV inteiro, e ele ainda aparece no aviso do gráfico de quem não tem histórico mensal.
-  const cols=med
+  const prod=(_ddvVer==='producao');
+  const cols=prod
+    ? `<col style="width:4.5%"><col style="width:30%"><col style="width:6.5%"><col style="width:6%"><col style="width:6%"><col style="width:4.5%"><col style="width:6.5%"><col style="width:5.5%"><col style="width:6.5%"><col style="width:7%"><col style="width:6.5%"><col style="width:10.5%">`
+    : med
     ? `<col style="width:4.5%"><col style="width:32%"><col style="width:6.5%"><col style="width:6%"><col style="width:6%"><col style="width:4.5%"><col style="width:6.5%"><col style="width:5.5%"><col style="width:6.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:5.5%">`
     : `<col style="width:6%"><col style="width:41%"><col style="width:8%"><col style="width:8%"><col style="width:8%"><col style="width:7%"><col style="width:8%"><col style="width:6.5%"><col style="width:7.5%">`;
-  const nc=med?13:9;
+  const nc=prod?12:(med?13:9);
   // cabeçalho em 2 níveis: tarja do grupo em cima, colunas embaixo (as do grupo com o fundo leve)
   const grupos=`<tr>
     <th class="g" colspan="2"></th>
     <th class="g on" colspan="5">Estoque e demanda</th>
     <th class="g on" colspan="2">Cobertura</th>
-    ${med?'<th class="g on" colspan="4">Médias de venda</th>':''}</tr>`;
-  const colunas=`<tr>${th('cod','Cód.','l')}${th('nome','Produto','l')}${th('est','Estoque','bnd b1 bs')}${th('ped','Pedido','bnd b1')}${th('opoc','OP/OC','bnd b1')}${th('maras','Maras','bnd b1')}${th('saldo','Saldo','bnd b1')}${th('ddv','DDV','bnd b2 bs')}${th('ddvsop','DDV s/OP','bnd b2')}${med?`${th('mdv','MDV','bnd b3 bs')}${th('msv','MSV','bnd b3')}${th('mqv','MQV','bnd b3')}${th('mmv','MMV','bnd b3')}`:''}</tr>`;
+    ${prod?'<th class="g on" colspan="3">A produzir</th>':(med?'<th class="g on" colspan="4">Médias de venda</th>':'')}</tr>`;
+  const colunas=`<tr>${th('cod','Cód.','l')}${th('nome','Produto','l')}${th('est','Estoque','bnd b1 bs')}${th('ped','Pedido','bnd b1')}${th('opoc','OP/OC','bnd b1')}${th('maras','Maras','bnd b1')}${th('saldo','Saldo','bnd b1')}${th('ddv','DDV','bnd b2 bs')}${th('ddvsop','DDV s/OP','bnd b2')}${prod?`${th('produzir','Produzir','bnd b3 bs')}${th('massadas','Massadas','bnd b3')}<th class="bnd b3 l" style="cursor:default">Caminho</th>`:(med?`${th('mdv','MDV','bnd b3 bs')}${th('msv','MSV','bnd b3')}${th('mqv','MQV','bnd b3')}${th('mmv','MMV','bnd b3')}`:'')}</tr>`;
   const linhas=_ddvFiltrados();
   const buscando=!!_ddvBusca.trim()||!!_ddvFiltro;
   let cards='';
@@ -13558,16 +13913,22 @@ function _ddvTabelaHTML(){
         <td class="bnd b1${negS?' ddv-neg':''}"${negS?'':` style="color:${c.saldo==null?'':'var(--blue-mid)'};font-weight:600"`}>${_ddvN(c.saldo)}</td>
         <td class="bnd b2 bs${negD?' ddv-neg':''}"${negD?'':` style="color:${st};font-weight:700"`}>${_ddvN(c.ddv)}</td>
         <td class="bnd b2" style="color:${_ddvCor(c.ddvsop)};font-weight:600">${_ddvN(c.ddvsop)}</td>
-        ${med?`<td class="bnd b3 bs">${_ddvN(c.mdv)}</td><td class="bnd b3">${_ddvN(c.msv)}</td><td class="bnd b3">${_ddvN(c.mqv)}</td><td class="bnd b3">${_ddvN(c.mmv)}</td>`:''}</tr>`;
+        ${prod?_ddvProdCels(p,c):(med?`<td class="bnd b3 bs">${_ddvN(c.mdv)}</td><td class="bnd b3">${_ddvN(c.msv)}</td><td class="bnd b3">${_ddvN(c.mqv)}</td><td class="bnd b3">${_ddvN(c.mmv)}</td>`:'')}</tr>`;
     });
     cards+=`<div class="ddv-grp"><table class="ddv-tbl"><colgroup>${cols}</colgroup><tbody>${rows}</tbody></table></div>`;
   });
   if(!cards) cards=`<div class="ddv-grp" style="padding:6px 2px">${_cpVazio('Nenhum produto com esse filtro.')}</div>`;
   const nProd=linhas.reduce((s,L)=>s+L.prods.length,0);
   const fechadas=Object.keys(_ddvFechadas).length;
+  // Resumo da produção: só faz sentido no modo produção, e só conta quem tem cadastro de engenharia.
+  let resProd='';
+  if(prod){ let mt=0, ht=0, nq=0;
+    linhas.forEach(L=>L.prods.forEach(p=>{ const x=_ddvProd(p,_ddvCalc(p)); if(x&&x.mass>0.05){ mt+=x.mass; ht+=x.horas; nq++; } }));
+    resProd=` · <b>${_cpNum(nq,0)} a produzir · ${_cpNum(mt,0)} massadas · ${_cpNum(ht,1)}h de forno</b>`; }
   return `<div class="ddv-bar">
-      <span class="t">${_cpNum(nProd)} produtos · ${_cpNum(linhas.length)} linhas</span>
-      <button class="ddv-link" onclick="_ddvTodasLinhas(${fechadas?0:1})" style="margin-left:auto"><i class="ti ti-${fechadas?'chevrons-down':'chevrons-up'}" style="font-size:12px;vertical-align:-1px"></i> ${fechadas?'Abrir todas':'Recolher todas'}</button>
+      <span class="t">${_cpNum(nProd)} produtos · ${_cpNum(linhas.length)} linhas${resProd}</span>
+      <button class="ddv-link${prod?' on':''}" onclick="_ddvSetVer('${prod?'medias':'producao'}')" style="margin-left:auto" title="${prod?'Voltar para as médias de venda':'Trocar as 4 médias pela faixa de produção'}"><i class="ti ti-${prod?'chart-line':'building-factory-2'}" style="font-size:12px;vertical-align:-1px"></i> ${prod?'Ver médias':'Ver produção'}</button>
+      <button class="ddv-link" onclick="_ddvTodasLinhas(${fechadas?0:1})"><i class="ti ti-${fechadas?'chevrons-down':'chevrons-up'}" style="font-size:12px;vertical-align:-1px"></i> ${fechadas?'Abrir todas':'Recolher todas'}</button>
     </div>
     <div class="ddv-hstrip"><table class="ddv-tbl"><colgroup>${cols}</colgroup><thead>${grupos}${colunas}</thead></table></div>
     ${cards}`;
@@ -13605,6 +13966,7 @@ function renderDDV(){
   // Lê o jeito salvo UMA vez por sessão. Ler não é gravar (a regra P0 é sobre escrita), e o flag
   // impede que um re-render qualquer jogue fora o que a pessoa acabou de mexer.
   if(!_ddvCarregado){ _ddvCarregado=true; _ddvLoad(); }
+  _regInit();   // a faixa de produção usa o DDV-alvo e o DDV máximo cadastrados em Regras
   const _tb=document.querySelector('.main .topbar'); if(_tb) _tb.style.display='none';
   const _st=document.getElementById('stats-box'); if(_st) _st.style.display='none';
   const _pr=document.getElementById('progress-box'); if(_pr) _pr.style.display='none';
@@ -18911,6 +19273,7 @@ function renderSidebar(){
         // acabando), Programação decide (o que a linha faz no dia) — nessa ordem, que é a do trabalho.
         _areaItem('producao',_pv,'cobertura','ti-calendar-stats','Cobertura','setProducaoView') +
         _areaItem('producao',_pv,'pcp','ti-adjustments-horizontal','PCP','setProducaoView') +
+        _areaItem('producao',_pv,'regras','ti-shield-check','Regras','setProducaoView') +
         _areaItem('producao',_pv,'programacao','ti-calendar-week','Programação','setProducaoView') +
         _areaItem('producao',_pv,'ordens','ti-clipboard-list','Ordens de Produção','setProducaoView') +
         _areaItem('producao',_pv,'produtos','ti-package','Produtos','setProducaoView') +
