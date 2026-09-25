@@ -12027,14 +12027,16 @@ const _PGM_LINHAS=[{
   ],
   // setups em MINUTOS — ⚠️ chutados no mockup, o Diego ainda não passou os reais
   setup:{base:40, bobina:8},
-  // ⭐⭐ O PADRÃO — os números que a Valesca passou em 24/09 para o Pão de mel. É o ponto de partida:
-  //    toda simulação da tela se compara com ELE ("ganhamos X massadas em relação ao padrão").
-  //    ⚠️ Ela avisou que o tempo "depende muito do CPM", e de fato os três não fecham com 85 cortes/min:
-  //    142,106 kg ÷ 8min30 = 16,72 kg/min ÷ (21 × 10,43g) = **76,3 cortes/min**. Esse é o CPM que torna
-  //    o trio coerente, então é ele o CPM do padrão — os 85 eram o exemplo que o Diego deu de cabeça.
-  //    Quando vier o CPM real medido, é conferir qual dos três números se ajusta.
-  padrao:{ massadaKg:142.106, massadaSeg:510, cru:10.43 },
-  massadaKg:142.106,
+  // ⭐⭐ O PADRÃO — o trio que o Diego fechou em 25/09 para o Pão de mel:
+  //    8min06 de massada · 10,43 g de biscoito cru · 75 cortes/min. É a régua de TODA comparação da tela.
+  //    ⚠️⚠️ OS TRÊS SÃO DADO AGORA, nada é derivado — e a inversão importa. Antes o dado era o
+  //    rendimento nominal (142,106 kg) e o CPM saía da conta inversa (76,3). Agora é o contrário: o
+  //    RENDIMENTO é que se deduz do trio (ver `_pgmMassadaKg`) e dá **133,1 kg**, abaixo dos 142,106
+  //    nominais da receita, mas dentro da faixa que as 8 medições reais mostram (131 a 146 kg, média 139,9).
+  //    ⚠️ Sem essa inversão a comparação nasceria mentindo: digitar no bloco exatamente 75 cpm e 10,43 g
+  //    daria 8min39 na coluna "Agora" contra os 8min06 do "Padrão", e a tela acusaria uma diferença que
+  //    não existe. Com ela, trio igual = número igual nas duas colunas, e a diferença isola o que mudou.
+  padrao:{ cpm:75, cru:10.43, massadaSeg:486, base:'paodemel', massadaKgNominal:142.106 },
   // ⭐ MEDIÇÕES REAIS das últimas produções (o Diego mandou em 24/09): CPM × tempo de massada observado.
   // Servem de REFERÊNCIA ao lado do calculado — é o teste do modelo contra o chão de fábrica.
   // ⚠️ O que elas revelam: o rendimento IMPLÍCITO (cpm × 21 × 10,43g × tempo) varia de 131 a 146 kg e dá
@@ -12043,9 +12045,11 @@ const _PGM_LINHAS=[{
          {d:'02/set',cpm:75,seg:515}, {d:'26/ago',cpm:75,seg:485}, {d:'20/ago',cpm:75,seg:508},
          {d:'14/ago',cpm:75,seg:480}, {d:'07/ago',cpm:75,seg:512} ],
   bases:[
-    {id:'paodemel', nome:'Pão de mel', bpc:21, cru:11, evap:17, cob:34, gPac:250, pacCx:null},
-    {id:'menta',    nome:'Pão de mel menta', bpc:21, cru:11, evap:17, cob:34, gPac:250, pacCx:null},
-    {id:'amanteigada', nome:'Massa amanteigada', bpc:21, cru:11, evap:17, cob:34, gPac:250, pacCx:null}
+    // ⭐ `pacCx` veio do BANCO INFORMAÇÕES do PCP: 15 pacotes por caixa no 240/250 g (10 no 500 g,
+    // 30 na monodose, 5 no 1 kg). É o que permite a tela falar em CAIXAS — a unidade da Cobertura.
+    {id:'paodemel', nome:'Pão de mel', bpc:21, cru:11, evap:17, cob:34, gPac:250, pacCx:15},
+    {id:'menta',    nome:'Pão de mel menta', bpc:21, cru:11, evap:17, cob:34, gPac:250, pacCx:15},
+    {id:'amanteigada', nome:'Massa amanteigada', bpc:21, cru:11, evap:17, cob:34, gPac:250, pacCx:15}
   ]
 },
   {id:'palitinhos', nome:'Palitinhos'}, {id:'salgadao', nome:'Salgadão'}, {id:'extrusados', nome:'Extrusados'},
@@ -12271,8 +12275,7 @@ function _pgmSetupAcum(i, estId){ const s=_pgmSetupObj(i);
 function _pgmSetupMin(i){ return _pgmSetupObj(i).corte; }        // o que ocupa o turno da linha
 function _pgmSetSetup(i, estId, el){ const arr=_pgmBlocos().slice(); if(!arr[i]) return;
   const s=_pgmSetupObj(i); s[estId]= el.value===''?0:Math.max(0,+el.value||0);
-  arr[i].setup=s; _pgmSetBlocos(arr); _pgmRefresh();
-  const tt=document.getElementById('pgm-dia-res'); if(tt) tt.innerHTML=_pgmDiaResHTML(); }
+  arr[i].setup=s; _pgmSetBlocos(arr); _pgmRefresh(); }   // _pgmRefresh já repinta o resultado e o dia montado
 function _pgmSetupAntes(i){ return _pgmSetupMin(i)/60; }
 // ⭐⭐ O BLOCO É CONTADO EM MASSADAS, NÃO EM HORAS. A masseira é batelada — não se roda meia massada —
 // então o bloco guarda `massadas` e a DURAÇÃO é RESULTADO (massadas × ciclo).
@@ -12287,7 +12290,9 @@ function _pgmHorasB(b){ if(!b) return 0; const c=_pgmMassadaCalc(b);
   return c>0 ? _pgmMassadasB(b)*c/3600 : (+b.horas||0); }
 function _pgmEsperaB(b){ return Math.max(0, +((b||{}).espera) || 0)/60; }   // espera MARCADA antes do bloco
 function _pgmHoras(){ return _pgmBlocos().reduce((s,b,i)=>s+_pgmSetupAntes(i)+_pgmEsperaB(b)+_pgmHorasB(b),0); }
-function _pgmHhmm(h){ const H=Math.floor(h), M=Math.round((h-H)*60); return H+'h'+(M<10?'0':'')+M; }
+// 🐞 o arredondamento dos minutos podia devolver 60 e escrever "9h60": 9,9917h dá H=9 e M=round(59,5)=60.
+// Arredonda o TOTAL em minutos e reparte a partir dele — assim 599 vira 9h59 e 600 vira 10h00.
+function _pgmHhmm(h){ const t=Math.round(h*60); return Math.floor(t/60)+'h'+(t%60<10?'0':'')+(t%60); }
 function _pgmRelogio(h){ const L=_pgmL(); const base=(+L.ini.split(':')[0])*60+(+L.ini.split(':')[1]);
   const t=Math.round(base+h*60), hh=Math.floor(t/60)%24, mm=t%60;
   return (hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm; }
@@ -12400,13 +12405,25 @@ function _pgmDragEnd(){
 //    tempo da massada = rendimento (kg) ÷ consumo
 // Então mexer no peso do biscoito ou no ritmo do corte muda o tempo da massada sozinho — biscoito mais
 // pesado esvazia a massada mais rápido e cabem mais massadas no dia.
-function _pgmMS(seg){ const m=Math.floor(seg/60), s=Math.round(seg%60);
+// 🐞 mesmo cuidado do _pgmHhmm: 479,6s daria "7min60". Arredonda o total de segundos antes de repartir.
+function _pgmMS(seg){ const t=Math.round(seg), m=Math.floor(t/60), s=t%60;
   return m+'min'+(s?(s<10?'0':'')+s:''); }
 function _pgmConsumo(b){ const B=_pgmBase(b.base); return (+b.cortes||0)*(B.bpc||0)*_pgmCru(b)/1000; } // kg/min
-// ⭐ O CPM DO PADRÃO é DERIVADO do trio da Valesca (142,106 kg · 8min30 · 10,43 g), não digitado:
-// é o único ritmo de corte que faz os três números fecharem. Dá ~76,3 cortes/min.
-function _pgmCpmPadrao(b){ const L=_pgmL(), P=L.padrao||{}, B=_pgmBase(b.base);
-  const m=(P.massadaSeg||0)/60; return (m&&B.bpc&&P.cru) ? (P.massadaKg*1000)/(m*B.bpc*P.cru) : 0; }
+// ⭐ O CPM DO PADRÃO é DADO desde 25/09 (75 cortes/min, o número que o Diego passou). O ramo de baixo
+// é só compatibilidade com um cadastro antigo, que trazia o rendimento e deixava o CPM sair da conta.
+function _pgmCpmPadrao(b){ const L=_pgmL(), P=L.padrao||{};
+  if(P.cpm>0) return P.cpm;
+  const B=_pgmBase(b.base), m=(P.massadaSeg||0)/60;
+  return (m&&B.bpc&&P.cru) ? ((P.massadaKg||P.massadaKgNominal||0)*1000)/(m*B.bpc*P.cru) : 0; }
+// ⭐⭐ O RENDIMENTO DA MASSADA É DERIVADO DO PADRÃO — consumo do corte × tempo do ciclo. É o que faz o
+// trio do padrão fechar consigo mesmo (75 × 21 × 10,43 g × 8,1 min = 133,1 kg). O nominal da receita
+// (142,106 kg) fica guardado em `massadaKgNominal` e aparece como nota no cartão da Massada: massada é
+// batelada e o medido varia de 131 a 146 kg, então o nominal é receita, não medição.
+function _pgmMassadaKg(){ const L=_pgmL(), P=L.padrao||{};
+  if(!L.bases) return 0;
+  if(P.cpm>0 && P.cru>0 && P.massadaSeg>0){ const B=_pgmBase(P.base||L.bases[0].id);
+    return P.cpm*(B.bpc||0)*P.cru*(P.massadaSeg/60)/1000; }
+  return L.massadaKg||P.massadaKg||0; }
 // Média das produções REAIS naquele CPM. Devolve null quando nunca se rodou nesse ritmo — nesse caso a
 // tela mostra só o calculado, em vez de inventar uma medição.
 function _pgmHistMed(cpm){ const h=(_pgmL().hist||[]).filter(x=>x.cpm===Math.round(cpm));
@@ -12414,7 +12431,26 @@ function _pgmHistMed(cpm){ const h=(_pgmL().hist||[]).filter(x=>x.cpm===Math.rou
   return { seg:h.reduce((s,x)=>s+x.seg,0)/h.length, n:h.length }; }
 function _pgmCpmsMedidos(){ const s=[]; (_pgmL().hist||[]).forEach(x=>{ if(s.indexOf(x.cpm)<0) s.push(x.cpm); });
   return s.sort((a,b)=>a-b); }
-function _pgmMassadaCalc(b){ const kg=_pgmL().massadaKg||0, c=_pgmConsumo(b); return c>0?kg/c*60:0; }   // segundos
+function _pgmMassadaCalc(b){ const kg=_pgmMassadaKg(), c=_pgmConsumo(b); return c>0?kg/c*60:0; }   // segundos
+// ⭐⭐ POTENCIAL DO TURNO — quanto o turno CHEIO entrega num dado ritmo: quantas massadas cabem, quantos
+// pacotes, quantas caixas e quanto tempo ocupam. É a régua da comparação Padrão × Agora do cartão do dia.
+// ⚠️ As duas colunas medem a MESMA coisa de propósito. Se o "Agora" fosse o dia montado (que pode ter 65
+// massadas porque o PCP quis) e o "Padrão" fosse o turno cheio, a diferença misturaria duas coisas: o
+// efeito do ritmo e a escolha de quanto montar. Medindo o potencial nos dois lados, a diferença isola
+// exatamente o que se mexeu — que era o pedido ("aumentei o corte em 1, dá tanto").
+// ⚠️ E as duas usam as MESMAS embaladoras (a 1ª janela): o mix decide o peso médio do biscoito, então
+// trocá-lo no meio da comparação sujaria a conta com algo que não está sendo comparado.
+function _pgmPot(base, cortes, cru){
+  const L=_pgmL(); if(!L.bases) return null;
+  const B=_pgmBase(base), b={base:base, cortes:cortes, cru:cru};
+  const ciclo=_pgmMassadaCalc(b);                        // segundos de uma massada nesse ritmo
+  if(!(ciclo>0)) return null;
+  const n=Math.floor(L.horas*3600/ciclo);                // massadas CHEIAS que cabem no turno
+  const horas=n*ciclo/3600;
+  const c=_pgmCalc(b, _pgmMaq(0));
+  const pac=c.pacMin*horas*60;
+  return { ciclo:ciclo, n:n, horas:horas, pac:pac, cx:(B.pacCx>0?pac/B.pacCx:null), pacCx:B.pacCx||0 };
+}
 function _pgmMassadaSeg(){ const b=_pgmBlocos()[_pgmSel];
   return _pgmMassada!=null ? _pgmMassada : (b?_pgmMassadaCalc(b):0); }
 // O slider simula OUTRO ciclo. Como os blocos podem ter ritmos diferentes, a simulação vira um FATOR
@@ -12444,11 +12480,11 @@ function _pgmMassadaResumoHTML(){
   const delta=(a,b_)=>{ const d=Math.round((a-b_)*60); if(!d) return '';
     return `<b style="color:${d<0?'var(--success)':'var(--danger)'}">${d>0?'+':'−'}${dur(Math.abs(d))}</b>`; };
   return `<div class="pgm-out">
-    <div class="pgm-r"><span>Padrão <i style="font-style:normal;opacity:.7">${_pgmMS(P.massadaSeg||0)} · ${_pgmN(_pgmCpmPadrao(sel),1)} cpm · ${_pgmN(P.cru,2)} g</i></span><b>${_pgmHhmm(hPad)}</b></div>
+    <div class="pgm-r"><span>Padrão <i style="font-style:normal;opacity:.7">${_pgmMS(P.massadaSeg||0)} · ${_pgmN(_pgmCpmPadrao(sel))} cpm · ${_pgmN(P.cru,2)} g</i></span><b>${_pgmHhmm(hPad)}</b></div>
     <div class="pgm-r"><span>Agora <i style="font-style:normal;opacity:.7">${_pgmMS(_pgmMassadaCalc(sel))} · ${_pgmN(sel.cortes)} cpm · ${_pgmN(_pgmCru(sel),2)} g</i></span><b>${_pgmHhmm(horas)} ${delta(horas,hPad)}</b></div>
     ${simulando?`<div class="pgm-r"><span>Com ${_pgmMS(_pgmMassadaSeg())}</span><b>${_pgmHhmm(hSim)} ${delta(hSim,hPad)}</b></div>`:''}
     ${med?`<div class="pgm-r"><span>Medido a ${_pgmN(sel.cortes)} cpm <i style="font-style:normal;opacity:.7">${med.n} produç${med.n>1?'ões':'ão'}</i></span><b>${_pgmMS(med.seg)} <span style="color:var(--text3);font-weight:400">(calc. ${_pgmMS(calcSel)})</span></b></div>`:''}
-    <div class="pgm-sku">${_cpNum(P.massadaKg,3)} kg por massada · ${_pgmN(nTot)} massadas no dia · o tempo é para fazer ESSAS massadas<br>
+    <div class="pgm-sku">${_cpNum(_pgmMassadaKg(),1)} kg por massada <i style="font-style:normal;opacity:.75">(sai do trio do padrão; a receita nominal é ${_cpNum(P.massadaKgNominal||0,3)} kg)</i> · ${_pgmN(nTot)} massadas no dia · o tempo é para fazer ESSAS massadas<br>
       Últimas: ${_pgmCpmsMedidos().map(c=>{const m=_pgmHistMed(c);return c+' cpm → '+_pgmMS(m.seg);}).join(' · ')}</div>
   </div>`;
 }
@@ -12566,24 +12602,68 @@ function _pgmTravaEsteira6(){
     if(sem&&br) bateu=true; });
   return bateu ? `<div class="pgm-res-al" style="margin-top:6px"><i class="ti ti-lock"></i> sem cobertura e branca na esteira 6 — não rodam ao mesmo tempo</div>` : '';
 }
+// ⭐⭐ O CARTÃO DO DIA = uma COMPARAÇÃO (Diego, 25/09: "preciso enxergar o que seria nosso padrão... e
+// do lado a diferença em cima do que eu mudar"). Três colunas — PADRÃO · AGORA · DIFERENÇA — sobre as
+// quatro grandezas que ele usa para decidir: pacotes, massadas, caixas e tempo de turno.
+// ⚠️ As duas primeiras colunas são POTENCIAL DE TURNO CHEIO (ver `_pgmPot`), não o dia montado. É o que
+// faz "aumentei o corte em 1" virar um número: com o bloco contado em massadas, acelerar o corte não
+// muda os pacotes DAQUELE bloco — muda quantas massadas cabem no turno. A comparação mede isso.
+// ⚠️ O DIA MONTADO não sumiu: ele é o rodapé do cartão, com a barra de ocupação e o aviso de estouro.
+// São perguntas diferentes — "quanto este ritmo pode entregar" × "quanto o dia que montei entrega".
 function _pgmDiaResHTML(){
-  const L=_pgmL(), bs=_pgmBlocos(), sel=bs[_pgmSel]||bs[0];
-  const u=_pgmHoras(), pac=_pgmTotais().total;
-  const mAgo=bs.reduce((s,b)=>s+_pgmMassadasB(b),0);   // massadas são o que o bloco GUARDA: soma exata
-  // ⚠️ SAIU a comparação "vs. padrão" daqui: com o bloco contado em massadas, o padrão faz as MESMAS
-  // massadas e os MESMOS pacotes — só em outro tempo. A comparação com o padrão virou de TEMPO e vive no
-  // cartão da Massada; este cartão diz o que o dia, como está montado, entrega.
+  const L=_pgmL(), bs=_pgmBlocos(), sel=bs[_pgmSel]||bs[0], P=L.padrao||{};
+  const basePad=sel?sel.base:(L.bases?L.bases[0].id:null);
+  const pad=basePad?_pgmPot(basePad, _pgmCpmPadrao({base:basePad}), P.cru):null;
+  const ago=sel?_pgmPot(sel.base, +sel.cortes||0, _pgmCru(sel)):null;
+  // ⚠️ verde = mais produção, vermelho = menos. No TURNO a cor não entra: ocupar mais do turno não é
+  // pior nem melhor, é consequência de caber mais massada — quem julga o turno é a barra do rodapé.
+  // ⚠️ a diferença sai dos valores ARREDONDADOS, os mesmos que estão na tela. Subtraindo os brutos,
+  // 2.920,3 e 2.959,8 davam "+39" embaixo de 2.920 e 2.960 — a coluna desmentia as outras duas.
+  const lin=(rot,vp,va)=>{ const a=vp==null?null:Math.round(vp), b_=va==null?null:Math.round(va);
+    const d=(a==null||b_==null)?null:b_-a, z=d==null||d===0;
+    const cor=z?'':(d>0?'var(--success)':'var(--danger)');
+    return `<tr><td class="r">${rot}</td><td>${a==null?'—':_pgmN(a)}</td><td class="a">${b_==null?'—':_pgmN(b_)}</td>
+      <td class="d"${cor?` style="color:${cor}"`:''}>${z?'—':(d>0?'+':'−')+_pgmN(Math.abs(d))}</td></tr>`; };
+  // o turno trabalha em MINUTOS inteiros pelo mesmo motivo: 9h59 e 10h00 têm que diferir de 1min, não de 0
+  const linT=()=>{ const a=pad?Math.round(pad.horas*60):null, b_=ago?Math.round(ago.horas*60):null;
+    const d=(a==null||b_==null)?null:b_-a, z=d==null||d===0;
+    const dur=m=>m<60?m+'min':_pgmHhmm(m/60);
+    return `<tr><td class="r">Turno</td><td>${a==null?'—':_pgmHhmm(a/60)}</td><td class="a">${b_==null?'—':_pgmHhmm(b_/60)}</td>
+      <td class="d">${z?'—':(d>0?'+':'−')+dur(Math.abs(d))}</td></tr>`; };
+  // ⭐ o trio de cada lado vive NO CABEÇALHO da coluna a que pertence — em nota de rodapé ele ocupava
+  // 3 linhas e obrigava a pessoa a ligar "Padrão" lá embaixo com a coluna aqui em cima.
+  const cmp=`<table class="pgm-cmp"><tr><th></th>
+      <th>Padrão<i>${_pgmMS(P.massadaSeg||0)} · ${_pgmN(_pgmCpmPadrao({base:basePad}))} cpm · ${_pgmN(P.cru,2)} g</i></th>
+      <th>Agora<i>${ago?`${_pgmMS(ago.ciclo)} · ${_pgmN(sel.cortes)} cpm · ${_pgmN(_pgmCru(sel),2)} g`:'—'}</i></th>
+      <th>Dif.</th></tr>
+      ${lin('Pacotes', pad?pad.pac:null, ago?ago.pac:null)}
+      ${lin('Massadas', pad?pad.n:null, ago?ago.n:null)}
+      ${lin('Caixas', pad?pad.cx:null, ago?ago.cx:null)}
+      ${linT()}</table>
+    <div class="pgm-cmp-nota">turno cheio de ${_pgmHhmm(L.horas)}${pad&&pad.pacCx?` · ${pad.pacCx} pacotes por caixa`:''}</div>`;
+  return `${cmp}<div class="pgm-montado"><span>No dia montado</span>${_pgmMontadoHTML()}</div>`;
+}
+// ⭐ O DIA MONTADO é o rodapé do cartão: a comparação diz o que o RITMO pode entregar, ele diz o que o
+// dia que está na tela entrega. ⚠️ Cabe aqui porque o cartão tem folga — medido, a comparação usa 207px
+// contra os 254px das 8 trilhas, então o rodapé entra sem esticar o topo (a página fica em ~915px).
+// Já tentei pendurá-lo no rodapé da linha do tempo: ali ele SOMAVA 51px a quem já era o mais alto.
+function _pgmMontadoHTML(){
+  const L=_pgmL(), bs=_pgmBlocos(), sel=bs[_pgmSel]||bs[0], T=_pgmTotais();
+  const u=_pgmHoras(), pac=T.total, mAgo=bs.reduce((s,b)=>s+_pgmMassadasB(b),0);
+  let cxDia=0, cxOk=bs.length>0;
+  bs.forEach((b,i)=>{ const pc=_pgmBase(b.base).pacCx; if(pc>0) cxDia+=(T.porBloco[i]||0)/pc; else cxOk=false; });
   const over=u-L.horas, oc=L.horas>0?Math.min(1,u/L.horas)*100:0;
-  return `<div class="pgm-res-b"><span>Pacotes</span><b>${_pgmN(pac)}</b></div>
-    <div class="pgm-res-b"><span>Massadas</span><b>${_pgmN(mAgo)}</b></div>
-    <div class="pgm-res-b" style="margin-bottom:0"><span>Turno</span>
-      <b>${_pgmHhmm(u)}<i class="de">de ${_pgmHhmm(L.horas)}</i></b>
-      <div class="pgm-barra"><span style="width:${oc.toFixed(1)}%${over>0.01?';background:var(--danger)':''}"></span></div>
-      ${over>0.01?`<div class="pgm-res-al"><i class="ti ti-alert-triangle"></i> passa do turno em ${Math.round(over*60)} min</div>`
-        // ⭐ a sobra do turno vira o número que ele decide: quantas massadas ainda cabem no ritmo de agora
-        :(function(){ const c=sel?_pgmMassadaCalc(sel):0, cabe=c>0?Math.floor(-over*3600/c):0, m=Math.round(-over*60);
-           return over<-0.01 ? `<div class="pgm-res-ok">sobra ${m<60?m+'min':_pgmHhmm(-over)}${cabe>0?` · cabe +${cabe} massada${cabe>1?'s':''}`:''}</div>` : ''; })()}
-      ${_pgmTravaEsteira6()}</div>`;
+  const aviso = over>0.01
+    ? `<div class="pgm-res-al"><i class="ti ti-alert-triangle"></i> passa do turno em ${over>=1?_pgmHhmm(over):Math.round(over*60)+' min'}</div>`
+    // ⭐ a sobra do turno vira o número que ele decide: quantas massadas ainda cabem no ritmo de agora
+    : (function(){ const c=sel?_pgmMassadaCalc(sel):0, cabe=c>0?Math.floor(-over*3600/c):0, m=Math.round(-over*60);
+        return over<-0.01 ? `<div class="pgm-res-ok">sobra ${m<60?m+'min':_pgmHhmm(-over)}${cabe>0?` · cabe +${cabe} massada${cabe>1?'s':''}`:''}</div>` : ''; })();
+  // ⚠️ sem o "de 10h00" aqui: a linha acima já diz "turno cheio de 10h00", e com ele a frase quebrava em
+  // 3 linhas dentro dos 346px do cartão — 40px que o topo não tem para dar.
+  return `<div class="pgm-mt-l"><b>${_pgmHhmm(u)}</b>
+      <em>${_pgmN(mAgo)} massada${mAgo===1?'':'s'} · ${_pgmN(pac)} pacotes${cxOk?` · ${_pgmN(cxDia)} caixas`:''}</em></div>
+    <div class="pgm-barra"><span style="width:${oc.toFixed(1)}%${over>0.01?';background:var(--danger)':''}"></span></div>
+    ${aviso}${_pgmTravaEsteira6()}`;
 }
 // ── EDITOR do bloco selecionado
 function _pgmEditorHTML(){
@@ -12805,7 +12885,7 @@ function _pgmCSS(){ return `<style>
   .pgm-topo{display:flex;align-items:stretch;gap:9px;margin-bottom:9px}
   .pgm-topo>.pgm-card{margin-bottom:0}
   .pgm-card-tl{flex:1;min-width:0}
-  .pgm-rescard{flex:none;width:206px}
+  .pgm-rescard{flex:none;width:346px}
   .pgm-resbox{padding:11px 14px 13px}
   .pgm-res-b{margin-bottom:12px}
   .pgm-res-b>span{display:block;font-size:10px;color:var(--text3);margin-bottom:1px}
@@ -12816,6 +12896,28 @@ function _pgmCSS(){ return `<style>
   .pgm-barra span{display:block;height:100%;border-radius:2px;background:var(--success)}
   .pgm-res-al{font-size:10px;color:var(--danger);margin-top:6px;line-height:1.35}
   .pgm-res-ok{font-size:10px;color:var(--text3);margin-top:6px;line-height:1.35}
+  .pgm-cmp{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+  .pgm-cmp th{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);
+    text-align:right;padding:0 0 5px;border-bottom:1px solid var(--border)}
+  .pgm-cmp th:first-child{text-align:left}
+  .pgm-cmp th i{display:block;font-style:normal;font-size:8.5px;font-weight:600;text-transform:none;
+    letter-spacing:0;color:var(--text3);margin-top:2px;line-height:1.3}
+  .pgm-cmp td{padding:5px 0;text-align:right;color:var(--text2);border-bottom:1px solid var(--border)}
+  .pgm-cmp tr:last-child td{border-bottom:0;padding-bottom:0}
+  .pgm-cmp td.r{text-align:left;font-size:10.5px;color:var(--text3);letter-spacing:.01em}
+  .pgm-cmp td.a{font-weight:800;font-size:15px;color:var(--text);letter-spacing:-.01em}
+  .pgm-cmp td.d{font-weight:700;font-size:11.5px;color:var(--text3);width:64px}
+  .pgm-cmp th:nth-child(2),.pgm-cmp td:nth-child(2),
+  .pgm-cmp th:nth-child(3),.pgm-cmp td:nth-child(3){padding-right:10px}
+  .pgm-cmp-nota{font-size:9.5px;color:var(--text3);line-height:1.55;margin-top:8px}
+  .pgm-cmp-nota b{font-weight:700;color:var(--text2)}
+  .pgm-montado{margin-top:11px;padding-top:9px;border-top:1px solid var(--border)}
+  .pgm-montado>span{display:block;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:3px}
+  .pgm-mt-l{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+  .pgm-mt-l>b{font-size:15px;font-weight:800;letter-spacing:-.02em;color:var(--text)}
+  .pgm-mt-l>em{font-style:normal;font-size:11.5px;color:var(--text2)}
+  .pgm-montado .pgm-barra{margin-top:6px}
+  .pgm-montado .pgm-res-al,.pgm-montado .pgm-res-ok{margin-top:5px}
   .pgm-massv{font-size:15px;font-weight:800;letter-spacing:-.015em;color:var(--text);line-height:1.2}
   /* navegação semana › dia › linha */
   .pgm-nav{margin-bottom:10px}
@@ -12845,7 +12947,7 @@ function _pgmCSS(){ return `<style>
   .pgm-ln .n{font-size:10px;font-weight:700;background:color-mix(in srgb,var(--blue-mid) 16%,transparent);color:var(--blue-mid);border-radius:999px;padding:1px 6px}
   @media(max-width:900px){ .pgm-ed{grid-template-columns:1fr}
     .pgm-topo{flex-direction:column} .pgm-rescard{width:auto}
-    .pgm-resbox{display:flex;flex-wrap:wrap;gap:4px 26px} .pgm-res-b{margin-bottom:0;min-width:120px} }
+    .pgm-res-b{margin-bottom:0} }
 </style>`; }
 // ── NAVEGAÇÃO: só a LINHA. A semana e os 6 dias saíram quando a tela virou simulador — ver o
 // comentário do _pgmChave. O selo na linha marca ONDE JÁ TEM SIMULAÇÃO, para não ter que entrar
@@ -12903,9 +13005,9 @@ function renderPCPDia(){
   main.innerHTML=_cpTela('PCP','Simulador da linha: monte um turno e veja o que muda ao aumentar ou diminuir a produção.',corpo);
 }
 // Dia de exemplo (só p/ a tela não abrir vazia): o Forno contínuo na quinta desta semana.
-// Os valores do bloco saem do PADRÃO da linha (o trio da Valesca): 76 cortes/min e 10,43 g.
-(function(){ const q=_pgmDias()[3], L=_PGM_LINHAS[0], P=L.padrao, B=L.bases[0];
-  const cpm=Math.round((P.massadaKg*1000)/((P.massadaSeg/60)*B.bpc*P.cru));
+// Os valores do bloco saem do PADRÃO da linha: 75 cortes/min e 10,43 g.
+(function(){ const q=_pgmDias()[3], L=_PGM_LINHAS[0], P=L.padrao;
+  const cpm=P.cpm;   // o exemplo nasce NO padrão: a comparação do cartão abre zerada, e é assim que se lê
   _PGM_PLANO['forno|'+_pgmIso(q)]={emb:null, blocos:[
     {base:'paodemel', massadas:38, cortes:cpm, cru:P.cru},
     {base:'paodemel', massadas:11, cortes:cpm, cru:P.cru,
