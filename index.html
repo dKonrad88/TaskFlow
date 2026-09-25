@@ -12963,7 +12963,9 @@ function _pgmCSS(){ return `<style>
   .pgm-chip.on{border-color:var(--blue-mid);color:var(--blue-mid);font-weight:700}
   .pgm-chip i.x{font-size:13px;color:var(--text3)}
   /* 3 colunas: campos · resultado · massada — tudo num cartão só, para caber sem rolar */
-  .pgm-ed{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1fr) minmax(0,1.35fr);gap:16px;padding:9px 14px 11px;align-items:start}
+  /* a embalagem era 1.35fr de quando a tabela tinha Cliente e Nom.; sem as duas ela sobrava espaco.
+     E o gap subiu de 16 para 28: com as 3 secoes tituladas, 16px nao separava o suficiente. */
+  .pgm-ed{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.05fr);gap:28px;padding:9px 14px 11px;align-items:start}
   /* tabela das 4 embaladoras */
   .pgm-emb{width:100%;border-collapse:collapse;font-size:10.5px}
   .pgm-emb th{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);text-align:left;padding:0 4px 4px}
