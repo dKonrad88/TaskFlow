@@ -12711,7 +12711,7 @@ function _pgmTimelineHTML(){
     const p=(h/TOT*100).toFixed(3);
     reg+=`<span style="left:${p}%${h===0?';transform:none':''}">${_pgmRelogio(h)}</span>`;
   }
-  const regua=`<div class="pgm-tr"><span class="pgm-grp"></span><span class="pgm-lab"></span><div class="pgm-regua">${reg}</div></div>`;
+  const regua=`<div class="pgm-tr fixa"><span class="pgm-grp"></span><span class="pgm-lab"></span><div class="pgm-regua">${reg}</div></div>`;
   // ⚠️ O aviso de estouro SAIU daqui e vive no "Resultado do dia", junto da barra do turno que o explica
   // (ele se mede pela ocupação do CORTE, não pelo fim do desenho: a embalagem sempre termina 20min
   // depois por causa do trânsito, e isso não é passar do turno).
@@ -12780,9 +12780,8 @@ function _pgmDiaResHTML(){
       ${linG('Tempo/massada', P.massadaSeg||null, ago?ago.ciclo:null, seg, dseg)}
       ${linG('Cortes/min', _pgmCpmPadrao({base:basePad}), sel?(+sel.cortes||0):null, _pgmCpmTxt)}
       ${linG('Biscoito cru', P.cru, sel?_pgmCru(sel):null, cru)}
-      ${linG('Cobertura', cobP, sel?_pgmCob(sel):null, pct)}
-      <tr class="sep"><td colspan="4"></td></tr>
-      ${lin('Pacotes', pad?pad.pac:null, ago?ago.pac:null)}
+      ${linG('Cobertura', cobP, sel?_pgmCob(sel):null, pct).replace('<tr>','<tr class="gfim">')}
+      ${lin('Pacotes', pad?pad.pac:null, ago?ago.pac:null).replace('<tr>','<tr class="gini">')}
       ${lin('Massadas', pad?pad.n:null, ago?ago.n:null)}
       ${lin('Caixas', pad?pad.cx:null, ago?ago.cx:null)}
       ${linT()}</table>
@@ -12980,8 +12979,13 @@ function _pgmCSS(){ return `<style>
   .pgm-card{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:9px;overflow:hidden}
   .pgm-head{display:flex;align-items:center;gap:9px;padding:7px 14px;font-size:12px;color:var(--text2);background:var(--bg2);border-bottom:1px solid var(--border)}
   .pgm-head b{font-size:12.5px;color:var(--text)}
-  .pgm-tlbox{padding:8px 14px 9px}
-  .pgm-tr{display:flex;align-items:center;gap:9px;margin-bottom:3px}
+  /* ⭐ as trilhas se ESPALHAM na altura do cartao: ele e esticado pelo cartao do Resultado ao lado, e
+     sem isso o desenho ficava empilhado no topo com um vao morto embaixo (o Diego pediu harmonia).
+     Cada trilha vira flex 1 com um minimo, entao os vaos crescem juntos em vez de sobrar no fim. */
+  .pgm-tlbox{padding:8px 14px 9px;flex:1;display:flex;flex-direction:column;min-height:0}
+  #pgm-tl{flex:1;display:flex;flex-direction:column;min-height:0}
+  .pgm-tr{display:flex;align-items:center;gap:9px;margin-bottom:3px;flex:1;min-height:22px}
+  .pgm-tr.fixa{flex:none}   /* a régua marca as horas: cresce junto e o traço descolaria dos números */
   /* rótulo em 2 partes: o GRUPO (uma vez por estágio) e o canal */
   .pgm-grp{width:86px;flex:none;text-align:right;font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)}
   .pgm-grp i{font-style:normal;font-weight:400;letter-spacing:0;text-transform:none;color:var(--text3);margin-left:4px}
@@ -13122,7 +13126,7 @@ function _pgmCSS(){ return `<style>
      cartão da Massada compara cenários. */
   .pgm-topo{display:flex;align-items:stretch;gap:9px;margin-bottom:9px}
   .pgm-topo>.pgm-card{margin-bottom:0}
-  .pgm-card-tl{flex:1;min-width:0}
+  .pgm-card-tl{flex:1;min-width:0;display:flex;flex-direction:column}
   .pgm-rescard{flex:none;width:346px}
   .pgm-resbox{padding:11px 14px 13px}
   .pgm-res-b{margin-bottom:12px}
@@ -13141,8 +13145,11 @@ function _pgmCSS(){ return `<style>
   .pgm-cmp th i{display:block;font-style:normal;font-size:8.5px;font-weight:600;text-transform:none;
     letter-spacing:0;color:var(--text3);margin-top:2px;line-height:1.3}
   /* o vão que separa o que se MEXE do que DÁ — sem ele as 8 linhas viram uma lista só */
-  .pgm-cmp tr.sep td{padding:0;height:7px;border-bottom:1px solid var(--text3);border-top:0}
-  .pgm-cmp tr.sep + tr td{padding-top:7px}
+  /* ⚠️ o separador era uma <tr> VAZIA com borda, e ela aparecia como uma faixa solta entre os dois
+     grupos (o Diego circulou no print). Agora não há linha própria: a última do 1º grupo escurece a
+     borda que ela já tinha, e a 1ª do 2º grupo ganha respiro. Uma linha só, no lugar de duas. */
+  .pgm-cmp tr.gfim td{border-bottom-color:var(--text3)}
+  .pgm-cmp tr.gini td{padding-top:9px}
   .pgm-cmp td{padding:3px 0;text-align:right;color:var(--text2);border-bottom:1px solid var(--border)}
   .pgm-cmp tr:last-child td{border-bottom:0;padding-bottom:0}
   .pgm-cmp td.r{text-align:left;font-size:10.5px;color:var(--text3);letter-spacing:.01em}
