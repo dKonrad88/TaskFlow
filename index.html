@@ -13203,15 +13203,42 @@ function _ddvOrdenar(prods){
   }).map(x=>x.p);
 }
 // ── Ações ───────────────────────────────────────────────────────────────────────────────────
+// ⭐ A TELA LEMBRA DE VOCÊ (Diego, 25/09 — 1º item da fila de personalização). Guarda o jeito que
+// cada um deixou a tela: busca, filtro, ordenação, linhas recolhidas, gráfico aberto e o período
+// dele. Antes disso, um F5 zerava tudo — a tela não tinha memória nenhuma.
+// ⚠️ REGRA P0 RESPEITADA: grava só nas AÇÕES daqui de baixo. Nenhuma função de render grava.
+// ⚠️ Prefixo `taskflow` → entra no sync da nuvem: o jeito do PC da Empresa aparece igual em casa.
+// ⚠️ É a LENTE, nunca a CONTA. Corte do semáforo, fórmulas e dado seguem iguais para todo mundo —
+// senão "temos 5 em ruptura" deixaria de ser um fato compartilhado.
+const LS_DDV='taskflow_ddv_view';
+const _DDV_FILTROS=['','ruptura','atencao','folga','produzir'];
+let _ddvCarregado=false;
+function _ddvSave(){
+  try{ safeSetItem(LS_DDV, JSON.stringify({ busca:_ddvBusca, filtro:_ddvFiltro, sort:_ddvSort,
+    graf:_ddvGraf, per:_ddvPer, fechadas:Object.keys(_ddvFechadas) })); }catch(e){}
+}
+// ⚠️ Valida TUDO o que vem do storage: coluna que deixou de existir (a Vendas saiu hoje), filtro
+// desconhecido ou linha renomeada no export voltariam como estado quebrado, sem UI para desfazer.
+function _ddvLoad(){
+  const o=(typeof safeJSON==='function')?safeJSON(LS_DDV,null):null;
+  if(!o || typeof o!=='object') return;
+  if(typeof o.busca==='string') _ddvBusca=o.busca;
+  if(_DDV_FILTROS.indexOf(o.filtro)>=0) _ddvFiltro=o.filtro;
+  if(o.sort && _DDV_SC[o.sort.campo]) _ddvSort={campo:o.sort.campo, dir:o.sort.dir<0?-1:1};
+  if(typeof o.graf==='string') _ddvGraf=o.graf;   // some sozinho se o alvo não existir mais (_ddvGrafAlvo devolve null)
+  if(o.per && typeof o.per==='object') ['ini','fim','m2ini','m2fim'].forEach(k=>{ if(typeof o.per[k]==='string') _ddvPer[k]=o.per[k]; });
+  if(Array.isArray(o.fechadas)){ const nomes={}; _DDV_LINHAS.forEach(L=>{ nomes[L[0]]=1; });
+    o.fechadas.forEach(n=>{ if(nomes[n]) _ddvFechadas[n]=1; }); }
+}
 function _ddvRefresh(){ const el=document.getElementById('ddv-conteudo'); if(el) el.innerHTML=_ddvTabelaHTML(); else renderPCP(); }
-function _ddvBuscaInput(v){ _ddvBusca=v; _ddvRefresh(); }
-function _ddvSetFiltro(v){ _ddvFiltro=(_ddvFiltro===v?'':v); renderPCP(); }
-function _ddvSortBy(c){ if(_ddvSort.campo===c) _ddvSort.dir*=-1; else { _ddvSort.campo=c; _ddvSort.dir=(c==='nome'||c==='cod')?1:-1; } _ddvRefresh(); }
-function _ddvToggleLinha(nome){ if(_ddvFechadas[nome]) delete _ddvFechadas[nome]; else _ddvFechadas[nome]=1; _ddvRefresh(); }
-function _ddvTodasLinhas(fechar){ _DDV_LINHAS.forEach(L=>{ if(fechar) _ddvFechadas[L[0]]=1; else delete _ddvFechadas[L[0]]; }); _ddvRefresh(); }
-function _ddvAbrirGraf(cod){ _ddvGraf=(String(_ddvGraf)===String(cod))?'':String(cod); renderPCP(); window.scrollTo(0,0); }
+function _ddvBuscaInput(v){ _ddvBusca=v; _ddvSave(); _ddvRefresh(); }
+function _ddvSetFiltro(v){ _ddvFiltro=(_ddvFiltro===v?'':v); _ddvSave(); renderPCP(); }
+function _ddvSortBy(c){ if(_ddvSort.campo===c) _ddvSort.dir*=-1; else { _ddvSort.campo=c; _ddvSort.dir=(c==='nome'||c==='cod')?1:-1; } _ddvSave(); _ddvRefresh(); }
+function _ddvToggleLinha(nome){ if(_ddvFechadas[nome]) delete _ddvFechadas[nome]; else _ddvFechadas[nome]=1; _ddvSave(); _ddvRefresh(); }
+function _ddvTodasLinhas(fechar){ _DDV_LINHAS.forEach(L=>{ if(fechar) _ddvFechadas[L[0]]=1; else delete _ddvFechadas[L[0]]; }); _ddvSave(); _ddvRefresh(); }
+function _ddvAbrirGraf(cod){ _ddvGraf=(String(_ddvGraf)===String(cod))?'':String(cod); _ddvSave(); renderPCP(); window.scrollTo(0,0); }
 // Gráfico da LINHA inteira: _ddvGraf guarda 'L:<nome da linha>' em vez do código do produto.
-function _ddvAbrirGrafLinha(nome){ const k='L:'+nome; _ddvGraf=(_ddvGraf===k)?'':k; renderPCP(); window.scrollTo(0,0); }
+function _ddvAbrirGrafLinha(nome){ const k='L:'+nome; _ddvGraf=(_ddvGraf===k)?'':k; _ddvSave(); renderPCP(); window.scrollTo(0,0); }
 // Soma as séries mensais de vários produtos, alinhando pelo mês (mês que um produto não tem entra como 0).
 function _ddvSomaSeries(list){
   const yms=list.map(s=>_ddvSerieYM(s));
@@ -13387,8 +13414,8 @@ function _ddvRecorte(s,ini,fim){
   return out;
 }
 const _ddvMedia=r=>r.vals.length?r.vals.reduce((a,b)=>a+b,0)/r.vals.length:null;
-function _ddvSetPer(campo,v){ _ddvPer[campo]=v||''; const el=document.getElementById('ddv-graf-box'); if(el) el.innerHTML=_ddvGrafHTML(); else renderPCP(); }
-function _ddvPerReset(){ _ddvPer={ini:'',fim:'',m2ini:'',m2fim:''}; const el=document.getElementById('ddv-graf-box'); if(el) el.innerHTML=_ddvGrafHTML(); else renderPCP(); }
+function _ddvSetPer(campo,v){ _ddvPer[campo]=v||''; _ddvSave(); const el=document.getElementById('ddv-graf-box'); if(el) el.innerHTML=_ddvGrafHTML(); else renderPCP(); }
+function _ddvPerReset(){ _ddvPer={ini:'',fim:'',m2ini:'',m2fim:''}; _ddvSave(); const el=document.getElementById('ddv-graf-box'); if(el) el.innerHTML=_ddvGrafHTML(); else renderPCP(); }
 function _ddvFiltrosGrafHTML(pIni,pFim,m2Ini,m2Fim){
   // ⚠️ os campos PRECISAM de classe: a regra global input:not([class]){height:40px} atropelaria a altura
   const dt=(campo,val)=>`<input type="date" class="ddv-dt" value="${val}" onchange="_ddvSetPer('${campo}',this.value)">`;
@@ -13492,18 +13519,20 @@ function _ddvTabelaHTML(){
   const th=(c,lab,cls)=>{ const on=_ddvSort.campo===c;
     return `<th class="${cls||''}" onclick="_ddvSortBy('${c}')" style="${on?'color:var(--blue-mid)':''}">${lab}${on?` <i class="ti ti-${_ddvSort.dir<0?'arrow-down':'arrow-up'}" style="font-size:11px"></i>`:''}</th>`; };
   const med=_ddvMedias;
+  // ⚠️ A coluna "Vendas 261d" SAIU a pedido do Diego (25/09) — a largura dela foi toda para o nome do
+  // produto, que era quem vivia cortado. O DADO continua (`p[6]`): é dele que saem as 4 médias e o
+  // DDV inteiro, e ele ainda aparece no aviso do gráfico de quem não tem histórico mensal.
   const cols=med
-    ? `<col style="width:4.5%"><col style="width:25%"><col style="width:6.5%"><col style="width:6%"><col style="width:6%"><col style="width:4.5%"><col style="width:6.5%"><col style="width:5.5%"><col style="width:6.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:7%">`
-    : `<col style="width:6%"><col style="width:34%"><col style="width:8%"><col style="width:8%"><col style="width:8%"><col style="width:7%"><col style="width:8%"><col style="width:6.5%"><col style="width:7.5%"><col style="width:7%">`;
-  const nc=med?14:10;
+    ? `<col style="width:4.5%"><col style="width:32%"><col style="width:6.5%"><col style="width:6%"><col style="width:6%"><col style="width:4.5%"><col style="width:6.5%"><col style="width:5.5%"><col style="width:6.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:5.5%">`
+    : `<col style="width:6%"><col style="width:41%"><col style="width:8%"><col style="width:8%"><col style="width:8%"><col style="width:7%"><col style="width:8%"><col style="width:6.5%"><col style="width:7.5%">`;
+  const nc=med?13:9;
   // cabeçalho em 2 níveis: tarja do grupo em cima, colunas embaixo (as do grupo com o fundo leve)
   const grupos=`<tr>
     <th class="g" colspan="2"></th>
     <th class="g on" colspan="5">Estoque e demanda</th>
     <th class="g on" colspan="2">Cobertura</th>
-    ${med?'<th class="g on" colspan="4">Médias de venda</th>':''}
-    <th class="g"></th></tr>`;
-  const colunas=`<tr>${th('cod','Cód.','l')}${th('nome','Produto','l')}${th('est','Estoque','bnd b1 bs')}${th('ped','Pedido','bnd b1')}${th('opoc','OP/OC','bnd b1')}${th('maras','Maras','bnd b1')}${th('saldo','Saldo','bnd b1')}${th('ddv','DDV','bnd b2 bs')}${th('ddvsop','DDV s/OP','bnd b2')}${med?`${th('mdv','MDV','bnd b3 bs')}${th('msv','MSV','bnd b3')}${th('mqv','MQV','bnd b3')}${th('mmv','MMV','bnd b3')}`:''}${th('vendas','Vendas '+DDV_DIAS_UTEIS+'d')}</tr>`;
+    ${med?'<th class="g on" colspan="4">Médias de venda</th>':''}</tr>`;
+  const colunas=`<tr>${th('cod','Cód.','l')}${th('nome','Produto','l')}${th('est','Estoque','bnd b1 bs')}${th('ped','Pedido','bnd b1')}${th('opoc','OP/OC','bnd b1')}${th('maras','Maras','bnd b1')}${th('saldo','Saldo','bnd b1')}${th('ddv','DDV','bnd b2 bs')}${th('ddvsop','DDV s/OP','bnd b2')}${med?`${th('mdv','MDV','bnd b3 bs')}${th('msv','MSV','bnd b3')}${th('mqv','MQV','bnd b3')}${th('mmv','MMV','bnd b3')}`:''}</tr>`;
   const linhas=_ddvFiltrados();
   const buscando=!!_ddvBusca.trim()||!!_ddvFiltro;
   let cards='';
@@ -13529,8 +13558,7 @@ function _ddvTabelaHTML(){
         <td class="bnd b1${negS?' ddv-neg':''}"${negS?'':` style="color:${c.saldo==null?'':'var(--blue-mid)'};font-weight:600"`}>${_ddvN(c.saldo)}</td>
         <td class="bnd b2 bs${negD?' ddv-neg':''}"${negD?'':` style="color:${st};font-weight:700"`}>${_ddvN(c.ddv)}</td>
         <td class="bnd b2" style="color:${_ddvCor(c.ddvsop)};font-weight:600">${_ddvN(c.ddvsop)}</td>
-        ${med?`<td class="bnd b3 bs">${_ddvN(c.mdv)}</td><td class="bnd b3">${_ddvN(c.msv)}</td><td class="bnd b3">${_ddvN(c.mqv)}</td><td class="bnd b3">${_ddvN(c.mmv)}</td>`:''}
-        <td>${_ddvN(p[6])}</td></tr>`;
+        ${med?`<td class="bnd b3 bs">${_ddvN(c.mdv)}</td><td class="bnd b3">${_ddvN(c.msv)}</td><td class="bnd b3">${_ddvN(c.mqv)}</td><td class="bnd b3">${_ddvN(c.mmv)}</td>`:''}</tr>`;
     });
     cards+=`<div class="ddv-grp"><table class="ddv-tbl"><colgroup>${cols}</colgroup><tbody>${rows}</tbody></table></div>`;
   });
@@ -13574,6 +13602,9 @@ function _ddvFiltrosPopHTML(){
 }
 function renderDDV(){
   const main=document.getElementById('task-container'); if(!main) return;
+  // Lê o jeito salvo UMA vez por sessão. Ler não é gravar (a regra P0 é sobre escrita), e o flag
+  // impede que um re-render qualquer jogue fora o que a pessoa acabou de mexer.
+  if(!_ddvCarregado){ _ddvCarregado=true; _ddvLoad(); }
   const _tb=document.querySelector('.main .topbar'); if(_tb) _tb.style.display='none';
   const _st=document.getElementById('stats-box'); if(_st) _st.style.display='none';
   const _pr=document.getElementById('progress-box'); if(_pr) _pr.style.display='none';
