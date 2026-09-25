@@ -12145,6 +12145,15 @@ function _pgmN(v,d){ return _cpNum(v, d==null?0:d); }
 // Peso do biscoito CRU: vem do cadastro da base, mas é editável no bloco — mudar aqui muda o peso
 // assado, o coberto, os pacotes E o tempo da massada (o corte passa a consumir mais/menos kg por minuto).
 function _pgmCru(b){ const B=_pgmBase(b.base); return (b.cru==null||b.cru==='')?B.cru:(+b.cru||0); }
+// ⭐ % de COBERTURA por bloco (Diego, 25/09: "quero ter o % de cobertura que queremos, pois isso pode dar
+// mais ou menos produção; o padrão é 34%"). Sem valor no bloco, cai no da base — mesmo padrão do `cru`.
+// ⚠️ Mais cobertura = biscoito mais PESADO = MAIS pacotes de 250 g com os mesmos biscoitos saindo do
+// corte. O efeito só vale para o que passa por cobrideira: o "sem cobertura" continua no peso assado.
+function _pgmCob(b){ const B=_pgmBase(b.base); return (b.cob==null||b.cob==='')?B.cob:(+b.cob||0); }
+// ⚠️ o cpm ganhou casas decimais quando o campo do TEMPO passou a ajustá-lo (1 segundo vale ~0,2 de cpm).
+// Arredondar na exibição fazia "74,69" virar "75" e a comparação parecer igual ao padrão com o ciclo
+// diferente. Mostra as casas só quando existem.
+function _pgmCpmTxt(v){ const n=+v||0; return _pgmN(n, Number.isInteger(n)?0:2); }
 // ── DESTINOS da cobrideira. `cob:0` = sem cobertura (o biscoito sai no peso assado, mais leve).
 const _PGM_DEST=[{id:'leite',nome:'Ao leite',curto:'leite',cob:1},{id:'branco',nome:'Branca',curto:'branca',cob:1},{id:'natural',nome:'Sem cobertura',curto:'sem cob.',cob:0}];
 function _pgmDest(id){ return _PGM_DEST.find(d=>d.id===id)||_PGM_DEST[0]; }
@@ -12158,8 +12167,10 @@ const _PGM_FMT=[
 ];
 function _pgmFmt(id){ return _PGM_FMT.find(f=>f.id===id)||_PGM_FMT[0]; }
 // Como a barra da embaladora se lê: Klain aparece só como "Klain"; terceiro leva o cliente e o formato.
+// ⚠️ sem cliente a barra mostra só o formato: a coluna Cliente saiu da tabela em 25/09, então não há mais
+// onde digitá-lo — escrever "sem cliente" seria cobrar um campo que a tela não oferece.
 function _pgmEmbRotulo(e){ const f=_pgmFmt(e.fmt);
-  return f.terc ? (e.cli||'sem cliente')+' · '+f.curto : 'Klain'; }
+  return f.terc ? (e.cli ? e.cli+' · '+f.curto : f.nome) : 'Klain'; }
 // ── EMBALADORAS do bloco: uma entrada por máquina, com cliente, sabor e velocidades próprias.
 // Nasce do cadastro da linha; o bloco só guarda o que foi mexido.
 function _pgmMaqPadrao(){ const cad=_pgmL().embaladoras||[];
@@ -12220,7 +12231,7 @@ function _pgmCalc(b, maq){
   const B=_pgmBase(b.base);
   const bisc=(+b.cortes||0)*(B.bpc||0);          // biscoitos/min saindo do corte
   const cru=_pgmCru(b);
-  const assado=cru*(1-B.evap/100), coberto=assado*(1+B.cob/100);
+  const assado=cru*(1-B.evap/100), coberto=assado*(1+_pgmCob(b)/100);
   const M=maq||_pgmMaq(0);
   const mix=_pgmMixM(M);
   // ⚠️ o peso médio do biscoito acabado depende do MIX: sem cobertura ele sai mais leve, então a mesma
@@ -12312,9 +12323,8 @@ function _pgmSel_(i){ _pgmSel=i; renderPCPDia(); }
 function _pgmSetLive(campo, el){       // digitar: guarda e atualiza só a linha do tempo e o resultado
   const b=_pgmBlocos()[_pgmSel]; if(!b) return;
   b[campo]= (campo==='base') ? el.value : (el.value===''?'':+el.value);
-  // ⚠️ peso e ritmo do corte MUDAM o tempo calculado da massada — a simulação feita sobre o valor antigo
-  // deixaria de fazer sentido, então cai fora e o cálculo volta a mandar.
-  if(campo==='cru'||campo==='cortes') _pgmMassada=null;
+  // ⚠️ bloco antigo guardava `horas`; quem manda agora são as massadas, senão o tempo antigo venceria
+  if(campo==='massadas') delete b.horas;
   _pgmSave(); _pgmRefresh();
 }
 // ⭐ SETAS nos campos do corte (Diego, 25/09: "cortes por minuto quero, além de escrever o número, também
@@ -12323,35 +12333,70 @@ function _pgmSetLive(campo, el){       // digitar: guarda e atualiza só a linha
 // tem só ~16px de alvo. Estas ficam fora do campo, com área de clique de verdade.
 // ⚠️ O passo do cru SOMA em vez de alinhar na grade (10,43 + 0,1 = 10,53, não 10,50): os centésimos são
 // medição de verdade e não é a tela que deve arredondá-los. O toFixed mata o lixo do ponto flutuante.
-const _PGM_STEP={ cortes:{passo:1, min:1, max:200, dec:0}, cru:{passo:0.1, min:1, max:200, dec:2} };
+const _PGM_STEP={ cortes:{passo:1, min:1, max:200, dec:2}, cru:{passo:0.1, min:1, max:200, dec:2},
+                  massadas:{passo:1, min:1, max:400, dec:0}, cob:{passo:1, min:0, max:200, dec:0} };
 function _pgmStep(campo, dir){
   const arr=_pgmBlocos().slice(), b=arr[_pgmSel]; if(!b) return;
   const S=_PGM_STEP[campo]; if(!S) return;
-  const atual = campo==='cru' ? _pgmCru(b) : (+b[campo]||0);
-  const v = +Math.min(S.max, Math.max(S.min, atual + dir*S.passo)).toFixed(S.dec);
+  // ⚠️ campo herdado da base (cru, cob) ou derivado (massadas) tem que ser lido pelo HELPER: `b.cob` é
+  // undefined enquanto ninguém mexeu, e somar 1 em undefined levava a cobertura de 34% para 1%.
+  const atual = campo==='cru' ? _pgmCru(b) : campo==='cob' ? _pgmCob(b)
+              : campo==='massadas' ? _pgmMassadasB(b) : (+b[campo]||0);
+  // ⚠️ no CORTE a seta vai para o INTEIRO seguinte: o campo do tempo por massada pode ter deixado o cpm
+  // quebrado (79,03) e somar 1 daria 80,03. Nos outros campos é soma simples.
+  const bruto = campo==='cortes' ? (dir>0?Math.floor(atual)+1:Math.ceil(atual)-1) : atual + dir*S.passo;
+  const v = +Math.min(S.max, Math.max(S.min, bruto)).toFixed(S.dec);
   b[campo]=v;
-  _pgmMassada=null;                      // mesma regra do _pgmSetLive: mexeu no ritmo, a simulação cai
-  _pgmSetBlocos(arr);                    // AÇÃO — é aqui que grava (nunca no render)
-  const el=document.getElementById('pgm-in-'+campo); if(el) el.value=v;
-  _pgmRefresh();
+  if(campo==='massadas') delete b.horas;   // bloco antigo guardava horas; massadas mandam agora
+  _pgmSetBlocos(arr);                      // AÇÃO — é aqui que grava (nunca no render)
+  renderPCPDia();
 }
-// volta o bloco selecionado ao trio do padrão. Só aparece quando ele está fora dele.
+// ⭐⭐ TEMPO POR MASSADA com setas de 1 SEGUNDO (Diego, 25/09). ⚠️ O que a seta muda é o RITMO DO CORTE,
+// não um campo próprio do ciclo — e isso não é rodeio, é o que sustenta as duas contas da tela:
+//   tempo do bloco  = massadas × (kg ÷ consumo do corte)
+//   pacotes do bloco = massadas × kg × rendimento
+// Elas só batem porque o ciclo é DERIVADO do corte. Um ciclo solto faria o mesmo bloco durar mais e, como
+// os pacotes são integrados no tempo, render mais pacotes com a mesma massa — fisicamente errado.
+// ⚠️ Por isso o cpm passou a aceitar 2 CASAS: 1 segundo de ciclo vale ~0,2 de cpm, e arredondar para
+// inteiro faria a seta não sair do lugar.
+function _pgmCpmPara(b, seg){ const B=_pgmBase(b.base), kg=_pgmMassadaKg(), cru=_pgmCru(b);
+  return (seg>0 && B.bpc && cru) ? kg*60000/(seg*B.bpc*cru) : 0; }
+function _pgmSetCiclo(seg){
+  const arr=_pgmBlocos().slice(), b=arr[_pgmSel]; if(!b) return renderPCPDia();
+  const alvo=Math.min(3600, Math.max(30, Math.round(seg||0)));
+  const cpm=+_pgmCpmPara(b,alvo).toFixed(2);
+  if(!(cpm>0)) return renderPCPDia();
+  b.cortes=+Math.min(200,Math.max(1,cpm)).toFixed(2);
+  _pgmSetBlocos(arr); renderPCPDia();
+}
+function _pgmStepCiclo(dir){ const b=_pgmBlocos()[_pgmSel]; if(!b) return;
+  _pgmSetCiclo(Math.round(_pgmMassadaCalc(b)) + dir); }
+// aceita "7min02" (o que a tela escreve), "7:02", "7 02", "7min" e segundos puros
+function _pgmParseMS(v){ const s=String(v||'').trim().toLowerCase();
+  let m=s.match(/^(\d+)\s*(?:min|m|:)?\s*(\d{1,2})$/);
+  if(m) return (+m[1])*60+(+m[2]);
+  m=s.match(/^(\d+)\s*(?:min|m)$/); if(m) return (+m[1])*60;
+  m=s.match(/^(\d+)$/); if(m) return +m[1];
+  return null; }
+function _pgmCicloInput(el){ const seg=_pgmParseMS(el.value);
+  if(seg==null) return renderPCPDia();    // não entendeu: volta a mostrar o valor de verdade
+  _pgmSetCiclo(seg); }
+// volta o bloco selecionado ao padrão — ritmo, gramas e cobertura. Só aparece quando ele está fora dele.
 function _pgmCorteReset(){
   const arr=_pgmBlocos().slice(), b=arr[_pgmSel], P=_pgmL().padrao||{}; if(!b) return;
-  b.cortes=_pgmCpmPadrao(b); b.cru=P.cru; _pgmMassada=null;
+  b.cortes=_pgmCpmPadrao(b); b.cru=P.cru; b.cob=_pgmBase(b.base).cob;
   _pgmSetBlocos(arr); renderPCPDia();
 }
 function _pgmRefresh(semEmb){
   const tl=document.getElementById('pgm-tl'); if(tl) tl.innerHTML=_pgmTimelineHTML();
   const out=document.getElementById('pgm-out'); if(out) out.innerHTML=_pgmResultadoHTML();
   const tot=document.getElementById('pgm-dia-res'); if(tot) tot.innerHTML=_pgmDiaResHTML();
-  const ms=document.getElementById('pgm-mass-out'); if(ms) ms.innerHTML=_pgmMassadaResumoHTML();
+  const cb=document.getElementById('pgm-cob-out'); if(cb) cb.innerHTML=_pgmCobResumoHTML();
   const em=document.getElementById('pgm-emb'); if(em && !semEmb) em.innerHTML=_pgmEmbHTML();
-  // ⚠️ o tempo da massada é CALCULADO: mudar o peso ou o ritmo do corte tem que mexer no número grande
-  // e no cursor também, senão eles ficam mostrando o valor de antes.
-  const mv=document.getElementById('pgm-mass-v'), seg=_pgmMassadaSeg();
-  if(mv) mv.textContent=_pgmMS(seg);
-  const mr=document.querySelector('#pgm-mass-v ~ .pgm-rg'); if(mr && _pgmMassada==null) mr.value=Math.round(seg);
+  // ⚠️ o tempo da massada é CALCULADO do ritmo do corte: digitar cortes/min ou gramas tem que mexer no
+  // campo do ciclo também, senão ele fica mostrando o valor de antes.
+  const mv=document.getElementById('pgm-in-ciclo'), bb=_pgmBlocos()[_pgmSel];
+  if(mv && bb) mv.value=_pgmMS(_pgmMassadaCalc(bb));
 }
 // ⚠️ os dois GRAVAM, então passam por _pgmSetBlocos: `_pgmBlocos()` devolve um array NOVO quando o dia
 // ainda não existe no plano, e um push nele se perderia.
@@ -12466,9 +12511,9 @@ function _pgmMassadaCalc(b){ const kg=_pgmMassadaKg(), c=_pgmConsumo(b); return 
 // exatamente o que se mexeu — que era o pedido ("aumentei o corte em 1, dá tanto").
 // ⚠️ E as duas usam as MESMAS embaladoras (a 1ª janela): o mix decide o peso médio do biscoito, então
 // trocá-lo no meio da comparação sujaria a conta com algo que não está sendo comparado.
-function _pgmPot(base, cortes, cru){
+function _pgmPot(base, cortes, cru, cob){
   const L=_pgmL(); if(!L.bases) return null;
-  const B=_pgmBase(base), b={base:base, cortes:cortes, cru:cru};
+  const B=_pgmBase(base), b={base:base, cortes:cortes, cru:cru, cob:(cob==null?B.cob:cob)};
   const ciclo=_pgmMassadaCalc(b);                        // segundos de uma massada nesse ritmo
   if(!(ciclo>0)) return null;
   const n=Math.floor(L.horas*3600/ciclo);                // massadas CHEIAS que cabem no turno
@@ -12487,8 +12532,12 @@ function _pgmSetMassada(el){ _pgmMassada=+el.value;
   const v=document.getElementById('pgm-mass-v'); if(v) v.textContent=_pgmMS(_pgmMassada);
   const r=document.getElementById('pgm-mass-out'); if(r) r.innerHTML=_pgmMassadaResumoHTML(); }
 function _pgmMassadaReset(){ _pgmMassada=null; renderPCPDia(); }
-// ⭐ Tudo se compara com o PADRÃO (o trio da Valesca). "Agora" é o dia como está montado; o cursor
-// simula um ciclo diferente por cima. As duas diferenças aparecem em massadas E em pacotes.
+// ⚠️⚠️ [SUPERSEDED 25/09] A CAIXA DE INFORMAÇÕES DA MASSADA SAIU a pedido do Diego — a coluna virou dois
+// campos com setas (tempo e massadas), e a comparação com o padrão já vive no cartão "Resultado do dia".
+// Com ela saíram o cursor e a simulação `_pgmMassada`: **`_pgmSetMassada`, `_pgmMassadaReset`,
+// `_pgmMassadaFator` e `_pgmMassadaSeg` ficaram sem chamador**. Mantidos de propósito — é aqui que moram
+// as MEDIÇÕES REAIS por CPM (`L.hist`), que são o único confronto do modelo com o chão de fábrica e
+// provavelmente voltam noutro formato. Religar é repor o `<div id="pgm-mass-out">` na coluna.
 function _pgmMassadaResumoHTML(){
   const bs=_pgmBlocos(), sel=bs[_pgmSel], L=_pgmL(), P=L.padrao||{};
   if(!bs.length||!sel) return `<div class="pgm-sku">Sem bloco no dia para simular.</div>`;
@@ -12640,7 +12689,7 @@ function _pgmDiaResHTML(){
   const L=_pgmL(), bs=_pgmBlocos(), sel=bs[_pgmSel]||bs[0], P=L.padrao||{};
   const basePad=sel?sel.base:(L.bases?L.bases[0].id:null);
   const pad=basePad?_pgmPot(basePad, _pgmCpmPadrao({base:basePad}), P.cru):null;
-  const ago=sel?_pgmPot(sel.base, +sel.cortes||0, _pgmCru(sel)):null;
+  const ago=sel?_pgmPot(sel.base, +sel.cortes||0, _pgmCru(sel), _pgmCob(sel)):null;
   // ⚠️ verde = mais produção, vermelho = menos. No TURNO a cor não entra: ocupar mais do turno não é
   // pior nem melhor, é consequência de caber mais massada — quem julga o turno é a barra do rodapé.
   // ⚠️ a diferença sai dos valores ARREDONDADOS, os mesmos que estão na tela. Subtraindo os brutos,
@@ -12660,7 +12709,7 @@ function _pgmDiaResHTML(){
   // 3 linhas e obrigava a pessoa a ligar "Padrão" lá embaixo com a coluna aqui em cima.
   const cmp=`<table class="pgm-cmp"><tr><th></th>
       <th>Padrão<i>${_pgmMS(P.massadaSeg||0)} · ${_pgmN(_pgmCpmPadrao({base:basePad}))} cpm · ${_pgmN(P.cru,2)} g</i></th>
-      <th>Agora<i>${ago?`${_pgmMS(ago.ciclo)} · ${_pgmN(sel.cortes)} cpm · ${_pgmN(_pgmCru(sel),2)} g`:'—'}</i></th>
+      <th>Agora<i>${ago?`${_pgmMS(ago.ciclo)} · ${_pgmCpmTxt(sel.cortes)} cpm · ${_pgmN(_pgmCru(sel),2)} g`:'—'}</i></th>
       <th>Dif.</th></tr>
       ${lin('Pacotes', pad?pad.pac:null, ago?ago.pac:null)}
       ${lin('Massadas', pad?pad.n:null, ago?ago.n:null)}
@@ -12709,6 +12758,18 @@ function _pgmEditorHTML(){
         <button type="button" onmousedown="event.preventDefault()" onclick="_pgmStep('${campo_}',1)" title="+${S.passo}"><i class="ti ti-chevron-up"></i></button>
         <button type="button" onmousedown="event.preventDefault()" onclick="_pgmStep('${campo_}',-1)" title="−${S.passo}"><i class="ti ti-chevron-down"></i></button>
       </span></div></label>`; };
+  // variante de TEXTO (o tempo por massada sai como "7min02", que não cabe num type=number).
+  // ⚠️ Só grava no `change`: no `input` o texto passa por estados incompletos ("7mi") a cada tecla.
+  const campoT=(lab,dica,id,val,tit)=>`<label class="pgm-f"><span>${lab}${dica?`<i>${dica}</i>`:''}</span>
+    <div class="pgm-step">
+      <input type="text" id="pgm-in-${id}" class="pgm-inp" value="${escapeAttr(val)}" ${tit?`title="${escapeAttr(tit)}"`:''}
+        onchange="_pgmCicloInput(this)">
+      <span class="pgm-sarr">
+        <button type="button" onmousedown="event.preventDefault()" onclick="_pgmStepCiclo(1)" title="+1 segundo"><i class="ti ti-chevron-up"></i></button>
+        <button type="button" onmousedown="event.preventDefault()" onclick="_pgmStepCiclo(-1)" title="−1 segundo"><i class="ti ti-chevron-down"></i></button>
+      </span></div></label>`;
+  // o potencial do dia no ritmo PADRÃO — é dele que sai o "padrão N" em cima do campo de massadas
+  const potP=_pgmPot(b.base, _pgmCpmPadrao(b), P.cru);
   // ⚠️ hora é type=time (relógio nativo) e só grava no CHANGE — o `input` dispara com a hora ainda pela
   // metade ("1:") e reescreveria o bloco a cada tecla. Os dois ficam na MESMA célula da grade: são um par,
   // e separá-los somava uma 3ª linha de campos à coluna do Corte.
@@ -12748,10 +12809,19 @@ function _pgmEditorHTML(){
       <div id="pgm-out">${_pgmResultadoHTML()}</div>
     </div>
     <div class="pgm-col">
-      <div class="pgm-sec">Massada<span>${_pgmMassada!=null?`<b class="lnk" onclick="_pgmMassadaReset()">voltar ao padrão</b>`:'o ciclo que alimenta o corte'}</span></div>
-      <div id="pgm-mass-v" class="pgm-massv">${_pgmMS(_pgmMassadaSeg())}</div>
-      <input type="range" class="pgm-rg" min="180" max="900" step="5" value="${Math.round(_pgmMassadaSeg())}" oninput="_pgmSetMassada(this)">
-      <div id="pgm-mass-out">${_pgmMassadaResumoHTML()}</div>
+      <div class="pgm-sec">Massada<span>o ciclo que alimenta o corte</span></div>
+      <div class="pgm-campos">
+        ${campoT('Tempo por massada','padrão '+_pgmMS(P.massadaSeg||0),'ciclo',_pgmMS(_pgmMassadaCalc(b)),
+                 'As setas andam de 1 em 1 segundo. Quem muda é o ritmo do corte — o ciclo é o rendimento da massada dividido pelo que o corte consome.')}
+        ${campoS('Massadas', potP?'padrão '+_pgmN(potP.n):'', 'massadas', _pgmMassadasB(b),
+                 potP?`No ritmo padrão cabem ${_pgmN(potP.n)} massadas no turno de ${_pgmHhmm(L.horas)}`:'')}
+      </div>
+      <div class="pgm-sec" style="margin-top:6px">Cobertura<span>o banho que muda o peso do biscoito</span></div>
+      <div class="pgm-campos">
+        ${campoS('Cobertura (%)','padrão '+_pgmN(B.cob),'cob',_pgmCob(b),
+                 'Quanto o biscoito ganha de peso no banho. Mais cobertura = biscoito mais pesado = mais pacotes de '+_pgmN(B.gPac)+' g com os mesmos biscoitos.')}
+      </div>
+      <div id="pgm-cob-out">${_pgmCobResumoHTML()}</div>
     </div>
     <div class="pgm-col">
       <div class="pgm-sec">Embalagem<span>quem embala o quê, e para quem</span></div>
@@ -12781,20 +12851,19 @@ function _pgmEmbHTML(){
   const linhas=es.map(e=>{
     const dest=_PGM_DEST.map(d=>`<option value="${d.id}"${d.id===e.sku?' selected':''}>${escapeHTML(d.nome)}</option>`).join('');
     const fmts=_PGM_FMT.map(x=>`<option value="${x.id}"${x.id===e.fmt?' selected':''}>${escapeHTML(x.nome)}</option>`).join('');
-    const terc=_pgmFmt(e.fmt).terc;
     return `<tr class="${e.on?'':'off'}">
       <td><input type="checkbox" class="pgm-ck"${e.on?' checked':''} onchange="_pgmSetEmb(${e.i},'on',this)" title="${e.on?'Parar esta embaladora':'Ligar esta embaladora'}"></td>
       <td class="nm">${escapeHTML(e.nome)}</td>
       <td><select class="pgm-inp mini" oninput="_pgmSetEmb(${e.i},'fmt',this)">${fmts}</select></td>
-      <td>${terc?`<input class="pgm-inp mini" value="${escapeAttr(e.cli)}" oninput="_pgmSetEmb(${e.i},'cli',this)" onchange="renderPCPDia()" placeholder="qual cliente">`
-                 :`<span class="marca">—</span>`}</td>
       <td><select class="pgm-inp mini" oninput="_pgmSetEmb(${e.i},'sku',this)" onchange="renderPCPDia()">${dest}</select></td>
-      <td><input type="number" class="pgm-inp num" value="${e.nom}" min="1" max="200" oninput="_pgmSetEmb(${e.i},'nom',this)" onchange="renderPCPDia()"></td>
       <td><input type="number" class="pgm-inp num" value="${e.real}" min="1" max="200" oninput="_pgmSetEmb(${e.i},'real',this)" onchange="renderPCPDia()"></td>
       <td class="qt">${e.on?_pgmN(TT.porMaq[e.i]):'—'}</td></tr>`;
   }).join('');
   return `<div class="pgm-janbar">${chips}${horaJan}</div>
-    <table class="pgm-emb"><thead><tr><th></th><th></th><th>Embala</th><th>Cliente</th><th>Cobertura</th><th title="velocidade nominal">Nom.</th><th title="velocidade real">Real</th><th title="no dia inteiro">Pacotes</th></tr></thead><tbody>${linhas}</tbody></table>
+    <!-- CLIENTE e NOM. sairam a pedido do Diego (25/09). Os campos CONTINUAM no modelo: o cliente ainda
+         aparece no tooltip da barra da linha do tempo, e a velocidade nominal nunca entrou em conta
+         nenhuma - quem manda no calculo e a REAL. Repor e devolver as duas colunas aqui e no cabecalho. -->
+    <table class="pgm-emb"><thead><tr><th></th><th></th><th>Embala</th><th>Cobertura</th><th title="velocidade real">Real</th><th title="no dia inteiro">Pacotes</th></tr></thead><tbody>${linhas}</tbody></table>
     <div class="pgm-sku">Nesta troca: ${_pgmN(c.cap)} pac/min ligados · o corte entrega ${_pgmN(c.pacMin)}${TT.falta?` — <b style="color:var(--danger)">falta embaladora</b>`:''}<br>
       No dia: ${_PGM_DEST.filter(d=>TT.porDest[d.id]>0).map(d=>d.nome+' '+_pgmN(TT.porDest[d.id])).join(' · ')||'nenhuma embaladora ligada'}</div>`;
 }
@@ -12809,6 +12878,21 @@ function _pgmResultadoHTML(){
     ${ln('Saída do corte', _pgmN(c.bisc)+' bisc/min')}
     ${ln('Dá para', _pgmN(c.pacMin)+' pacotes/min')}
     ${ln('Massa crua', _pgmN(c.massaMin*60*_pgmHorasB(b))+' kg no bloco')}
+  </div>`;
+}
+// ⭐ O QUE A % DE COBERTURA FAZ — sem isso o campo seria um número sem consequência visível.
+// ⚠️ O consumo de cobertura só conta o que PASSA por cobrideira: a fração do mix que vai para o leite e
+// para a branca. O "sem cobertura" sai no peso assado e não gasta chocolate.
+function _pgmCobResumoHTML(){
+  const b=_pgmBlocos()[_pgmSel]; if(!b) return '';
+  const c=_pgmCalc(b, _pgmMaq(_pgmJanelaEm(_pgmInicio(_pgmSel))));
+  const fCob=_PGM_DEST.reduce((s,d)=>s+(d.cob?(c.mix[d.id]||0):0),0);   // fração coberta do mix
+  const kgH=c.bisc*(c.coberto-c.assado)*fCob*60/1000;                    // cobertura consumida por hora
+  const ln=(a,v)=>`<div class="pgm-r"><span>${a}</span><b>${v}</b></div>`;
+  return `<div class="pgm-out">
+    ${ln('Biscoito', _pgmN(c.assado,2)+' g → '+_pgmN(c.coberto,2)+' g')}
+    ${ln('Cobertura', _pgmN(kgH,1)+' kg/h'+(fCob<0.999?` <i style="font-style:normal;font-weight:400;color:var(--text3)">(${_pgmN(fCob*100)}% do mix)</i>`:''))}
+    ${ln('No bloco', _pgmN(kgH*_pgmHorasB(b),0)+' kg de cobertura')}
   </div>`;
 }
 function _pgmCSS(){ return `<style>
@@ -12915,7 +12999,7 @@ function _pgmCSS(){ return `<style>
   .pgm-sarr i{font-size:11px}
   .pgm-inp[type=number]{-moz-appearance:textfield}
   .pgm-inp[type=number]::-webkit-outer-spin-button,.pgm-inp[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-  .pgm-rg{width:100%;accent-color:var(--blue-mid)}
+  .pgm-rg{width:100%;accent-color:var(--blue-mid)}   /* sem uso desde 25/09: o cursor da massada saiu */
   .pgm-out{background:var(--bg2);border-radius:9px;padding:9px 11px}
   .pgm-r{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:10.5px;color:var(--text3);margin-bottom:2px}
   .pgm-r b{font-size:12px;color:var(--text);font-weight:700;white-space:nowrap}
@@ -12967,7 +13051,7 @@ function _pgmCSS(){ return `<style>
   .pgm-mt-l>em{font-style:normal;font-size:11.5px;color:var(--text2)}
   .pgm-montado .pgm-barra{margin-top:6px}
   .pgm-montado .pgm-res-al,.pgm-montado .pgm-res-ok{margin-top:5px}
-  .pgm-massv{font-size:15px;font-weight:800;letter-spacing:-.015em;color:var(--text);line-height:1.2}
+  .pgm-massv{font-size:15px;font-weight:800;letter-spacing:-.015em;color:var(--text);line-height:1.2}   /* idem: era o numero grande do ciclo */
   /* navegação semana › dia › linha */
   .pgm-nav{margin-bottom:10px}
   .pgm-sem{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
