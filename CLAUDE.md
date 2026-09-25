@@ -422,6 +422,22 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-25 (k) — PC da Empresa — PCP: o **Zerar** vira o único reset, e **acende** quando algo mudou (`1fbefeb3`, `c6a6e533`)
+- **Saiu o "voltar ao padrão" da seção Corte**: *"não precisa mais, pois tem o ZERAR"*. Dois botões de reset com
+  escopos diferentes na mesma tela confundiam mais do que ajudavam. ⚠️ `_pgmCorteReset` ficou **sem chamador**,
+  mantido de propósito — é o reset FINO (só o bloco selecionado), que volta a fazer falta quando a tela tiver
+  vários blocos de verdade.
+- ⭐ **O Zerar fica CINZA no padrão e ACENDE no acento quando algo mudou.** A régua é honesta: *"mudou" = o Zerar
+  faria alguma diferença*, então `_pgmNoPadrao()` compara **tudo o que ele reescreve** — nº de blocos, base, o trio
+  do bloco, massadas, espera, setup e a configuração das 4 embaladoras. **Basta uma embaladora desligada** para acender.
+- ⚠️ **O botão mora no cabeçalho do cartão, que o `_pgmRefresh` NÃO repinta.** Sem atualizar a classe lá dentro,
+  digitar num campo (caminho que só passa pelo refresh) não mudaria a cor até o próximo render completo.
+- Testado em Edge headless: acende com cpm, cobertura, massadas, embaladora desligada e bloco a mais, e volta a
+  cinza a cada Zerar — inclusive pelo caminho do `oninput`. 0 erros de JS.
+- **Espaçamento do editor** (`c6a6e533`): a embalagem estava em `1.35fr`, largura de quando a tabela ainda tinha
+  Cliente e Nom. → **1.05fr**, e o gap entre as 3 colunas de **16 → 28px**. Medido em viewport de 1580: colunas de
+  **372 / 372 / 390** (a embalagem era ~640), sem texto cortado e sem rolagem horizontal.
+
 ### 2026-09-25 (j) — PC da Empresa — PCP: botão **Zerar** devolve a simulação inteira ao padrão (`776040a7`)
 Pedido do Diego: *"poderia ter um botão de zerar, ou seja, voltar para o padrão"*. Fica no cabeçalho do cartão da
 linha do tempo, antes do "salva sozinho".
