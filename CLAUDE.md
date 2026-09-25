@@ -422,6 +422,18 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-25 (n) — PC da Empresa — PCP: trilhas distribuídas no cartão · some a linha solta da tabela (`db6e02dd`)
+- ⭐ **As trilhas se espalham na altura do cartão.** Elas ficavam empilhadas no topo com **~100px de vão morto**
+  embaixo: o cartão da linha do tempo é **esticado pelo cartão do Resultado ao lado** (`align-items:stretch`), mas
+  o conteúdo dele não acompanhava. Agora `.pgm-card-tl` e `.pgm-tlbox` são **colunas flex** e cada `.pgm-tr` é
+  `flex:1` com mínimo de 22px — os vãos crescem juntos em vez de sobrar no fim.
+  ⚠️ A **régua leva `.fixa` (`flex:none`)**: crescendo junto, o traço de cada hora descolaria dos números.
+  Medido: vão morto de **100 → 12px**, trilhas de 24 → 34px.
+- 🐞 **O separador da tabela era uma `<tr>` vazia com borda** e aparecia como uma **faixa solta** entre Cobertura e
+  Pacotes (o Diego circulou no print). Agora não há linha própria: a última do 1º grupo **escurece a borda que já
+  tinha** (`tr.gfim`) e a 1ª do 2º ganha respiro (`tr.gini`). Uma linha em vez de duas.
+- Página em **1066px** (era 1091). 0 erros de JS.
+
 ### ⭐⭐ 2026-09-25 (m) — PC da Empresa — PCP: a linha do tempo vira **PONTO → LINHA → PONTO** · tabela completa · horário na Cobertura (`1c75150d`)
 
 #### ⭐⭐ AS BARRAS VIRARAM TRAÇO COM DOIS PONTOS
