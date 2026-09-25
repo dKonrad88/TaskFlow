@@ -12570,7 +12570,8 @@ function _pgmPot(base, cortes, cru, cob){
   const horas=n*ciclo/3600;
   const c=_pgmCalc(b, _pgmMaq(0));
   const pac=c.pacMin*horas*60;
-  return { ciclo:ciclo, n:n, horas:horas, pac:pac, cx:(B.pacCx>0?pac/B.pacCx:null), pacCx:B.pacCx||0 };
+  return { ciclo:ciclo, n:n, horas:horas, pac:pac, cx:(B.pacCx>0?pac/B.pacCx:null), pacCx:B.pacCx||0,
+    biscH:c.bisc*60, biscDia:c.bisc*horas*60 };   // o que o CORTE entrega, por hora e no dia todo
 }
 function _pgmMassadaSeg(){ const b=_pgmBlocos()[_pgmSel];
   return _pgmMassada!=null ? _pgmMassada : (b?_pgmMassadaCalc(b):0); }
@@ -12781,11 +12782,12 @@ function _pgmDiaResHTML(){
       ${linG('Cortes/min', _pgmCpmPadrao({base:basePad}), sel?(+sel.cortes||0):null, _pgmCpmTxt)}
       ${linG('Biscoito cru', P.cru, sel?_pgmCru(sel):null, cru)}
       ${linG('Cobertura', cobP, sel?_pgmCob(sel):null, pct).replace('<tr>','<tr class="gfim">')}
-      ${lin('Pacotes', pad?pad.pac:null, ago?ago.pac:null).replace('<tr>','<tr class="gini">')}
+      ${lin('Biscoitos/h', pad?pad.biscH:null, ago?ago.biscH:null).replace('<tr>','<tr class="gini">')}
+      ${lin('Biscoitos no dia', pad?pad.biscDia:null, ago?ago.biscDia:null)}
+      ${lin('Pacotes', pad?pad.pac:null, ago?ago.pac:null)}
       ${lin('Massadas', pad?pad.n:null, ago?ago.n:null)}
       ${lin('Caixas', pad?pad.cx:null, ago?ago.cx:null)}
-      ${linT()}</table>
-    <div class="pgm-cmp-nota">turno cheio de ${_pgmHhmm(L.horas)}${pad&&pad.pacCx?` · ${pad.pacCx} pacotes por caixa`:''}</div>`;
+      ${linT()}</table>`;
   return `${cmp}<div class="pgm-montado"><span>No dia montado</span>${_pgmMontadoHTML()}</div>`;
 }
 // ⭐ O DIA MONTADO é o rodapé do cartão: a comparação diz o que o RITMO pode entregar, ele diz o que o
@@ -13157,7 +13159,7 @@ function _pgmCSS(){ return `<style>
   .pgm-cmp td.d{font-weight:700;font-size:11.5px;color:var(--text3);width:64px}
   .pgm-cmp th:nth-child(2),.pgm-cmp td:nth-child(2),
   .pgm-cmp th:nth-child(3),.pgm-cmp td:nth-child(3){padding-right:10px}
-  .pgm-cmp-nota{font-size:9.5px;color:var(--text3);line-height:1.55;margin-top:8px}
+  .pgm-cmp-nota{font-size:9.5px;color:var(--text3);line-height:1.55;margin-top:8px}   /* sem uso desde 25/09: a frase "turno cheio de..." saiu a pedido do Diego */
   .pgm-cmp-nota b{font-weight:700;color:var(--text2)}
   .pgm-montado{margin-top:11px;padding-top:9px;border-top:1px solid var(--border)}
   .pgm-montado>span{display:block;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:3px}
