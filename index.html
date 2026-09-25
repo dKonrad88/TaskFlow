@@ -13496,6 +13496,11 @@ let _ddvFiltro='';            // '' | 'ruptura' | 'atencao' | 'folga' | 'produzi
 // massadas · caminho). São as duas leituras da mesma linha: quanto vende × quanto fazer. Alternar
 // em vez de somar mantém a tabela na mesma largura — com as duas juntas seriam 16 colunas.
 // ⚠️ A produção só aparece para produto com cadastro de engenharia (_regEng); o resto mostra "—".
+// ⚠️⚠️ [DORMENTE 25/09] O Diego mandou tirar o botão "Ver produção", então `_ddvVer` fica preso em
+// 'medias' e o modo produção não tem mais como ser ligado. O CÁLCULO CONTINUA INTEIRO (`_ddvProd`, as 3
+// colunas, o resumo em massadas e a ordenação por `produzir`/`massadas`) — religar é repor o botão.
+// ⚠️ E é por isso que o valor salvo NÃO é mais restaurado (ver `_ddvLoad`): quem tivesse 'producao'
+// gravado abriria preso no modo, sem botão para sair. É a mesma armadilha do allView/reunView.
 let _ddvVer='medias';   // 'medias' | 'producao'
 const _ddvMedias=true;
 let _ddvGraf='';              // código do produto com o gráfico aberto ('' = faixa recolhida)
@@ -13839,7 +13844,7 @@ function _ddvLoad(){
   if(_DDV_FILTROS.indexOf(o.filtro)>=0) _ddvFiltro=o.filtro;
   if(o.sort && _DDV_SC[o.sort.campo]) _ddvSort={campo:o.sort.campo, dir:o.sort.dir<0?-1:1};
   if(typeof o.graf==='string') _ddvGraf=o.graf;   // some sozinho se o alvo não existir mais (_ddvGrafAlvo devolve null)
-  if(o.ver==='producao'||o.ver==='medias') _ddvVer=o.ver;
+  // `o.ver` é ignorado de propósito desde 25/09 — ver o comentário na declaração de _ddvVer
   if(o.per && typeof o.per==='object') ['ini','fim','m2ini','m2fim'].forEach(k=>{ if(typeof o.per[k]==='string') _ddvPer[k]=o.per[k]; });
   if(Array.isArray(o.fechadas)){ const nomes={}; _DDV_LINHAS.forEach(L=>{ nomes[L[0]]=1; });
     o.fechadas.forEach(n=>{ if(nomes[n]) _ddvFechadas[n]=1; }); }
@@ -14189,8 +14194,7 @@ function _ddvTabelaHTML(){
     resProd=` · <b>${_cpNum(nq,0)} a produzir · ${_cpNum(mt,0)} massadas · ${_cpNum(ht,1)}h de forno</b>`; }
   return `<div class="ddv-bar">
       <span class="t">${_cpNum(nProd)} produtos · ${_cpNum(linhas.length)} linhas${resProd}</span>
-      <button class="ddv-link${prod?' on':''}" onclick="_ddvSetVer('${prod?'medias':'producao'}')" style="margin-left:auto" title="${prod?'Voltar para as médias de venda':'Trocar as 4 médias pela faixa de produção'}"><i class="ti ti-${prod?'chart-line':'building-factory-2'}" style="font-size:12px;vertical-align:-1px"></i> ${prod?'Ver médias':'Ver produção'}</button>
-      <button class="ddv-link" onclick="_ddvTodasLinhas(${fechadas?0:1})"><i class="ti ti-${fechadas?'chevrons-down':'chevrons-up'}" style="font-size:12px;vertical-align:-1px"></i> ${fechadas?'Abrir todas':'Recolher todas'}</button>
+      <button class="ddv-link" style="margin-left:auto" onclick="_ddvTodasLinhas(${fechadas?0:1})"><i class="ti ti-${fechadas?'chevrons-down':'chevrons-up'}" style="font-size:12px;vertical-align:-1px"></i> ${fechadas?'Abrir todas':'Recolher todas'}</button>
     </div>
     <div class="ddv-hstrip"><table class="ddv-tbl"><colgroup>${cols}</colgroup><thead>${grupos}${colunas}</thead></table></div>
     ${cards}`;
