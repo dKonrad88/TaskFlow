@@ -422,6 +422,66 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐⭐ 2026-09-25 (i) — PC da Empresa — PCP: MASSADA em 2 campos · nova seção COBERTURA · Embalagem enxuta (`d3e864ff`) + sai o "Ver produção" da Cobertura (`73400ff5`)
+Quatro pedidos do Diego na mesma leva, três no editor do bloco e um na Cobertura.
+
+#### ⭐⭐ MASSADA — o tempo virou campo com setas, e ele mexe no CORTE
+*"Vamos deixar essa parte do tempo por massada igual cortes por minuto, com as flechas, e a ideia é mudar nos
+segundos: 7min02 quando sobe vai para 7min03. E também um quadrado que traga massadas nesse formato, 1 por vez.
+Daí traz em cima de massadas o padrão e em cima de tempo também o padrão. A caixa embaixo pode tirar toda ela."*
+- Saíram **o número grande, o cursor e a caixa de informações**. Entraram **dois campos com setas**: *Tempo por
+  massada* (1 em 1 **segundo**, `_pgmStepCiclo`) e *Massadas* (1 em 1), cada um com o padrão na dica
+  (**8min06** e **74**, este vindo do `_pgmPot` = quantas cabem no turno no ritmo padrão).
+- ⚠️⚠️ **A seta do tempo mexe no RITMO DO CORTE, não num campo próprio do ciclo.** Não é rodeio — é o que
+  sustenta as duas contas da tela:
+  `tempo do bloco = massadas × (kg ÷ consumo do corte)` e `pacotes = massadas × kg × rendimento`.
+  As duas só batem porque o ciclo é **derivado**. Um ciclo solto faria o mesmo bloco durar mais e, como os
+  pacotes são integrados no tempo, **render mais pacotes com a mesma massa** — fisicamente errado.
+- ⚠️ Por isso **o cpm passou a aceitar 2 casas**: 1 segundo de ciclo vale ~0,2 de cpm, e arredondar para inteiro
+  faria a seta não sair do lugar. A seta do **próprio cpm** vai para o **inteiro seguinte** (79,03 ↑ → 80, não
+  80,03), e o cartão do dia mostra as casas quando existem (`_pgmCpmTxt`) — arredondado, "74,69" virava "75" e a
+  comparação parecia igual ao padrão com o ciclo diferente.
+- O campo aceita digitar: **`7min02` · `7:02` · `7 02` · `7min` · segundos puros** (`_pgmParseMS`); o que não
+  entender volta a mostrar o valor de verdade.
+- ⚠️ **[SUPERSEDED]** Com a caixa saíram `_pgmSetMassada`, `_pgmMassadaReset`, `_pgmMassadaFator` e
+  `_pgmMassadaSeg` (sem chamador), mais o CSS `.pgm-rg`/`.pgm-massv`. **Mantidos**: é lá que moram as
+  **medições reais por CPM** (`L.hist`), o único confronto do modelo com o chão de fábrica.
+
+#### ⭐ NOVA SEÇÃO COBERTURA (`%` por bloco, padrão 34)
+*"Quero ter algumas informações, como qual o % de cobertura que queremos, pois isso pode dar mais ou menos
+produção também; o padrão é 34%."*
+- `_pgmCob(b)` — override por bloco, cai no da base quando ninguém mexeu (mesmo padrão do `cru`). Entra no
+  `_pgmCalc`: **mais cobertura = biscoito mais pesado = MAIS pacotes de 250 g** com os mesmos biscoitos saindo do
+  corte. Conferido: 34% → 43.805 pacotes, 33% → 43.478 (**−327**).
+- Abaixo do campo, **o que a % faz**: peso assado → coberto, **kg/h de cobertura consumida** e o total do bloco.
+  ⚠️ O consumo conta **só o que passa por cobrideira** (a fração coberta do mix) — o "sem cobertura" sai no peso
+  assado e não gasta chocolate.
+- A seção fica na coluna da Massada, **não** no lugar do mix: o mix (para onde cada embaladora aponta) segue
+  derivado das embaladoras. São coisas diferentes — a receita × o destino.
+
+#### Embalagem: saíram **Cliente** e **Nom.**
+Os campos **continuam no modelo**: a velocidade nominal nunca entrou em conta nenhuma (quem manda é a **real**) e
+o cliente ainda aparece no tooltip da barra. ⚠️ Sem a coluna, a barra passou a mostrar **só o formato** em vez de
+"sem cliente" — cobrar um campo que a tela não oferece mais. Repor é devolver as 2 colunas no `<thead>` e no `<tr>`.
+
+#### Cobertura (a outra tela): sai o botão "Ver produção" (`73400ff5`)
+O cálculo continua inteiro (`_ddvProd`, as 3 colunas, o resumo em massadas, a ordenação) — religar é repor o botão.
+- ⚠️ **O valor salvo deixou de ser restaurado** (`o.ver` ignorado no `_ddvLoad`): quem tivesse `'producao'` gravado
+  abriria **preso no modo, sem botão para sair**. É a mesma armadilha do `allView` (Kanban) e do `reunView` (Mural),
+  que já custou caro duas vezes. Testado semeando o estado ruim no storage: abre nas médias, 13 colunas.
+
+#### 🐞 Três bugs pegos no teste
+1. **A seta da cobertura levava 34% para 1%** — lia `b.cob` (undefined) em vez do helper `_pgmCob`.
+2. **O cartão do dia ignorava a cobertura do bloco** — `_pgmPot` não recebia o parâmetro, então a coluna "Agora"
+   calculava sempre com os 34% da base.
+3. 🐞🐞 **CAÍ NA ARMADILHA DA CRASE DE NOVO** — crase em comentário dentro do template literal do `_pgmEmbHTML`, e
+   **o arquivo inteiro parou de carregar**. ⚠️ Desta vez o sintoma no harness foi **o teste não passar da primeira
+   linha** (nem o `setProducaoView` existia). A checagem continua a mesma: **nunca crase em comentário dentro de
+   template literal** — nem em comentário HTML.
+- Testado em Edge headless, 0 erros de JS: as setas dos 4 campos, digitar o ciclo nos 4 formatos + lixo, clamp nos
+  limites, "voltar ao padrão" cobrindo também a cobertura, a cobertura mexendo nos pacotes do cartão, embalagem com
+  6 colunas, F5 preservando tudo. Página em **990px**.
+
 ### 2026-09-25 (h) — PC da Empresa — PCP: SETAS nos campos do corte + o padrão 75 aparece na tela (`275c806c`)
 Pedido do Diego: *"Cortes por minuto quero uma opção além de escrever o número, também as flechas de subir e descer.
 Biscoito cru também, com flecha. Cortes por minuto padrão será 75 no pão de mel."*
