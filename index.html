@@ -12047,9 +12047,11 @@ const _PGM_LINHAS=[{
   bases:[
     // ⭐ `pacCx` veio do BANCO INFORMAÇÕES do PCP: 15 pacotes por caixa no 240/250 g (10 no 500 g,
     // 30 na monodose, 5 no 1 kg). É o que permite a tela falar em CAIXAS — a unidade da Cobertura.
-    {id:'paodemel', nome:'Pão de mel', bpc:21, cru:11, evap:17, cob:34, gPac:250, pacCx:15},
-    {id:'menta',    nome:'Pão de mel menta', bpc:21, cru:11, evap:17, cob:34, gPac:250, pacCx:15},
-    {id:'amanteigada', nome:'Massa amanteigada', bpc:21, cru:11, evap:17, cob:34, gPac:250, pacCx:15}
+    // ⚠️ `cru` aqui é o valor de PARTIDA do bloco e tem que ser o do padrão (10,43): com os 11 g antigos
+    // do mockup, o campo abria em 11 com a dica dizendo "padrão 10,43" logo ao lado.
+    {id:'paodemel', nome:'Pão de mel', bpc:21, cru:10.43, evap:17, cob:34, gPac:250, pacCx:15},
+    {id:'menta',    nome:'Pão de mel menta', bpc:21, cru:10.43, evap:17, cob:34, gPac:250, pacCx:15},
+    {id:'amanteigada', nome:'Massa amanteigada', bpc:21, cru:10.43, evap:17, cob:34, gPac:250, pacCx:15}
   ]
 },
   {id:'palitinhos', nome:'Palitinhos'}, {id:'salgadao', nome:'Salgadão'}, {id:'extrusados', nome:'Extrusados'},
@@ -12314,6 +12316,30 @@ function _pgmSetLive(campo, el){       // digitar: guarda e atualiza só a linha
   // deixaria de fazer sentido, então cai fora e o cálculo volta a mandar.
   if(campo==='cru'||campo==='cortes') _pgmMassada=null;
   _pgmSave(); _pgmRefresh();
+}
+// ⭐ SETAS nos campos do corte (Diego, 25/09: "cortes por minuto quero, além de escrever o número, também
+// as flechas de subir e descer; biscoito cru também"). São setas PRÓPRIAS, não a do type=number: aquela
+// foi escondida de propósito (`appearance:none`) porque comia a largura útil dos campos estreitos, e ela
+// tem só ~16px de alvo. Estas ficam fora do campo, com área de clique de verdade.
+// ⚠️ O passo do cru SOMA em vez de alinhar na grade (10,43 + 0,1 = 10,53, não 10,50): os centésimos são
+// medição de verdade e não é a tela que deve arredondá-los. O toFixed mata o lixo do ponto flutuante.
+const _PGM_STEP={ cortes:{passo:1, min:1, max:200, dec:0}, cru:{passo:0.1, min:1, max:200, dec:2} };
+function _pgmStep(campo, dir){
+  const arr=_pgmBlocos().slice(), b=arr[_pgmSel]; if(!b) return;
+  const S=_PGM_STEP[campo]; if(!S) return;
+  const atual = campo==='cru' ? _pgmCru(b) : (+b[campo]||0);
+  const v = +Math.min(S.max, Math.max(S.min, atual + dir*S.passo)).toFixed(S.dec);
+  b[campo]=v;
+  _pgmMassada=null;                      // mesma regra do _pgmSetLive: mexeu no ritmo, a simulação cai
+  _pgmSetBlocos(arr);                    // AÇÃO — é aqui que grava (nunca no render)
+  const el=document.getElementById('pgm-in-'+campo); if(el) el.value=v;
+  _pgmRefresh();
+}
+// volta o bloco selecionado ao trio do padrão. Só aparece quando ele está fora dele.
+function _pgmCorteReset(){
+  const arr=_pgmBlocos().slice(), b=arr[_pgmSel], P=_pgmL().padrao||{}; if(!b) return;
+  b.cortes=_pgmCpmPadrao(b); b.cru=P.cru; _pgmMassada=null;
+  _pgmSetBlocos(arr); renderPCPDia();
 }
 function _pgmRefresh(semEmb){
   const tl=document.getElementById('pgm-tl'); if(tl) tl.innerHTML=_pgmTimelineHTML();
@@ -12671,6 +12697,18 @@ function _pgmEditorHTML(){
   const L=_pgmL(), B=_pgmBase(b.base), P=L.padrao||{};
   const campo=(lab,dica,campo_,val,extra)=>`<label class="pgm-f"><span>${lab}${dica?`<i>${dica}</i>`:''}</span>
     <input type="number" class="pgm-inp" value="${val}" ${extra||''} oninput="_pgmSetLive('${campo_}',this)" onchange="renderPCPDia()"></label>`;
+  // campo com SETAS. ⚠️ Os botões levam `type=button`: dentro de um <label> (e de um form) o default é
+  // submit, e clicar viraria envio de formulário. E `preventDefault` no mousedown impede o clique de
+  // devolver o foco ao input e disparar o onchange, que faria um renderPCPDia redundante por seta.
+  const campoS=(lab,dica,campo_,val,tit)=>{ const S=_PGM_STEP[campo_];
+    return `<label class="pgm-f"><span>${lab}${dica?`<i>${dica}</i>`:''}</span>
+    <div class="pgm-step">
+      <input type="number" id="pgm-in-${campo_}" class="pgm-inp" value="${val}" min="${S.min}" max="${S.max}" step="${S.passo}"
+        ${tit?`title="${escapeAttr(tit)}"`:''} oninput="_pgmSetLive('${campo_}',this)" onchange="renderPCPDia()">
+      <span class="pgm-sarr">
+        <button type="button" onmousedown="event.preventDefault()" onclick="_pgmStep('${campo_}',1)" title="+${S.passo}"><i class="ti ti-chevron-up"></i></button>
+        <button type="button" onmousedown="event.preventDefault()" onclick="_pgmStep('${campo_}',-1)" title="−${S.passo}"><i class="ti ti-chevron-down"></i></button>
+      </span></div></label>`; };
   // ⚠️ hora é type=time (relógio nativo) e só grava no CHANGE — o `input` dispara com a hora ainda pela
   // metade ("1:") e reescreveria o bloco a cada tecla. Os dois ficam na MESMA célula da grade: são um par,
   // e separá-los somava uma 3ª linha de campos à coluna do Corte.
@@ -12697,12 +12735,13 @@ function _pgmEditorHTML(){
   // aparece inteira na linha do tempo — repetir aqui só somaria ruído.
   return `<div class="pgm-ed">
     <div class="pgm-col">
-      <div class="pgm-sec">Corte</div>
+      <div class="pgm-sec">Corte${((+b.cortes!==_pgmCpmPadrao(b))||Math.abs(_pgmCru(b)-(P.cru||0))>0.001)
+        ? `<span><b class="lnk" onclick="_pgmCorteReset()">voltar ao padrão</b></span>` : ''}</div>
       <div class="pgm-campos">
         <label class="pgm-f"><span>Base da massa<i>manda no setup</i></span>
           <select class="pgm-inp" oninput="_pgmSetLive('base',this)" onchange="renderPCPDia()">${bases}</select></label>
-        ${campo('Cortes por minuto',_pgmCpmsMedidos().join('·')+' já rodados','cortes',b.cortes,'min="1" max="200" step="1"')}
-        ${campo('Biscoito cru (g)','padrão '+_pgmN(P.cru,2),'cru',_pgmCru(b),'min="1" max="200" step="0.01"')}
+        ${campoS('Cortes por minuto','padrão '+_pgmN(_pgmCpmPadrao(b)),'cortes',b.cortes,'Já rodados na linha: '+_pgmCpmsMedidos().join(' · ')+' cortes/min')}
+        ${campoS('Biscoito cru (g)','padrão '+_pgmN(P.cru,2),'cru',_pgmCru(b),'O padrão é '+_pgmN(P.cru,2)+' g — as setas andam de 0,1 em 0,1')}
         ${hora(_pgmInicio(_pgmSel), _pgmInicio(_pgmSel)+_pgmHorasB(b))}
       </div>
       ${setupHTML}
@@ -12864,6 +12903,16 @@ function _pgmCSS(){ return `<style>
   .pgm-hpar>i{font-size:13px;color:var(--text3);flex:none}
   .pgm-inp[type=time]{padding:0 4px;text-align:center;min-width:0}
   .pgm-inp[type=time]::-webkit-calendar-picker-indicator{display:none}
+  .pgm-sec b.lnk{color:var(--blue-mid);font-weight:700;cursor:pointer}
+  /* campo com setas próprias: a do type=number fica escondida (regra abaixo) e é alvo pequeno demais */
+  .pgm-step{display:flex;align-items:stretch;gap:4px;min-width:0}
+  .pgm-step>.pgm-inp{flex:1;min-width:0}
+  .pgm-sarr{display:flex;flex-direction:column;flex:none;width:22px;gap:2px}
+  .pgm-sarr button{flex:1;display:flex;align-items:center;justify-content:center;padding:0;line-height:0;
+    border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text3);cursor:pointer}
+  .pgm-sarr button:hover{border-color:var(--blue-mid);color:var(--blue-mid);background:var(--bg2)}
+  .pgm-sarr button:active{background:var(--border)}
+  .pgm-sarr i{font-size:11px}
   .pgm-inp[type=number]{-moz-appearance:textfield}
   .pgm-inp[type=number]::-webkit-outer-spin-button,.pgm-inp[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   .pgm-rg{width:100%;accent-color:var(--blue-mid)}
