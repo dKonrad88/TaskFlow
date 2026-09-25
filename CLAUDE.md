@@ -936,6 +936,19 @@ continuam no arquivo e **não têm relação** com o bloco novo — não confund
   SISPRO (Redes, Marcas, Tipos de produção, Almoxarifados, Quantidades em pacotes/caixas/paletes) **não existem
   aqui** porque esses campos não vêm nos prints; (3) "RECHEIO FORNEÁVEL" aparece **2×** no SISPRO (1,010kg e 4kg) —
   aqui ficaram distinguidos no nome, vale conferir o cadastro; (4) confirmar o corte de 7/10 dias.
+- ⭐ **DDV MÉDIO DO ESTOQUE INTEIRO** (25/09, pedido dele: "quero mais um indicador em cima, a média de DDV de
+  todo o estoque"). 6º cartão, **de leitura — não filtra** (`.ddv-kpi.info`, sem cursor/hover, no fim da fila
+  para não quebrar a sequência dos clicáveis) e **não muda com o filtro**: ele fala do estoque todo.
+  - ⚠️⚠️ **NÃO é a média da coluna DDV, e a diferença é gritante nos dados reais:** a média simples dá
+    **35,6 dias** e o **agregado** (saldo total ÷ venda diária total) dá **11,9** — com **27 itens abaixo de 7
+    dias** na mesma tela. A média simples é dominada pelos itens de giro baixo (um parado com 800 dias levanta
+    o número sozinho) e diria "temos um mês de estoque" enquanto a linha está em ruptura. O cartão mostra o
+    **agregado**; média simples (35,6) e **mediana (14,0)** ficam no tooltip, para dar a distribuição.
+  - ⚠️ Item **sem venda (mdv=0) ou sem dado de estoque fica FORA** das três contas — entrar como zero
+    inventaria cobertura que não existe. Hoje entram **128 dos 144** produtos, e o tooltip diz isso.
+  - `_ddvCobertura()` devolve `{agregada, simples, mediana, n}`. Cor pelo mesmo `_ddvCor` (o corte 7/10).
+  - Testado em Edge headless: 0 erros; 6 cartões (5 `<button>` + 1 `<div>`); "11,9 dias — o estoque todo";
+    `cursor:default`; filtrar por ruptura (9 linhas) **não altera** o cartão.
 
 ### 2026-09-23 — PC da Empresa — Comercial › Pedidos: VISUAL alinhado ao **HUB Oficial** (o do Guilherme)
 O Diego mandou as 2 telas lado a lado (Oficial "Minhas Tarefas" × Teste "Pedidos") e pediu o mesmo acabamento:
