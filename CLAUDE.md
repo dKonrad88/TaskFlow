@@ -422,6 +422,19 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-25 (j) — PC da Empresa — PCP: botão **Zerar** devolve a simulação inteira ao padrão (`776040a7`)
+Pedido do Diego: *"poderia ter um botão de zerar, ou seja, voltar para o padrão"*. Fica no cabeçalho do cartão da
+linha do tempo, antes do "salva sozinho".
+- ⚠️ **São DOIS botões com nomes parecidos e escopos diferentes** — não confundir: o **"voltar ao padrão"** da seção
+  Corte é o ajuste FINO (ritmo, gramas e cobertura **do bloco selecionado**); o **"Zerar"** recomeça a **LINHA**:
+  um bloco só, no trio do padrão, com as massadas que cabem no turno (`_pgmPot`), e `emb:null` para as embaladoras
+  voltarem a nascer do cadastro. Somem os blocos extras, os setups e as trocas de embalagem.
+- ⭐ **Oferece DESFAZER no toast** (`toast(msg,{undoFn})`, o mesmo do resto do HUB): zerar apaga o que a pessoa
+  montou, e um clique sem volta nisso seria caro. O estado anterior é copiado antes (`JSON.parse(JSON.stringify)`).
+- Testado em Edge headless com 4 blocos e 4 janelas bagunçados: zerar deixa **1 bloco em 74 massadas / 75 cpm /
+  10,43 g / 34%** com a comparação do cartão **toda zerada**, e o Desfazer devolve os 4 blocos e as 4 janelas
+  exatamente como estavam. 0 erros de JS.
+
 ### ⭐⭐ 2026-09-25 (i) — PC da Empresa — PCP: MASSADA em 2 campos · nova seção COBERTURA · Embalagem enxuta (`d3e864ff`) + sai o "Ver produção" da Cobertura (`73400ff5`)
 Quatro pedidos do Diego na mesma leva, três no editor do bloco e um na Cobertura.
 
