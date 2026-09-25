@@ -12924,10 +12924,11 @@ const DDV_DIAS_UTEIS=261;
 const _DDV_POSICAO='23/09/2026 13:23';
 
 // ⭐ FILTROS DO SISPRO — hoje é SÓ O LUGAR (Diego, 25/09: "cria o lugar onde os filtros ficarão,
-// o resto nosso TI"). Nenhum dos cinco opera com o que foi transcrito, e cada um falha por um
+// o resto nosso TI"). Nenhum dos seis opera com o que foi transcrito, e cada um falha por um
 // motivo diferente — está escrito no rodapé do popover e no handoff:
 //   Período Pedidos  → precisa da carteira pedido a pedido, com data (hoje `ped` é 1 número)
 //   Período Vendas   → precisa da série de vendas por MÊS, por produto (hoje só o total de 261d)
+//   Marcas           → precisa da marca por produto (⭐ é o que separa Klain de marca própria)
 //   Tipos Produção   → precisa do tipo de produção por produto (hoje só temos a Linha)
 //   Quantidades em   → precisa de pacotes/caixa e caixas/palete (⭐ é a ponte com o PCP, que fala
 //                      em pacotes enquanto esta tela fala em caixas)
@@ -12937,6 +12938,9 @@ const _DDV_POSICAO='23/09/2026 13:23';
 const _DDV_JANELAS={ pedIni:'2026-08-09', pedFim:'2026-10-09', venIni:'2025-09-21', venFim:'2026-09-24' };
 const _DDV_TIPOS=['Alfajor, Paçocas e Pastas de Amendoim','Amostras','Coberto ou Embalado','Extrusados e Pipocas',
   'Forno Contínuo','Fábrica de Chocolate','Linha de Fritura','Produto de Revenda - COM DESP. ADM.','Produto de Revenda - SEM DESP. ADM.'];
+// ⚠️ Só a marca que apareceu no print (o dropdown estava fechado em "Klain") — a lista inteira vem
+// no export, junto com a marca de cada produto. Não inventar as outras.
+const _DDV_MARCAS=['Klain'];
 const _DDV_UNID=['Pacotes','Caixas','Paletes'];
 const _DDV_ALMOX=['Klain','Maras'];
 let _ddvFiltrosAberto=false;
@@ -13302,7 +13306,7 @@ function _ddvCSS(){
   .ddv-fbtn i{font-size:16px}
   .ddv-fbtn:hover{color:var(--text)}
   .ddv-fbtn.on{border-color:var(--blue-mid);color:var(--blue-mid)}
-  .ddv-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:50;width:272px;background:var(--card);border:1px solid var(--border);border-radius:11px;box-shadow:0 10px 28px rgba(0,0,0,.18);padding:11px 12px;text-align:left}
+  .ddv-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:50;width:272px;background:var(--card);border:1px solid var(--border);border-radius:11px;box-shadow:0 10px 28px rgba(0,0,0,.18);padding:11px 12px;text-align:left;max-height:calc(100vh - 150px);overflow:auto}
   .ddv-fgrp{margin-bottom:11px}
   .ddv-fgrp>b{display:block;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
   .ddv-frow{display:flex;align-items:center;gap:6px}
@@ -13554,11 +13558,15 @@ function _ddvFiltrosPopHTML(){
   const dt=v=>`<input type="date" class="ddv-fdt" value="${v}" disabled>`;
   const per=(lab,a,b)=>`<div class="ddv-fgrp"><b>${lab}</b><div class="ddv-frow">${dt(a)}<span>até</span>${dt(b)}</div></div>`;
   const opt=(tipo,nome,marc)=>`<label class="ddv-fopt"><input class="ddv-fchk" type="${tipo}" name="ddv-f-${tipo}"${marc?' checked':''} disabled>${escapeHTML(nome)}</label>`;
+  // `marc` = o que estava escolhido na foto do SISPRO; sem ele, fica no "Todos/Todas".
+  const sel=(lab,todos,itens,marc)=>`<div class="ddv-fgrp"><b>${lab}</b><select class="ddv-fsel" disabled>`
+    +`<option${marc?'':' selected'}>${todos}</option>`
+    +itens.map(t=>`<option${t===marc?' selected':''}>${escapeHTML(t)}</option>`).join('')+`</select></div>`;
   return `<div class="ddv-pop">
     ${per('Período Pedidos', J.pedIni, J.pedFim)}
     ${per('Período Vendas', J.venIni, J.venFim)}
-    <div class="ddv-fgrp"><b>Tipos Produção</b>
-      <select class="ddv-fsel" disabled><option>Todos</option>${_DDV_TIPOS.map(t=>`<option>${escapeHTML(t)}</option>`).join('')}</select></div>
+    ${sel('Marcas','Todas',_DDV_MARCAS,'Klain')}
+    ${sel('Tipos Produção','Todos',_DDV_TIPOS,'')}
     <div class="ddv-fgrp"><b>Quantidades em</b>${_DDV_UNID.map(u=>opt('radio',u,u==='Caixas')).join('')}</div>
     <div class="ddv-fgrp"><b>Almoxarifados</b>${_DDV_ALMOX.map(a=>opt('checkbox',a,a==='Klain')).join('')}</div>
     <div class="ddv-fnota">Ainda sem dado para filtrar: o que está marcado é a <b>foto em que o export foi tirado</b> (${_DDV_POSICAO}). Cada controle abre quando a TI mandar o campo dele.</div>
