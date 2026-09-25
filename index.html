@@ -12923,6 +12923,24 @@ const DDV_ALERTA={vermelho:7, amarelo:10};
 const DDV_DIAS_UTEIS=261;
 const _DDV_POSICAO='23/09/2026 13:23';
 
+// ⭐ FILTROS DO SISPRO — hoje é SÓ O LUGAR (Diego, 25/09: "cria o lugar onde os filtros ficarão,
+// o resto nosso TI"). Nenhum dos cinco opera com o que foi transcrito, e cada um falha por um
+// motivo diferente — está escrito no rodapé do popover e no handoff:
+//   Período Pedidos  → precisa da carteira pedido a pedido, com data (hoje `ped` é 1 número)
+//   Período Vendas   → precisa da série de vendas por MÊS, por produto (hoje só o total de 261d)
+//   Tipos Produção   → precisa do tipo de produção por produto (hoje só temos a Linha)
+//   Quantidades em   → precisa de pacotes/caixa e caixas/palete (⭐ é a ponte com o PCP, que fala
+//                      em pacotes enquanto esta tela fala em caixas)
+//   Almoxarifados    → precisa do export com o Maras MARCADO (a coluna maras está null nos 144)
+// ⚠️ Os controles saem DESABILITADOS de propósito: filtro que mexe e não muda número nenhum é pior
+// que filtro nenhum — a pessoa confia. Marcados, eles mostram a FOTO em que o export foi tirado.
+const _DDV_JANELAS={ pedIni:'2026-08-09', pedFim:'2026-10-09', venIni:'2025-09-21', venFim:'2026-09-24' };
+const _DDV_TIPOS=['Alfajor, Paçocas e Pastas de Amendoim','Amostras','Coberto ou Embalado','Extrusados e Pipocas',
+  'Forno Contínuo','Fábrica de Chocolate','Linha de Fritura','Produto de Revenda - COM DESP. ADM.','Produto de Revenda - SEM DESP. ADM.'];
+const _DDV_UNID=['Pacotes','Caixas','Paletes'];
+const _DDV_ALMOX=['Klain','Maras'];
+let _ddvFiltrosAberto=false;
+
 // [código, produto, estoque, pedido, OP/OC, maras, vendas 261 dias] — null = veio em branco no SISPRO
 const _DDV_LINHAS=[
 ['AMENDOIM',[
@@ -13277,6 +13295,26 @@ function _ddvCSS(){
   .ddv-leg .l{width:15px;height:0;border-top:2px solid var(--blue-mid);display:inline-block}
   .ddv-leg .md{border-top-style:dashed;border-top-color:var(--success)}
   .ddv-leg .m2{border-top-style:dotted;border-top-color:var(--danger)}
+  /* Filtros: um ícone do tamanho da busca + popover. Mesma gramática dos filtros de Compras
+     (o .cp-pop-wrap em volta é o que faz o clique fora fechar). */
+  .ddv-acao{display:inline-flex;align-items:center;gap:8px}
+  .ddv-fbtn{width:34px;height:34px;flex:none;padding:0;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+  .ddv-fbtn i{font-size:16px}
+  .ddv-fbtn:hover{color:var(--text)}
+  .ddv-fbtn.on{border-color:var(--blue-mid);color:var(--blue-mid)}
+  .ddv-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:50;width:272px;background:var(--card);border:1px solid var(--border);border-radius:11px;box-shadow:0 10px 28px rgba(0,0,0,.18);padding:11px 12px;text-align:left}
+  .ddv-fgrp{margin-bottom:11px}
+  .ddv-fgrp>b{display:block;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
+  .ddv-frow{display:flex;align-items:center;gap:6px}
+  .ddv-frow span{font-size:10.5px;color:var(--text3);flex:none}
+  /* ⚠️ todo campo aqui PRECISA de classe: a regra global input:not([class]) força 40px de altura
+     (e select:not([class]) faz isso com !important) — sem classe, o popover incha. */
+  .ddv-fdt{flex:1;min-width:0;height:28px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text2);font-family:inherit;font-size:11.5px;padding:0 5px}
+  .ddv-fsel{width:100%;height:28px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text2);font-family:inherit;font-size:11.5px;padding:0 6px}
+  .ddv-fopt{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);padding:2px 0}
+  .ddv-fchk{width:13px;height:13px;margin:0;flex:none}
+  .ddv-pop [disabled]{opacity:.6;cursor:default}
+  .ddv-fnota{font-size:10px;color:var(--text3);line-height:1.45;border-top:1px solid var(--border);margin-top:2px;padding-top:9px}
   .ddv-buscaw{position:relative;display:inline-flex;align-items:center}
   .ddv-buscaw i{position:absolute;left:11px;font-size:14px;color:var(--text3);pointer-events:none}
   .ddv-busca{width:250px;height:34px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--text);font-family:inherit;font-size:12.5px;padding:0 11px 0 32px;outline:none}
@@ -13502,6 +13540,30 @@ function _ddvTabelaHTML(){
     <div class="ddv-hstrip"><table class="ddv-tbl"><colgroup>${cols}</colgroup><thead>${grupos}${colunas}</thead></table></div>
     ${cards}`;
 }
+function _ddvFiltrosToggle(){ _ddvFiltrosAberto=!_ddvFiltrosAberto; renderPCP(); }
+// Fecha ao clicar fora. O .cp-pop-wrap em volta do botão é a guarda: clique DENTRO dele é do toggle.
+function _ddvCloseFiltros(e){
+  const t=e&&e.target; if(t&&t.closest&&t.closest('.cp-pop-wrap')) return;
+  if(_ddvFiltrosAberto){ _ddvFiltrosAberto=false;
+    if(typeof hubView!=='undefined' && hubView==='producao' && typeof renderPCP==='function') renderPCP(); }
+}
+// O popover é O LUGAR dos filtros do SISPRO — ver o comentário em _DDV_JANELAS.
+function _ddvFiltrosPopHTML(){
+  if(!_ddvFiltrosAberto) return '';
+  const J=_DDV_JANELAS;
+  const dt=v=>`<input type="date" class="ddv-fdt" value="${v}" disabled>`;
+  const per=(lab,a,b)=>`<div class="ddv-fgrp"><b>${lab}</b><div class="ddv-frow">${dt(a)}<span>até</span>${dt(b)}</div></div>`;
+  const opt=(tipo,nome,marc)=>`<label class="ddv-fopt"><input class="ddv-fchk" type="${tipo}" name="ddv-f-${tipo}"${marc?' checked':''} disabled>${escapeHTML(nome)}</label>`;
+  return `<div class="ddv-pop">
+    ${per('Período Pedidos', J.pedIni, J.pedFim)}
+    ${per('Período Vendas', J.venIni, J.venFim)}
+    <div class="ddv-fgrp"><b>Tipos Produção</b>
+      <select class="ddv-fsel" disabled><option>Todos</option>${_DDV_TIPOS.map(t=>`<option>${escapeHTML(t)}</option>`).join('')}</select></div>
+    <div class="ddv-fgrp"><b>Quantidades em</b>${_DDV_UNID.map(u=>opt('radio',u,u==='Caixas')).join('')}</div>
+    <div class="ddv-fgrp"><b>Almoxarifados</b>${_DDV_ALMOX.map(a=>opt('checkbox',a,a==='Klain')).join('')}</div>
+    <div class="ddv-fnota">Ainda sem dado para filtrar: o que está marcado é a <b>foto em que o export foi tirado</b> (${_DDV_POSICAO}). Cada controle abre quando a TI mandar o campo dele.</div>
+  </div>`;
+}
 function renderDDV(){
   const main=document.getElementById('task-container'); if(!main) return;
   const _tb=document.querySelector('.main .topbar'); if(_tb) _tb.style.display='none';
@@ -13509,11 +13571,13 @@ function renderDDV(){
   const _pr=document.getElementById('progress-box'); if(_pr) _pr.style.display='none';
   // a busca subiu p/ o canto superior direito (slot `acao` do _cpTela) — ocupava uma faixa só dela
   const busca=`<span class="ddv-buscaw"><i class="ti ti-search"></i><input id="ddv-busca" value="${escapeAttr(_ddvBusca)}" oninput="_ddvBuscaInput(this.value)" placeholder="Buscar produto, código ou linha" class="ddv-busca"></span>`;
+  if(!window.__ddvFiltrosCloser){ window.__ddvFiltrosCloser=true; document.addEventListener('mousedown', _ddvCloseFiltros, true); }
+  const acao=`<span class="ddv-acao">${busca}<span class="cp-pop-wrap" style="position:relative;display:inline-flex"><button class="ddv-fbtn${_ddvFiltrosAberto?' on':''}" onclick="_ddvFiltrosToggle()" title="Filtros"><i class="ti ti-filter"></i></button>${_ddvFiltrosPopHTML()}</span></span>`;
   const corpo=`${_ddvCSS()}
     ${_ddvKPIsHTML()}
     <div id="ddv-graf-box">${_ddvGrafHTML()}</div>
     <div id="ddv-conteudo">${_ddvTabelaHTML()}</div>`;
-  main.innerHTML=_cpTela('Cobertura','Quantos dias o estoque de cada produto ainda dura.',corpo,null,busca);
+  main.innerHTML=_cpTela('Cobertura','Quantos dias o estoque de cada produto ainda dura.',corpo,null,acao);
 }
 // ════ FIM DO BLOCO PCP · DDV ════
 
