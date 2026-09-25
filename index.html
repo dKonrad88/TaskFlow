@@ -12633,7 +12633,14 @@ function _pgmTimelineHTML(){
   // embalagem, não é mais o corte quem manda no fim do desenho.
   const fimDe=C=>C.atraso+blocos.reduce((s,b,i)=>s+_pgmSetupAcum(i,C.est)/60+_pgmEsperaB(b)+_pgmHorasB(b),0);
   const TOT=Math.max(L.horas, Math.max.apply(null, canais.map(fimDe))), esc=100/TOT;
-  const cx=(f,txt,cls,tit)=>`<div class="pgm-b ${cls||''}" style="flex:${f.toFixed(3)}"${tit?` title="${escapeAttr(tit)}"`:''}>${txt||''}</div>`;
+  // ⭐⭐ A BARRA VIROU PONTO → LINHA → PONTO (Diego, 25/09, escolhendo entre 5 modelos: "no lugar da barra,
+  // deitado e no comprido igual a barra, mas não precisa fazer uma barra, e sim um ponto de quando inicia
+  // e outro quando termina"). O desenho é todo CSS — a lógica de flex, segmentos e mescla não mudou.
+  // ⚠️ O texto vai num `<span class="tx">` com fundo do cartão: ele precisa CORTAR a linha, senão o
+  // traço passa por trás das letras. Por isso o wrapper, e não o texto solto como era antes.
+  // ⚠️ `extra` (a alça de arraste) fica FORA do span: ela é `position:absolute` e precisa se medir pelo
+  // bloco inteiro. Dentro do `.tx`, que é relative para subir acima da linha, ela grudaria na borda do texto.
+  const cx=(f,txt,cls,tit,extra)=>`<div class="pgm-b ${cls||''}" style="flex:${f.toFixed(3)}"${tit?` title="${escapeAttr(tit)}"`:''}>${txt?`<span class="tx">${txt}</span>`:''}${extra||''}</div>`;
   const fatias=_pgmFatias();
   // ⭐ MESCLA as fatias vizinhas quando o que ESTA trilha mostra não muda. É o que faz uma troca só na
   // Emb 1 às 09:00 quebrar só a barra da Emb 1 — as outras seguem inteiras, apesar de a janela ser comum.
@@ -12657,8 +12664,9 @@ function _pgmTimelineHTML(){
       const espera=_pgmSetupAcum(i,C.est)/60, meu=(_pgmSetupObj(i)[C.est]||0)/60, antes=espera-meu;
       if(antes>0){ html+=cx(antes*esc,'','nada'); pos+=antes; }
       if(meu>0){ html+= C.tipo==='corte'
-        ? cx(meu*esc, Math.round(meu*60)+`min<i class="pgm-rz" onmousedown="_pgmDragStart(event,'setup',${i})" title="Arraste para mudar o setup do corte"></i>`, 'setup',
-            'Setup do corte · '+Math.round(meu*60)+' min')
+        ? cx(meu*esc, Math.round(meu*60)+'min', 'setup',
+            'Setup do corte · '+Math.round(meu*60)+' min',
+            `<i class="pgm-rz" onmousedown="_pgmDragStart(event,'setup',${i})" title="Arraste para mudar o setup do corte"></i>`)
         : cx(meu*esc, Math.round(meu*60)+'min', 'setup', 'Setup · '+Math.round(meu*60)+' min');
         pos+=meu; }
       // espera marcada no campo "Início": vão vazio antes do bloco, em todas as trilhas
@@ -12669,9 +12677,9 @@ function _pgmTimelineHTML(){
       // editor e a régua. Na barra fica o que se decide arrastando — o produto e as MASSADAS.
       // o número vem PRIMEIRO porque é o que muda ao arrastar — numa barra curta, é ele que sobrevive ao corte
       if(C.tipo==='corte'){ const nm=_pgmMassadasB(b), ini=_pgmRelogio(pos), fim=_pgmRelogio(pos+hb);
-        html+=cx(hb*esc, `<b class="h">${nm} massada${nm>1?'s':''}</b>`+escapeHTML(B.nome)
-          +`<i class="pgm-rz" onmousedown="_pgmDragStart(event,'bloco',${i})" title="Arraste para mudar a duração"></i>`,
-          'base'+on, C.nome+' · '+ini+' às '+fim+' · '+B.nome+' · '+nm+' massada'+(nm>1?'s':''));
+        html+=cx(hb*esc, `<b class="h">${nm} massada${nm>1?'s':''}</b>`+escapeHTML(B.nome),
+          'base'+on, C.nome+' · '+ini+' às '+fim+' · '+B.nome+' · '+nm+' massada'+(nm>1?'s':''),
+          `<i class="pgm-rz" onmousedown="_pgmDragStart(event,'bloco',${i})" title="Arraste para mudar a duração"></i>`);
         pos+=hb; return; }
       // os demais estágios desenham por SEGMENTO: um pedaço por janela de embalagem dentro deste bloco
       segs.filter(s=>s.bi===i).forEach(s=>{
@@ -12755,12 +12763,25 @@ function _pgmDiaResHTML(){
     const dur=m=>m<60?m+'min':_pgmHhmm(m/60);
     return `<tr><td class="r">Turno</td><td>${a==null?'—':_pgmHhmm(a/60)}</td><td class="a">${b_==null?'—':_pgmHhmm(b_/60)}</td>
       <td class="d">${z?'—':(d>0?'+':'−')+dur(Math.abs(d))}</td></tr>`; };
-  // ⭐ o trio de cada lado vive NO CABEÇALHO da coluna a que pertence — em nota de rodapé ele ocupava
-  // 3 linhas e obrigava a pessoa a ligar "Padrão" lá embaixo com a coluna aqui em cima.
-  const cmp=`<table class="pgm-cmp"><tr><th></th>
-      <th>Padrão<i>${_pgmMS(P.massadaSeg||0)} · ${_pgmN(_pgmCpmPadrao({base:basePad}))} cpm · ${_pgmN(P.cru,2)} g</i></th>
-      <th>Agora<i>${ago?`${_pgmMS(ago.ciclo)} · ${_pgmCpmTxt(sel.cortes)} cpm · ${_pgmN(_pgmCru(sel),2)} g`:'—'}</i></th>
-      <th>Dif.</th></tr>
+  // ⭐⭐ O TRIO VIROU LINHA DA TABELA (Diego, 25/09: "esse padrão e agora também poderia estar igual
+  // pacotes e massadas, em formato de planilha, com uma última coluna de diferença"). Ele estava no
+  // cabeçalho como texto corrido, e ali a diferença não tinha onde aparecer — "75 cpm × 77 cpm" obrigava
+  // a fazer a conta de cabeça. ⚠️ A tabela ficou com DOIS BLOCOS, separados por uma linha mais forte:
+  // em cima **o que se mexe** (ritmo, gramas, cobertura) e embaixo **o que dá** (pacotes, caixas, turno).
+  // Sem essa separação as 8 linhas viram uma lista só, e causa e efeito se misturam.
+  const linG=(rot,vp,va,fmt,dfmt)=>{ const d=(vp==null||va==null)?null:va-vp;
+    const z=d==null||Math.abs(d)<0.005, cor=z?'':(d>0?'var(--success)':'var(--danger)');
+    return `<tr><td class="r">${rot}</td><td>${vp==null?'—':fmt(vp)}</td><td class="a">${va==null?'—':fmt(va)}</td>
+      <td class="d"${cor?` style="color:${cor}"`:''}>${z?'—':(d>0?'+':'−')+(dfmt||fmt)(Math.abs(d))}</td></tr>`; };
+  const seg=s=>_pgmMS(s), dseg=s=>s<60?Math.round(s)+'s':_pgmMS(s);
+  const cru=v=>_pgmN(v,2)+' g', pct=v=>_pgmN(v)+'%';
+  const cobP=basePad?_pgmBase(basePad).cob:null;
+  const cmp=`<table class="pgm-cmp"><tr><th></th><th>Padrão</th><th>Agora</th><th>Dif.</th></tr>
+      ${linG('Tempo/massada', P.massadaSeg||null, ago?ago.ciclo:null, seg, dseg)}
+      ${linG('Cortes/min', _pgmCpmPadrao({base:basePad}), sel?(+sel.cortes||0):null, _pgmCpmTxt)}
+      ${linG('Biscoito cru', P.cru, sel?_pgmCru(sel):null, cru)}
+      ${linG('Cobertura', cobP, sel?_pgmCob(sel):null, pct)}
+      <tr class="sep"><td colspan="4"></td></tr>
       ${lin('Pacotes', pad?pad.pac:null, ago?ago.pac:null)}
       ${lin('Massadas', pad?pad.n:null, ago?ago.n:null)}
       ${lin('Caixas', pad?pad.cx:null, ago?ago.cx:null)}
@@ -12828,6 +12849,16 @@ function _pgmEditorHTML(){
       <input type="time" class="pgm-inp" value="${_pgmRelogio(a)}" onchange="_pgmSetHora('ini',this)" title="Início do bloco">
       <i class="ti ti-arrow-narrow-right"></i>
       <input type="time" class="pgm-inp" value="${_pgmRelogio(b_)}" onchange="_pgmSetHora('fim',this)" title="Fim do bloco — encaixa na massada cheia mais próxima"></div></label>`;
+  // ⭐ O MESMO PAR DE HORÁRIOS NA COBERTURA (Diego, 25/09), mas de LEITURA: ela não tem horário próprio —
+  // é o do corte + o trânsito do estágio (+15min) + o setup da cobrideira. Editar aqui seria uma terceira
+  // porta para o mesmo setup, que já tem campo logo abaixo. Por isso são células, não inputs.
+  const horaCob=()=>{ const atr=((L.estagios[1]||{}).atraso||0)/60, s=_pgmSetupObj(_pgmSel).cob/60;
+    const ini=_pgmInicio(_pgmSel)+s+atr;
+    return `<label class="pgm-f"><span>Horário<i>+${Math.round(atr*60)}min de trânsito</i></span>
+      <div class="pgm-hpar">
+        <div class="pgm-inp ro" title="O produto chega na cobrideira ${Math.round(atr*60)} min depois de ser cortado">${_pgmRelogio(ini)}</div>
+        <i class="ti ti-arrow-narrow-right"></i>
+        <div class="pgm-inp ro" title="Termina o mesmo tanto depois do fim do corte">${_pgmRelogio(ini+_pgmHorasB(b))}</div></div></label>`; };
   const bases=L.bases.map(x=>`<option value="${x.id}"${x.id===b.base?' selected':''}>${escapeHTML(x.nome)}</option>`).join('');
   // SETUP por estágio, sempre visível: zero = sem parada. A regra só propõe o do corte na troca de base.
   const ant=_pgmBlocos()[_pgmSel-1], so=_pgmSetupObj(_pgmSel);
@@ -12869,6 +12900,7 @@ function _pgmEditorHTML(){
       <div class="pgm-campos">
         ${campoS('Cobertura (%)','padrão '+_pgmN(B.cob),'cob',_pgmCob(b),
                  'Quanto o biscoito ganha de peso no banho. Mais cobertura = biscoito mais pesado = mais pacotes de '+_pgmN(B.gPac)+' g com os mesmos biscoitos.')}
+        ${horaCob()}
       </div>
       <div id="pgm-cob-out">${_pgmCobResumoHTML()}</div>
     </div>
@@ -12949,14 +12981,25 @@ function _pgmCSS(){ return `<style>
   .pgm-head{display:flex;align-items:center;gap:9px;padding:7px 14px;font-size:12px;color:var(--text2);background:var(--bg2);border-bottom:1px solid var(--border)}
   .pgm-head b{font-size:12.5px;color:var(--text)}
   .pgm-tlbox{padding:8px 14px 9px}
-  .pgm-tr{display:flex;align-items:center;gap:9px;margin-bottom:2px}
+  .pgm-tr{display:flex;align-items:center;gap:9px;margin-bottom:3px}
   /* rótulo em 2 partes: o GRUPO (uma vez por estágio) e o canal */
   .pgm-grp{width:86px;flex:none;text-align:right;font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)}
   .pgm-grp i{font-style:normal;font-weight:400;letter-spacing:0;text-transform:none;color:var(--text3);margin-left:4px}
   .pgm-lab{width:84px;flex:none;text-align:right;font-size:10.5px;color:var(--text3)}
   .pgm-lab i{font-style:normal;opacity:.6;margin-left:4px;font-size:9.5px}
-  .pgm-t{flex:1;display:flex;gap:2px;height:19px}
-  .pgm-b{position:relative;border-radius:4px;font-size:10.5px;display:flex;align-items:center;justify-content:center;gap:6px;overflow:hidden;white-space:nowrap;padding:0 5px;min-width:0}
+  .pgm-t{flex:1;display:flex;gap:2px;height:24px}   /* mais alto desde que a barra virou traco: o desenho e leve e o cartao ao lado e mais alto */
+  /* ⭐ PONTO → LINHA → PONTO. A linha é o ::before; os dois pontos são radial-gradients nas pontas do
+     próprio elemento (2 pseudo-elementos não dariam conta de linha + 2 pontos). Tudo em currentColor,
+     então cada estágio só precisa declarar a sua cor. */
+  .pgm-b{position:relative;font-size:10.5px;display:flex;align-items:center;justify-content:center;gap:6px;overflow:hidden;white-space:nowrap;padding:0 4px;min-width:0}
+  .pgm-b.base,.pgm-b.cob,.pgm-b.emb,.pgm-b.alerta,.pgm-b.setup{
+    background-image:radial-gradient(circle at 4px 50%, currentColor 0 4px, transparent 4.5px),
+                     radial-gradient(circle at calc(100% - 4px) 50%, currentColor 0 4px, transparent 4.5px);
+    background-repeat:no-repeat}
+  .pgm-b.base::before,.pgm-b.cob::before,.pgm-b.emb::before,.pgm-b.alerta::before,.pgm-b.setup::before{
+    content:'';position:absolute;left:4px;right:4px;top:50%;height:2px;margin-top:-1px;background:currentColor;opacity:.38;border-radius:2px}
+  .pgm-b .tx{background:var(--card);border-radius:4px;padding:0 6px;display:inline-flex;align-items:center;gap:6px;
+    max-width:100%;overflow:hidden;text-overflow:ellipsis;position:relative;z-index:1}
   /* o horário de entrada do estágio, dentro da barrinha */
   .pgm-b .h{font-size:10px;font-weight:700;opacity:.8;flex:none}
   /* o vão de trânsito não precisa de textura: a barra já começa deslocada e o rótulo do grupo diz "+15min" */
@@ -12973,13 +13016,17 @@ function _pgmCSS(){ return `<style>
      num tom escuro da MESMA família (nunca preto). Estes hexes são FIXOS de propósito (não seguem o
      tema) — a linha do tempo é leitura de dado, como o semáforo do DDV, e o tom tem que significar a
      mesma coisa em qualquer tema. Mexeu num, mexa nos cinco. */
-  .pgm-b.base{background:#abc7e3;color:#1d4a75}
-  .pgm-b.cob{background:#beb7e1;color:#453a7c}
-  .pgm-b.emb{background:#b1dcc1;color:#1d5a38}
-  .pgm-b.alerta{background:#ebb2ad;color:#8c322a;font-weight:700}
-  .pgm-b.setup{background:#e8caa5;color:#7a5214}
-  .pgm-b.nada{background:none}   /* canal parado: só o vão, sem retângulo concorrendo com as barras */
-  .pgm-b.on{box-shadow:0 0 0 2px rgba(0,0,0,.34) inset}
+  /* ⚠️ Cores FIXAS de propósito (não seguem o tema): a linha do tempo é leitura de dado, como o semáforo
+     do DDV — o tom tem que significar a mesma coisa em qualquer tema. Com o desenho em ponto+linha, o que
+     era fundo virou a cor do TRAÇO, então usam-se os tons escuros da mesma família. Mexeu num, mexa nos cinco. */
+  .pgm-b.base{color:#2d6396}
+  .pgm-b.cob{color:#5b4fa0}
+  .pgm-b.emb{color:#2a7a4e}
+  .pgm-b.alerta{color:#a8433a;font-weight:700}
+  .pgm-b.setup{color:#976615}
+  .pgm-b.nada{background:none}   /* canal parado: só o vão, sem traço concorrendo com o que roda */
+  .pgm-b.on::before{height:4px;margin-top:-2px;opacity:.6}
+  .pgm-b.on .tx{font-weight:700}
   .pgm-alerta{font-size:11px;color:var(--danger);margin-top:7px}
   /* ⚠️ Os chips de bloco viviam SOLTOS no rodapé do cartão da linha do tempo e ficavam "perdidos". Agora
      são a barra de abas do cartão do EDITOR — que é o que eles comandam: escolher o bloco a editar. */
@@ -13036,6 +13083,8 @@ function _pgmCSS(){ return `<style>
   /* o par Início → Fim divide uma célula da grade; o relógio nativo sai porque comia a largura do valor */
   .pgm-hpar{display:flex;align-items:center;gap:4px;min-width:0}
   .pgm-hpar>i{font-size:13px;color:var(--text3);flex:none}
+  /* célula de LEITURA com a mesma caixa do input: o horário da cobertura é consequência, não campo */
+  .pgm-inp.ro{display:flex;align-items:center;justify-content:center;background:var(--bg2);color:var(--text2);cursor:default}
   .pgm-inp[type=time]{padding:0 4px;text-align:center;min-width:0}
   .pgm-inp[type=time]::-webkit-calendar-picker-indicator{display:none}
   .pgm-sec b.lnk{color:var(--blue-mid);font-weight:700;cursor:pointer}
@@ -13067,7 +13116,7 @@ function _pgmCSS(){ return `<style>
   .pgm-nota .lnk{color:var(--blue-mid);font-weight:700;cursor:pointer;white-space:nowrap}
   /* alça de arraste na borda direita da barra (só na trilha do Corte) */
   .pgm-rz{position:absolute;right:0;top:0;bottom:0;width:8px;cursor:col-resize;border-right:2px solid transparent}
-  .pgm-b:hover .pgm-rz{border-right-color:rgba(0,0,0,.4)}
+  .pgm-b:hover .pgm-rz{border-right-color:currentColor}
   /* ── RESULTADO DO DIA — a resposta em evidência, num CARTÃO PRÓPRIO ao lado da linha do tempo (não é
      uma coluna dentro dela: o Diego quis os dois separados). É a única casa dos números do dia; o
      cartão da Massada compara cenários. */
@@ -13091,7 +13140,10 @@ function _pgmCSS(){ return `<style>
   .pgm-cmp th:first-child{text-align:left}
   .pgm-cmp th i{display:block;font-style:normal;font-size:8.5px;font-weight:600;text-transform:none;
     letter-spacing:0;color:var(--text3);margin-top:2px;line-height:1.3}
-  .pgm-cmp td{padding:5px 0;text-align:right;color:var(--text2);border-bottom:1px solid var(--border)}
+  /* o vão que separa o que se MEXE do que DÁ — sem ele as 8 linhas viram uma lista só */
+  .pgm-cmp tr.sep td{padding:0;height:7px;border-bottom:1px solid var(--text3);border-top:0}
+  .pgm-cmp tr.sep + tr td{padding-top:7px}
+  .pgm-cmp td{padding:3px 0;text-align:right;color:var(--text2);border-bottom:1px solid var(--border)}
   .pgm-cmp tr:last-child td{border-bottom:0;padding-bottom:0}
   .pgm-cmp td.r{text-align:left;font-size:10.5px;color:var(--text3);letter-spacing:.01em}
   .pgm-cmp td.a{font-weight:800;font-size:15px;color:var(--text);letter-spacing:-.01em}
