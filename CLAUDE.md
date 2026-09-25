@@ -422,6 +422,31 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-25 (h) — PC da Empresa — PCP: SETAS nos campos do corte + o padrão 75 aparece na tela (`275c806c`)
+Pedido do Diego: *"Cortes por minuto quero uma opção além de escrever o número, também as flechas de subir e descer.
+Biscoito cru também, com flecha. Cortes por minuto padrão será 75 no pão de mel."*
+- ⭐ **Setas PRÓPRIAS** (`_pgmStep` + `_PGM_STEP`), não a do `type=number`: aquela está escondida desde 24/09
+  (`appearance:none`) porque **comia a largura útil dos campos estreitos** — e tem alvo de clique pequeno demais.
+  Estas ficam fora do campo, 22×13px cada, coladas na altura do input (28px). Passo **1** no corte e **0,1** no cru,
+  com clamp nos limites. O teclado (↑/↓ dentro do campo) continua valendo de graça.
+  - ⚠️ O passo do cru **SOMA em vez de alinhar na grade**: 10,43 + 0,1 = **10,53**, não 10,50. Os centésimos são
+    medição de verdade e não cabe à tela arredondá-los. `toFixed` mata o lixo do ponto flutuante — conferido:
+    10,43 + 3 cliques = **10,73** exato.
+  - ⚠️ Os botões levam **`type=button`**: dentro de um `<label>` o default é *submit*. E `preventDefault` no
+    `mousedown` impede o clique de devolver o foco ao input e disparar o `onchange`, que faria um `renderPCPDia`
+    redundante por seta. `_pgmStep` grava (é AÇÃO) e chama `_pgmRefresh` — não recria o editor, então nada pisca.
+- **O padrão do corte foi para a dica do campo** ("padrão 75"), como já era no cru; os CPMs já rodados desceram
+  para o `title` ("Já rodados na linha: 75 · 80 · 85 cortes/min").
+- ⚠️ **`cru` das 3 bases do forno: 11 → 10,43.** Com os 11 g antigos do mockup, o campo abria em **11** com a dica
+  dizendo **"padrão 10,43"** logo ao lado — a tela se contradizia. Bloco novo agora nasce em **75 / 10,43**.
+- ⭐ **"Voltar ao padrão"** no cabeçalho da seção Corte, visível **só quando o bloco está fora do trio**. É a saída
+  para quem já tem plano salvo com os valores antigos (o do Diego estava em 76 / 11) — eu não mexo no dado dele.
+- Testado em Edge headless, 0 erros de JS: setas nos dois campos com o dado e o campo batendo (76→77→75; 11→11,1→10,9),
+  clamp no máximo, o **Resultado do dia acompanhando ao vivo**, "voltar ao padrão" agindo e sumindo depois, bloco novo
+  em 75 / 10,43, sem overflow horizontal, página estável em **979px**.
+  📌 **Artefato de teste, não bug:** medir o botão depois de um `renderPCPDia` devolve **0×0** — o nó foi destruído
+  pelo re-render. Medir nos nós vivos (22×13). É a mesma armadilha já anotada em 18/07.
+
 ### 2026-09-25 (g) — PC da Empresa — Cobertura: sai a nota de rodapé do popover de Filtros
 O Diego marcou no print e pediu para tirar: *"Ainda sem dado para filtrar: o que está marcado é a foto em que o export
 foi tirado (23/09/2026 13:23). Cada controle abre quando a TI mandar o campo dele."*
