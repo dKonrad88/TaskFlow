@@ -448,6 +448,8 @@ uma diferente, pois às vezes podemos ter um fornecedor com validade diferente."
   classe **`.cp-inp-inline`** (19px, a altura do texto ao lado, com o sublinhado tracejado e foco no acento). O campo
   do custeio encolheu para 50px porque com 82 o rótulo "Preço de custeio" quebrava em duas linhas e a altura voltava.
   Medido: as duas linhas de **44px → 30px**, contra 27px das linhas simples; card de 644 → 630px.
+- Respiro: a escolha de "quantas cargas comprar" terminava ENCOSTADA no card do cronograma, como se fosse a mesma
+  coisa — 12px de padding embaixo dela (do lado de cá: o cronograma é um bloco de fundo cinza que começa colado).
 - Testado: amendoim abre com **6** no card e no simulador, e o wizard vai direto ao ICMS; pôr **3** mostra "cadastro 6
   · usar" e o botão devolve o 6; item sem cadastro abre "a cadastrar" e campo vazio; cadastrar **4** nele reflete no
   simulador na hora; **F5 preserva** os dois. 0 erros de JS.
