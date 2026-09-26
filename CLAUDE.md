@@ -422,6 +422,25 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-09-26 (b) — PC da Empresa — Cobertura: **ícone dedicado de PERSONALIZAÇÃO** (`f70b1b66`)
+*"Esse poderia ser outro ícone do lado, dedicado para personalização, vamos colocar mais coisas."* O semáforo e o
+corte de DDV saíram do funil e foram para um popover próprio (`ti-adjustments-horizontal`, ao lado do funil).
+- ⭐⭐ **A divisão tem uma lógica que vale manter:** o **FUNIL** recorta **QUAIS produtos** aparecem (e hoje é a
+  foto do SISPRO, tudo `disabled`); a **PERSONALIZAÇÃO** muda **COMO** a tela mostra e mede. De quebra resolve o
+  desconforto de ter um campo vivo no meio de seis mortos — agora **cada popover é inteiro de um tipo**.
+- ⚠️ Os dois são **exclusivos**: abrir um fecha o outro (`_ddvFiltrosToggle`/`_ddvPersToggle` zeram um ao outro),
+  senão se sobrepõem no mesmo canto. O `_ddvCloseFiltros` (clique fora) fecha os dois.
+- ⭐ **Primeira coisa nova: as 4 MÉDIAS DE VENDA voltaram a ser ligáveis** — item (3) da fila. São a mesma venda
+  dividida por quatro números e ocupam **um terço da largura**. A infra de montar a tabela sem elas **já existia
+  desde que nasceram** (`med` no `_ddvTabelaHTML`); só a variável tinha virado `const`. Desligadas: **13 → 9
+  colunas**, com a faixa de linha fechando certo nos dois casos (`nc-2`).
+- ⚠️ O ícone de personalizar **acende fechado** quando há ajuste ativo (corte de DDV, semáforo fora do padrão ou
+  médias escondidas) — senão a tela mudaria sem dar sinal.
+- ⏳ **O que ainda está na fila para entrar aqui** (acordada em 25/09): **"minhas linhas"** (favoritar entre as 32),
+  **ordem das colunas**, **DDV-alvo** e **visões salvas com nome**.
+- Testado em Edge headless: 2 ícones, funil com 6 grupos e **0 campos ativos**, personalização com 3 grupos e 4
+  ativos, 13 → 9 colunas, F5 preservando, clique fora fechando. 0 erros de JS.
+
 ### ⭐⭐ 2026-09-26 — PC da Empresa — Cobertura: **corte do semáforo ajustável** + **filtro de DDV até N dias** (`87493bea`)
 Dois pedidos do Diego, ambos no popover de Filtros.
 
