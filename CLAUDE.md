@@ -422,6 +422,54 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-09-26 (e) — PC da Empresa — Cobertura: **a data em que o estoque acaba** (2 colunas ligáveis) · Compras: **folga de segurança** no sugeridor
+
+#### ⭐ AS DUAS COLUNAS DE DATA, ao lado de cada DDV
+*"Mais duas colunas, do lado de DDV e DDV S/OP, com a data que termina o estoque de fato."* Entraram no grupo
+**Cobertura** (que passou a ter colspan 4): **DDV · Até · DDV s/OP · Até s/OP**.
+- ⚠️⚠️ **A conta é em DIAS ÚTEIS, não corridos** — e isso não é detalhe: a MDV divide a venda por **261**, que é o
+  total de segundas a sextas do ano (é assim que o SISPRO calcula), então o DDV já está em dias úteis. Somar dias
+  corridos adiantaria a data em dois dias por semana de cobertura: 20 dias de venda cairiam em 4 semanas, não em 3.
+- 🐞 **Bug meu, pego no teste:** a otimização "uma semana inteira = 5 dias úteis" fazia o DDV múltiplo de 5 cair num
+  **sábado** (5 dias úteis a partir de sábado devolvia sábado, em vez da sexta). O resto agora vai de **1 a 5**, nunca
+  0 — o último passo é sempre um dia útil contado a dedo. Conferido dia a dia: 1→28/09 · 4→01/10 · 5→02/10 · 6→05/10 ·
+  9→08/10 · 10→09/10, a partir de um sábado.
+- **Saldo zerado ou negativo mostra "—"**, com o motivo no tooltip: não existe data futura para um estoque que já
+  acabou, e inventar uma seria pior que o traço.
+- **Ordenar pela data = ordenar pelo DDV** (`dfim`/`dfimsop` no `_DDV_SC` apontam para o mesmo valor): é a mesma
+  grandeza em outra unidade. Conferido nos dois sentidos.
+- ⚠️ **Rótulo "Até", não "Termina":** medido, "TERMINA S/OP" pede **86px** numa coluna de **67** e saía cortado. O
+  nome inteiro foi para o `title` do cabeçalho (o `th()` ganhou um 4º parâmetro).
+- ⚠️ **As larguras SEM as datas ficaram idênticas às de antes** de propósito — aquela tela já estava medida e
+  aprovada; só o caminho novo paga o rebalanceamento (nome de produto 32% → 27%). Medido: **0 células cortadas** nas
+  três combinações (15 colunas com médias, 13 sem datas, 11 sem médias) e sem rolagem horizontal.
+- **Liga e desliga na personalização** ("Data em que o estoque termina"), ao lado das médias; nasce **ligada**, salva
+  em `taskflow_ddv_view` e o ícone acende quando está desligada. F5 preserva.
+
+#### O popover de personalização: campos alinhados e um divisor por assunto
+*"Ali tu pode ver que está desalinhado... e entre cada título, coloque um divider."*
+- Os três rótulos têm alturas diferentes ("Vermelho abaixo de" quebra em duas linhas) e os campos ficavam **em
+  degrau**. A caixa do rótulo ganhou altura fixa de duas linhas com o texto colado no fundo: as três legendas
+  terminam na mesma base e os três campos começam na mesma altura. Medido: topo dos 3 em **195px**, cravado.
+- **Divisor entre os grupos** (`.ddv-pop.pers .ddv-fgrp+.ddv-fgrp`) — só na personalização. No funil ficaria linha
+  demais: lá já existe a borda que separa os dois controles vivos dos seis que aguardam o dado da TI.
+
+#### ⭐⭐ FOLGA DE SEGURANÇA no sugerir datas
+*"Cargas de amendoim, preciso que chegue uns 20 dias antes de acabar."* Campo **"chegando [N] dias antes de acabar"**
+ao lado do botão; cada entrega passa a chegar N dias antes do esgotamento da anterior.
+- ⚠️ **É campo, não pergunta em modal:** a folga é uma política do item ("amendoim eu quero 20 dias de gordura") que a
+  pessoa vai ajustar e re-sugerir várias vezes até achar o ponto. Um prompt a cada clique cobraria a mesma resposta de
+  novo. Só guarda no `change`; quem aplica é o botão ao lado.
+- ⚠️ **Não é zerada ao trocar de modo/período** (ao contrário do resto do `_cpSim`): é preferência de estoque, não
+  parâmetro da simulação.
+- ⚠️ **Em dias CORRIDOS**, como todo o simulador de compras (o consumo aqui é `consMes/30`) — ao contrário do DDV da
+  Cobertura, que é dia útil. As duas telas medem coisas diferentes e cada uma usa a régua da sua fonte.
+- ⭐ O **preço da folga aparece sozinho** na própria tela: mais estoque parado e mais risco de vencer. Just in time é o
+  ponto matemático sem perda; a fábrica não trabalha nele porque atraso, feriado e consumo acima da média não avisam.
+- Testado no Amendoim, 3 cargas de 30 t: folga 0 → **04/01 · 09/02 · 17/03**; folga 20 → **15/12 · 20/01 · 25/02**
+  (exatos 20 dias antes, sem ruptura e sem vencimento). O toast passa a dizer "chega 20 dias antes de a anterior
+  acabar". 0 erros de JS.
+
 ### ⭐ 2026-09-26 (d) — PC da Empresa — Cobertura: **setas nas faixas de cor** · Compras: **SUGERIR DATAS DE ENTREGA** (e um bug de fundo achado no caminho)
 
 #### As faixas de cor do DDV ganharam as setas do PCP
