@@ -13657,8 +13657,17 @@ const _ddvFechadas={};        // linhas recolhidas — estado de tela, não pers
 // ⚠️ A série é MENSAL, então o recorte é por mês: a data escolhida entra pelo mês dela.
 let _ddvPer={ini:'',fim:'',m2ini:'',m2fim:''};
 
-// Corte do semáforo do DDV. No SISPRO o ⚠ acende exatamente abaixo de 7 dias.
+// Corte do semáforo do DDV. No SISPRO o ⚠ acende exatamente abaixo de 7 dias — este é o PADRÃO DE FÁBRICA.
 const DDV_ALERTA={vermelho:7, amarelo:10};
+// ⭐⭐ O CORTE VIROU AJUSTÁVEL (Diego, 26/09: "atenção está em 7 dias, mas se eu quiser ajustar; e folga
+// está em 10 dias ou mais, caso eu queira mudar"). Era o item (4) da fila de personalização acordada.
+// ⚠️⚠️ Isto é a ÚNICA coisa da tela que personaliza a CONTA, não a lente — e a régua combinada em 25/09
+// era justamente "personalizar a lente, nunca a conta, senão 'temos 5 em ruptura' deixa de ser fato
+// compartilhado". Por isso a tela AVISA quando o corte está fora do padrão, com o valor de fábrica ao
+// lado e um jeito de voltar: quem mudou sabe que está olhando com outra régua.
+let _ddvCorte={vermelho:DDV_ALERTA.vermelho, amarelo:DDV_ALERTA.amarelo};
+// filtro numérico independente dos cartões: "mostrar só o que está com DDV até N dias" ('' = sem corte)
+let _ddvMaxDDV='';
 const DDV_DIAS_UTEIS=261;
 const _DDV_POSICAO='23/09/2026 13:23';
 
@@ -13909,8 +13918,8 @@ function _ddvProdCels(p,c){
 function _ddvSetVer(v){ _ddvVer=v; _ddvSave(); _ddvRefresh(); }
 function _ddvCor(v){
   if(v==null) return '';
-  if(v<DDV_ALERTA.vermelho) return 'var(--danger)';
-  if(v<DDV_ALERTA.amarelo) return 'var(--amber)';
+  if(v<_ddvCorte.vermelho) return 'var(--danger)';
+  if(v<_ddvCorte.amarelo) return 'var(--amber)';
   return 'var(--success)';
 }
 const _ddvN=(v,d)=>v==null?'—':_cpNum(v,d==null?2:d);
@@ -13926,11 +13935,15 @@ function _ddvStatus(x){
   const c=x.c;
   if(c.saldo!=null && c.saldo<0) return 'ruptura';
   if(c.ddv==null) return '';
-  if(c.ddv<DDV_ALERTA.vermelho) return 'atencao';
-  if(c.ddv>=DDV_ALERTA.amarelo) return 'folga';
+  if(c.ddv<_ddvCorte.vermelho) return 'atencao';
+  if(c.ddv>=_ddvCorte.amarelo) return 'folga';
   return 'meio';
 }
 function _ddvCasa(x){
+  // ⚠️ o corte de DDV é INDEPENDENTE do cartão: combinam-se (cartão "A produzir" + DDV até 5, por ex.).
+  // Produto sem DDV (sem venda ou sem estoque) fica de fora quando há corte — não dá para afirmar que
+  // ele está abaixo de N dias.
+  if(_ddvMaxDDV!=='' && !(x.c.ddv!=null && x.c.ddv<=+_ddvMaxDDV)) return false;
   if(!_ddvFiltro) return true;
   const st=_ddvStatus(x);
   if(_ddvFiltro==='produzir') return (st==='ruptura'||st==='atencao') && !x.p[4];   // vai faltar e não tem OP/OC
@@ -13980,7 +13993,8 @@ const _DDV_FILTROS=['','ruptura','atencao','folga','produzir'];
 let _ddvCarregado=false;
 function _ddvSave(){
   try{ safeSetItem(LS_DDV, JSON.stringify({ busca:_ddvBusca, filtro:_ddvFiltro, sort:_ddvSort,
-    graf:_ddvGraf, per:_ddvPer, ver:_ddvVer, fechadas:Object.keys(_ddvFechadas) })); }catch(e){}
+    graf:_ddvGraf, per:_ddvPer, ver:_ddvVer, corte:_ddvCorte, maxddv:_ddvMaxDDV,
+    fechadas:Object.keys(_ddvFechadas) })); }catch(e){}
 }
 // ⚠️ Valida TUDO o que vem do storage: coluna que deixou de existir (a Vendas saiu hoje), filtro
 // desconhecido ou linha renomeada no export voltariam como estado quebrado, sem UI para desfazer.
@@ -13993,12 +14007,40 @@ function _ddvLoad(){
   if(typeof o.graf==='string') _ddvGraf=o.graf;   // some sozinho se o alvo não existir mais (_ddvGrafAlvo devolve null)
   // `o.ver` é ignorado de propósito desde 25/09 — ver o comentário na declaração de _ddvVer
   if(o.per && typeof o.per==='object') ['ini','fim','m2ini','m2fim'].forEach(k=>{ if(typeof o.per[k]==='string') _ddvPer[k]=o.per[k]; });
+  // ⚠️ o corte volta do storage só se fizer SENTIDO: números positivos e com o vermelho abaixo do verde.
+  // Um par invertido (verde 5, vermelho 10) deixaria a faixa do meio vazia e o semáforo mentindo, sem UI
+  // para desfazer — é a mesma armadilha do estado salvo que já custou caro no allView.
+  if(o.corte && typeof o.corte==='object'){ const v=+o.corte.vermelho, a=+o.corte.amarelo;
+    if(v>0 && a>0 && v<=a && v<=999 && a<=999) _ddvCorte={vermelho:v, amarelo:a}; }
+  if(typeof o.maxddv==='number' || (typeof o.maxddv==='string' && o.maxddv!=='')){
+    const m=+o.maxddv; if(m>0 && m<=999) _ddvMaxDDV=m; }
   if(Array.isArray(o.fechadas)){ const nomes={}; _DDV_LINHAS.forEach(L=>{ nomes[L[0]]=1; });
     o.fechadas.forEach(n=>{ if(nomes[n]) _ddvFechadas[n]=1; }); }
 }
 function _ddvRefresh(){ const el=document.getElementById('ddv-conteudo'); if(el) el.innerHTML=_ddvTabelaHTML(); else renderPCP(); }
 function _ddvBuscaInput(v){ _ddvBusca=v; _ddvSave(); _ddvRefresh(); }
 function _ddvSetFiltro(v){ _ddvFiltro=(_ddvFiltro===v?'':v); _ddvSave(); renderPCP(); }
+// ── AÇÕES do semáforo e do corte de DDV (gravam; nunca no render)
+// ⚠️ Vermelho e verde se empurram: o vermelho nunca passa do verde e vice-versa, senão sobra uma faixa
+// do meio invertida e o semáforo passa a mentir sem ninguém perceber.
+function _ddvSetCorte(qual, el){
+  const n=parseFloat(String(el.value).replace(',','.'));
+  if(!(n>0) || n>999) return renderPCP();
+  // ⚠️ empurra para o MESMO valor, não para n+0.1: com vermelho = verde a faixa âmbar simplesmente some
+  // (fica só "atenção abaixo de 12" e "folga a partir de 12"), que é mais limpo que um 12,1 solto.
+  if(qual==='vermelho') _ddvCorte={vermelho:n, amarelo:Math.max(n, _ddvCorte.amarelo)};
+  else _ddvCorte={vermelho:Math.min(n, _ddvCorte.vermelho), amarelo:n};
+  _ddvSave(); renderPCP();
+}
+function _ddvCorteReset(){ _ddvCorte={vermelho:DDV_ALERTA.vermelho, amarelo:DDV_ALERTA.amarelo}; _ddvSave(); renderPCP(); }
+function _ddvCortePadrao(){ return _ddvCorte.vermelho===DDV_ALERTA.vermelho && _ddvCorte.amarelo===DDV_ALERTA.amarelo; }
+// ⚠️ o corte aceita meio dia, então a exibição não pode ser um `7.5` cru no meio de uma frase em português
+const _ddvCorteTxt=v=>Number.isInteger(+v)?String(+v):_cpNum(+v,1);
+function _ddvSetMax(el){ const v=String(el.value).trim().replace(',','.');
+  const n=parseFloat(v);
+  _ddvMaxDDV = (v===''||!(n>0)||n>999) ? '' : n;
+  _ddvSave(); renderPCP(); }
+function _ddvMaxLimpar(){ _ddvMaxDDV=''; _ddvSave(); renderPCP(); }
 function _ddvSortBy(c){ if(_ddvSort.campo===c) _ddvSort.dir*=-1; else { _ddvSort.campo=c; _ddvSort.dir=(c==='nome'||c==='cod')?1:-1; } _ddvSave(); _ddvRefresh(); }
 function _ddvToggleLinha(nome){ if(_ddvFechadas[nome]) delete _ddvFechadas[nome]; else _ddvFechadas[nome]=1; _ddvSave(); _ddvRefresh(); }
 function _ddvTodasLinhas(fechar){ _DDV_LINHAS.forEach(L=>{ if(fechar) _ddvFechadas[L[0]]=1; else delete _ddvFechadas[L[0]]; }); _ddvSave(); _ddvRefresh(); }
@@ -14101,7 +14143,14 @@ function _ddvCSS(){
   .ddv-fbtn.on{border-color:var(--blue-mid);color:var(--blue-mid)}
   .ddv-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:50;width:272px;background:var(--card);border:1px solid var(--border);border-radius:11px;box-shadow:0 10px 28px rgba(0,0,0,.18);padding:11px 12px;text-align:left;max-height:calc(100vh - 150px);overflow:auto}
   .ddv-fgrp{margin-bottom:11px}
-  .ddv-fgrp>b{display:block;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
+  .ddv-fgrp>b{display:flex;align-items:baseline;gap:8px;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
+  .ddv-fgrp>b u{margin-left:auto;text-decoration:none;font-size:9px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--blue-mid);cursor:pointer}
+  .ddv-fnum{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+  .ddv-fnum i{font-style:normal;font-size:9.5px;letter-spacing:0;text-transform:none;font-weight:600}
+  .ddv-fnota{font-size:9.5px;color:var(--text3);line-height:1.45;margin-top:5px}
+  /* separa os controles que FUNCIONAM dos que esperam o export — ver o comentário em _ddvFiltrosPopHTML */
+  .ddv-fsep{font-size:8.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);
+    opacity:.75;border-top:1px solid var(--border);padding-top:9px;margin:2px 0 9px}
   .ddv-frow{display:flex;align-items:center;gap:6px}
   .ddv-frow span{font-size:10.5px;color:var(--text3);flex:none}
   /* ⚠️ todo campo aqui PRECISA de classe: a regra global input:not([class]) força 40px de altura
@@ -14271,8 +14320,8 @@ function _ddvKPIsHTML(){
   return `<div class="ddv-kpis">
     ${k('','Itens',todos.length,_cpNum(_DDV_LINHAS.length)+' linhas de produto')}
     ${k('ruptura','Em ruptura',rup,'saldo negativo','var(--danger)')}
-    ${k('atencao','Atenção',aten,'menos de '+DDV_ALERTA.vermelho+' dias de estoque','var(--danger)')}
-    ${k('folga','Folga',folga,DDV_ALERTA.amarelo+' dias ou mais','var(--success)')}
+    ${k('atencao','Atenção',aten,'menos de '+_ddvCorteTxt(_ddvCorte.vermelho)+' dias de estoque','var(--danger)')}
+    ${k('folga','Folga',folga,_ddvCorteTxt(_ddvCorte.amarelo)+' dias ou mais','var(--success)')}
     ${k('produzir','A produzir',prod,'vai faltar e não tem OP/OC','var(--amber)')}
     ${(function(){ const m=_ddvCobertura(); if(!m) return '';
       return `<div class="ddv-kpi info" title="Saldo total ÷ venda diária total — quantos dias o estoque inteiro dura no ritmo de hoje.&#10;Média simples dos itens: ${_ddvN(m.simples,1)} dias · mediana: ${_ddvN(m.mediana,1)} dias.&#10;${_cpNum(m.n)} produtos entram na conta (os sem venda ou sem estoque ficam de fora).">
@@ -14316,7 +14365,7 @@ function _ddvTabelaHTML(){
       <td colspan="${nc-2}"></td></tr>`;
     if(!fechada) L.prods.forEach(p=>{
       const c=_ddvCalc(p), st=_ddvCor(c.ddv), aberto=String(_ddvGraf)===String(p[0]);
-      const alerta=(c.ddv!=null&&c.ddv<DDV_ALERTA.vermelho)?`<i class="ti ti-alert-triangle-filled" style="color:var(--danger);font-size:11px;margin-right:4px" title="menos de ${DDV_ALERTA.vermelho} dias de estoque"></i>`:'';
+      const alerta=(c.ddv!=null&&c.ddv<_ddvCorte.vermelho)?`<i class="ti ti-alert-triangle-filled" style="color:var(--danger);font-size:11px;margin-right:4px" title="menos de ${_ddvCorteTxt(_ddvCorte.vermelho)} dias de estoque"></i>`:'';
       // Abaixo de zero não é "pouco estoque", é buraco: a célula vira vermelha com fonte branca.
       // Saldo e DDV viram juntos (DDV = saldo ÷ MDV, e a MDV é sempre positiva).
       const negS=(c.saldo!=null&&c.saldo<0), negD=(c.ddv!=null&&c.ddv<0);
@@ -14341,6 +14390,8 @@ function _ddvTabelaHTML(){
     resProd=` · <b>${_cpNum(nq,0)} a produzir · ${_cpNum(mt,0)} massadas · ${_cpNum(ht,1)}h de forno</b>`; }
   return `<div class="ddv-bar">
       <span class="t">${_cpNum(nProd)} produtos · ${_cpNum(linhas.length)} linhas${resProd}</span>
+      ${_ddvMaxDDV===''?'':`<button class="ddv-link on" onclick="_ddvMaxLimpar()" title="Tirar o corte de DDV">DDV até ${_ddvCorteTxt(_ddvMaxDDV)} dias <i class="ti ti-x" style="font-size:12px;vertical-align:-1px"></i></button>`}
+      ${_ddvCortePadrao()?'':`<button class="ddv-link on" onclick="_ddvCorteReset()" title="Voltar ao corte do SISPRO (${DDV_ALERTA.vermelho} e ${DDV_ALERTA.amarelo})">semáforo ${_ddvCorteTxt(_ddvCorte.vermelho)} / ${_ddvCorteTxt(_ddvCorte.amarelo)} <i class="ti ti-x" style="font-size:12px;vertical-align:-1px"></i></button>`}
       <button class="ddv-link" style="margin-left:auto" onclick="_ddvTodasLinhas(${fechadas?0:1})"><i class="ti ti-${fechadas?'chevrons-down':'chevrons-up'}" style="font-size:12px;vertical-align:-1px"></i> ${fechadas?'Abrir todas':'Recolher todas'}</button>
     </div>
     <div class="ddv-hstrip"><table class="ddv-tbl"><colgroup>${cols}</colgroup><thead>${grupos}${colunas}</thead></table></div>
@@ -14369,7 +14420,24 @@ function _ddvFiltrosPopHTML(){
   const sel=(lab,todos,itens,marc)=>`<div class="ddv-fgrp"><b>${lab}</b><select class="ddv-fsel" disabled>`
     +`<option${marc?'':' selected'}>${todos}</option>`
     +itens.map(t=>`<option${t===marc?' selected':''}>${escapeHTML(t)}</option>`).join('')+`</select></div>`;
+  // ⭐ OS ÚNICOS CONTROLES VIVOS do popover ficam em cima, separados por uma borda dos que ainda esperam
+  // o dado da TI (todos `disabled`). Sem essa separação, um campo que funciona no meio de seis que não
+  // funcionam faz a pessoa achar que os outros também deviam responder.
+  const vivos=`<div class="ddv-fgrp viva"><b>Semáforo do DDV${_ddvCortePadrao()?'':`<u onclick="_ddvCorteReset()" title="Voltar ao corte do SISPRO: ${DDV_ALERTA.vermelho} e ${DDV_ALERTA.amarelo}">voltar ao padrão</u>`}</b>
+      <div class="ddv-frow">
+        <label class="ddv-fnum"><i style="color:var(--danger)">Atenção abaixo de</i>
+          <input type="number" class="ddv-fdt" value="${_ddvCorte.vermelho}" min="0.5" max="999" step="0.5" onchange="_ddvSetCorte('vermelho',this)"></label>
+        <label class="ddv-fnum"><i style="color:var(--success)">Folga a partir de</i>
+          <input type="number" class="ddv-fdt" value="${_ddvCorte.amarelo}" min="0.5" max="999" step="0.5" onchange="_ddvSetCorte('amarelo',this)"></label>
+      </div>
+      ${_ddvCortePadrao()?'':`<div class="ddv-fnota">Régua sua, não a do SISPRO (${DDV_ALERTA.vermelho} e ${DDV_ALERTA.amarelo}) — os números da tela mudam junto.</div>`}</div>
+    <div class="ddv-fgrp viva"><b>Mostrar só até${_ddvMaxDDV===''?'':`<u onclick="_ddvMaxLimpar()">limpar</u>`}</b>
+      <div class="ddv-frow">
+        <input type="number" class="ddv-fdt" value="${_ddvMaxDDV}" min="0.5" max="999" step="0.5" placeholder="sem corte" onchange="_ddvSetMax(this)">
+        <span style="white-space:nowrap">dias de DDV</span></div></div>`;
   return `<div class="ddv-pop">
+    ${vivos}
+    <div class="ddv-fsep">aguardando o dado da TI</div>
     ${per('Período Pedidos', J.pedIni, J.pedFim)}
     ${per('Período Vendas', J.venIni, J.venFim)}
     ${sel('Marcas','Todas',_DDV_MARCAS,'Klain')}
@@ -14390,7 +14458,10 @@ function renderDDV(){
   // a busca subiu p/ o canto superior direito (slot `acao` do _cpTela) — ocupava uma faixa só dela
   const busca=`<span class="ddv-buscaw"><i class="ti ti-search"></i><input id="ddv-busca" value="${escapeAttr(_ddvBusca)}" oninput="_ddvBuscaInput(this.value)" placeholder="Buscar produto, código ou linha" class="ddv-busca"></span>`;
   if(!window.__ddvFiltrosCloser){ window.__ddvFiltrosCloser=true; document.addEventListener('mousedown', _ddvCloseFiltros, true); }
-  const acao=`<span class="ddv-acao">${busca}<span class="cp-pop-wrap" style="position:relative;display:inline-flex"><button class="ddv-fbtn${_ddvFiltrosAberto?' on':''}" onclick="_ddvFiltrosToggle()" title="Filtros"><i class="ti ti-filter"></i></button>${_ddvFiltrosPopHTML()}</span></span>`;
+  // ⚠️ o botão acende também com o popover FECHADO quando há ajuste ativo — senão um corte de DDV ou um
+  // semáforo fora do padrão ficariam escondidos atrás do ícone, mudando os números sem dar sinal.
+  const fOn=_ddvFiltrosAberto || _ddvMaxDDV!=='' || !_ddvCortePadrao();
+  const acao=`<span class="ddv-acao">${busca}<span class="cp-pop-wrap" style="position:relative;display:inline-flex"><button class="ddv-fbtn${fOn?' on':''}" onclick="_ddvFiltrosToggle()" title="Filtros"><i class="ti ti-filter"></i></button>${_ddvFiltrosPopHTML()}</span></span>`;
   const corpo=`${_ddvCSS()}
     ${_ddvKPIsHTML()}
     <div id="ddv-graf-box">${_ddvGrafHTML()}</div>
