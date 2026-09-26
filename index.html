@@ -9032,7 +9032,7 @@ function _cpVoltarLabel(){ const M={painel:'ao painel',planejamento:'ao planejam
 function _cpAbrirItem(cod){
   // grava a origem só ao abrir de uma LISTA (item→item dentro da ficha mantém _cpItemSel != null).
   if(_cpItemSel==null) _cpItemOrigem=comprasView;
-  _cpItemSel=cod; _cpItemMes=null; _cpFichaView='resumo'; _cpFichaFornSel=null; _cpSimReset(); comprasView='insumos';
+  _cpItemSel=cod; _cpItemMes=null; _cpFichaView='resumo'; _cpFichaFornSel=null; _cpSimReset(); _cpSim.validadeMeses=_cpGetValidade(cod); comprasView='insumos';
   try{ document.body.classList.remove('cp-focus'); }catch(e){} // abre NÃO-EXPANDIDO (sub-navbar, estilo Reunião); ⛶ expande p/ tela cheia
   renderSidebar(); renderCompras(); window.scrollTo(0,0); }
 function _cpVoltarItens(){ _cpItemSel=null; _cpItemMes=null; try{document.body.classList.remove('cp-focus');}catch(e){} comprasView=_cpItemOrigem||'insumos'; renderSidebar(); renderCompras(); window.scrollTo(0,0); }
@@ -9299,7 +9299,7 @@ function _cpToggleFoco(){ _cpSetFoco(!document.body.classList.contains('cp-focus
 // começam vazios p/ o usuário preencher (é o gatilho que libera as premissas). usarCarga: item vem em
 // carga fechada (caminhão) — desligável p/ itens de volume pequeno. entregas: cronograma de chegada.
 let _cpSim={periodo:'', perDe:'', perAte:'', modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', icms:'', usarCarga:true, cargaEscolhida:'', entregas:[], entregasQtd:[], folgaDias:''};
-function _cpSimReset(){ _cpSim={periodo:'', perDe:'', perAte:'', modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', icms:'', usarCarga:true, cargaEscolhida:'', entregas:[], entregasQtd:[]}; }
+function _cpSimReset(){ _cpSim={periodo:'', perDe:'', perAte:'', modo:'', dias:'', data:'', qtd:'', unidade:'kg', preco:'', descPct:'7', cargas:'', cargaTon:'', validadeMeses:'', icms:'', usarCarga:true, cargaEscolhida:'', entregas:[], entregasQtd:[], folgaDias:''}; }
 // ── PERÍODO de referência do consumo (Diego): 1º passo do wizard (antes de "Calcular por"). O comprador
 // escolhe sobre qual janela calcular o CONSUMO MENSAL médio — presets (1,2,3,4,6,9,12 meses) ou intervalo
 // de datas. Vira a base de TODO o cálculo (qtd, cobertura, cronograma). Média simples dos meses COM consumo.
@@ -9508,6 +9508,25 @@ let _cpCusteio=null;
 function _cpCusteioMap(){ if(_cpCusteio===null){ try{ _cpCusteio=safeJSON(LS_CP_CUSTEIO,{})||{}; }catch(e){ _cpCusteio={}; } } return _cpCusteio; }
 function _cpGetCusteio(cod){ const v=_cpCusteioMap()[cod]; return v==null?'':v; }
 function _cpSetCusteio(cod,val){ const m=_cpCusteioMap(); if(val==null||String(val).trim()===''){ delete m[cod]; } else { m[cod]=String(val).trim(); } try{ safeSetItem(LS_CP_CUSTEIO, JSON.stringify(m)); }catch(e){} _cpSimRerender(); }
+// ⭐ VALIDADE do produto, em meses (Diego, 26/09: "já poderia trazer a validade, e daí o comprador não
+// precisa preencher lá"). Por item, como o preço de custeio.
+// ⚠️ O mapa em CÓDIGO é SEMENTE, não dado: no Hub Oficial a validade é campo do cadastro do produto. Aqui
+// ele dá o valor que já se sabe (amendoim = 6 meses) SEM gravar nada no boot — a regra P0 é que render não
+// escreve, e semear o localStorage na abertura seria escrita disfarçada. O que a pessoa digita vence o mapa.
+const _CP_VALIDADE_SEED={'20017':'6'};
+const LS_CP_VALIDADE='taskflow_cp_validade';
+let _cpValidade=null;
+function _cpValidadeMap(){ if(_cpValidade===null){ try{ _cpValidade=safeJSON(LS_CP_VALIDADE,{})||{}; }catch(e){ _cpValidade={}; } } return _cpValidade; }
+function _cpGetValidade(cod){ const m=_cpValidadeMap(); const v=(m[cod]!=null)?m[cod]:_CP_VALIDADE_SEED[cod]; return v==null?'':String(v); }
+function _cpSetValidade(cod,val){ const m=_cpValidadeMap(); const s=String(val==null?'':val).replace(',','.').trim();
+  const n=parseFloat(s);
+  if(s===''||!(n>0)||n>240){ delete m[cod]; } else { m[cod]=String(n); }
+  try{ safeSetItem(LS_CP_VALIDADE, JSON.stringify(m)); }catch(e){}
+  // quem acabou de cadastrar a validade do produto quer vê-la valendo na simulação que está aberta
+  _cpSim.validadeMeses=_cpGetValidade(cod); _cpSimRerender(); _cpIndRefresh(); }
+// A validade em uso é do CADASTRO ou uma digitada só para esta compra (fornecedor com validade diferente).
+function _cpSimValidadeDoCad(cod){ const c=_cpGetValidade(cod); return c!=='' && String(_cpSim.validadeMeses).trim()===c; }
+function _cpSimUsarValidadeCad(){ if(!_cpItemSel) return; _cpSim.validadeMeses=_cpGetValidade(_cpItemSel); _cpSimRerender(); }
 // Simulação FEFO por dia: cada lote {arr,exp,qty} (dias a partir de hoje); consome consDia/dia do lote que vence primeiro.
 // Retorna a perda (o que vence parado) por lote. É PROTÓTIPO — datas de entrega são estimativa do comprador.
 function _cpFefoSim(batches, consDia){
@@ -9793,7 +9812,15 @@ function _cpSimHTML(o){
   const steps=[];
   if(s.modo!=='desconto') steps.push([()=>_cpSimPremOK(s.preco), premRow('Preço de compra', `${uSpan('R$')}${inpS('preco',s.preco,_cpNum(precoRef,2),'text','58px')}${uSpan('/'+um)}${refChips}`)]);
   if(cargaOK) steps.push([()=>_cpSimPremOK(s.cargaTon), premRow('Tamanho da carga', `${inpS('cargaTon',s.cargaTon,'35','number','48px','min="0" step="0.5"')}${uSpan('t')}`)]);
-  steps.push([()=>_cpSimPremOK(s.validadeMeses), premRow('Validade', `${inpS('validadeMeses',s.validadeMeses,'6','number','44px','min="0" step="1"')}${uSpan('meses')}`)]);
+  // ⭐ A validade vem do CADASTRO do item (card Indicadores) e o campo já abre com ela — mas continua
+  // editável: "às vezes podemos ter um fornecedor com validade diferente". Quando o valor sai do cadastro,
+  // a tela diz de onde ele veio e oferece a volta em um clique; quando é o do cadastro, só confirma a origem.
+  const _valCad=_cpGetValidade(o.cod);
+  const _valNota=_valCad===''?''
+    : (_cpSimValidadeDoCad(o.cod)
+      ? `<span style="font-size:10px;color:var(--text3)">do cadastro</span>`
+      : `<span style="font-size:10px;color:var(--text3)">cadastro ${_valCad} <button type="button" onclick="_cpSimUsarValidadeCad()" style="background:none;border:none;padding:0 0 0 3px;font:inherit;font-size:10px;color:var(--blue-mid);font-weight:700;cursor:pointer">usar</button></span>`);
+  steps.push([()=>_cpSimPremOK(s.validadeMeses), premRow('Validade', `${inpS('validadeMeses',s.validadeMeses,_valCad||'6','number','44px','min="0" step="1"')}${uSpan('meses')}${_valNota}`)]);
   // ICMS (%) — a ÚLTIMA premissa, e agora é ela que libera o resultado (ver _cpSimPremsFilled). Dá o preço
   // unitário NET (líquido de ICMS) no resumo. Placeholder = alíquota da última compra (Amendoim 12%).
   // ⚠️ Aceita ZERO: item isento precisa de um jeito de seguir em frente, e a dica diz isso quando não há
@@ -9818,7 +9845,7 @@ function _cpSimHTML(o){
 }
 // Trocar de MODO zera o wizard inteiro (valor do modo + premissas + cronograma) — assim SEMPRE recomeça
 // um a um, independente do que foi preenchido no modo anterior (pedido do Diego).
-function _cpSimModo(m){ _cpSim.modo=m; _cpSim.dias=''; _cpSim.data=''; _cpSim.qtd=''; _cpSim.cargas=''; _cpSim.preco=''; _cpSim.cargaTon=''; _cpSim.validadeMeses=''; _cpSim.icms=''; _cpSim.cargaEscolhida=''; _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); setTimeout(_cpSimFocusNext,0); }
+function _cpSimModo(m){ _cpSim.modo=m; _cpSim.dias=''; _cpSim.data=''; _cpSim.qtd=''; _cpSim.cargas=''; _cpSim.preco=''; _cpSim.cargaTon=''; _cpSim.validadeMeses=(_cpItemSel?_cpGetValidade(_cpItemSel):''); _cpSim.icms=''; _cpSim.cargaEscolhida=''; _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); setTimeout(_cpSimFocusNext,0); }
 // CARGA ESCOLHIDA (Diego): em modo não-cargas comprando carga fechada, arredonda a compra p/ N cargas
 // inteiras (piso/teto). Clicar de novo na mesma desmarca. Muda o nº de cargas → zera as datas do cronograma.
 function _cpSimSetCargaEsc(nc){ _cpSim.cargaEscolhida=(String(_cpSim.cargaEscolhida)===String(nc))?'':nc; _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); }
@@ -9939,6 +9966,8 @@ function _cpIndicadoresCard(o){
     ['Cobertura', _cob(diasOCX), '(físico + OC)'],
     ['Estoque mínimo', pend],
     ['Ponto de ressuprimento', pend],
+    // ⚠️ Editável aqui de propósito: é o cadastro do produto, e é daqui que o simulador puxa a validade.
+    ['Validade', `<span style="white-space:nowrap"><input type="text" inputmode="decimal" value="${escapeAttr(_cpGetValidade(o.cod))}" placeholder="a cadastrar" onchange="_cpSetValidade('${escapeAttr(o.cod)}',this.value)" onclick="event.stopPropagation()" title="Validade do produto em meses — o simulador de compra já abre com ela" style="width:${_cpGetValidade(o.cod)?'34px':'82px'};text-align:right;background:transparent;border:none;border-bottom:1px dashed var(--border);border-radius:0;padding:1px 2px;font-size:12.5px;font-weight:600;color:var(--text);font-family:inherit">${_cpGetValidade(o.cod)?' <span style="font-weight:500;color:var(--text3);font-size:11.5px">meses</span>':''}</span>`],
     ['Preço médio compra', o.precoCompra?_cpBRL(o.precoCompra):'—', perCompras],
     ['Último preço de compra', o.ultPreco?_cpBRL(o.ultPreco):'—'],
     ['Custo médio s/ imp.', o.cmu?_cpBRL(o.cmu):'—', perCMU],

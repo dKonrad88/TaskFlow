@@ -422,6 +422,31 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-09-26 (h) — PC da Empresa — Compras: a **VALIDADE vira cadastro do item** e o simulador já abre com ela
+*"Nos indicadores já poderia trazer a validade, e daí o comprador não precisa preencher lá. No amendoim pode colocar 6
+meses; nos demais vamos preencher no Hub Oficial. E no simulador, uma opção de usar o que já tem cadastrado ou colocar
+uma diferente, pois às vezes podemos ter um fornecedor com validade diferente."*
+- **Linha "Validade" no card Indicadores**, editável na própria linha (mesmo padrão do Preço de custeio), logo abaixo
+  do Ponto de ressuprimento. Vazia mostra *a cadastrar*; preenchida mostra "6 meses". Guarda em
+  **`taskflow_cp_validade`** por código de item — entra no sync da nuvem.
+- ⚠️ **O amendoim vem de um mapa em CÓDIGO (`_CP_VALIDADE_SEED`), não de um seed gravado.** A regra P0 é que render não
+  escreve, e semear o localStorage na abertura da ficha seria escrita disfarçada. O mapa é o valor de fábrica; o que a
+  pessoa digita vence, e apagar o campo devolve o de fábrica. **Para semear mais itens, é uma entrada por código** —
+  no Hub Oficial isso vira campo do cadastro do produto e o mapa some.
+- ⭐ **O simulador nasce com ela**: `_cpAbrirItem` e `_cpSimModo` preenchem `validadeMeses` com o cadastro, então o
+  passo a passo **pula direto para o ICMS**. Sem cadastro, o campo abre vazio como antes.
+- ⭐ **E continua editável**, que era a outra metade do pedido: digitar outro valor vale só para aquela compra. Quando
+  o valor sai do cadastro, o campo mostra **"cadastro 6 · usar"** (um clique volta); quando é o do cadastro, mostra
+  **"do cadastro"** — a origem do número fica sempre visível.
+- ⚠️ **Editar a validade no card empurra o valor para a simulação aberta** (`_cpSetValidade` escreve em `_cpSim`):
+  quem acabou de dizer que o produto dura 6 meses não quer que a simulação ao lado siga com outro número.
+- ⚠️ Validação: aceita de 0 a 240 meses; fora disso (ou vazio) o cadastro é **apagado**, não gravado torto.
+- 🐞 De quebra: `_cpSimReset` não recriava `folgaDias` (o campo nasceu no literal de `_cpSim`, não no reset) — trocar
+  de item zerava o objeto sem a chave. Funcionava por sorte (`undefined` caía em 0); agora está no reset.
+- Testado: amendoim abre com **6** no card e no simulador, e o wizard vai direto ao ICMS; pôr **3** mostra "cadastro 6
+  · usar" e o botão devolve o 6; item sem cadastro abre "a cadastrar" e campo vazio; cadastrar **4** nele reflete no
+  simulador na hora; **F5 preserva** os dois. 0 erros de JS.
+
 ### ⭐⭐ 2026-09-26 (g) — PC da Empresa — Compras: **a ficha e o cronograma passam a dar a MESMA data** · cronograma em uma linha
 
 #### 🐞 As datas não batiam — e eram DUAS causas
