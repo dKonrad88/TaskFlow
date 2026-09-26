@@ -621,6 +621,12 @@ resultado inteiro já montado, e ninguém preenchia.
 - ⚠️ **As larguras SEM as datas ficaram idênticas às de antes** de propósito — aquela tela já estava medida e
   aprovada; só o caminho novo paga o rebalanceamento (nome de produto 32% → 27%). Medido: **0 células cortadas** nas
   três combinações (15 colunas com médias, 13 sem datas, 11 sem médias) e sem rolagem horizontal.
+- 🐞 **COLISÃO DE NOME DE CLASSE, pega pelo Diego no print:** eu batizei a célula de `.ddv-dt` e esse nome JÁ ERA o
+  campo `<input type=date>` do gráfico — com borda nos quatro lados, raio 6 e fundo de card. As células herdaram tudo
+  e viraram caixinhas no meio da tabela (o fundo do grupo continuou certo porque `.ddv-tbl td.b2` tem especificidade
+  maior; a borda e o raio, que ninguém mais declarava, passaram). Renomeada para **`.ddv-fim`**. Conferido: **0 de 288**
+  células com borda completa, só o `border-bottom` das vizinhas.
+  ⚠️ Nome curto de classe colide fácil neste arquivo: antes de criar, um grep pelo nome.
 - **Liga e desliga na personalização** ("Data em que o estoque termina"), ao lado das médias; nasce **ligada**, salva
   em `taskflow_ddv_view` e o ícone acende quando está desligada. F5 preserva.
 

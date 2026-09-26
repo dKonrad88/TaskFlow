@@ -14512,7 +14512,9 @@ function _ddvCSS(){
   /* divisor entre os blocos da personalizacao: cada titulo passa a delimitar um assunto */
   .ddv-pop.pers .ddv-fgrp+.ddv-fgrp{border-top:1px solid var(--border);padding-top:10px}
   /* a data e leitura de apoio do DDV que esta ao lado — nao pode competir com ele */
-  .ddv-tbl td.ddv-dt{color:var(--text3);font-size:10.5px;white-space:nowrap}
+  /* ⚠️ NAO chamar de .ddv-dt: esse nome ja e o campo <input type=date> do grafico, com borda, raio e fundo
+     de card — a celula herdava tudo e virava uma caixinha no meio da tabela (Diego pegou no print). */
+  .ddv-tbl td.ddv-fim{color:var(--text3);font-size:10.5px;white-space:nowrap}
   /* campo com setas PROPRIAS, mesma gramatica do PCP: a seta nativa do type=number tem alvo pequeno
      demais e ainda come a largura util do campo — e aqui sobram ~78px por faixa (o popover tem 248px
      uteis para tres). Por isso a nativa e escondida logo abaixo. */
@@ -14762,9 +14764,9 @@ function _ddvTabelaHTML(){
         <td class="bnd b1 bs">${_ddvN(p[2])}</td><td class="bnd b1">${_ddvN(p[3])}</td><td class="bnd b1">${_ddvN(p[4])}</td><td class="bnd b1">${_ddvN(p[5])}</td>
         <td class="bnd b1${negS?' ddv-neg':''}"${negS?'':` style="color:${c.saldo==null?'':'var(--blue-mid)'};font-weight:600"`}>${_ddvN(c.saldo)}</td>
         <td class="bnd b2 bs${negD?' ddv-neg':''}"${negD?'':` style="color:${st};font-weight:700"`}>${_ddvN(c.ddv)}</td>
-        ${dat?`<td class="bnd b2 ddv-dt"${negD?' title="Saldo negativo — o estoque já acabou"':''}>${_ddvDataFim(c.ddv)||'—'}</td>`:''}
+        ${dat?`<td class="bnd b2 ddv-fim"${negD?' title="Saldo negativo — o estoque já acabou"':''}>${_ddvDataFim(c.ddv)||'—'}</td>`:''}
         <td class="bnd b2" style="color:${_ddvCor(c.ddvsop)};font-weight:600">${_ddvN(c.ddvsop)}</td>
-        ${dat?`<td class="bnd b2 ddv-dt"${(c.ddvsop!=null&&c.ddvsop<=0)?' title="Sem a OP/OC o estoque já acabou"':''}>${_ddvDataFim(c.ddvsop)||'—'}</td>`:''}
+        ${dat?`<td class="bnd b2 ddv-fim"${(c.ddvsop!=null&&c.ddvsop<=0)?' title="Sem a OP/OC o estoque já acabou"':''}>${_ddvDataFim(c.ddvsop)||'—'}</td>`:''}
         ${prod?_ddvProdCels(p,c):(med?`<td class="bnd b3 bs">${_ddvN(c.mdv)}</td><td class="bnd b3">${_ddvN(c.msv)}</td><td class="bnd b3">${_ddvN(c.mqv)}</td><td class="bnd b3">${_ddvN(c.mmv)}</td>`:'')}</tr>`;
     });
     cards+=`<div class="ddv-grp"><table class="ddv-tbl"><colgroup>${cols}</colgroup><tbody>${rows}</tbody></table></div>`;
