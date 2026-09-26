@@ -422,6 +422,45 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐⭐ 2026-09-26 (g) — PC da Empresa — Compras: **a ficha e o cronograma passam a dar a MESMA data** · cronograma em uma linha
+
+#### 🐞 As datas não batiam — e eram DUAS causas
+*"Físico nos indicadores está em 06/12/26 e no cronograma 29/11; o mesmo para a OC aberta."* A mesma pergunta — quando
+o estoque acaba — tinha duas respostas a 30cm uma da outra.
+1. ⭐ **Bases de consumo diferentes.** O card media pela média do EXPORT (jan–ago, 22.601 KG/mês) e o cronograma pela
+   média do **período escolhido no simulador** (últ. 2 meses, 24.883). O card passou a usar `_cpConsMesInfo`, a MESMA
+   fonte do simulador — que **cai na média do export quando não há período escolhido**, então quem não simula não vê
+   diferença nenhuma. A linha "Consumo/mês" mostra o rótulo do período ativo ("últ. 2 meses" em vez de "jan–ago/26").
+   - ⚠️ Havia um `title` explicando a divergência desde que ela nasceu. Não bastava: **quem lê a tela precisa de UM
+     número**, e uma nota de rodapé não desfaz duas datas visíveis ao mesmo tempo.
+   - ⚠️ A **"Necessidade atual" acompanha** (`_cpNecessidade` ganhou o parâmetro `diasSel`): o status e a cobertura
+     logo abaixo dele não podem sair de réguas diferentes. Sem o parâmetro, segue valendo o `o.dias` oficial — que é
+     o que o Planejamento e o Estoque usam.
+   - ⚠️ Trocar o período repinta **só o `#cp-sim`**; por isso o `_cpIndRefresh` foi pendurado no `_cpSimPeriodo` e no
+     `_cpSimSetPer` — senão o card ao lado ficaria com a régua velha e as duas datas voltariam a divergir.
+2. ⭐ **Um dia de diferença por arredondamento.** O card fazia `hoje + round(dias)`; o cronograma simula dia a dia
+   **começando em hoje**. Mas **hoje já é dia de consumo**: uma cobertura de 63 dias termina no 63º dia, que é
+   **hoje+62**. Novo helper **`_cpDataAcaba(dias)`** = `_cpDataFim(ceil(dias)-1)`, aplicado em **todos** os pontos que
+   convertem cobertura em data: card da ficha, "Dura até" do **Planejamento**, "Termina em" do **Estoque** e a
+   "Cobertura após a compra" do simulador (inclusive no texto da tarefa gerada).
+   - ⚠️ **Não vale para dia já indexado a partir de hoje** — o `esgotaT` do FEFO e os limites de ruptura seguem no
+     `_cpDataFim` puro, senão a data voltaria um dia. Está escrito no comentário do helper.
+   - ⚠️ Efeito colateral esperado: as datas dessas telas andaram **um dia para trás** (06/12 → 05/12 no exemplo). É
+     correção, não regressão.
+- Conferido nos três períodos, card × cronograma: **últ. 2 meses** 29/11/26 e 04/01/27 · **12 meses** 02/12 e 09/01 ·
+  **1 mês** 27/11 e 02/01. Iguais dos dois lados em todos.
+
+#### O cronograma em UMA LINHA CORRIDA
+*"Melhore a visualização, coloque tudo em uma linha corrida."* A linha da carga gastava duas: o rótulo em cima e
+"dura até … ✓ ok" embaixo, à direita.
+- `.cp-crono-row` virou **flex com wrap** (era grid de 2 colunas com a info em `grid-column:1/-1`). Com wrap, a info só
+  desce **quando não cabe** — em coluna estreita o layout antigo volta sozinho, que era a razão de ele existir.
+- Os rótulos encolheram para caber: **"chega em" → "chega"**, **"dura até" → "até"**, campo de data 96 → 88px.
+- Medido: em **tela cheia** (coluna de 440px, o modo do print dele) as **7 linhas ficam em uma só**; no modo normal a
+  coluna tem **324px** e não há como pôr as três informações lado a lado sem cortar o nome da carga — ali a info
+  continua descendo. As linhas de "Já tenho" (estoque e OC), que não têm campo de data, ficam **em uma linha nos dois**.
+- 0 erros de JS.
+
 ### 2026-09-26 (f) — PC da Empresa — Compras: o **ICMS passou a segurar o resultado** do simulador
 *"Os cards de o que comprar, preço e cobertura já aparecem na hora que coloco a validade; quero que apareçam somente
 depois do ICMS."* O ICMS já era o último campo do passo a passo, mas era **opcional** — ficava em branco embaixo de um
