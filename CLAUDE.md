@@ -422,6 +422,48 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐⭐ 2026-09-26 (j) — PC da Empresa — Padronização, parte 2: **INDICADORES** e **SELETOR DE PERÍODO** (as duas pendências que ele deixou na minha mão)
+*"Sobre o 1 e o 2, faz o que entender que vai fazer sentido."*
+
+#### ⭐ O INDICADOR vira um cartão só — e clicar nele FILTRA onde isso faz sentido
+Eram três desenhos: Compras esticava cartões numa grade (`.cp-card` + `.cp-kpi`, número 19px), Cobertura e Comercial
+já tinham o cartão pequeno, mas com larguras diferentes (168 × 182px).
+- Nasceu **`.cp-ind`** no `_cpCSS` (rótulo 9px em caixa-alta, valor 17px/800, borda e raio 10). ⚠️ **`min-width:168px`
+  com crescimento**, não largura fixa: o cartão acompanha o valor em vez de cortá-lo — era por isso que o Comercial
+  tinha ido a 182px sozinho ("R$ 173.407,35" não cabia). Medido: **0 valores cortados** nas cinco telas.
+- **`_cpKPI` ganhou um 4º parâmetro `opts`** (`onclick`, `on`, `tit`, `sub`). Com `onclick` o cartão vira `<button>`,
+  ganha hover e o anel do ativo — o padrão que a Cobertura já usava.
+- ⭐ **O Estoque passou a ter os indicadores clicáveis**: *Comprar agora*, *Comprar em breve* e *Excesso* filtram a
+  lista, e clicar no que está aceso volta para Todos. Os filtros **já existiam**, só viviam escondidos no popover.
+  ⚠️ As contagens saem da base INTEIRA, não do filtro: senão o cartão clicado passaria a contar só a si mesmo e os
+  outros zerariam. Conferido: "Comprar agora" leva 300 → 20 linhas e volta.
+- O **Planejamento** (que já tinha cartões clicáveis, com HTML próprio) passou a usar o mesmo `_cpKPI`: 300 → 36
+  linhas, com o × no rótulo do que está aceso.
+- ⚠️ **Não tornei clicável o que não tem recorte correspondente** (Fornecedores, Histórico, Comercial): cartão que
+  parece botão e não filtra é pior que cartão de leitura.
+
+#### ⭐ O SELETOR DE PERÍODO: fica o botão com popover
+Eram três formas para a mesma pergunta — bloco com rótulo em cima (Fornecedores, Histórico), o mesmo bloco com as
+datas soltas ao lado (Planejamento) e o botão com popover (Comercial). **Ficou o botão** (`_cpPerBtn`), por três razões:
+1. tem **34px**, a altura dos outros controles — o bloco tinha **61px** e era o que entortava a barra (medido: as três
+   telas agora abrem com a barra em 34px);
+2. mostra o período ativo **escrito no botão**, que é o que o Diego pediu ao esconder os chips em 24/09;
+3. o popover acomoda a **contagem por opção** (o Comercial apaga os períodos sem dado — 5 dos 8) e as **datas do
+   período personalizado**, que na barra apareciam e sumiam mudando a largura de tudo.
+- ⚠️ **Escolher um preset FECHA o popover; "Escolher datas…" o mantém ABERTO**, porque é lá dentro que ficam os dois
+  campos. E o re-render do blur preserva `perAberto` — era o bug de 30/08 (campo recriado com o ano pela metade).
+- ⚠️ Cada tela tem o seu estado (`_cpFornPerAberto`, `_cpHist.perAberto`, `_cpPlan.perAberto`) e **os três entraram no
+  `_cpComprasCloseFiltros`** — sem isso o clique fora fecharia os outros popovers e deixaria este aberto.
+- ⚠️ O Comercial passou a **consumir o helper** em vez de manter a própria cópia: `_comPerPopHTML` e `.com-perit`
+  ficaram sem uso.
+- Testado: Fornecedores e Histórico trocam o período e fecham (Histórico refez a lista com 250 linhas); Planejamento
+  abre os 2 campos de data no popover; Comercial escolhe "Ontem" e o botão passa a dizer "Ontem". 0 erros de JS.
+
+#### ⏳ Continua fora (e agora é o único da lista)
+As **tabelas**: `.cp-tbl` (Compras), `.ddv-tbl` (Cobertura, cabeçalho em dois níveis e um card por linha) e `.com-tbl`
+(Comercial, um cartão por grupo). São estruturas diferentes para dados diferentes — unificar é projeto à parte, e
+mexe em ordenação, faixas de grupo e colspan de todas as telas de uma vez.
+
 ### ⭐⭐ 2026-09-26 (i) — PC da Empresa — **PADRONIZAÇÃO da barra de ações das três áreas** (Comercial · Compras · Produção)
 *"Temos formatos diferentes de trazer as mesmas informações, ícones em posições diferentes ou até ícones diferentes…
 esse [o da Cobertura] seria o ideal. E o buscar também. Revise todas as abas e padronize."*

@@ -8695,6 +8695,19 @@ function _cpCSS(){ return `<style>
   .cp-kpi{flex:1;min-width:132px}
   .cp-kpi b{display:block;font-size:19px;font-weight:800;color:var(--text);margin-top:2px}
   .cp-kpi s{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);text-decoration:none}
+  /* ⭐⭐ INDICADOR — cartao unico das tres areas (26/09). Compras esticava os cartoes numa grade e usava
+     numero de 19px; Cobertura e Comercial ja tinham este desenho, com larguras diferentes (168 x 182).
+     Agora e min-width com crescimento: o cartao acompanha o valor em vez de corta-lo ou sobrar largura. */
+  .cp-inds{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+  .cp-ind{flex:0 1 auto;min-width:168px;background:var(--card);border:1px solid var(--border);border-radius:10px;
+    padding:8px 11px;text-align:left;font-family:inherit}
+  .cp-ind .lab{display:block;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);line-height:1.3}
+  .cp-ind .val{display:block;font-size:17px;font-weight:800;letter-spacing:-.015em;color:var(--text);margin-top:1px}
+  .cp-ind .sub{display:block;margin-top:3px}
+  /* clicavel = o cartao e um RECORTE da lista abaixo; sem isso ele e leitura e nao finge ser botao */
+  .cp-ind.clic{cursor:pointer}
+  .cp-ind.clic:hover{background:color-mix(in srgb,var(--text) 3%,var(--card))}
+  .cp-ind.on{box-shadow:0 0 0 2px var(--blue-mid) inset}
   /* input discreto do simulador: sem fundo, só uma linha embaixo */
   .cp-sim-inp{background:transparent;border:none;border-bottom:1.5px solid var(--border);border-radius:0;padding:2px 4px;font-family:inherit;font-size:14px;font-weight:700;color:var(--text);text-align:center}
   .cp-sim-inp:focus{outline:none;border-bottom-color:var(--blue-mid)}
@@ -8749,6 +8762,14 @@ function _cpCSS(){ return `<style>
     border:1px solid var(--border);border-radius:11px;box-shadow:0 10px 28px rgba(0,0,0,.18);
     padding:11px 12px;text-align:left;max-height:calc(100vh - 150px);overflow:auto}
   .cp-pop.lista{padding:6px}   /* variante so com opcoes clicaveis, que ja tem o proprio respiro */
+  /* item de lista dentro do popover (as opcoes do seletor de periodo) */
+  .cp-perit{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;
+    border-radius:8px;padding:8px 10px;font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit}
+  .cp-perit:hover:not([disabled]){background:var(--bg2)}
+  .cp-perit.on{background:var(--blue-mid);color:#fff}
+  .cp-perit[disabled]{opacity:.42;cursor:default;font-weight:500}
+  .cp-perit .n{margin-left:auto;font-size:11px;font-weight:700;color:var(--text3)}
+  .cp-perit.on .n{color:#fff;opacity:.85}
   /* ⚠️ Campo que vive DENTRO de uma linha de leitura (Validade, Preço de custeio no card Indicadores).
      Sem classe, a regra global input:not([class]) dá 40px de altura e a linha fica o dobro das vizinhas —
      foi exatamente o que aconteceu. Aqui ele tem a altura do texto ao lado e some no meio da lista. */
@@ -8815,13 +8836,33 @@ function _cpTela(titulo, sub, corpo, larg, acao, voltar){
     ${corpo}
   </div>`;
 }
-const _cpKPI=(lab,val,cor)=>`<div class="cp-kpi"><s>${lab}</s><b${cor?` style="color:${cor}"`:''}>${val}</b></div>`;
+// `opts` (tudo opcional): {onclick, on, tit, sub}. Com `onclick` o cartão vira BOTÃO e ganha o hover —
+// é o padrão da Cobertura, onde cada indicador é um recorte da lista que está logo abaixo.
+const _cpKPI=(lab,val,cor,opts)=>{ opts=opts||{};
+  const t=opts.onclick?'button':'div';
+  return `<${t} class="cp-ind${opts.onclick?' clic':''}${opts.on?' on':''}"${opts.onclick?` onclick="${opts.onclick}"`:''}${opts.tit?` title="${escapeAttr(opts.tit)}"`:''}>`
+    +`<span class="lab">${lab}</span><span class="val"${cor?` style="color:${cor}"`:''}>${val}</span>${opts.sub?`<span class="sub">${opts.sub}</span>`:''}</${t}>`; };
 // (ago/2026, Diego) Cada indicador em CARD separado — padrão de KPI de TODA a área de Compras.
 // Monte a linha com _cpKPIcards([_cpKPI(rótulo, valor, cor?), ...]).
-const _cpKPIcards=arr=>`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">${arr.map(k=>`<div class="cp-card" style="padding:13px 16px">${k}</div>`).join('')}</div>`;
+const _cpKPIcards=arr=>`<div class="cp-inds">${arr.join('')}</div>`;
 const _cpKPIrow=_cpKPIcards;   // alias legado (eram duplicatas byte a byte); use _cpKPIcards nas telas novas
 // Rótulo padrão do seletor de período no header (mesmo formato do "Média do período" do Planejamento).
 const _cpSelPeriodo=(rot,sel)=>`<div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px"><span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text3)">${rot}</span>${sel}</div>`;
+// ⭐⭐ SELETOR DE PERÍODO — padrão único das três áreas (Diego, 26/09). Eram três formas para a mesma
+// pergunta: bloco com rótulo em cima (Fornecedores e Histórico), o mesmo bloco com as datas soltas ao lado
+// (Planejamento) e um botão com popover (Comercial). Ficou o BOTÃO, por três razões:
+//   · tem 34px, a altura dos outros controles — o bloco tinha 61px e era o que entortava a barra;
+//   · mostra o período ativo escrito, que é o que o Diego pediu ao esconder os chips em 24/09;
+//   · o popover acomoda a CONTAGEM por opção e as datas do período personalizado, que no bloco ficavam
+//     soltas na barra e sumiam/apareciam mudando a largura de tudo.
+// opts = [[valor, rótulo, contagem|null, desabilitado?], …] · `extra` entra no fim do popover.
+function _cpPerBtn(rot, val, opts, aberto, toggleFn, setFn, extra){
+  const at=opts.filter(o=>String(o[0])===String(val))[0]||opts[0]||['','—'];
+  const btn=`<button class="cp-abtn txt${aberto?' on':''}" onclick="${toggleFn}" title="${escapeAttr(rot)}"><i class="ti ti-calendar-stats"></i>${escapeHTML(String(at[1]))}<i class="ti ti-chevron-down" style="font-size:13px;color:var(--text3)"></i></button>`;
+  if(!aberto) return _cpPopWrap(btn,'');
+  const itens=opts.map(o=>`<button class="cp-perit${String(o[0])===String(val)?' on':''}"${o[3]?' disabled title="ainda sem dado carregado"':''} onclick="${setFn}('${o[0]}')">${escapeHTML(String(o[1]))}${o[2]!=null?`<span class="n">${o[2]}</span>`:''}</button>`).join('');
+  return _cpPopWrap(btn, `<div class="cp-pop lista" style="min-width:214px">${itens}${extra||''}</div>`);
+}
 // Lupa de busca padrão de Compras (modelo do Estoque): fechada = ícone no canto; aberta = campo + X.
 // Vai no slot `acao` do _cpTela (canto sup. direito). extra = HTML opcional à esquerda do campo (ex.: filtro de período).
 /* ══════════════════════════════════════════════════════════════════════════════════════
@@ -9047,10 +9088,18 @@ function _cpEstCorpo(){
       <td class="cp-item" style="font-weight:400;max-width:210px" title="${escapeAttr(o.ultForn?_cpForn(o.ultForn):'')}">${o.ultForn?escapeHTML(_cpForn(o.ultForn)):'—'}</td>
       <td class="cp-n">${o.semMov===null?'—':o.semMov+' d'}</td>
     </tr>`;}).join('');
-  return `<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-      <div class="cp-card" style="padding:13px 16px;flex:none;width:240px">${_cpKPI('Excesso — capital parado',_cpBRL(excessoR),excessoR?'var(--purple)':'')}</div>
-      <div class="cp-card" style="padding:13px 16px;flex:none;width:240px">${_cpKPI('Valor em estoque',_cpBRL(totV))}</div>
-    </div>`+
+  // ⭐ Indicadores CLICÁVEIS, como na Cobertura (26/09): cada um é um recorte da lista logo abaixo, e os
+  // filtros já existiam — só viviam escondidos no popover. Clicar de novo no que está aceso volta a "Todos".
+  // ⚠️ Os contadores saem da base INTEIRA, não do filtro: senão o cartão que você clicou passaria a contar
+  // só a si mesmo e os outros zerariam, sem como voltar pelo próprio cartão.
+  const _cnt=k=>base.filter(o=>_cpEstStatus(o).key===k).length;
+  const kpiF=(id,lab,val,cor,tit)=>_cpKPI(lab,val,cor,{onclick:`_cpEstFiltro('${_cpEst.so===id?'todos':id}')`, on:_cpEst.so===id, tit});
+  return _cpKPIcards([
+      kpiF('agora','Comprar agora',_cpNum(_cnt('agora')),'var(--danger)','Menos de 10 dias de cobertura — clique para ver só estes'),
+      kpiF('breve','Comprar em breve',_cpNum(_cnt('breve')),'var(--amber)','Entre 10 e 30 dias de cobertura — clique para ver só estes'),
+      kpiF('excesso','Excesso — capital parado',_cpBRL(excessoR),excessoR?'var(--purple)':'','Mais de 120 dias de cobertura — clique para ver só estes'),
+      _cpKPI('Valor em estoque',_cpBRL(totV))
+    ])+
     `<div class="cp-card cp-noscroll" style="overflow:auto;max-height:calc(100vh - 320px)"><table class="cp-tbl">
       <thead><tr>${_cpTh('est','cod','Cód.')}${_cpTh('est','cat','Categoria')}${_cpTh('est','nome','Item')}${_cpTh('est','valor','Valor',1)}${_cpTh('est','cmu','Custo médio',1)}${_cpTh('est','est','Em estoque',1)}${_cpTh('est','consMed','Consumo/mês',1)}${_cpTh('est','dias','Cobertura',1,'',1)}${_cpTh('est','fim','Termina em','',' ',1)}${_cpTh('est','ultCompra','Últ. compra')}${_cpTh('est','forn','Fornecedor')}${_cpTh('est','semMov','Sem mov.',1)}</tr></thead>
       <tbody>${linhas||`<tr><td colspan="12">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`}</tbody>
@@ -10775,7 +10824,9 @@ function _cpVoltarForns(){
   try{ document.body.classList.remove('cp-focus'); }catch(e){}
   renderSidebar(); renderCompras(); window.scrollTo(0,0);
 }
-function _cpFornSetMeses(v){ _cpFornMeses=Number(v); renderCompras(); }
+let _cpFornPerAberto=false;
+function _cpFornPerToggle(){ _cpFornPerAberto=!_cpFornPerAberto; renderCompras(); }
+function _cpFornSetMeses(v){ _cpFornMeses=Number(v); _cpFornPerAberto=false; renderCompras(); }
 // meses: janela em meses (default = o filtro da tela Fornecedores). Passe 0 para "tudo".
 function _cpFornAgg(escopo, meses){
   const lim=_cpLimiteMeses(meses===undefined?_cpFornMeses:meses);
@@ -10806,7 +10857,7 @@ function _comprasFornecedoresHTML(){
   const L=_cpFornAgg('I');
   const tot=L.reduce((a,f)=>a+f.total,0);
   const nA=(()=>{let a=0,n=0;for(const f of L){a+=f.total;n++;if(tot&&a/tot>=0.8)break;}return n;})();
-  const periodo=_cpSelPeriodo('Período',`<select onchange="_cpFornSetMeses(this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px">${[[3,'Últimos 3 meses'],[6,'Últimos 6 meses'],[12,'Últimos 12 meses'],[0,'Tudo']].map(o=>`<option value="${o[0]}"${_cpFornMeses===o[0]?' selected':''}>${o[1]}</option>`).join('')}</select>`);
+  const periodo=_cpPerBtn('Período do histórico', _cpFornMeses, [[3,'Últimos 3 meses'],[6,'Últimos 6 meses'],[12,'Últimos 12 meses'],[0,'Tudo']], _cpFornPerAberto, '_cpFornPerToggle()', '_cpFornSetMeses');
   const acao=_cpLupa(_cpFornBuscaAberta,_cpFornBusca,'_cpFornBuscaToggle','_cpFornBuscaInput','cp-forn-busca','Buscar fornecedor…',periodo);
   return _cpTela('Fornecedores','Curva ABC por valor comprado — onde a negociação vale.',
     _cpKPIcards([
@@ -11479,7 +11530,7 @@ function _cpOcViva(p){ return !p.prevista || p.prevista>=_cpOcCut(); }
 // "estoque disponível"/"Dura até (c/ OC)" enquanto a aba Ordens (que filtra ao vivo) já as descartava.
 let __cpOcSaldo=null, __cpOcSaldoCut='';
 function _cpOcSaldo(cod){ const cut=_cpOcCut(); if(!__cpOcSaldo || __cpOcSaldoCut!==cut){ __cpOcSaldo={}; __cpOcSaldoCut=cut; _CP_OCABERTO.forEach(p=>{ if(!_cpOcViva(p)) return; __cpOcSaldo[p.cod]=(__cpOcSaldo[p.cod]||0)+(p.qtd||0); }); } return __cpOcSaldo[cod]||0; }
-let _cpPlan={periodo:'2', perDe:'', perAte:'', busca:'', buscaAberta:false, catSel:[], filtrosAberto:false, status:'', coresAberto:false};
+let _cpPlan={periodo:'2', perDe:'', perAte:'', busca:'', buscaAberta:false, catSel:[], filtrosAberto:false, status:'', coresAberto:false, perAberto:false};
 // Filtro por status (cards clicáveis): '' = todos · 'agora'/'breve' = cobertura · 'ruptura' = disponível<=0.
 function _cpPlanStatusMatch(o){ const st=_cpPlan.status; if(!st) return true; if(st==='naovisto') return !_cpVistoTem(o.cod); const cv=_cpPlanCov(o); return st==='ruptura'?(o.est<=0):(cv.key===st); }
 function _cpPlanSetStatus(k){ _cpPlan.status=(_cpPlan.status===k?'':k); renderCompras(); }
@@ -11553,7 +11604,9 @@ function _cpPlanTbodyHTML(){
 // são recalculados aqui porque as contagens saem da mesma base filtrada — sem isso os cards
 // ficavam defasados em relação à tabela enquanto se digitava.
 function _cpPlanRefresh(){ const tb=document.getElementById('cp-plan-tbody'); if(tb) tb.innerHTML=_cpPlanTbodyHTML(); const k=document.getElementById('cp-plan-kpis'); if(k) k.innerHTML=_cpPlanKPIsHTML(); }
-function _cpPlanPeriodo(v){ _cpPlan.periodo=v; if(v!=='custom'){ _cpPlan.perDe=''; _cpPlan.perAte=''; } renderCompras(); }
+function _cpPlanPerToggle(){ _cpPlan.perAberto=!_cpPlan.perAberto; renderCompras(); }
+// ⚠️ escolher um preset FECHA o popover; "custom" o mantém ABERTO, porque é lá dentro que ficam as datas
+function _cpPlanPeriodo(v){ _cpPlan.periodo=v; if(v!=='custom'){ _cpPlan.perDe=''; _cpPlan.perAte=''; _cpPlan.perAberto=false; } renderCompras(); }
 // Guarda sem re-renderizar (enquanto digita). Ano incompleto (< 2000) é tratado como vazio,
 // senão a média do período seria calculada contra uma data no ano 0002.
 function _cpPlanSetPerRaw(campo,val){ _cpPlan[campo]=(val && val.slice(0,4)>='2000')?val:''; }
@@ -11580,7 +11633,9 @@ function _cpVistoTodos(marcar){ const o=_cpVistoObj(), view=_cpPlanRowsView(); i
 function _cpComprasCloseFiltros(e){
   const t=e&&e.target; if(t && t.closest && t.closest('.cp-pop-wrap')) return; // clique dentro do popover/seu botão → o toggle cuida
   let ch=false;
-  try{ if(typeof _cpPlan!=='undefined' && _cpPlan){ if(_cpPlan.filtrosAberto){_cpPlan.filtrosAberto=false;ch=true;} if(_cpPlan.coresAberto){_cpPlan.coresAberto=false;ch=true;} } }catch(e2){}
+  try{ if(typeof _cpPlan!=='undefined' && _cpPlan){ if(_cpPlan.filtrosAberto){_cpPlan.filtrosAberto=false;ch=true;} if(_cpPlan.coresAberto){_cpPlan.coresAberto=false;ch=true;} if(_cpPlan.perAberto){_cpPlan.perAberto=false;ch=true;} } }catch(e2){}
+  try{ if(typeof _cpFornPerAberto!=='undefined' && _cpFornPerAberto){ _cpFornPerAberto=false; ch=true; } }catch(e2){}
+  try{ if(typeof _cpHist!=='undefined' && _cpHist && _cpHist.perAberto){ _cpHist.perAberto=false; ch=true; } }catch(e2){}
   try{ if(typeof _cpInsFiltrosAberto!=='undefined' && _cpInsFiltrosAberto){ _cpInsFiltrosAberto=false; ch=true; } }catch(e2){}
   try{ if(typeof _cpEst!=='undefined' && _cpEst && _cpEst.filtrosAberto){ _cpEst.filtrosAberto=false; ch=true; } }catch(e2){}
   try{ if(typeof _necFiltrosAberto!=='undefined' && _necFiltrosAberto){ _necFiltrosAberto=false; ch=true; } }catch(e2){}
@@ -11620,8 +11675,10 @@ function _cpPlanDemandaPopup(cod, ev){
 // KPIs: os 3 acionáveis (Comprar agora/em breve/Em ruptura) + "Em dia" são CLICÁVEIS → filtram a
 // tabela (clicar de novo limpa). Fora do render principal porque a busca os re-renderiza sozinho
 // (_cpPlanRefresh) — sem isso os cards ficavam defasados em relação à tabela enquanto se digitava.
-function _cpPlanKpiCard(lab,val,cor,key){ const act=key&&_cpPlan.status===key, clk=!!key;
-  return `<div class="cp-card" style="padding:13px 16px;${clk?'cursor:pointer;transition:box-shadow .12s;':''}${act?`box-shadow:0 0 0 2px ${cor||'var(--blue-mid)'} inset;`:''}"${clk?` onclick="_cpPlanSetStatus('${key}')" title="${act?'Mostrar todos':'Ver só '+lab.toLowerCase()}"`:''}><div class="cp-kpi"><s>${lab}${act?' <i class="ti ti-x" style="font-size:10px;vertical-align:1px"></i>':''}</s><b${cor?` style="color:${cor}"`:''}>${val}</b></div></div>`; }
+// mesmo cartao das outras telas (_cpKPI): clicavel quando representa um recorte da lista
+function _cpPlanKpiCard(lab,val,cor,key){ const act=key&&_cpPlan.status===key;
+  return _cpKPI(lab+(act?' <i class="ti ti-x" style="font-size:10px;vertical-align:1px"></i>':''), val, cor,
+    key?{onclick:"_cpPlanSetStatus('"+key+"')", on:act, tit:(act?'Mostrar todos':'Ver só '+lab.toLowerCase())}:null); }
 // Contagens vêm da BASE (categoria+busca, sem o filtro de status) p/ o usuário poder alternar entre eles.
 function _cpPlanKPIsHTML(){
   const kpiCard=_cpPlanKpiCard, rows=_cpPlanRows();
@@ -11629,7 +11686,7 @@ function _cpPlanKPIsHTML(){
   const nRuptura=rows.filter(o=>o.est<=0).length;   // ruptura = sem estoque FÍSICO (Diego: cobertura é física)
   const nOk=rows.filter(o=>_cpPlanCov(o).key==='ok').length;   // "Em dia" = cobertura saudável (acima das faixas de compra)
   const _visArr=_cpVistoObj().c, nFaltam=rows.filter(o=>_visArr.indexOf(String(o.cod))<0).length;
-  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">${kpiCard('Itens',_cpNum(rows.length),'','')}${kpiCard('Faltam ver hoje',`<span id="cp-plan-faltam">${_cpNum(nFaltam)}</span>`,nFaltam?'var(--blue-mid)':'var(--success)','naovisto')}${kpiCard('Comprar agora',_cpNum(nAgora),nAgora?'var(--danger)':'','agora')}${kpiCard('Comprar em breve',_cpNum(nBreve),nBreve?'var(--amber)':'','breve')}${kpiCard('Em dia',_cpNum(nOk),nOk?'var(--success)':'','ok')}${kpiCard('Em ruptura',_cpNum(nRuptura),nRuptura?'var(--danger)':'','ruptura')}</div>`;
+  return _cpKPIcards([kpiCard('Itens',_cpNum(rows.length),'',''), kpiCard('Faltam ver hoje',`<span id="cp-plan-faltam">${_cpNum(nFaltam)}</span>`,nFaltam?'var(--blue-mid)':'var(--success)','naovisto'), kpiCard('Comprar agora',_cpNum(nAgora),nAgora?'var(--danger)':'','agora'), kpiCard('Comprar em breve',_cpNum(nBreve),nBreve?'var(--amber)':'','breve'), kpiCard('Em dia',_cpNum(nOk),nOk?'var(--success)':'','ok'), kpiCard('Em ruptura',_cpNum(nRuptura),nRuptura?'var(--danger)':'','ruptura')]);
 }
 function _comprasPlanejamentoHTML(){
   window.__cpPlanCache={};                 // zera o cache de cobertura a cada render (o período pode ter mudado)
@@ -11639,7 +11696,12 @@ function _comprasPlanejamentoHTML(){
   // Re-renderizar aí recria o input e o foco some → trava o ano (mesmo bug já corrigido no simulador).
   // Por isso: oninput/onchange só GUARDAM; o re-render (que recalcula as médias) acontece no blur.
   const dinp=(campo)=>`<input type="date" value="${escapeAttr(_cpPlan[campo]||'')}" oninput="_cpPlanSetPerRaw('${campo}',this.value)" onchange="_cpPlanSetPerRaw('${campo}',this.value)" onblur="_cpPlanSetPer('${campo}',this.value)" class="modal-input" style="width:auto;padding:5px 8px;font-size:12px">`;
-  const selPer=`<div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px"><span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);text-align:center">Média do período</span><div style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap"><select onchange="_cpPlanPeriodo(this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px;font-weight:600">${PERIODOS.map(p=>`<option value="${p[0]}"${_cpPlan.periodo===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>${_cpPlan.periodo==='custom'?`<span style="font-size:11.5px;color:var(--text3)">de</span>${dinp('perDe')}<span style="font-size:11.5px;color:var(--text3)">até</span>${dinp('perAte')}`:''}</div></div>`;
+  // ⚠️ As datas do período personalizado foram para DENTRO do popover: soltas na barra, elas apareciam e
+  // sumiam mudando a largura de tudo. O re-render do blur mantém `perAberto`, então o popover não fecha
+  // no meio da digitação — era o bug de 30/08 (campo recriado com o ano pela metade).
+  const perExtra=_cpPlan.periodo==='custom'
+    ? `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 10px 2px;border-top:1px solid var(--border);margin-top:4px"><span style="font-size:11.5px;color:var(--text3)">de</span>${dinp('perDe')}<span style="font-size:11.5px;color:var(--text3)">até</span>${dinp('perAte')}</div>` : '';
+  const selPer=_cpPerBtn('Média do período', _cpPlan.periodo, PERIODOS.map(p=>[p[0], p[1]]), _cpPlan.perAberto, '_cpPlanPerToggle()', '_cpPlanPeriodo', perExtra);
   const todos=_cpItens().filter(o=>o.est>0||o.consMed>0); const cont={}; _CP_CATS.forEach(c=>cont[c]=0); todos.forEach(o=>{const c=_cpCategoria(o.nome); cont[c]=(cont[c]||0)+1;});
   const catPanel=_cpPlan.filtrosAberto?`<div class="cp-pop lista" style="width:236px;max-height:300px">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px 7px"><span style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)">Categoria</span>${_cpPlan.catSel.length?`<button onclick="_cpPlanCatAll()" style="border:none;background:none;color:var(--blue-mid);font-size:11.5px;cursor:pointer;font-family:inherit">Limpar</button>`:''}</div>
@@ -11794,7 +11856,7 @@ function _comprasPainelHTML(){
 // Roda sobre os DADOS REAIS (_CP_NF). Escopo Insumos/Despesas/Tudo: as telas
 // de decisão só fazem sentido p/ insumo, mas p/ reunião com fornecedor o
 // Diego quer ver o gasto completo — daí o filtro.
-let _cpHist={escopo:'I', busca:'', meses:12, buscaAberta:false};
+let _cpHist={escopo:'I', busca:'', meses:12, buscaAberta:false, perAberto:false};
 function _cpHistBuscaToggle(){ _cpHist.buscaAberta=!_cpHist.buscaAberta; if(!_cpHist.buscaAberta) _cpHist.busca=''; renderCompras(); if(_cpHist.buscaAberta) setTimeout(function(){ var el=document.getElementById('cp-busca'); if(el) el.focus(); },30); }
 function _cpHistBuscaInput(el){ _cpHist.busca=el.value; _cpHistRefresh(); }
 function _cpLinhas(){
@@ -11831,7 +11893,9 @@ function _cpFiltradas(){
     return true;
   });
 }
-function _cpSet(k,v){ _cpHist[k]=(k==='meses')?Number(v):v; _cpHistRefresh(); }
+function _cpSet(k,v){ _cpHist[k]=(k==='meses')?Number(v):v; if(k==='meses'){ _cpHist.perAberto=false; renderCompras(); return; } _cpHistRefresh(); }
+function _cpHistPerToggle(){ _cpHist.perAberto=!_cpHist.perAberto; renderCompras(); }
+function _cpHistSetMeses(v){ _cpSet('meses',v); }
 // O campo de busca fica FORA do #cp-hist-corpo de propósito, senão perde o foco a cada tecla.
 function _cpHistRefresh(){
   const el=document.getElementById('cp-hist-corpo'); if(el) el.innerHTML=_cpHistCorpoHTML();
@@ -11873,7 +11937,7 @@ function _cpHistCorpoHTML(){
 }
 function _comprasHistoricoHTML(){
   const opt=(v,lab)=>`<option value="${v}"${_cpHist.meses===v?' selected':''}>${lab}</option>`;
-  const periodo=_cpSelPeriodo('Período',`<select onchange="_cpSet('meses',this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px">${opt(3,'Últimos 3 meses')}${opt(6,'Últimos 6 meses')}${opt(12,'Últimos 12 meses')}${opt(0,'Tudo')}</select>`);
+  const periodo=_cpPerBtn('Período do histórico', _cpHist.meses, [[3,'Últimos 3 meses'],[6,'Últimos 6 meses'],[12,'Últimos 12 meses'],[0,'Tudo']], _cpHist.perAberto, '_cpHistPerToggle()', '_cpHistSetMeses');
   const acao=_cpLupa(_cpHist.buscaAberta,_cpHist.busca,'_cpHistBuscaToggle','_cpHistBuscaInput','cp-busca','Buscar item, fornecedor ou NF…',periodo);
   return _cpTela('Histórico de compras','O livro de notas fiscais de entrada — a base de dados da área.',
     `<div id="cp-hist-corpo">${_cpHistCorpoHTML()}</div>`, undefined, acao);
@@ -14408,13 +14472,9 @@ function _ddvCSS(){
   /* cartões MENORES e SEM a tarja de cor na lateral (Diego, 24/09) — a cor vive no número, que já a tinha.
      Largura fixa: antes era grid auto-fit,1fr e eles esticavam na tela toda. */
   .ddv-kpis{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
-  .ddv-kpi{flex:0 0 168px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 11px;min-width:0;cursor:pointer;font-family:inherit;text-align:left}
-  .ddv-kpi:hover{background:color-mix(in srgb,var(--text) 3%,var(--card))}
+  /* o cartao usa .cp-ind do _cpCSS (padrao das tres areas); aqui so o que e proprio desta tela */
   /* o DDV médio é leitura, não filtro — fica no fim da fila, sem cursor nem hover de clique */
   .ddv-kpi.info,.ddv-kpi.info:hover{cursor:default;background:var(--bg2)}
-  .ddv-kpi.on{box-shadow:0 0 0 2px var(--blue-mid) inset}
-  .ddv-kpi .lab{display:block;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);line-height:1.3}
-  .ddv-kpi .val{display:block;font-size:17px;font-weight:800;letter-spacing:-.015em;color:var(--text);margin-top:1px}
   .ddv-kpi .sub{display:block;font-size:10px;color:var(--text3);margin-top:2px;line-height:1.35}
   .ddv-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:9px}
   .ddv-bar .t{font-size:11.5px;font-weight:600;color:var(--text3)}
@@ -14629,7 +14689,7 @@ function _ddvKPIsHTML(){
   const prod=cnt(x=>{const s=_ddvStatus(x);return (s==='ruptura'||s==='atencao')&&!x.p[4];});
   // o cartão "Itens" acende quando NÃO há filtro, mas sem o × (não há o que limpar)
   const k=(id,lab,val,sub,cor)=>{ const act=id?(_ddvFiltro===id):!_ddvFiltro;
-    return `<button class="ddv-kpi${act?' on':''}" onclick="_ddvSetFiltro('${id}')" title="${act&&id?'Mostrar todos':(id?'Ver só estes':'Todos os produtos')}">
+    return `<button class="cp-ind clic ddv-kpi${act?" on":""}" onclick="_ddvSetFiltro('${id}')" title="${act&&id?'Mostrar todos':(id?'Ver só estes':'Todos os produtos')}">
     <span class="lab">${lab}${act&&id?' <i class="ti ti-x" style="font-size:10px;vertical-align:1px"></i>':''}</span>
     <span class="val"${cor?` style="color:${cor}"`:''}>${_cpNum(val)}</span>
     <span class="sub">${sub}</span></button>`; };
@@ -14640,7 +14700,7 @@ function _ddvKPIsHTML(){
     ${k('folga','Folga',folga,_ddvCorteTxt(_ddvCorte.v2)+' dias ou mais','var(--success)')}
     ${k('produzir','A produzir',prod,'vai faltar e não tem OP/OC','var(--amber)')}
     ${(function(){ const m=_ddvCobertura(); if(!m) return '';
-      return `<div class="ddv-kpi info" title="Saldo total ÷ venda diária total — quantos dias o estoque inteiro dura no ritmo de hoje.&#10;Média simples dos itens: ${_ddvN(m.simples,1)} dias · mediana: ${_ddvN(m.mediana,1)} dias.&#10;${_cpNum(m.n)} produtos entram na conta (os sem venda ou sem estoque ficam de fora).">
+      return `<div class="cp-ind ddv-kpi info" title="Saldo total ÷ venda diária total — quantos dias o estoque inteiro dura no ritmo de hoje.&#10;Média simples dos itens: ${_ddvN(m.simples,1)} dias · mediana: ${_ddvN(m.mediana,1)} dias.&#10;${_cpNum(m.n)} produtos entram na conta (os sem venda ou sem estoque ficam de fora).">
         <span class="lab">DDV médio</span>
         <span class="val" style="color:${_ddvCor(m.agregada)}">${_ddvN(m.agregada,1)}</span>
         <span class="sub">dias — o estoque todo</span></div>`; })()}
@@ -15360,11 +15420,11 @@ function _comAcaoHTML(){
   const lupa=_cpLupa(_comBuscaAberta,_comBusca,'_comToggleBusca','_comBuscaEl','com-busca',ph,'');
   // "Pedidos em aberto" é uma FOTO, não um período: ali o filtro de período não faz sentido.
   if(_comAba==='aberto') return lupa;
-  const p=COM_PERIODOS.find(x=>x[0]===_comPer)||['','Período'], n=_comPerN(_comPer);
-  // mesma altura e moldura dos ícones das outras áreas, só que com texto (é um seletor, não um liga/desliga)
-  const btn=`<button class="cp-abtn txt${_comPerAberto?' on':''}" onclick="_comPerToggle()" title="Escolher o período"><i class="ti ti-filter"></i>${escapeHTML(p[1])}${n!=null?`<span style="font-size:11px;font-weight:700;color:var(--text3)">${_cpNum(n)}</span>`:''}<i class="ti ti-chevron-down" style="font-size:13px;color:var(--text3)"></i></button>`;
+  // ⭐ mesmo seletor de período das outras áreas (o _cpPerBtn nasceu daqui, então o Comercial passou a
+  // consumir o helper em vez de manter a própria cópia — com a contagem e os períodos sem dado apagados)
+  const opts=COM_PERIODOS.map(x=>{ const n=_comPerN(x[0]); return [x[0], x[1], n==null?'—':_cpNum(n), n==null]; });
   // lupa ANTES do período (pedido do Diego) — por isso não uso o slot `extra` do _cpLupa, que renderia atrás.
-  return _cpAcoes(lupa, _cpPopWrap(btn, _comPerPopHTML()));
+  return _cpAcoes(lupa, _cpPerBtn('Escolher o período', _comPer, opts, _comPerAberto, '_comPerToggle()', '_comSetPer'));
 }
 function _comPerPopHTML(){
   if(!_comPerAberto) return '';
@@ -15450,7 +15510,7 @@ function _comCSS(){
   .com-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:9px}
   .com-bar .t{font-size:11.5px;font-weight:600;color:var(--text3)}
   /* Indicadores em CARTÃO PEQUENO, mesma gramática da Cobertura (.ddv-kpi/.ddv-kpis). */
-  .com-kpis{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+  .com-kpis{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}   /* mesma linha do .cp-inds */
   /* popover do período (o ícone de filtro do topo) */
   /* usa .cp-pop do _cpCSS; aqui so o que e proprio desta lista */
   .com-pop{min-width:196px;display:flex;flex-direction:column;gap:2px}
@@ -15463,10 +15523,7 @@ function _comCSS(){
   /* Cartões iguais aos da Cobertura: rótulo miúdo, número, e a pílula de variação na 3ª linha —
      o lugar que lá é do "sub". Todos do MESMO tamanho (o 1º não sai mais maior), e a altura se
      iguala sozinha pelo stretch do flex, mesmo no cartão sem pílula. */
-  .com-kpi{flex:0 0 182px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 11px;min-width:0}
-  .com-kpi .lab{display:block;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);line-height:1.3}
-  .com-kpi .val{display:block;font-size:17px;font-weight:800;letter-spacing:-.015em;color:var(--text);white-space:nowrap;margin-top:1px}
-  .com-kpi .sub{display:block;margin-top:3px}
+  /* o cartao de indicador usa .cp-ind do _cpCSS (padrao das tres areas) */
   .com-pill{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;border-radius:999px;padding:2px 7px;white-space:nowrap;flex:none}
   .com-pill.dn{background:color-mix(in srgb,var(--danger) 14%,transparent);color:var(--danger)}
   .com-pill.up{background:color-mix(in srgb,var(--success) 16%,transparent);color:var(--success)}
@@ -15538,7 +15595,7 @@ function _comSparkHTML(v){
 // ⚠️ O `sub` (a diferença em número, "R$ 190.189,01 a menos que ontem", e os avisos da foto em
 // aberto) continua sendo TOOLTIP do cartão: some da tela, não do app.
 function _comKPI(lab, val, pill, sub, spark, cor){
-  return `<div class="com-kpi"${sub?` title="${escapeAttr(sub)}"`:''}>
+  return `<div class="cp-ind"${sub?` title="${escapeAttr(sub)}"`:''}>
     <span class="lab">${lab}</span>
     <span class="val"${cor?` style="color:${cor}"`:''}>${val}</span>
     ${pill?`<span class="sub">${pill}</span>`:''}${spark||''}</div>`;
