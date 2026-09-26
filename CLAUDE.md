@@ -443,6 +443,11 @@ uma diferente, pois às vezes podemos ter um fornecedor com validade diferente."
 - ⚠️ Validação: aceita de 0 a 240 meses; fora disso (ou vazio) o cadastro é **apagado**, não gravado torto.
 - 🐞 De quebra: `_cpSimReset` não recriava `folgaDias` (o campo nasceu no literal de `_cpSim`, não no reset) — trocar
   de item zerava o objeto sem a chave. Funcionava por sorte (`undefined` caía em 0); agora está no reset.
+- 🐞 **As duas linhas com campo (Validade e Preço de custeio) ficavam com o dobro da altura das vizinhas** — é a
+  ARMADILHA DE CSS já documentada: `input:not([class])` força **40px**, e os dois tinham só estilo inline. Nasceu a
+  classe **`.cp-inp-inline`** (19px, a altura do texto ao lado, com o sublinhado tracejado e foco no acento). O campo
+  do custeio encolheu para 50px porque com 82 o rótulo "Preço de custeio" quebrava em duas linhas e a altura voltava.
+  Medido: as duas linhas de **44px → 30px**, contra 27px das linhas simples; card de 644 → 630px.
 - Testado: amendoim abre com **6** no card e no simulador, e o wizard vai direto ao ICMS; pôr **3** mostra "cadastro 6
   · usar" e o botão devolve o 6; item sem cadastro abre "a cadastrar" e campo vazio; cadastrar **4** nele reflete no
   simulador na hora; **F5 preserva** os dois. 0 erros de JS.

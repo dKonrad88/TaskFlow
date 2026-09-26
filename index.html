@@ -8719,6 +8719,13 @@ function _cpCSS(){ return `<style>
     border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.14);color:#fff;font-family:inherit;
     font-size:12px;font-weight:700;cursor:pointer;line-height:1}
   .cp-alertao-btn:hover{background:#fff;color:var(--danger);border-color:#fff}
+  /* ⚠️ Campo que vive DENTRO de uma linha de leitura (Validade, Preço de custeio no card Indicadores).
+     Sem classe, a regra global input:not([class]) dá 40px de altura e a linha fica o dobro das vizinhas —
+     foi exatamente o que aconteceu. Aqui ele tem a altura do texto ao lado e some no meio da lista. */
+  .cp-inp-inline{height:19px;line-height:19px;padding:0 2px;background:transparent;border:none;
+    border-bottom:1px dashed var(--border);border-radius:0;font-family:inherit;font-size:12.5px;
+    font-weight:600;color:var(--text);text-align:right}
+  .cp-inp-inline:focus{outline:none;border-bottom-color:var(--blue-mid);border-bottom-style:solid}
   .cp-crono-acoes{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:8px}
   .cp-folga{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text3);white-space:nowrap}
   .cp-sugbtn{display:inline-flex;align-items:center;gap:5px;background:none;border:1px dashed var(--border);
@@ -9967,11 +9974,11 @@ function _cpIndicadoresCard(o){
     ['Estoque mínimo', pend],
     ['Ponto de ressuprimento', pend],
     // ⚠️ Editável aqui de propósito: é o cadastro do produto, e é daqui que o simulador puxa a validade.
-    ['Validade', `<span style="white-space:nowrap"><input type="text" inputmode="decimal" value="${escapeAttr(_cpGetValidade(o.cod))}" placeholder="a cadastrar" onchange="_cpSetValidade('${escapeAttr(o.cod)}',this.value)" onclick="event.stopPropagation()" title="Validade do produto em meses — o simulador de compra já abre com ela" style="width:${_cpGetValidade(o.cod)?'34px':'82px'};text-align:right;background:transparent;border:none;border-bottom:1px dashed var(--border);border-radius:0;padding:1px 2px;font-size:12.5px;font-weight:600;color:var(--text);font-family:inherit">${_cpGetValidade(o.cod)?' <span style="font-weight:500;color:var(--text3);font-size:11.5px">meses</span>':''}</span>`],
+    ['Validade', `<span style="white-space:nowrap"><input type="text" inputmode="decimal" class="cp-inp-inline" value="${escapeAttr(_cpGetValidade(o.cod))}" placeholder="a cadastrar" onchange="_cpSetValidade('${escapeAttr(o.cod)}',this.value)" onclick="event.stopPropagation()" title="Validade do produto em meses — o simulador de compra já abre com ela" style="width:${_cpGetValidade(o.cod)?'34px':'70px'}">${_cpGetValidade(o.cod)?' <span style="font-weight:500;color:var(--text3);font-size:11.5px">meses</span>':''}</span>`],
     ['Preço médio compra', o.precoCompra?_cpBRL(o.precoCompra):'—', perCompras],
     ['Último preço de compra', o.ultPreco?_cpBRL(o.ultPreco):'—'],
     ['Custo médio s/ imp.', o.cmu?_cpBRL(o.cmu):'—', perCMU],
-    ['Preço de custeio', `<span style="white-space:nowrap">R$ <input type="text" inputmode="decimal" value="${escapeAttr(_cpGetCusteio(o.cod))}" placeholder="a cadastrar" onchange="_cpSetCusteio('${escapeAttr(o.cod)}',this.value)" onclick="event.stopPropagation()" title="Preço de custeio manual — vira o teto no simulador" style="width:82px;text-align:right;background:transparent;border:none;border-bottom:1px dashed var(--border);border-radius:0;padding:1px 2px;font-size:12.5px;font-weight:600;color:var(--text);font-family:inherit"></span>`],
+    ['Preço de custeio', `<span style="white-space:nowrap">R$ <input type="text" inputmode="decimal" class="cp-inp-inline" value="${escapeAttr(_cpGetCusteio(o.cod))}" placeholder="a cadastrar" onchange="_cpSetCusteio('${escapeAttr(o.cod)}',this.value)" onclick="event.stopPropagation()" title="Preço de custeio manual — vira o teto no simulador" style="width:50px"></span>`],
     ['Valor em estoque', o.valor?_cpBRL(o.valor):'—'],
     ['Compras no período', _cpNum(o.compras.length)]
   ];
