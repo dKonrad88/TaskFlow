@@ -461,6 +461,13 @@ o estoque acaba — tinha duas respostas a 30cm uma da outra.
   continua descendo. As linhas de "Já tenho" (estoque e OC), que não têm campo de data, ficam **em uma linha nos dois**.
 - 0 erros de JS.
 
+#### Saiu a "Cobertura após a compra (físico)"
+Pedido dele, no mesmo dia. ⚠️ Ela sai **só quando existe a "(físico + OC)"**: com OC em aberto, a cobertura que
+interessa é a que conta tudo o que vai chegar, e a outra era a mesma resposta ignorando uma carga já pedida. **Sem OC
+a linha continua** (e sem rótulo), porque aí ela É a cobertura total — removê-la sempre deixaria o item sem OC sem
+nenhuma cobertura pós-compra. Conferido nos dois casos: Amendoim (OC de 30.000) mostra só "(físico + OC) 311 dias";
+Gordura Vegetal (sem OC) mostra "Cobertura após a compra 22 dias".
+
 ### 2026-09-26 (f) — PC da Empresa — Compras: o **ICMS passou a segurar o resultado** do simulador
 *"Os cards de o que comprar, preço e cobertura já aparecem na hora que coloco a validade; quero que apareçam somente
 depois do ICMS."* O ICMS já era o último campo do passo a passo, mas era **opcional** — ficava em branco embaixo de um

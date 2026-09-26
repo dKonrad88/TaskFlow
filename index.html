@@ -9623,7 +9623,10 @@ function _cpSimResult(o){
   const rows=bloco('ti-tag','Preço e cobertura',
     linha('Preço unitário (bruto)',_cpBRL(c.preco)+'/'+um+(c.descPct>0?` <span style="color:var(--success);font-weight:600;font-size:11.5px">−${c.descPct}%</span>`:''))
     +(precoNet!=null?linha('Preço unitário (net)', `${_cpBRL(precoNet)}/${um} <span style="color:var(--text3);font-weight:500;font-size:11px">− ${_cpNum(icmsN, Number.isInteger(icmsN)?0:1)}% ICMS</span>`):'')
-    +linha(`Cobertura após a compra${c.cobDepoisOC!=null?' <span style="color:var(--text3);font-weight:400;font-style:italic;font-size:11px">(físico)</span>':''}`, c.cobDepois!=null?`${c.cobDepois} dias <span style="color:var(--text3);font-weight:500">· até ${_cpDataAcaba(c.cobDepois)}</span>`:`${_cpNum(c.estDepois,0)} ${um}`)
+    // ⚠️ A linha "(físico)" SAIU quando existe a "(físico + OC)" (Diego, 26/09): com OC em aberto, a
+    // cobertura que interessa é a que conta tudo o que vai chegar — a outra era a mesma resposta ignorando
+    // uma carga já pedida. Sem OC ela continua, porque aí ela É a cobertura total (e sem o rótulo).
+    +(c.cobDepoisOC!=null?'':linha('Cobertura após a compra', c.cobDepois!=null?`${c.cobDepois} dias <span style="color:var(--text3);font-weight:500">· até ${_cpDataAcaba(c.cobDepois)}</span>`:`${_cpNum(c.estDepois,0)} ${um}`))
     +(c.cobDepoisOC!=null?linha('Cobertura após a compra <span style="color:var(--text3);font-weight:400;font-style:italic;font-size:11px">(físico + OC)</span>', `${c.cobDepoisOC} dias <span style="color:var(--text3);font-weight:500">· até ${_cpDataAcaba(c.cobDepoisOC)}</span>`):''));
   // SELETOR de CARGA FECHADA — só quando o item USA carga e não está no modo "cargas". Usa qtdBase (antes do
   // override) p/ calcular piso/teto. Diego: poder CLICAR em 5 ou 6 cargas aqui; a escolha vira a compra + cronograma.
