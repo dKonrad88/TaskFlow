@@ -422,6 +422,39 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐⭐ 2026-09-26 — PC da Empresa — Cobertura: **corte do semáforo ajustável** + **filtro de DDV até N dias** (`87493bea`)
+Dois pedidos do Diego, ambos no popover de Filtros.
+
+#### ⭐⭐ O SEMÁFORO VIROU AJUSTÁVEL — e é a exceção da régua do projeto
+*"Atenção está em 7 dias, mas se eu quiser ajustar; e folga está em 10 dias ou mais, caso eu queira mudar."*
+Era o **item (4) da fila de personalização** acordada em 25/09.
+- `DDV_ALERTA` continua como **padrão de fábrica** (o corte do SISPRO) e o valor em uso virou **`_ddvCorte`**,
+  salvo na memória da tela (`taskflow_ddv_view`).
+- ⚠️⚠️ **É a ÚNICA coisa da Cobertura que personaliza a CONTA, não a lente** — e a régua combinada em 25/09 era
+  *"personalizar a lente, nunca a conta, senão 'temos 5 em ruptura' deixa de ser fato compartilhado"*. Por isso a
+  tela **avisa em três lugares**: nota no popover ("Régua sua, não a do SISPRO"), **chip na barra** com os valores
+  e um clique para voltar, e o **botão de filtros aceso mesmo fechado**. Quem mudou sabe que está com outra régua.
+- ⚠️ **Vermelho e verde se empurram para o MESMO valor** em vez de aceitar inversão (a faixa âmbar simplesmente
+  some). Um par invertido deixaria a faixa do meio de cabeça para baixo e o semáforo mentindo. O que volta do
+  storage é validado (positivos, vermelho ≤ verde) — a armadilha do estado salvo sem UI para desfazer.
+- ⚠️ **Muda TUDO junto**: cor do DDV e do DDV s/OP, o ⚠ da linha, os cartões *Atenção*, *Folga* e *A produzir* e os
+  textos deles. Conferido: atenção em 12 leva os cartões de **27 / 80 / 25** para **57 / 71 / 47**.
+- `_ddvCorteTxt` formata sem casa decimal quando é inteiro — o corte aceita meio dia e "7.5" cru no meio de uma
+  frase em português ficava feio.
+
+#### ⭐ FILTRO "DDV até N dias"
+*"Quero ver tudo que está com DDV em 5 ou menos, ou 12 ou menos."* Corte numérico **independente dos cartões**,
+então **combina** com eles (ex.: "A produzir" + DDV até 5). Conferido: DDV ≤ 5 leva **144 → 21 produtos**.
+⚠️ Produto **sem DDV** (sem venda ou sem estoque) fica de fora quando há corte — não dá para afirmar que ele está
+abaixo de N dias.
+
+#### O popover ganhou uma divisão
+Os dois controles **vivos** ficam em cima, separados por uma borda e o rótulo *"aguardando o dado da TI"* dos
+**seis que seguem `disabled`**. ⚠️ Sem essa separação, um campo que funciona no meio de seis que não funcionam faz
+a pessoa achar que os outros também deviam responder.
+- Testado em Edge headless: os dois filtros, a combinação com os cartões, inverter e valor inválido ignorados,
+  F5 preservando e o "voltar ao padrão" restaurando tudo e apagando o botão. 0 erros de JS.
+
 ### 2026-09-25 (p) — PC da Empresa — PCP: horário da Cobertura **editável** e cartões de resultado alinhados (`585a3eef`)
 - ⭐ **O par de horários da Cobertura era de leitura; agora edita.** O **Início** muda o **tempo de trânsito** do
   corte até a cobrideira — o cadastro traz 15min, mas o próprio handoff avisa que ele *"varia por produto e pela
