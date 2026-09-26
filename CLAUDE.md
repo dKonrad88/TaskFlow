@@ -422,6 +422,37 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐⭐ 2026-09-26 (c) — PC da Empresa — Compras: **alerta de validade em CARTÃO VERMELHO** (`648e1012`) · Cobertura: as **faixas de cor do DDV** viram 3 limites (`658d3025`)
+
+#### ⭐ O RISCO DE VALIDADE VIROU CARTÃO (simulador de compra, ficha do item)
+*"Quero que quando aconteça apareça num card separado, maior, vermelho, com a escrita branca — precisa chamar a
+atenção do comprador."* Era uma linha de texto fina no rodapé do cronograma; virou **`.cp-alertao`**: fundo
+`var(--danger)`, texto **branco**, título em 14px e o valor a descartar embaixo.
+- ⚠️ Vale para os **DOIS casos que pedem ação na COMPRA**: **ficar sem estoque** e **comprar mais do que cabe na
+  validade**. Os dois já dividiam a mesma cor e a mesma gravidade — deixar um gritando e o outro como linha fina
+  criaria duas gramáticas para o mesmo risco.
+- ⚠️ **O caso "vence, mas é do ESTOQUE ATUAL" fica de fora de propósito**: a própria mensagem diz que *a compra
+  cabe toda*. Gritar ali mandaria o comprador mexer numa decisão que está certa.
+- ⚠️ Cores **fixas** (não seguem o tema): branco sobre `var(--danger)` é o único par que garante contraste nos dois.
+- Testado no Amendoim: 30.000 KG com validade de 2 meses → cartão `rgb(163,45,45)` com texto branco, 324×106,
+  *"~59.413 KG (52%) vence antes de ser usado"*; com validade folgada o cartão some e volta a linha verde.
+
+#### ⭐⭐ AS FAIXAS DE COR DO DDV: 3 LIMITES, 4 FAIXAS
+O Diego descreveu cinco níveis e pediu para **mover os limites mantendo a ordem das cores**. Eram **três** faixas;
+agora são **quatro**, com os três limites editáveis na personalização:
+`DDV < v1` vermelho · `v1–v2` laranja · `v2–v3` verde · **`> v3` cor normal**. Padrão de fábrica **7 / 10 / 15**.
+- ⭐ **O neutro é NOVO** — antes tudo a partir de 10 ficava verde. Acima de duas semanas de estoque o verde só
+  poluía a tela. `_ddvCor` devolve `''` nessa faixa, e quem chama já tratava o vazio (é o que o produto sem DDV
+  devolve desde sempre).
+- ⚠️ **v1 continua sendo o corte do ⚠ do SISPRO**, então os cartões **Atenção** (< v1) e **Folga** (≥ v2) seguem
+  amarrados a eles — mexer nas faixas mexe nos cartões, e o aviso de "régua sua" continua valendo.
+- ⚠️ **Os três se empurram em cadeia**: mexer num nunca deixa outro para trás. Um par invertido faria uma faixa
+  sumir com o semáforo mentindo em silêncio. Conferido: verde = 5 leva os três para 5.
+- ⚠️ **Migra o formato de ontem** (`{vermelho, amarelo}`): o 3º limite nasce no padrão e quem já tinha o par salvo
+  não perde o ajuste — sem isso o corte pessoal voltaria ao de fábrica em silêncio.
+- Testado: no padrão, **22 vermelhos / 21 laranjas / 20 verdes / 81 sem cor**; pondo o **laranja até 11** (o exemplo
+  dele), **5 produtos migram de verde para laranja** e o cartão Folga vai de 80 para 75. 0 erros de JS.
+
 ### ⭐ 2026-09-26 (b) — PC da Empresa — Cobertura: **ícone dedicado de PERSONALIZAÇÃO** (`f70b1b66`)
 *"Esse poderia ser outro ícone do lado, dedicado para personalização, vamos colocar mais coisas."* O semáforo e o
 corte de DDV saíram do funil e foram para um popover próprio (`ti-adjustments-horizontal`, ao lado do funil).
