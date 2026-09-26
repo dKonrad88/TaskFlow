@@ -6560,13 +6560,16 @@ function _prodNecessidadeHTML(){
 }
 // Controles do header da Necessidade (padrão de Compras): Filtros (divisão) + Só insuficientes + busca (lupa).
 function _necFiltrosAcao(){
-  const divPanel=_necFiltrosAberto?`<div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:252px;max-height:300px;overflow:auto;padding:6px">
+  const divPanel=_necFiltrosAberto?`<div class="cp-pop lista" style="width:252px;max-height:300px">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px 7px"><span style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)">Divisão</span>${_necDivSel.length?`<button onclick="_necDivAll()" style="border:none;background:none;color:var(--blue-mid);font-size:11.5px;cursor:pointer;font-family:inherit">Limpar</button>`:''}</div>
       ${_necDivs().map(d=>{const on=_necDivSel.indexOf(d)>=0;return `<div onclick="_necDivToggle('${_cpJs(d)}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;color:var(--text)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'"><i class="ti ${on?'ti-square-check-filled':'ti-square'}" style="font-size:17px;color:${on?'var(--blue-mid)':'var(--text3)'}"></i><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(d)}</span></div>`;}).join('')}
     </div>`:'';
   const filtrosBtn=`<div class="cp-pop-wrap" style="position:relative">${_cpFiltroIcon('_necFiltrosToggle',_necDivSel.length)}${divPanel}</div>`;
-  const soInsuf=`<button onclick="_necToggleFalta()" title="Só itens insuficientes (ruptura)" style="background:${_necFalta?'var(--danger-bg)':'var(--card)'};border:1px solid ${_necFalta?'var(--danger)':'var(--border)'};border-radius:9px;cursor:pointer;color:${_necFalta?'var(--danger)':'var(--text2)'};width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-alert-triangle" style="font-size:17px"></i></button>`;
-  return filtrosBtn+soInsuf+_cpLupa(_necBuscaAberta,_necBusca,'_necBuscaToggle','_necBuscaInput','nec-busca','Buscar material…');
+  // ⚠️ Mesma moldura dos outros ícones de ação (34×34), mas a cor ligada é o VERMELHO e não o acento:
+  // aqui o que está ligado é um recorte de risco ("só o que falta"), não uma preferência de tela.
+  const soInsuf=`<button class="cp-abtn" onclick="_necToggleFalta()" title="Só itens insuficientes (ruptura)"${_necFalta?' style="border-color:var(--danger);color:var(--danger);background:var(--danger-bg)"':''}><i class="ti ti-alert-triangle"></i></button>`;
+  // ordem padrao: busca, depois os icones de recorte
+  return _cpAcoes(_cpBuscaCampo(_necBusca,'_necBuscaInput','nec-busca','Buscar material…'), filtrosBtn, soInsuf);
 }
 // A tela vive dentro do Compras (container #nec-root). O re-render acha esse container;
 // se um dia voltar pro PCP (#prod-root), também funciona; senão, render() geral.
@@ -8719,6 +8722,33 @@ function _cpCSS(){ return `<style>
     border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.14);color:#fff;font-family:inherit;
     font-size:12px;font-weight:700;cursor:pointer;line-height:1}
   .cp-alertao-btn:hover{background:#fff;color:var(--danger);border-color:#fff}
+  /* ⭐⭐ BARRA DE ACOES — padrao UNICO das telas de lista das tres areas (Compras, Comercial e Producao).
+     A referencia e a Cobertura, escolhida pelo Diego em 26/09: busca SEMPRE visivel com a lupa dentro,
+     e ao lado os icones de 34x34 na ordem [filtros] [personalizacao]. Mora no _cpCSS porque _cpTela o
+     injeta nas tres areas — duas copias divergiriam na primeira mexida, que e o que acabou de acontecer. */
+  .cp-acoes{display:inline-flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+  .cp-buscaw{position:relative;display:inline-flex;align-items:center}
+  .cp-buscaw>i{position:absolute;left:11px;font-size:14px;color:var(--text3);pointer-events:none}
+  .cp-busca{width:250px;height:34px;border:1px solid var(--border);border-radius:9px;background:var(--bg);
+    color:var(--text);font-family:inherit;font-size:12.5px;padding:0 11px 0 32px;outline:none}
+  .cp-busca:focus{border-color:var(--blue-mid);box-shadow:0 0 0 3px color-mix(in srgb,var(--blue-mid) 14%,transparent)}
+  .cp-abtn{position:relative;width:34px;height:34px;flex:none;padding:0;border:1px solid var(--border);
+    border-radius:9px;background:var(--bg);color:var(--text2);cursor:pointer;display:inline-flex;
+    align-items:center;justify-content:center;font-family:inherit}
+  .cp-abtn>i{font-size:16px}
+  .cp-abtn:hover{color:var(--text)}
+  .cp-abtn.on{border-color:var(--blue-mid);color:var(--blue-mid)}
+  /* variante com TEXTO (o seletor de periodo do Comercial): mesma altura, largura livre */
+  .cp-abtn.txt{width:auto;padding:0 11px;gap:7px;font-size:12.5px;font-weight:600}
+  .cp-abtn-badge{position:absolute;top:-5px;right:-5px;background:var(--blue-mid);color:#fff;font-size:9px;
+    font-weight:700;min-width:15px;height:15px;border-radius:8px;display:inline-flex;align-items:center;
+    justify-content:center;padding:0 3px}
+  /* popover dos botoes acima. Era estilo inline copiado em cinco lugares, com raios e alturas diferentes.
+     A largura continua por caller (cada painel tem o seu conteudo) — o resto e igual em todas as areas. */
+  .cp-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);
+    border:1px solid var(--border);border-radius:11px;box-shadow:0 10px 28px rgba(0,0,0,.18);
+    padding:11px 12px;text-align:left;max-height:calc(100vh - 150px);overflow:auto}
+  .cp-pop.lista{padding:6px}   /* variante so com opcoes clicaveis, que ja tem o proprio respiro */
   /* ⚠️ Campo que vive DENTRO de uma linha de leitura (Validade, Preço de custeio no card Indicadores).
      Sem classe, a regra global input:not([class]) dá 40px de altura e a linha fica o dobro das vizinhas —
      foi exatamente o que aconteceu. Aqui ele tem a altura do texto ao lado e some no meio da lista. */
@@ -8827,15 +8857,28 @@ const _cpSelPeriodo=(rot,sel)=>`<div style="display:inline-flex;flex-direction:c
    ESCOPO      listas de item saem de _cpItens() (já filtrado por _cpEscComprador).
    RENDER      função *HTML() NUNCA grava (safeSetItem/saveTask_db/push) — é o P0 nº1 da base.
    ══════════════════════════════════════════════════════════════════════════════════════ */
+// ── Peças da barra de ações. Use SEMPRE estas: é o que garante que as três áreas tenham a mesma cara.
+function _cpBuscaCampo(valor, inputFn, inputId, ph){
+  return `<span class="cp-buscaw"><i class="ti ti-search"></i><input id="${inputId}" class="cp-busca" value="${escapeAttr(valor||'')}" oninput="${inputFn}(this)" placeholder="${escapeAttr(ph||'Buscar…')}"></span>`; }
+// `fn` é a chamada COMPLETA ("_xFiltrosToggle()"), porque alguns botões passam argumento.
+function _cpIcoBtn(fn, tit, ico, on, badge){
+  return `<button class="cp-abtn${on?' on':''}" onclick="${fn}" title="${escapeAttr(tit)}"><i class="ti ti-${ico}"></i>${badge?`<span class="cp-abtn-badge">${badge}</span>`:''}</button>`; }
+// envolve um botão que abre popover (o wrapper .cp-pop-wrap é o que faz o clique-fora fechar)
+function _cpPopWrap(btn, pop){ return `<span class="cp-pop-wrap" style="position:relative;display:inline-flex">${btn}${pop||''}</span>`; }
+function _cpAcoes(){ return `<span class="cp-acoes">${[].slice.call(arguments).filter(Boolean).join('')}</span>`; }
+// ⚠️ [SUPERSEDED 26/09] A busca DEIXOU DE ABRIR E FECHAR: virou campo sempre visível, como na Cobertura
+// (Diego: "o buscar também seria o correto como temos na Cobertura"). A assinatura foi mantida de propósito
+// para os 9 callers não precisarem mudar — `aberta` e `toggleFn` são ignorados, e os `*BuscaToggle` /
+// `*BuscaAberta` de cada tela ficaram sem uso (o estado guardado não atrapalha nada).
+// ⚠️ A BUSCA VEM PRIMEIRO e o `extra` (o seletor de período de Fornecedores e Histórico) depois — é a ordem
+// que o Diego pediu no Comercial em 24/09 e a da Cobertura. Antes cada tela punha numa ordem.
 function _cpLupa(aberta, valor, toggleFn, inputFn, inputId, ph, extra){
-  return aberta
-    ? `<div style="display:inline-flex;align-items:flex-end;gap:8px">${extra||''}<input id="${inputId}" value="${escapeAttr(valor||'')}" oninput="${inputFn}(this)" placeholder="${escapeAttr(ph||'Buscar…')}" class="modal-input" style="width:220px;padding:6px 11px;font-size:12.5px"><button onclick="${toggleFn}()" title="Fechar busca" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;display:inline-flex"><i class="ti ti-x" style="font-size:16px"></i></button></div>`
-    : `<div style="display:inline-flex;align-items:flex-end;gap:8px">${extra||''}<button onclick="${toggleFn}()" title="Buscar" style="background:var(--card);border:1px solid var(--border);border-radius:9px;cursor:pointer;color:var(--text2);width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-search" style="font-size:17px"></i></button></div>`;
+  return _cpAcoes(_cpBuscaCampo(valor, inputFn, inputId, ph), extra||"");
 }
 // Botão de FILTROS em ícone (mesmo formato 38×38 da lupa) — azul quando há filtro ativo, com contador.
 // O popover fica FORA (o caller envolve num <div position:relative> com o painel). `count` = nº de filtros ativos.
 function _cpFiltroIcon(toggleFn, count){ count=count||0;
-  return `<button onclick="${toggleFn}()" title="Filtros" style="position:relative;background:var(--card);border:1px solid ${count?'var(--blue-mid)':'var(--border)'};border-radius:9px;cursor:pointer;color:${count?'var(--blue-mid)':'var(--text2)'};width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-filter" style="font-size:17px"></i>${count?`<span style="position:absolute;top:-5px;right:-5px;background:var(--blue-mid);color:#fff;font-size:9px;font-weight:700;min-width:15px;height:15px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 3px">${count}</span>`:''}</button>`; }
+  return _cpIcoBtn(toggleFn+'()', 'Filtros', 'filter', count>0, count||''); }
 /* ══════ ORDENAÇÃO CLICÁVEL — motor único de TODAS as tabelas de Compras (Diego, set/2026) ══════
    Uso em 3 passos, em qualquer tabela:
      1. cabeçalho:  ${_cpTh('estoque','dias','Cobertura',1)}      (1 = coluna numérica, alinha à direita)
@@ -9021,12 +9064,12 @@ function _comprasEstoqueHTML(){
   const fOpts=[['todos','Todos',_b.length,''],['agora','Comprar agora',_cnt('agora'),'var(--danger)'],['breve','Comprar em breve',_cnt('breve'),'var(--amber)'],['saudavel','Saudáveis',_cnt('saudavel'),'var(--success)'],['excesso','Excesso',_cnt('excesso'),'var(--purple)'],['semmov','Sem movimento',_b.filter(o=>(o.semMov||0)>=90&&o.est>0).length,'var(--text3)'],['semdados','Sem dados',_cnt('semdados'),'var(--text3)']];
   const fAtivo=_cpEst.so!=='todos';
   const filtroBtn=_cpFiltroIcon('_cpEstFiltrosToggle', fAtivo?1:0);   // padrão da área: ícone 38×38, azul + badge quando há filtro ativo
-  const filtroPop=_cpEst.filtrosAberto?`<div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:206px;padding:6px">
+  const filtroPop=_cpEst.filtrosAberto?`<div class="cp-pop lista" style="width:206px">
       <div style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3);padding:5px 8px 7px">Filtrar por</div>
       ${fOpts.map(([v,l,n,cor])=>`<button onclick="_cpEstFiltro('${_cpEst.so===v?'todos':v}')" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:${_cpEst.so===v?'color-mix(in srgb,var(--blue-mid) 12%,transparent)':'none'};border:none;border-radius:7px;cursor:pointer;padding:7px 9px;font-family:inherit;font-size:12.5px;color:${_cpEst.so===v?'var(--blue-mid)':'var(--text2)'}"><span style="width:8px;height:8px;border-radius:50%;background:${cor};flex-shrink:0"></span>${l}<span style="margin-left:auto;color:var(--text3);font-size:11px">${n}</span></button>`).join('')}
     </div>`:'';
   const filtroWrap=`<div class="cp-pop-wrap" style="position:relative">${filtroBtn}${filtroPop}</div>`;
-  const acao=`<div style="display:inline-flex;align-items:center;gap:8px">${filtroWrap}${_cpLupa(_cpEst.buscaAberta,_cpEst.busca,'_cpEstToggleBusca','_cpEstBuscaInput','cp-est-busca','Buscar item…')}</div>`;
+  const acao=_cpAcoes(_cpBuscaCampo(_cpEst.busca,'_cpEstBuscaInput','cp-est-busca','Buscar item…'), filtroWrap);
   return _cpTela('Estoque','O que você tem hoje, cobertura e o que comprar.',
     `<div id="cp-est-corpo">${_cpEstCorpo()}</div>`,undefined,acao);
 }
@@ -9088,7 +9131,7 @@ function _comprasInsumosHTML(){
   const todos=_cpItens().filter(o=>o.compras.length||o.est>0);
   const cont={}; _CP_CATS.forEach(c=>cont[c]=0);
   todos.forEach(o=>{ const c=_cpCategoria(o.nome); cont[c]=(cont[c]||0)+1; });
-  const catPanel=_cpInsFiltrosAberto?`<div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:236px;max-height:300px;overflow:auto;padding:6px">
+  const catPanel=_cpInsFiltrosAberto?`<div class="cp-pop lista" style="width:236px;max-height:300px">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px 7px"><span style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)">Categoria</span>${_cpCatSel.length?`<button onclick="_cpCatAll()" style="border:none;background:none;color:var(--blue-mid);font-size:11.5px;cursor:pointer;font-family:inherit">Limpar</button>`:''}</div>
       ${_CP_CATS.map(c=>{const on=_cpCatSel.indexOf(c)>=0;return `<div onclick="_cpCatToggle('${_cpJs(c)}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;color:var(--text)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'"><i class="ti ${on?'ti-square-check-filled':'ti-square'}" style="font-size:17px;color:${on?'var(--blue-mid)':'var(--text3)'}"></i><span style="flex:1;min-width:0">${escapeHTML(c)} <span style="color:var(--text3)">${cont[c]||0}</span></span></div>`;}).join('')}
     </div>`:'';
@@ -9099,7 +9142,7 @@ function _comprasInsumosHTML(){
       <thead><tr>${_cpTh('ins','cod','Cód.')}${_cpTh('ins','cat','Categoria')}${_cpTh('ins','nome','Item')}</tr></thead>
       <tbody id="cp-ins-tbody">${_cpInsTbodyHTML()}</tbody></table>
       <div style="font-size:10.5px;color:var(--text3);padding:8px 14px;max-width:640px"><span id="cp-ins-count">${rows.length}</span> itens · ordenado por nome. ⚠️ Categoria derivada do nome (o ERP não exporta o campo família).</div>
-    </div>`, undefined, filtrosBtn+_cpLupa(_cpInsBuscaAberta,_cpInsBusca,'_cpInsBuscaToggle','_cpInsBuscaInput','cp-ins-busca','Buscar item…'));
+    </div>`, undefined, _cpAcoes(_cpBuscaCampo(_cpInsBusca,'_cpInsBuscaInput','cp-ins-busca','Buscar item…'), filtrosBtn));
 }
 // ── Painel do item (ficha) — tela cheia estilo Reunião/Projeto: rail + header + conteúdo ──
 const _CP_MESNOME=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
@@ -11598,7 +11641,7 @@ function _comprasPlanejamentoHTML(){
   const dinp=(campo)=>`<input type="date" value="${escapeAttr(_cpPlan[campo]||'')}" oninput="_cpPlanSetPerRaw('${campo}',this.value)" onchange="_cpPlanSetPerRaw('${campo}',this.value)" onblur="_cpPlanSetPer('${campo}',this.value)" class="modal-input" style="width:auto;padding:5px 8px;font-size:12px">`;
   const selPer=`<div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px"><span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);text-align:center">Média do período</span><div style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap"><select onchange="_cpPlanPeriodo(this.value)" class="modal-input" style="width:auto;padding:6px 10px;font-size:12.5px;font-weight:600">${PERIODOS.map(p=>`<option value="${p[0]}"${_cpPlan.periodo===p[0]?' selected':''}>${p[1]}</option>`).join('')}</select>${_cpPlan.periodo==='custom'?`<span style="font-size:11.5px;color:var(--text3)">de</span>${dinp('perDe')}<span style="font-size:11.5px;color:var(--text3)">até</span>${dinp('perAte')}`:''}</div></div>`;
   const todos=_cpItens().filter(o=>o.est>0||o.consMed>0); const cont={}; _CP_CATS.forEach(c=>cont[c]=0); todos.forEach(o=>{const c=_cpCategoria(o.nome); cont[c]=(cont[c]||0)+1;});
-  const catPanel=_cpPlan.filtrosAberto?`<div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:236px;max-height:300px;overflow:auto;padding:6px">
+  const catPanel=_cpPlan.filtrosAberto?`<div class="cp-pop lista" style="width:236px;max-height:300px">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px 7px"><span style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)">Categoria</span>${_cpPlan.catSel.length?`<button onclick="_cpPlanCatAll()" style="border:none;background:none;color:var(--blue-mid);font-size:11.5px;cursor:pointer;font-family:inherit">Limpar</button>`:''}</div>
       ${_CP_CATS.map(c=>{const on=_cpPlan.catSel.indexOf(c)>=0;return `<div onclick="_cpPlanCatToggle('${_cpJs(c)}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;color:var(--text)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'"><i class="ti ${on?'ti-square-check-filled':'ti-square'}" style="font-size:17px;color:${on?'var(--blue-mid)':'var(--text3)'}"></i><span style="flex:1;min-width:0">${escapeHTML(c)} <span style="color:var(--text3)">${cont[c]||0}</span></span></div>`;}).join('')}
     </div>`:'';
@@ -11608,7 +11651,7 @@ function _comprasPlanejamentoHTML(){
   const _perLbl = _cpPlan.periodo==='custom'
     ? ((_cpPlan.perDe && _cpPlan.perAte) ? (_cpDt(_cpPlan.perDe)+'–'+_cpDt(_cpPlan.perAte)) : 'personalizado')
     : (_cpPlan.periodo==='1' ? 'último mês' : 'últimos '+_cpPlan.periodo+' meses');
-  const coresPanel=_cpPlan.coresAberto?`<div style="position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:298px;padding:10px 12px">
+  const coresPanel=_cpPlan.coresAberto?`<div class="cp-pop" style="width:298px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3)">Cores da cobertura</span><button onclick="_cpPlanBandReset()" style="border:none;background:none;color:var(--blue-mid);font-size:11.5px;cursor:pointer;font-family:inherit">Restaurar</button></div>
       ${bands.map((b,i)=>{ const isLast=b.max==null; return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;${i?'border-top:1px solid var(--border)':''}">
           <div style="min-width:106px;font-size:12px;color:var(--text2);white-space:nowrap">${isLast?'<b style="color:var(--text)">acima</b>':`até <input type="number" value="${b.max}" min="0.5" step="0.5" onchange="_cpPlanBandSetMax(${i},this.value)" class="cp-sim-inp" style="width:42px;text-align:center"> ${b.max==1?'mês':'meses'}`}</div>
@@ -11618,8 +11661,11 @@ function _comprasPlanejamentoHTML(){
       <button onclick="_cpPlanBandAdd()" style="margin-top:9px;background:none;border:1px dashed var(--border);border-radius:7px;cursor:pointer;color:var(--blue-mid);font-size:11.5px;font-weight:600;padding:5px 10px;font-family:inherit;width:100%"><i class="ti ti-plus"></i> adicionar faixa</button>
       <div style="font-size:10px;color:var(--text3);margin-top:7px;line-height:1.4">A cor da coluna <b>Cobertura</b> segue estas faixas. A 1ª faixa = "Comprar agora", a 2ª = "Comprar em breve".</div>
     </div>`:'';
-  const coresBtn=`<div class="cp-pop-wrap" style="position:relative"><button onclick="_cpPlanCoresToggle()" title="Personalizar as cores da cobertura" style="background:var(--card);border:1px solid ${_cpPlan.coresAberto?'var(--blue-mid)':'var(--border)'};border-radius:9px;cursor:pointer;color:${_cpPlan.coresAberto?'var(--blue-mid)':'var(--text2)'};width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center"><i class="ti ti-palette" style="font-size:17px"></i></button>${coresPanel}</div>`;
-  const acao=`<div style="display:inline-flex;align-items:flex-end;gap:10px;flex-wrap:wrap">${selPer}${filtrosBtn}${coresBtn}${_cpLupa(_cpPlan.buscaAberta,_cpPlan.busca,'_cpPlanBuscaToggle','_cpPlanBuscaInput','cp-plan-busca','Buscar item…')}</div>`;
+  // ⚠️ MESMO ícone da personalização da Cobertura (Diego, 26/09: "esse seria o ideal"). Era um `ti-palette`,
+  // e duas telas usavam desenhos diferentes para a mesma ação — quem aprende numa não reconhece na outra.
+  const coresBtn=_cpPopWrap(_cpIcoBtn('_cpPlanCoresToggle()','Personalizar as faixas de cor da cobertura','adjustments-horizontal',_cpPlan.coresAberto), coresPanel);
+  // ordem padrão das três áreas: busca · (seletor da tela) · filtros · personalização
+  const acao=_cpAcoes(_cpBuscaCampo(_cpPlan.busca,'_cpPlanBuscaInput','cp-plan-busca','Buscar item…'), selPer, filtrosBtn, coresBtn);
   // KPIs: os 3 acionáveis (Comprar agora/em breve/Em ruptura) são CLICÁVEIS → filtram a tabela (clicar de novo limpa).
   // Contagens vêm da BASE (categoria+busca, sem status) p/ o usuário poder alternar entre eles.
   const _view=_cpPlanRowsView(), _visArr=_cpVistoObj().c;
@@ -14256,6 +14302,8 @@ function _ddvLoad(){
 }
 function _ddvRefresh(){ const el=document.getElementById('ddv-conteudo'); if(el) el.innerHTML=_ddvTabelaHTML(); else renderPCP(); }
 function _ddvBuscaInput(v){ _ddvBusca=v; _ddvSave(); _ddvRefresh(); }
+// o _cpBuscaCampo (padrao das tres areas) entrega o ELEMENTO; esta ponte evita mudar o contrato do outro
+function _ddvBuscaInputEl(el){ _ddvBuscaInput(el?el.value:""); }
 function _ddvSetFiltro(v){ _ddvFiltro=(_ddvFiltro===v?'':v); _ddvSave(); renderPCP(); }
 // ── AÇÕES do semáforo e do corte de DDV (gravam; nunca no render)
 // ⚠️ Vermelho e verde se empurram: o vermelho nunca passa do verde e vice-versa, senão sobra uma faixa
@@ -14389,12 +14437,9 @@ function _ddvCSS(){
   .ddv-leg .m2{border-top-style:dotted;border-top-color:var(--danger)}
   /* Filtros: um ícone do tamanho da busca + popover. Mesma gramática dos filtros de Compras
      (o .cp-pop-wrap em volta é o que faz o clique fora fechar). */
-  .ddv-acao{display:inline-flex;align-items:center;gap:8px}
-  .ddv-fbtn{width:34px;height:34px;flex:none;padding:0;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
-  .ddv-fbtn i{font-size:16px}
-  .ddv-fbtn:hover{color:var(--text)}
-  .ddv-fbtn.on{border-color:var(--blue-mid);color:var(--blue-mid)}
-  .ddv-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:50;width:272px;background:var(--card);border:1px solid var(--border);border-radius:11px;box-shadow:0 10px 28px rgba(0,0,0,.18);padding:11px 12px;text-align:left;max-height:calc(100vh - 150px);overflow:auto}
+  /* a barra de acoes (busca + icones) usa as classes cp-* do _cpCSS — padrao unico das tres areas */
+  /* o popover usa a classe .cp-pop do _cpCSS (padrao das tres areas); aqui so a largura e o divisor */
+  .ddv-pop{width:272px}
   .ddv-fgrp{margin-bottom:11px}
   .ddv-fgrp>b{display:flex;align-items:baseline;gap:8px;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
   .ddv-fgrp>b u{margin-left:auto;text-decoration:none;font-size:9px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--blue-mid);cursor:pointer}
@@ -14436,10 +14481,6 @@ function _ddvCSS(){
   .ddv-fchk{width:13px;height:13px;margin:0;flex:none}
   .ddv-pop [disabled]{opacity:.6;cursor:default}
   .ddv-fnota{font-size:10px;color:var(--text3);line-height:1.45;border-top:1px solid var(--border);margin-top:2px;padding-top:9px}
-  .ddv-buscaw{position:relative;display:inline-flex;align-items:center}
-  .ddv-buscaw i{position:absolute;left:11px;font-size:14px;color:var(--text3);pointer-events:none}
-  .ddv-busca{width:250px;height:34px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--text);font-family:inherit;font-size:12.5px;padding:0 11px 0 32px;outline:none}
-  .ddv-busca:focus{border-color:var(--blue-mid);box-shadow:0 0 0 3px color-mix(in srgb,var(--blue-mid) 14%,transparent)}
   .ddv-nota{font-size:11.5px;color:var(--text3);line-height:1.5;margin-top:12px;padding:0 2px}
   </style>`;
 }
@@ -14712,7 +14753,7 @@ function _ddvFiltrosPopHTML(){
   const sel=(lab,todos,itens,marc)=>`<div class="ddv-fgrp"><b>${lab}</b><select class="ddv-fsel" disabled>`
     +`<option${marc?'':' selected'}>${todos}</option>`
     +itens.map(t=>`<option${t===marc?' selected':''}>${escapeHTML(t)}</option>`).join('')+`</select></div>`;
-  return `<div class="ddv-pop">
+  return `<div class="cp-pop ddv-pop">
     ${per('Período Pedidos', J.pedIni, J.pedFim)}
     ${per('Período Vendas', J.venIni, J.venFim)}
     ${sel('Marcas','Todas',_DDV_MARCAS,'Klain')}
@@ -14728,7 +14769,7 @@ function _ddvPersPopHTML(){
   if(!_ddvPersAberto) return '';
   const chk=(lab,on,fn,dica)=>`<label class="ddv-fopt sw"><input class="ddv-fchk" type="checkbox"${on?' checked':''} onchange="${fn}(this.checked)">
     <span>${lab}${dica?`<i>${dica}</i>`:''}</span></label>`;
-  return `<div class="ddv-pop pers">
+  return `<div class="cp-pop ddv-pop pers">
     <div class="ddv-fgrp"><b>Faixas de cor do DDV${_ddvCortePadrao()?'':`<u onclick="_ddvCorteReset()" title="Voltar às faixas de fábrica: ${DDV_ALERTA.v1} / ${DDV_ALERTA.v2} / ${DDV_ALERTA.v3}">voltar ao padrão</u>`}</b>
       <div class="ddv-frow">
         ${_DDV_FX.map(fx=>`<label class="ddv-fnum"><i style="color:${fx.cor}">${fx.lab}</i>
@@ -14760,14 +14801,15 @@ function renderDDV(){
   const _st=document.getElementById('stats-box'); if(_st) _st.style.display='none';
   const _pr=document.getElementById('progress-box'); if(_pr) _pr.style.display='none';
   // a busca subiu p/ o canto superior direito (slot `acao` do _cpTela) — ocupava uma faixa só dela
-  const busca=`<span class="ddv-buscaw"><i class="ti ti-search"></i><input id="ddv-busca" value="${escapeAttr(_ddvBusca)}" oninput="_ddvBuscaInput(this.value)" placeholder="Buscar produto, código ou linha" class="ddv-busca"></span>`;
+  // ⚠️ A busca e os dois ícones usam as classes `cp-*` do _cpCSS: é o padrão único das três áreas (26/09).
+  const busca=_cpBuscaCampo(_ddvBusca, "_ddvBuscaInputEl", "ddv-busca", "Buscar produto, código ou linha");
   if(!window.__ddvFiltrosCloser){ window.__ddvFiltrosCloser=true; document.addEventListener('mousedown', _ddvCloseFiltros, true); }
   // ⚠️ o ícone de personalização acende também FECHADO quando há ajuste ativo — senão um corte de DDV, um
   // semáforo fora do padrão ou as médias escondidas mudariam a tela sem dar sinal nenhum.
   const pOn=_ddvPersAberto || _ddvMaxDDV!=='' || !_ddvCortePadrao() || !_ddvMedias || !_ddvDatas;
   const pop=(cls,on,fn,tit,ico,html)=>`<span class="cp-pop-wrap" style="position:relative;display:inline-flex">`
-    +`<button class="ddv-fbtn${on?' on':''}" onclick="${fn}()" title="${escapeAttr(tit)}"><i class="ti ti-${ico}"></i></button>${html}</span>`;
-  const acao=`<span class="ddv-acao">${busca}`
+    +_cpIcoBtn(fn+"()", tit, ico, on)+`${html}</span>`;
+  const acao=`<span class="cp-acoes">${busca}`
     +pop('f', _ddvFiltrosAberto, '_ddvFiltrosToggle', 'Filtros', 'filter', _ddvFiltrosPopHTML())
     +pop('p', pOn, '_ddvPersToggle', 'Personalizar a tela: semáforo, corte de DDV e colunas', 'adjustments-horizontal', _ddvPersPopHTML())
     +`</span>`;
@@ -15319,16 +15361,17 @@ function _comAcaoHTML(){
   // "Pedidos em aberto" é uma FOTO, não um período: ali o filtro de período não faz sentido.
   if(_comAba==='aberto') return lupa;
   const p=COM_PERIODOS.find(x=>x[0]===_comPer)||['','Período'], n=_comPerN(_comPer);
-  const btn=`<button onclick="_comPerToggle()" title="Escolher o período" style="background:var(--card);border:1px solid ${_comPerAberto?'var(--blue-mid)':'var(--border)'};border-radius:9px;cursor:pointer;color:${_comPerAberto?'var(--blue-mid)':'var(--text2)'};height:38px;padding:0 11px;display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600"><i class="ti ti-filter" style="font-size:16px"></i>${escapeHTML(p[1])}${n!=null?`<span style="font-size:11px;font-weight:700;color:var(--text3)">${_cpNum(n)}</span>`:''}<i class="ti ti-chevron-down" style="font-size:13px;color:var(--text3)"></i></button>`;
+  // mesma altura e moldura dos ícones das outras áreas, só que com texto (é um seletor, não um liga/desliga)
+  const btn=`<button class="cp-abtn txt${_comPerAberto?' on':''}" onclick="_comPerToggle()" title="Escolher o período"><i class="ti ti-filter"></i>${escapeHTML(p[1])}${n!=null?`<span style="font-size:11px;font-weight:700;color:var(--text3)">${_cpNum(n)}</span>`:''}<i class="ti ti-chevron-down" style="font-size:13px;color:var(--text3)"></i></button>`;
   // lupa ANTES do período (pedido do Diego) — por isso não uso o slot `extra` do _cpLupa, que renderia atrás.
-  return `<div style="display:inline-flex;align-items:flex-end;gap:9px">${lupa}<div class="cp-pop-wrap" style="position:relative">${btn}${_comPerPopHTML()}</div></div>`;
+  return _cpAcoes(lupa, _cpPopWrap(btn, _comPerPopHTML()));
 }
 function _comPerPopHTML(){
   if(!_comPerAberto) return '';
   const itens=COM_PERIODOS.map(x=>{ const n=_comPerN(x[0]), vazio=(n==null);
     return `<button class="com-perit${_comPer===x[0]?' on':''}"${vazio?' disabled title="ainda sem dado carregado"':''} onclick="_comSetPer('${x[0]}')">${x[1]}<span class="n">${vazio?'—':_cpNum(n)}</span></button>`;
   }).join('');
-  return `<div class="com-pop">${itens}</div>`;
+  return `<div class="cp-pop lista com-pop">${itens}</div>`;
 }
 function _comPerToggle(){ _comPerAberto=!_comPerAberto; renderComercial(); }
 function _comToggleBusca(){ _comBuscaAberta=!_comBuscaAberta; if(!_comBuscaAberta) _comBusca=''; renderComercial();
@@ -15409,7 +15452,8 @@ function _comCSS(){
   /* Indicadores em CARTÃO PEQUENO, mesma gramática da Cobertura (.ddv-kpi/.ddv-kpis). */
   .com-kpis{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
   /* popover do período (o ícone de filtro do topo) */
-  .com-pop{position:absolute;top:44px;right:0;z-index:40;background:var(--card);border:1px solid var(--border);border-radius:11px;box-shadow:0 10px 28px rgba(0,0,0,.18);padding:6px;min-width:196px;display:flex;flex-direction:column;gap:2px}
+  /* usa .cp-pop do _cpCSS; aqui so o que e proprio desta lista */
+  .com-pop{min-width:196px;display:flex;flex-direction:column;gap:2px}
   .com-perit{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;border-radius:8px;padding:8px 10px;font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer}
   .com-perit:hover:not([disabled]){background:var(--bg2)}
   .com-perit.on{background:var(--blue-mid);color:#fff}

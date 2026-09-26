@@ -422,6 +422,50 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐⭐ 2026-09-26 (i) — PC da Empresa — **PADRONIZAÇÃO da barra de ações das três áreas** (Comercial · Compras · Produção)
+*"Temos formatos diferentes de trazer as mesmas informações, ícones em posições diferentes ou até ícones diferentes…
+esse [o da Cobertura] seria o ideal. E o buscar também. Revise todas as abas e padronize."*
+
+#### A régua: **a Cobertura é a referência**
+Busca **sempre visível, com a lupa dentro**, seguida dos ícones de **34×34** na ordem **[busca] · [seletor da tela] ·
+[filtros] · [personalização]**. Tudo vive no **`_cpCSS`**, que o `_cpTela` injeta nas três áreas — duas cópias
+divergem na primeira mexida, que foi exatamente o que aconteceu aqui.
+- Peças novas: **`_cpBuscaCampo`** (campo com lupa), **`_cpIcoBtn`** (ícone 34×34, `.on` no acento + badge),
+  **`_cpPopWrap`** (o wrapper que faz o clique-fora fechar) e **`_cpAcoes`** (a linha). Classes: `.cp-acoes`,
+  `.cp-buscaw`/`.cp-busca`, `.cp-abtn` (+ `.txt` para o botão com texto do Comercial) e `.cp-pop`.
+
+#### O que mudou, tela por tela
+| Antes | Agora |
+|---|---|
+| **Busca era um botão-lupa que abria/fechava** em 9 telas de Compras e no Comercial | campo sempre visível, 250px, igual ao da Cobertura |
+| Planejamento personalizava com **`ti-palette`** | **`ti-adjustments-horizontal`**, o mesmo da Cobertura |
+| Ícones de ação em **38×38** (Compras) × 34×34 (Cobertura) | **34×34** em todas |
+| Período **antes** da busca em Fornecedores, Histórico e Planejamento; **depois** no Comercial | **busca sempre primeiro** (é o que o Diego já tinha pedido no Comercial em 24/09) |
+| Popover: **5 cópias de estilo inline**, raio 10 ou 11, sem teto de altura | classe **`.cp-pop`** única (raio 11, mesma sombra, `max-height` de tela), largura por caller |
+| "Só insuficientes" da Necessidade em 38×38 inline | `.cp-abtn` — ⚠️ **mas com o vermelho, não o acento**: ali o que liga é um recorte de risco, não uma preferência de tela |
+- ⚠️ **`_cpLupa` foi mantido com a MESMA assinatura** e passou a devolver o campo fixo: uma troca cobriu os 9 callers
+  sem tocar em nenhum. Os `*BuscaToggle`/`*BuscaAberta` de cada tela **ficaram sem uso** (não removidos: são ~18
+  símbolos espalhados, e o estado guardado não atrapalha) — quem for limpar, comece por eles.
+- ⚠️ A Cobertura também passou a usar as classes `cp-*`; as `ddv-fbtn`/`ddv-buscaw`/`ddv-busca` saíram do `_ddvCSS` e
+  `.ddv-pop` ficou só com a largura. **Ponte nova `_ddvBuscaInputEl`**: o `_cpBuscaCampo` entrega o ELEMENTO e o
+  `_ddvBuscaInput` esperava o valor.
+- ⚠️ `.cp-acoes` alinha por **`flex-end`**, não center: o seletor de período tem rótulo em cima (61px) e os ícones
+  34px — alinhados pelo topo eles ficariam em degrau.
+- Testado em Edge headless nas **10 telas** (Cobertura · Painel · Estoque · Insumos · Planejamento · Necessidade ·
+  Fornecedores · Histórico · Ordens · Comercial): campo de busca de 250px em todas as que têm busca, **0 botões de
+  38px**, **0 lupas-botão**, ícones todos 34×34, os **8 popovers** abrindo com raio 11 e dentro da tela, busca do
+  Estoque filtrando (28 linhas) **sem perder o foco**, sem rolagem horizontal. 0 erros de JS.
+
+#### ⏳ O que NÃO padronizei (fica mapeado, precisa de decisão)
+1. **Os KPIs**: a Cobertura tem 6 cartões de 168px **clicáveis como filtro**; Compras e Comercial usam
+   `_cpKPIcards`, que não filtram. É mudança de comportamento, não de aparência.
+2. **O seletor de período tem três formas**: bloco com rótulo em cima (Fornecedores, Histórico), "Média do período"
+   (Planejamento) e botão com popover (Comercial). Unificar exige escolher uma — e o do Comercial é o único que
+   mostra contagem.
+3. **As tabelas**: `.cp-tbl` (Compras), `.ddv-tbl` (Cobertura, cabeçalho em dois níveis e um card por linha) e
+   `.com-tbl` (Comercial, um cartão por grupo). São estruturas diferentes para dados diferentes; unificar é projeto
+   à parte.
+
 ### ⭐ 2026-09-26 (h) — PC da Empresa — Compras: a **VALIDADE vira cadastro do item** e o simulador já abre com ela
 *"Nos indicadores já poderia trazer a validade, e daí o comprador não precisa preencher lá. No amendoim pode colocar 6
 meses; nos demais vamos preencher no Hub Oficial. E no simulador, uma opção de usar o que já tem cadastrado ou colocar
