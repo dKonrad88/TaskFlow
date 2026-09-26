@@ -13680,15 +13680,24 @@ const _ddvFechadas={};        // linhas recolhidas — estado de tela, não pers
 // ⚠️ A série é MENSAL, então o recorte é por mês: a data escolhida entra pelo mês dela.
 let _ddvPer={ini:'',fim:'',m2ini:'',m2fim:''};
 
-// Corte do semáforo do DDV. No SISPRO o ⚠ acende exatamente abaixo de 7 dias — este é o PADRÃO DE FÁBRICA.
-const DDV_ALERTA={vermelho:7, amarelo:10};
+// ⭐⭐ AS FAIXAS DE COR DO DDV (26/09) — o Diego descreveu cinco níveis e pediu para poder mover os
+// limites, mantendo a ordem das cores. Os três números são os LIMITES entre quatro faixas de texto:
+//   saldo negativo → célula vermelha cheia com texto branco (isso é do SALDO, não entra aqui)
+//   DDV < v1  → vermelho     · v1 a v2 → laranja     · v2 a v3 → verde     · v3 acima → cor normal
+// ⚠️ O "acima de v3 fica neutro" é NOVO: antes tudo a partir de 10 ficava verde. É o que ele descreveu —
+// acima de duas semanas de estoque já não é notícia, e o verde só polui a tela.
+// No SISPRO o ⚠ acende exatamente abaixo de 7 dias; v1 é esse corte e é o PADRÃO DE FÁBRICA.
+const DDV_ALERTA={v1:7, v2:10, v3:15};
 // ⭐⭐ O CORTE VIROU AJUSTÁVEL (Diego, 26/09: "atenção está em 7 dias, mas se eu quiser ajustar; e folga
 // está em 10 dias ou mais, caso eu queira mudar"). Era o item (4) da fila de personalização acordada.
 // ⚠️⚠️ Isto é a ÚNICA coisa da tela que personaliza a CONTA, não a lente — e a régua combinada em 25/09
 // era justamente "personalizar a lente, nunca a conta, senão 'temos 5 em ruptura' deixa de ser fato
 // compartilhado". Por isso a tela AVISA quando o corte está fora do padrão, com o valor de fábrica ao
 // lado e um jeito de voltar: quem mudou sabe que está olhando com outra régua.
-let _ddvCorte={vermelho:DDV_ALERTA.vermelho, amarelo:DDV_ALERTA.amarelo};
+let _ddvCorte={v1:DDV_ALERTA.v1, v2:DDV_ALERTA.v2, v3:DDV_ALERTA.v3};
+const _DDV_FX=[{k:'v1', lab:'Vermelho abaixo de', cor:'var(--danger)'},
+               {k:'v2', lab:'Laranja até',        cor:'var(--amber)'},
+               {k:'v3', lab:'Verde até',          cor:'var(--success)'}];
 // filtro numérico independente dos cartões: "mostrar só o que está com DDV até N dias" ('' = sem corte)
 let _ddvMaxDDV='';
 const DDV_DIAS_UTEIS=261;
@@ -13946,11 +13955,15 @@ function _ddvProdCels(p,c){
     '<td class="bnd b3 l">'+_regCamHTML(x.e.cam)+'</td>';
 }
 function _ddvSetVer(v){ _ddvVer=v; _ddvSave(); _ddvRefresh(); }
+// ⚠️ devolve '' na última faixa: célula sem `color` fica com o tom padrão da tabela, que é exatamente o
+// "cor normal" que o Diego pediu para o que passa de v3. Quem chama já trata o vazio (é o mesmo que o
+// produto sem DDV devolve há muito tempo).
 function _ddvCor(v){
   if(v==null) return '';
-  if(v<_ddvCorte.vermelho) return 'var(--danger)';
-  if(v<_ddvCorte.amarelo) return 'var(--amber)';
-  return 'var(--success)';
+  if(v<_ddvCorte.v1) return 'var(--danger)';
+  if(v<_ddvCorte.v2) return 'var(--amber)';
+  if(v<_ddvCorte.v3) return 'var(--success)';
+  return '';
 }
 const _ddvN=(v,d)=>v==null?'—':_cpNum(v,d==null?2:d);
 const _ddvNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
@@ -13965,8 +13978,8 @@ function _ddvStatus(x){
   const c=x.c;
   if(c.saldo!=null && c.saldo<0) return 'ruptura';
   if(c.ddv==null) return '';
-  if(c.ddv<_ddvCorte.vermelho) return 'atencao';
-  if(c.ddv>=_ddvCorte.amarelo) return 'folga';
+  if(c.ddv<_ddvCorte.v1) return 'atencao';
+  if(c.ddv>=_ddvCorte.v2) return 'folga';
   return 'meio';
 }
 function _ddvCasa(x){
@@ -14040,8 +14053,14 @@ function _ddvLoad(){
   // ⚠️ o corte volta do storage só se fizer SENTIDO: números positivos e com o vermelho abaixo do verde.
   // Um par invertido (verde 5, vermelho 10) deixaria a faixa do meio vazia e o semáforo mentindo, sem UI
   // para desfazer — é a mesma armadilha do estado salvo que já custou caro no allView.
-  if(o.corte && typeof o.corte==='object'){ const v=+o.corte.vermelho, a=+o.corte.amarelo;
-    if(v>0 && a>0 && v<=a && v<=999 && a<=999) _ddvCorte={vermelho:v, amarelo:a}; }
+  // ⚠️ migra o formato de ONTEM ({vermelho, amarelo}, só 2 faixas): o 3º limite nasce no padrão, e quem
+  // tinha o par salvo não perde o ajuste. Sem isso o corte pessoal voltaria ao de fábrica em silêncio.
+  if(o.corte && typeof o.corte==='object'){
+    const c={ v1:+(o.corte.v1!=null?o.corte.v1:o.corte.vermelho),
+              v2:+(o.corte.v2!=null?o.corte.v2:o.corte.amarelo),
+              v3:+(o.corte.v3!=null?o.corte.v3:DDV_ALERTA.v3) };
+    const ok=['v1','v2','v3'].every(k=>c[k]>0 && c[k]<=999);
+    if(ok && c.v1<=c.v2 && c.v2<=c.v3) _ddvCorte=c; }
   if(typeof o.maxddv==='number' || (typeof o.maxddv==='string' && o.maxddv!=='')){
     const m=+o.maxddv; if(m>0 && m<=999) _ddvMaxDDV=m; }
   if(typeof o.medias==='boolean') _ddvMedias=o.medias;
@@ -14059,12 +14078,18 @@ function _ddvSetCorte(qual, el){
   if(!(n>0) || n>999) return renderPCP();
   // ⚠️ empurra para o MESMO valor, não para n+0.1: com vermelho = verde a faixa âmbar simplesmente some
   // (fica só "atenção abaixo de 12" e "folga a partir de 12"), que é mais limpo que um 12,1 solto.
-  if(qual==='vermelho') _ddvCorte={vermelho:n, amarelo:Math.max(n, _ddvCorte.amarelo)};
-  else _ddvCorte={vermelho:Math.min(n, _ddvCorte.vermelho), amarelo:n};
-  _ddvSave(); renderPCP();
+  // ⚠️ os três limites se EMPURRAM em cadeia: mexer num nunca deixa outro para trás. Um par invertido
+  // (verde antes do laranja) faria uma faixa sumir e o semáforo mentiria sem ninguém perceber.
+  const c={v1:_ddvCorte.v1, v2:_ddvCorte.v2, v3:_ddvCorte.v3};
+  c[qual]=n;
+  if(qual==='v1'){ c.v2=Math.max(c.v2,n); c.v3=Math.max(c.v3,c.v2); }
+  else if(qual==='v2'){ c.v1=Math.min(c.v1,n); c.v3=Math.max(c.v3,n); }
+  else { c.v2=Math.min(c.v2,n); c.v1=Math.min(c.v1,c.v2); }
+  _ddvCorte=c; _ddvSave(); renderPCP();
 }
-function _ddvCorteReset(){ _ddvCorte={vermelho:DDV_ALERTA.vermelho, amarelo:DDV_ALERTA.amarelo}; _ddvSave(); renderPCP(); }
-function _ddvCortePadrao(){ return _ddvCorte.vermelho===DDV_ALERTA.vermelho && _ddvCorte.amarelo===DDV_ALERTA.amarelo; }
+function _ddvCorteReset(){ _ddvCorte={v1:DDV_ALERTA.v1, v2:DDV_ALERTA.v2, v3:DDV_ALERTA.v3}; _ddvSave(); renderPCP(); }
+function _ddvCortePadrao(){ return ['v1','v2','v3'].every(k=>_ddvCorte[k]===DDV_ALERTA[k]); }
+function _ddvCorteTit(){ return ['v1','v2','v3'].map(k=>_ddvCorteTxt(_ddvCorte[k])).join(' / '); }
 // ⚠️ o corte aceita meio dia, então a exibição não pode ser um `7.5` cru no meio de uma frase em português
 const _ddvCorteTxt=v=>Number.isInteger(+v)?String(+v):_cpNum(+v,1);
 function _ddvSetMax(el){ const v=String(el.value).trim().replace(',','.');
@@ -14352,8 +14377,8 @@ function _ddvKPIsHTML(){
   return `<div class="ddv-kpis">
     ${k('','Itens',todos.length,_cpNum(_DDV_LINHAS.length)+' linhas de produto')}
     ${k('ruptura','Em ruptura',rup,'saldo negativo','var(--danger)')}
-    ${k('atencao','Atenção',aten,'menos de '+_ddvCorteTxt(_ddvCorte.vermelho)+' dias de estoque','var(--danger)')}
-    ${k('folga','Folga',folga,_ddvCorteTxt(_ddvCorte.amarelo)+' dias ou mais','var(--success)')}
+    ${k('atencao','Atenção',aten,'menos de '+_ddvCorteTxt(_ddvCorte.v1)+' dias de estoque','var(--danger)')}
+    ${k('folga','Folga',folga,_ddvCorteTxt(_ddvCorte.v2)+' dias ou mais','var(--success)')}
     ${k('produzir','A produzir',prod,'vai faltar e não tem OP/OC','var(--amber)')}
     ${(function(){ const m=_ddvCobertura(); if(!m) return '';
       return `<div class="ddv-kpi info" title="Saldo total ÷ venda diária total — quantos dias o estoque inteiro dura no ritmo de hoje.&#10;Média simples dos itens: ${_ddvN(m.simples,1)} dias · mediana: ${_ddvN(m.mediana,1)} dias.&#10;${_cpNum(m.n)} produtos entram na conta (os sem venda ou sem estoque ficam de fora).">
@@ -14397,7 +14422,7 @@ function _ddvTabelaHTML(){
       <td colspan="${nc-2}"></td></tr>`;
     if(!fechada) L.prods.forEach(p=>{
       const c=_ddvCalc(p), st=_ddvCor(c.ddv), aberto=String(_ddvGraf)===String(p[0]);
-      const alerta=(c.ddv!=null&&c.ddv<_ddvCorte.vermelho)?`<i class="ti ti-alert-triangle-filled" style="color:var(--danger);font-size:11px;margin-right:4px" title="menos de ${_ddvCorteTxt(_ddvCorte.vermelho)} dias de estoque"></i>`:'';
+      const alerta=(c.ddv!=null&&c.ddv<_ddvCorte.v1)?`<i class="ti ti-alert-triangle-filled" style="color:var(--danger);font-size:11px;margin-right:4px" title="menos de ${_ddvCorteTxt(_ddvCorte.v1)} dias de estoque"></i>`:'';
       // Abaixo de zero não é "pouco estoque", é buraco: a célula vira vermelha com fonte branca.
       // Saldo e DDV viram juntos (DDV = saldo ÷ MDV, e a MDV é sempre positiva).
       const negS=(c.saldo!=null&&c.saldo<0), negD=(c.ddv!=null&&c.ddv<0);
@@ -14423,7 +14448,7 @@ function _ddvTabelaHTML(){
   return `<div class="ddv-bar">
       <span class="t">${_cpNum(nProd)} produtos · ${_cpNum(linhas.length)} linhas${resProd}</span>
       ${_ddvMaxDDV===''?'':`<button class="ddv-link on" onclick="_ddvMaxLimpar()" title="Tirar o corte de DDV">DDV até ${_ddvCorteTxt(_ddvMaxDDV)} dias <i class="ti ti-x" style="font-size:12px;vertical-align:-1px"></i></button>`}
-      ${_ddvCortePadrao()?'':`<button class="ddv-link on" onclick="_ddvCorteReset()" title="Voltar ao corte do SISPRO (${DDV_ALERTA.vermelho} e ${DDV_ALERTA.amarelo})">semáforo ${_ddvCorteTxt(_ddvCorte.vermelho)} / ${_ddvCorteTxt(_ddvCorte.amarelo)} <i class="ti ti-x" style="font-size:12px;vertical-align:-1px"></i></button>`}
+      ${_ddvCortePadrao()?'':`<button class="ddv-link on" onclick="_ddvCorteReset()" title="Voltar às faixas de fábrica (${DDV_ALERTA.v1} / ${DDV_ALERTA.v2} / ${DDV_ALERTA.v3})">faixas ${_ddvCorteTit()} <i class="ti ti-x" style="font-size:12px;vertical-align:-1px"></i></button>`}
       <button class="ddv-link" style="margin-left:auto" onclick="_ddvTodasLinhas(${fechadas?0:1})"><i class="ti ti-${fechadas?'chevrons-down':'chevrons-up'}" style="font-size:12px;vertical-align:-1px"></i> ${fechadas?'Abrir todas':'Recolher todas'}</button>
     </div>
     <div class="ddv-hstrip"><table class="ddv-tbl"><colgroup>${cols}</colgroup><thead>${grupos}${colunas}</thead></table></div>
@@ -14472,14 +14497,13 @@ function _ddvPersPopHTML(){
   const chk=(lab,on,fn,dica)=>`<label class="ddv-fopt sw"><input class="ddv-fchk" type="checkbox"${on?' checked':''} onchange="${fn}(this.checked)">
     <span>${lab}${dica?`<i>${dica}</i>`:''}</span></label>`;
   return `<div class="ddv-pop">
-    <div class="ddv-fgrp"><b>Semáforo do DDV${_ddvCortePadrao()?'':`<u onclick="_ddvCorteReset()" title="Voltar ao corte do SISPRO: ${DDV_ALERTA.vermelho} e ${DDV_ALERTA.amarelo}">voltar ao padrão</u>`}</b>
+    <div class="ddv-fgrp"><b>Faixas de cor do DDV${_ddvCortePadrao()?'':`<u onclick="_ddvCorteReset()" title="Voltar às faixas de fábrica: ${DDV_ALERTA.v1} / ${DDV_ALERTA.v2} / ${DDV_ALERTA.v3}">voltar ao padrão</u>`}</b>
       <div class="ddv-frow">
-        <label class="ddv-fnum"><i style="color:var(--danger)">Atenção abaixo de</i>
-          <input type="number" class="ddv-fdt" value="${_ddvCorte.vermelho}" min="0.5" max="999" step="0.5" onchange="_ddvSetCorte('vermelho',this)"></label>
-        <label class="ddv-fnum"><i style="color:var(--success)">Folga a partir de</i>
-          <input type="number" class="ddv-fdt" value="${_ddvCorte.amarelo}" min="0.5" max="999" step="0.5" onchange="_ddvSetCorte('amarelo',this)"></label>
+        ${_DDV_FX.map(fx=>`<label class="ddv-fnum"><i style="color:${fx.cor}">${fx.lab}</i>
+          <input type="number" class="ddv-fdt" value="${_ddvCorte[fx.k]}" min="0.5" max="999" step="0.5" onchange="_ddvSetCorte('${fx.k}',this)"></label>`).join('')}
       </div>
-      ${_ddvCortePadrao()?'':`<div class="ddv-fnota">Régua sua, não a do SISPRO (${DDV_ALERTA.vermelho} e ${DDV_ALERTA.amarelo}) — os números da tela mudam junto.</div>`}</div>
+      <div class="ddv-fnota">Acima de <b>${_ddvCorteTxt(_ddvCorte.v3)}</b> a cor sai — o número fica normal. Saldo negativo pinta a célula inteira.
+        ${_ddvCortePadrao()?'':`<br><b style="color:var(--text2)">Régua sua, não a do SISPRO (${DDV_ALERTA.v1} / ${DDV_ALERTA.v2} / ${DDV_ALERTA.v3})</b> — os cartões mudam junto.`}</div></div>
     <div class="ddv-fgrp"><b>Mostrar só até${_ddvMaxDDV===''?'':`<u onclick="_ddvMaxLimpar()">limpar</u>`}</b>
       <div class="ddv-frow">
         <input type="number" class="ddv-fdt" value="${_ddvMaxDDV}" min="0.5" max="999" step="0.5" placeholder="sem corte" onchange="_ddvSetMax(this)">
