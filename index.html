@@ -8713,6 +8713,16 @@ function _cpCSS(){ return `<style>
   .cp-alertao>i{font-size:20px;flex:none;margin-top:1px}
   .cp-alertao b{display:block;font-size:14px;font-weight:800;letter-spacing:-.01em}
   .cp-alertao span{display:block;font-size:12.5px;font-weight:500;opacity:.92;margin-top:3px}
+  /* botao dentro do cartao vermelho: cores fixas pelo mesmo motivo do cartao (o branco e o unico par
+     que garante contraste sobre var(--danger) em qualquer tema) */
+  .cp-alertao-btn{margin-top:10px;display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:8px;
+    border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.14);color:#fff;font-family:inherit;
+    font-size:12px;font-weight:700;cursor:pointer;line-height:1}
+  .cp-alertao-btn:hover{background:#fff;color:var(--danger);border-color:#fff}
+  .cp-crono-acoes{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+  .cp-sugbtn{display:inline-flex;align-items:center;gap:5px;background:none;border:1px dashed var(--border);
+    border-radius:7px;cursor:pointer;color:var(--blue-mid);font-size:11.5px;font-weight:600;padding:5px 10px;font-family:inherit}
+  .cp-sugbtn:hover{border-color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 8%,transparent)}
   .cp-crono-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;align-items:center;padding:6px 0;border-bottom:1px dashed color-mix(in srgb,var(--border) 70%,transparent)}
   .cp-crono-row:last-child{border-bottom:none}
   .cp-crono-lab{font-size:12px;color:var(--text2);min-width:0}
@@ -9339,6 +9349,20 @@ function _cpSimEntregaTextoLive(i,el){ if(!Array.isArray(_cpSim.entregas)) _cpSi
 // blur: normaliza a exibição p/ dd/mm/aa limpo (ou vazio se inválido).
 function _cpSimEntregaTextoBlur(i,el){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; const iso=_cpParseDataCurta(el?el.value:''); _cpSim.entregas[i]=iso; if(el) el.value=iso?_cpDt(iso):''; _cpSimCronoTextos(); }
 function _cpSimDateKey(e){ if(!e || e.key!=='Enter') return; e.preventDefault(); if(e.target && e.target.blur) e.target.blur(); setTimeout(_cpSimFocusNext,0); }
+// Lotes que o comprador JÁ TEM: o estoque de hoje e as OCs emitidas. Extraído porque o sugeridor de datas
+// (_cpSimSugerirDatas) precisa exatamente da mesma base — duas montagens separadas divergiriam na 1ª mexida.
+// ⚠️ As OCs JÁ EMITIDAS entram no FEFO como lote que chega na data prevista (_i:-2). Sem isso o cronograma
+// diria que o estoque acaba numa data em que, na verdade, já havia carga a caminho — e o comprador poderia
+// comprar de novo o que já está pedido.
+function _cpSimLotesBase(o, valDias){
+  const batches=[]; if(o.est>0) batches.push({arr:0,exp:valDias,qty:o.est,_i:-1});
+  const ocSaldo=_cpOcSaldo(o.cod);
+  if(ocSaldo>0){ const ocs=_cpOCsItem(o);
+    const prox=ocs.filter(p=>p.prevista).sort((a,b)=>a.prevista<b.prevista?-1:1)[0];
+    const off=prox?Math.max(0,_cpDiasEntre(today,prox.prevista)):0;
+    batches.push({arr:off,exp:off+valDias,qty:ocSaldo,_i:-2}); }
+  return {batches, ocSaldo};
+}
 function _cpSimFefoData(o,c){
   const consMes=_cpConsMesSel(o)||o.consMed||(o.consDia?o.consDia*30:0);
   const valM=parseFloat(String(_cpSim.validadeMeses).replace(',','.'))||0;
@@ -9352,47 +9376,92 @@ function _cpSimFefoData(o,c){
   const temData=iso=>{ if(!(iso && String(iso).trim())) return false; const y=parseInt(String(iso).slice(0,4),10); return isFinite(y) && y>=2000; };
   const cronoFilled=ent.every(temData);
   let sim=null, perdaTot=0, bEst=null, wEst=0, gaps=[], bOC=null;
-  const batches=[]; if(o.est>0) batches.push({arr:0,exp:valDias,qty:o.est,_i:-1});
-  // ⚠️ As OCs JÁ EMITIDAS entram no FEFO como lote que chega na data prevista (_i:-2). Sem isso o
-  // cronograma dizia que o estoque acabava numa data em que, na verdade, já havia carga a caminho —
-  // e o comprador poderia comprar de novo o que já está pedido.
-  const ocSaldo=_cpOcSaldo(o.cod);
-  if(ocSaldo>0){ const ocs=_cpOCsItem(o);
-    const prox=ocs.filter(p=>p.prevista).sort((a,b)=>a.prevista<b.prevista?-1:1)[0];
-    const off=prox?Math.max(0,_cpDiasEntre(today,prox.prevista)):0;
-    batches.push({arr:off,exp:off+valDias,qty:ocSaldo,_i:-2}); }
+  const base=_cpSimLotesBase(o,valDias), batches=base.batches.slice(), ocSaldo=base.ocSaldo;
   ent.forEach((iso,i)=>{ if(temData(iso)){ const off=Math.max(0,_cpDiasEntre(today,iso)); batches.push({arr:off,exp:off+valDias,qty:qtys[i],_i:i}); } });
+  // ⚠️⚠️ A perda tem que ser separada por DONO: o que vence da COMPRA (_i>=0) é decisão desta simulação;
+  // o que vence do estoque de hoje ou da OC JÁ EMITIDA é fato consumado. Somar tudo fazia a tela mandar
+  // "compre menos" por causa de um excesso que já foi pedido — o contrário do que o comprador deve fazer.
+  let wCompra=0, wOC=0;
   if(batches.length && consDia>0){ sim=_cpFefoSim(batches,consDia); perdaTot=sim.reduce((a,b)=>a+b.waste,0);
-    bEst=sim.find(x=>x._i===-1); bOC=sim.find(x=>x._i===-2); wEst=bEst?bEst.waste:0; gaps=sim.gaps||[]; }
-  return {consMes,valM,isCargas,N,ent,consDia,valDias,qtys,cronoFilled,sim,perdaTot,bEst,bOC,wEst,gaps,ocSaldo,totalKg:o.est+ocSaldo+c.qtd,um:o.um||''};
+    bEst=sim.find(x=>x._i===-1); bOC=sim.find(x=>x._i===-2); wEst=bEst?bEst.waste:0; gaps=sim.gaps||[];
+    sim.forEach(b=>{ if(b._i>=0) wCompra+=b.waste; else if(b._i===-2) wOC+=b.waste; }); }
+  return {consMes,valM,isCargas,N,ent,consDia,valDias,qtys,cronoFilled,sim,perdaTot,bEst,bOC,wEst,wOC,wCompra,gaps,ocSaldo,totalKg:o.est+ocSaldo+c.qtd,um:o.um||''};
 }
 function _cpSimRowInfo(b,um){ if(!b) return ''; const dura=(b.esgotaT!=null)?`<span style="font-size:11px;color:var(--text3)">dura até <b style="color:var(--text2)">${_cpDataFim(b.esgotaT)}</b></span> `:''; const w=b.waste; const wtxt=(w>0.5)?`<span style="color:var(--danger);font-weight:700;font-size:11.5px">vence ${_cpNum(w,0)} ${um}</span>`:`<span style="color:var(--success);font-size:11.5px"><i class="ti ti-check"></i> ok</span>`; return dura+wtxt; }
 // Aviso(s) de RUPTURA que pertencem à carga i (Diego: mostrar embaixo da própria carga, na hora, não só no fim).
 function _cpSimRowGaps(i,gaps){ const gs=(gaps||[]).filter(g=>g.by===i); if(!gs.length) return ''; return gs.map(g=>`<div style="margin:5px 0 3px;padding:7px 10px;border-radius:9px;background:color-mix(in srgb, var(--danger) 10%, transparent);border:1px solid color-mix(in srgb, var(--danger) 32%, transparent);font-size:11.5px;color:var(--danger);font-weight:700;line-height:1.4"><i class="ti ti-alert-triangle"></i> Fica SEM estoque de <b>${_cpDataFim(g.ini)}</b> a <b>${_cpDataFim(g.fim)}</b> · ~${g.fim-g.ini+1} dias. Antecipe esta carga.</div>`).join(''); }
+// ⭐⭐ SUGERIR DATAS DE ENTREGA (Diego, 26/09: "ele sugere em cima de validade e consumo, quando entregar").
+// ⚠️ A REGRA É UMA SÓ: cada entrega chega no dia em que o que está antes dela ACABA (just in time pelo FEFO).
+// Chegar antes empilha lote novo sobre lote velho — que é exatamente o que faz vencer; chegar depois é o dia
+// sem estoque. O ponto sem perda e sem furo é a fronteira entre os dois, e é ele que a função devolve.
+// ⚠️ Cada data sai do FEFO RODANDO, não de uma regra de três, porque o estoque atual pode VENCER antes de ser
+// todo consumido — quando isso acontece ele some da conta e a carga seguinte precisa chegar mais cedo.
+// ⚠️ NÃO considera o prazo de entrega do fornecedor: o lead time do cadastro é EXEMPLO por categoria, não dado
+// real (ver _cpLeadTime). A data diz "quando a fábrica precisa", não "quando dá para pedir" — está na tela.
+// ⚠️ Quando a entrega é grande demais para a validade (qtd/consumo > validade) NÃO existe data que salve —
+// a função aplica mesmo assim e o aviso diz para parcelar, senão o botão não faria nada e pareceria quebrado.
+function _cpSimSugerirDatas(){
+  const o=(_cpItemSel&&_cpIdx()[_cpItemSel])||null; if(!o) return;
+  const c=_cpSimCalc(o), fd=_cpSimFefoData(o,c);
+  if(!(fd.consDia>0) || !(c.qtd>0) || !(fd.valDias>0)) return;
+  const antes=Array.isArray(_cpSim.entregas)?_cpSim.entregas.slice():[];
+  const dias=[];
+  for(let i=0;i<fd.ent.length;i++){
+    const b=_cpSimLotesBase(o,fd.valDias).batches;      // estoque + OC emitida
+    for(let j=0;j<i;j++) b.push({arr:dias[j], exp:dias[j]+fd.valDias, qty:fd.qtys[j], _i:j});
+    let t=0;
+    if(b.length){ const s=_cpFefoSim(b, fd.consDia);
+      s.forEach(x=>{ if(x.esgotaT!=null && x.esgotaT>t) t=x.esgotaT; }); }
+    dias.push(t);
+  }
+  _cpSim.entregas=dias.map(t=>{ const d=new Date(today+'T00:00:00'); d.setDate(d.getDate()+t); return _dateToLocalISO(d); });
+  _cpSimRefreshResult();
+  // a mensagem confere o RESULTADO, não a intenção: se ainda vence algo das cargas, o problema é o tamanho
+  // da entrega e não a data — e é isso que o comprador precisa ouvir.
+  const fd2=_cpSimFefoData(o,_cpSimCalc(o)), wCompra=fd2.wCompra||0;
+  toast(wCompra>0.5
+    ? `Datas sugeridas — mas ainda vencem ~${_cpNum(wCompra,0)} ${fd2.um} da compra: cada entrega é grande demais para a validade. Parcele em mais entregas.`
+    : 'Datas sugeridas: cada entrega chega no dia em que a anterior acaba.',
+    {undoFn:()=>{ _cpSim.entregas=antes; _cpSimRefreshResult(); }});
+}
 function _cpSimCronoExtra(o,c,fd){
   const um=fd.um;
   // Os avisos de RUPTURA agora saem INLINE, embaixo de cada carga (via _cpSimRowGaps). Aqui só o resumo/dica.
-  const temRuptura=fd.gaps.length>0, okAll=fd.perdaTot<=0.5, wCargas=fd.perdaTot-fd.wEst;
-  const soEstoque=(wCargas<=0.5 && fd.wEst>0.5);
-  const addBtn=(!fd.isCargas && fd.cronoFilled)?`<button onclick="_cpSimAddEntrega()" style="margin-top:7px;background:none;border:1px dashed var(--border);border-radius:7px;cursor:pointer;color:var(--blue-mid);font-size:11.5px;font-weight:600;padding:5px 10px;font-family:inherit"><i class="ti ti-plus"></i> dividir em outra entrega</button>`:'';
+  // ⚠️ o CARTÃO VERMELHO olha só o que vence DA COMPRA. O que vence do estoque de hoje ou de uma OC já
+  // emitida cai na linha discreta: são fatos, e mandar "compre menos" por causa deles é conselho errado.
+  const temRuptura=fd.gaps.length>0, okAll=fd.perdaTot<=0.5;
+  const wCompra=fd.wCompra||0, wTenho=fd.perdaTot-wCompra;
+  const soTenho=(wCompra<=0.5 && wTenho>0.5);
+  // ⭐ O "sugerir datas" fica SEMPRE visível (carga ou não, datas preenchidas ou não) — é justamente com o
+  // cronograma em branco que ele mais serve: a pergunta "que data eu ponho?" é a primeira que aparece.
+  const sugBtn=`<button onclick="_cpSimSugerirDatas()" class="cp-sugbtn" title="Calcula a chegada de cada ${fd.isCargas?'carga':'entrega'} pelo consumo e pela validade"><i class="ti ti-calendar-check"></i> Sugerir datas de entrega</button>`;
+  const addBtn=(!fd.isCargas && fd.cronoFilled)?`<button onclick="_cpSimAddEntrega()" class="cp-sugbtn"><i class="ti ti-plus"></i> dividir em outra entrega</button>`:'';
+  const acoes=`<div class="cp-crono-acoes">${sugBtn}${addBtn}</div>`;
   // ⭐⭐ ALERTA EM CARTÃO VERMELHO CHEIO (Diego, 26/09: "precisa chamar a atenção do comprador, caso isso
   // aconteça"). Vale para os DOIS casos que pedem AÇÃO NA COMPRA: ficar sem estoque, e comprar mais do que
   // cabe na validade. ⚠️ Os dois já dividiam a mesma cor e a mesma gravidade — deixar um gritando e o outro
   // como linha fina criaria duas gramáticas para o mesmo risco.
   // ⚠️ O caso "vence, mas é do ESTOQUE ATUAL" fica de fora de propósito: a própria mensagem diz que a compra
   // cabe toda. Gritar ali mandaria o comprador mexer numa decisão que está certa.
-  const alerta=(tit,sub)=>`${addBtn}<div class="cp-alertao"><i class="ti ti-alert-triangle"></i>
-    <div><b>${tit}</b>${sub?`<span>${sub}</span>`:''}</div></div>`;
+  // ⚠️ O cartão vermelho leva o botão DENTRO: quando o alerta acende, "sugerir datas" deixa de ser um extra e
+  // vira a saída — mandar o comprador procurar o botão lá em cima seria dar o diagnóstico e esconder o remédio.
+  const alerta=(tit,sub)=>`${acoes}<div class="cp-alertao"><i class="ti ti-alert-triangle"></i>
+    <div><b>${tit}</b>${sub?`<span>${sub}</span>`:''}
+      <button class="cp-alertao-btn" onclick="_cpSimSugerirDatas()"><i class="ti ti-calendar-check"></i> Sugerir datas de entrega</button>
+    </div></div>`;
   if(temRuptura) return alerta('Você vai ficar sem estoque',
     'Antecipe as chegadas marcadas em vermelho — o consumo não espera a carga chegar.');
-  if(fd.cronoFilled && !okAll && !soEstoque) return alerta(
-    `~${_cpNum(fd.perdaTot,0)} ${um} (${Math.round(fd.perdaTot/fd.totalKg*100)}%) vence antes de ser usado`,
-    `≈ ${_cpBRL(fd.perdaTot*c.preco)} a descartar. ${fd.ent.length>1?'Empurre as chegadas para frente.':'Compre menos, ou parcele em mais entregas.'}`);
+  if(fd.cronoFilled && wCompra>0.5) return alerta(
+    `~${_cpNum(wCompra,0)} ${um} (${Math.round(wCompra/Math.max(1,c.qtd)*100)}%) da compra vence antes de ser usado`,
+    `≈ ${_cpBRL(wCompra*c.preco)} a descartar. Ajuste as chegadas no botão abaixo; se não resolver, compre menos ou parcele em mais entregas.`);
   const dica=!fd.cronoFilled?`<i class="ti ti-calendar" style="color:var(--blue-mid)"></i> Preencha a data de chegada de cada ${fd.isCargas?'carga':'entrega'}.`
     :okAll?`<i class="ti ti-circle-check"></i> Cobertura contínua e nada vence — sem ruptura e dentro da validade.`
-    :`<i class="ti ti-alert-triangle"></i> ~<b>${_cpNum(fd.perdaTot,0)} ${um}</b> vence — mas é do <b>estoque atual</b>${fd.bEst&&fd.bEst.esgotaT!=null?` (passa da validade ~${_cpDataFim(fd.bEst.esgotaT)})`:''}. A compra em si cabe toda; consuma/realoque o estoque antes.`;
+    :`<i class="ti ti-alert-triangle"></i> ~<b>${_cpNum(wTenho,0)} ${um}</b> vence — mas é do que <b>já está pedido</b>: ${(fd.wEst>0.5&&fd.wOC>0.5)?'estoque atual e OC em aberto':(fd.wOC>0.5?'a OC em aberto':'o estoque atual')}${fd.bEst&&fd.wEst>0.5&&fd.bEst.esgotaT!=null?` (passa da validade ~${_cpDataFim(fd.bEst.esgotaT)})`:''}. A compra em si cabe toda; consuma/realoque antes.`;
   const dicaCor=!fd.cronoFilled?'var(--text2)':(okAll?'var(--success)':'var(--danger)');
-  return `${addBtn}<div style="margin-top:9px;padding-top:9px;border-top:1px dashed var(--border);font-size:12px;font-weight:700;color:${dicaCor};line-height:1.5">${dica}</div>`;
+  // a ressalva do lead time só aparece quando a sugestão é a ação óbvia (cronograma ainda em branco) —
+  // repetida em todo estado viraria rodapé morto, e é justamente aí que ela precisa ser lida.
+  const ressalva=!fd.cronoFilled?`<div style="font-size:10px;color:var(--text3);font-weight:400;margin-top:4px">A sugestão diz <b style="color:var(--text2)">quando a fábrica precisa</b> — não desconta o prazo de entrega do fornecedor.</div>`:'';
+  return `${acoes}<div style="margin-top:9px;padding-top:9px;border-top:1px dashed var(--border);font-size:12px;font-weight:700;color:${dicaCor};line-height:1.5">${dica}${ressalva}</div>`;
 }
 function _cpSimCronoTextos(){
   const o=(_cpItemSel&&_cpIdx()[_cpItemSel])||null; if(!o) return;
@@ -14073,9 +14142,9 @@ function _ddvSetFiltro(v){ _ddvFiltro=(_ddvFiltro===v?'':v); _ddvSave(); renderP
 // ── AÇÕES do semáforo e do corte de DDV (gravam; nunca no render)
 // ⚠️ Vermelho e verde se empurram: o vermelho nunca passa do verde e vice-versa, senão sobra uma faixa
 // do meio invertida e o semáforo passa a mentir sem ninguém perceber.
-function _ddvSetCorte(qual, el){
-  const n=parseFloat(String(el.value).replace(',','.'));
-  if(!(n>0) || n>999) return renderPCP();
+const _DDV_CORTE_PASSO=1, _DDV_CORTE_MIN=0.5, _DDV_CORTE_MAX=999;
+function _ddvAplicarCorte(qual, n){
+  if(!(n>0) || n>_DDV_CORTE_MAX) return renderPCP();
   // ⚠️ empurra para o MESMO valor, não para n+0.1: com vermelho = verde a faixa âmbar simplesmente some
   // (fica só "atenção abaixo de 12" e "folga a partir de 12"), que é mais limpo que um 12,1 solto.
   // ⚠️ os três limites se EMPURRAM em cadeia: mexer num nunca deixa outro para trás. Um par invertido
@@ -14086,6 +14155,16 @@ function _ddvSetCorte(qual, el){
   else if(qual==='v2'){ c.v1=Math.min(c.v1,n); c.v3=Math.max(c.v3,n); }
   else { c.v2=Math.min(c.v2,n); c.v1=Math.min(c.v1,c.v2); }
   _ddvCorte=c; _ddvSave(); renderPCP();
+}
+function _ddvSetCorte(qual, el){ _ddvAplicarCorte(qual, parseFloat(String(el.value).replace(',','.'))); }
+// ⭐ SETAS nos três cortes (Diego, 26/09: "as flechas de subir e descer padrão, igual temos na aba PCP").
+// ⚠️ Passa pelo MESMO _ddvAplicarCorte do campo digitado — senão a seta seria o único caminho capaz de
+// inverter um par (verde antes do laranja), justo o que a cadeia de empurrão existe para impedir.
+// ⚠️ Passo de 1 DIA por SOMA, não alinhando na grade: quem escolheu 7,5 escolheu meio dia de propósito,
+// e 7,5 -> 8,5 preserva essa régua; arredondar para 8 jogaria fora a decisão da pessoa.
+function _ddvStepCorte(qual, dir){
+  const bruto=(+_ddvCorte[qual]||0) + dir*_DDV_CORTE_PASSO;
+  _ddvAplicarCorte(qual, +Math.min(_DDV_CORTE_MAX, Math.max(_DDV_CORTE_MIN, bruto)).toFixed(2));
 }
 function _ddvCorteReset(){ _ddvCorte={v1:DDV_ALERTA.v1, v2:DDV_ALERTA.v2, v3:DDV_ALERTA.v3}; _ddvSave(); renderPCP(); }
 function _ddvCortePadrao(){ return ['v1','v2','v3'].every(k=>_ddvCorte[k]===DDV_ALERTA[k]); }
@@ -14203,6 +14282,19 @@ function _ddvCSS(){
   .ddv-fgrp>b u{margin-left:auto;text-decoration:none;font-size:9px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--blue-mid);cursor:pointer}
   .ddv-fnum{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
   .ddv-fnum i{font-style:normal;font-size:9.5px;letter-spacing:0;text-transform:none;font-weight:600}
+  /* campo com setas PROPRIAS, mesma gramatica do PCP: a seta nativa do type=number tem alvo pequeno
+     demais e ainda come a largura util do campo — e aqui sobram ~78px por faixa (o popover tem 248px
+     uteis para tres). Por isso a nativa e escondida logo abaixo. */
+  .ddv-step{display:flex;align-items:stretch;gap:3px;min-width:0}
+  .ddv-step>.ddv-fdt{flex:1;min-width:0}
+  .ddv-sarr{display:flex;flex-direction:column;flex:none;width:18px;gap:2px}
+  .ddv-sarr button{flex:1;display:flex;align-items:center;justify-content:center;padding:0;line-height:0;
+    border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text3);cursor:pointer}
+  .ddv-sarr button:hover{border-color:var(--blue-mid);color:var(--blue-mid);background:var(--bg2)}
+  .ddv-sarr button:active{background:var(--border)}
+  .ddv-sarr i{font-size:10px}
+  .ddv-fdt[type=number]{-moz-appearance:textfield}
+  .ddv-fdt[type=number]::-webkit-outer-spin-button,.ddv-fdt[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   .ddv-fnota{font-size:9.5px;color:var(--text3);line-height:1.45;margin-top:5px}
   /* opção com interruptor: o rótulo tem uma dica embaixo, então não cabe na linha do checkbox simples */
   .ddv-fopt.sw{align-items:flex-start;gap:8px}
@@ -14500,7 +14592,12 @@ function _ddvPersPopHTML(){
     <div class="ddv-fgrp"><b>Faixas de cor do DDV${_ddvCortePadrao()?'':`<u onclick="_ddvCorteReset()" title="Voltar às faixas de fábrica: ${DDV_ALERTA.v1} / ${DDV_ALERTA.v2} / ${DDV_ALERTA.v3}">voltar ao padrão</u>`}</b>
       <div class="ddv-frow">
         ${_DDV_FX.map(fx=>`<label class="ddv-fnum"><i style="color:${fx.cor}">${fx.lab}</i>
-          <input type="number" class="ddv-fdt" value="${_ddvCorte[fx.k]}" min="0.5" max="999" step="0.5" onchange="_ddvSetCorte('${fx.k}',this)"></label>`).join('')}
+          <div class="ddv-step">
+            <input type="number" class="ddv-fdt" value="${_ddvCorte[fx.k]}" min="${_DDV_CORTE_MIN}" max="${_DDV_CORTE_MAX}" step="0.5" onchange="_ddvSetCorte('${fx.k}',this)">
+            <span class="ddv-sarr">
+              <button type="button" onmousedown="event.preventDefault()" onclick="_ddvStepCorte('${fx.k}',1)" title="+1 dia"><i class="ti ti-chevron-up"></i></button>
+              <button type="button" onmousedown="event.preventDefault()" onclick="_ddvStepCorte('${fx.k}',-1)" title="−1 dia"><i class="ti ti-chevron-down"></i></button>
+            </span></div></label>`).join('')}
       </div>
       <div class="ddv-fnota">Acima de <b>${_ddvCorteTxt(_ddvCorte.v3)}</b> a cor sai — o número fica normal. Saldo negativo pinta a célula inteira.
         ${_ddvCortePadrao()?'':`<br><b style="color:var(--text2)">Régua sua, não a do SISPRO (${DDV_ALERTA.v1} / ${DDV_ALERTA.v2} / ${DDV_ALERTA.v3})</b> — os cartões mudam junto.`}</div></div>

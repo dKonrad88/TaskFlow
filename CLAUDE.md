@@ -422,6 +422,53 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-09-26 (d) — PC da Empresa — Cobertura: **setas nas faixas de cor** · Compras: **SUGERIR DATAS DE ENTREGA** (e um bug de fundo achado no caminho)
+
+#### As faixas de cor do DDV ganharam as setas do PCP
+*"Eu gostaria de colocar as flechas de subir e descer padrão, ou seja, igual temos na aba PCP."* Mesma gramática do
+`_pgmStep`: botões próprios de 18×13px fora do campo (`.ddv-step`/`.ddv-sarr`), `type=button`, `preventDefault` no
+mousedown, e a **seta nativa do `type=number` escondida** — ela come a largura útil e aqui só há **57px por campo**
+(o popover tem 248px para três faixas).
+- ⚠️ A seta passa pelo **mesmo `_ddvAplicarCorte`** do campo digitado (extraído do `_ddvSetCorte`): senão ela seria o
+  único caminho capaz de inverter um par, justo o que a cadeia de empurrão existe para impedir. Conferido: vermelho
+  +10 leva os três para **17/17/17**; −40 para no piso **0,5**; verde −1 mexe só nele.
+- ⚠️ Passo de **1 dia por soma**, não alinhando na grade: quem escolheu 7,5 escolheu meio dia de propósito.
+- O campo **"mostrar só até N dias" ficou SEM setas** de propósito — ele tem estado vazio ("sem corte"), e não existe
+  resposta honesta para "quanto é infinito −1". Se o Diego quiser, decidir o valor de partida primeiro.
+
+#### ⭐⭐ SUGERIR DATAS DE ENTREGA (simulador de compra, ficha do item)
+*"Tanto quando acontece essas mensagens de vencimento, como de forma automática, quando comprado em cargas ou não,
+poderíamos criar um botão que sugere, em cima de validade e consumo, quando entregar."*
+- ⚠️ **A regra é UMA só:** cada entrega chega no dia em que o que está antes dela **acaba** (just in time pelo FEFO).
+  Chegar antes empilha lote novo sobre lote velho — que é exatamente o que faz vencer; chegar depois é o dia sem
+  estoque. O ponto sem perda e sem furo é a fronteira entre os dois.
+- ⚠️ Cada data sai do **FEFO rodando**, não de regra de três: o estoque atual pode **vencer** antes de ser todo
+  consumido, e aí ele some da conta e a carga seguinte precisa chegar mais cedo. Por isso a montagem dos lotes "que eu
+  já tenho" (estoque + OC emitida) virou `_cpSimLotesBase` — duas montagens separadas divergiriam na primeira mexida.
+- **O botão fica SEMPRE visível** (carga ou não, datas preenchidas ou não): é com o cronograma em branco que ele mais
+  serve. E aparece **DENTRO do cartão vermelho** quando o alerta acende — dar o diagnóstico e esconder o remédio seria
+  pior que não avisar.
+- ⚠️ **Não desconta o prazo de entrega do fornecedor** (o lead time do cadastro é exemplo por categoria, não dado real):
+  a data diz *quando a fábrica precisa*, não *quando dá para pedir*. Está escrito na tela, sob o botão.
+- **Oferece Desfazer** no toast (o padrão do HUB): sugerir sobrescreve datas que a pessoa pode ter digitado.
+- Testado no Amendoim (est. 53.325 KG · OC 30.000 · ~23 mil KG/mês): 30.000 KG com validade de 6 meses → **04/01/27**,
+  "cobertura contínua e nada vence"; **ruptura** de 130 dias (datas manuais 01/10/26 e 01/06/27) → sugerir devolve
+  **04/01/27 e 22/01/27 com zero gaps**; 3 cargas de 30 t → **04/01 · 09/02 · 17/03**, cada uma chegando no dia em que a
+  anterior acaba; desfazer restaura as datas manuais. 0 erros de JS, 0 células cortadas, sem rolagem horizontal.
+
+#### 🐞 O bug de fundo que o teste revelou: a perda da OC virava culpa da COMPRA
+`wCargas = perdaTot − wEst` somava a perda da **OC já emitida** à da compra nova. No Amendoim com validade de 2 meses a
+tela mostrava o cartão vermelho *"~33.560 KG vence — compre menos"* quando **nada da compra vencia**: os 30.000 KG eram
+da OC que já está a caminho e o resto do estoque de hoje. Ou seja, mandava o comprador encolher um pedido certo por
+causa de um excesso que já foi pedido.
+- `_cpSimFefoData` passou a separar a perda **por dono**: `wCompra` (lotes `_i>=0`), `wOC` e `wEst`.
+- O **cartão vermelho agora só acende por `wCompra`**, e o percentual passou a ser **sobre a compra**, não sobre o total
+  com estoque e OC dentro. O caso "vence, mas é do que já está pedido" caiu na linha discreta, que agora nomeia a origem
+  (estoque atual · OC em aberto · os dois).
+- ⚠️ É a mesma régua que já valia para o estoque atual desde ontem, agora estendida à OC: **cartão vermelho é só para o
+  que a compra de hoje decide**. Conferido: wCompra 0 → sem cartão; compra de 200.000 KG com validade de 1 mês →
+  **175.947 KG (88%) da compra** e o cartão volta, com o botão de sugerir dentro.
+
 ### ⭐⭐ 2026-09-26 (c) — PC da Empresa — Compras: **alerta de validade em CARTÃO VERMELHO** (`648e1012`) · Cobertura: as **faixas de cor do DDV** viram 3 limites (`658d3025`)
 
 #### ⭐ O RISCO DE VALIDADE VIROU CARTÃO (simulador de compra, ficha do item)
