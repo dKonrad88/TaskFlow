@@ -9317,10 +9317,17 @@ function _cpSimModevalFilled(){ const s=_cpSim;
 // Fluxo 1-a-1 das PREMISSAS: preço → tamanho da carga → validade. Cada uma só libera a próxima
 // (e o resultado) quando tem valor. `_cpSimPremOK` = número > 0.
 function _cpSimPremOK(v){ const n=parseFloat(String(v).replace(',','.')); return isFinite(n)&&n>0; }
+// ⚠️ O ICMS tem gate PRÓPRIO porque **zero é resposta válida** (item isento): pelo _cpSimPremOK, que exige
+// > 0, o comprador de um item sem ICMS nunca conseguiria destravar o resultado.
+function _cpSimIcmsOK(v){ const s=String(v==null?'':v).trim(); if(s==='') return false;
+  const n=parseFloat(s.replace(',','.')); return isFinite(n)&&n>=0&&n<=100; }
 function _cpSimPremsFilled(o){ const s=_cpSim, um=(o&&o.um)||'', cargaOK=s.usarCarga&&um==='KG';
   if(s.modo!=='desconto' && !_cpSimPremOK(s.preco)) return false;
   if(cargaOK && !_cpSimPremOK(s.cargaTon)) return false;
   if(!_cpSimPremOK(s.validadeMeses)) return false;
+  // ⭐ o ICMS passou a SEGURAR o resultado (Diego, 26/09: "quero que apareça somente depois do ICMS").
+  // Era opcional, e por isso os cartões nasciam já na validade, com o último campo ainda em branco embaixo.
+  if(!_cpSimIcmsOK(s.icms)) return false;
   return true; }
 function _cpSimToggleCarga(){ _cpSim.usarCarga=!_cpSim.usarCarga; if(!_cpSim.usarCarga && _cpSim.modo==='cargas'){ _cpSim.modo=''; } _cpSim.entregas=[]; _cpSim.entregasQtd=[]; _cpSimRerender(); }
 // ── Cronograma de entregas: cada entrega chega numa data; a validade conta da CHEGADA de cada uma;
@@ -9774,10 +9781,12 @@ function _cpSimHTML(o){
   if(s.modo!=='desconto') steps.push([()=>_cpSimPremOK(s.preco), premRow('Preço de compra', `${uSpan('R$')}${inpS('preco',s.preco,_cpNum(precoRef,2),'text','58px')}${uSpan('/'+um)}${refChips}`)]);
   if(cargaOK) steps.push([()=>_cpSimPremOK(s.cargaTon), premRow('Tamanho da carga', `${inpS('cargaTon',s.cargaTon,'35','number','48px','min="0" step="0.5"')}${uSpan('t')}`)]);
   steps.push([()=>_cpSimPremOK(s.validadeMeses), premRow('Validade', `${inpS('validadeMeses',s.validadeMeses,'6','number','44px','min="0" step="1"')}${uSpan('meses')}`)]);
-  // ICMS (%) — opcional: informa a alíquota p/ ver o preço unitário NET (líquido de ICMS) no resumo.
-  // Placeholder = alíquota da última compra (ex.: Amendoim 12%). Não bloqueia o resultado (não entra em _cpSimPremsFilled).
+  // ICMS (%) — a ÚLTIMA premissa, e agora é ela que libera o resultado (ver _cpSimPremsFilled). Dá o preço
+  // unitário NET (líquido de ICMS) no resumo. Placeholder = alíquota da última compra (Amendoim 12%).
+  // ⚠️ Aceita ZERO: item isento precisa de um jeito de seguir em frente, e a dica diz isso quando não há
+  // alíquota anterior para sugerir.
   const _icmsUlt=(o.compras && o.compras.length && o.compras[0] && o.compras[0].aliq!=null)?String(o.compras[0].aliq):'';
-  steps.push([()=>_cpSimPremOK(s.icms), premRow('ICMS', `${inpS('icms',s.icms,_icmsUlt,'number','44px','min="0" max="100" step="0.5"')}${uSpan('%')}${_icmsUlt!==''?`<span style="font-size:10px;color:var(--text3)">últ. ${_icmsUlt}%</span>`:''}`)]);
+  steps.push([()=>_cpSimIcmsOK(s.icms), premRow('ICMS', `${inpS('icms',s.icms,_icmsUlt||'0','number','44px','min="0" max="100" step="0.5"')}${uSpan('%')}<span style="font-size:10px;color:var(--text3)">${_icmsUlt!==''?`últ. ${_icmsUlt}%`:'0 se isento'}</span>`)]);
   let premHTML='';
   if(s.modo && filled){ for(let i=0;i<steps.length;i++){ premHTML+=steps[i][1]; if(!steps[i][0]()) break; } }
   const premBlock = premHTML?`<div style="margin-bottom:14px;padding-top:8px;border-top:1px dashed var(--border)">${premHTML}</div>`:'';

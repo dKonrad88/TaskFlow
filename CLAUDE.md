@@ -422,6 +422,20 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-26 (f) — PC da Empresa — Compras: o **ICMS passou a segurar o resultado** do simulador
+*"Os cards de o que comprar, preço e cobertura já aparecem na hora que coloco a validade; quero que apareçam somente
+depois do ICMS."* O ICMS já era o último campo do passo a passo, mas era **opcional** — ficava em branco embaixo de um
+resultado inteiro já montado, e ninguém preenchia.
+- Agora ele entra no `_cpSimPremsFilled`: sem ICMS, nada de cartões (nem o cronograma de chegada, que vive no mesmo
+  resultado).
+- ⚠️ **Gate próprio, porque ZERO é resposta válida:** o `_cpSimPremOK` exige `> 0`, e por ele o comprador de um item
+  **isento** nunca destravaria a tela. `_cpSimIcmsOK` aceita de 0 a 100 e recusa vazio/texto/negativo.
+- A dica ao lado do campo diz **"0 se isento"** quando não há alíquota anterior para sugerir (quando há, segue
+  mostrando "últ. 12%"), e o placeholder virou `0` no lugar de vazio — senão a saída para o isento ficaria escondida.
+- ⚠️ Com ICMS 0 a **linha "Preço unitário (net)" não aparece**, e está certo: net = bruto, seria eco.
+- Testado no Amendoim (5 cargas): validade preenchida e ICMS vazio → resultado vazio; **12** → resultado completo com
+  net e cronograma; **0** → resultado completo sem a linha net; `abc` e `-3` → resultado vazio. 0 erros de JS.
+
 ### ⭐ 2026-09-26 (e) — PC da Empresa — Cobertura: **a data em que o estoque acaba** (2 colunas ligáveis) · Compras: **folga de segurança** no sugeridor
 
 #### ⭐ AS DUAS COLUNAS DE DATA, ao lado de cada DDV
