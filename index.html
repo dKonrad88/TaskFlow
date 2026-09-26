@@ -8705,6 +8705,14 @@ function _cpCSS(){ return `<style>
      2 colunas (o quê | quando) e a info na LINHA DE BAIXO, à direita: com as 3 lado a lado, numa
      coluna estreita como a do simulador (~300px) o rótulo era espremido a 9px pela coluna da info,
      que reservava largura mesmo vazia. O seletor :empty some com ela enquanto a carga não tem data. */
+  /* alerta que pede acao na COMPRA: cartao cheio, nao linha fina. Ver _cpSimCronoExtra.
+     Cores fixas de proposito: o vermelho tem que significar a mesma coisa em qualquer tema, e o branco
+     sobre var(--danger) e o unico par que garante contraste nos dois. */
+  .cp-alertao{display:flex;align-items:flex-start;gap:11px;margin-top:11px;padding:13px 15px;border-radius:12px;
+    background:var(--danger);color:#fff;line-height:1.45;box-shadow:0 2px 10px color-mix(in srgb,var(--danger) 34%,transparent)}
+  .cp-alertao>i{font-size:20px;flex:none;margin-top:1px}
+  .cp-alertao b{display:block;font-size:14px;font-weight:800;letter-spacing:-.01em}
+  .cp-alertao span{display:block;font-size:12.5px;font-weight:500;opacity:.92;margin-top:3px}
   .cp-crono-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;align-items:center;padding:6px 0;border-bottom:1px dashed color-mix(in srgb,var(--border) 70%,transparent)}
   .cp-crono-row:last-child{border-bottom:none}
   .cp-crono-lab{font-size:12px;color:var(--text2);min-width:0}
@@ -9365,13 +9373,25 @@ function _cpSimCronoExtra(o,c,fd){
   const um=fd.um;
   // Os avisos de RUPTURA agora saem INLINE, embaixo de cada carga (via _cpSimRowGaps). Aqui só o resumo/dica.
   const temRuptura=fd.gaps.length>0, okAll=fd.perdaTot<=0.5, wCargas=fd.perdaTot-fd.wEst;
-  const dica=temRuptura?`<i class="ti ti-alert-triangle"></i> <b>Antecipe as chegadas marcadas em vermelho</b> — você não pode ficar sem estoque.`
-    :!fd.cronoFilled?`<i class="ti ti-calendar" style="color:var(--blue-mid)"></i> Preencha a data de chegada de cada ${fd.isCargas?'carga':'entrega'}.`
-    :okAll?`<i class="ti ti-circle-check"></i> Cobertura contínua e nada vence — sem ruptura e dentro da validade.`
-    :(wCargas<=0.5 && fd.wEst>0.5)?`<i class="ti ti-alert-triangle"></i> ~<b>${_cpNum(fd.perdaTot,0)} ${um}</b> vence — mas é do <b>estoque atual</b>${fd.bEst&&fd.bEst.esgotaT!=null?` (passa da validade ~${_cpDataFim(fd.bEst.esgotaT)})`:''}. A compra em si cabe toda; consuma/realoque o estoque antes.`
-    :`<i class="ti ti-alert-triangle"></i> ~<b>${_cpNum(fd.perdaTot,0)} ${um}</b> (${Math.round(fd.perdaTot/fd.totalKg*100)}%) vence · ≈ ${_cpBRL(fd.perdaTot*c.preco)} a descartar. ${fd.ent.length>1?'Empurre as chegadas para frente.':'Compre menos, ou parcele em mais entregas.'}`;
-  const dicaCor=temRuptura?'var(--danger)':(!fd.cronoFilled?'var(--text2)':(okAll?'var(--success)':'var(--danger)'));
+  const soEstoque=(wCargas<=0.5 && fd.wEst>0.5);
   const addBtn=(!fd.isCargas && fd.cronoFilled)?`<button onclick="_cpSimAddEntrega()" style="margin-top:7px;background:none;border:1px dashed var(--border);border-radius:7px;cursor:pointer;color:var(--blue-mid);font-size:11.5px;font-weight:600;padding:5px 10px;font-family:inherit"><i class="ti ti-plus"></i> dividir em outra entrega</button>`:'';
+  // ⭐⭐ ALERTA EM CARTÃO VERMELHO CHEIO (Diego, 26/09: "precisa chamar a atenção do comprador, caso isso
+  // aconteça"). Vale para os DOIS casos que pedem AÇÃO NA COMPRA: ficar sem estoque, e comprar mais do que
+  // cabe na validade. ⚠️ Os dois já dividiam a mesma cor e a mesma gravidade — deixar um gritando e o outro
+  // como linha fina criaria duas gramáticas para o mesmo risco.
+  // ⚠️ O caso "vence, mas é do ESTOQUE ATUAL" fica de fora de propósito: a própria mensagem diz que a compra
+  // cabe toda. Gritar ali mandaria o comprador mexer numa decisão que está certa.
+  const alerta=(tit,sub)=>`${addBtn}<div class="cp-alertao"><i class="ti ti-alert-triangle"></i>
+    <div><b>${tit}</b>${sub?`<span>${sub}</span>`:''}</div></div>`;
+  if(temRuptura) return alerta('Você vai ficar sem estoque',
+    'Antecipe as chegadas marcadas em vermelho — o consumo não espera a carga chegar.');
+  if(fd.cronoFilled && !okAll && !soEstoque) return alerta(
+    `~${_cpNum(fd.perdaTot,0)} ${um} (${Math.round(fd.perdaTot/fd.totalKg*100)}%) vence antes de ser usado`,
+    `≈ ${_cpBRL(fd.perdaTot*c.preco)} a descartar. ${fd.ent.length>1?'Empurre as chegadas para frente.':'Compre menos, ou parcele em mais entregas.'}`);
+  const dica=!fd.cronoFilled?`<i class="ti ti-calendar" style="color:var(--blue-mid)"></i> Preencha a data de chegada de cada ${fd.isCargas?'carga':'entrega'}.`
+    :okAll?`<i class="ti ti-circle-check"></i> Cobertura contínua e nada vence — sem ruptura e dentro da validade.`
+    :`<i class="ti ti-alert-triangle"></i> ~<b>${_cpNum(fd.perdaTot,0)} ${um}</b> vence — mas é do <b>estoque atual</b>${fd.bEst&&fd.bEst.esgotaT!=null?` (passa da validade ~${_cpDataFim(fd.bEst.esgotaT)})`:''}. A compra em si cabe toda; consuma/realoque o estoque antes.`;
+  const dicaCor=!fd.cronoFilled?'var(--text2)':(okAll?'var(--success)':'var(--danger)');
   return `${addBtn}<div style="margin-top:9px;padding-top:9px;border-top:1px dashed var(--border);font-size:12px;font-weight:700;color:${dicaCor};line-height:1.5">${dica}</div>`;
 }
 function _cpSimCronoTextos(){
