@@ -13649,7 +13649,10 @@ let _ddvFiltro='';            // '' | 'ruptura' | 'atencao' | 'folga' | 'produzi
 // ⚠️ E é por isso que o valor salvo NÃO é mais restaurado (ver `_ddvLoad`): quem tivesse 'producao'
 // gravado abriria preso no modo, sem botão para sair. É a mesma armadilha do allView/reunView.
 let _ddvVer='medias';   // 'medias' | 'producao'
-const _ddvMedias=true;
+// ⭐ as 4 MÉDIAS voltaram a ser ligáveis (26/09): elas são a mesma venda dividida por 4 números e ocupam
+// 1/3 da largura da tabela — item (3) da fila de personalização. A infra de montar a tabela sem elas já
+// existia desde que nasceram; só a variável tinha virado const.
+let _ddvMedias=true;
 let _ddvGraf='';              // código do produto com o gráfico aberto ('' = faixa recolhida)
 let _ddvSort={campo:'nome',dir:1};
 const _ddvFechadas={};        // linhas recolhidas — estado de tela, não persiste
@@ -13692,6 +13695,13 @@ const _DDV_MARCAS=['Klain'];
 const _DDV_UNID=['Pacotes','Caixas','Paletes'];
 const _DDV_ALMOX=['Klain','Maras'];
 let _ddvFiltrosAberto=false;
+// ⭐⭐ POPOVER DE PERSONALIZAÇÃO, separado do de filtros (Diego, 26/09: "esse poderia ser outro ícone do
+// lado, dedicado para personalização, vamos colocar mais coisas"). A divisão tem uma lógica: o FUNIL
+// recorta QUAIS produtos aparecem (e hoje é a foto do SISPRO, tudo desabilitado); a PERSONALIZAÇÃO muda
+// COMO a tela mostra e mede — semáforo, colunas, corte de DDV. São perguntas diferentes.
+// ⏳ O que ainda está na fila para entrar aqui (acordada em 25/09): "minhas linhas" (favoritar entre as
+// 32), ordem das colunas, DDV-alvo e visões salvas com nome.
+let _ddvPersAberto=false;
 
 // [código, produto, estoque, pedido, OP/OC, maras, vendas 261 dias] — null = veio em branco no SISPRO
 const _DDV_LINHAS=[
@@ -13993,7 +14003,7 @@ const _DDV_FILTROS=['','ruptura','atencao','folga','produzir'];
 let _ddvCarregado=false;
 function _ddvSave(){
   try{ safeSetItem(LS_DDV, JSON.stringify({ busca:_ddvBusca, filtro:_ddvFiltro, sort:_ddvSort,
-    graf:_ddvGraf, per:_ddvPer, ver:_ddvVer, corte:_ddvCorte, maxddv:_ddvMaxDDV,
+    graf:_ddvGraf, per:_ddvPer, ver:_ddvVer, corte:_ddvCorte, maxddv:_ddvMaxDDV, medias:_ddvMedias,
     fechadas:Object.keys(_ddvFechadas) })); }catch(e){}
 }
 // ⚠️ Valida TUDO o que vem do storage: coluna que deixou de existir (a Vendas saiu hoje), filtro
@@ -14014,6 +14024,7 @@ function _ddvLoad(){
     if(v>0 && a>0 && v<=a && v<=999 && a<=999) _ddvCorte={vermelho:v, amarelo:a}; }
   if(typeof o.maxddv==='number' || (typeof o.maxddv==='string' && o.maxddv!=='')){
     const m=+o.maxddv; if(m>0 && m<=999) _ddvMaxDDV=m; }
+  if(typeof o.medias==='boolean') _ddvMedias=o.medias;
   if(Array.isArray(o.fechadas)){ const nomes={}; _DDV_LINHAS.forEach(L=>{ nomes[L[0]]=1; });
     o.fechadas.forEach(n=>{ if(nomes[n]) _ddvFechadas[n]=1; }); }
 }
@@ -14148,9 +14159,10 @@ function _ddvCSS(){
   .ddv-fnum{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
   .ddv-fnum i{font-style:normal;font-size:9.5px;letter-spacing:0;text-transform:none;font-weight:600}
   .ddv-fnota{font-size:9.5px;color:var(--text3);line-height:1.45;margin-top:5px}
-  /* separa os controles que FUNCIONAM dos que esperam o export — ver o comentário em _ddvFiltrosPopHTML */
-  .ddv-fsep{font-size:8.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);
-    opacity:.75;border-top:1px solid var(--border);padding-top:9px;margin:2px 0 9px}
+  /* opção com interruptor: o rótulo tem uma dica embaixo, então não cabe na linha do checkbox simples */
+  .ddv-fopt.sw{align-items:flex-start;gap:8px}
+  .ddv-fopt.sw span{display:block;line-height:1.35}
+  .ddv-fopt.sw span i{display:block;font-style:normal;font-size:9.5px;color:var(--text3);margin-top:1px}
   .ddv-frow{display:flex;align-items:center;gap:6px}
   .ddv-frow span{font-size:10.5px;color:var(--text3);flex:none}
   /* ⚠️ todo campo aqui PRECISA de classe: a regra global input:not([class]) força 40px de altura
@@ -14397,13 +14409,16 @@ function _ddvTabelaHTML(){
     <div class="ddv-hstrip"><table class="ddv-tbl"><colgroup>${cols}</colgroup><thead>${grupos}${colunas}</thead></table></div>
     ${cards}`;
 }
-function _ddvFiltrosToggle(){ _ddvFiltrosAberto=!_ddvFiltrosAberto; renderPCP(); }
+// ⚠️ os dois popovers são EXCLUSIVOS: abrir um fecha o outro, senão eles se sobrepõem no mesmo canto.
+function _ddvFiltrosToggle(){ _ddvFiltrosAberto=!_ddvFiltrosAberto; _ddvPersAberto=false; renderPCP(); }
+function _ddvPersToggle(){ _ddvPersAberto=!_ddvPersAberto; _ddvFiltrosAberto=false; renderPCP(); }
 // Fecha ao clicar fora. O .cp-pop-wrap em volta do botão é a guarda: clique DENTRO dele é do toggle.
 function _ddvCloseFiltros(e){
   const t=e&&e.target; if(t&&t.closest&&t.closest('.cp-pop-wrap')) return;
-  if(_ddvFiltrosAberto){ _ddvFiltrosAberto=false;
+  if(_ddvFiltrosAberto || _ddvPersAberto){ _ddvFiltrosAberto=false; _ddvPersAberto=false;
     if(typeof hubView!=='undefined' && hubView==='producao' && typeof renderPCP==='function') renderPCP(); }
 }
+function _ddvSetMedias(on){ _ddvMedias=!!on; _ddvSave(); renderPCP(); }
 // O popover é O LUGAR dos filtros do SISPRO — ver o comentário em _DDV_JANELAS.
 // ⚠️ A NOTA DE RODAPÉ SAIU a pedido do Diego (25/09) — ela explicava que os controles estão `disabled` e
 // que o marcado é a foto em que o export foi tirado. **A regra continua valendo**: todo campo aqui nasce
@@ -14420,10 +14435,24 @@ function _ddvFiltrosPopHTML(){
   const sel=(lab,todos,itens,marc)=>`<div class="ddv-fgrp"><b>${lab}</b><select class="ddv-fsel" disabled>`
     +`<option${marc?'':' selected'}>${todos}</option>`
     +itens.map(t=>`<option${t===marc?' selected':''}>${escapeHTML(t)}</option>`).join('')+`</select></div>`;
-  // ⭐ OS ÚNICOS CONTROLES VIVOS do popover ficam em cima, separados por uma borda dos que ainda esperam
-  // o dado da TI (todos `disabled`). Sem essa separação, um campo que funciona no meio de seis que não
-  // funcionam faz a pessoa achar que os outros também deviam responder.
-  const vivos=`<div class="ddv-fgrp viva"><b>Semáforo do DDV${_ddvCortePadrao()?'':`<u onclick="_ddvCorteReset()" title="Voltar ao corte do SISPRO: ${DDV_ALERTA.vermelho} e ${DDV_ALERTA.amarelo}">voltar ao padrão</u>`}</b>
+  return `<div class="ddv-pop">
+    ${per('Período Pedidos', J.pedIni, J.pedFim)}
+    ${per('Período Vendas', J.venIni, J.venFim)}
+    ${sel('Marcas','Todas',_DDV_MARCAS,'Klain')}
+    ${sel('Tipos Produção','Todos',_DDV_TIPOS,'')}
+    <div class="ddv-fgrp"><b>Quantidades em</b>${_DDV_UNID.map(u=>opt('radio',u,u==='Caixas')).join('')}</div>
+    <div class="ddv-fgrp"><b>Almoxarifados</b>${_DDV_ALMOX.map(a=>opt('checkbox',a,a==='Klain')).join('')}</div>
+  </div>`;
+}
+// ⭐⭐ PERSONALIZAÇÃO — o ícone vizinho ao funil. Aqui tudo FUNCIONA; no funil, nada (ainda). Essa é a
+// diferença que justifica separar, além do assunto: o funil recorta QUAIS produtos, este muda COMO a
+// tela mostra e mede.
+function _ddvPersPopHTML(){
+  if(!_ddvPersAberto) return '';
+  const chk=(lab,on,fn,dica)=>`<label class="ddv-fopt sw"><input class="ddv-fchk" type="checkbox"${on?' checked':''} onchange="${fn}(this.checked)">
+    <span>${lab}${dica?`<i>${dica}</i>`:''}</span></label>`;
+  return `<div class="ddv-pop">
+    <div class="ddv-fgrp"><b>Semáforo do DDV${_ddvCortePadrao()?'':`<u onclick="_ddvCorteReset()" title="Voltar ao corte do SISPRO: ${DDV_ALERTA.vermelho} e ${DDV_ALERTA.amarelo}">voltar ao padrão</u>`}</b>
       <div class="ddv-frow">
         <label class="ddv-fnum"><i style="color:var(--danger)">Atenção abaixo de</i>
           <input type="number" class="ddv-fdt" value="${_ddvCorte.vermelho}" min="0.5" max="999" step="0.5" onchange="_ddvSetCorte('vermelho',this)"></label>
@@ -14431,19 +14460,12 @@ function _ddvFiltrosPopHTML(){
           <input type="number" class="ddv-fdt" value="${_ddvCorte.amarelo}" min="0.5" max="999" step="0.5" onchange="_ddvSetCorte('amarelo',this)"></label>
       </div>
       ${_ddvCortePadrao()?'':`<div class="ddv-fnota">Régua sua, não a do SISPRO (${DDV_ALERTA.vermelho} e ${DDV_ALERTA.amarelo}) — os números da tela mudam junto.</div>`}</div>
-    <div class="ddv-fgrp viva"><b>Mostrar só até${_ddvMaxDDV===''?'':`<u onclick="_ddvMaxLimpar()">limpar</u>`}</b>
+    <div class="ddv-fgrp"><b>Mostrar só até${_ddvMaxDDV===''?'':`<u onclick="_ddvMaxLimpar()">limpar</u>`}</b>
       <div class="ddv-frow">
         <input type="number" class="ddv-fdt" value="${_ddvMaxDDV}" min="0.5" max="999" step="0.5" placeholder="sem corte" onchange="_ddvSetMax(this)">
-        <span style="white-space:nowrap">dias de DDV</span></div></div>`;
-  return `<div class="ddv-pop">
-    ${vivos}
-    <div class="ddv-fsep">aguardando o dado da TI</div>
-    ${per('Período Pedidos', J.pedIni, J.pedFim)}
-    ${per('Período Vendas', J.venIni, J.venFim)}
-    ${sel('Marcas','Todas',_DDV_MARCAS,'Klain')}
-    ${sel('Tipos Produção','Todos',_DDV_TIPOS,'')}
-    <div class="ddv-fgrp"><b>Quantidades em</b>${_DDV_UNID.map(u=>opt('radio',u,u==='Caixas')).join('')}</div>
-    <div class="ddv-fgrp"><b>Almoxarifados</b>${_DDV_ALMOX.map(a=>opt('checkbox',a,a==='Klain')).join('')}</div>
+        <span style="white-space:nowrap">dias de DDV</span></div></div>
+    <div class="ddv-fgrp"><b>Colunas</b>
+      ${chk('Médias de venda', _ddvMedias, '_ddvSetMedias', 'MDV · MSV · MQV · MMV — um terço da largura')}</div>
   </div>`;
 }
 function renderDDV(){
@@ -14458,10 +14480,15 @@ function renderDDV(){
   // a busca subiu p/ o canto superior direito (slot `acao` do _cpTela) — ocupava uma faixa só dela
   const busca=`<span class="ddv-buscaw"><i class="ti ti-search"></i><input id="ddv-busca" value="${escapeAttr(_ddvBusca)}" oninput="_ddvBuscaInput(this.value)" placeholder="Buscar produto, código ou linha" class="ddv-busca"></span>`;
   if(!window.__ddvFiltrosCloser){ window.__ddvFiltrosCloser=true; document.addEventListener('mousedown', _ddvCloseFiltros, true); }
-  // ⚠️ o botão acende também com o popover FECHADO quando há ajuste ativo — senão um corte de DDV ou um
-  // semáforo fora do padrão ficariam escondidos atrás do ícone, mudando os números sem dar sinal.
-  const fOn=_ddvFiltrosAberto || _ddvMaxDDV!=='' || !_ddvCortePadrao();
-  const acao=`<span class="ddv-acao">${busca}<span class="cp-pop-wrap" style="position:relative;display:inline-flex"><button class="ddv-fbtn${fOn?' on':''}" onclick="_ddvFiltrosToggle()" title="Filtros"><i class="ti ti-filter"></i></button>${_ddvFiltrosPopHTML()}</span></span>`;
+  // ⚠️ o ícone de personalização acende também FECHADO quando há ajuste ativo — senão um corte de DDV, um
+  // semáforo fora do padrão ou as médias escondidas mudariam a tela sem dar sinal nenhum.
+  const pOn=_ddvPersAberto || _ddvMaxDDV!=='' || !_ddvCortePadrao() || !_ddvMedias;
+  const pop=(cls,on,fn,tit,ico,html)=>`<span class="cp-pop-wrap" style="position:relative;display:inline-flex">`
+    +`<button class="ddv-fbtn${on?' on':''}" onclick="${fn}()" title="${escapeAttr(tit)}"><i class="ti ti-${ico}"></i></button>${html}</span>`;
+  const acao=`<span class="ddv-acao">${busca}`
+    +pop('f', _ddvFiltrosAberto, '_ddvFiltrosToggle', 'Filtros', 'filter', _ddvFiltrosPopHTML())
+    +pop('p', pOn, '_ddvPersToggle', 'Personalizar a tela: semáforo, corte de DDV e colunas', 'adjustments-horizontal', _ddvPersPopHTML())
+    +`</span>`;
   const corpo=`${_ddvCSS()}
     ${_ddvKPIsHTML()}
     <div id="ddv-graf-box">${_ddvGrafHTML()}</div>
