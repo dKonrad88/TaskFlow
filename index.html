@@ -12513,11 +12513,18 @@ function _pgmMaqNorm(src){ const cad=_pgmL().embaladoras||[];
 // ── JANELAS DE EMBALAGEM. A 1ª sempre começa em 0 (início do turno); as outras têm horário próprio.
 // ⚠️ Uma janela vale para as 4 máquinas — mas a trilha MESCLA barras vizinhas quando a máquina não mudou,
 // então trocar só a Emb 1 às 09:00 aparece como uma quebra só na Emb 1, que é o que o Diego descreveu.
-function _pgmJanelas(){ const o=_pgmDia(); if(!o) return [];
-  if(!Array.isArray(o.emb) || !o.emb.length) o.emb=_pgmJanelasDeBlocos(o.blocos||[]);
-  o.emb.sort((a,b)=>(a.ini||0)-(b.ini||0));
-  if(o.emb[0]) o.emb[0].ini=0;
-  return o.emb; }
+// ⭐ (27/09) EMBALAGEM POR BLOCO (Diego): cada bloco guarda sua própria config de embaladoras em b.emb, e a
+// "janela" virou UMA por bloco, ancorada no início do bloco. Substituiu as trocas por horário (dia todo): a
+// config anda junto com o bloco em vez de ficar presa a um horário que descasa quando o bloco desloca.
+function _pgmMigraEmb(){ const o=_pgmDia(); if(!o || o._embV2) return;
+  const wins=Array.isArray(o.emb)?o.emb.slice().sort((a,b)=>(a.ini||0)-(b.ini||0)):[];
+  if(wins.length && wins.some(w=>w&&w.maq)){   // dado antigo (trocas por horário) → passa pra cada bloco
+    (o.blocos||[]).forEach((b,i)=>{ if(b.emb&&b.emb.length) return;
+      const ini=_pgmInicio(i)*60; let m=null;
+      wins.forEach(w=>{ if((w.ini||0)<=ini+1e-6 && w.maq) m=w; });
+      if(m&&m.maq) b.emb=m.maq.map(e=>({on:e.on,fmt:e.fmt,cli:e.cli,sku:e.sku,nom:e.nom,real:e.real})); }); }
+  o._embV2=true; delete o.emb; _pgmSave(); }
+function _pgmJanelas(){ return _pgmBlocos().map((b,i)=>({ini: i===0?0:_pgmInicio(i)*60, maq: b.emb, bi:i})); }
 // migração: antes cada BLOCO carregava a configuração das máquinas. Vira uma janela no início de cada bloco,
 // pulando as que não mudaram nada em relação à anterior.
 function _pgmJanelasDeBlocos(bs){ const out=[];
@@ -12542,14 +12549,14 @@ function _pgmMixM(maq){ const at=_pgmAtivas(maq), tot=at.reduce((s,e)=>s+e.real,
   at.forEach(e=>{ m[e.sku]=(m[e.sku]||0)+e.real/tot; });
   return m; }
 function _pgmSetEmb(i, campo, el){
-  const js=_pgmJanelas(); if(!js[_pgmJan]) return;
-  const maq=_pgmMaq(_pgmJan).map(e=>({on:e.on,fmt:e.fmt,cli:e.cli,sku:e.sku,nom:e.nom,real:e.real}));
+  const arr=_pgmBlocos().slice(), b=arr[_pgmSel]; if(!b) return;
+  const maq=_pgmMaqNorm(b.emb).map(e=>({on:e.on,fmt:e.fmt,cli:e.cli,sku:e.sku,nom:e.nom,real:e.real}));
   maq[i][campo] = (campo==='on') ? el.checked : (campo==='cli'||campo==='sku'||campo==='fmt' ? el.value : (el.value===''?'':+el.value));
   // Klain é marca própria: o cliente é ele mesmo. Ao voltar de um terceiro, o campo se recompõe sozinho.
   if(campo==='fmt'){ const f=_pgmFmt(el.value);
     if(!f.terc) maq[i].cli='Klain';
     else if(maq[i].cli==='Klain') maq[i].cli=''; }
-  js[_pgmJan].maq=maq; _pgmSetJanelas(js);   // _pgmSetJanelas já grava
+  b.emb=maq; _pgmSetBlocos(arr);   // grava a config NO BLOCO selecionado
   // ⚠️ digitar cliente/velocidade NÃO pode redesenhar a tabela: o campo perderia o foco a cada tecla.
   // A coluna de pacotes só acerta no blur (onchange → renderPCPDia). Checkbox e sabor podem redesenhar.
   _pgmRefresh(campo==='cli'||campo==='nom'||campo==='real');
@@ -13051,7 +13058,7 @@ function _pgmTimelineHTML(){
       segs.filter(s=>s.bi===i).forEach(s=>{
         const dur=s.fim-s.ini, f=dur*esc, c=_pgmCalc(s.b,_pgmMaq(s.j));
         const ini=_pgmRelogio(pos), fim=_pgmRelogio(pos+dur); pos+=dur;
-        const jon=(s.j===_pgmJan?' on':'');
+        const jon=(s.j===_pgmSel?' on':'');
         if(C.tipo==='cob'){ const sh=c.mix[C.dest.id]||0;
           // canal parado = NENHUM elemento, só o vão. Retângulo tracejado competia com as barras de verdade.
           if(sh<=0){ html+=cx(f,'','nada'); return; }
@@ -13294,21 +13301,11 @@ function _pgmEditorHTML(){
 // cobrideira só obedece à soma das máquinas apontadas para cada destino.
 function _pgmEmbHTML(){
   const bs=_pgmBlocos(); if(!bs.length) return '';
-  const js=_pgmJanelas(); if(_pgmJan>=js.length) _pgmJan=js.length-1;
-  const es=_pgmMaq(_pgmJan), TT=_pgmTotais();
-  // o bloco que está rodando quando esta janela começa — é dele que sai a capacidade/ritmo mostrados
-  const hIni=(js[_pgmJan].ini||0)/60;
-  const bi=bs.map((b,i)=>({i:i, ini:_pgmInicio(i), fim:_pgmInicio(i)+_pgmHorasB(b)}))
-    .filter(x=>hIni<x.fim-1e-9).sort((a,b_)=>a.ini-b_.ini)[0];
-  const c=_pgmCalc(bs[bi?bi.i:0], es);
-  // ⭐ CHIPS DAS JANELAS — mesma gramática dos blocos do corte, mas para a EMBALAGEM. É aqui que se diz
-  // "a Emb 1 vira outra marca às 09:00": abre uma troca e muda só aquela máquina.
-  const chips=js.map((w,i)=>`<button class="pgm-chip${i===_pgmJan?' on':''}" onclick="_pgmJanSel(${i})">
-      ${_pgmRelogio((w.ini||0)/60)}${i===0?'':`<i class="ti ti-x x" onclick="event.stopPropagation();_pgmJanDel(${i})" title="Tirar esta troca"></i>`}</button>`).join('')
-    + `<button class="pgm-chip" onclick="_pgmJanAdd()"><i class="ti ti-plus" style="font-size:13px"></i> Nova troca</button>`;
-  const horaJan = _pgmJan===0
-    ? `<span class="pgm-sku" style="padding:0">começa junto com o turno</span>`
-    : `<label class="pgm-jh">a partir das <input type="time" class="pgm-inp" value="${_pgmRelogio((js[_pgmJan].ini||0)/60)}" onchange="_pgmJanHora(this)"></label>`;
+  // ⭐ (27/09) POR BLOCO: a tabela edita as embaladoras do bloco SELECIONADO (não mais trocas por horário).
+  const es=_pgmMaq(_pgmSel), TT=_pgmTotais();
+  const b=bs[_pgmSel]||bs[0];
+  const c=_pgmCalc(b, es);
+  const dur=_pgmHorasB(b), blocoPac=c.pacMin*60*dur;   // pacotes DESTE bloco, repartidos por máquina
   const linhas=es.map(e=>{
     const dest=_PGM_DEST.map(d=>`<option value="${d.id}"${d.id===e.sku?' selected':''}>${escapeHTML(d.nome)}</option>`).join('');
     const fmts=_PGM_FMT.map(x=>`<option value="${x.id}"${x.id===e.fmt?' selected':''}>${escapeHTML(x.nome)}</option>`).join('');
@@ -13318,14 +13315,11 @@ function _pgmEmbHTML(){
       <td><select class="pgm-inp mini" oninput="_pgmSetEmb(${e.i},'fmt',this)">${fmts}</select></td>
       <td><select class="pgm-inp mini" oninput="_pgmSetEmb(${e.i},'sku',this)" onchange="renderPCPDia()">${dest}</select></td>
       <td><input type="number" class="pgm-inp num" value="${e.real}" min="1" max="200" oninput="_pgmSetEmb(${e.i},'real',this)" onchange="renderPCPDia()"></td>
-      <td class="qt">${e.on?_pgmN(TT.porMaq[e.i]):'—'}</td></tr>`;
+      <td class="qt">${e.on&&c.cap>0?_pgmN(blocoPac*e.real/c.cap):'—'}</td></tr>`;
   }).join('');
-  return `<div class="pgm-janbar">${chips}${horaJan}</div>
-    <!-- CLIENTE e NOM. sairam a pedido do Diego (25/09). Os campos CONTINUAM no modelo: o cliente ainda
-         aparece no tooltip da barra da linha do tempo, e a velocidade nominal nunca entrou em conta
-         nenhuma - quem manda no calculo e a REAL. Repor e devolver as duas colunas aqui e no cabecalho. -->
-    <table class="pgm-emb"><thead><tr><th></th><th></th><th>Embala</th><th>Cobertura</th><th title="velocidade real">Real</th><th title="no dia inteiro">Pacotes</th></tr></thead><tbody>${linhas}</tbody></table>
-    <div class="pgm-sku">Nesta troca: ${_pgmN(c.cap)} pac/min ligados · o corte entrega ${_pgmN(c.pacMin)}${TT.falta?` — <b style="color:var(--danger)">falta embaladora</b>`:''}<br>
+  return `<div class="pgm-embhint">Embaladoras deste bloco — ligue/desligue e ajuste a velocidade de cada uma.</div>
+    <table class="pgm-emb"><thead><tr><th></th><th></th><th>Embala</th><th>Cobertura</th><th title="velocidade real">Real</th><th title="no bloco">Pacotes</th></tr></thead><tbody>${linhas}</tbody></table>
+    <div class="pgm-sku">Neste bloco: ${_pgmN(c.cap)} pac/min ligados · o corte entrega ${_pgmN(c.pacMin)}${TT.falta?` — <b style="color:var(--danger)">falta embaladora</b>`:''}<br>
       No dia: ${_PGM_DEST.filter(d=>TT.porDest[d.id]>0).map(d=>d.nome+' '+_pgmN(TT.porDest[d.id])).join(' · ')||'nenhuma embaladora ligada'}</div>`;
 }
 function _pgmResultadoHTML(){
@@ -13416,6 +13410,7 @@ function _pgmCSS(){ return `<style>
   .pgm-headblocos{flex-wrap:wrap;padding:6px 11px;gap:8px}
   /* barra das janelas de embalagem — mesma gramática dos chips de bloco, dentro da seção Embalagem */
   .pgm-janbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:7px}
+  .pgm-embhint{font-size:10.5px;color:var(--text3);margin-bottom:8px;line-height:1.4}
   .pgm-janbar .pgm-chip{font-size:11px;padding:3px 8px}
   .pgm-jh{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--text3);margin-left:auto}
   .pgm-jh .pgm-inp{width:74px;height:24px;font-size:11.5px}
@@ -13596,6 +13591,7 @@ function renderPCPDia(){
   const _st=document.getElementById('stats-box'); if(_st) _st.style.display='none';
   const _pr=document.getElementById('progress-box'); if(_pr) _pr.style.display='none';
   const L=_pgmL(), d=_pgmDiaSel();
+  _pgmMigraEmb();   // ⭐ (27/09) passa trocas antigas (por horário) p/ config por bloco, uma vez por dia
   const dataTxt=_PGM_DOW[Math.min(_pgmDiaIdx,5)]+', '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
   let corpo;
   if(!L.bases){   // linha sem cadastro: diz o que falta em vez de inventar capacidade

@@ -471,6 +471,15 @@ NÃO a página única. Não reimplantar a página única sem ele pedir de novo.
 - **"Não passa pela cobrideira"** (toggle por bloco, `b.semCob`): `_pgmCalc` força o destino de todas as máquinas p/
   `natural` naquele bloco → mix/peso/rótulos/timeline saem como sem cobertura; o editor esconde o % e mostra a nota.
   Setter `_pgmSetSemCob`. ⚠️ é POR BLOCO do dia (não é cadastro do produto — se ele quiser permanente, vai em Regras).
+- Tirei os 2 quadros de resumo do editor (`_pgmResultadoHTML`/`_pgmCobResumoHTML` sem render). "No dia montado" já
+  usava o horário do CORTE (`_pgmHoras` é corte-only), então não mexi.
+- ⭐⭐ **EMBALAGEM POR BLOCO** (Diego escolheu isto 1º de 3): a embalagem deixou de ser por **troca/horário (dia todo)** e
+  passou a ser **por bloco** — cada bloco guarda sua config em `b.emb`. `_pgmJanelas()` agora deriva UMA janela por bloco
+  (ancorada no início do bloco, anda junto com ele); `_pgmMaq(j)`=máquinas do bloco j; `_pgmSetEmb` grava no bloco
+  selecionado; o editor de embaladoras segue `_pgmSel` (sumiram os chips de "trocas"). `_pgmMigraEmb()` (roda 1×/dia, flag
+  `o._embV2`) converte trocas antigas de `o.emb` → `b.emb`. Coluna Pacotes virou POR BLOCO. Timeline/totais seguem por fatia
+  (agora fatia=bloco). ⏳ FALTAM as outras 2 partes que ele pediu: **pesos múltiplos por produto (240g/500g)** e **horário de
+  início por embaladora, por bloco**. As funções `_pgmJan*` (JanSel/Add/Del/Hora) e `_pgmJanelasDeBlocos` ficaram sem uso.
 
 ### ⭐⭐ 2026-09-26 (j) — PC da Empresa — Padronização, parte 2: **INDICADORES** e **SELETOR DE PERÍODO** (as duas pendências que ele deixou na minha mão)
 *"Sobre o 1 e o 2, faz o que entender que vai fazer sentido."*
