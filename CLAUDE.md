@@ -478,8 +478,13 @@ NÃO a página única. Não reimplantar a página única sem ele pedir de novo.
   (ancorada no início do bloco, anda junto com ele); `_pgmMaq(j)`=máquinas do bloco j; `_pgmSetEmb` grava no bloco
   selecionado; o editor de embaladoras segue `_pgmSel` (sumiram os chips de "trocas"). `_pgmMigraEmb()` (roda 1×/dia, flag
   `o._embV2`) converte trocas antigas de `o.emb` → `b.emb`. Coluna Pacotes virou POR BLOCO. Timeline/totais seguem por fatia
-  (agora fatia=bloco). ⏳ FALTAM as outras 2 partes que ele pediu: **pesos múltiplos por produto (240g/500g)** e **horário de
-  início por embaladora, por bloco**. As funções `_pgmJan*` (JanSel/Add/Del/Hora) e `_pgmJanelasDeBlocos` ficaram sem uso.
+  (agora fatia=bloco). As funções `_pgmJan*` (JanSel/Add/Del/Hora) e `_pgmJanelasDeBlocos` ficaram sem uso.
+- ✅ **Parte 2 — peso do pacote por bloco**: base pode ter `pesos:[{g,cx}]` (amanteigada 240/500); bloco guarda o escolhido em
+  `b.gPac`; helpers `_pgmPesos/_pgmGPac/_pgmPacCx`. Muda pacotes/min (gMin/gPac) e caixas (pacCx). Seletor "Peso do pacote" na
+  embalagem quando o produto tem >1 peso. `_pgmPot` recebe gPac p/ a coluna "agora".
+- ✅ **Parte 3 — início por embaladora por bloco**: cada máquina tem `ini` (atraso em min dentro do bloco). Editor ganhou coluna
+  "Início" (campo de horário por máquina → `_pgmSetEmbIni`). Timeline desenha um vão antes da barra da máquina que começa mais
+  tarde; `_pgmTotais`/coluna Pacotes descontam a fração parada. `_pgmMaqNorm`/`_pgmSetEmb` preservam `ini`.
 
 ### ⭐⭐ 2026-09-26 (j) — PC da Empresa — Padronização, parte 2: **INDICADORES** e **SELETOR DE PERÍODO** (as duas pendências que ele deixou na minha mão)
 *"Sobre o 1 e o 2, faz o que entender que vai fazer sentido."*
