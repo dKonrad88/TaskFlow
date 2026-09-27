@@ -422,6 +422,32 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-27 (b) — Mac — Produção › **Indicadores** (nova tela, dados do chão de fábrica)
+Tela nova pedida pelo Diego: indicadores do dia a dia (dados que no real vêm de OUTRO banco, o TI integra;
+aqui é protótipo com dados de exemplo gerados). Fluxo até aqui: fiz 5 mockups → mesclei tudo num protótipo
+interativo (Artifact "Painel de Indicadores" `SC79ZPnShwQM3wy39q2Xri`) → Diego aprovou → **portei pro app**.
+- **Menu**: `Produção › Indicadores` (`_areaItem(...,'indicadores','ti-chart-histogram',...)`), dispatch em
+  `renderProducao()` (`if(producaoView==='indicadores') return renderIndicadores();`).
+- **Módulo namespaceado `_ind*`** (inserido antes de `renderRegras`): ⚠️ o app já tem `const nf` e `const PROD`,
+  por isso TUDO é `_ind` (`_INDPROD`, `_INDOPS`, `_indAgg`, `_indBars/_indLine/_indHist`, `renderIndicadores`,
+  `_indState`). Estado em `let _indState` (produto/pmode/wIdx/op/metric). Re-render por `renderIndicadores()`
+  (innerHTML via `_cpTela`); só o toggle de métrica faz update parcial via `#ind-trend` outerHTML.
+- **Filtro PRINCIPAL = PRODUTO** (Diego: "sempre analiso o mesmo produto, senão não faz sentido"). Tudo é
+  daquele produto. + período **Semana/Mês/Personalizado** (setas navegam semanas; deltas comparam c/ período
+  anterior). + **"Abrir OP específica"** (select) e, no detalhe, navegação **‹ OP anterior / próxima ›** entre
+  OPs do mesmo produto. Produto padrão: Pão de Mel Cobertura.
+- **13 indicadores** (confirmados pelo Diego), agrupados por etapa: **Corte/Cru** (CPM=cortes/min, Peso cru g/un,
+  kg/h cru, Tempo/batelada, Pacotes/massada) · **Cobertura** (% real cobertura, kg/h coberto — some p/ produto sem
+  cobertura, vira "Peso médio" no gráfico) · **Embalagem** (Pacotes/min real, Sobrepeso, Perda de embalagem=%filme,
+  Troca bobina, Troca tubo formador) · **Produtividade** (kg/pessoa). Cada card com meta + delta + sparkline.
+- **Gráficos** (SVG à mão, tokens do app): tendência (bar c/ toggle de métrica), destaque de sobrepeso (nominal×real
+  + kg/pacotes/R$), e no detalhe da OP 5 gráficos (tempo/batelada, CPM, cobertura-ou-peso, sobrepeso, **histograma
+  de distribuição de peso**) + resumo agrupado + tabela massada a massada (com CPM e Peso cru).
+- Verificado no preview DENTRO do app: claro **e escuro** (tokens `--blue-mid/--success/--amber/--danger/...`),
+  produto com e sem cobertura, abrir/voltar OP, toggle de métrica sem pular scroll, 0 erros no console.
+- ⚠️ Definições a confirmar com o chão de fábrica quando integrar de verdade (Diego já validou o protótipo):
+  **CPM** = cortes/min; **Perda de embalagem** = % de filme; kg/h e kg/pessoa por turno/OP.
+
 ### 2026-09-27 — Mac — Polimento (Cobertura + Ficha de Produto) e um BACKLOG de personalização
 Sessão de acabamento, tudo pedido com print, enquanto o Diego passeava pelas telas. Fiz e **verifiquei no preview**:
 - **Cobertura › personalização (`_ddvPersPopHTML`)**: o "Mostrar só até" virou campo estreito (`.ddv-fdt.ddv-maxin`, 62px)
