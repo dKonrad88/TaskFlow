@@ -13346,17 +13346,14 @@ function _pgmCSS(){ return `<style>
   .pgm-lab{width:84px;flex:none;text-align:right;font-size:10.5px;color:var(--text3)}
   .pgm-lab i{font-style:normal;opacity:.6;margin-left:4px;font-size:9.5px}
   .pgm-t{flex:1;display:flex;gap:2px;height:24px}   /* mais alto desde que a barra virou traco: o desenho e leve e o cartao ao lado e mais alto */
-  /* ⭐ PONTO → LINHA → PONTO. A linha é o ::before; os dois pontos são radial-gradients nas pontas do
-     próprio elemento (2 pseudo-elementos não dariam conta de linha + 2 pontos). Tudo em currentColor,
-     então cada estágio só precisa declarar a sua cor. */
-  .pgm-b{position:relative;font-size:10.5px;display:flex;align-items:center;justify-content:center;gap:6px;overflow:hidden;white-space:nowrap;padding:0 4px;min-width:0}
+  /* ⭐ (27/09) BARRAS (Diego pediu barra, não linha com pontas nas extremidades): cada segmento é uma barra
+     preenchida na cor do estágio — fundo translúcido em currentColor + borda; o rótulo fica dentro. */
+  .pgm-b{position:relative;font-size:10.5px;display:flex;align-items:center;justify-content:center;gap:6px;overflow:hidden;white-space:nowrap;padding:0 8px;min-width:0}
   .pgm-b.base,.pgm-b.cob,.pgm-b.emb,.pgm-b.alerta,.pgm-b.setup{
-    background-image:radial-gradient(circle at 4px 50%, currentColor 0 4px, transparent 4.5px),
-                     radial-gradient(circle at calc(100% - 4px) 50%, currentColor 0 4px, transparent 4.5px);
-    background-repeat:no-repeat}
-  .pgm-b.base::before,.pgm-b.cob::before,.pgm-b.emb::before,.pgm-b.alerta::before,.pgm-b.setup::before{
-    content:'';position:absolute;left:4px;right:4px;top:50%;height:2px;margin-top:-1px;background:currentColor;opacity:.38;border-radius:2px}
-  .pgm-b .tx{background:var(--card);border-radius:4px;padding:0 6px;display:inline-flex;align-items:center;gap:6px;
+    background:color-mix(in srgb, currentColor 22%, transparent);
+    border:1px solid color-mix(in srgb, currentColor 48%, transparent);
+    border-radius:6px}
+  .pgm-b .tx{border-radius:4px;padding:0 2px;display:inline-flex;align-items:center;gap:6px;
     max-width:100%;overflow:hidden;text-overflow:ellipsis;position:relative;z-index:1}
   /* o horário de entrada do estágio, dentro da barrinha */
   .pgm-b .h{font-size:10px;font-weight:700;opacity:.8;flex:none}
