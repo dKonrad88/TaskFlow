@@ -14370,11 +14370,13 @@ function _indOPCorpo(){
 }
 
 function _indCSS(){ return `<style>
-  .ind-scope{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin:2px 0 14px}
-  .ind-field{display:flex;flex-direction:column;gap:5px}
-  .ind-field label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);font-weight:700;display:flex;align-items:center}
-  .ind-field select{min-width:210px}
-  .ind-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .ind-scope{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin:2px 0 16px}
+  .ind-field{display:flex;flex-direction:column;gap:7px;min-width:0}
+  .ind-field label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);font-weight:700;display:flex;align-items:center;gap:7px}
+  .ind-field select{min-width:236px;border:1px solid var(--border)!important;border-radius:10px!important;background-color:var(--card)!important;color:var(--text);font-size:14px;font-weight:600;padding-left:14px!important;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+  .ind-field select:hover{border-color:var(--blue-mid)!important}
+  .ind-field select:focus{outline:none;border-color:var(--blue-mid)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--blue-mid) 20%,transparent)}
+  .ind-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
   .ind-period{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 10px;margin-bottom:18px}
   .ind-seg{display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:3px;gap:2px}
   .ind-seg button{font-family:inherit;font-size:13px;font-weight:700;color:var(--text2);background:none;border:none;padding:6px 13px;border-radius:7px;cursor:pointer}
