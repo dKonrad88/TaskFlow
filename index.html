@@ -6942,6 +6942,7 @@ function renderProducao(){
   const main=document.getElementById('task-container');
   if(!main) return;
   _fpSchemaLoad();   // molde da ficha (editável) carregado uma vez antes de qualquer render de produto
+  _fpResumoLoad();   // o que aparece na aba Resumo (cartões + identificação), também personalizável
   const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
@@ -19788,8 +19789,11 @@ function renderFichaProduto(id){
 
   let corpo;
   if(secIdx<0){
-    const kpis=FICHA_KPIS.map(k=>{
-      const s=FICHA_SECOES[_fpSecIdx(k.k)], si=_fpSecIdx(k.k);
+    // ⭐ (27/09) O QUE aparece aqui é escolha do Diego (_fpResumoCfg). Filtro por campos que ainda existem
+    // no molde — se ele apagou um campo, a chave some do Resumo sozinha (sem quebrar o render).
+    const kpiKeys=(_fpResumoCfg.kpis||[]).filter(k=>_FP_KPI_DEF[k]||_fpCampoDef(k));
+    const kpis=kpiKeys.map(kk=>{ const k=_fpKpiDef(kk);
+      const si=_fpSecIdx(k.k), s=FICHA_SECOES[si];
       const v1=d[k.k], v2=k.k2?d[k.k2]:null;
       let val;
       if(k.k2){ val=(_fpVazio(v1)&&_fpVazio(v2))?'':`${_fpVazio(v1)?'—':escapeHTML(String(v1))}<small>→</small>${_fpVazio(v2)?'—':escapeHTML(String(v2))}`; }
@@ -19798,14 +19802,17 @@ function renderFichaProduto(id){
         <div class="fp-kpi-l"><i class="ti ${k.icon}"></i>${escapeHTML(k.l)}</div>
         <div class="fp-kpi-v${val?'':' vz'}${k.k2?' par':''}">${val||'—'}</div></div>`;
     }).join('');
-    const ident=FICHA_IDENT.map(k=>{ const c=_fpCampoDef(k), v=d[k];
-      return `<div class="fp-kv"><span class="k">${escapeHTML(c.l)}</span><span class="v${_fpVazio(v)?' vz':''}">${_fpVazio(v)?'—':escapeHTML(String(v))}</span></div>`; }).join('');
+    const identKeys=(_fpResumoCfg.ident||[]).filter(k=>_fpCampoDef(k));
+    const ident=identKeys.length ? identKeys.map(k=>{ const c=_fpCampoDef(k), v=d[k];
+      return `<div class="fp-kv"><span class="k">${escapeHTML(c.l)}</span><span class="v${_fpVazio(v)?' vz':''}">${_fpVazio(v)?'—':escapeHTML(String(v))}</span></div>`; }).join('')
+      : `<div style="font-size:12px;color:var(--text3);padding:4px 2px">Nada escolhido — use “Personalizar”.</div>`;
     const secs=FICHA_SECOES.map((s,i)=>{ const st=_fpSecStats(s,d), pct=st.tot?Math.round(st.ok/st.tot*100):0;
       return `<button class="fp-sec" style="--sc:${s.cor}" onclick="_fpSetTab('s${i}')">
         <span class="fp-sec-ic"><i class="ti ${s.icon}"></i></span>
         <span class="fp-sec-tx"><span class="fp-sec-n">${escapeHTML(s.nome)}<span>${st.ok}/${st.tot}</span></span><span class="fp-bar" style="display:block"><span style="width:${pct}%"></span></span></span>
       </button>`; }).join('');
-    corpo=`<div class="fp-kpis">${kpis}</div>
+    corpo=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button onclick="_fpResumoPersonalizar()" title="Escolher o que aparece no Resumo" style="background:var(--card);border:1px solid var(--border);color:var(--text2);border-radius:9px;padding:7px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-adjustments"></i> Personalizar</button></div>
+      ${kpis?`<div class="fp-kpis">${kpis}</div>`:''}
       <div class="fp-res">
         <div class="fp-card"><div class="fp-card-h"><i class="ti ti-id-badge-2"></i>Identificação</div>${ident}</div>
         <div class="fp-card"><div class="fp-card-h"><i class="ti ti-layout-list"></i>Seções da ficha</div><div class="fp-secs">${secs}</div></div>
@@ -19993,6 +20000,64 @@ function _fpGerAbrir(){
     <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--bg2)">
       <button onclick="_fpResetSchema()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-refresh"></i> Restaurar padrão</button>
       <button onclick="this.closest('.fpger-ov').remove()" style="background:var(--card);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Fechar</button>
+    </div>
+  </div>`;
+  ov.onclick=e=>{ if(e.target===ov) ov.remove(); };
+  document.body.appendChild(ov);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// ⭐ (27/09) PERSONALIZAR O RESUMO — o Diego quer escolher o que a aba Resumo traz. Duas listas de
+// chaves de campo, salvas: `kpis` (cartões de destaque no topo) e `ident` (a lista de Identificação).
+// FICHA_KPIS/FICHA_IDENT viram só o PADRÃO. Cada produto continua guardando só valores; isto é a lente.
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+const LS_FICHA_RESUMO='taskflow_ficha_resumo';
+// desenho de fábrica de cada cartão (label/ícone/par cru→assado), indexado pela chave primária
+const _FP_KPI_DEF={}; FICHA_KPIS.forEach(x=>{ _FP_KPI_DEF[x.k]=x; });
+let _fpResumoCfg=null, _fpResumoLoaded=false;
+function _fpResumoDefault(){ return { kpis:FICHA_KPIS.map(x=>x.k), ident:FICHA_IDENT.slice() }; }
+function _fpResumoLoad(){ if(_fpResumoLoaded) return; _fpResumoLoaded=true;
+  try{ const s=safeJSON(LS_FICHA_RESUMO,null);
+    _fpResumoCfg = (s && Array.isArray(s.kpis) && Array.isArray(s.ident)) ? s : _fpResumoDefault();
+  }catch(e){ _fpResumoCfg=_fpResumoDefault(); }
+}
+function _fpResumoSave(){ try{ safeSetItem(LS_FICHA_RESUMO, JSON.stringify(_fpResumoCfg)); }catch(e){} }
+// monta um cartão a partir da chave: usa o desenho de fábrica se existir (mantém "cru → assado"), senão genérico
+function _fpKpiDef(k){ return _FP_KPI_DEF[k] || { k, l:(_fpCampoDef(k)||{}).l||k, icon:'ti-chart-bar' }; }
+function _fpResumoTog(kind,k,on){ if(!_fpResumoCfg) _fpResumoLoad(); const arr=_fpResumoCfg[kind]||[]; const i=arr.indexOf(k);
+  if(on && i<0) arr.push(k); else if(!on && i>=0) arr.splice(i,1);
+  _fpResumoSave(); if(fichaProdutoAberta && _fpTab==='resumo') renderProducao();
+}
+function _fpResumoReset(){ confirmModal({title:'Restaurar o Resumo padrão?', message:'Os cartões e a Identificação voltam ao original.', confirmLabel:'Restaurar', icon:'ti-refresh', onConfirm:()=>{ _fpResumoCfg=_fpResumoDefault(); _fpResumoSave(); if(fichaProdutoAberta&&_fpTab==='resumo') renderProducao(); _fpResumoPersonalizar(); }}); }
+function _fpResumoPersonalizar(){
+  if(!_fpResumoCfg) _fpResumoLoad();
+  document.querySelectorAll('.fpres-ov').forEach(x=>x.remove());
+  const ov=document.createElement('div'); ov.className='fpres-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9300;display:flex;align-items:center;justify-content:center;padding:20px';
+  const chk=(kind,k,on)=>`<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);cursor:pointer;flex:none"><input type="checkbox" ${on?'checked':''} onchange="_fpResumoTog('${kind}','${k}',this.checked)" style="width:13px;height:13px;margin:0;cursor:pointer"> ${kind==='kpis'?'Cartão':'Lista'}</label>`;
+  let body='';
+  FICHA_SECOES.forEach(s=>{
+    let rows='';
+    (s.grupos||[]).forEach(g=>{ (g.campos||[]).forEach(c=>{
+      rows += `<div style="display:flex;align-items:center;gap:12px;padding:5px 8px;border-radius:7px;background:var(--bg2);margin-bottom:4px">
+        <span style="flex:1;min-width:0;font-size:12.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(c.l)}</span>
+        ${chk('kpis',c.k,(_fpResumoCfg.kpis||[]).indexOf(c.k)>=0)}
+        ${chk('ident',c.k,(_fpResumoCfg.ident||[]).indexOf(c.k)>=0)}</div>`;
+    }); });
+    if(rows) body += `<div style="font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:${s.cor};margin:13px 0 6px">${escapeHTML(s.nome)}</div>`+rows;
+  });
+  ov.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;width:100%;max-width:520px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:hidden">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;color:var(--text)"><i class="ti ti-adjustments" style="color:var(--blue-mid)"></i> Personalizar o Resumo</span>
+      <button onclick="this.closest('.fpres-ov').remove()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px"><i class="ti ti-x"></i></button>
+    </div>
+    <div style="padding:6px 20px 16px;overflow:auto;flex:1">
+      <div style="font-size:12px;color:var(--text3);margin:8px 0 2px"><b>Cartão</b> = número em destaque no topo · <b>Lista</b> = na Identificação.</div>
+      ${body}
+    </div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--bg2)">
+      <button onclick="_fpResumoReset()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-refresh"></i> Restaurar padrão</button>
+      <button onclick="this.closest('.fpres-ov').remove()" style="background:var(--card);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Fechar</button>
     </div>
   </div>`;
   ov.onclick=e=>{ if(e.target===ov) ov.remove(); };

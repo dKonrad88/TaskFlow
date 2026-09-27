@@ -445,8 +445,15 @@ Vocabulário dele: **Grupo** = seção/aba (`FICHA_SECOES`, ex. Cobrideira) · *
   seção, aba "+ Grupo". GERAL: gerenciador `_fpGerAbrir()` (árvore inteira: reordenar ↑↓, renomear, apagar em todos os níveis +
   "Restaurar padrão"), aberto pelo ícone ti-list-tree no cabeçalho da ficha E botão "Estrutura" na lista de produtos. Campo novo =
   texto simples (é como o molde guarda tudo). `_fpNovaChave` gera slug único p/ a chave.
-- ⏳ **Personalizar o Resumo** (EM ANDAMENTO): escolher quais KPIs/campos aparecem na aba Resumo (`FICHA_KPIS`/`FICHA_IDENT`
-  hoje são `const`; vão virar config salva, mesmo padrão do schema).
+- ✅ **Personalizar o Resumo**: `_fpResumoCfg={kpis:[chaves], ident:[chaves]}` salvo em `taskflow_ficha_resumo` (espelha na
+  nuvem). `FICHA_KPIS`/`FICHA_IDENT` viraram só o PADRÃO; `_FP_KPI_DEF` guarda o desenho de fábrica de cada cartão (label/ícone/
+  par "cru → assado") indexado pela chave. Botão "Personalizar" no topo da aba Resumo → modal `_fpResumoPersonalizar` com todo campo
+  do molde e dois checkboxes (Cartão / Lista). Render filtra chaves que não existem mais no molde (apagou campo → some do Resumo).
+  Cartão de campo sem desenho de fábrica usa o label do campo + ícone genérico. "Restaurar padrão" volta ao original.
+
+As 3 estão no ar e testadas no preview (criar/reordenar/renomear/apagar campo, duplicar, personalizar Resumo — sem erro no console).
+⏳ Se o Diego quiser depois: escolher TIPO do campo novo (hoje todo campo novo é texto), reordenar cartões/ident do Resumo,
+ícone/cor ao criar um Grupo (hoje ícone padrão ti-folder + cor cíclica), e botão de duplicar também no cabeçalho da ficha.
 
 ### ⭐⭐ 2026-09-26 (j) — PC da Empresa — Padronização, parte 2: **INDICADORES** e **SELETOR DE PERÍODO** (as duas pendências que ele deixou na minha mão)
 *"Sobre o 1 e o 2, faz o que entender que vai fazer sentido."*
