@@ -434,14 +434,19 @@ Sessão de acabamento, tudo pedido com print, enquanto o Diego passeava pelas te
   do `_fpRecount` e o `const ativo`. (2) **Cabeçalho só com o título**: tirei o ícone `.fp-av` e os chips `.fp-meta`
   (código/tipo/marca/status) — cada um já aparece no Resumo e no Dados Gerais. Mantive voltar + Salvar/excluir.
 
-#### ⏳ BACKLOG que o Diego despejou nesta sessão (features, ainda NÃO feitas — levei plano a ele antes de construir)
-O vocabulário dele: **Grupo** = seção/aba (`FICHA_SECOES`, ex. Cobrideira) · **Sub-grupo** = `grupos` (ex. Temperaturas) ·
-**Informação** = `campo` (ex. Temperatura Cobertura). Hoje `FICHA_SECOES` é `const` fixa — pra isto tudo ela vira dado editável + persistido.
-1. **Cadastrar estrutura da ficha**: criar nova Informação dentro de um Sub-grupo, novo Sub-grupo dentro de um Grupo, e novo Grupo.
-   Quer um criador **geral** E um **contextual** (botão dentro de cada Grupo, já focado nele).
-2. **Personalizar o Resumo**: escolher quais KPIs/campos aparecem na aba Resumo.
-3. **Duplicar item** (ficha de produto) **VAZIA de propósito**: copia a estrutura mas NÃO os valores — força preencher um a um
-   pra prestar atenção no que mudou (ex.: gerar o "Pão de Mel branco" a partir do "ao leite").
+#### Personalização da Ficha de Produto — o Diego pediu 3 features (ele escolheu fazer "as 3 em sequência")
+Vocabulário dele: **Grupo** = seção/aba (`FICHA_SECOES`, ex. Cobrideira) · **Sub-grupo** = `grupos` (ex. Temperaturas) ·
+**Informação** = `campo` (ex. Temperatura Cobertura).
+- ✅ **Duplicar item** (`duplicarFichaProduto`): cria ficha nova VAZIA de propósito — herda só o nome (com "(cópia)"), nenhum
+  valor preenchido; força preencher campo a campo. Botão de copiar na linha da lista de produtos.
+- ✅ **Cadastrar/gerenciar estrutura**: `FICHA_SECOES` deixou de ser `const` — virou `let` + semente `FICHA_SECOES_SEED` +
+  `_fpSchemaLoad/_fpSchemaSave` (chave `taskflow_ficha_schema`, espelha na nuvem sozinho). Molde é o MESMO pra todos os produtos
+  (cada produto guarda só valores por chave). CONTEXTUAL: "+ Informação" no fim de cada sub-grupo, "+ Sub-grupo" no fim de cada
+  seção, aba "+ Grupo". GERAL: gerenciador `_fpGerAbrir()` (árvore inteira: reordenar ↑↓, renomear, apagar em todos os níveis +
+  "Restaurar padrão"), aberto pelo ícone ti-list-tree no cabeçalho da ficha E botão "Estrutura" na lista de produtos. Campo novo =
+  texto simples (é como o molde guarda tudo). `_fpNovaChave` gera slug único p/ a chave.
+- ⏳ **Personalizar o Resumo** (EM ANDAMENTO): escolher quais KPIs/campos aparecem na aba Resumo (`FICHA_KPIS`/`FICHA_IDENT`
+  hoje são `const`; vão virar config salva, mesmo padrão do schema).
 
 ### ⭐⭐ 2026-09-26 (j) — PC da Empresa — Padronização, parte 2: **INDICADORES** e **SELETOR DE PERÍODO** (as duas pendências que ele deixou na minha mão)
 *"Sobre o 1 e o 2, faz o que entender que vai fazer sentido."*

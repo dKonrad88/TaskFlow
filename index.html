@@ -6780,7 +6780,11 @@ function loadFichasProduto(){
 function saveFichasProduto(){ safeSetItem(LS_FICHAS_PRODUTO, JSON.stringify(fichasProduto)); }
 
 // ─── SCHEMA: seções → grupos → campos (espelha o Sispro + faces fiscal/comercial) ───
-const FICHA_SECOES = [
+// ⭐ (27/09) O MOLDE virou EDITÁVEL. O Diego quer cadastrar Informação/Sub-grupo/Grupo na tela
+// (vocabulário dele: Grupo=seção · Sub-grupo=grupo · Informação=campo). Por isso FICHA_SECOES deixou de
+// ser `const`: o array abaixo é o PADRÃO DE FÁBRICA (semente), e _fpSchemaLoad() troca pelo que estiver
+// salvo. O molde é o MESMO pra todos os produtos (cada produto guarda só os VALORES, por chave `k`).
+let FICHA_SECOES = [
   { nome:'Dados Gerais', icon:'ti-id-badge-2', cor:'var(--blue-mid)', grupos:[
     { titulo:'Identificação', campos:[
       {k:'codigo', l:'Código / SKU'}, {k:'produto', l:'Produto', wide:true},
@@ -6895,6 +6899,27 @@ const FICHA_SECOES = [
     ]},
   ]},
 ];
+// Semente = o molde acima, congelado, pra poder "restaurar o padrão de fábrica" depois de personalizar.
+const FICHA_SECOES_SEED = JSON.parse(JSON.stringify(FICHA_SECOES));
+const LS_FICHA_SCHEMA = 'taskflow_ficha_schema';
+let _fpSchemaLoaded = false;
+// Lê o molde salvo UMA vez por sessão (idempotente). Se não houver nada salvo, fica com a semente.
+function _fpSchemaLoad(){
+  if(_fpSchemaLoaded) return; _fpSchemaLoaded = true;
+  try{ const saved = safeJSON(LS_FICHA_SCHEMA, null);
+    if(saved && Array.isArray(saved) && saved.length && saved.every(s=>s&&s.grupos)) FICHA_SECOES = saved;
+  }catch(e){}
+}
+// safeSetItem espelha na nuvem qualquer chave que comece com "taskflow" — então o molde sincroniza sozinho.
+function _fpSchemaSave(){ try{ safeSetItem(LS_FICHA_SCHEMA, JSON.stringify(FICHA_SECOES)); }catch(e){} }
+// slug curto e único pra chave de um campo novo (o valor do produto é guardado por essa chave)
+function _fpNovaChave(base){
+  let s = String(base||'campo').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,24) || 'campo';
+  const existe = k => { for(const sec of FICHA_SECOES) for(const g of sec.grupos) if(g.campos.some(c=>c.k===k)) return true; return false; };
+  let k = s, i = 2; while(existe(k)) k = s+'_'+(i++);
+  return k;
+}
 
 // ─── Roteador do módulo ───
 function switchToProducao(){
@@ -6916,6 +6941,7 @@ function setProducaoView(v){
 function renderProducao(){
   const main=document.getElementById('task-container');
   if(!main) return;
+  _fpSchemaLoad();   // molde da ficha (editável) carregado uma vez antes de qualquer render de produto
   const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
@@ -19519,6 +19545,7 @@ function _cardProduto(f){
         <div style="font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(f.produto||'Produto sem nome')}</div>
         <div style="font-size:11.5px; color:var(--text3); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Cód. ${escapeHTML(f.codigo||'—')} · ${escapeHTML(f.marca||'')}${f.tipoProducao?' · '+escapeHTML(f.tipoProducao):''} ${f.ativo==='Não'?'· <span style="color:var(--danger)">Inativo</span>':''}</div>
       </div>
+      <button onclick="event.stopPropagation(); duplicarFichaProduto('${f.id}')" title="Duplicar em branco (herda só o nome; preencher do zero)" style="background:none; border:none; color:var(--text3); cursor:pointer; padding:3px; border-radius:6px; flex-shrink:0;" onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-copy" style="font-size:15px"></i></button>
       <button onclick="event.stopPropagation(); excluirFichaProduto('${f.id}')" title="Excluir (vai para a Lixeira)" style="background:none; border:none; color:var(--text3); cursor:pointer; padding:3px; border-radius:6px; flex-shrink:0;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-trash" style="font-size:15px"></i></button>
       <i class="ti ti-chevron-right" style="color:var(--text3); font-size:16px; flex-shrink:0;"></i>
     </div>`;
@@ -19548,7 +19575,7 @@ function renderListaProdutos(){
   const main=document.getElementById('task-container');
   main.innerHTML = `
     <div style="padding:20px 4px 40px; max-width:1180px;">
-      ${hubHead('Produtos','Ficha completa de cada produto — produtiva, fiscal, comercial e qualidade.',`<button onclick="novaFichaProduto()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Nova ficha</button>`)}
+      ${hubHead('Produtos','Ficha completa de cada produto — produtiva, fiscal, comercial e qualidade.',`<div style="display:flex; gap:8px; align-items:center;"><button onclick="_fpGerAbrir()" title="Estrutura da ficha — a mesma para todos os produtos" style="background:var(--card); color:var(--text2); border:1px solid var(--border); border-radius:9px; padding:10px 14px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-list-tree"></i> Estrutura</button><button onclick="novaFichaProduto()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Nova ficha</button></div>`)}
 
       <!-- Filtros: busca + tipo de produção -->
       <div style="display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap;">
@@ -19667,6 +19694,16 @@ function _fpCSS(){
   .fp-dot{width:8px;height:8px;border-radius:3px;background:var(--sc)}
   .fp-grp-n{margin-left:auto;font-size:11px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--text3)}
   .fp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:10px}
+  /* ⭐ (27/09) botões de cadastrar estrutura (contextual). Traço pontilhado = "adicionar", discreto. */
+  .fp-add{margin-top:11px;background:none;border:1px dashed color-mix(in srgb,var(--sc) 40%,var(--border));color:color-mix(in srgb,var(--sc) 80%,var(--text2));border-radius:9px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px}
+  .fp-add:hover{background:color-mix(in srgb,var(--sc) 8%,var(--card));border-style:solid}
+  .fp-add-sub{--sc:var(--blue-mid);margin:2px 0 10px;border-color:var(--border);color:var(--text3)}
+  .fp-vazio{grid-column:1/-1;font-size:12px;color:var(--text3);padding:2px 2px 4px}
+  /* variante do botão-ícone que NÃO é destrutivo (o de estrutura) — não pode ficar vermelho no hover */
+  .fp-btn.ghost.tool:hover{color:var(--blue-mid);border-color:color-mix(in srgb,var(--blue-mid) 45%,var(--border))}
+  /* aba "+ Grupo" no fim da barra: pontilhada, mesma altura das abas */
+  .fp-tab-add{color:var(--text3);border:1px dashed var(--border)!important}
+  .fp-tab-add:hover{color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 8%,transparent)}
   .fp-f{display:flex;flex-direction:column;min-width:0;background:color-mix(in srgb,var(--sc) 7%,var(--card));border:1px solid color-mix(in srgb,var(--sc) 18%,var(--border));border-radius:11px;padding:8px 12px 8px;cursor:text;transition:border-color .15s,box-shadow .15s,background .15s}
   .fp-f:hover{border-color:color-mix(in srgb,var(--sc) 45%,var(--border))}
   .fp-f:focus-within{border-color:var(--sc);background:var(--card);box-shadow:0 0 0 3px color-mix(in srgb,var(--sc) 18%,transparent)}
@@ -19736,7 +19773,8 @@ function renderFichaProduto(id){
   if(_fpTab!=='resumo' && !FICHA_SECOES[secIdx]){ _fpTab='resumo'; secIdx=-1; }
 
   const tabs=`<button class="fp-tab${_fpTab==='resumo'?' on':''}" style="--sc:var(--blue-mid)" onclick="_fpSetTab('resumo')"><i class="ti ti-layout-dashboard"></i>Resumo</button>`
-    + FICHA_SECOES.map((s,i)=>`<button class="fp-tab${_fpTab==='s'+i?' on':''}" style="--sc:${s.cor}" onclick="_fpSetTab('s${i}')"><i class="ti ${s.icon}"></i>${escapeHTML(s.nome)}${_fpTabCnt(i,_fpSecStats(s,d))}</button>`).join('');
+    + FICHA_SECOES.map((s,i)=>`<button class="fp-tab${_fpTab==='s'+i?' on':''}" style="--sc:${s.cor}" onclick="_fpSetTab('s${i}')"><i class="ti ${s.icon}"></i>${escapeHTML(s.nome)}${_fpTabCnt(i,_fpSecStats(s,d))}</button>`).join('')
+    + `<button class="fp-tab fp-tab-add" onclick="_fpNovoGrupo()" title="Criar um grupo novo (vira uma aba)"><i class="ti ti-plus"></i>Grupo</button>`;
 
   const campo=c=>{
     const val=d[c.k]!=null?String(d[c.k]):'';
@@ -19779,8 +19817,10 @@ function renderFichaProduto(id){
     // Este ramo atende TODAS as seções, então some de todas de uma vez.
     corpo=sec.grupos.map((g,gi)=>`<div class="fp-grp" style="--sc:${sec.cor}">
           <div class="fp-grp-h"><span class="fp-dot"></span>${escapeHTML(g.titulo)}<span class="fp-grp-n" id="fp-grp-n-${gi}">${g.campos.filter(c=>!_fpVazio(d[c.k])).length}/${g.campos.length}</span></div>
-          <div class="fp-grid">${g.campos.map(campo).join('')}</div>
-        </div>`).join('');
+          <div class="fp-grid">${g.campos.map(campo).join('')}${g.campos.length?'':'<div class="fp-vazio">Sem informações ainda</div>'}</div>
+          <button class="fp-add" onclick="_fpNovaInfo(${secIdx},${gi})"><i class="ti ti-plus"></i> Informação</button>
+        </div>`).join('')
+      + `<button class="fp-add fp-add-sub" onclick="_fpNovoSub(${secIdx})"><i class="ti ti-plus"></i> Sub-grupo</button>`;
   }
 
   main.innerHTML=`${_fpCSS()}<div class="fp-wrap">
@@ -19797,6 +19837,7 @@ function renderFichaProduto(id){
         <div class="fp-title">${escapeHTML(d.produto||'Nova ficha de produto')}</div>
       </div>
       <div class="fp-acts">
+        <button class="fp-btn ghost tool" onclick="_fpGerAbrir()" title="Estrutura da ficha — criar/editar grupos, sub-grupos e informações"><i class="ti ti-list-tree"></i></button>
         <button class="fp-btn ghost" onclick="excluirFichaProduto('${id}')" title="Excluir ficha"><i class="ti ti-trash"></i></button>
         <button class="fp-btn pri" onclick="salvarFichaProduto('${id}')"><i class="ti ti-device-floppy"></i> Salvar<span id="fp-dirty" class="fp-dirty" title="Alterações não salvas"${_fpDirty?'':' hidden'}></span></button>
       </div>
@@ -19821,6 +19862,21 @@ function novaFichaProduto(){
   _fpInitDraft(nova.id); _fpTab='s0';   // ficha nova abre direto nos Dados gerais (o Resumo estaria vazio)
   renderProducao();
 }
+// ⭐ (27/09) DUPLICAR em branco DE PROPÓSITO. O Diego: "tenho o pão de mel branco, que é praticamente o
+// mesmo item; mas não quero que a duplicação traga as informações preenchidas — a ideia é forçar a pessoa
+// a preencher um a um, pra prestar atenção no que mudou". Então NÃO copia nenhum valor: herda só o nome
+// (com "(cópia)") pra achar na lista e renomear, e nasce com os mesmos padrões de uma ficha nova.
+function duplicarFichaProduto(id){
+  const src = fichasProduto.find(x=>x.id===id); if(!src) return;
+  const nova = { id:'f'+Math.random().toString(36).slice(2), ativo:'Sim', marca:'KLAIN',
+    produto: src.produto ? src.produto+' (cópia)' : '' };
+  fichasProduto.push(nova);
+  saveFichasProduto();
+  fichaProdutoAberta = nova.id;
+  _fpInitDraft(nova.id); _fpTab='s0';   // abre nos Dados Gerais pra já ajustar nome/código
+  renderProducao();
+  if(typeof toast==='function') toast('📋 Cópia em branco criada — preencha campo a campo');
+}
 function abrirFichaProduto(id){ fichaProdutoAberta = id; _fpInitDraft(id); _fpTab='resumo'; renderProducao(); }
 function voltarListaProdutos(){ fichaProdutoAberta = null; renderProducao(); }
 function salvarFichaProduto(id){
@@ -19841,6 +19897,106 @@ function excluirFichaProduto(id){
   fichaProdutoAberta = null;
   renderProducao();
   _mostrarFABDesfazer('Produto excluído', 0);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// ⭐ (27/09) EDITAR O MOLDE DA FICHA — Grupo (seção) · Sub-grupo (grupo) · Informação (campo)
+// O Diego quer criar estrutura em DOIS lugares: CONTEXTUAL (botão dentro de cada grupo, focado nele) e
+// um GERENCIADOR geral (a árvore inteira). Tudo grava em FICHA_SECOES e persiste em _fpSchemaSave().
+// Campos novos são texto simples (é como o molde guarda tudo hoje — "45°C" é texto). Tipo/opções ficam
+// pra depois, se ele pedir. O molde é o mesmo pra todos os produtos; cada produto guarda só os valores.
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+const _FP_CORES=['var(--blue-mid)','var(--amber)','var(--success)','var(--purple)','var(--danger)','var(--blue-teal)','var(--pink)'];
+// Depois de mexer no molde: re-render a ficha (se aberta) E o gerenciador (se aberto).
+function _fpAfterSchema(){ if(fichaProdutoAberta) renderProducao(); if(document.querySelector('.fpger-ov')) _fpGerAbrir(); }
+
+// —— criar (contextual e no gerenciador) ——
+function _fpNovaInfo(si,gi){
+  promptModal({title:'Nova informação', label:'Nome da informação', placeholder:'Ex.: Temperatura da cobertura',
+    icon:'ti-plus', confirmText:'Criar', onConfirm:v=>{ const g=FICHA_SECOES[si]&&FICHA_SECOES[si].grupos[gi]; if(!g) return;
+      g.campos.push({k:_fpNovaChave(v), l:v, custom:true}); _fpSchemaSave(); _fpAfterSchema();
+      if(typeof toast==='function') toast('➕ Informação criada'); }});
+}
+function _fpNovoSub(si){
+  promptModal({title:'Novo sub-grupo', label:'Nome do sub-grupo', placeholder:'Ex.: Temperaturas',
+    icon:'ti-plus', confirmText:'Criar', onConfirm:v=>{ const s=FICHA_SECOES[si]; if(!s) return;
+      s.grupos.push({titulo:v, campos:[], custom:true}); _fpSchemaSave(); _fpAfterSchema();
+      if(typeof toast==='function') toast('➕ Sub-grupo criado'); }});
+}
+function _fpNovoGrupo(){
+  promptModal({title:'Novo grupo', label:'Nome do grupo (vira uma aba)', placeholder:'Ex.: Rotulagem',
+    icon:'ti-plus', confirmText:'Criar', onConfirm:v=>{ const cor=_FP_CORES[FICHA_SECOES.length % _FP_CORES.length];
+      FICHA_SECOES.push({nome:v, icon:'ti-folder', cor, custom:true, grupos:[{titulo:'Geral', campos:[], custom:true}]});
+      _fpSchemaSave(); _fpTab='s'+(FICHA_SECOES.length-1); _fpAfterSchema();
+      if(typeof toast==='function') toast('➕ Grupo criado'); }});
+}
+// —— renomear ——
+function _fpRenInfo(si,gi,k){ const c=(FICHA_SECOES[si].grupos[gi].campos||[]).find(x=>x.k===k); if(!c) return;
+  promptModal({title:'Renomear informação', label:'Nome', value:c.l, icon:'ti-pencil', onConfirm:v=>{ c.l=v; _fpSchemaSave(); _fpAfterSchema(); }}); }
+function _fpRenSub(si,gi){ const g=FICHA_SECOES[si].grupos[gi]; if(!g) return;
+  promptModal({title:'Renomear sub-grupo', label:'Nome', value:g.titulo, icon:'ti-pencil', onConfirm:v=>{ g.titulo=v; _fpSchemaSave(); _fpAfterSchema(); }}); }
+function _fpRenGrupo(si){ const s=FICHA_SECOES[si]; if(!s) return;
+  promptModal({title:'Renomear grupo', label:'Nome', value:s.nome, icon:'ti-pencil', onConfirm:v=>{ s.nome=v; _fpSchemaSave(); _fpAfterSchema(); }}); }
+// —— apagar (confirma quando tem conteúdo) ——
+function _fpDelInfo(si,gi,k){ const g=FICHA_SECOES[si].grupos[gi]; if(!g) return; g.campos=g.campos.filter(c=>c.k!==k); _fpSchemaSave(); _fpAfterSchema(); }
+function _fpDelSub(si,gi){ const g=FICHA_SECOES[si].grupos[gi]; if(!g) return;
+  const go=()=>{ FICHA_SECOES[si].grupos.splice(gi,1); _fpSchemaSave(); _fpAfterSchema(); };
+  if((g.campos||[]).length) confirmModal({title:'Apagar sub-grupo?', message:`"${g.titulo}" tem ${g.campos.length} informação(ões). Elas somem do molde (os valores já digitados nos produtos ficam guardados, mas deixam de aparecer).`, confirmLabel:'Apagar', danger:true, onConfirm:go});
+  else go();
+}
+function _fpDelGrupo(si){ const s=FICHA_SECOES[si]; if(!s) return;
+  const n=(s.grupos||[]).reduce((a,g)=>a+((g.campos||[]).length),0);
+  confirmModal({title:'Apagar grupo?', message:`"${s.nome}" e seus ${s.grupos.length} sub-grupo(s) / ${n} informação(ões) somem do molde.`, confirmLabel:'Apagar', danger:true, onConfirm:()=>{ FICHA_SECOES.splice(si,1); _fpSchemaSave(); if(_fpTab!=='resumo' && !FICHA_SECOES[parseInt(String(_fpTab).slice(1),10)]) _fpTab='resumo'; _fpAfterSchema(); }});
+}
+// —— reordenar ——
+function _fpSwap(a,i,j){ if(!a||j<0||j>=a.length) return false; const t=a[i]; a[i]=a[j]; a[j]=t; return true; }
+function _fpMovGrupo(si,d){ if(_fpSwap(FICHA_SECOES,si,si+d)){ _fpSchemaSave(); _fpAfterSchema(); } }
+function _fpMovSub(si,gi,d){ if(_fpSwap(FICHA_SECOES[si].grupos,gi,gi+d)){ _fpSchemaSave(); _fpAfterSchema(); } }
+function _fpMovInfo(si,gi,ci,d){ if(_fpSwap(FICHA_SECOES[si].grupos[gi].campos,ci,ci+d)){ _fpSchemaSave(); _fpAfterSchema(); } }
+// —— restaurar padrão de fábrica ——
+function _fpResetSchema(){ confirmModal({title:'Restaurar padrão de fábrica?', message:'O molde volta ao original — tudo que você criou/renomeou/reordenou é desfeito. Os valores já digitados nos produtos ficam guardados.', confirmLabel:'Restaurar', danger:true, icon:'ti-refresh', onConfirm:()=>{ FICHA_SECOES=JSON.parse(JSON.stringify(FICHA_SECOES_SEED)); _fpSchemaSave(); if(_fpTab!=='resumo' && !FICHA_SECOES[parseInt(String(_fpTab).slice(1),10)]) _fpTab='resumo'; _fpAfterSchema(); }}); }
+
+// —— GERENCIADOR: a árvore inteira num overlay (o "geral" que o Diego pediu) ——
+function _fpGerAbrir(){
+  document.querySelectorAll('.fpger-ov').forEach(x=>x.remove());
+  const ov=document.createElement('div'); ov.className='fpger-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9300;display:flex;align-items:center;justify-content:center;padding:20px';
+  const btn=(ic,fn,ttl,col)=>`<button onclick="${fn}" title="${ttl}" style="background:none;border:none;cursor:pointer;color:${col||'var(--text3)'};padding:2px 3px;font-size:13.5px;border-radius:5px" onmouseover="this.style.color='${col||'var(--text)'}'" onmouseout="this.style.color='${col||'var(--text3)'}'"><i class="ti ${ic}"></i></button>`;
+  const rowline=(inner,cor,ctrls,indent)=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;margin-left:${indent}px;border-radius:8px;background:var(--bg2);border:1px solid var(--border);margin-bottom:5px">
+      <span style="width:7px;height:7px;border-radius:50%;background:${cor};flex:none"></span>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${inner}</span>${ctrls}</div>`;
+  let tree='';
+  FICHA_SECOES.forEach((s,si)=>{
+    tree += rowline(`<b style="font-weight:700;font-size:13px;color:var(--text)">${escapeHTML(s.nome)}</b>`, s.cor,
+      btn('ti-chevron-up',`_fpMovGrupo(${si},-1)`,'Subir')+btn('ti-chevron-down',`_fpMovGrupo(${si},1)`,'Descer')+btn('ti-pencil',`_fpRenGrupo(${si})`,'Renomear')+btn('ti-trash',`_fpDelGrupo(${si})`,'Apagar','var(--danger)'), 0);
+    (s.grupos||[]).forEach((g,gi)=>{
+      tree += rowline(`<span style="font-size:12.5px;color:var(--text)">${escapeHTML(g.titulo)}</span>`, s.cor,
+        btn('ti-chevron-up',`_fpMovSub(${si},${gi},-1)`,'Subir')+btn('ti-chevron-down',`_fpMovSub(${si},${gi},1)`,'Descer')+btn('ti-pencil',`_fpRenSub(${si},${gi})`,'Renomear')+btn('ti-trash',`_fpDelSub(${si},${gi})`,'Apagar','var(--danger)'), 18);
+      (g.campos||[]).forEach((c,ci)=>{
+        tree += rowline(`<span style="font-size:12px;color:var(--text2)">${escapeHTML(c.l)}</span>`, 'var(--text3)',
+          btn('ti-chevron-up',`_fpMovInfo(${si},${gi},${ci},-1)`,'Subir')+btn('ti-chevron-down',`_fpMovInfo(${si},${gi},${ci},1)`,'Descer')+btn('ti-pencil',`_fpRenInfo(${si},${gi},'${c.k}')`,'Renomear')+btn('ti-trash',`_fpDelInfo(${si},${gi},'${c.k}')`,'Apagar','var(--danger)'), 36);
+      });
+      tree += `<div style="margin-left:36px;margin-bottom:9px"><button onclick="_fpNovaInfo(${si},${gi})" style="background:none;border:1px dashed var(--border);color:var(--text3);border-radius:7px;padding:3px 10px;font-size:11px;cursor:pointer;font-family:inherit"><i class="ti ti-plus"></i> Informação</button></div>`;
+    });
+    tree += `<div style="margin-left:18px;margin-bottom:13px"><button onclick="_fpNovoSub(${si})" style="background:none;border:1px dashed var(--border);color:var(--text3);border-radius:7px;padding:3px 10px;font-size:11px;cursor:pointer;font-family:inherit"><i class="ti ti-plus"></i> Sub-grupo</button></div>`;
+  });
+  ov.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;width:100%;max-width:560px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:hidden">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;color:var(--text)"><i class="ti ti-list-tree" style="color:var(--blue-mid)"></i> Estrutura da ficha</span>
+      <button onclick="this.closest('.fpger-ov').remove()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px"><i class="ti ti-x"></i></button>
+    </div>
+    <div style="padding:16px 20px;overflow:auto;flex:1">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:13px">Grupo (aba) › Sub-grupo › Informação — vale para todos os produtos.</div>
+      ${tree}
+      <button onclick="_fpNovoGrupo()" style="background:var(--blue-mid);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:2px"><i class="ti ti-plus"></i> Novo grupo</button>
+    </div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--bg2)">
+      <button onclick="_fpResetSchema()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-refresh"></i> Restaurar padrão</button>
+      <button onclick="this.closest('.fpger-ov').remove()" style="background:var(--card);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Fechar</button>
+    </div>
+  </div>`;
+  ov.onclick=e=>{ if(e.target===ov) ov.remove(); };
+  document.body.appendChild(ov);
 }
 
 // ─── Seed: ficha real do Pão de Mel (da imagem) ───
