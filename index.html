@@ -6794,15 +6794,20 @@ let FICHA_SECOES = [
       {k:'marca', l:'Marca'}, {k:'ativo', l:'Ativo', tipo:'select', opts:['Sim','Não']},
     ]},
   ]},
-  { nome:'Fiscal & Comercial', icon:'ti-receipt-tax', cor:'var(--amber)', grupos:[
-    { titulo:'Fiscal', campos:[
+  // ⭐ (27/09) Fiscal e Comercial viraram DOIS grupos separados (Diego). Chaves dos campos mantidas, então
+  // os valores já preenchidos continuam nos mesmos lugares — só a organização em abas que mudou.
+  { nome:'Fiscal', icon:'ti-receipt-tax', cor:'var(--amber)', grupos:[
+    { titulo:'Tributação', campos:[
       {k:'ncm', l:'NCM'}, {k:'cest', l:'CEST'}, {k:'cfop', l:'CFOP'},
       {k:'origem', l:'Origem'}, {k:'unidadeTrib', l:'Unidade Tributável'},
     ]},
-    { titulo:'Comercial', campos:[
-      {k:'precoVenda', l:'Preço de Venda'}, {k:'custoUnit', l:'Custo Unitário'},
-      {k:'margem', l:'Margem (%)'}, {k:'curva', l:'Curva ABC'},
-      {k:'familia', l:'Família / Linha'},
+  ]},
+  { nome:'Comercial', icon:'ti-coin', cor:'var(--blue)', grupos:[
+    { titulo:'Preço e margem', campos:[
+      {k:'precoVenda', l:'Preço de Venda'}, {k:'custoUnit', l:'Custo Unitário'}, {k:'margem', l:'Margem (%)'},
+    ]},
+    { titulo:'Classificação', campos:[
+      {k:'curva', l:'Curva ABC'}, {k:'familia', l:'Família / Linha'},
     ]},
   ]},
   { nome:'Dimensões', icon:'ti-ruler-2', cor:'var(--blue-teal)', grupos:[
