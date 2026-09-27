@@ -453,8 +453,10 @@ Vocabulário dele: **Grupo** = seção/aba (`FICHA_SECOES`, ex. Cobrideira) · *
 
 As 3 estão no ar e testadas no preview (criar/reordenar/renomear/apagar campo, duplicar, personalizar Resumo — sem erro no console).
 Feedback do Diego logo depois (ficha "amontoada" + a sub-navbar rolando pro lado): dei mais respiro (gaps/paddings dos KPIs,
-cards, grid, grupos) e a `.fp-nav` deixou de rolar na horizontal — agora **quebra em linhas** (`flex-wrap`). Ofereci ainda um
-trilho vertical de grupos como alternativa, caso ele prefira depois.
+cards, grid, grupos). A navegação de grupos passou por 2 tentativas no mesmo dia: 1ª `flex-wrap` (ele achou "bem feio", a 2ª linha
+órfã); 2ª e atual = **TRILHO VERTICAL** à esquerda (`.fp-shell` = `.fp-rail` fino + `.fp-body`; item `.fp-rtab`; em ≤820px o
+trilho vira faixa que quebra em cima). Resumo no topo do trilho, "+ Grupo" no fim. Reaproveita `_fpTabCnt` (badge/✓). Removi
+`.fp-nav`/`.fp-tab`/`.fp-tab-add` (mortos). Deixei ofertado trocar por dropdown se ele preferir.
 ⏳ Se o Diego quiser depois: escolher TIPO do campo novo (hoje todo campo novo é texto), reordenar cartões/ident do Resumo,
 ícone/cor ao criar um Grupo (hoje ícone padrão ti-folder + cor cíclica), e botão de duplicar também no cabeçalho da ficha.
 

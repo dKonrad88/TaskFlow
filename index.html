@@ -19671,16 +19671,28 @@ function _fpCSS(){
   .fp-btn.ghost:hover{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,var(--border))}
   .fp-btn.pri{background:var(--blue-mid);border:none;color:#fff;padding:9px 18px;font-weight:700;box-shadow:0 8px 18px -10px var(--blue-mid)}
   .fp-dirty{position:absolute;top:-4px;right:-4px;width:11px;height:11px;border-radius:50%;background:var(--amber);border:2px solid var(--bg)}
-  /* ⭐ (27/09) SEM rolagem lateral: as abas QUEBRAM em linhas (flex-wrap). O Diego cria grupos, então a
-     barra cresce — melhor descer pra uma 2ª linha do que esconder atrás de um scroll horizontal. */
-  .fp-nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:22px;padding:7px;background:var(--card);border:1px solid var(--border);border-radius:13px}
-  .fp-tab{background:transparent;border:none;border-radius:9px;color:var(--text2);padding:8px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;transition:background .15s,color .15s}
-  .fp-tab i{font-size:15px;color:var(--sc)}
-  .fp-tab:hover{background:color-mix(in srgb,var(--sc) 8%,transparent);color:var(--text)}
-  .fp-tab.on{background:color-mix(in srgb,var(--sc) 15%,var(--card));color:var(--text)}
-  .fp-cnt{font-size:10.5px;font-weight:700;color:var(--text3);font-variant-numeric:tabular-nums;background:var(--bg2);border-radius:999px;padding:1px 7px}
-  .fp-tab.on .fp-cnt{background:color-mix(in srgb,var(--sc) 22%,var(--card));color:var(--text)}
-  .fp-ok{font-size:14px;color:var(--sc)}
+  /* ⭐ (27/09) TRILHO VERTICAL de grupos à esquerda (Diego achou a barra horizontal que rolava/quebrava feia).
+     Layout em 2 colunas: trilho fino + conteúdo. Em tela estreita, o trilho vira uma faixa que quebra em cima. */
+  .fp-shell{display:flex;gap:20px;align-items:flex-start}
+  .fp-rail{flex:none;width:216px;display:flex;flex-direction:column;gap:3px;background:var(--card);border:1px solid var(--border);border-radius:13px;padding:8px;position:sticky;top:14px}
+  .fp-body{flex:1;min-width:0}
+  .fp-rtab{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:none;border-radius:9px;padding:9px 11px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;font-family:inherit;transition:background .15s,color .15s}
+  .fp-rtab>i{font-size:16px;color:var(--sc);flex:none;width:19px;text-align:center}
+  .fp-rtab .lbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fp-rtab:hover{background:color-mix(in srgb,var(--sc) 9%,transparent);color:var(--text)}
+  .fp-rtab.on{background:color-mix(in srgb,var(--sc) 15%,var(--card));color:var(--text)}
+  .fp-rtab-add{color:var(--text3);border:1px dashed var(--border);margin-top:5px}
+  .fp-rtab-add:hover{color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 8%,transparent)}
+  .fp-cnt{font-size:10.5px;font-weight:700;color:var(--text3);font-variant-numeric:tabular-nums;background:var(--bg2);border-radius:999px;padding:1px 7px;flex:none}
+  .fp-rtab.on .fp-cnt{background:color-mix(in srgb,var(--sc) 22%,var(--card));color:var(--text)}
+  .fp-ok{font-size:15px;color:var(--sc);flex:none}
+  @media(max-width:820px){
+    .fp-shell{flex-direction:column;gap:14px}
+    .fp-rail{width:auto;flex-direction:row;flex-wrap:wrap;position:static}
+    .fp-rtab{width:auto}
+    .fp-rtab .lbl{overflow:visible}
+    .fp-rtab-add{margin-top:0}
+  }
   .fp-hero{display:flex;align-items:center;gap:15px;padding:16px 20px;margin-bottom:16px;border-radius:16px;border:1px solid color-mix(in srgb,var(--sc) 24%,var(--border));background:linear-gradient(120deg,color-mix(in srgb,var(--sc) 18%,var(--card)),color-mix(in srgb,var(--sc) 3%,var(--card)) 70%);flex-wrap:wrap}
   .fp-hero-ic{width:46px;height:46px;border-radius:13px;background:var(--sc);color:#fff;display:flex;align-items:center;justify-content:center;font-size:23px;flex-shrink:0;box-shadow:0 8px 18px -8px var(--sc)}
   .fp-hero-tx{flex:1;min-width:180px}
@@ -19703,9 +19715,6 @@ function _fpCSS(){
   .fp-vazio{grid-column:1/-1;font-size:12px;color:var(--text3);padding:2px 2px 4px}
   /* variante do botão-ícone que NÃO é destrutivo (o de estrutura) — não pode ficar vermelho no hover */
   .fp-btn.ghost.tool:hover{color:var(--blue-mid);border-color:color-mix(in srgb,var(--blue-mid) 45%,var(--border))}
-  /* aba "+ Grupo" no fim da barra: pontilhada, mesma altura das abas */
-  .fp-tab-add{color:var(--text3);border:1px dashed var(--border)!important}
-  .fp-tab-add:hover{color:var(--blue-mid);background:color-mix(in srgb,var(--blue-mid) 8%,transparent)}
   .fp-f{display:flex;flex-direction:column;min-width:0;background:color-mix(in srgb,var(--sc) 7%,var(--card));border:1px solid color-mix(in srgb,var(--sc) 18%,var(--border));border-radius:11px;padding:8px 12px 8px;cursor:text;transition:border-color .15s,box-shadow .15s,background .15s}
   .fp-f:hover{border-color:color-mix(in srgb,var(--sc) 45%,var(--border))}
   .fp-f:focus-within{border-color:var(--sc);background:var(--card);box-shadow:0 0 0 3px color-mix(in srgb,var(--sc) 18%,transparent)}
@@ -19774,9 +19783,11 @@ function renderFichaProduto(id){
   let secIdx=_fpTab==='resumo'?-1:parseInt(String(_fpTab).slice(1),10);
   if(_fpTab!=='resumo' && !FICHA_SECOES[secIdx]){ _fpTab='resumo'; secIdx=-1; }
 
-  const tabs=`<button class="fp-tab${_fpTab==='resumo'?' on':''}" style="--sc:var(--blue-mid)" onclick="_fpSetTab('resumo')"><i class="ti ti-layout-dashboard"></i>Resumo</button>`
-    + FICHA_SECOES.map((s,i)=>`<button class="fp-tab${_fpTab==='s'+i?' on':''}" style="--sc:${s.cor}" onclick="_fpSetTab('s${i}')"><i class="ti ${s.icon}"></i>${escapeHTML(s.nome)}${_fpTabCnt(i,_fpSecStats(s,d))}</button>`).join('')
-    + `<button class="fp-tab fp-tab-add" onclick="_fpNovoGrupo()" title="Criar um grupo novo (vira uma aba)"><i class="ti ti-plus"></i>Grupo</button>`;
+  // ⭐ (27/09) Grupos num TRILHO VERTICAL à esquerda (o Diego achou a barra que rolava/quebrava feia).
+  // Não rola de lado, não quebra em linha órfã, e cresce pra baixo naturalmente conforme ele cria grupos.
+  const rail=`<button class="fp-rtab${_fpTab==='resumo'?' on':''}" style="--sc:var(--blue-mid)" onclick="_fpSetTab('resumo')"><i class="ti ti-layout-dashboard"></i><span class="lbl">Resumo</span></button>`
+    + FICHA_SECOES.map((s,i)=>`<button class="fp-rtab${_fpTab==='s'+i?' on':''}" style="--sc:${s.cor}" onclick="_fpSetTab('s${i}')"><i class="ti ${s.icon}"></i><span class="lbl">${escapeHTML(s.nome)}</span>${_fpTabCnt(i,_fpSecStats(s,d))}</button>`).join('')
+    + `<button class="fp-rtab fp-rtab-add" onclick="_fpNovoGrupo()" title="Criar um grupo novo"><i class="ti ti-plus"></i><span class="lbl">Grupo</span></button>`;
 
   const campo=c=>{
     const val=d[c.k]!=null?String(d[c.k]):'';
@@ -19850,8 +19861,10 @@ function renderFichaProduto(id){
         <button class="fp-btn pri" onclick="salvarFichaProduto('${id}')"><i class="ti ti-device-floppy"></i> Salvar<span id="fp-dirty" class="fp-dirty" title="Alterações não salvas"${_fpDirty?'':' hidden'}></span></button>
       </div>
     </div>
-    <div class="fp-nav">${tabs}</div>
-    ${corpo}
+    <div class="fp-shell">
+      <nav class="fp-rail">${rail}</nav>
+      <div class="fp-body">${corpo}</div>
+    </div>
   </div>`;
   main.querySelectorAll('textarea.fp-in').forEach(t=>{ if(t.scrollHeight){ t.style.height='auto'; t.style.height=t.scrollHeight+'px'; } });
 }
