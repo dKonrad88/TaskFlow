@@ -463,6 +463,15 @@ NÃO a página única. Não reimplantar a página única sem ele pedir de novo.
 ⏳ Se o Diego quiser depois: escolher TIPO do campo novo (hoje todo campo novo é texto), reordenar cartões/ident do Resumo,
 ícone/cor ao criar um Grupo (hoje ícone padrão ti-folder + cor cíclica), e botão de duplicar também no cabeçalho da ficha.
 
+#### PCP / "montar o dia" (renderPCPDia) — ajustes do Diego no mesmo dia
+- Timeline em **BARRAS** (não mais linha-com-pontas): `.pgm-b.base/.cob/.emb/...` viraram barra preenchida em currentColor.
+- Tirei os **descritivos** de cada seção do editor e a **linha divisória** (gfim/gini) abaixo de Cobertura no "Resultado do dia".
+- **Horário do Corte**: virou texto HH:MM (aplica no Enter/blur) + **setas** — início ±5 min (espera), fim ±1 massada.
+  `_pgmSetHora`→`_pgmAplicaHora`, `_pgmStepHora`.
+- **"Não passa pela cobrideira"** (toggle por bloco, `b.semCob`): `_pgmCalc` força o destino de todas as máquinas p/
+  `natural` naquele bloco → mix/peso/rótulos/timeline saem como sem cobertura; o editor esconde o % e mostra a nota.
+  Setter `_pgmSetSemCob`. ⚠️ é POR BLOCO do dia (não é cadastro do produto — se ele quiser permanente, vai em Regras).
+
 ### ⭐⭐ 2026-09-26 (j) — PC da Empresa — Padronização, parte 2: **INDICADORES** e **SELETOR DE PERÍODO** (as duas pendências que ele deixou na minha mão)
 *"Sobre o 1 e o 2, faz o que entender que vai fazer sentido."*
 

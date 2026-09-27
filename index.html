@@ -12562,7 +12562,10 @@ function _pgmCalc(b, maq){
   const bisc=(+b.cortes||0)*(B.bpc||0);          // biscoitos/min saindo do corte
   const cru=_pgmCru(b);
   const assado=cru*(1-B.evap/100), coberto=assado*(1+_pgmCob(b)/100);
-  const M=maq||_pgmMaq(0);
+  let M=maq||_pgmMaq(0);
+  // ⭐ (27/09) bloco marcado "não passa pela cobrideira" (Diego): todo o pacote sai SEM cobertura, então
+  // força o destino de todas as máquinas p/ natural neste bloco — mix, peso e rótulos ficam coerentes.
+  if(b.semCob) M=M.map(e=>({...e, sku:'natural'}));
   const mix=_pgmMixM(M);
   // ⚠️ o peso médio do biscoito acabado depende do MIX: sem cobertura ele sai mais leve, então a mesma
   // saída do corte dá MAIS pacotes quando há coberto e menos quando há natural.
@@ -12701,6 +12704,10 @@ function _pgmSetCiclo(seg){
 }
 function _pgmStepCiclo(dir){ const b=_pgmBlocos()[_pgmSel]; if(!b) return;
   _pgmSetCiclo(Math.round(_pgmMassadaCalc(b)) + dir); }
+// ⭐ (27/09) "não passa pela cobrideira" no bloco (Diego): marca o bloco; _pgmCalc força tudo p/ sem
+// cobertura (bypass). Zera o % (não faz sentido no bypass) e o editor esconde o campo de %.
+function _pgmSetSemCob(on){ const arr=_pgmBlocos().slice(), b=arr[_pgmSel]; if(!b) return;
+  b.semCob=!!on; if(on) b.cob=0; _pgmSetBlocos(arr); renderPCPDia(); }
 // ⭐ O TRÂNSITO até a cobrideira (Diego, 25/09: "o horário da cobertura, quero poder mudar"). O cadastro
 // da linha traz 15min, mas o próprio handoff avisa que ele **varia por produto e pela velocidade do corte**
 // — então virou um valor da SIMULAÇÃO, editável pelo campo de horário.
@@ -13270,9 +13277,12 @@ function _pgmEditorHTML(){
       </div>
       <div class="pgm-sec" style="margin-top:6px">Cobertura</div>
       <div class="pgm-campos">
-        ${campoS('Cobertura (%)','padrão '+_pgmN(B.cob),'cob',_pgmCob(b),
+        <label class="pgm-semcob"><input type="checkbox" class="pgm-ck" ${b.semCob?'checked':''} onchange="_pgmSetSemCob(this.checked)"> Não passa pela cobrideira</label>
+        ${b.semCob
+          ? `<div class="pgm-semcob-nota">Vai direto do corte pra embalagem — sem cobertura, sai no peso assado.</div>`
+          : `${campoS('Cobertura (%)','padrão '+_pgmN(B.cob),'cob',_pgmCob(b),
                  'Quanto o biscoito ganha de peso no banho. Mais cobertura = biscoito mais pesado = mais pacotes de '+_pgmN(B.gPac)+' g com os mesmos biscoitos.')}
-        ${horaCob()}
+             ${horaCob()}`}
       </div>
       <div id="pgm-cob-out">${_pgmCobResumoHTML()}</div>
     </div>
@@ -13442,6 +13452,9 @@ function _pgmCSS(){ return `<style>
   .pgm-setup .num{width:54px;height:25px;font-size:12px;padding:0 6px;text-align:center}
   .pgm-b.vazio{border:1px dashed var(--border)}
   .pgm-campos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;align-content:start}
+  /* ⭐ (27/09) toggle "não passa pela cobrideira" — ocupa a largura toda da seção Cobertura */
+  .pgm-semcob{grid-column:1/-1;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;color:var(--text2);font-family:inherit}
+  .pgm-semcob-nota{grid-column:1/-1;font-size:11px;color:var(--text3);line-height:1.5}
   /* título de cada seção do editor — diz de que estágio é o bloco de controles */
   .pgm-sec{display:flex;align-items:baseline;gap:8px;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:2px}
   .pgm-sec span{font-size:9.5px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--text3);margin-left:auto}
