@@ -13117,9 +13117,8 @@ function _pgmDiaResHTML(){
   // ⭐⭐ O TRIO VIROU LINHA DA TABELA (Diego, 25/09: "esse padrão e agora também poderia estar igual
   // pacotes e massadas, em formato de planilha, com uma última coluna de diferença"). Ele estava no
   // cabeçalho como texto corrido, e ali a diferença não tinha onde aparecer — "75 cpm × 77 cpm" obrigava
-  // a fazer a conta de cabeça. ⚠️ A tabela ficou com DOIS BLOCOS, separados por uma linha mais forte:
-  // em cima **o que se mexe** (ritmo, gramas, cobertura) e embaixo **o que dá** (pacotes, caixas, turno).
-  // Sem essa separação as 8 linhas viram uma lista só, e causa e efeito se misturam.
+  // a fazer a conta de cabeça. (27/09: o Diego pediu p/ tirar a linha divisória mais forte que separava
+  // "o que se mexe" de "o que dá" — virou uma lista única; as classes gfim/gini ficaram sem uso.)
   const linG=(rot,vp,va,fmt,dfmt)=>{ const d=(vp==null||va==null)?null:va-vp;
     const z=d==null||Math.abs(d)<0.005, cor=z?'':(d>0?'var(--success)':'var(--danger)');
     return `<tr><td class="r">${rot}</td><td>${vp==null?'—':fmt(vp)}</td><td class="a">${va==null?'—':fmt(va)}</td>
@@ -13131,8 +13130,8 @@ function _pgmDiaResHTML(){
       ${linG('Tempo/massada', P.massadaSeg||null, ago?ago.ciclo:null, seg, dseg)}
       ${linG('Cortes/min', _pgmCpmPadrao({base:basePad}), sel?(+sel.cortes||0):null, _pgmCpmTxt)}
       ${linG('Biscoito cru', P.cru, sel?_pgmCru(sel):null, cru)}
-      ${linG('Cobertura', cobP, sel?_pgmCob(sel):null, pct).replace('<tr>','<tr class="gfim">')}
-      ${lin('Biscoitos/h', pad?pad.biscH:null, ago?ago.biscH:null).replace('<tr>','<tr class="gini">')}
+      ${linG('Cobertura', cobP, sel?_pgmCob(sel):null, pct)}
+      ${lin('Biscoitos/h', pad?pad.biscH:null, ago?ago.biscH:null)}
       ${lin('Biscoitos no dia', pad?pad.biscDia:null, ago?ago.biscDia:null)}
       ${lin('Pacotes', pad?pad.pac:null, ago?ago.pac:null)}
       ${lin('Massadas', pad?pad.n:null, ago?ago.n:null)}
@@ -13230,7 +13229,7 @@ function _pgmEditorHTML(){
   // aparece inteira na linha do tempo — repetir aqui só somaria ruído.
   return `<div class="pgm-ed">
     <div class="pgm-col">
-      <div class="pgm-sec">Corte<span>o que a linha corta e em que ritmo</span></div>
+      <div class="pgm-sec">Corte</div>
       <div class="pgm-campos">
         <label class="pgm-f"><span>Base da massa<i>manda no setup</i></span>
           <select class="pgm-inp" oninput="_pgmSetLive('base',this)" onchange="renderPCPDia()">${bases}</select></label>
@@ -13242,14 +13241,14 @@ function _pgmEditorHTML(){
       <div id="pgm-out">${_pgmResultadoHTML()}</div>
     </div>
     <div class="pgm-col">
-      <div class="pgm-sec">Massada<span>o ciclo que alimenta o corte</span></div>
+      <div class="pgm-sec">Massada</div>
       <div class="pgm-campos">
         ${campoT('Tempo por massada','padrão '+_pgmMS(P.massadaSeg||0),'ciclo',_pgmMS(_pgmMassadaCalc(b)),
                  'As setas andam de 1 em 1 segundo. Quem muda é o ritmo do corte — o ciclo é o rendimento da massada dividido pelo que o corte consome.')}
         ${campoS('Massadas', potP?'padrão '+_pgmN(potP.n):'', 'massadas', _pgmMassadasB(b),
                  potP?`No ritmo padrão cabem ${_pgmN(potP.n)} massadas no turno de ${_pgmHhmm(L.horas)}`:'')}
       </div>
-      <div class="pgm-sec" style="margin-top:6px">Cobertura<span>o banho que muda o peso do biscoito</span></div>
+      <div class="pgm-sec" style="margin-top:6px">Cobertura</div>
       <div class="pgm-campos">
         ${campoS('Cobertura (%)','padrão '+_pgmN(B.cob),'cob',_pgmCob(b),
                  'Quanto o biscoito ganha de peso no banho. Mais cobertura = biscoito mais pesado = mais pacotes de '+_pgmN(B.gPac)+' g com os mesmos biscoitos.')}
@@ -13258,7 +13257,7 @@ function _pgmEditorHTML(){
       <div id="pgm-cob-out">${_pgmCobResumoHTML()}</div>
     </div>
     <div class="pgm-col">
-      <div class="pgm-sec">Embalagem<span>quem embala o quê, e para quem</span></div>
+      <div class="pgm-sec">Embalagem</div>
       <div id="pgm-emb">${_pgmEmbHTML()}</div>
     </div>
   </div>`;
