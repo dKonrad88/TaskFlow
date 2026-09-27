@@ -19671,9 +19671,10 @@ function _fpCSS(){
   .fp-btn.ghost:hover{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,var(--border))}
   .fp-btn.pri{background:var(--blue-mid);border:none;color:#fff;padding:9px 18px;font-weight:700;box-shadow:0 8px 18px -10px var(--blue-mid)}
   .fp-dirty{position:absolute;top:-4px;right:-4px;width:11px;height:11px;border-radius:50%;background:var(--amber);border:2px solid var(--bg)}
-  .fp-nav{display:flex;gap:2px;overflow-x:auto;overflow-y:hidden;margin-bottom:18px;padding:4px;background:var(--card);border:1px solid var(--border);border-radius:13px;scrollbar-width:none}
-  .fp-nav::-webkit-scrollbar{display:none}
-  .fp-tab{background:transparent;border:none;border-radius:9px;color:var(--text2);padding:7px 10px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;transition:background .15s,color .15s}
+  /* ⭐ (27/09) SEM rolagem lateral: as abas QUEBRAM em linhas (flex-wrap). O Diego cria grupos, então a
+     barra cresce — melhor descer pra uma 2ª linha do que esconder atrás de um scroll horizontal. */
+  .fp-nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:22px;padding:7px;background:var(--card);border:1px solid var(--border);border-radius:13px}
+  .fp-tab{background:transparent;border:none;border-radius:9px;color:var(--text2);padding:8px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;transition:background .15s,color .15s}
   .fp-tab i{font-size:15px;color:var(--sc)}
   .fp-tab:hover{background:color-mix(in srgb,var(--sc) 8%,transparent);color:var(--text)}
   .fp-tab.on{background:color-mix(in srgb,var(--sc) 15%,var(--card));color:var(--text)}
@@ -19690,11 +19691,11 @@ function _fpCSS(){
   .fp-hero-n b{font-size:15px;color:var(--text)}
   .fp-bar{height:7px;border-radius:999px;background:color-mix(in srgb,var(--sc) 14%,var(--bg2));overflow:hidden}
   .fp-bar span{display:block;height:100%;border-radius:999px;background:var(--sc);transition:width .3s}
-  .fp-grp{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px 16px;margin-bottom:14px}
+  .fp-grp{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px 20px;margin-bottom:16px}
   .fp-grp-h{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:color-mix(in srgb,var(--sc) 80%,var(--text));margin-bottom:12px}
   .fp-dot{width:8px;height:8px;border-radius:3px;background:var(--sc)}
   .fp-grp-n{margin-left:auto;font-size:11px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--text3)}
-  .fp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:10px}
+  .fp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:12px}
   /* ⭐ (27/09) botões de cadastrar estrutura (contextual). Traço pontilhado = "adicionar", discreto. */
   .fp-add{margin-top:11px;background:none;border:1px dashed color-mix(in srgb,var(--sc) 40%,var(--border));color:color-mix(in srgb,var(--sc) 80%,var(--text2));border-radius:9px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px}
   .fp-add:hover{background:color-mix(in srgb,var(--sc) 8%,var(--card));border-style:solid}
@@ -19719,8 +19720,8 @@ function _fpCSS(){
   select.fp-in{cursor:pointer;appearance:none;-webkit-appearance:none}
   select.fp-in option{background:var(--card);color:var(--text)}
   textarea.fp-in{resize:none;overflow:auto;field-sizing:content;line-height:1.5;min-height:22px;font-weight:500}
-  .fp-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px}
-  .fp-kpi{border-radius:14px;padding:13px 15px;border:1px solid color-mix(in srgb,var(--sc) 24%,var(--border));background:linear-gradient(135deg,color-mix(in srgb,var(--sc) 16%,var(--card)),color-mix(in srgb,var(--sc) 3%,var(--card)));cursor:pointer;transition:transform .15s,box-shadow .15s}
+  .fp-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:16px;margin-bottom:22px}
+  .fp-kpi{border-radius:14px;padding:16px 18px;border:1px solid color-mix(in srgb,var(--sc) 24%,var(--border));background:linear-gradient(135deg,color-mix(in srgb,var(--sc) 16%,var(--card)),color-mix(in srgb,var(--sc) 3%,var(--card)));cursor:pointer;transition:transform .15s,box-shadow .15s}
   .fp-kpi:hover{transform:translateY(-1px);box-shadow:0 10px 20px -14px var(--sc)}
   .fp-kpi-l{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--text2)}
   .fp-kpi-l i{font-size:15px;color:var(--sc)}
@@ -19728,18 +19729,18 @@ function _fpCSS(){
   .fp-kpi-v small{font-size:13px;font-weight:600;color:var(--text3);margin:0 3px}
   .fp-kpi-v.vz{color:var(--text3);font-weight:500}
   .fp-kpi-v.par{font-size:17px;white-space:normal;line-height:1.25}
-  .fp-res{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:14px;align-items:start}
+  .fp-res{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:18px;align-items:start}
   @media(max-width:900px){.fp-res{grid-template-columns:1fr}.fp-f.wide{grid-column:auto}}
-  .fp-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px}
-  .fp-card-h{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--text2);margin-bottom:10px}
+  .fp-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px}
+  .fp-card-h{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--text2);margin-bottom:14px}
   .fp-card-h i{font-size:15px;color:var(--blue-mid)}
-  .fp-kv{display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px dashed var(--border);font-size:13px}
+  .fp-kv{display:flex;justify-content:space-between;gap:14px;padding:9px 0;border-bottom:1px dashed var(--border);font-size:13px}
   .fp-kv:last-child{border-bottom:none}
   .fp-kv .k{color:var(--text3)}
   .fp-kv .v{color:var(--text);font-weight:650;text-align:right}
   .fp-kv .v.vz{color:var(--text3);font-weight:400}
-  .fp-secs{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:9px}
-  .fp-sec{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;border:1px solid var(--border);background:color-mix(in srgb,var(--sc) 5%,var(--card));cursor:pointer;text-align:left;font-family:inherit;transition:border-color .15s}
+  .fp-secs{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:11px}
+  .fp-sec{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:11px;border:1px solid var(--border);background:color-mix(in srgb,var(--sc) 5%,var(--card));cursor:pointer;text-align:left;font-family:inherit;transition:border-color .15s}
   .fp-sec:hover{border-color:color-mix(in srgb,var(--sc) 50%,var(--border))}
   .fp-sec-ic{width:32px;height:32px;border-radius:9px;background:color-mix(in srgb,var(--sc) 18%,var(--card));color:var(--sc);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
   .fp-sec-tx{flex:1;min-width:0}

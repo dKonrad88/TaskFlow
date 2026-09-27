@@ -452,6 +452,9 @@ Vocabulário dele: **Grupo** = seção/aba (`FICHA_SECOES`, ex. Cobrideira) · *
   Cartão de campo sem desenho de fábrica usa o label do campo + ícone genérico. "Restaurar padrão" volta ao original.
 
 As 3 estão no ar e testadas no preview (criar/reordenar/renomear/apagar campo, duplicar, personalizar Resumo — sem erro no console).
+Feedback do Diego logo depois (ficha "amontoada" + a sub-navbar rolando pro lado): dei mais respiro (gaps/paddings dos KPIs,
+cards, grid, grupos) e a `.fp-nav` deixou de rolar na horizontal — agora **quebra em linhas** (`flex-wrap`). Ofereci ainda um
+trilho vertical de grupos como alternativa, caso ele prefira depois.
 ⏳ Se o Diego quiser depois: escolher TIPO do campo novo (hoje todo campo novo é texto), reordenar cartões/ident do Resumo,
 ícone/cor ao criar um Grupo (hoje ícone padrão ti-folder + cor cíclica), e botão de duplicar também no cabeçalho da ficha.
 
