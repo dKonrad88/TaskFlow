@@ -422,6 +422,20 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-27 (c) — Mac — Indicadores: acabamento dos filtros + **trilho lateral**
+Dois retoques na tela nova (ver (b)):
+- **Selects de Produto e "Abrir OP"** estavam com a cara crua do HTML (o `select:not([class])`
+  global só põe a setinha). Ganharam borda/raio/fundo de card + hover/foco azul (`.ind-field select`).
+- **Trilho lateral** igual ao da Ficha de Produto (Diego pediu "o mesmo modelo de menu dos produtos"):
+  a tela deixou de ser rolagem única. Abas na visão de período (Resumo · Corte/Cru · Cobertura ·
+  Embalagem · Produtividade · Comparar OPs) e no detalhe da OP (Resumo · etapas c/ gráficos ·
+  Detalhamento). Cada aba tem ícone + badge com o número-chefe da etapa. ⚠️ criei classes próprias
+  `.ind-shell/.ind-rail/.ind-rtab/.ind-cnt` no `_indCSS()` — as `.fp-*` da Ficha NÃO servem aqui
+  porque só existem no `<style>` que a Ficha injeta. Estado `tab`/`opTab`/`tabMetric` em `_indState`;
+  aba Cobertura some p/ produto sem cobertura. Cada etapa tem um gráfico de Evolução com toggle.
+- Verificado no app (claro/escuro, com/sem cobertura, período e OP), 0 erros. Commits `5efc240` (selects)
+  e `946884d` (trilho).
+
 ### 2026-09-27 (b) — Mac — Produção › **Indicadores** (nova tela, dados do chão de fábrica)
 Tela nova pedida pelo Diego: indicadores do dia a dia (dados que no real vêm de OUTRO banco, o TI integra;
 aqui é protótipo com dados de exemplo gerados). Fluxo até aqui: fiz 5 mockups → mesclei tudo num protótipo
