@@ -13943,7 +13943,7 @@ function _regMapaHTML(){
 // (semana/mês/personalizado) + detalhe de uma OP. 13 indicadores por etapa.
 // Tudo namespaceado em _ind* para não colidir com const nf / const PROD já existentes.
 // ════════════════════════════════════════════════════════════════════
-let _indState={view:'periodo',produto:'cob',pmode:'mes',wIdx:3,mIdx:0,cStart:'2026-09-22',cEnd:'2026-09-27',op:null,metric:'sobrepeso'};
+let _indState={view:'periodo',produto:'cob',pmode:'mes',wIdx:3,mIdx:0,cStart:'2026-09-22',cEnd:'2026-09-27',op:null,tab:'resumo',opTab:'resumo',tabMetric:{}};
 
 function _indRng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 
@@ -14192,35 +14192,56 @@ function _indKpiCard(label,valHTML,dot,delta,meta,sparkColor,sparkPts){
     <div class="foot">${delta}<span class="mt">${meta}</span></div>
     <svg class="ind-spark" viewBox="0 0 100 24" preserveAspectRatio="none"><polyline fill="none" stroke="${sparkColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${sparkPts}"/></svg></div>`;
 }
-function _indMetricDef(){
-  const p=_INDPROD[_indState.produto], hasCob=p.cob!=null;
-  const md={
-    sobrepeso:{t:'Sobrepeso',get:a=>a.sobPct,meta:0.1,fmt:v=>_indNf(v,2)+'%',color:d=>d.v>0.20?'var(--danger)':d.v>0.10?'var(--amber)':'var(--success)'},
+// abas do trilho lateral (mesmo modelo da Ficha de Produto). `head(A)` = badge com o número-chefe da etapa.
+const _INDTABS=[
+  {id:'resumo',label:'Resumo',ic:'ti-layout-dashboard',sc:'var(--blue-mid)'},
+  {id:'corte',label:'Corte / Cru',ic:'ti-scissors',sc:'var(--blue-mid)',metrics:['cpm','tempo','kghCru','pacMassada','pesoCru'],head:a=>_indI0(a.cpm)},
+  {id:'cobertura',label:'Cobertura',ic:'ti-droplet',sc:'var(--purple)',metrics:['cobertura','kghCob'],cobOnly:true,head:a=>a.cob!=null?_indNf(a.cob,0)+'%':'—'},
+  {id:'embalagem',label:'Embalagem',ic:'ti-package',sc:'var(--pink)',metrics:['sobrepeso','perda','pacMin'],head:a=>'+'+_indNf(a.sobPct,2)+'%'},
+  {id:'produtividade',label:'Produtividade',ic:'ti-users',sc:'var(--blue-teal)',metrics:['kgPessoa'],head:a=>_indI0(a.kgPessoa)},
+  {id:'comparar',label:'Comparar OPs',ic:'ti-table',sc:'var(--blue-mid)',head:a=>a.nOP+''},
+];
+const _INDOPTABS=[
+  {id:'resumo',label:'Resumo',ic:'ti-layout-dashboard',sc:'var(--blue-mid)'},
+  {id:'corte',label:'Corte / Cru',ic:'ti-scissors',sc:'var(--blue-mid)',head:a=>_indI0(a.cpm)},
+  {id:'cobertura',label:'Cobertura',ic:'ti-droplet',sc:'var(--purple)',cobOnly:true,head:a=>a.cob!=null?_indNf(a.cob,0)+'%':'—'},
+  {id:'embalagem',label:'Embalagem',ic:'ti-package',sc:'var(--pink)',head:a=>'+'+_indNf(a.sobPct,2)+'%'},
+  {id:'produtividade',label:'Produtividade',ic:'ti-users',sc:'var(--blue-teal)',head:a=>_indI0(a.kgPessoa)},
+  {id:'detalhamento',label:'Detalhamento',ic:'ti-list-details',sc:'var(--blue-mid)',head:a=>a.massN+''},
+];
+function _indRail(tabs,active,hasCob,A,handler){
+  return `<div class="ind-rail">${tabs.filter(t=>!t.cobOnly||hasCob).map(t=>
+    `<button class="ind-rtab${active===t.id?' on':''}" style="--sc:${t.sc}" onclick="${handler}('${t.id}')"><i class="ti ${t.ic}"></i><span class="lbl">${t.label}</span>${t.head?`<span class="ind-cnt">${t.head(A)}</span>`:''}</button>`
+  ).join('')}</div>`;
+}
+function _indMetricReg(){
+  const p=_INDPROD[_indState.produto];
+  return {
     cpm:{t:'CPM',get:a=>a.cpm,meta:p.cpm,fmt:v=>_indI0(v),color:d=>d.v>=p.cpm?'var(--success)':d.v>=p.cpm-40?'var(--amber)':'var(--danger)'},
     tempo:{t:'Tempo/batelada',get:a=>a.tempo,meta:8,fmt:v=>_indNf(v,1),color:d=>d.v>8.3?'var(--danger)':d.v>8?'var(--amber)':'var(--success)'},
-    pacmin:{t:'Pacotes/min',get:a=>a.pacMin,meta:null,fmt:v=>_indNf(v,1),color:d=>'var(--blue-mid)'},
+    kghCru:{t:'kg/h cru',get:a=>a.kghCru,meta:null,fmt:v=>_indI0(v),color:d=>'var(--blue-mid)'},
+    pacMassada:{t:'Pacotes/massada',get:a=>a.pacMassada,meta:null,fmt:v=>_indI0(v),color:d=>'var(--blue-mid)'},
+    pesoCru:{t:'Peso cru',get:a=>a.pesoCru,meta:null,fmt:v=>_indNf(v,1),color:d=>'var(--blue-mid)'},
+    cobertura:{t:'Cobertura',get:a=>a.cob||0,meta:34,fmt:v=>_indNf(v,1)+'%',color:d=>d.v<32?'var(--danger)':d.v<34?'var(--amber)':'var(--success)'},
+    kghCob:{t:'kg/h coberto',get:a=>a.kghCob||0,meta:null,fmt:v=>_indI0(v),color:d=>'var(--blue-mid)'},
+    sobrepeso:{t:'Sobrepeso',get:a=>a.sobPct,meta:0.1,fmt:v=>_indNf(v,2)+'%',color:d=>d.v>0.2?'var(--danger)':d.v>0.1?'var(--amber)':'var(--success)'},
     perda:{t:'Perda embal.',get:a=>a.perda,meta:2,fmt:v=>_indNf(v,2)+'%',color:d=>d.v>2.5?'var(--danger)':d.v>2?'var(--amber)':'var(--success)'},
-    producao:{t:'Produção',get:a=>a.pac,meta:null,fmt:v=>_indI0(v),color:d=>'var(--blue-mid)'},
+    pacMin:{t:'Pacotes/min',get:a=>a.pacMin,meta:null,fmt:v=>_indNf(v,1),color:d=>'var(--blue-mid)'},
+    kgPessoa:{t:'kg/pessoa',get:a=>a.kgPessoa,meta:null,fmt:v=>_indI0(v),color:d=>'var(--blue-mid)'},
   };
-  if(hasCob) md.cobertura={t:'Cobertura',get:a=>a.cob||0,meta:34,fmt:v=>_indNf(v,1)+'%',color:d=>d.v<32?'var(--danger)':d.v<34?'var(--amber)':'var(--success)'};
-  return md;
 }
-function _indTrendHTML(){
-  const ops=_indOpsPeriodo();
+function _indEtapaTrendHTML(tabId){
+  const tab=_INDTABS.find(t=>t.id===tabId); if(!tab||!tab.metrics)return '';
+  const reg=_indMetricReg();
+  let mk=_indState.tabMetric[tabId]; if(!mk||tab.metrics.indexOf(mk)<0)mk=tab.metrics[0];
+  const m=reg[mk];
   const bk=_indBuckets().map(b=>({label:b.label,a:_indAgg(b.ops),n:b.ops.length}));
-  const md=_indMetricDef();
-  if(!md[_indState.metric])_indState.metric='sobrepeso';
-  const m=md[_indState.metric];
   const barData=bk.filter(b=>b.n).map(b=>({v:m.get(b.a),label:b.label,color:m.color({v:m.get(b.a)})}));
-  return `<div class="ind-card" id="ind-trend"><div class="ind-card-h"><h3>Tendência no período</h3>
-      <div class="ind-mtabs">${Object.keys(md).map(k=>`<button class="${_indState.metric===k?'on':''}" onclick="_indSetMetric('${k}')">${md[k].t}</button>`).join('')}</div></div>
-    <div class="ind-card-b">${ops.length?_indBars(barData,{meta:m.meta,fmt:m.fmt}):'<div style="color:var(--text3);text-align:center;padding:20px">sem dados</div>'}
-      <div class="ind-lg-row">
-        <span class="ind-lg"><span class="ind-sw" style="background:var(--success)"></span>na meta</span>
-        <span class="ind-lg"><span class="ind-sw" style="background:var(--amber)"></span>atenção</span>
-        <span class="ind-lg"><span class="ind-sw" style="background:var(--danger)"></span>acima</span>
-        <span class="ind-lg" style="margin-left:auto">${_indState.pmode==='mes'?'por semana':'por dia'}</span>
-      </div></div></div>`;
+  return `<div class="ind-card" id="ind-trend-${tabId}" style="margin-top:14px"><div class="ind-card-h"><h3>Evolução</h3>
+      <div class="ind-mtabs">${tab.metrics.map(k=>`<button class="${mk===k?'on':''}" onclick="_indSetTabMetric('${tabId}','${k}')">${reg[k].t}</button>`).join('')}</div></div>
+    <div class="ind-card-b">${barData.length?_indBars(barData,{meta:m.meta,fmt:m.fmt}):'<div style="color:var(--text3);text-align:center;padding:20px">sem dados no período</div>'}
+      <div class="ind-lg-row"><span class="ind-lg"><span class="ind-sw" style="background:var(--success)"></span>na meta</span><span class="ind-lg"><span class="ind-sw" style="background:var(--amber)"></span>atenção</span><span class="ind-lg"><span class="ind-sw" style="background:var(--danger)"></span>acima</span><span class="ind-lg" style="margin-left:auto">${_indState.pmode==='mes'?'por semana':'por dia'}</span></div>
+    </div></div>`;
 }
 
 /* ── tela: período ── */
@@ -14285,16 +14306,26 @@ function _indPeriodoCorpo(){
       <tfoot><tr><td>Média (${A.nOP} OPs)</td><td></td><td></td><td>${_indMmss(A.tempo)}</td>${hasCob?`<td>${A.cob!=null?_indNf(A.cob,1)+'%':'—'}</td>`:''}<td>+${_indNf(A.sobPct,2)}%</td><td>${_indI0(A.pac)}</td><td></td></tr></tfoot>
     </table></div></div></div>`;
 
+  let tab=_indState.tab; if(tab==='cobertura'&&!hasCob)tab='resumo';
+  let body;
+  if(tab==='resumo'){
+    body=`<div class="ind-sect" style="margin-top:0">Médias do período · ${p.nome}</div>${highlight}
+      <div class="ind-grp"><span class="gd" style="background:var(--blue-mid)"></span>Corte / Cru</div>${grpCorte}
+      ${hasCob?`<div class="ind-grp"><span class="gd" style="background:var(--purple)"></span>Cobertura</div>${grpCob}`:''}
+      <div class="ind-grp"><span class="gd" style="background:var(--pink)"></span>Embalagem</div>${grpEmb}
+      <div class="ind-grp"><span class="gd" style="background:var(--blue-teal)"></span>Produtividade</div>${grpPess}`;
+  } else if(tab==='corte'){ body=`<div class="ind-sect" style="margin-top:0">Corte / Cru · ${p.nome}</div>${grpCorte}${_indEtapaTrendHTML('corte')}`; }
+  else if(tab==='cobertura'){ body=`<div class="ind-sect" style="margin-top:0">Cobertura · ${p.nome}</div>${grpCob}${_indEtapaTrendHTML('cobertura')}`; }
+  else if(tab==='embalagem'){ body=`<div class="ind-sect" style="margin-top:0">Embalagem · ${p.nome}</div>${highlight}${grpEmb}${_indEtapaTrendHTML('embalagem')}`; }
+  else if(tab==='produtividade'){ body=`<div class="ind-sect" style="margin-top:0">Produtividade · ${p.nome}</div>${grpPess}${_indEtapaTrendHTML('produtividade')}`; }
+  else { body=`<div class="ind-sect" style="margin-top:0">Comparar OPs · ${p.nome}</div>${opList}`; }
   return `${_indScopeBar()}${_indPeriodBar()}
-    <div class="ind-sect">Médias do período · ${p.nome}</div>
-    <div class="ind-grp"><span class="gd" style="background:var(--blue-mid)"></span>Corte / Cru</div>${grpCorte}
-    ${hasCob?`<div class="ind-grp"><span class="gd" style="background:var(--purple)"></span>Cobertura</div>${grpCob}`:''}
-    <div class="ind-grp"><span class="gd" style="background:var(--pink)"></span>Embalagem</div>${grpEmb}
-    <div class="ind-grp"><span class="gd" style="background:var(--blue-teal)"></span>Produtividade</div>${grpPess}
-    <div class="ind-sect">Destaque</div>${highlight}
-    <div class="ind-sect">Evolução</div>${_indTrendHTML()}
-    <div class="ind-sect">Comparar OPs</div>${opList}
-    <p style="margin:14px 2px 0;font-size:11px;color:var(--text3)">* custo ilustrativo para dimensionar. Dados de exemplo; no sistema real vêm do banco do chão de fábrica (via TI).</p>`;
+    <div class="ind-shell">
+      ${_indRail(_INDTABS,tab,hasCob,A,'_indSetTab')}
+      <div class="ind-body">${body}
+        <p style="margin:14px 2px 0;font-size:11px;color:var(--text3)">* dados de exemplo; no sistema real vêm do banco do chão de fábrica (via TI).</p>
+      </div>
+    </div>`;
 }
 
 /* ── tela: detalhe da OP ── */
@@ -14305,29 +14336,10 @@ function _indOPCorpo(){
   const si=sib.findIndex(x=>x.id===o.id), prevOP=sib[si-1], nextOP=sib[si+1];
   const tempoTot=o.massadas.reduce((s,m)=>s+m.tempo,0), mass=o.massadas;
   const rc=(t,v,s,cls)=>`<div class="ind-res"><div class="t">${t}</div><div class="v" ${cls?`style="color:${cls}"`:''}>${v}</div><div class="s">${s||''}</div></div>`;
-  const res=`
-    <div class="ind-grp"><span class="gd" style="background:var(--blue-mid)"></span>Corte / Cru</div>
-    <div class="ind-res-grid">
-      ${rc('CPM',_indI0(a.cpm),'cortes/min')}
-      ${rc('Peso cru',_indNf(a.pesoCru,1)+' g','por unidade')}
-      ${rc('kg/h cru',_indI0(o.kghCru),'vazão corte')}
-      ${rc('Tempo/batelada',_indMmss(a.tempo),'médio')}
-      ${rc('Tempo total',_indMmss(tempoTot),o.n+' massadas')}
-      ${rc('Pacotes/massada',_indI0(a.pacMassada),'rendimento')}
-    </div>
-    ${P.cob!=null?`<div class="ind-grp"><span class="gd" style="background:var(--purple)"></span>Cobertura</div>
-    <div class="ind-res-grid">${rc('% real cobertura',_indNf(a.cob,1)+'%','média')}${rc('kg/h coberto',_indI0(o.kghCob||0),'vazão cobrideira')}</div>`:''}
-    <div class="ind-grp"><span class="gd" style="background:var(--pink)"></span>Embalagem</div>
-    <div class="ind-res-grid">
-      ${rc('Pacotes',_indI0(a.pac),_indI0(a.caixas)+' caixas')}
-      ${rc('Pacotes/min real',_indNf(o.pacMin,1),'velocidade')}
-      ${rc('Sobrepeso','+'+_indNf(a.sobPct,2)+'%',_indNf(a.kg,1)+' kg de graça','var(--danger)')}
-      ${rc('Perda de embalagem',_indNf(o.perda,2)+'%','filme')}
-      ${rc('Troca bobina',o.trocaBobina.n+'×',o.trocaBobina.min+' min')}
-      ${rc('Troca tubo formador',o.trocaTubo.n+'×',o.trocaTubo.min+' min')}
-    </div>
-    <div class="ind-grp"><span class="gd" style="background:var(--blue-teal)"></span>Produtividade</div>
-    <div class="ind-res-grid">${rc('kg/pessoa',_indI0(a.kgPessoa),o.pessoas+' pessoas')}${rc('kg produzido',_indI0(a.kgFin),'acabado')}</div>`;
+  const resCorte=`<div class="ind-res-grid">${rc('CPM',_indI0(a.cpm),'cortes/min')}${rc('Peso cru',_indNf(a.pesoCru,1)+' g','por unidade')}${rc('kg/h cru',_indI0(o.kghCru),'vazão corte')}${rc('Tempo/batelada',_indMmss(a.tempo),'médio')}${rc('Tempo total',_indMmss(tempoTot),o.n+' massadas')}${rc('Pacotes/massada',_indI0(a.pacMassada),'rendimento')}</div>`;
+  const resCob=`<div class="ind-res-grid">${rc('% real cobertura',_indNf(a.cob||0,1)+'%','média')}${rc('kg/h coberto',_indI0(o.kghCob||0),'vazão cobrideira')}</div>`;
+  const resEmb=`<div class="ind-res-grid">${rc('Pacotes',_indI0(a.pac),_indI0(a.caixas)+' caixas')}${rc('Pacotes/min real',_indNf(o.pacMin,1),'velocidade')}${rc('Sobrepeso','+'+_indNf(a.sobPct,2)+'%',_indNf(a.kg,1)+' kg de graça','var(--danger)')}${rc('Perda de embalagem',_indNf(o.perda,2)+'%','filme')}${rc('Troca bobina',o.trocaBobina.n+'×',o.trocaBobina.min+' min')}${rc('Troca tubo formador',o.trocaTubo.n+'×',o.trocaTubo.min+' min')}</div>`;
+  const resPess=`<div class="ind-res-grid">${rc('kg/pessoa',_indI0(a.kgPessoa),o.pessoas+' pessoas')}${rc('kg produzido',_indI0(a.kgFin),'acabado')}</div>`;
 
   const cTempo=_indBars(mass.map(m=>({v:m.tempo,label:m.i,color:m.tempo>8.3?'var(--danger)':m.tempo>8?'var(--amber)':'var(--success)'})),{meta:8,metaLabel:'meta 8 min',fmt:v=>_indNf(v,1),ymin:6});
   const cCPM=_indBars(mass.map(m=>({v:m.cpm,label:m.i,color:m.cpm>=P.cpm?'var(--success)':m.cpm>=P.cpm-40?'var(--amber)':'var(--danger)'})),{meta:P.cpm,metaLabel:'meta '+P.cpm,fmt:v=>_indI0(v),ymin:Math.min.apply(null,mass.map(m=>m.cpm))*0.92});
@@ -14336,14 +14348,11 @@ function _indOPCorpo(){
     ? _indLine(mass.map(m=>({v:m.cob,label:m.i})),{meta:34,band:[33,35],color:'var(--blue-mid)',fmt:v=>_indNf(v,0)+'%'})
     : _indLine(mass.map(m=>({v:m.peso,label:m.i})),{meta:P.nominal,color:P.cor,fmt:v=>_indNf(v,0)+'g'});
   const cHist=_indHist(o);
-  const charts=`<div class="ind-cgrid">
-    <div class="ind-card"><div class="ind-card-h"><h3>Tempo por batelada</h3><span class="ind-cmp">min · por massada</span></div><div class="ind-card-b">${cTempo}</div></div>
-    <div class="ind-card"><div class="ind-card-h"><h3>CPM</h3><span class="ind-cmp">cortes/min · por massada</span></div><div class="ind-card-b">${cCPM}</div></div>
-    <div class="ind-card"><div class="ind-card-h"><h3>${P.cob!=null?'% real cobertura':'Peso médio'}</h3><span class="ind-cmp">por massada</span></div><div class="ind-card-b">${cSecond}</div></div>
-    <div class="ind-card"><div class="ind-card-h"><h3>Sobrepeso (g/pacote)</h3><span class="ind-cmp">por massada</span></div><div class="ind-card-b">${cSob}</div></div>
-    <div class="ind-card"><div class="ind-card-h"><h3>Distribuição de peso</h3><span class="ind-cmp">pacotes</span></div><div class="ind-card-b">${cHist}
-      <div class="ind-lg-row"><span class="ind-lg"><span class="ind-sw" style="background:var(--success)"></span>≤ nominal</span><span class="ind-lg"><span class="ind-sw" style="background:var(--danger)"></span>acima do nominal</span></div></div></div>
-  </div>`;
+  const cardC=(t,s,svg,extra)=>`<div class="ind-card"><div class="ind-card-h"><h3>${t}</h3><span class="ind-cmp">${s}</span></div><div class="ind-card-b">${svg}${extra||''}</div></div>`;
+  const histLeg=`<div class="ind-lg-row"><span class="ind-lg"><span class="ind-sw" style="background:var(--success)"></span>≤ nominal</span><span class="ind-lg"><span class="ind-sw" style="background:var(--danger)"></span>acima do nominal</span></div>`;
+  const chartsCorte=`<div class="ind-cgrid" style="margin-top:14px">${cardC('Tempo por batelada','min · por massada',cTempo)}${cardC('CPM','cortes/min · por massada',cCPM)}</div>`;
+  const chartsCob=`<div style="margin-top:14px">${cardC('% real cobertura','por massada',cSecond)}</div>`;
+  const chartsEmb=`<div class="ind-cgrid" style="margin-top:14px">${cardC('Sobrepeso (g/pacote)','por massada',cSob)}${cardC('Distribuição de peso','pacotes',cHist,histLeg)}</div>`;
 
   const chipG=g=>`<span class="ind-chip" style="color:${g>1?'var(--danger)':g>0.6?'var(--amber)':'var(--success)'};background:${g>1?'var(--danger-bg)':g>0.6?'var(--amber-bg)':'var(--success-bg)'}">+${_indNf(g,1)} g</span>`;
   const mtable=`<div class="ind-card"><div class="ind-card-h"><h3>Massadas</h3></div><div class="ind-card-b"><div class="ind-tbl-wrap"><table class="ind-tbl">
@@ -14352,6 +14361,20 @@ function _indOPCorpo(){
       ${P.cob!=null?`<td>${_indNf(m.cob,1)}%</td>`:''}<td>${_indNf(m.peso,1)} g</td><td>${chipG(m.sobG)}</td><td>${_indI0(m.pac)}</td></tr>`).join('')}</tbody>
     </table></div></div></div>`;
 
+  let opTab=_indState.opTab; if(opTab==='cobertura'&&P.cob==null)opTab='resumo';
+  const g=(c,lbl)=>`<div class="ind-grp"><span class="gd" style="background:${c}"></span>${lbl}</div>`;
+  let body;
+  if(opTab==='resumo'){
+    body=`<div class="ind-sect" style="margin-top:0">Resumo</div>
+      ${g('var(--blue-mid)','Corte / Cru')}${resCorte}
+      ${P.cob!=null?g('var(--purple)','Cobertura')+resCob:''}
+      ${g('var(--pink)','Embalagem')}${resEmb}
+      ${g('var(--blue-teal)','Produtividade')}${resPess}`;
+  } else if(opTab==='corte'){ body=`<div class="ind-sect" style="margin-top:0">Corte / Cru</div>${resCorte}${chartsCorte}`; }
+  else if(opTab==='cobertura'){ body=`<div class="ind-sect" style="margin-top:0">Cobertura</div>${resCob}${chartsCob}`; }
+  else if(opTab==='embalagem'){ body=`<div class="ind-sect" style="margin-top:0">Embalagem</div>${resEmb}${chartsEmb}`; }
+  else if(opTab==='produtividade'){ body=`<div class="ind-sect" style="margin-top:0">Produtividade</div>${resPess}`; }
+  else { body=`<div class="ind-sect" style="margin-top:0">Detalhamento</div>${mtable}`; }
   return `<button class="ind-back" onclick="_indBack()">‹ voltar ao período</button>
     <div class="ind-oph">
       <div>
@@ -14364,9 +14387,10 @@ function _indOPCorpo(){
         <button ${nextOP?`onclick="_indGoOP(${nextOP.id})"`:'disabled'}>${nextOP?('#'+nextOP.id+' · '+nextOP.dm):'—'} ›</button>
       </div>
     </div>
-    <div class="ind-sect">Resumo</div>${res}
-    <div class="ind-sect">Gráficos</div>${charts}
-    <div class="ind-sect">Detalhamento</div>${mtable}`;
+    <div class="ind-shell">
+      ${_indRail(_INDOPTABS,opTab,P.cob!=null,a,'_indSetOpTab')}
+      <div class="ind-body">${body}</div>
+    </div>`;
 }
 
 function _indCSS(){ return `<style>
@@ -14459,6 +14483,22 @@ function _indCSS(){ return `<style>
   .ind-res .s{font-size:10.5px;color:var(--text3);margin-top:4px}
   .ind-cgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   @media(max-width:760px){.ind-cols2{grid-template-columns:1fr}.ind-cgrid{grid-template-columns:1fr}}
+  /* trilho lateral (mesmo modelo da Ficha de Produto) */
+  .ind-shell{display:flex;gap:20px;align-items:flex-start}
+  .ind-rail{flex:none;width:212px;display:flex;flex-direction:column;gap:3px;background:var(--card);border:1px solid var(--border);border-radius:13px;padding:8px;position:sticky;top:14px}
+  .ind-body{flex:1;min-width:0}
+  .ind-rtab{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:none;border-radius:9px;padding:9px 11px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;font-family:inherit;transition:background .15s,color .15s}
+  .ind-rtab>i{font-size:16px;color:var(--sc);flex:none;width:19px;text-align:center}
+  .ind-rtab .lbl{flex:1;min-width:0;white-space:normal;line-height:1.2}
+  .ind-rtab:hover{background:color-mix(in srgb,var(--sc) 9%,transparent);color:var(--text)}
+  .ind-rtab.on{background:color-mix(in srgb,var(--sc) 15%,var(--card));color:var(--text)}
+  .ind-cnt{font-size:10.5px;font-weight:700;color:var(--text3);font-variant-numeric:tabular-nums;background:var(--bg2);border-radius:999px;padding:1px 7px;flex:none}
+  .ind-rtab.on .ind-cnt{background:color-mix(in srgb,var(--sc) 22%,var(--card));color:var(--text)}
+  @media(max-width:820px){
+    .ind-shell{flex-direction:column;gap:14px}
+    .ind-rail{width:auto;flex-direction:row;flex-wrap:wrap;position:static}
+    .ind-rtab{width:auto}
+  }
 </style>`; }
 
 function renderIndicadores(){
@@ -14473,8 +14513,10 @@ function renderIndicadores(){
 function _indSetProduto(v){ _indState.produto=v; _indState.op=null; renderIndicadores(); }
 function _indSetPmode(v){ _indState.pmode=v; if(v==='semana')_indState.wIdx=3; renderIndicadores(); }
 function _indNavPeriodo(d){ if(_indState.pmode==='semana')_indState.wIdx=Math.max(0,Math.min(_INDWEEKS.length-1,_indState.wIdx+d)); renderIndicadores(); }
-function _indSetMetric(k){ _indState.metric=k; const el=document.getElementById('ind-trend'); if(el){ el.outerHTML=_indTrendHTML(); } else renderIndicadores(); }
-function _indOpenOP(id){ _indState.op=+id; _indState.view='op'; window.scrollTo(0,0); renderIndicadores(); }
+function _indSetTab(t){ _indState.tab=t; renderIndicadores(); }
+function _indSetOpTab(t){ _indState.opTab=t; renderIndicadores(); }
+function _indSetTabMetric(tab,k){ _indState.tabMetric[tab]=k; const el=document.getElementById('ind-trend-'+tab); if(el){ el.outerHTML=_indEtapaTrendHTML(tab); } else renderIndicadores(); }
+function _indOpenOP(id){ _indState.op=+id; _indState.opTab='resumo'; _indState.view='op'; window.scrollTo(0,0); renderIndicadores(); }
 function _indOpenSel(v){ if(v) _indOpenOP(v); }
 function _indGoOP(id){ _indState.op=+id; window.scrollTo(0,0); renderIndicadores(); }
 function _indBack(){ _indState.view='periodo'; window.scrollTo(0,0); renderIndicadores(); }
