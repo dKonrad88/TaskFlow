@@ -457,6 +457,12 @@ cards, grid, grupos). A navegação de grupos passou por 2 tentativas no mesmo d
 órfã); 2ª e atual = **TRILHO VERTICAL** à esquerda (`.fp-shell` = `.fp-rail` fino + `.fp-body`; item `.fp-rtab`; em ≤820px o
 trilho vira faixa que quebra em cima). Resumo no topo do trilho, "+ Grupo" no fim. Reaproveita `_fpTabCnt` (badge/✓). Removi
 `.fp-nav`/`.fp-tab`/`.fp-tab-add` (mortos). Deixei ofertado trocar por dropdown se ele preferir.
+Depois pedi 5 mockups de layout (Artifact interativo `layouts.html`, dados reais) e o Diego **escolheu o layout "Página única"**.
+Implementado: a ficha virou UMA rolagem com TODAS as seções empilhadas (`.fp-block` por seção, id `fp-sec-{i}` e `fp-sec-resumo`);
+o trilho da esquerda virou ÍNDICE que **pula/rola** até a seção (`_fpSetTab`→`_fpJump`, scroll-spy `_fpSpy`/`_fpSpyMark` via listener
+de scroll em captura, item ativo = seção no topo). `_fpRecount` agora atualiza a contagem de TODAS as seções (índice `fp-tabcnt-{i}`,
+cabeçalho `fp-blockcnt-{i}`, grupo `fp-grp-n-{i}-{gi}`). `_fpTab` deixou de trocar conteúdo — é só a seção-alvo pra rolar ao abrir/criar
+(os `_fpNovaInfo`/`_fpNovoSub` setam `_fpTab='s'+si` pra voltar pra seção editada após o re-render).
 ⏳ Se o Diego quiser depois: escolher TIPO do campo novo (hoje todo campo novo é texto), reordenar cartões/ident do Resumo,
 ícone/cor ao criar um Grupo (hoje ícone padrão ti-folder + cor cíclica), e botão de duplicar também no cabeçalho da ficha.
 

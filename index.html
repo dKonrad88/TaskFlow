@@ -19623,7 +19623,15 @@ function _fpSet(k,v){
   _fpDraft[k]=v;
   if(!_fpDirty){ _fpDirty=true; const d=document.getElementById('fp-dirty'); if(d) d.hidden=false; }
 }
-function _fpSetTab(t){ _fpTab=t; renderFichaProduto(fichaProdutoAberta); window.scrollTo(0,0); }
+// ⭐ (27/09) Ficha em PÁGINA ÚNICA (layout que o Diego escolheu): todas as seções empilhadas numa rolagem
+// só, e o trilho da esquerda vira ÍNDICE que PULA (rola) até a seção — não troca mais o conteúdo. _fpTab
+// guarda a seção-alvo (pra onde rolar ao abrir/criar) e qual item do índice fica em foco.
+function _fpSetTab(t){ _fpTab=t; _fpJump(t==='resumo'?'resumo':parseInt(String(t).slice(1),10)); }
+function _fpJump(target){ const el=document.getElementById('fp-sec-'+target); if(el){ el.scrollIntoView({behavior:'smooth',block:'start'}); _fpSpyMark(String(target)); } }
+function _fpSpyMark(key){ document.querySelectorAll('.fp-rail .fp-rtab[data-jump]').forEach(el=>el.classList.toggle('on', el.getAttribute('data-jump')===key)); }
+// destaca no índice a seção que está no topo da tela (scroll-spy, sem re-render)
+function _fpSpy(){ const blocks=document.querySelectorAll('.fp-block'); if(!blocks.length) return; let key=blocks[0].id.replace('fp-sec-',''); blocks.forEach(b=>{ if(b.getBoundingClientRect().top<=150) key=b.id.replace('fp-sec-',''); }); _fpSpyMark(key); }
+function _fpBlockCnt(i,st){ return st.ok===st.tot ? `<i id="fp-blockcnt-${i}" class="ti ti-circle-check-filled fp-ok" title="Seção completa"></i>` : `<span id="fp-blockcnt-${i}" class="fp-cnt">${st.ok}/${st.tot}</span>`; }
 const _fpVazio=v=>v==null||String(v).trim()==='';
 function _fpCampoDef(k){
   for(const s of FICHA_SECOES) for(const g of s.grupos) for(const c of g.campos) if(c.k===k) return c;
@@ -19708,6 +19716,15 @@ function _fpCSS(){
   .fp-hero-n b{font-size:15px;color:var(--text)}
   .fp-bar{height:7px;border-radius:999px;background:color-mix(in srgb,var(--sc) 14%,var(--bg2));overflow:hidden}
   .fp-bar span{display:block;height:100%;border-radius:999px;background:var(--sc);transition:width .3s}
+  /* ⭐ (27/09) Página única: cada seção é um BLOCO com um cabeçalho (ícone + nome + contagem). */
+  .fp-block{scroll-margin-top:14px;margin-bottom:30px}
+  .fp-block:last-child{margin-bottom:0}
+  .fp-block-h{display:flex;align-items:center;gap:11px;margin-bottom:15px;font-size:16px;font-weight:800;color:var(--text);letter-spacing:-.01em}
+  .fp-block-h>i:first-child{font-size:20px;color:var(--sc)}
+  .fp-block-t{flex:1;min-width:0}
+  .fp-block-h .fp-cnt,.fp-block-h .fp-ok{font-size:12px}
+  .fp-perso{background:var(--card);border:1px solid var(--border);color:var(--text2);border-radius:9px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;letter-spacing:0}
+  .fp-perso:hover{border-color:var(--blue-mid);color:var(--blue-mid)}
   .fp-grp{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px 20px;margin-bottom:16px}
   .fp-grp-h{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:color-mix(in srgb,var(--sc) 80%,var(--text));margin-bottom:12px}
   .fp-dot{width:8px;height:8px;border-radius:3px;background:var(--sc)}
@@ -19770,11 +19787,14 @@ function _fpTile(el){
   _fpRecount();
 }
 function _fpRecount(){
-  if(!_fpDraft || _fpTab==='resumo') return;
-  const i=parseInt(String(_fpTab).slice(1),10), sec=FICHA_SECOES[i]; if(!sec) return;
-  const st=_fpSecStats(sec,_fpDraft);
-  sec.grupos.forEach((g,gi)=>{ const el=document.getElementById('fp-grp-n-'+gi); if(el) el.textContent=g.campos.filter(c=>!_fpVazio(_fpDraft[c.k])).length+'/'+g.campos.length; });
-  const tc=document.getElementById('fp-tabcnt-'+i); if(tc) tc.outerHTML=_fpTabCnt(i,st);
+  if(!_fpDraft) return;
+  // Página única: pode ter campo de qualquer seção na tela, então atualiza a contagem de TODAS —
+  // no índice (fp-tabcnt), no cabeçalho da seção (fp-blockcnt) e em cada sub-grupo (fp-grp-n-SEC-GRP).
+  FICHA_SECOES.forEach((sec,i)=>{ const st=_fpSecStats(sec,_fpDraft);
+    const a=document.getElementById('fp-tabcnt-'+i); if(a) a.outerHTML=_fpTabCnt(i,st);
+    const b=document.getElementById('fp-blockcnt-'+i); if(b) b.outerHTML=_fpBlockCnt(i,st);
+    sec.grupos.forEach((g,gi)=>{ const el=document.getElementById('fp-grp-n-'+i+'-'+gi); if(el) el.textContent=g.campos.filter(c=>!_fpVazio(_fpDraft[c.k])).length+'/'+g.campos.length; });
+  });
 }
 function _fpTabCnt(i,st){
   return st.ok===st.tot
@@ -19790,8 +19810,8 @@ function renderFichaProduto(id){
 
   // ⭐ (27/09) Grupos num TRILHO VERTICAL à esquerda (o Diego achou a barra que rolava/quebrava feia).
   // Não rola de lado, não quebra em linha órfã, e cresce pra baixo naturalmente conforme ele cria grupos.
-  const rail=`<button class="fp-rtab${_fpTab==='resumo'?' on':''}" style="--sc:var(--blue-mid)" onclick="_fpSetTab('resumo')"><i class="ti ti-layout-dashboard"></i><span class="lbl">Resumo</span></button>`
-    + FICHA_SECOES.map((s,i)=>`<button class="fp-rtab${_fpTab==='s'+i?' on':''}" style="--sc:${s.cor}" onclick="_fpSetTab('s${i}')"><i class="ti ${s.icon}"></i><span class="lbl">${escapeHTML(s.nome)}</span>${_fpTabCnt(i,_fpSecStats(s,d))}</button>`).join('')
+  const rail=`<button class="fp-rtab${_fpTab==='resumo'?' on':''}" data-jump="resumo" style="--sc:var(--blue-mid)" onclick="_fpSetTab('resumo')"><i class="ti ti-layout-dashboard"></i><span class="lbl">Resumo</span></button>`
+    + FICHA_SECOES.map((s,i)=>`<button class="fp-rtab${_fpTab==='s'+i?' on':''}" data-jump="${i}" style="--sc:${s.cor}" onclick="_fpSetTab('s${i}')"><i class="ti ${s.icon}"></i><span class="lbl">${escapeHTML(s.nome)}</span>${_fpTabCnt(i,_fpSecStats(s,d))}</button>`).join('')
     + `<button class="fp-rtab fp-rtab-add" onclick="_fpNovoGrupo()" title="Criar um grupo novo"><i class="ti ti-plus"></i><span class="lbl">Grupo</span></button>`;
 
   const campo=c=>{
@@ -19804,42 +19824,40 @@ function renderFichaProduto(id){
     return `<label class="fp-f${cls}${vz?' vz':''}"><span class="fp-l">${escapeHTML(c.l)}</span>${el}</label>`;
   };
 
-  let corpo;
-  if(secIdx<0){
-    // ⭐ (27/09) O QUE aparece aqui é escolha do Diego (_fpResumoCfg). Filtro por campos que ainda existem
-    // no molde — se ele apagou um campo, a chave some do Resumo sozinha (sem quebrar o render).
-    const kpiKeys=(_fpResumoCfg.kpis||[]).filter(k=>_FP_KPI_DEF[k]||_fpCampoDef(k));
-    const kpis=kpiKeys.map(kk=>{ const k=_fpKpiDef(kk);
-      const si=_fpSecIdx(k.k), s=FICHA_SECOES[si];
-      const v1=d[k.k], v2=k.k2?d[k.k2]:null;
-      let val;
-      if(k.k2){ val=(_fpVazio(v1)&&_fpVazio(v2))?'':`${_fpVazio(v1)?'—':escapeHTML(String(v1))}<small>→</small>${_fpVazio(v2)?'—':escapeHTML(String(v2))}`; }
-      else val=_fpVazio(v1)?'':escapeHTML(String(v1));
-      return `<div class="fp-kpi" style="--sc:${s.cor}" onclick="_fpSetTab('s${si}')" title="Abrir ${escapeAttr(s.nome)}">
-        <div class="fp-kpi-l"><i class="ti ${k.icon}"></i>${escapeHTML(k.l)}</div>
-        <div class="fp-kpi-v${val?'':' vz'}${k.k2?' par':''}">${val||'—'}</div></div>`;
-    }).join('');
-    const identKeys=(_fpResumoCfg.ident||[]).filter(k=>_fpCampoDef(k));
-    const ident=identKeys.length ? identKeys.map(k=>{ const c=_fpCampoDef(k), v=d[k];
-      return `<div class="fp-kv"><span class="k">${escapeHTML(c.l)}</span><span class="v${_fpVazio(v)?' vz':''}">${_fpVazio(v)?'—':escapeHTML(String(v))}</span></div>`; }).join('')
-      : `<div style="font-size:12px;color:var(--text3);padding:4px 2px">Nada escolhido — use “Personalizar”.</div>`;
-    // ⭐ (27/09) Sem o card "Seções da ficha" no Resumo: o trilho da esquerda JÁ é esse menu (Diego apontou a
-    // repetição). Fica só a Identificação, num card de largura confortável (lista chave→valor não estica a tela).
-    corpo=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button onclick="_fpResumoPersonalizar()" title="Escolher o que aparece no Resumo" style="background:var(--card);border:1px solid var(--border);color:var(--text2);border-radius:9px;padding:7px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-adjustments"></i> Personalizar</button></div>
+  // ── Bloco RESUMO (1º da página): KPIs + Identificação, ambos escolhidos pelo Diego (_fpResumoCfg).
+  // Filtra por chaves que ainda existem no molde — apagou um campo, a chave some do Resumo sozinha.
+  const kpiKeys=(_fpResumoCfg.kpis||[]).filter(k=>_FP_KPI_DEF[k]||_fpCampoDef(k));
+  const kpis=kpiKeys.map(kk=>{ const k=_fpKpiDef(kk);
+    const si=_fpSecIdx(k.k), s=FICHA_SECOES[si];
+    const v1=d[k.k], v2=k.k2?d[k.k2]:null;
+    let val;
+    if(k.k2){ val=(_fpVazio(v1)&&_fpVazio(v2))?'':`${_fpVazio(v1)?'—':escapeHTML(String(v1))}<small>→</small>${_fpVazio(v2)?'—':escapeHTML(String(v2))}`; }
+    else val=_fpVazio(v1)?'':escapeHTML(String(v1));
+    return `<div class="fp-kpi" style="--sc:${s.cor}" onclick="_fpSetTab('s${si}')" title="Ir para ${escapeAttr(s.nome)}">
+      <div class="fp-kpi-l"><i class="ti ${k.icon}"></i>${escapeHTML(k.l)}</div>
+      <div class="fp-kpi-v${val?'':' vz'}${k.k2?' par':''}">${val||'—'}</div></div>`;
+  }).join('');
+  const identKeys=(_fpResumoCfg.ident||[]).filter(k=>_fpCampoDef(k));
+  const ident=identKeys.length ? identKeys.map(k=>{ const c=_fpCampoDef(k), v=d[k];
+    return `<div class="fp-kv"><span class="k">${escapeHTML(c.l)}</span><span class="v${_fpVazio(v)?' vz':''}">${_fpVazio(v)?'—':escapeHTML(String(v))}</span></div>`; }).join('')
+    : `<div style="font-size:12px;color:var(--text3);padding:4px 2px">Nada escolhido — use “Personalizar”.</div>`;
+  const resumoBlock=`<section class="fp-block" id="fp-sec-resumo" style="--sc:var(--blue-mid)">
+      <div class="fp-block-h"><i class="ti ti-layout-dashboard"></i><span class="fp-block-t">Resumo</span>
+        <button class="fp-perso" onclick="_fpResumoPersonalizar()" title="Escolher o que aparece no Resumo"><i class="ti ti-adjustments"></i> Personalizar</button></div>
       ${kpis?`<div class="fp-kpis">${kpis}</div>`:''}
-      <div class="fp-card" style="max-width:600px"><div class="fp-card-h"><i class="ti ti-id-badge-2"></i>Identificação</div>${ident}</div>`;
-  } else {
-    const sec=FICHA_SECOES[secIdx];
-    // ⭐ (27/09) Sem o banner "Nome / sub-grupos — X de Y preenchidos": o Diego achou informação demais.
-    // O nome da seção já está na aba ativa (destacada) e a contagem aparece na aba e em cada sub-grupo.
-    // Este ramo atende TODAS as seções, então some de todas de uma vez.
-    corpo=sec.grupos.map((g,gi)=>`<div class="fp-grp" style="--sc:${sec.cor}">
-          <div class="fp-grp-h"><span class="fp-dot"></span>${escapeHTML(g.titulo)}<span class="fp-grp-n" id="fp-grp-n-${gi}">${g.campos.filter(c=>!_fpVazio(d[c.k])).length}/${g.campos.length}</span></div>
+      <div class="fp-card" style="max-width:600px"><div class="fp-card-h"><i class="ti ti-id-badge-2"></i>Identificação</div>${ident}</div>
+    </section>`;
+  // ── Um bloco por seção, TODOS empilhados (página única). Cada grupo com "+ Informação"; "+ Sub-grupo" no fim.
+  const secBlocks=FICHA_SECOES.map((sec,si)=>`<section class="fp-block" id="fp-sec-${si}" style="--sc:${sec.cor}">
+      <div class="fp-block-h"><i class="ti ${sec.icon}"></i><span class="fp-block-t">${escapeHTML(sec.nome)}</span>${_fpBlockCnt(si,_fpSecStats(sec,d))}</div>
+      ${sec.grupos.map((g,gi)=>`<div class="fp-grp" style="--sc:${sec.cor}">
+          <div class="fp-grp-h"><span class="fp-dot"></span>${escapeHTML(g.titulo)}<span class="fp-grp-n" id="fp-grp-n-${si}-${gi}">${g.campos.filter(c=>!_fpVazio(d[c.k])).length}/${g.campos.length}</span></div>
           <div class="fp-grid">${g.campos.map(campo).join('')}${g.campos.length?'':'<div class="fp-vazio">Sem informações ainda</div>'}</div>
-          <button class="fp-add" onclick="_fpNovaInfo(${secIdx},${gi})"><i class="ti ti-plus"></i> Informação</button>
-        </div>`).join('')
-      + `<button class="fp-add fp-add-sub" onclick="_fpNovoSub(${secIdx})"><i class="ti ti-plus"></i> Sub-grupo</button>`;
-  }
+          <button class="fp-add" onclick="_fpNovaInfo(${si},${gi})"><i class="ti ti-plus"></i> Informação</button>
+        </div>`).join('')}
+      <button class="fp-add fp-add-sub" onclick="_fpNovoSub(${si})"><i class="ti ti-plus"></i> Sub-grupo</button>
+    </section>`).join('');
+  const corpo=resumoBlock+secBlocks;
 
   main.innerHTML=`${_fpCSS()}<div class="fp-wrap">
     ${/* ⭐ (27/09) o nome do produto vive só no título grande abaixo — tirado do breadcrumb p/ não duplicar (Diego). */''}
@@ -19866,6 +19884,10 @@ function renderFichaProduto(id){
     </div>
   </div>`;
   main.querySelectorAll('textarea.fp-in').forEach(t=>{ if(t.scrollHeight){ t.style.height='auto'; t.style.height=t.scrollHeight+'px'; } });
+  // scroll-spy: registra uma vez (captura o scroll de qualquer container) e destaca no índice a seção do topo
+  if(!window.__fpSpyOn){ window.__fpSpyOn=true; document.addEventListener('scroll', ()=>{ if(fichaProdutoAberta) _fpSpy(); }, true); }
+  // rola até a seção-alvo (_fpTab): ao abrir vai pro Resumo (topo); ao criar/editar um grupo, volta pra ele
+  requestAnimationFrame(()=>{ if(_fpTab && _fpTab!=='resumo'){ const el=document.getElementById('fp-sec-'+parseInt(String(_fpTab).slice(1),10)); if(el) el.scrollIntoView({block:'start'}); } _fpSpy(); });
 }
 // Sair da ficha: com alteração pendente, confirma antes de descartar o rascunho.
 function _fpSair(fn){
@@ -19934,13 +19956,13 @@ function _fpAfterSchema(){ if(fichaProdutoAberta) renderProducao(); if(document.
 function _fpNovaInfo(si,gi){
   promptModal({title:'Nova informação', label:'Nome da informação', placeholder:'Ex.: Temperatura da cobertura',
     icon:'ti-plus', confirmText:'Criar', onConfirm:v=>{ const g=FICHA_SECOES[si]&&FICHA_SECOES[si].grupos[gi]; if(!g) return;
-      g.campos.push({k:_fpNovaChave(v), l:v, custom:true}); _fpSchemaSave(); _fpAfterSchema();
+      g.campos.push({k:_fpNovaChave(v), l:v, custom:true}); _fpTab='s'+si; _fpSchemaSave(); _fpAfterSchema();
       if(typeof toast==='function') toast('➕ Informação criada'); }});
 }
 function _fpNovoSub(si){
   promptModal({title:'Novo sub-grupo', label:'Nome do sub-grupo', placeholder:'Ex.: Temperaturas',
     icon:'ti-plus', confirmText:'Criar', onConfirm:v=>{ const s=FICHA_SECOES[si]; if(!s) return;
-      s.grupos.push({titulo:v, campos:[], custom:true}); _fpSchemaSave(); _fpAfterSchema();
+      s.grupos.push({titulo:v, campos:[], custom:true}); _fpTab='s'+si; _fpSchemaSave(); _fpAfterSchema();
       if(typeof toast==='function') toast('➕ Sub-grupo criado'); }});
 }
 function _fpNovoGrupo(){
