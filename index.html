@@ -19843,10 +19843,10 @@ function renderFichaProduto(id){
   }
 
   main.innerHTML=`${_fpCSS()}<div class="fp-wrap">
+    ${/* ⭐ (27/09) o nome do produto vive só no título grande abaixo — tirado do breadcrumb p/ não duplicar (Diego). */''}
     ${hubBreadcrumb([
       {label:'Produção', onclick:"_fpSair(function(){setProducaoView('produtos')})"},
-      {label:'Produtos', onclick:"_fpSair(voltarListaProdutos)"},
-      {label: d.produto || 'Nova ficha'}
+      {label:'Produtos', onclick:"_fpSair(voltarListaProdutos)"}
     ])}
     <div class="fp-head">
       <button class="fp-back" onclick="_fpSair(voltarListaProdutos)" title="Voltar aos produtos"><i class="ti ti-arrow-left" style="font-size:17px"></i></button>
