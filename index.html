@@ -19826,8 +19826,9 @@ function renderFichaProduto(id){
       : `<div style="font-size:12px;color:var(--text3);padding:4px 2px">Nada escolhido — use “Personalizar”.</div>`;
     // ⭐ (27/09) Sem o card "Seções da ficha" no Resumo: o trilho da esquerda JÁ é esse menu (Diego apontou a
     // repetição). Fica só a Identificação, num card de largura confortável (lista chave→valor não estica a tela).
-    corpo=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button onclick="_fpResumoPersonalizar()" title="Escolher o que aparece no Resumo" style="background:var(--card);border:1px solid var(--border);color:var(--text2);border-radius:9px;padding:7px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-adjustments"></i> Personalizar</button></div>
-      ${kpis?`<div class="fp-kpis">${kpis}</div>`:''}
+    // ⭐ (27/09) "Personalizar" saiu daqui pro cabeçalho (fp-acts, só no Resumo): assim o 1º card alinha o
+    // topo com o trilho, em vez de ser empurrado pra baixo por uma linha de botão (Diego).
+    corpo=`${kpis?`<div class="fp-kpis">${kpis}</div>`:''}
       <div class="fp-card" style="max-width:600px"><div class="fp-card-h"><i class="ti ti-id-badge-2"></i>Identificação</div>${ident}</div>`;
   } else {
     const sec=FICHA_SECOES[secIdx];
@@ -19856,6 +19857,7 @@ function renderFichaProduto(id){
         <div class="fp-title">${escapeHTML(d.produto||'Nova ficha de produto')}</div>
       </div>
       <div class="fp-acts">
+        ${_fpTab==='resumo'?`<button class="fp-btn ghost tool" onclick="_fpResumoPersonalizar()" title="Personalizar o Resumo — escolher os cartões e a identificação"><i class="ti ti-adjustments"></i></button>`:''}
         <button class="fp-btn ghost tool" onclick="_fpGerAbrir()" title="Estrutura da ficha — criar/editar grupos, sub-grupos e informações"><i class="ti ti-list-tree"></i></button>
         <button class="fp-btn ghost" onclick="excluirFichaProduto('${id}')" title="Excluir ficha"><i class="ti ti-trash"></i></button>
         <button class="fp-btn pri" onclick="salvarFichaProduto('${id}')"><i class="ti ti-device-floppy"></i> Salvar<span id="fp-dirty" class="fp-dirty" title="Alterações não salvas"${_fpDirty?'':' hidden'}></span></button>
