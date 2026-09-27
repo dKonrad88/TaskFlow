@@ -12810,14 +12810,22 @@ function _pgmAddBloco(){ const L=_pgmL(); if(!L.bases) return;
 //    anterior ao natural simplesmente cola no natural e zera a espera).
 //  · Fim → vira nº de MASSADAS, arredondado para a massada cheia mais próxima. ⚠️ O campo volta
 //    mostrando o fim REAL, não o digitado: a masseira não faz meia batelada e a tela não finge que faz.
-function _pgmSetHora(qual, el){
+function _pgmSetHora(qual, el){ const min=_pgmParseHora(el.value); if(min==null) return renderPCPDia(); _pgmAplicaHora(qual, min); }
+function _pgmAplicaHora(qual, min){
   const i=_pgmSel, arr=_pgmBlocos().slice(), b=arr[i]; if(!b) return renderPCPDia();
-  const min=_pgmParseHora(el.value); if(min==null) return renderPCPDia();
   const alvo=(min-_pgmMinIni())/60;                       // horas desde o início do turno
   if(qual==='ini'){ b.espera=Math.max(0, Math.round((alvo-_pgmIniNatural(i))*60)); }
   else { const c=_pgmMassadaCalc(b), dur=alvo-_pgmInicio(i);
     if(c>0){ b.massadas=Math.max(1, Math.min(400, Math.round(dur*3600/c))); delete b.horas; } }
   _pgmSetBlocos(arr); renderPCPDia();
+}
+// ⭐ (27/09) SETAS do Horário (Diego: "além de digitar, quero as flechas do lado, no corte"). Início nuda
+// ±5min (mexe na espera); fim nuda ±1 massada — o bloco é quantizado em massadas, então mexer no fim é
+// mexer em quantas massadas cabem (nudar o fim em minutos "encalharia" na mesma massada).
+function _pgmStepHora(qual, dir){
+  const i=_pgmSel, arr=_pgmBlocos().slice(), b=arr[i]; if(!b) return;
+  if(qual==='fim'){ b.massadas=Math.max(1, Math.min(400, _pgmMassadasB(b)+dir)); delete b.horas; _pgmSetBlocos(arr); renderPCPDia(); return; }
+  _pgmAplicaHora('ini', _pgmMinIni()+Math.round(_pgmInicio(i)*60)+dir*5);
 }
 // ── AÇÕES das JANELAS DE EMBALAGEM (a linha do tempo própria da embalagem)
 function _pgmJanSel(i){ _pgmJan=i; renderPCPDia(); }
@@ -13194,11 +13202,23 @@ function _pgmEditorHTML(){
   // ⚠️ hora é type=time (relógio nativo) e só grava no CHANGE — o `input` dispara com a hora ainda pela
   // metade ("1:") e reescreveria o bloco a cada tecla. Os dois ficam na MESMA célula da grade: são um par,
   // e separá-los somava uma 3ª linha de campos à coluna do Corte.
+  // ⭐ (27/09) Horário digitável (texto HH:MM, aplica no Enter/sair) + setas do lado (Diego). Deixei de usar
+  // type=time (o seletor nativo era chato de digitar); o parse aceita "HH:MM" igual.
   const hora=(a,b_)=>`<label class="pgm-f"><span>Horário<i>marcar início atrasa o começo</i></span>
     <div class="pgm-hpar">
-      <input type="time" class="pgm-inp" value="${_pgmRelogio(a)}" onchange="_pgmSetHora('ini',this)" title="Início do bloco">
+      <div class="pgm-step" style="flex:1">
+        <input type="text" inputmode="numeric" class="pgm-inp" value="${_pgmRelogio(a)}" onchange="_pgmSetHora('ini',this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" title="Início do bloco — digite ou use as setas (±5 min)">
+        <span class="pgm-sarr">
+          <button type="button" onmousedown="event.preventDefault()" onclick="_pgmStepHora('ini',1)" title="+5 min"><i class="ti ti-chevron-up"></i></button>
+          <button type="button" onmousedown="event.preventDefault()" onclick="_pgmStepHora('ini',-1)" title="−5 min"><i class="ti ti-chevron-down"></i></button>
+        </span></div>
       <i class="ti ti-arrow-narrow-right"></i>
-      <input type="time" class="pgm-inp" value="${_pgmRelogio(b_)}" onchange="_pgmSetHora('fim',this)" title="Fim do bloco — encaixa na massada cheia mais próxima"></div></label>`;
+      <div class="pgm-step" style="flex:1">
+        <input type="text" inputmode="numeric" class="pgm-inp" value="${_pgmRelogio(b_)}" onchange="_pgmSetHora('fim',this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" title="Fim do bloco — digite ou use as setas (±1 massada)">
+        <span class="pgm-sarr">
+          <button type="button" onmousedown="event.preventDefault()" onclick="_pgmStepHora('fim',1)" title="+1 massada"><i class="ti ti-chevron-up"></i></button>
+          <button type="button" onmousedown="event.preventDefault()" onclick="_pgmStepHora('fim',-1)" title="−1 massada"><i class="ti ti-chevron-down"></i></button>
+        </span></div></div></label>`;
   // ⭐ O MESMO PAR DE HORÁRIOS NA COBERTURA (Diego, 25/09), mas de LEITURA: ela não tem horário próprio —
   // é o do corte + o trânsito do estágio (+15min) + o setup da cobrideira. Editar aqui seria uma terceira
   // porta para o mesmo setup, que já tem campo logo abaixo. Por isso são células, não inputs.
