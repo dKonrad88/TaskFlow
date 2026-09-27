@@ -479,9 +479,12 @@ NÃO a página única. Não reimplantar a página única sem ele pedir de novo.
   selecionado; o editor de embaladoras segue `_pgmSel` (sumiram os chips de "trocas"). `_pgmMigraEmb()` (roda 1×/dia, flag
   `o._embV2`) converte trocas antigas de `o.emb` → `b.emb`. Coluna Pacotes virou POR BLOCO. Timeline/totais seguem por fatia
   (agora fatia=bloco). As funções `_pgmJan*` (JanSel/Add/Del/Hora) e `_pgmJanelasDeBlocos` ficaram sem uso.
-- ✅ **Parte 2 — peso do pacote por bloco**: base pode ter `pesos:[{g,cx}]` (amanteigada 240/500); bloco guarda o escolhido em
-  `b.gPac`; helpers `_pgmPesos/_pgmGPac/_pgmPacCx`. Muda pacotes/min (gMin/gPac) e caixas (pacCx). Seletor "Peso do pacote" na
-  embalagem quando o produto tem >1 peso. `_pgmPot` recebe gPac p/ a coluna "agora".
+- ✅ **Parte 2 — peso do pacote POR EMBALADORA** (Diego corrigiu: não é por bloco — dá p/ 500g na E1/E2 e 240g na E3 juntas):
+  base tem `pesos:[{g,cx}]` (amanteigada 240/500); cada máquina guarda `e.gPac` (0 = 1º peso). Isso tornou a embalagem
+  GRAMA-cêntrica: `_pgmCalc` agora soma `real×peso` das máquinas (`somaRP`), o mix da cobrideira é ponderado por gramas,
+  `util=min(1, gMin/somaRP)`, `pacMin=Σreal×util`, `caixasMin` por peso de cada máquina; `falta = gMin>somaRP`. Helpers
+  `_pgmMaqGPac/_pgmMaqPacCx`. Coluna "Peso" por máquina no editor (só quando o produto tem >1 peso). `_pgmMixM`/`_pgmCap` viraram
+  código morto (o mix é inline agora). ⚠️ Peso uniforme dá o MESMO número de antes (seed = 37.376 pac / 2.492 cx, confirmado).
 - ✅ **Parte 3 — início por embaladora por bloco**: cada máquina tem `ini` (atraso em min dentro do bloco). Editor ganhou coluna
   "Início" (campo de horário por máquina → `_pgmSetEmbIni`). Timeline desenha um vão antes da barra da máquina que começa mais
   tarde; `_pgmTotais`/coluna Pacotes descontam a fração parada. `_pgmMaqNorm`/`_pgmSetEmb` preservam `ini`.

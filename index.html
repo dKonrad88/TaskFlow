@@ -12486,9 +12486,11 @@ function _pgmCob(b){ const B=_pgmBase(b.base); return (b.cob==null||b.cob==='')?
 // ⭐ (27/09) PESO DA EMBALAGEM por bloco (Diego): o mesmo produto pode sair em 240 g ou 500 g. `pesos` são as
 // opções do produto; o bloco guarda o escolhido em b.gPac. gPac muda os pacotes/min e pacCx muda as caixas.
 function _pgmPesos(base){ const B=_pgmBase(base); return (Array.isArray(B.pesos)&&B.pesos.length)?B.pesos:[{g:B.gPac,cx:B.pacCx}]; }
-function _pgmGPac(b){ const g=(b&&b.gPac!=null&&b.gPac!=='')?+b.gPac:null;
-  const ps=_pgmPesos(b.base); return (g && ps.some(p=>p.g===g)) ? g : ps[0].g; }
-function _pgmPacCx(b){ const g=_pgmGPac(b), p=_pgmPesos(b.base).find(x=>x.g===g); return p?p.cx:(_pgmBase(b.base).pacCx||0); }
+// ⭐ (27/09) peso É POR EMBALADORA (Diego): posso embalar 500g na E1/E2 e 240g na E3 ao mesmo tempo.
+// A máquina guarda o peso em e.gPac (0 = 1º peso do produto). Resolve contra os pesos válidos do produto.
+function _pgmMaqGPac(e, base){ const ps=_pgmPesos(base), g=+((e&&e.gPac)||0);
+  return (g && ps.some(p=>p.g===g)) ? g : ps[0].g; }
+function _pgmMaqPacCx(e, base){ const g=_pgmMaqGPac(e,base), p=_pgmPesos(base).find(x=>x.g===g); return p?p.cx:(_pgmBase(base).pacCx||0); }
 // ⚠️ o cpm ganhou casas decimais quando o campo do TEMPO passou a ajustá-lo (1 segundo vale ~0,2 de cpm).
 // Arredondar na exibição fazia "74,69" virar "75" e a comparação parecer igual ao padrão com o ciclo
 // diferente. Mostra as casas só quando existem.
@@ -12520,6 +12522,7 @@ function _pgmMaqNorm(src){ const cad=_pgmL().embaladoras||[];
     nom:(e.nom==null||e.nom==='')?cad[i].nominal:+e.nom,
     real:(e.real==null||e.real==='')?cad[i].real:+e.real,
     ini:Math.max(0,+e.ini||0),   // ⭐ (27/09) atraso próprio (min) p/ esta embaladora começar dentro do bloco
+    gPac:Math.max(0,+e.gPac||0), // ⭐ (27/09) peso do pacote DESTA embaladora (0 = usa o 1º peso do produto)
     nome:cad[i].nome, i:i })); }
 // ── JANELAS DE EMBALAGEM. A 1ª sempre começa em 0 (início do turno); as outras têm horário próprio.
 // ⚠️ Uma janela vale para as 4 máquinas — mas a trilha MESCLA barras vizinhas quando a máquina não mudou,
@@ -12561,7 +12564,7 @@ function _pgmMixM(maq){ const at=_pgmAtivas(maq), tot=at.reduce((s,e)=>s+e.real,
   return m; }
 function _pgmSetEmb(i, campo, el){
   const arr=_pgmBlocos().slice(), b=arr[_pgmSel]; if(!b) return;
-  const maq=_pgmMaqNorm(b.emb).map(e=>({on:e.on,fmt:e.fmt,cli:e.cli,sku:e.sku,nom:e.nom,real:e.real,ini:e.ini}));
+  const maq=_pgmMaqNorm(b.emb).map(e=>({on:e.on,fmt:e.fmt,cli:e.cli,sku:e.sku,nom:e.nom,real:e.real,ini:e.ini,gPac:e.gPac}));
   maq[i][campo] = (campo==='on') ? el.checked : (campo==='cli'||campo==='sku'||campo==='fmt' ? el.value : (el.value===''?'':+el.value));
   // Klain é marca própria: o cliente é ele mesmo. Ao voltar de um terceiro, o campo se recompõe sozinho.
   if(campo==='fmt'){ const f=_pgmFmt(el.value);
@@ -12571,7 +12574,7 @@ function _pgmSetEmb(i, campo, el){
   // ⚠️ digitar cliente/velocidade NÃO pode redesenhar a tabela: o campo perderia o foco a cada tecla.
   // A coluna de pacotes só acerta no blur (onchange → renderPCPDia). Checkbox e sabor podem redesenhar.
   _pgmRefresh(campo==='cli'||campo==='nom'||campo==='real');
-  if(campo==='fmt') renderPCPDia();   // trocar o formato habilita/desabilita o campo do cliente
+  if(campo==='fmt'||campo==='gPac') renderPCPDia();   // formato/peso mudam a tabela e as contas
 }
 // ⚠️ `_pgmCalc` é INSTANTÂNEO agora (por minuto), porque o mix muda dentro de um mesmo bloco quando uma
 // embaladora troca de destino no meio dele. Quem soma ao longo do tempo é `_pgmTotais`.
@@ -12584,16 +12587,24 @@ function _pgmCalc(b, maq){
   // ⭐ (27/09) bloco marcado "não passa pela cobrideira" (Diego): todo o pacote sai SEM cobertura, então
   // força o destino de todas as máquinas p/ natural neste bloco — mix, peso e rótulos ficam coerentes.
   if(b.semCob) M=M.map(e=>({...e, sku:'natural'}));
-  const mix=_pgmMixM(M);
-  // ⚠️ o peso médio do biscoito acabado depende do MIX: sem cobertura ele sai mais leve, então a mesma
-  // saída do corte dá MAIS pacotes quando há coberto e menos quando há natural.
+  const at=M.filter(e=>e.on && e.real>0);
+  // ⭐ (27/09) PESO POR EMBALADORA: o mix da cobrideira e o total de pacotes passam a ser ponderados por
+  // GRAMAS (real×peso), não só pela velocidade — uma máquina de 500 g puxa mais biscoito que uma de 240 g.
+  const somaReal=at.reduce((s,e)=>s+e.real,0);
+  const somaRP=at.reduce((s,e)=>s+e.real*_pgmMaqGPac(e,b.base),0);   // gramas/min que as máquinas consomem
+  // ⚠️ o mix (fração de biscoitos por cobertura) segue as gramas de cada máquina, não a contagem de pacotes.
+  const mix={leite:0,branco:0,natural:0};
+  if(somaRP>0) at.forEach(e=>{ mix[e.sku]=(mix[e.sku]||0)+e.real*_pgmMaqGPac(e,b.base)/somaRP; });
+  // ⚠️ o peso médio do biscoito acabado depende do MIX: sem cobertura ele sai mais leve.
   const pesoMed=_PGM_DEST.reduce((s,d)=>s+(mix[d.id]||0)*(d.cob?coberto:assado),0) || coberto;
-  const gMin=bisc*pesoMed;
-  const gPac=_pgmGPac(b), pacMin=gPac?gMin/gPac:0;
-  const cap=_pgmCap(M), ativas=_pgmAtivas(M).length;
-  return { bisc, assado, coberto, pesoMed, mix, pacMin, cap, ativas, maq:M,
+  const gMin=bisc*pesoMed;                                // gramas/min saindo do corte
+  const util=somaRP>0 ? Math.min(1, gMin/somaRP) : 0;    // <1 = sobra máquina; =1 = falta máquina p/ o corte
+  const pacMin=somaReal*util;                             // pacotes/min de fato embalados
+  const caixasMin=util*at.reduce((s,e)=>{ const pc=_pgmMaqPacCx(e,b.base); return s+(pc>0?e.real/pc:0); },0);
+  return { bisc, assado, coberto, pesoMed, mix, pacMin, cap:somaReal, ativas:at.length, maq:M,
+    somaRP, util, caixasMin,
     massaMin: bisc*cru/1000,                     // kg de massa crua por minuto
-    falta: pacMin>cap+0.001 };
+    falta: gMin > somaRP+0.001 };
 }
 // ⭐ FATIAS = os pedaços de tempo em que TUDO é constante: o corte (bloco) e a janela de embalagem.
 // É o corte de um plano pelo outro. Toda soma do dia passa por aqui.
@@ -12607,9 +12618,9 @@ function _pgmFatias(){ const bs=_pgmBlocos(), js=_pgmJanelas(), out=[];
       t=f; } });
   return out; }
 function _pgmTotais(){ const cad=_pgmL().embaladoras||[];
-  const R={total:0, massa:0, porDest:{leite:0,branco:0,natural:0}, porMaq:cad.map(()=>0), porBloco:{}, falta:false};
+  const R={total:0, caixas:0, massa:0, porDest:{leite:0,branco:0,natural:0}, porMaq:cad.map(()=>0), porBloco:{}, falta:false};
   _pgmFatias().forEach(f=>{ const c=_pgmCalc(f.b,_pgmMaq(f.j)), h=f.fim-f.ini, tot=c.pacMin*60*h;
-    R.total+=tot; R.massa+=c.massaMin*60*h;
+    R.total+=tot; R.massa+=c.massaMin*60*h; R.caixas+=(c.caixasMin||0)*60*h;   // caixas por peso de cada máquina
     _PGM_DEST.forEach(d=>{ R.porDest[d.id]+=tot*(c.mix[d.id]||0); });
     if(c.cap>0) c.maq.forEach(e=>{ if(e.on){ const off=Math.max(0,Math.min(h,(+e.ini||0)/60)), frac=h>0?(h-off)/h:0; R.porMaq[e.i]+=tot*e.real/c.cap*frac; } });
     R.porBloco[f.bi]=(R.porBloco[f.bi]||0)+tot;
@@ -12726,9 +12737,6 @@ function _pgmStepCiclo(dir){ const b=_pgmBlocos()[_pgmSel]; if(!b) return;
 // cobertura (bypass). Zera o % (não faz sentido no bypass) e o editor esconde o campo de %.
 function _pgmSetSemCob(on){ const arr=_pgmBlocos().slice(), b=arr[_pgmSel]; if(!b) return;
   b.semCob=!!on; if(on) b.cob=0; _pgmSetBlocos(arr); renderPCPDia(); }
-// ⭐ (27/09) escolhe o peso do pacote do bloco (240/500…) — muda pacotes/min e caixas
-function _pgmSetPeso(el){ const arr=_pgmBlocos().slice(), b=arr[_pgmSel]; if(!b) return;
-  b.gPac=+el.value; _pgmSetBlocos(arr); renderPCPDia(); }
 // ⭐ (27/09) horário próprio de início de uma embaladora no bloco → guarda o atraso (min) em relação ao
 // começo da embalagem do bloco. Digitar antes do começo do bloco fixa em 0 (não dá pra embalar antes de cortar).
 function _pgmSetEmbIni(i, el){ const arr=_pgmBlocos().slice(), b=arr[_pgmSel]; if(!b) return;
@@ -12955,16 +12963,16 @@ function _pgmMassadaCalc(b){ const kg=_pgmMassadaKg(), c=_pgmConsumo(b); return 
 // exatamente o que se mexeu — que era o pedido ("aumentei o corte em 1, dá tanto").
 // ⚠️ E as duas usam as MESMAS embaladoras (a 1ª janela): o mix decide o peso médio do biscoito, então
 // trocá-lo no meio da comparação sujaria a conta com algo que não está sendo comparado.
-function _pgmPot(base, cortes, cru, cob, gPac){
+function _pgmPot(base, cortes, cru, cob){
   const L=_pgmL(); if(!L.bases) return null;
-  const B=_pgmBase(base), b={base:base, cortes:cortes, cru:cru, cob:(cob==null?B.cob:cob), gPac:gPac};
+  const B=_pgmBase(base), b={base:base, cortes:cortes, cru:cru, cob:(cob==null?B.cob:cob)};
   const ciclo=_pgmMassadaCalc(b);                        // segundos de uma massada nesse ritmo
   if(!(ciclo>0)) return null;
   const n=Math.floor(L.horas*3600/ciclo);                // massadas CHEIAS que cabem no turno
   const horas=n*ciclo/3600;
   const c=_pgmCalc(b, _pgmMaq(0));
-  const pac=c.pacMin*horas*60, pcx=_pgmPacCx(b);
-  return { ciclo:ciclo, n:n, horas:horas, pac:pac, cx:(pcx>0?pac/pcx:null), pacCx:pcx,
+  const pac=c.pacMin*horas*60;
+  return { ciclo:ciclo, n:n, horas:horas, pac:pac, cx:(c.caixasMin*horas*60)||null,   // caixas por peso das máquinas
     biscH:c.bisc*60, biscDia:c.bisc*horas*60 };   // o que o CORTE entrega, por hora e no dia todo
 }
 function _pgmMassadaSeg(){ const b=_pgmBlocos()[_pgmSel];
@@ -13146,7 +13154,7 @@ function _pgmDiaResHTML(){
   const L=_pgmL(), bs=_pgmBlocos(), sel=bs[_pgmSel]||bs[0], P=L.padrao||{};
   const basePad=sel?sel.base:(L.bases?L.bases[0].id:null);
   const pad=basePad?_pgmPot(basePad, _pgmCpmPadrao({base:basePad}), P.cru):null;
-  const ago=sel?_pgmPot(sel.base, +sel.cortes||0, _pgmCru(sel), _pgmCob(sel), _pgmGPac(sel)):null;
+  const ago=sel?_pgmPot(sel.base, +sel.cortes||0, _pgmCru(sel), _pgmCob(sel)):null;
   // ⚠️ verde = mais produção, vermelho = menos. No TURNO a cor não entra: ocupar mais do turno não é
   // pior nem melhor, é consequência de caber mais massada — quem julga o turno é a barra do rodapé.
   // ⚠️ a diferença sai dos valores ARREDONDADOS, os mesmos que estão na tela. Subtraindo os brutos,
@@ -13194,8 +13202,8 @@ function _pgmDiaResHTML(){
 function _pgmMontadoHTML(){
   const L=_pgmL(), bs=_pgmBlocos(), sel=bs[_pgmSel]||bs[0], T=_pgmTotais();
   const u=_pgmHoras(), pac=T.total, mAgo=bs.reduce((s,b)=>s+_pgmMassadasB(b),0);
-  let cxDia=0, cxOk=bs.length>0;
-  bs.forEach((b,i)=>{ const pc=_pgmPacCx(b); if(pc>0) cxDia+=(T.porBloco[i]||0)/pc; else cxOk=false; });
+  // caixas do dia já vêm somadas por peso de cada embaladora (T.caixas)
+  const cxDia=T.caixas||0, cxOk=cxDia>0;
   const over=u-L.horas, oc=L.horas>0?Math.min(1,u/L.horas)*100:0;
   const aviso = over>0.01
     ? `<div class="pgm-res-al"><i class="ti ti-alert-triangle"></i> passa do turno em ${over>=1?_pgmHhmm(over):Math.round(over*60)+' min'}</div>`
@@ -13333,26 +13341,27 @@ function _pgmEmbHTML(){
   const c=_pgmCalc(b, es);
   const dur=_pgmHorasB(b), blocoPac=c.pacMin*60*dur;   // pacotes DESTE bloco, repartidos por máquina
   const embStart=_pgmInicio(_pgmSel)+((_pgmL().embAtraso||0)/60);   // quando a embalagem do bloco começa (h)
-  // ⭐ (27/09) seletor de PESO do pacote — só aparece quando o produto tem mais de um peso (ex.: 240/500)
-  const pesos=_pgmPesos(b.base);
-  const pesoSel = pesos.length>1 ? `<label class="pgm-pesosel">Peso do pacote
-      <select class="pgm-inp mini" onchange="_pgmSetPeso(this)">${pesos.map(p=>`<option value="${p.g}"${p.g===_pgmGPac(b)?' selected':''}>${p.g} g · ${p.cx}/cx</option>`).join('')}</select></label>` : '';
+  // ⭐ (27/09) PESO POR EMBALADORA: coluna de peso por máquina, só quando o produto tem mais de um peso.
+  const pesos=_pgmPesos(b.base), temPeso=pesos.length>1;
   const linhas=es.map(e=>{
     const dest=_PGM_DEST.map(d=>`<option value="${d.id}"${d.id===e.sku?' selected':''}>${escapeHTML(d.nome)}</option>`).join('');
     const fmts=_PGM_FMT.map(x=>`<option value="${x.id}"${x.id===e.fmt?' selected':''}>${escapeHTML(x.nome)}</option>`).join('');
+    const g=_pgmMaqGPac(e,b.base);
+    const pesoTd = temPeso ? `<td><select class="pgm-inp mini" onchange="_pgmSetEmb(${e.i},'gPac',this)">${pesos.map(p=>`<option value="${p.g}"${p.g===g?' selected':''}>${p.g}g</option>`).join('')}</select></td>` : '';
+    const fracIni=Math.max(0,(dur-(+e.ini||0)/60))/(dur||1);
     return `<tr class="${e.on?'':'off'}">
       <td><input type="checkbox" class="pgm-ck"${e.on?' checked':''} onchange="_pgmSetEmb(${e.i},'on',this)" title="${e.on?'Parar esta embaladora':'Ligar esta embaladora'}"></td>
       <td class="nm">${escapeHTML(e.nome)}</td>
       <td><select class="pgm-inp mini" oninput="_pgmSetEmb(${e.i},'fmt',this)">${fmts}</select></td>
       <td><select class="pgm-inp mini" oninput="_pgmSetEmb(${e.i},'sku',this)" onchange="renderPCPDia()">${dest}</select></td>
+      ${pesoTd}
       <td><input type="text" inputmode="numeric" class="pgm-inp ini" value="${_pgmRelogio(embStart+(+e.ini||0)/60)}" onchange="_pgmSetEmbIni(${e.i},this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" title="Horário em que esta embaladora começa a embalar neste bloco"></td>
       <td><input type="number" class="pgm-inp num" value="${e.real}" min="1" max="200" oninput="_pgmSetEmb(${e.i},'real',this)" onchange="renderPCPDia()"></td>
-      <td class="qt">${e.on&&c.cap>0?_pgmN(blocoPac*e.real/c.cap*Math.max(0,(dur-(+e.ini||0)/60))/(dur||1)):'—'}</td></tr>`;
+      <td class="qt">${e.on&&c.cap>0?_pgmN(blocoPac*e.real/c.cap*fracIni):'—'}</td></tr>`;
   }).join('');
-  return `<div class="pgm-embhint">Embaladoras deste bloco — ligue/desligue, ajuste a velocidade e o horário de início de cada uma.</div>
-    ${pesoSel?`<div class="pgm-pesorow">${pesoSel}</div>`:''}
-    <table class="pgm-emb"><thead><tr><th></th><th></th><th>Embala</th><th>Cobertura</th><th title="quando começa a embalar neste bloco">Início</th><th title="velocidade real">Real</th><th title="no bloco">Pacotes</th></tr></thead><tbody>${linhas}</tbody></table>
-    <div class="pgm-sku">Neste bloco: ${_pgmN(c.cap)} pac/min ligados · o corte entrega ${_pgmN(c.pacMin)}${TT.falta?` — <b style="color:var(--danger)">falta embaladora</b>`:''}<br>
+  return `<div class="pgm-embhint">Embaladoras deste bloco — ligue/desligue, ajuste velocidade${temPeso?', peso':''} e horário de início de cada uma.</div>
+    <table class="pgm-emb"><thead><tr><th></th><th></th><th>Embala</th><th>Cobertura</th>${temPeso?'<th title="peso do pacote desta máquina">Peso</th>':''}<th title="quando começa a embalar neste bloco">Início</th><th title="velocidade real">Real</th><th title="no bloco">Pacotes</th></tr></thead><tbody>${linhas}</tbody></table>
+    <div class="pgm-sku">Neste bloco: ${_pgmN(c.cap)} pac/min ligados${TT.falta?` — <b style="color:var(--danger)">falta embaladora</b>`:''}<br>
       No dia: ${_PGM_DEST.filter(d=>TT.porDest[d.id]>0).map(d=>d.nome+' '+_pgmN(TT.porDest[d.id])).join(' · ')||'nenhuma embaladora ligada'}</div>`;
 }
 function _pgmResultadoHTML(){
