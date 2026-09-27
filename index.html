@@ -14403,8 +14403,13 @@ function _ddvCorteTit(){ return ['v1','v2','v3'].map(k=>_ddvCorteTxt(_ddvCorte[k
 const _ddvCorteTxt=v=>Number.isInteger(+v)?String(+v):_cpNum(+v,1);
 function _ddvSetMax(el){ const v=String(el.value).trim().replace(',','.');
   const n=parseFloat(v);
-  _ddvMaxDDV = (v===''||!(n>0)||n>999) ? '' : n;
-  _ddvSave(); renderPCP(); }
+  _ddvMaxDDV = (v===''||!(n>0)||n>999) ? '' : n; }
+// ⭐ (27/09) O corte de DDV agora é APLICADO por um botão OK ao lado do campo, que também FECHA a
+// personalização (Diego: "digita o número e dá um OK, o modal sai e aplica"). Não dá pra usar onchange
+// junto: o blur do campo re-renderizaria e o clique do OK cairia no vazio. Por isso o campo só guarda
+// ao dar OK (ou Enter) — e é o OK que salva, fecha e re-renderiza.
+function _ddvMaxOk(){ const el=document.getElementById('ddv-max-in'); if(el) _ddvSetMax(el);
+  _ddvPersAberto=false; _ddvSave(); renderPCP(); }
 function _ddvMaxLimpar(){ _ddvMaxDDV=''; _ddvSave(); renderPCP(); }
 function _ddvSortBy(c){ if(_ddvSort.campo===c) _ddvSort.dir*=-1; else { _ddvSort.campo=c; _ddvSort.dir=(c==='nome'||c==='cod')?1:-1; } _ddvSave(); _ddvRefresh(); }
 function _ddvToggleLinha(nome){ if(_ddvFechadas[nome]) delete _ddvFechadas[nome]; else _ddvFechadas[nome]=1; _ddvSave(); _ddvRefresh(); }
@@ -14518,14 +14523,17 @@ function _ddvCSS(){
   /* campo com setas PROPRIAS, mesma gramatica do PCP: a seta nativa do type=number tem alvo pequeno
      demais e ainda come a largura util do campo — e aqui sobram ~78px por faixa (o popover tem 248px
      uteis para tres). Por isso a nativa e escondida logo abaixo. */
-  .ddv-step{display:flex;align-items:stretch;gap:3px;min-width:0}
-  .ddv-step>.ddv-fdt{flex:1;min-width:0}
-  .ddv-sarr{display:flex;flex-direction:column;flex:none;width:18px;gap:2px}
-  .ddv-sarr button{flex:1;display:flex;align-items:center;justify-content:center;padding:0;line-height:0;
+  /* ⭐ (27/09) campo e setas com a MESMA altura. Antes a coluna das setas crescia mais que a caixa do
+     número e a seta de baixo sobrava embaixo (Diego mandou print). Fixando a altura do conjunto, a caixa
+     preenche tudo e as duas setas dividem essa mesma altura — setas um pouco menores, número maior. */
+  .ddv-step{display:flex;align-items:stretch;gap:3px;min-width:0;height:30px}
+  .ddv-step>.ddv-fdt{flex:1;min-width:0;height:30px}
+  .ddv-sarr{display:flex;flex-direction:column;flex:none;width:18px;gap:2px;height:30px}
+  .ddv-sarr button{flex:1 1 0;min-height:0;display:flex;align-items:center;justify-content:center;padding:0;line-height:0;
     border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text3);cursor:pointer}
   .ddv-sarr button:hover{border-color:var(--blue-mid);color:var(--blue-mid);background:var(--bg2)}
   .ddv-sarr button:active{background:var(--border)}
-  .ddv-sarr i{font-size:10px}
+  .ddv-sarr i{font-size:9px}
   .ddv-fdt[type=number]{-moz-appearance:textfield}
   .ddv-fdt[type=number]::-webkit-outer-spin-button,.ddv-fdt[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   .ddv-fnota{font-size:9.5px;color:var(--text3);line-height:1.45;margin-top:5px}
@@ -14535,6 +14543,12 @@ function _ddvCSS(){
   .ddv-fopt.sw span i{display:block;font-style:normal;font-size:9.5px;color:var(--text3);margin-top:1px}
   .ddv-frow{display:flex;align-items:center;gap:6px}
   .ddv-frow span{font-size:10.5px;color:var(--text3);flex:none}
+  /* ⭐ (27/09) "Mostrar só até": campo estreito + botão OK que aplica e FECHA a caixa (Diego).
+     Precisa de .ddv-fdt.ddv-maxin (dois nomes) p/ vencer o flex:1 do .ddv-fdt, senão o campo estica. */
+  .ddv-fdt.ddv-maxin{flex:none;width:62px;text-align:center}
+  .ddv-okbtn{flex:none;margin-left:auto;height:28px;padding:0 15px;border:1px solid color-mix(in srgb,var(--blue-mid) 42%,var(--border));border-radius:7px;background:color-mix(in srgb,var(--blue-mid) 15%,var(--bg));color:var(--blue-mid);font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer}
+  .ddv-okbtn:hover{background:color-mix(in srgb,var(--blue-mid) 24%,var(--bg));border-color:var(--blue-mid)}
+  .ddv-okbtn:active{background:color-mix(in srgb,var(--blue-mid) 32%,var(--bg))}
   /* ⚠️ todo campo aqui PRECISA de classe: a regra global input:not([class]) força 40px de altura
      (e select:not([class]) faz isso com !important) — sem classe, o popover incha. */
   .ddv-fdt{flex:1;min-width:0;height:28px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text2);font-family:inherit;font-size:11.5px;padding:0 5px}
@@ -14846,8 +14860,9 @@ function _ddvPersPopHTML(){
         ${_ddvCortePadrao()?'':`<br><b style="color:var(--text2)">Régua sua, não a do SISPRO (${DDV_ALERTA.v1} / ${DDV_ALERTA.v2} / ${DDV_ALERTA.v3})</b> — os cartões mudam junto.`}</div></div>
     <div class="ddv-fgrp"><b>Mostrar só até${_ddvMaxDDV===''?'':`<u onclick="_ddvMaxLimpar()">limpar</u>`}</b>
       <div class="ddv-frow">
-        <input type="number" class="ddv-fdt" value="${_ddvMaxDDV}" min="0.5" max="999" step="0.5" placeholder="sem corte" onchange="_ddvSetMax(this)">
-        <span style="white-space:nowrap">dias de DDV</span></div></div>
+        <input id="ddv-max-in" type="number" class="ddv-fdt ddv-maxin" value="${_ddvMaxDDV}" min="0.5" max="999" step="0.5" placeholder="—" onkeydown="if(event.key==='Enter'){event.preventDefault();_ddvMaxOk()}">
+        <span style="white-space:nowrap">dias de DDV</span>
+        <button type="button" class="ddv-okbtn" onclick="_ddvMaxOk()">OK</button></div></div>
     <div class="ddv-fgrp"><b>Colunas</b>
       ${chk('Data em que o estoque termina', _ddvDatas, '_ddvSetDatas', 'uma ao lado do DDV e outra do DDV s/OP')}
       ${chk('Médias de venda', _ddvMedias, '_ddvSetMedias', 'MDV · MSV · MQV · MMV — um terço da largura')}</div>
@@ -19704,9 +19719,7 @@ function _fpTile(el){
 function _fpRecount(){
   if(!_fpDraft || _fpTab==='resumo') return;
   const i=parseInt(String(_fpTab).slice(1),10), sec=FICHA_SECOES[i]; if(!sec) return;
-  const st=_fpSecStats(sec,_fpDraft), pct=st.tot?Math.round(st.ok/st.tot*100):0;
-  const n=document.getElementById('fp-hero-n'); if(n) n.innerHTML=`<b>${st.ok}</b> de ${st.tot} preenchidos`;
-  const b=document.getElementById('fp-hero-bar'); if(b) b.style.width=pct+'%';
+  const st=_fpSecStats(sec,_fpDraft);
   sec.grupos.forEach((g,gi)=>{ const el=document.getElementById('fp-grp-n-'+gi); if(el) el.textContent=g.campos.filter(c=>!_fpVazio(_fpDraft[c.k])).length+'/'+g.campos.length; });
   const tc=document.getElementById('fp-tabcnt-'+i); if(tc) tc.outerHTML=_fpTabCnt(i,st);
 }
@@ -19760,19 +19773,16 @@ function renderFichaProduto(id){
         <div class="fp-card"><div class="fp-card-h"><i class="ti ti-layout-list"></i>Seções da ficha</div><div class="fp-secs">${secs}</div></div>
       </div>`;
   } else {
-    const sec=FICHA_SECOES[secIdx], st=_fpSecStats(sec,d), pct=st.tot?Math.round(st.ok/st.tot*100):0;
-    corpo=`<div class="fp-hero" style="--sc:${sec.cor}">
-        <div class="fp-hero-ic"><i class="ti ${sec.icon}"></i></div>
-        <div class="fp-hero-tx"><div class="fp-hero-t">${escapeHTML(sec.nome)}</div><div class="fp-hero-s">${sec.grupos.map(g=>escapeHTML(g.titulo)).join(' · ')}</div></div>
-        <div class="fp-hero-pg"><div class="fp-hero-n" id="fp-hero-n"><b>${st.ok}</b> de ${st.tot} preenchidos</div><div class="fp-bar"><span id="fp-hero-bar" style="width:${pct}%"></span></div></div>
-      </div>`
-      + sec.grupos.map((g,gi)=>`<div class="fp-grp" style="--sc:${sec.cor}">
+    const sec=FICHA_SECOES[secIdx];
+    // ⭐ (27/09) Sem o banner "Nome / sub-grupos — X de Y preenchidos": o Diego achou informação demais.
+    // O nome da seção já está na aba ativa (destacada) e a contagem aparece na aba e em cada sub-grupo.
+    // Este ramo atende TODAS as seções, então some de todas de uma vez.
+    corpo=sec.grupos.map((g,gi)=>`<div class="fp-grp" style="--sc:${sec.cor}">
           <div class="fp-grp-h"><span class="fp-dot"></span>${escapeHTML(g.titulo)}<span class="fp-grp-n" id="fp-grp-n-${gi}">${g.campos.filter(c=>!_fpVazio(d[c.k])).length}/${g.campos.length}</span></div>
           <div class="fp-grid">${g.campos.map(campo).join('')}</div>
         </div>`).join('');
   }
 
-  const ativo=(d.ativo||'Sim')!=='Não';
   main.innerHTML=`${_fpCSS()}<div class="fp-wrap">
     ${hubBreadcrumb([
       {label:'Produção', onclick:"_fpSair(function(){setProducaoView('produtos')})"},
@@ -19781,15 +19791,10 @@ function renderFichaProduto(id){
     ])}
     <div class="fp-head">
       <button class="fp-back" onclick="_fpSair(voltarListaProdutos)" title="Voltar aos produtos"><i class="ti ti-arrow-left" style="font-size:17px"></i></button>
-      <div class="fp-av"><i class="ti ti-cookie"></i></div>
       <div class="fp-tw">
+        <!-- ⭐ (27/09) só o título: o Diego pediu p/ tirar o resto (ícone e chips de código/tipo/marca/status).
+             Cada um deles já aparece no Resumo e no Dados Gerais, então não se perde informação. -->
         <div class="fp-title">${escapeHTML(d.produto||'Nova ficha de produto')}</div>
-        <div class="fp-meta">
-          ${d.codigo?`<span class="fp-chip"><i class="ti ti-hash"></i>${escapeHTML(d.codigo)}</span>`:''}
-          ${d.tipoProducao?`<span class="fp-chip"><i class="ti ti-building-factory-2"></i>${escapeHTML(d.tipoProducao)}</span>`:''}
-          ${d.marca?`<span class="fp-chip"><i class="ti ti-tag"></i>${escapeHTML(d.marca)}</span>`:''}
-          <span class="fp-chip ${ativo?'on':'off'}">${ativo?'Ativo':'Inativo'}</span>
-        </div>
       </div>
       <div class="fp-acts">
         <button class="fp-btn ghost" onclick="excluirFichaProduto('${id}')" title="Excluir ficha"><i class="ti ti-trash"></i></button>

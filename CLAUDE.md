@@ -422,6 +422,27 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-09-27 — Mac — Polimento (Cobertura + Ficha de Produto) e um BACKLOG de personalização
+Sessão de acabamento, tudo pedido com print, enquanto o Diego passeava pelas telas. Fiz e **verifiquei no preview**:
+- **Cobertura › personalização (`_ddvPersPopHTML`)**: o "Mostrar só até" virou campo estreito (`.ddv-fdt.ddv-maxin`, 62px)
+  + **botão OK** que aplica E **fecha** a caixa (`_ddvMaxOk`). Tirei o `onchange` do campo (o blur re-renderizava e o
+  clique do OK caía no vazio) — agora só aplica no OK ou no Enter. O `_ddvSetMax` deixou de salvar/renderizar (só seta o valor).
+- **Cobertura › Faixas de cor**: a coluna das setas crescia mais que a caixa do número e a seta de baixo sobrava embaixo.
+  Fixei `height:30px` no `.ddv-step`/`.ddv-fdt`/`.ddv-sarr` (setas `flex:1 1 0`, ícone 9px) → caixa e setas na mesma altura.
+- **Ficha de Produto (`renderFichaProduto`)**: (1) tirei o **banner `.fp-hero`** ("Nome / sub-grupos — X de Y preenchidos")
+  de TODAS as seções (o ramo `else` serve todas); a contagem já está na aba e em cada sub-grupo. Limpei as 2 linhas mortas
+  do `_fpRecount` e o `const ativo`. (2) **Cabeçalho só com o título**: tirei o ícone `.fp-av` e os chips `.fp-meta`
+  (código/tipo/marca/status) — cada um já aparece no Resumo e no Dados Gerais. Mantive voltar + Salvar/excluir.
+
+#### ⏳ BACKLOG que o Diego despejou nesta sessão (features, ainda NÃO feitas — levei plano a ele antes de construir)
+O vocabulário dele: **Grupo** = seção/aba (`FICHA_SECOES`, ex. Cobrideira) · **Sub-grupo** = `grupos` (ex. Temperaturas) ·
+**Informação** = `campo` (ex. Temperatura Cobertura). Hoje `FICHA_SECOES` é `const` fixa — pra isto tudo ela vira dado editável + persistido.
+1. **Cadastrar estrutura da ficha**: criar nova Informação dentro de um Sub-grupo, novo Sub-grupo dentro de um Grupo, e novo Grupo.
+   Quer um criador **geral** E um **contextual** (botão dentro de cada Grupo, já focado nele).
+2. **Personalizar o Resumo**: escolher quais KPIs/campos aparecem na aba Resumo.
+3. **Duplicar item** (ficha de produto) **VAZIA de propósito**: copia a estrutura mas NÃO os valores — força preencher um a um
+   pra prestar atenção no que mudou (ex.: gerar o "Pão de Mel branco" a partir do "ao leite").
+
 ### ⭐⭐ 2026-09-26 (j) — PC da Empresa — Padronização, parte 2: **INDICADORES** e **SELETOR DE PERÍODO** (as duas pendências que ele deixou na minha mão)
 *"Sobre o 1 e o 2, faz o que entender que vai fazer sentido."*
 
