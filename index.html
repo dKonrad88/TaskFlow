@@ -13943,16 +13943,16 @@ function _regMapaHTML(){
 // (semana/mês/personalizado) + detalhe de uma OP. 13 indicadores por etapa.
 // Tudo namespaceado em _ind* para não colidir com const nf / const PROD já existentes.
 // ════════════════════════════════════════════════════════════════════
-let _indState={view:'periodo',produto:'cob',pmode:'mes',wIdx:3,mIdx:0,cStart:'2026-09-22',cEnd:'2026-09-27',op:null,tab:'resumo',opTab:'resumo',tabMetric:{}};
+let _indState={view:'periodo',produto:'cob',pmode:'mes',wIdx:3,mIdx:0,cStart:'2026-09-22',cEnd:'2026-09-27',op:null,tab:'corte',opTab:'corte',tabMetric:{},grafOpen:false};
 
 function _indRng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 
 const _INDPROD={
-  cob:   {nome:'Pão de Mel Cobertura',nominal:250,cob:33.5,temp:8.2,sob:0.6,pac:2076,pacCx:15,cor:'var(--blue-mid)',  cpm:540,pesoCru:14.0,kghCru:780,kghCob:1150,pacMin:96, pessoas:10,perda:1.8},
-  branco:{nome:'Pão de Mel Branco',   nominal:250,cob:31.2,temp:8.0,sob:1.1,pac:1900,pacCx:15,cor:'var(--purple)',    cpm:540,pesoCru:14.0,kghCru:760,kghCob:1090,pacMin:94, pessoas:10,perda:2.0},
-  am240: {nome:'Amanteigada 240g',    nominal:240,cob:null,temp:7.8,sob:0.3,pac:2500,pacCx:15,cor:'var(--amber)',     cpm:610,pesoCru:8.5, kghCru:690,kghCob:null,pacMin:120,pessoas:8, perda:1.5},
-  am500: {nome:'Amanteigada 500g',    nominal:500,cob:null,temp:7.9,sob:1.2,pac:1200,pacCx:10,cor:'var(--blue-teal)', cpm:300,pesoCru:17.0,kghCru:700,kghCob:null,pacMin:64, pessoas:8, perda:1.6},
-  rosca: {nome:'Rosquinha',           nominal:200,cob:null,temp:6.6,sob:0.5,pac:2200,pacCx:20,cor:'var(--pink)',      cpm:660,pesoCru:6.5, kghCru:620,kghCob:null,pacMin:110,pessoas:7, perda:1.7},
+  cob:   {nome:'Pão de Mel Cobertura',nominal:250,cob:33.5,temp:8.2,sob:0.6,pac:2076,pacCx:15,cor:'var(--blue-mid)',  cpm:80, pesoCru:14.0,kghCru:780,kghCob:1150,pacMin:96, pessoas:10,perda:1.8},
+  branco:{nome:'Pão de Mel Branco',   nominal:250,cob:31.2,temp:8.0,sob:1.1,pac:1900,pacCx:15,cor:'var(--purple)',    cpm:80, pesoCru:14.0,kghCru:760,kghCob:1090,pacMin:94, pessoas:10,perda:2.0},
+  am240: {nome:'Amanteigada 240g',    nominal:240,cob:null,temp:7.8,sob:0.3,pac:2500,pacCx:15,cor:'var(--amber)',     cpm:95, pesoCru:8.5, kghCru:690,kghCob:null,pacMin:120,pessoas:8, perda:1.5},
+  am500: {nome:'Amanteigada 500g',    nominal:500,cob:null,temp:7.9,sob:1.2,pac:1200,pacCx:10,cor:'var(--blue-teal)', cpm:45, pesoCru:17.0,kghCru:700,kghCob:null,pacMin:64, pessoas:8, perda:1.6},
+  rosca: {nome:'Rosquinha',           nominal:200,cob:null,temp:6.6,sob:0.5,pac:2200,pacCx:20,cor:'var(--pink)',      cpm:90, pesoCru:6.5, kghCru:620,kghCob:null,pacMin:110,pessoas:7, perda:1.7},
 };
 const _INDOPDEF=[
   {id:1042,p:'cob',   d:'2026-09-25',t:'Manhã',n:18},
@@ -13982,7 +13982,7 @@ function _indBuildOP(o){
     const sobG=Math.max(0.05,P.sob+drift*0.5+(r()-0.5)*0.35);
     const peso=P.nominal+sobG;
     const pac=Math.round(P.pac+(r()-0.5)*220);
-    const cpm=Math.round(P.cpm*(1-drift*0.06)+(r()-0.5)*24);
+    const cpm=Math.round(P.cpm+(r()-0.5)*4-drift*2);   // medido, oscila em torno do parâmetro do cadastro
     const pesoCru=+(P.pesoCru+(r()-0.5)*0.6).toFixed(1);
     massadas.push({i:i+1,tempo,cob,sobG,peso,pac,cpm,pesoCru});
   }
@@ -14111,10 +14111,12 @@ function _indLine(data,o){o=o||{};const fmt=o.fmt||(v=>_indNf(v,1));const h=o.h|
     s+=`<rect x="${pad.l}" y="${y1.toFixed(1)}" width="${pw}" height="${(y2-y1).toFixed(1)}" fill="var(--success-bg)"/>`;}
   if(o.meta!=null){const my=y(o.meta);
     s+=`<line x1="${pad.l}" y1="${my.toFixed(1)}" x2="${W-pad.r}" y2="${my.toFixed(1)}" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
-    s+=`<text x="${W-pad.r}" y="${(my-4).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--amber)">meta ${fmt(o.meta)}</text>`;}
+    s+=`<text x="${W-pad.r}" y="${(my-4).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--amber)">${o.metaLabel||('meta '+fmt(o.meta))}</text>`;}
   const pts=data.map((d,i)=>`${x(i).toFixed(1)},${y(d.v).toFixed(1)}`).join(' ');
-  s+=`<polyline fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points="${pts}"/>`;
-  data.forEach((d,i)=>{s+=`<circle cx="${x(i).toFixed(1)}" cy="${y(d.v).toFixed(1)}" r="3" fill="${color}"/>`;
+  if(o.area){const base=(pad.t+ph).toFixed(1);
+    s+=`<polygon points="${pad.l},${base} ${pts} ${W-pad.r},${base}" fill="${color}" opacity="0.09"/>`;}
+  s+=`<polyline fill="none" stroke="${color}" stroke-width="${o.sw||2.5}" stroke-linejoin="round" stroke-linecap="round" points="${pts}"/>`;
+  data.forEach((d,i)=>{if(!o.endDot||i===data.length-1)s+=`<circle cx="${x(i).toFixed(1)}" cy="${y(d.v).toFixed(1)}" r="3" fill="${color}"/>`;
     if(i%Math.ceil(data.length/8||1)===0||i===data.length-1)
       s+=`<text x="${x(i).toFixed(1)}" y="${h-9}" font-size="10" text-anchor="middle">${d.label}</text>`;});
   return s+'</svg>';}
@@ -14189,12 +14191,10 @@ function _indPeriodBar(){
 function _indKpiCard(label,valHTML,dot,delta,meta,sparkColor,sparkPts){
   return `<div class="ind-kpi"><span class="sd" style="background:${dot}"></span>
     <div class="lab">${label}</div><div class="val">${valHTML}</div>
-    <div class="foot">${delta}<span class="mt">${meta}</span></div>
-    <svg class="ind-spark" viewBox="0 0 100 24" preserveAspectRatio="none"><polyline fill="none" stroke="${sparkColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${sparkPts}"/></svg></div>`;
+    <div class="foot"><span class="mt">${meta}</span></div></div>`;
 }
 // abas do trilho lateral (mesmo modelo da Ficha de Produto). `head(A)` = badge com o número-chefe da etapa.
 const _INDTABS=[
-  {id:'resumo',label:'Resumo',ic:'ti-layout-dashboard',sc:'var(--blue-mid)'},
   {id:'corte',label:'Corte / Cru',ic:'ti-scissors',sc:'var(--blue-mid)',metrics:['cpm','tempo','kghCru','pacMassada','pesoCru'],head:a=>_indI0(a.cpm)},
   {id:'cobertura',label:'Cobertura',ic:'ti-droplet',sc:'var(--purple)',metrics:['cobertura','kghCob'],cobOnly:true,head:a=>a.cob!=null?_indNf(a.cob,0)+'%':'—'},
   {id:'embalagem',label:'Embalagem',ic:'ti-package',sc:'var(--pink)',metrics:['sobrepeso','perda','pacMin'],head:a=>'+'+_indNf(a.sobPct,2)+'%'},
@@ -14202,7 +14202,6 @@ const _INDTABS=[
   {id:'comparar',label:'Comparar OPs',ic:'ti-table',sc:'var(--blue-mid)',head:a=>a.nOP+''},
 ];
 const _INDOPTABS=[
-  {id:'resumo',label:'Resumo',ic:'ti-layout-dashboard',sc:'var(--blue-mid)'},
   {id:'corte',label:'Corte / Cru',ic:'ti-scissors',sc:'var(--blue-mid)',head:a=>_indI0(a.cpm)},
   {id:'cobertura',label:'Cobertura',ic:'ti-droplet',sc:'var(--purple)',cobOnly:true,head:a=>a.cob!=null?_indNf(a.cob,0)+'%':'—'},
   {id:'embalagem',label:'Embalagem',ic:'ti-package',sc:'var(--pink)',head:a=>'+'+_indNf(a.sobPct,2)+'%'},
@@ -14217,7 +14216,7 @@ function _indRail(tabs,active,hasCob,A,handler){
 function _indMetricReg(){
   const p=_INDPROD[_indState.produto];
   return {
-    cpm:{t:'CPM',get:a=>a.cpm,meta:p.cpm,fmt:v=>_indI0(v),color:d=>d.v>=p.cpm?'var(--success)':d.v>=p.cpm-40?'var(--amber)':'var(--danger)'},
+    cpm:{t:'CPM',get:a=>a.cpm,meta:p.cpm,metaLabel:'parâmetro '+p.cpm,fmt:v=>_indI0(v),color:d=>d.v>=p.cpm?'var(--success)':d.v>=p.cpm-5?'var(--amber)':'var(--danger)'},
     tempo:{t:'Tempo/batelada',get:a=>a.tempo,meta:8,fmt:v=>_indNf(v,1),color:d=>d.v>8.3?'var(--danger)':d.v>8?'var(--amber)':'var(--success)'},
     kghCru:{t:'kg/h cru',get:a=>a.kghCru,meta:null,fmt:v=>_indI0(v),color:d=>'var(--blue-mid)'},
     pacMassada:{t:'Pacotes/massada',get:a=>a.pacMassada,meta:null,fmt:v=>_indI0(v),color:d=>'var(--blue-mid)'},
@@ -14235,13 +14234,18 @@ function _indEtapaTrendHTML(tabId){
   const reg=_indMetricReg();
   let mk=_indState.tabMetric[tabId]; if(!mk||tab.metrics.indexOf(mk)<0)mk=tab.metrics[0];
   const m=reg[mk];
+  const per=_indState.pmode==='mes'?'por semana':'por dia';
+  const open=_indState.grafOpen;
+  const chev='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+  const gi='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 4-6"/></svg>';
+  const barHead=`<button class="ind-grafbar${open?' open':''}" onclick="_indToggleGraf('${tabId}')"><span class="ind-gchev">${chev}</span><span class="ind-gi">${gi}</span><span class="ind-gt">Evolução</span><span class="ind-gh">— ${open?(m.t+', '+per):('abrir ('+per+')')}</span></button>`;
+  if(!open) return `<div id="ind-trend-${tabId}" style="margin-top:14px">${barHead}</div>`;
   const bk=_indBuckets().map(b=>({label:b.label,a:_indAgg(b.ops),n:b.ops.length}));
-  const barData=bk.filter(b=>b.n).map(b=>({v:m.get(b.a),label:b.label,color:m.color({v:m.get(b.a)})}));
-  return `<div class="ind-card" id="ind-trend-${tabId}" style="margin-top:14px"><div class="ind-card-h"><h3>Evolução</h3>
-      <div class="ind-mtabs">${tab.metrics.map(k=>`<button class="${mk===k?'on':''}" onclick="_indSetTabMetric('${tabId}','${k}')">${reg[k].t}</button>`).join('')}</div></div>
-    <div class="ind-card-b">${barData.length?_indBars(barData,{meta:m.meta,fmt:m.fmt}):'<div style="color:var(--text3);text-align:center;padding:20px">sem dados no período</div>'}
-      <div class="ind-lg-row"><span class="ind-lg"><span class="ind-sw" style="background:var(--success)"></span>na meta</span><span class="ind-lg"><span class="ind-sw" style="background:var(--amber)"></span>atenção</span><span class="ind-lg"><span class="ind-sw" style="background:var(--danger)"></span>acima</span><span class="ind-lg" style="margin-left:auto">${_indState.pmode==='mes'?'por semana':'por dia'}</span></div>
-    </div></div>`;
+  const lineData=bk.filter(b=>b.n).map(b=>({v:m.get(b.a),label:b.label}));
+  const chips=`<div class="ind-mtabs">${tab.metrics.map(k=>`<button class="${mk===k?'on':''}" onclick="_indSetTabMetric('${tabId}','${k}')">${reg[k].t}</button>`).join('')}</div>`;
+  const chart=lineData.length?_indLine(lineData,{h:150,sw:1.6,area:true,endDot:true,meta:m.meta,metaLabel:m.metaLabel,fmt:m.fmt,color:'var(--blue-mid)'}):'<div style="color:var(--text3);text-align:center;padding:20px">sem dados no período</div>';
+  const note=(tabId==='corte'&&mk==='cpm')?`<div class="ind-gnote">O <b>CPM</b> parte do parâmetro do cadastro (<b>${_indI0(_INDPROD[_indState.produto].cpm)}/min</b>). Na produção o pessoal registra o valor e o horário — a linha mostra a média de cada ${_indState.pmode==='mes'?'semana':'dia'}.</div>`:'';
+  return `<div id="ind-trend-${tabId}" style="margin-top:14px">${barHead}<div class="ind-grafwrap">${chips}${chart}${note}</div></div>`;
 }
 
 /* ── tela: período ── */
@@ -14258,7 +14262,7 @@ function _indPeriodoCorpo(){
   const dc=(cur,pv,o)=>_indDelta(cur,pv,o);
 
   const grpCorte=`<div class="ind-kpis">
-    ${kpi('CPM',_indI0(A.cpm),'cortes/min','var(--success)',dc(A.cpm,P?P.cpm:null,{good:'up',pct:true}),'cortadeira/formadora','var(--blue-mid)',a=>a.cpm)}
+    ${kpi('CPM',_indI0(A.cpm),'cortes/min','var(--success)',dc(A.cpm,P?P.cpm:null,{good:'up',pct:true}),'parâmetro '+_indI0(p.cpm)+'/min','var(--blue-mid)',a=>a.cpm)}
     ${kpi('Peso cru',_indNf(A.pesoCru,1),'g','var(--amber)',dc(A.pesoCru,P?P.pesoCru:null,{good:'down',pct:true}),'ref. '+_indNf(p.pesoCru,1)+' g/un','var(--amber)',a=>a.pesoCru)}
     ${kpi('kg/h cru',_indI0(A.kghCru),'kg/h','var(--success)',dc(A.kghCru,P?P.kghCru:null,{good:'up',pct:true}),'vazão no corte','var(--success)',a=>a.kghCru)}
     ${kpi('Tempo/batelada',_indMmss(A.tempo),'min','var(--amber)',dc(A.tempo,P?P.tempo:null,{good:'down',pct:true}),'meta 8:00','var(--amber)',a=>a.tempo)}
@@ -14279,13 +14283,10 @@ function _indPeriodoCorpo(){
     ${kpi('kg/pessoa',_indI0(A.kgPessoa),'kg','var(--success)',dc(A.kgPessoa,P?P.kgPessoa:null,{good:'up',pct:true}),'produtividade','var(--success)',a=>a.kgPessoa)}
   </div>`;
 
-  const overW=Math.min(30,A.sobPct/4*100), fillW=50+overW;
   const highlight=`<div class="ind-card"><div class="ind-card-h"><h3>Sobrepeso — o que sai de graça</h3><span class="ind-delta ind-db">+${_indNf(A.sobPct,2)}%</span></div>
     <div class="ind-card-b"><div class="ind-cols2">
       <div>
         <p class="ind-lead">Na média do período, cada pacote sai com <b>+${_indNf(A.kg/A.pac*1000,2)} g</b> acima do nominal. É produto embalado que <b>não é cobrado</b>.</p>
-        <div class="ind-wbar"><div class="ind-wfill" style="width:${fillW}%"></div><div class="ind-wover" style="left:50%;width:${overW}%"></div><div class="ind-wnom" style="left:50%"></div></div>
-        <div class="ind-wscale"><span>nominal</span><span>peso real médio</span></div>
       </div>
       <div class="ind-tiles">
         <div class="ind-tile"><div class="t">A mais</div><div class="v">+${_indNf(A.sobPct,2)}%</div><div class="s">sobre o nominal</div></div>
@@ -14306,7 +14307,7 @@ function _indPeriodoCorpo(){
       <tfoot><tr><td>Média (${A.nOP} OPs)</td><td></td><td></td><td>${_indMmss(A.tempo)}</td>${hasCob?`<td>${A.cob!=null?_indNf(A.cob,1)+'%':'—'}</td>`:''}<td>+${_indNf(A.sobPct,2)}%</td><td>${_indI0(A.pac)}</td><td></td></tr></tfoot>
     </table></div></div></div>`;
 
-  let tab=_indState.tab; if(tab==='cobertura'&&!hasCob)tab='resumo';
+  let tab=_indState.tab; if(tab==='cobertura'&&!hasCob)tab='corte';
   let body;
   if(tab==='resumo'){
     body=`<div class="ind-sect" style="margin-top:0">Médias do período · ${p.nome}</div>${highlight}
@@ -14361,7 +14362,7 @@ function _indOPCorpo(){
       ${P.cob!=null?`<td>${_indNf(m.cob,1)}%</td>`:''}<td>${_indNf(m.peso,1)} g</td><td>${chipG(m.sobG)}</td><td>${_indI0(m.pac)}</td></tr>`).join('')}</tbody>
     </table></div></div></div>`;
 
-  let opTab=_indState.opTab; if(opTab==='cobertura'&&P.cob==null)opTab='resumo';
+  let opTab=_indState.opTab; if(opTab==='cobertura'&&P.cob==null)opTab='corte';
   const g=(c,lbl)=>`<div class="ind-grp"><span class="gd" style="background:${c}"></span>${lbl}</div>`;
   let body;
   if(opTab==='resumo'){
@@ -14499,6 +14500,18 @@ function _indCSS(){ return `<style>
     .ind-rail{width:auto;flex-direction:row;flex-wrap:wrap;position:static}
     .ind-rtab{width:auto}
   }
+  /* Evolução: barra que abre/recolhe (modelo do gráfico da Cobertura) */
+  .ind-grafbar{display:flex;align-items:center;gap:11px;width:100%;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 15px;cursor:pointer;font-family:inherit;color:var(--text);text-align:left}
+  .ind-grafbar:hover{border-color:color-mix(in srgb,var(--blue-mid) 34%,var(--border))}
+  .ind-grafbar.open{border-radius:14px 14px 0 0}
+  .ind-gchev{color:var(--text2);flex:none;display:inline-flex;transition:transform .2s}
+  .ind-grafbar.open .ind-gchev{transform:rotate(90deg)}
+  .ind-gi{color:var(--text2);flex:none;display:inline-flex}
+  .ind-gt{font-weight:800;font-size:14px}
+  .ind-gh{color:var(--text3);font-size:12px;font-weight:600}
+  .ind-grafwrap{border:1px solid var(--border);border-top:none;border-radius:0 0 14px 14px;padding:13px 15px 15px}
+  .ind-grafwrap .ind-mtabs{margin-bottom:10px}
+  .ind-gnote{font-size:11px;color:var(--text3);margin-top:9px;line-height:1.5}.ind-gnote b{color:var(--text2)}
 </style>`; }
 
 function renderIndicadores(){
@@ -14516,7 +14529,8 @@ function _indNavPeriodo(d){ if(_indState.pmode==='semana')_indState.wIdx=Math.ma
 function _indSetTab(t){ _indState.tab=t; renderIndicadores(); }
 function _indSetOpTab(t){ _indState.opTab=t; renderIndicadores(); }
 function _indSetTabMetric(tab,k){ _indState.tabMetric[tab]=k; const el=document.getElementById('ind-trend-'+tab); if(el){ el.outerHTML=_indEtapaTrendHTML(tab); } else renderIndicadores(); }
-function _indOpenOP(id){ _indState.op=+id; _indState.opTab='resumo'; _indState.view='op'; window.scrollTo(0,0); renderIndicadores(); }
+function _indOpenOP(id){ _indState.op=+id; _indState.opTab='corte'; _indState.view='op'; window.scrollTo(0,0); renderIndicadores(); }
+function _indToggleGraf(tab){ _indState.grafOpen=!_indState.grafOpen; const el=document.getElementById('ind-trend-'+tab); if(el){ el.outerHTML=_indEtapaTrendHTML(tab); } else renderIndicadores(); }
 function _indOpenSel(v){ if(v) _indOpenOP(v); }
 function _indGoOP(id){ _indState.op=+id; window.scrollTo(0,0); renderIndicadores(); }
 function _indBack(){ _indState.view='periodo'; window.scrollTo(0,0); renderIndicadores(); }
