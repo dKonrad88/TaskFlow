@@ -12619,13 +12619,17 @@ function _pgmFatias(){ const bs=_pgmBlocos(), js=_pgmJanelas(), out=[];
       t=f; } });
   return out; }
 function _pgmTotais(){ const cad=_pgmL().embaladoras||[];
-  const R={total:0, caixas:0, massa:0, porDest:{leite:0,branco:0,natural:0}, porMaq:cad.map(()=>0), porBloco:{}, falta:false};
+  const R={total:0, caixas:0, massa:0, porDest:{leite:0,branco:0,natural:0}, porMaq:cad.map(()=>0), porBloco:{}, porBase:{}, falta:false};
   _pgmFatias().forEach(f=>{ const c=_pgmCalc(f.b,_pgmMaq(f.j)), h=f.fim-f.ini, tot=c.pacMin*60*h;
     R.total+=tot; R.massa+=c.massaMin*60*h; R.caixas+=(c.caixasMin||0)*60*h;   // caixas por peso de cada máquina
     _PGM_DEST.forEach(d=>{ R.porDest[d.id]+=tot*(c.mix[d.id]||0); });
     if(c.cap>0) c.maq.forEach(e=>{ if(e.on){ const off=Math.max(0,Math.min(h,(+e.ini||0)/60)), frac=h>0?(h-off)/h:0; R.porMaq[e.i]+=tot*e.real/c.cap*frac; } });
     R.porBloco[f.bi]=(R.porBloco[f.bi]||0)+tot;
+    // ⭐ por PRODUTO (base): pac/caixas somam por fatia (Diego 28/09 — resultado do dia por item, não geral)
+    const _pb=R.porBase[f.b.base]||(R.porBase[f.b.base]={pac:0,caixas:0,massadas:0,horas:0}); _pb.pac+=tot; _pb.caixas+=(c.caixasMin||0)*60*h;
     if(c.falta) R.falta=true; });
+  // massadas e horas somam por BLOCO (não por fatia, senão contariam várias vezes)
+  _pgmBlocos().forEach(b=>{ const pb=R.porBase[b.base]||(R.porBase[b.base]={pac:0,caixas:0,massadas:0,horas:0}); pb.massadas+=_pgmMassadasB(b); pb.horas+=_pgmHorasB(b); });
   return R; }
 // Setup entre blocos: só quando a BASE muda (trocar cobertura não para a linha).
 // Setup só existe quando a BASE muda. O tempo fica no PRÓPRIO bloco (`b.setup`, em minutos) porque
@@ -13183,7 +13187,7 @@ function _pgmDiaResHTML(){
   const seg=s=>_pgmMS(s), dseg=s=>s<60?Math.round(s)+'s':_pgmMS(s);
   const cru=v=>_pgmN(v,2)+' g', pct=v=>_pgmN(v)+'%';
   const cobP=basePad?_pgmBase(basePad).cob:null;
-  const cmp=`<table class="pgm-cmp"><tr><th></th><th>Padrão</th><th>Agora</th><th>Dif.</th></tr>
+  const cmp=`<div class="pgm-cmp-cap"><b>${escapeHTML(basePad?_pgmBase(basePad).nome:'—')}</b> · potencial de turno cheio</div><table class="pgm-cmp"><tr><th></th><th>Padrão</th><th>Agora</th><th>Dif.</th></tr>
       ${linG('Tempo/massada', P.massadaSeg||null, ago?ago.ciclo:null, seg, dseg)}
       ${linG('Cortes/min', _pgmCpmPadrao({base:basePad}), sel?(+sel.cortes||0):null, _pgmCpmTxt)}
       ${linG('Biscoito cru', P.cru, sel?_pgmCru(sel):null, cru)}
@@ -13213,8 +13217,21 @@ function _pgmMontadoHTML(){
         return over<-0.01 ? `<div class="pgm-res-ok">sobra ${m<60?m+'min':_pgmHhmm(-over)}${cabe>0?` · cabe +${cabe} massada${cabe>1?'s':''}`:''}</div>` : ''; })();
   // ⚠️ sem o "de 10h00" aqui: a linha acima já diz "turno cheio de 10h00", e com ele a frase quebrava em
   // 3 linhas dentro dos 346px do cartão — 40px que o topo não tem para dar.
-  return `<div class="pgm-mt-l"><b>${_pgmHhmm(u)}</b>
-      <em>${_pgmN(mAgo)} massada${mAgo===1?'':'s'} · ${_pgmN(pac)} pacotes${cxOk?` · ${_pgmN(cxDia)} caixas`:''}</em></div>
+  // ⭐ um dia pode ter 2+ produtos; misturar os números confunde (Diego 28/09). Com 2+ bases, quebra por produto.
+  const bases=[]; bs.forEach(b=>{ if(bases.indexOf(b.base)<0) bases.push(b.base); });
+  let corpo;
+  if(bases.length>1){
+    const linhas=bases.map(id=>{ const pb=(T.porBase&&T.porBase[id])||{pac:0,caixas:0,massadas:0,horas:0};
+      return `<div class="pgm-mt-prod"><span class="nm">${escapeHTML(_pgmBase(id).nome)}</span>`
+        +`<span class="vs">${_pgmN(pb.massadas)} massada${pb.massadas===1?'':'s'} · ${_pgmN(Math.round(pb.pac))} pac${pb.caixas>0?` · ${_pgmN(Math.round(pb.caixas))} cx`:''} · ${_pgmHhmm(pb.horas)}</span></div>`;
+    }).join('');
+    corpo=`<div class="pgm-mt-prods">${linhas}</div>`
+      +`<div class="pgm-mt-tot"><b>${_pgmHhmm(u)}</b> de turno · dia todo: ${_pgmN(mAgo)} massadas · ${_pgmN(pac)} pacotes${cxOk?` · ${_pgmN(cxDia)} caixas`:''}</div>`;
+  } else {
+    corpo=`<div class="pgm-mt-l"><b>${_pgmHhmm(u)}</b>
+      <em>${_pgmN(mAgo)} massada${mAgo===1?'':'s'} · ${_pgmN(pac)} pacotes${cxOk?` · ${_pgmN(cxDia)} caixas`:''}</em></div>`;
+  }
+  return `${corpo}
     <div class="pgm-barra"><span style="width:${oc.toFixed(1)}%${over>0.01?';background:var(--danger)':''}"></span></div>
     ${aviso}${_pgmTravaEsteira6()}`;
 }
@@ -13590,6 +13607,15 @@ function _pgmCSS(){ return `<style>
   .pgm-mt-l{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
   .pgm-mt-l>b{font-size:15px;font-weight:800;letter-spacing:-.02em;color:var(--text)}
   .pgm-mt-l>em{font-style:normal;font-size:11.5px;color:var(--text2)}
+  .pgm-cmp-cap{font-size:10px;color:var(--text3);margin:0 0 6px}
+  .pgm-cmp-cap b{color:var(--text2);font-weight:800}
+  .pgm-mt-prods{display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
+  .pgm-mt-prod{display:flex;flex-direction:column;gap:1px;padding:5px 0;border-bottom:1px solid var(--border)}
+  .pgm-mt-prod:last-child{border-bottom:none}
+  .pgm-mt-prod .nm{font-size:12px;font-weight:800;color:var(--text)}
+  .pgm-mt-prod .vs{font-size:11px;color:var(--text2)}
+  .pgm-mt-tot{font-size:10.5px;color:var(--text3);margin-top:2px}
+  .pgm-mt-tot b{color:var(--text2);font-weight:800}
   .pgm-montado .pgm-barra{margin-top:6px}
   .pgm-montado .pgm-res-al,.pgm-montado .pgm-res-ok{margin-top:5px}
   .pgm-massv{font-size:15px;font-weight:800;letter-spacing:-.015em;color:var(--text);line-height:1.2}   /* idem: era o numero grande do ciclo */
