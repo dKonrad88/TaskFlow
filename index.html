@@ -8823,6 +8823,10 @@ function _cpCSS(){ return `<style>
   .cp-crono-row:last-child{border-bottom:none}
   .cp-crono-lab{font-size:12px;color:var(--text2);min-width:0;flex:1 1 130px}
   .cp-crono-quando{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex:none}
+  .cp-sim-cal{background:none;border:none;cursor:pointer;color:var(--blue-mid);padding:2px 3px;display:inline-flex;align-items:center;border-radius:6px;line-height:1}
+  .cp-sim-cal:hover{background:color-mix(in srgb,var(--blue-mid) 14%,transparent)}
+  .cp-sim-cal i{font-size:15px}
+  .cp-ultc-sel{font-size:10.5px;font-weight:600;padding:2px 5px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text2);cursor:pointer;font-family:inherit;vertical-align:middle}
   .cp-crono-info{font-size:11px;text-align:right;white-space:nowrap;flex:none;margin-left:auto}
   .cp-crono-info:empty{display:none}
   /* Comparação A × B: lado | diferenças | lado. Abaixo de 780px empilha (o "X" do meio vira faixa). */
@@ -9164,7 +9168,7 @@ function _cpVoltarLabel(){ const M={painel:'ao painel',planejamento:'ao planejam
 function _cpAbrirItem(cod){
   // grava a origem só ao abrir de uma LISTA (item→item dentro da ficha mantém _cpItemSel != null).
   if(_cpItemSel==null) _cpItemOrigem=comprasView;
-  _cpItemSel=cod; _cpItemMes=null; _cpFichaView='resumo'; _cpFichaFornSel=null; _cpSimReset(); _cpSim.validadeMeses=_cpGetValidade(cod); comprasView='insumos';
+  _cpItemSel=cod; _cpItemMes=null; _cpFichaView='resumo'; _cpFichaFornSel=null; _cpUltMes=''; _cpUltAno=''; _cpSimReset(); _cpSim.validadeMeses=_cpGetValidade(cod); comprasView='insumos';
   try{ document.body.classList.remove('cp-focus'); }catch(e){} // abre NÃO-EXPANDIDO (sub-navbar, estilo Reunião); ⛶ expande p/ tela cheia
   renderSidebar(); renderCompras(); window.scrollTo(0,0); }
 function _cpVoltarItens(){ _cpItemSel=null; _cpItemMes=null; try{document.body.classList.remove('cp-focus');}catch(e){} comprasView=_cpItemOrigem||'insumos'; renderSidebar(); renderCompras(); window.scrollTo(0,0); }
@@ -9495,7 +9499,33 @@ function _cpSimSetEntregaQtd(i,val){ if(!Array.isArray(_cpSim.entregasQtd)) _cpS
 // O <input type=date> nativo força 4 dígitos, então o cronograma usa um campo de TEXTO com máscara. Guarda ISO (20aa) em _cpSim.entregas.
 function _cpParseDataCurta(txt){ const d=String(txt==null?'':txt).replace(/[^\d]/g,''); if(d.length<6) return ''; const dd=d.slice(0,2), mm=d.slice(2,4), yr=d.slice(4,8); const D=+dd, M=+mm; const Y=yr.length<=2?2000+parseInt(yr.slice(0,2),10):parseInt(yr.slice(0,4),10); if(!(D>=1&&D<=31&&M>=1&&M<=12&&Y>=2000&&Y<=2100)) return ''; return String(Y).padStart(4,'0')+'-'+mm+'-'+dd; }
 // oninput: formata dd/mm/aa ao vivo + parseia (data incompleta → '' → o FEFO ignora, sem bagunçar as outras cargas).
-function _cpSimEntregaTextoLive(i,el){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; let d=String(el.value||'').replace(/[^\d]/g,'').slice(0,8); let disp=d; if(d.length>4) disp=d.slice(0,2)+'/'+d.slice(2,4)+'/'+d.slice(4); else if(d.length>2) disp=d.slice(0,2)+'/'+d.slice(2); if(el.value!==disp) el.value=disp; _cpSim.entregas[i]=_cpParseDataCurta(d); _cpSimCronoTextos(); }
+function _cpSimEntregaTextoLive(i,el){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[];
+  // ⭐ preserva o CURSOR ao reformatar (Diego: "não deixa mudar" = o cursor pulava p/ o fim a cada tecla, então
+  // não dava p/ editar no meio da data). Conta os dígitos ANTES do cursor e recoloca depois deles (pulando '/').
+  const caret=(el.selectionStart==null)?String(el.value).length:el.selectionStart;
+  const digitsBefore=String(el.value).slice(0,caret).replace(/[^\d]/g,'').length;
+  let d=String(el.value||'').replace(/[^\d]/g,'').slice(0,8); let disp=d;
+  if(d.length>4) disp=d.slice(0,2)+'/'+d.slice(2,4)+'/'+d.slice(4); else if(d.length>2) disp=d.slice(0,2)+'/'+d.slice(2);
+  if(el.value!==disp){ el.value=disp;
+    let pos=0,seen=0; while(pos<disp.length && seen<digitsBefore){ const ch=disp.charCodeAt(pos); if(ch>=48&&ch<=57) seen++; pos++; }
+    if(disp.charAt(pos)==='/') pos++;   // ao completar dd ou mm, pula a barra p/ o cursor não travar antes dela
+    try{ el.setSelectionRange(pos,pos); }catch(e){} }
+  _cpSim.entregas[i]=_cpParseDataCurta(d); _cpSimCronoTextos(); }
+// Calendário nativo por linha do cronograma — o campo dd/mm/aa continua digitável, mas o calendário dá a
+// liberdade que o Diego pediu ("mudar como quiser a data"): escolher qualquer dia sem lutar com a máscara.
+// Mesmo truque do abrirDatePickerTarefa: input type=date invisível sobre o botão + showPicker().
+function _cpSimAbrirData(i, btn){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[];
+  const cur=_cpSim.entregas[i];
+  const inp=document.createElement('input'); inp.type='date';
+  if(cur && /^\d{4}-\d{2}-\d{2}$/.test(cur) && parseInt(cur.slice(0,4),10)>=2000) inp.value=cur;
+  inp.style.cssText='position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;border:none;padding:0;margin:0;cursor:pointer';
+  inp.onchange=()=>{ if(inp.value){ _cpSim.entregas[i]=inp.value; _cpSimRefreshResult(); } setTimeout(()=>{ if(inp.parentNode) inp.remove(); },50); };
+  inp.onblur=()=>{ setTimeout(()=>{ if(inp.parentNode) inp.remove(); },200); };
+  if(btn){ if(getComputedStyle(btn).position==='static') btn.style.position='relative'; btn.appendChild(inp); }
+  else document.body.appendChild(inp);
+  void inp.offsetWidth;
+  try{ if(typeof inp.showPicker==='function') inp.showPicker(); else { inp.focus(); inp.click(); } }
+  catch(e){ try{ inp.focus(); inp.click(); }catch(_){} } }
 // blur: normaliza a exibição p/ dd/mm/aa limpo (ou vazio se inválido).
 function _cpSimEntregaTextoBlur(i,el){ if(!Array.isArray(_cpSim.entregas)) _cpSim.entregas=[]; const iso=_cpParseDataCurta(el?el.value:''); _cpSim.entregas[i]=iso; if(el) el.value=iso?_cpDt(iso):''; _cpSimCronoTextos(); }
 function _cpSimDateKey(e){ if(!e || e.key!=='Enter') return; e.preventDefault(); if(e.target && e.target.blur) e.target.blur(); setTimeout(_cpSimFocusNext,0); }
@@ -9806,14 +9836,15 @@ function _cpSimResult(o){
     const minW=`min-width:${delLbl?(editaQtd?'165px':'110px'):'70px'};display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap`;
     const rowsCrono=ent.map((iso,i)=>{
       const b=sim?sim.find(x=>x._i===i):null;
-      const dinput=`<input type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aa" value="${escapeAttr(iso?_cpDt(iso):'')}" oninput="_cpSimEntregaTextoLive(${i},this)" onblur="_cpSimEntregaTextoBlur(${i},this)" onkeydown="_cpSimDateKey(event)" class="cp-sim-inp js-sim-field" style="width:88px;font-size:12px;text-align:center" title="Data de chegada — dd/mm/aa (ano com 2 dígitos, ex.: 10/10/26)">`;
+      const dinput=`<input type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aa" value="${escapeAttr(iso?_cpDt(iso):'')}" oninput="_cpSimEntregaTextoLive(${i},this)" onblur="_cpSimEntregaTextoBlur(${i},this)" onkeydown="_cpSimDateKey(event)" class="cp-sim-inp js-sim-field" style="width:88px;font-size:12px;text-align:center" title="Data de chegada — digite dd/mm/aa ou use o calendário ao lado">`;
+      const dbtn=`<button type="button" onclick="_cpSimAbrirData(${i},this)" title="Escolher no calendário" class="cp-sim-cal"><i class="ti ti-calendar"></i></button>`;
       const del=(!isCargas && ent.length>1)?`<button onclick="_cpSimDelEntrega(${i})" title="Remover entrega" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;display:inline-flex"><i class="ti ti-x" style="font-size:13px"></i></button>`:'';
       let qtyCell;
       if(!editaQtd){ qtyCell=`${_cpNum(qtys[i],0)} ${um}`; }
       else if(i===ent.length-1){ qtyCell=`<b style="color:var(--text2)">${_cpNum(qtys[i],0)}</b> ${um} <span style="font-size:10px;color:var(--text3)">(resto)</span>`; }
       else { qtyCell=`<input type="text" inputmode="numeric" value="${escapeAttr(_cpNum(qtys[i],0))}" onchange="_cpSimSetEntregaQtd(${i},this.value)" onkeydown="_cpSimKey(event)" class="cp-sim-inp js-sim-field" style="width:66px;font-size:12px"> ${um}`; }
       const rot=delLbl?`${delLbl} ${i+1} · ${qtyCell}`:qtyCell;
-      return `<div class="cp-crono-row"><span class="cp-crono-lab">${rot}</span><span class="cp-crono-quando"><span style="font-size:11px;color:var(--text3)">chega</span>${dinput}${del}</span><span class="cp-crono-info" id="cp-ci-${i}">${_cpSimRowInfo(b,um)}</span></div><div id="cp-cg-${i}">${_cpSimRowGaps(i,fd.gaps)}</div>`;
+      return `<div class="cp-crono-row"><span class="cp-crono-lab">${rot}</span><span class="cp-crono-quando"><span style="font-size:11px;color:var(--text3)">chega</span>${dinput}${dbtn}${del}</span><span class="cp-crono-info" id="cp-ci-${i}">${_cpSimRowInfo(b,um)}</span></div><div id="cp-cg-${i}">${_cpSimRowGaps(i,fd.gaps)}</div>`;
     }).join('');
     // Estoque ATUAL como 1ª linha (o FEFO consome ele primeiro). Info (dura até/vence) atualiza em-lugar.
     // Linha do que JÁ TENHO (estoque e OC): mesma grade das cargas, mas sem campo de data.
@@ -10122,11 +10153,23 @@ function _cpIndicadoresCard(o){
 // anterior até o próximo render completo — ou seja, mostrando de novo duas datas diferentes.
 function _cpIndRefresh(){ const el=document.getElementById('cp-ind-card');
   if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.outerHTML=_cpIndicadoresCard(_cpIdx()[_cpItemSel]); }
+// ── Filtro de período (mês + ano) das Últimas compras (Diego, 28/09: "pré filtros, mês e ano"). Estado por
+// aba; resetado ao abrir um item novo (_cpAbrirItem). Sem filtro = as 10 últimas; com filtro = o período todo.
+let _cpUltMes='', _cpUltAno='';
+const _CP_MESNOMES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function _cpUltSetMes(v){ _cpUltMes=v||''; _cpUltRefresh(); }
+function _cpUltSetAno(v){ _cpUltAno=v||''; _cpUltRefresh(); }
+function _cpUltRefresh(){ const el=document.getElementById('cp-ultc-card'); if(el && _cpItemSel && _cpIdx()[_cpItemSel]) el.outerHTML=_cpUltimasComprasCard(_cpIdx()[_cpItemSel]); }
 function _cpUltimasComprasCard(o){
   const um=o.um||'';
-  // ⚠️ O mapa de cores sai das linhas EXIBIDAS (as 10 do recorte), não de todo o histórico: pintar
-  // por um conjunto maior deixaria cores "faltando" na tabela e a leitura ficaria arbitrária.
-  const mostra=_cpSortArr('ultc', o.compras, {forn:l=>_cpForn(l.forn[1]), net:l=>((l.vun&&l.aliq!=null)?l.vun*(1-l.aliq/100):null)}, 'data', -1).slice(0,10);
+  const anos=Array.from(new Set((o.compras||[]).map(l=>l.data.slice(0,4)))).sort((a,b)=>b<a?-1:1);
+  if(_cpUltAno && anos.indexOf(_cpUltAno)<0) _cpUltAno='';   // filtro herdado de outro item que não existe aqui
+  const filtrada=(o.compras||[]).filter(l=>(!_cpUltAno || l.data.slice(0,4)===_cpUltAno) && (!_cpUltMes || l.data.slice(5,7)===_cpUltMes));
+  const temFiltro=!!(_cpUltMes||_cpUltAno);
+  // ⚠️ O mapa de cores sai das linhas EXIBIDAS, não de todo o histórico: pintar por um conjunto maior
+  // deixaria cores "faltando" na tabela e a leitura ficaria arbitrária.
+  const ord=_cpSortArr('ultc', filtrada, {forn:l=>_cpForn(l.forn[1]), net:l=>((l.vun&&l.aliq!=null)?l.vun*(1-l.aliq/100):null)}, 'data', -1);
+  const mostra=temFiltro?ord:ord.slice(0,10);   // com filtro mostra o período inteiro; sem filtro, as 10 últimas
   const mapaICMS=_cpPctMapa(mostra.map(l=>l.aliq));
   const linhas=mostra.map(l=>`<tr>
     <td class="cp-mono">${_cpDt(l.data)}</td>
@@ -10136,9 +10179,12 @@ function _cpUltimasComprasCard(o){
     <td class="cp-n">${_cpPctCel(l.aliq, mapaICMS)}</td>
     <td class="cp-n">${(l.vun&&l.aliq!=null)?_cpBRL(l.vun*(1-l.aliq/100)):'—'}</td>
     <td class="cp-n" style="color:var(--text3)">—</td>
-  </tr>`).join('') || `<tr><td colspan="7">${_cpVazio("Sem compras.")}</td></tr>`;
-  return `<div class="cp-card" style="padding:15px 17px 8px">
-    <div class="cp-card-title"><span>Últimas compras</span></div>
+  </tr>`).join('') || `<tr><td colspan="7">${_cpVazio(temFiltro?"Sem compras nesse período.":"Sem compras.")}</td></tr>`;
+  const selMes=`<select onchange="_cpUltSetMes(this.value)" class="cp-ultc-sel" title="Filtrar por mês"><option value="">Mês: todos</option>${_CP_MESNOMES.map((m,idx)=>{const mm=String(idx+1).padStart(2,'0');return `<option value="${mm}"${_cpUltMes===mm?' selected':''}>${m}</option>`;}).join('')}</select>`;
+  const selAno=`<select onchange="_cpUltSetAno(this.value)" class="cp-ultc-sel" title="Filtrar por ano"><option value="">Ano: todos</option>${anos.map(y=>`<option value="${y}"${_cpUltAno===y?' selected':''}>${y}</option>`).join('')}</select>`;
+  const cont=temFiltro?` <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3);font-size:10px">· ${mostra.length} compra${mostra.length===1?'':'s'}</span>`:'';
+  return `<div class="cp-card" id="cp-ultc-card" style="padding:15px 17px 8px">
+    <div class="cp-card-title"><span>Últimas compras${cont}</span><span style="display:inline-flex;gap:6px;flex:none">${selMes}${selAno}</span></div>
     <div style="overflow-x:auto"><table class="cp-tbl cp-tbl-sm" style="font-size:11px">
       <thead><tr>${_cpTh('ultc','data','Data','','',-1)}${_cpTh('ultc','forn','Fornecedor')}${_cpTh('ultc','vun','Vlr unit.',1)}${_cpTh('ultc','qtd','Qtde',1)}${_cpTh('ultc','aliq','ICMS %',1)}${_cpTh('ultc','net','Vlr net',1)}<th class="r">Prazo</th></tr></thead>
       <tbody>${linhas}</tbody></table></div>
@@ -10760,7 +10806,13 @@ function _cpFornSetView(v){ _cpFornView=v;
 }
 function _cpFornItBuscaToggle(){ _cpFornItBuscaAberta=!_cpFornItBuscaAberta; if(!_cpFornItBuscaAberta) _cpFornItBusca=''; renderCompras();
   if(_cpFornItBuscaAberta) setTimeout(function(){ var el=document.getElementById('cp-fi-busca'); if(el) el.focus(); },30); }
-function _cpFornItBuscaInput(el){ _cpFornItBusca=el.value; _cpFornItRefresh(); }
+function _cpFornItBuscaInput(el){ _cpFornItBusca=el.value;
+  // ⚠️ NÃO chamar _cpFornItRefresh aqui: ele faz renderCompras() (re-render TOTAL), que recria o campo de
+  // busca e PERDE O FOCO a cada tecla → a próxima letra vaza para o atalho global 'n' e abre "Nova Tarefa"
+  // (bug do Diego ao digitar "ame·n·doim"). Atualiza só o corpo/rodapé em-lugar, como a busca de fornecedores.
+  const cod=_cpFornSel; if(!cod) return;
+  const tb=document.getElementById('cp-fi-tbody'); if(tb) tb.innerHTML=_cpFornItTbodyHTML(cod);
+  const tf=document.getElementById('cp-fi-tfoot'); if(tf) tf.innerHTML=_cpFornItTfootHTML(cod); }
 function _cpFornSetPer(qual,v){ const o=(qual==='A')?_cpFornPerA:_cpFornPerB; o.p=v; if(v!=='custom'){ o.de=''; o.ate=''; }
   // Ao escolher um recorte que depende de ano sem ter ano definido: o lado A (a base) começa no ano
   // ANTERIOR e o B no corrente — acerta de primeira o caso comum ("1º tri de 2025 × 1º tri de 2026").
@@ -10977,11 +11029,10 @@ function _cpFornItRefresh(){ if(!_cpFornSel) return;
 function _cpFornItTbodyHTML(cod){
   const c=_cpFornCtx(cod, true); if(!c) return '';   // lista completa: quem recorta é o rodapé
   const L=_cpFornItRows(cod);
-  if(!L.length) return `<tr><td colspan="14">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`;
+  if(!L.length) return `<tr><td colspan="13">${_cpVazio('Nenhum item para esse filtro.')}</td></tr>`;
   const un=u=>`<span class="cp-un">${escapeHTML(u||'')}</span>`;
   const vaz='<span style="color:var(--text3)">—</span>';   // item sem compra NAQUELE período
   return L.map(i=>`<tr class="cp-clic" onclick="_cpAbrirItem('${_cpJs(i.cod)}')">
-      ${_cpSelTd('fcomp', i.cod)}
       <td class="cp-mono">${escapeHTML(i.cod)}</td>
       <td class="cp-item">${escapeHTML(i.nome)}</td>
       <td class="cp-n">${_cpBRL(i.preco)}</td>
@@ -11016,7 +11067,7 @@ function _cpFornItTfootHTML(cod){
   // Antes o total era _cpVar(sA,sB) fixo: com A=ano passado e B=este ano o rodapé dizia −18,2%
   // enquanto as linhas e o bloco de comparação diziam +22,2% — o mesmo bug já corrigido nas linhas.
   return `<tr style="border-top:2px solid var(--border);font-weight:700">
-      <td colspan="3" style="color:var(--text2)">${rot}</td>
+      <td colspan="2" style="color:var(--text2)">${rot}</td>
       <td></td>
       <td class="cp-n">${_cpNum(qA,0)} ${un}</td>
       <td class="cp-n">${pmT(sA,qA)}</td>
@@ -11404,11 +11455,11 @@ function _cpFornItensHTML(cod){
     </div>
     <div class="cp-card" style="overflow-x:auto"><table class="cp-tbl">
       <thead>
-        <tr><th colspan="4"></th>
+        <tr><th colspan="3"></th>
           <th colspan="3" style="text-align:center;border-bottom:1px solid var(--border);padding-bottom:7px">Período A<br>${selPer('A')}</th>
           <th colspan="3" style="text-align:center;border-bottom:1px solid var(--border);padding-bottom:7px">Período B<br>${selPer('B')}</th>
           <th colspan="4"></th></tr>
-        <tr>${_cpSelTh('fcomp', _cpFornItRows(cod).map(function(i){return i.cod;}))}${_cpTh('fcomp','cod','Cód.')}${_cpTh('fcomp','nome','Item')}${_cpTh('fcomp','preco','Últ. preço',1)}
+        <tr>${_cpTh('fcomp','cod','Cód.')}${_cpTh('fcomp','nome','Item')}${_cpTh('fcomp','preco','Últ. preço',1)}
           ${_cpTh('fcomp','qtdA','Qtde',1)}${_cpTh('fcomp','pmA','Preço méd.',1)}${_cpTh('fcomp','totA','Total',1)}
           ${_cpTh('fcomp','qtdB','Qtde',1)}${_cpTh('fcomp','pmB','Preço méd.',1)}${_cpTh('fcomp','totB','Total',1)}
           ${_cpTh('fcomp','delta','Var. valor',1)}${_cpTh('fcomp','deltaPm','Var. preço',1)}${_cpTh('fcomp','deltaVol','Var. volume',1)}${_cpTh('fcomp','ult','Últ. compra','','',-1)}</tr>
@@ -11619,7 +11670,6 @@ function _cpPlanTbodyHTML(){
     const duraOC=oc>0?(cv.covDiasOC!=null?_cpDataAcaba(cv.covDiasOC):'—'):'—';
     const un=`<span class="cp-un">${escapeHTML(um)}</span>`;
     return `<tr class="cp-clic" onclick="_cpPlanRowClick('${escapeAttr(o.cod)}', event)">
-      <td style="text-align:center;width:34px"><input type="checkbox" data-cod="${escapeAttr(o.cod)}" ${_cpVistoTem(o.cod)?'checked':''} onclick="event.stopPropagation();_cpVistoToggle('${escapeAttr(o.cod)}')" title="Marcar que já vi este item hoje" style="cursor:pointer;width:15px;height:15px;vertical-align:middle"></td>
       <td><span class="cp-pill" style="color:${cv.cor};background:color-mix(in srgb,${cv.cor} 14%,transparent)" title="${cv.covDias!=null?('≈ '+_cpNum(cv.covDias,0)+' dias — só estoque físico'):'sem consumo p/ calcular'}">${cv.covMes==null?'—':_cpNum(cv.covMes,1)+' '+(cv.covMes>=2?'meses':'mês')}</span></td>
       <td class="cp-mono" style="color:${cv.cor}" title="quando o estoque FÍSICO acaba">${duraFis}</td>
       <td class="cp-mono" style="color:${corOC}" title="${oc>0?'quando o estoque + OC a receber acaba':'sem OC a receber'}">${duraOC}</td>
@@ -11631,7 +11681,7 @@ function _cpPlanTbodyHTML(){
       <td class="cp-n">${cv.medPer>0?_cpNum(cv.medPer,0)+' '+un:'—'}</td>
       <td class="cp-n" style="color:var(--text3)">${cv.lead} d</td>
     </tr>`;}).join('');
-  return out || `<tr><td colspan="11">${_cpVazio("Nenhum item para esse filtro.")}</td></tr>`;
+  return out || `<tr><td colspan="10">${_cpVazio("Nenhum item para esse filtro.")}</td></tr>`;
 }
 // Re-render pontual da tabela (usado pela busca, p/ não perder o foco do campo). Os KPIs também
 // são recalculados aqui porque as contagens saem da mesma base filtrada — sem isso os cards
@@ -11719,7 +11769,7 @@ function _cpPlanKPIsHTML(){
   const nRuptura=rows.filter(o=>o.est<=0).length;   // ruptura = sem estoque FÍSICO (Diego: cobertura é física)
   const nOk=rows.filter(o=>_cpPlanCov(o).key==='ok').length;   // "Em dia" = cobertura saudável (acima das faixas de compra)
   const _visArr=_cpVistoObj().c, nFaltam=rows.filter(o=>_visArr.indexOf(String(o.cod))<0).length;
-  return _cpKPIcards([kpiCard('Itens',_cpNum(rows.length),'',''), kpiCard('Faltam ver hoje',`<span id="cp-plan-faltam">${_cpNum(nFaltam)}</span>`,nFaltam?'var(--blue-mid)':'var(--success)','naovisto'), kpiCard('Comprar agora',_cpNum(nAgora),nAgora?'var(--danger)':'','agora'), kpiCard('Comprar em breve',_cpNum(nBreve),nBreve?'var(--amber)':'','breve'), kpiCard('Em dia',_cpNum(nOk),nOk?'var(--success)':'','ok'), kpiCard('Em ruptura',_cpNum(nRuptura),nRuptura?'var(--danger)':'','ruptura')]);
+  return _cpKPIcards([kpiCard('Itens',_cpNum(rows.length),'',''), kpiCard('Comprar agora',_cpNum(nAgora),nAgora?'var(--danger)':'','agora'), kpiCard('Comprar em breve',_cpNum(nBreve),nBreve?'var(--amber)':'','breve'), kpiCard('Em dia',_cpNum(nOk),nOk?'var(--success)':'','ok'), kpiCard('Em ruptura',_cpNum(nRuptura),nRuptura?'var(--danger)':'','ruptura')]);
 }
 function _comprasPlanejamentoHTML(){
   window.__cpPlanCache={};                 // zera o cache de cobertura a cada render (o período pode ter mudado)
@@ -11769,7 +11819,7 @@ function _comprasPlanejamentoHTML(){
   return _cpTela('Planejamento de compras','Cockpit diário do comprador — estoque, cobertura e o que precisa comprar. Clique num item para abrir a ficha e simular.',
     kpisHTML+
     `<div class="cp-card cp-noscroll" style="overflow:auto;max-height:calc(100vh - 320px)"><table class="cp-tbl">
-      <thead><tr><th style="width:34px;text-align:center" title="Marcar/desmarcar todos os visíveis como visto"><input type="checkbox" ${allVisto?'checked':''} onclick="_cpVistoTodos(this.checked)" style="cursor:pointer;width:15px;height:15px;vertical-align:middle"></th>${_cpTh('plan','cob','Cobertura <span class="cp-hsub">(físico)</span>','','',1)}${_cpTh('plan','fisico','Dura até <span class="cp-hsub">(físico)</span>','','',1)}${_cpTh('plan','comOC','Dura até <span class="cp-hsub">(c/ OC)</span>','','',1)}${_cpTh('plan','cod','Cód.')}${_cpTh('plan','nome','Item')}${_cpTh('plan','est','Estoque físico',1)}${_cpTh('plan','disp','Estoque disponível',1)}${_cpTh('plan','consMed','Média de consumo',1)}${_cpTh('plan','medPer',`Média <span class="cp-hsub">(${_perLbl})</span>`,1)}${_cpTh('plan','lead','Tempo de entrega',1)}</tr></thead>
+      <thead><tr>${_cpTh('plan','cob','Cobertura <span class="cp-hsub">(físico)</span>','','',1)}${_cpTh('plan','fisico','Dura até <span class="cp-hsub">(físico)</span>','','',1)}${_cpTh('plan','comOC','Dura até <span class="cp-hsub">(c/ OC)</span>','','',1)}${_cpTh('plan','cod','Cód.')}${_cpTh('plan','nome','Item')}${_cpTh('plan','est','Estoque físico',1)}${_cpTh('plan','disp','Estoque disponível',1)}${_cpTh('plan','consMed','Média de consumo',1)}${_cpTh('plan','medPer',`Média <span class="cp-hsub">(${_perLbl})</span>`,1)}${_cpTh('plan','lead','Tempo de entrega',1)}</tr></thead>
       <tbody id="cp-plan-tbody">${_cpPlanTbodyHTML()}</tbody></table></div>`,
     undefined, acao);
 }
