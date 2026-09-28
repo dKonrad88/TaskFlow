@@ -14274,7 +14274,9 @@ function _indPeriodoCorpo(){
   </div>`:'';
   const grpEmb=`<div class="ind-kpis">
     ${kpi('Pacotes/min real',_indNf(A.pacMin,1),'pac/min','var(--success)',dc(A.pacMin,P?P.pacMin:null,{good:'up',pct:true}),'velocidade real','var(--success)',a=>a.pacMin)}
-    ${kpi('Sobrepeso','+'+_indNf(A.sobPct,2),'%','var(--danger)',dc(A.sobPct,P?P.sobPct:null,{good:'down',pct:true}),'meta ≤ 0,10% · '+_indNf(A.kg,1)+' kg','var(--danger)',a=>a.sobPct)}
+    ${kpi('Sobrepeso','+'+_indNf(A.sobPct,2),'%','var(--danger)',dc(A.sobPct,P?P.sobPct:null,{good:'down',pct:true}),'meta ≤ 0,10%','var(--danger)',a=>a.sobPct)}
+    ${kpi('Kg de graça',_indNf(A.kg,1),'kg','var(--danger)',dc(A.kg,P?P.kg:null,{good:'down',pct:true}),'produto não cobrado','var(--danger)',a=>a.kg)}
+    ${kpi('Custo estimado','R$ '+_indI0(A.pacEquiv*1.8),'','var(--danger)',dc(A.pacEquiv*1.8,P?P.pacEquiv*1.8:null,{good:'down',pct:true}),'~R$ 1,80/pac · exemplo','var(--danger)',a=>a.pacEquiv*1.8)}
     ${kpi('Perda de embalagem',_indNf(A.perda,2),'%','var(--amber)',dc(A.perda,P?P.perda:null,{good:'down',pct:true}),'meta ≤ 2,0% · filme','var(--amber)',a=>a.perda)}
     ${kpi('Troca bobina',A.bobN+'×',A.bobMin+' min','var(--amber)',dc(A.bobMin,P?P.bobMin:null,{good:'down',pct:true}),'parada embalagem','var(--amber)',a=>a.bobMin)}
     ${kpi('Troca tubo formador',A.tuboN+'×',A.tuboMin+' min','var(--amber)',dc(A.tuboMin,P?P.tuboMin:null,{good:'down',pct:true}),'parada embalagem','var(--amber)',a=>a.tuboMin)}
@@ -14317,7 +14319,7 @@ function _indPeriodoCorpo(){
       <div class="ind-grp"><span class="gd" style="background:var(--blue-teal)"></span>Produtividade</div>${grpPess}`;
   } else if(tab==='corte'){ body=`<div class="ind-sect" style="margin-top:0">Corte / Cru · ${p.nome}</div>${grpCorte}${_indEtapaTrendHTML('corte')}`; }
   else if(tab==='cobertura'){ body=`<div class="ind-sect" style="margin-top:0">Cobertura · ${p.nome}</div>${grpCob}${_indEtapaTrendHTML('cobertura')}`; }
-  else if(tab==='embalagem'){ body=`<div class="ind-sect" style="margin-top:0">Embalagem · ${p.nome}</div>${highlight}${grpEmb}${_indEtapaTrendHTML('embalagem')}`; }
+  else if(tab==='embalagem'){ body=`<div class="ind-sect" style="margin-top:0">Embalagem · ${p.nome}</div>${grpEmb}${_indEtapaTrendHTML('embalagem')}`; }
   else if(tab==='produtividade'){ body=`<div class="ind-sect" style="margin-top:0">Produtividade · ${p.nome}</div>${grpPess}${_indEtapaTrendHTML('produtividade')}`; }
   else { body=`<div class="ind-sect" style="margin-top:0">Comparar OPs · ${p.nome}</div>${opList}`; }
   return `${_indScopeBar()}${_indPeriodBar()}
