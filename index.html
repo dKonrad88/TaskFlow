@@ -7949,7 +7949,7 @@ const EQ_PERIODOS=[['dia','dia(s)'],['semana','semana(s)'],['mes','mês(es)'],['
 
 function _eqSeed(){ return [
   {id:'eq_d1', tag:'MIST-01', nome:'Misturadora planetária 80L', setor:'Produção — Massas', criticidade:'A', status:'operando',
-   fabricante:'Kemper', modelo:'SP80', numeroSerie:'SP80-2231', ano:'2021', potencia:'7,5 cv', tensao:'380V', capacidade:'80 L',
+   fabricante:'Fabricante Demo', modelo:'MD-80', numeroSerie:'SN-0001', ano:'2021', potencia:'7,5 cv', tensao:'380V', capacidade:'80 L',
    consumiveis:[{id:'cs1',nome:'Óleo do redutor',tipo:'Lubrificante',espec:'ISO VG 220'},{id:'cs2',nome:'Correia de transmissão',tipo:'Correia',espec:'A-45'}],
    planos:[
      {id:'pl1', nome:'Lubrificação dos mancais', tipo:'TBM', periodoValor:'1', periodoUnidade:'semana', responsavel:'Mecânica', duracao:'20 min', parada:false, ultimaExecucao:'2026-06-18', atividades:'Lubrificar mancais\nVerificar nível do óleo do redutor'},
@@ -7957,15 +7957,15 @@ function _eqSeed(){ return [
      {id:'pl3', nome:'Revisão geral do redutor', tipo:'TBM', periodoValor:'1', periodoUnidade:'ano', responsavel:'Mecânica', duracao:'4 h', parada:true, ultimaExecucao:'2025-09-01', atividades:'Desmontar e revisar o redutor\nTrocar rolamentos\nAlinhar conjunto'},
    ], obs:''},
   {id:'eq_d2', tag:'FORN-02', nome:'Forno túnel a gás', setor:'Produção — Assados', criticidade:'A', status:'operando',
-   fabricante:'Tecnopan', modelo:'TT-12', numeroSerie:'TT12-0090', ano:'2019', potencia:'—', tensao:'220V', capacidade:'12 m',
+   fabricante:'Fabricante Demo', modelo:'MD-12', numeroSerie:'SN-0002', ano:'2019', potencia:'—', tensao:'220V', capacidade:'12 m',
    consumiveis:[{id:'cs3',nome:'Termopar',tipo:'Sensor',espec:'Tipo K'}],
    planos:[
      {id:'pl4', nome:'Inspeção dos queimadores', tipo:'TBM', periodoValor:'1', periodoUnidade:'mes', responsavel:'Mecânica', duracao:'45 min', parada:false, ultimaExecucao:'2026-05-20', atividades:'Verificar chama\nLimpar bicos\nTestar sensores de chama'},
      {id:'pl5', nome:'Calibração de temperatura', tipo:'TBM', periodoValor:'6', periodoUnidade:'mes', responsavel:'Qualidade', duracao:'1 h', parada:true, ultimaExecucao:'2026-02-10', atividades:'Aferir termopares\nCalibrar setpoints'},
    ], obs:''},
   {id:'eq_d3', tag:'EMB-03', nome:'Datadora a jato de tinta', setor:'Embalagem', criticidade:'B', status:'manutencao',
-   fabricante:'Videojet', modelo:'1580', numeroSerie:'VJ1580-1122', ano:'2022', potencia:'—', tensao:'110V', capacidade:'—',
-   consumiveis:[{id:'cs4',nome:'Tinta',tipo:'Insumo',espec:'V411-D'},{id:'cs5',nome:'Solvente',tipo:'Insumo',espec:'V701-Q'}],
+   fabricante:'Fabricante Demo', modelo:'MD-15', numeroSerie:'SN-0003', ano:'2022', potencia:'—', tensao:'110V', capacidade:'—',
+   consumiveis:[{id:'cs4',nome:'Tinta',tipo:'Insumo',espec:'Tinta padrao'},{id:'cs5',nome:'Solvente',tipo:'Insumo',espec:'Solvente padrao'}],
    planos:[
      {id:'pl6', nome:'Limpeza do cabeçote', tipo:'UBM', periodoValor:'200', periodoUnidade:'hora', responsavel:'Operação', duracao:'15 min', parada:false, atividades:'Limpar cabeçote\nVerificar viscosidade da tinta'},
    ], obs:''},
@@ -8147,7 +8147,7 @@ function renderEquipamentoEditor(){
         </div>
         ${sec('<i class="ti ti-tool"></i> Dados técnicos (placa) '+_hint('Dados da placa/etiqueta do fabricante fixada na máquina (modelo, série, tensão…).'))}
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
-          ${campo('Fabricante','fabricante','Kemper')}
+          ${campo('Fabricante','fabricante','Fabricante')}
           ${campo('Modelo','modelo','SP80')}
           ${campo('Nº de série','numeroSerie','SP80-2231')}
         </div>
