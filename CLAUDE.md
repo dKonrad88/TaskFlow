@@ -486,6 +486,20 @@ commits `cf5535aa`/`c0bb7427`.
 - **Comentários do próprio código** citavam exemplos reais de nome de cliente e de vendedor → **generalizados**
   (`"(XX) - Nome do cliente"`). Era o vestígio menos óbvio: dado real dentro de comentário explicativo.
 - **Este handoff**: valores, nomes e o nº da tarefa do ERP saíram; ficaram as lições técnicas e as decisões de tela.
+- ⭐⭐ **OS 3 SEEDS EM CÓDIGO** (26/10, varredura a pedido do Diego). A limpeza do Cursor cobriu **tudo que veio dos
+  exports** — e nisso foi completa (blobs `_CP_*`/`_FIN_*`/`_DDV_*`/`_COM_*`, o texto deste arquivo e até o dado da
+  nuvem). O que escapou foi o que **nós mesmos escrevemos à mão** meses atrás, que nenhuma busca por nome de cliente
+  acharia: **(1) fornecedores da Manutenção** (`_mntSeedForn` — razão social, contato, e-mail em domínio que pode
+  existir, telefone válido e cidade real); **(2) embaixadoras do Marketing** (nome + `@instagram` — ⚠️ um @ é
+  identificador real, então o handle "inventado" pode ser de alguém de fora); **(3) equipamentos da Manutenção**
+  (`_eqSeed` — 3 fabricantes reais com modelo, nº de série e ano, o que revela o parque de máquinas, mais 2
+  consumíveis com código de produto do fabricante). Todos viraram "Demo" + `example.com` + `(00) 00000-0000`.
+  📌 **REGRA: ao limpar dado real, varrer também os seeds em CÓDIGO, não só os blobs de export.** O filtro que
+  funciona é por **assinatura** (`LTDA|EIRELI|CNPJ`, e-mail, telefone, `instagram:`, `fabricante:`, cidade real),
+  nunca por lista de nomes conhecidos — e vale para os outros arquivos do repo, não só o `index.html`.
+- ⏳ **FICA EM ABERTO (decisão do Diego):** o app tem **as 25 pessoas reais da equipe** (nome + setor) no
+  `DEFAULT_PEOPLE`, replicadas em 63 dropdowns de HTML estático **e** na nuvem (`taskflow_people`). Não é cliente nem
+  fornecedor, e o protótipo depende desses nomes para demonstrar as regras — por isso não foi mexido.
 - ⚠️ **Fica fora do expurgo, por ora:** o transcript da conversa do Claude Code nesta máquina (some quando o Diego apagar
   a conversa) e os anexos no chat — só ele pode removê-los.
 
