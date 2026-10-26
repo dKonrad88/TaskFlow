@@ -425,105 +425,113 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 ### 2026-10-26 — base fictícia no lugar dos exports reais
 O `index.html` público deixou de carregar o export do ERP. Contas a pagar e a receber, Compras (NF, estoque, consumo, OC), Cobertura, Comercial e a necessidade da semana passaram a usar uma amostra pequena e inventada, no mesmo formato, para as telas continuarem de pé. Nomes de cliente, fornecedor, vendedor e banco do export saíram também do texto deste arquivo. A chave do Supabase e o histórico do git não foram mexidos. A nuvem (`app_state`) foi só consultada: não havia esses nomes lá.
 
-### ⭐⭐ 2026-10-24 — PC da Empresa — FINANCEIRO: **Contas a pagar e a receber com os DADOS REAIS do ERP** (`cf5535aa`)
-O Diego lembrou do recomeço de 19/09 (as duas abas existiam **vazias**, "Em construção") e trouxe os **dois exports
-do ERP** — `Tarefa 11685 … Contas a Receber / a Pagar · 01.01.2026 a 28.09.2026`. As duas telas foram montadas em
-cima deles. ⚠️ **Os .xlsx sumiram da pasta Downloads no meio da sessão** (o gerador precisou rodar de novo e já não
-achou) — se for regerar, pedir os exports de novo; o dado embutido no `index.html` é a única cópia que sobrou.
+### ⚠️⚠️ 2026-10-26 (b) — PC da Empresa — **EXPURGO dos dados reais + REPOSITÓRIO RECRIADO** · leia antes de mexer
+> Complementa a entrada acima (do Cursor). **Substitui a entrada de 24/10**, que descrevia as telas de Contas a pagar /
+> a receber montadas sobre os dois exports reais do ERP e repetia valores e nomes de clientes e fornecedores.
+> **O Diego pediu a remoção de 100% desses dados, de todo lugar.** ⚠️ **NÃO REINJETAR.**
 
-#### O DADO (o que foi embutido e por quê)
-| | a pagar | a receber |
-|---|---|---|
-| títulos no export | 6.213 | 49.227 |
-| **em aberto (embutidos título a título)** | **712 · R$ 3.00 mi** | **4.916 · R$ 6,55 mi** |
-| vencidos em 28/09 | 4 · R$ 84,7 mil | 304 · R$ 347,4 mil |
-| quitados (só agregados) | 5.501 · R$ 32,1 mi | 44.311 · R$ 43,3 mi |
-| entidades | 919 fornecedores | 7.150 clientes |
+#### ⚠️⚠️ O QUE CADA MÁQUINA PRECISA FAZER (Mac · PC da Produção)
+O repositório do GitHub foi **recriado do zero em 26/10** — é outra linha de história, com **2 commits**, sem nenhum
+ancestral em comum com a antiga. Quem ainda tiver o clone antigo tem, junto, **os dados reais** no `index.html` e nos
+commits `cf5535aa`/`c0bb7427`.
+1. **APAGUE a pasta do projeto e CLONE de novo** (`git clone https://github.com/dKonrad88/TaskFlow.git`).
+2. ⚠️⚠️ **NÃO dê `git push` a partir da cópia antiga** — isso devolveria os dados reais ao GitHub, que é **público**.
+3. No app, depois de abrir: **☁️ → Baixar da nuvem** antes de editar dados (a regra de ouro de sempre).
+- ✅ **No PC da Empresa já foi feito** (26/10): pasta apagada e reclonada; `backups/` (33 arquivos, 137 MB, dos quais 30
+  tinham nome real de fornecedor) e o `taskflow.html` antigo foram junto. A config local (`.claude/`) foi preservada.
+- ✅ **A exposição foi nula:** o repo novo registra **0 clone · 0 visita · 0 fork**, e a nuvem (`app_state`) foi
+  consultada e **não tinha esses nomes**.
+- 📦 O histórico antigo (796 commits, 20/06 → 26/10, **já sem os dados do financeiro**) ficou arquivado num bundle em
+  `G:\g_Diego\HTML\_taskflow_preservado\` **só nesta máquina** — serve para consultar um hash que este handoff cite
+  (`61bae2ff`, `a29be663`, `1c75150d`…), já que o repo novo não os tem. **Não é para subir no git**; apagar quando não fizer falta.
 
-- **Só o que está EM ABERTO vem título a título.** As 49 mil linhas inteiras levariam o `index.html` a ~8 MB sem
-  responder nenhuma pergunta nova; o histórico virou agregado por **mês de vencimento** (`_FIN_PGM`/`_FIN_RCM`), por
-  **fornecedor/cliente** (`_FIN_PGF`/`_FIN_RCC`), por **natureza** (`_FIN_PGD`), **divisão** (`_FIN_PGV`) e
-  **vendedor** (`_FIN_RCV`). O arquivo foi de 4,78 → **5,89 MB** (+1,1 MB), tudo em `JSON.parse` (regra de perf).
-- Dicionários: `_FIN_FO` fornecedores · `_FIN_CL` clientes `[cód,nome,cidade,UF,sigla]` · `_FIN_VD` vendedores ·
-  `_FIN_CT` contas · `_FIN_DE` plano de contas (85) · `_FIN_DV` divisões (60). `_FIN_POS='2026-09-28'`.
-- ⭐ **A "Divisão" do contas a pagar é a MESMA taxonomia de Compras** (GORDURAS VEGETAIS E ÓLEOS, FARINHAS, AÇÚCARES,
-  BOBINAS KLAIN, CAIXAS KLAIN, AMENDOINS…) — é a ponte natural entre as duas áreas, e já virou filtro na tela.
+#### O que foi apagado em 26/10 (PC da Empresa)
+- ⭐ Os **.xlsx originais** (Contas a Pagar 461 KB · a Receber 3,7 MB) **estavam de volta em `Downloads`** — tinham
+  reaparecido ao serem anexados no chat. Apagados, junto de **3 atalhos `.lnk`** em `Office\Recent` e `Windows\Recent`
+  que guardavam o nome. Lixeira do Windows, cache do Office e os demais drives: varridos, nada restou.
+- **`index.html`**: os 16 blobs de dado trocados por amostra fictícia (1,04 MB de dado real fora). ⭐ Os nomes das consts
+  são os MESMOS, então **o código das telas não mudou uma linha** (`_FIN_CANAL`/`_FIN_FAIXAS`/`_FIN_TETO` ficaram: são
+  código, não dado). Depois disso a pasta foi reclonada, e o `index.html` do GitHub já vinha com a base fictícia do Cursor.
+- **git local**: os commits `cf5535aa`, `c0bb7427` (e um `aab97777` meu, com defeito) foram expurgados, reflog expirado
+  e `gc` rodado — antes de a pasta ser trocada pelo clone novo.
+- **Comentários do próprio código** citavam exemplos reais de nome de cliente e de vendedor → **generalizados**
+  (`"(XX) - Nome do cliente"`). Era o vestígio menos óbvio: dado real dentro de comentário explicativo.
+- **Este handoff**: valores, nomes e o nº da tarefa do ERP saíram; ficaram as lições técnicas e as decisões de tela.
+- ⚠️ **Fica fora do expurgo, por ora:** o transcript da conversa do Claude Code nesta máquina (some quando o Diego apagar
+  a conversa) e os anexos no chat — só ele pode removê-los.
 
-#### AS TELAS (uma só, parametrizada pela aba)
-As duas são o MESMO código: mudam rótulos, colunas e dicionário. A régua de vencimento, os cartões, a curva e a
-tabela são compartilhados — mexer numa vale nas duas.
-- **5 cartões de aging EXCLUSIVOS** (Vencido · 7 dias · 8–30 · 31–90 · 90+) **que somam o total**, clicáveis como
-  filtro, mais "Total em aberto" como leitura. ⚠️ Exclusivos de propósito: "vence em 7" e "em 30" sobrepostos fariam
-  a soma dos cartões passar do total e nenhum número fecharia com o de cima.
-- **Curva "quando vence"** (`_cpBarChart`, clique no mês filtra). ⚠️ A janela **começa no vencido mais antigo**
-  (teto de 12 meses atrás) e vai a +10 meses — começar fixo em "posição −2 meses" escondia os vencidos antigos **e
-  somava os R$ 14 mil deles na nota de "depois"**, misturando passado com futuro (bug meu, pego no screenshot).
-  O que sobra fora da janela vira nota separada em ANTES e DEPOIS.
-- **Tabela de 9 colunas** ordenável (`_cpTh`/`_cpSortArr`), teto de 300 linhas e rodapé somando a lista inteira;
-  busca acento-insensível; filtros em popover (divisão e natureza no pagar; estado e vendedor no receber).
-- **Avisos do dado** na própria tela, em vez de maquiagem.
+#### AS TELAS (o trabalho de layout e de regra NÃO se perdeu)
+As duas são o MESMO código, parametrizado pela aba: mudam rótulos, colunas e dicionário. Régua de vencimento, cartões,
+curva e tabela são compartilhados — mexer numa vale nas duas.
+- **5 cartões de aging EXCLUSIVOS** (Vencido · 7 dias · 8–30 · 31–90 · 90+) **que somam o total**, clicáveis como filtro,
+  mais "Total em aberto" como leitura. ⚠️ Exclusivos de propósito: "vence em 7" e "em 30" sobrepostos fariam a soma dos
+  cartões passar do total e **nenhum número fecharia com o de cima**.
+- **Curva "quando vence"** (`_cpBarChart`, clique no mês filtra). ⚠️ A janela **começa no vencido mais antigo** (teto de
+  12 meses atrás) e vai a +10 meses — começar fixo em "posição −2 meses" escondia os vencidos antigos **e somava o valor
+  deles na nota de "depois"**, misturando passado com futuro (bug meu, pego no screenshot). O que sobra fora da janela
+  vira nota, **separada em ANTES e DEPOIS**.
+- **Tabela de 9 colunas** ordenável (`_cpTh`/`_cpSortArr`), teto de 300 linhas e rodapé somando a lista inteira; busca
+  acento-insensível; filtros em popover (divisão e natureza no pagar; estado e vendedor no receber).
+- **Regra P0 respeitada:** as funções de render **não gravam nada** — a única escrita do bloco é o `_seedNotaFinanceiro`, no boot.
+- Verificado no navegador depois da troca pelos fictícios: as 2 telas renderizam (36 linhas, 6 cartões), **0 erro de
+  console**, e 6 telas de outras áreas (Compras ×4, Cobertura, Comercial) sem regressão.
 
-#### ⭐ O QUE O DADO ENSINOU (e virou decisão de tela)
-1. **Sem coluna de conta de pagamento.** No export ela só vem preenchida **depois da baixa** (é por onde o dinheiro
-   saiu/entrou): está vazia em **711 dos 712** a pagar e em **4.911 dos 4.916** a receber. Seria uma coluna de
-   travessões. O campo segue no objeto do título, pronto para uma futura tela de baixas.
-2. **Não há "pago no prazo" nem atraso médio:** o export traz o VALOR da baixa, **nunca a DATA**. Por isso tudo que é
-   por mês neste bloco é por mês de **vencimento** — está escrito no comentário do bloco para ninguém prometer
-   pontualidade em cima desse dado.
-3. ⚠️ **Uma fatia grande do a pagar era parcelamento longo** de consórcio (parcelas fixas por muitos anos). Sem separar
-   isso, o total em aberto enganava. A nota da curva existe para isso. O export em si saiu do código em 26/10.
-4. **1 título a receber vence em out/2036** (R$ 341,42, em aberto) — ano digitado errado no ERP (duplicata de venda
-   não passa de ~1 ano; todo o resto do receber vence em até 90 dias). Aparece como **aviso âmbar** no topo, somado
-   no total: esconder seria pior, ele entra na conta.
-5. O **nome do cliente** traz dois adornos: sigla entre parênteses e, em parte dos cadastros, um **`*` antes dela**.
-   A sigla virou chip discreto. ⏳ **PERGUNTAR ao Diego o que a sigla e o `*` significam** — na amostra fictícia só
-   são exibidos, não interpretados.
-6. **48 das 85 contas do plano começam com "DESPESAS COM "** — numa tela que só fala de despesa o prefixo é redundante
-   e era o que mais truncava a coluna (108 células com reticências → 6 depois de removê-lo).
-7. **O vendedor traz o CANAL no prefixo** (`KLAIN - `, `REP. VAREJO - `): virou chip curto (Klain · Rep. · Broker) com
-   o nome legível ao lado — 154 células truncadas → 0.
-8. **643 dos 712 títulos a pagar não têm Divisão** (ela só vem nos ligados a compra de insumo). A coluna ficou, porque
-   quando existe é o elo com Compras e o filtro funciona.
+#### ⭐ O QUE O FORMATO DO EXPORT ENSINOU (vale quando vier o próximo)
+1. **A conta de pagamento só vem preenchida DEPOIS da baixa** (é por onde o dinheiro saiu/entrou) → numa foto de títulos
+   em aberto ela é uma coluna de travessões, e por isso saiu da tela. O campo segue no objeto do título, pronto para uma
+   futura tela de baixas.
+2. **Não há "pago no prazo" nem atraso médio:** o export traz o VALOR da baixa, **nunca a DATA**. Por isso tudo que é por
+   mês neste bloco é por mês de **VENCIMENTO** — está escrito no comentário do bloco, para ninguém prometer pontualidade
+   em cima desse dado.
+3. ⚠️ **Parcelamento longo distorce o total a pagar.** Boa parte do saldo pode vencer a mais de dez anos (consórcio), então
+   "R$ X a pagar" engana se não se separar o que vence no horizonte curto. É o que a nota da curva faz.
+4. **Ano digitado errado no ERP existe** (duplicata de venda com vencimento a dez anos, quando o normal é até 90 dias).
+   Aparece como **aviso âmbar** no topo e **entra no total**: esconder seria pior, ele está na conta.
+5. O **nome do cliente** traz dois adornos: uma **sigla entre parênteses** e, em parte dos cadastros, um **`*` antes dela**.
+   A sigla virou chip discreto. ⏳ **PERGUNTAR ao Diego o que a sigla e o `*` significam** — hoje só são exibidos.
+6. **Mais da metade das contas do plano começa com "DESPESAS COM "** — numa tela que só fala de despesa o prefixo é
+   redundante, e era o que mais truncava a coluna (`_finNat` remove).
+7. **O vendedor traz o CANAL no prefixo** (`KLAIN - `, `REP. VAREJO - `): virou **chip curto** (Klain · Rep. · Broker) com o
+   nome legível ao lado — o truncamento daquela coluna foi a zero.
+8. **A maioria dos títulos a pagar NÃO tem Divisão** (ela só vem nos ligados a compra de insumo). A coluna ficou, porque
+   quando existe é o **elo com Compras**: ⭐ a Divisão do contas a pagar é a **MESMA taxonomia de Compras** (gorduras e
+   óleos, farinhas, açúcares, bobinas, caixas, amendoins…) — a ponte natural entre as duas áreas, e já é filtro na tela.
 
-#### ⚠️ ARMADILHAS novas (3 caíram nesta sessão — anotar)
-- ⭐⭐ **PowerShell: dentro de `@( )` a VÍRGULA tem precedência sobre o `+`.** `@($a[0]+1, $a[1]+$v)` não soma nada —
-  vira `$a[0] + (1,$a[1]) + …` e devolve **array vazio**, com erro enganoso ("[System.Object[]] não contém
-  op_Addition"). **Sempre parentizar cada soma:** `@(($a[0]+1), ($a[1]+$v))`. Custou 3 execuções do gerador.
+#### ⚠️ ARMADILHAS (nenhuma tem dado dentro — é o que mais vale guardar)
+- ⭐⭐ **PowerShell: dentro de `@( )` a VÍRGULA tem precedência sobre o `+`.** `@($a[0]+1, $a[1]+$v)` não soma nada — vira
+  `$a[0] + (1,$a[1]) + …` e devolve **array vazio**, com erro enganoso ("[System.Object[]] não contém op_Addition").
+  **Sempre parentizar cada soma:** `@(($a[0]+1), ($a[1]+$v))`. Custou 3 execuções do gerador.
 - ⭐ **O escape de 2 camadas é obrigatório** (já estava no handoff de 31/08 e eu caí nele): o dado sai como
-  `const X=JSON.parse('…')`, então escapa-se para o JSON **e depois para a string JS, que está entre aspas simples**.
-  Sem a 2ª camada, **49 apóstrofos** em nomes de cliente/fornecedor derrubaram o arquivo inteiro
-  com `missing ) after argument list` — o app não bootava. Script `fix_escape.ps1` conserta no index já injetado.
+  `const X=JSON.parse('…')`, então escapa-se para o JSON **e depois para a string JS, que está entre ASPAS SIMPLES**.
+  Sem a 2ª camada, **apóstrofo em nome próprio** (D'…, L'…) derruba o arquivo inteiro com `missing ) after argument list`
+  e o app não boota. ⚠️ O sintoma engana: aparece **"função global não existe"**, porque é erro de PARSE e acontece antes
+  de qualquer listener existir.
 - **`.ps1` tem de ser ASCII PURO** (PS 5.1 lê como ANSI): um em-dash num comentário do injetor virou "Token inesperado".
-  Por isso o cabeçalho em português do bloco mora num `fin_head.js` separado, que o injetor só concatena.
-- **`_cpForn` só deve pegar quem veio GRITANDO:** ele capitaliza palavra a palavra e estraga o que está entre
-  parênteses em nome já bem escrito (`(Cidade)` → `(cidade)`, porque o 1º caractere da palavra é o parêntese).
-  Nasceu o `_finNome`, que só normaliza quando o texto está todo em caixa alta. ⚠️ **O mesmo defeito vale para
-  Compras**, onde `_cpForn` é aplicado sem essa guarda — lá os nomes vêm em caixa alta, então não aparece, mas um
-  fornecedor cadastrado em caixa mista com parênteses sairia torto.
-- `[IO.File]::WriteAllText` falha com "seção mapeada pelo usuário aberta" se outro processo estiver com o arquivo de
-  saída aberto — apagar o arquivo antes de regravar resolve.
-
-#### Verificação (navegador, servidor HTTP local na :8899)
-**0 erros de console** em tudo. Totais conferidos **ao centavo** contra o Excel (712/R$ 2.998.915,33 e
-4.916/R$ 6.553.424,63). Testado: os 5 cartões filtrando (vencido → 304 títulos/R$ 347.385,68), busca de um cliente
-(4 títulos), clique no mês (out/26 → 3.481 títulos/R$ 4.756.133,89, batendo com o agregado), filtro de
-divisão (BOBINAS KLAIN → 1 título/R$ 13.133,21), ordenação pelas colunas novas, popover abrindo e fechando no clique
-fora. Em **1920×1080** a tabela cabe sem rolagem horizontal (1.543px) e sobraram 25 (pagar) e 8 (receber) células com
-reticências, todas com o texto inteiro no `title`. **Regra P0 respeitada:** as funções de render **não gravam nada** —
-a única escrita do bloco segue sendo o `_seedNotaFinanceiro`, no boot. **Sem regressão:** as 10 telas das outras áreas
-(Compras ×7, Produção, Comercial, Meu Dia) renderizam normalmente.
+- ⭐ **`git reset --soft` NÃO mexe no índice** — e o `git commit` seguinte commita o ÍNDICE, não o working tree. Ao limpar
+  os dados eu fiz `reset --soft` + editei os arquivos + `commit`, e o commit saiu **com os dados reais** (o `MM` do
+  `git status` era o aviso). **Depois de um `reset --soft`, sempre `git add -A` antes do commit**, e conferir com
+  `git show HEAD:<arquivo> | grep …` que foi o conteúdo certo que entrou.
+- ⭐ **Splice de arquivo grande: NÃO montar o novo conteúdo num `ArrayList` em PowerShell.** Ao substituir uma entrada
+  deste handoff, o loop de cópia não copiou as 5.338 linhas restantes e o `CLAUDE.md` foi de 5.862 para 521 linhas
+  (recuperado com `git checkout -- CLAUDE.md`). **Use `head -n <ini>` + conteúdo novo + `tail -n +<fim>`**, que é
+  determinístico, e **confira a contagem de linhas antes e depois**.
+- **No G: não dá para renomear nem apagar a pasta que é o cwd da sessão** ("Device or resource busy"), e um arquivo
+  fantasma de 0 byte pode travar o `.git` ("acesso negado"). Receita que funcionou para reclonar: **clonar ao lado**,
+  apagar o CONTEÚDO da pasta e **copiar o clone para dentro** (`cp -r _clone/. "pasta/"`), em vez de mexer na pasta.
+- **`_cpForn` só deve pegar quem veio GRITANDO:** ele capitaliza palavra a palavra e estraga o que está entre parênteses em
+  nome já bem escrito (`(Montenegro)` → `(montenegro)`). Nasceu o **`_finNome`**, que só normaliza quando o texto está todo
+  em caixa alta. ⚠️ **O mesmo defeito vale para Compras**, onde `_cpForn` é aplicado sem essa guarda.
+- `[IO.File]::WriteAllText` falha com "seção mapeada pelo usuário aberta" se outro processo estiver com o arquivo de saída
+  aberto — apagar o arquivo antes de regravar resolve.
 
 #### ⏳ Em aberto
-- **O que significam a sigla do cliente (KN/MG/JE/GJ) e o `*`** — só o Diego sabe; hoje são exibidos crus.
-- **Dar baixa, aprovar pagamento, registrar promessa de cobrança**: nenhuma AÇÃO foi feita, as telas são de leitura.
-  Quando entrar, lembrar que gravação é só na ação (nunca no render) e que o dado real vem do ERP.
-- **Fornecedor/cliente não têm ficha** (clicar na linha não abre nada). Os agregados por entidade já estão embutidos
-  para quando isso virar tela.
-- A **curva não mostra o realizado** (quanto foi pago/recebido por mês) porque falta a data da baixa — é o que pedir
-  à TI no próximo export, junto com a **condição de pagamento** (que também falta em Compras).
-- Os scripts do fluxo ficaram no scratchpad (`gen_fin.ps1` gerador · `inject_fin.ps1` injetor idempotente ·
-  `fix_escape.ps1` · `server.ps1`) — ⚠️ **o scratchpad some**; o que sobrevive é este handoff e o bloco no `index.html`.
-
+- ⭐ **O Diego quer retomar o plano de melhorias de Contas a Pagar e a Receber** — é o próximo passo combinado.
+  ⚠️ Quando vier export novo, **usar para descobrir formato e regra e gerar amostra FICTÍCIA**, não embutir o dado.
+- **Dar baixa, aprovar pagamento, registrar promessa de cobrança**: nenhuma AÇÃO existe — as telas são de leitura. Quando
+  entrar, lembrar que gravação é só na ação (nunca no render).
+- **Fornecedor/cliente não têm ficha** (clicar na linha não abre nada).
+- A **curva não mostra o realizado** (quanto foi pago/recebido por mês) porque falta a data da baixa — é o que pedir à TI
+  no próximo export, junto com a **condição de pagamento** (que também falta em Compras).
 ### 2026-09-28 (d) — PC da Produção — Compras: 🐞 busca do fornecedor abria "Nova Tarefa" · data da carga LIVRE (calendário) · filtro mês/ano nas Últimas compras · fora os CHECKS das planilhas
 Leva de 4 pedidos do Diego numa mesma rodada (ficha do item + fornecedor + Planejamento). Verificado no app (HTTP :8898, 0 erros de console) — os 4 por DOM/render.
 - 🐞🐞 **BUG: digitar na busca do fornecedor (aba Itens) abria o modal "Nova Tarefa"** toda hora. Causa: **`_cpFornItBuscaInput` chamava `_cpFornItRefresh` → `renderCompras()` (re-render TOTAL) a cada tecla** → recria o campo de busca e **PERDE O FOCO**; a letra seguinte (ex.: o **n** de "ame·n·doim") vazava para o **atalho global 'n' = nova tarefa**. Fix: a busca passou a atualizar **só `#cp-fi-tbody` + `#cp-fi-tfoot` em-lugar** (como a busca da lista de fornecedores já fazia), sem tocar no campo → foco preservado, nada vaza. ⚠️ **Padrão a seguir em toda busca com foco:** NUNCA `renderCompras()` no `oninput`; atualizar só o corpo da tabela.
@@ -2536,7 +2544,7 @@ Sessão longa e muito iterativa (o Diego foi refinando por print). **19 commits 
 - ⭐ **COMPARAÇÃO A × B** (`_cpFornCompHTML`): **período A de um lado, B do outro, as diferenças NO MEIO** (Valor · Volume · Itens). Cada lado leva o **próprio seletor** + datas concretas (`01/01/25 – 01/09/25`) + fundo próprio (`CP_BG_A` azulado / `CP_BG_B` cinza) + **divider** separando o quadro do ano dos números do filtro. Nas PONTAS do card, o **quadro do ano**: à esquerda **ano fechado** (fato), à direita **projeção do ano corrente**. 13 presets de período (ano, 4 trimestres, 2 semestres, últ. 3/6/12, **mesmo período do ano passado**, tudo, custom) + seletor de ANO ao lado — lista **plana** de propósito (com optgroup o `<select>` nativo ganhava barra de rolagem).
 - ⚠️ **`_cpFornAno(linhas, ano)` — a projeção NÃO é regra de três.** Usa o crescimento já observado (acumulado do ano ÷ mesmo trecho do ano anterior) aplicado ao **ano anterior COMPLETO** → a sazonalidade entra na conta (quem concentra compra no fim do ano seria subestimado por extrapolação linear). Sem ano anterior, cai no linear. Ano < corrente = `fechado:true` (soma real).
 - ⚠️ **`_cpFornOrdem(c)` — a variação é SEMPRE cronológica** (do mais antigo p/ o mais recente), não "A vs B". Sem isso, escolher A = ano passado e B = este ano mostrava **queda** num fornecedor que cresceu (bug real que o Diego pegou).
-- ⚠️ **"Ritmo — últ. 3 meses" usa JANELA DE CALENDÁRIO**, não os 3 últimos REGISTROS. Com registros, o Dekel Agro comparava "mai–ago/26 × jun/25–abr/26" (4 meses × 11) e dava **+70,9%**; com janela fixa ancorada no último mês fechado (mês sem compra = 0) dá **−3,5%**. 📌 O ritmo (horizonte curto) pode ser NEGATIVO com o ano positivo (+22,2%) — são horizontes diferentes, não é bug (dúvida do Diego, respondida).
+- ⚠️ **"Ritmo — últ. 3 meses" usa JANELA DE CALENDÁRIO**, não os 3 últimos REGISTROS. Com registros, um fornecedor comparava "mai–ago/26 × jun/25–abr/26" (4 meses × 11) e dava **+70,9%**; com janela fixa ancorada no último mês fechado (mês sem compra = 0) dá **−3,5%**. 📌 O ritmo (horizonte curto) pode ser NEGATIVO com o ano positivo (+22,2%) — são horizontes diferentes, não é bug (dúvida do Diego, respondida).
 - ⭐ **SIMULADOR "E se eu aumentar o volume"** (`_cpFornSimCard`/`_cpFornSimOutHTML`, `max-width:700px`): campo de %, **toggle A|B** do período base, e 3 blocos — **Volume · Valor · Ano cheio**. O bloco do ano projeta o **ANO SEGUINTE sobre o ano corrente projetado** (2027 sobre os R$ 1,48mi de 2026), não o ano da base. **Cada número tem a legenda em cima** (`5bc4e202`): rótulo cinza para o riscado (a base), rótulo no acento para o resultado, e `a mais` escrito após o delta. Datas/projeção ficam no `title`.
 - ⭐ **ORDENAÇÃO CLICÁVEL em TODAS as tabelas de Compras** (`9ac06700`): motor único `_cpSort`/`_cpSortGet`/`_cpSortSet`/`_cpTh`/`_cpSortArr` (localeCompare pt-BR `numeric:true`; **vazio/null sempre no FIM**, nas duas direções). ⚠️ Em **Fornecedores** o rank/acumulado da **curva ABC é calculado na ordem de VALOR** e só depois as linhas são reordenadas p/ exibição — senão a curva mentiria. No **Histórico** a ordenação roda **ANTES** do teto de 250 linhas.
 - **Ficha do ITEM** (`29e2a2a3`, `6ae7d1d7`, `0eca46a5`): **Cobertura (físico)** × **Cobertura (físico + OC)** no card Indicadores, com o período junto do preço médio e do custo médio; **volume nas barras** do gráfico de consumo; cronograma do simulador mostra "estoque atual dura até" **e** "com a OC em aberto dura até"; card de **OC em aberto compacto** (linha igual à de Últimas compras); resultado do simulador em **3 cards com título** (O que comprar · Preço e cobertura · Cronograma de chegada) com o cronograma em `.cp-crono-row` (2 colunas + info na linha de baixo, `:empty` some).
