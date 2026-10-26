@@ -7346,10 +7346,10 @@ function _fornNome(id){ const f=(fornecedores||[]).find(x=>x.id===id); return f?
 function _cotNome(c){ return c.fornecedorId? _fornNome(c.fornecedorId) : (c.fornecedorNome||'Avulso'); }
 
 function _mntSeedForn(){ return [
-  {id:'fn_demo1', nome:'Inox Sul Equipamentos', categoriaMacro:'Inox / Tanques', categoria:'Tanques sob medida', produtos:['tanques','agitadores','tubulação inox'], contato:'Marcos', telefone:'(51) 99876-1234', email:'vendas@inoxsul.com.br', cnpj:'', cidade:'Caxias do Sul - RS', obs:'', ativo:true},
-  {id:'fn_demo2', nome:'MecanoTech Industrial', categoriaMacro:'Mecânica', categoria:'Usinagem', produtos:['usinagem','eixos','engrenagens'], contato:'Patrícia', telefone:'(51) 3211-7788', email:'comercial@mecanotech.com', cnpj:'', cidade:'Porto Alegre - RS', obs:'', ativo:true},
-  {id:'fn_demo3', nome:'Caldeiraria Triângulo', categoriaMacro:'Inox / Tanques', categoria:'Caldeiraria', produtos:['caldeiraria','tanques','serpentinas'], contato:'João', telefone:'(54) 99123-0099', email:'orcamento@triangulo.ind.br', cnpj:'', cidade:'Bento Gonçalves - RS', obs:'', ativo:true},
-  {id:'fn_demo4', nome:'EletroPeças RS', categoriaMacro:'Elétrica', categoria:'Componentes', produtos:['correia','resistência','datador','sensores'], contato:'Renata', telefone:'(51) 3344-1212', email:'vendas@eletropecas.com', cnpj:'', cidade:'Novo Hamburgo - RS', obs:'', ativo:true},
+  {id:'fn_demo1', nome:'Inox Demo Equipamentos', categoriaMacro:'Inox / Tanques', categoria:'Tanques sob medida', produtos:['tanques','agitadores','tubulação inox'], contato:'Contato Demo', telefone:'(00) 00000-0000', email:'vendas@example.com', cnpj:'', cidade:'Cidade Demo - RS', obs:'', ativo:true},
+  {id:'fn_demo2', nome:'Mecanica Demo Industrial', categoriaMacro:'Mecânica', categoria:'Usinagem', produtos:['usinagem','eixos','engrenagens'], contato:'Contato Demo', telefone:'(00) 00000-0000', email:'comercial@example.com', cnpj:'', cidade:'Cidade Demo - RS', obs:'', ativo:true},
+  {id:'fn_demo3', nome:'Caldeiraria Demo', categoriaMacro:'Inox / Tanques', categoria:'Caldeiraria', produtos:['caldeiraria','tanques','serpentinas'], contato:'Contato Demo', telefone:'(00) 00000-0000', email:'orcamento@example.com', cnpj:'', cidade:'Cidade Demo - RS', obs:'', ativo:true},
+  {id:'fn_demo4', nome:'Eletro Demo Pecas', categoriaMacro:'Elétrica', categoria:'Componentes', produtos:['correia','resistência','datador','sensores'], contato:'Contato Demo', telefone:'(00) 00000-0000', email:'vendas@example.com', cnpj:'', cidade:'Cidade Demo - RS', obs:'', ativo:true},
 ]; }
 function _mntSeedOrc(){ return [{
   id:'or_demo1', titulo:'Tanque de mistura 1000L (inox 304)', descricao:'Tanque encamisado com agitador, p/ a linha de cobertura.', data:today, status:'aberto', escolhidoId:null,
@@ -7451,16 +7451,16 @@ function renderFornecedorEditor(){
         ${campo('Nome *','nome','Razão social ou nome fantasia')}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
           <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Categoria macro</label><input list="forn-macros-dl" value="${escapeAttr(b.categoriaMacro||'')}" oninput="_mfSet('categoriaMacro',this.value)" placeholder="Elétrica, Mecânica, Inox…" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;"><datalist id="forn-macros-dl">${[...new Set([..._fnMacros(),'Elétrica','Mecânica','Inox / Tanques','Insumos','Serviços','Hidráulica','Pneumática'])].map(m=>`<option value="${escapeAttr(m)}"></option>`).join('')}</datalist></div>
-          ${campo('Cidade / UF','cidade','Caxias do Sul - RS')}
+          ${campo('Cidade / UF','cidade','Cidade - UF')}
         </div>
         <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Produtos que fornece ${_hint('Liste os produtos separados por vírgula. Ex.: correia, resistência, datador.')}</label><input value="${escapeAttr((b.produtos||[]).join(', '))}" oninput="_mfSetLista('produtos',this.value)" placeholder="correia, resistência, datador" style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;"></div>
         ${campo('Segmento / categoria','categoria','Opcional — ex.: tanques sob medida')}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
           ${campo('Contato','contato','Nome do vendedor')}
-          ${campo('Telefone','telefone','(51) 99999-0000')}
+          ${campo('Telefone','telefone','(00) 00000-0000')}
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-          ${campo('E-mail','email','comercial@fornecedor.com')}
+          ${campo('E-mail','email','comercial@example.com')}
           ${campo('CNPJ','cnpj','00.000.000/0001-00')}
         </div>
         <div><label style="font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:5px;">Observações</label><textarea oninput="_mfSet('obs',this.value)" rows="2" placeholder="Condições, histórico, etc." style="width:100%; box-sizing:border-box; resize:vertical; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; color:var(--text); font-family:inherit;">${escapeHTML(b.obs||'')}</textarea></div>
@@ -8434,11 +8434,11 @@ function _mktNovoParticipante(embId){ return {embaixadoraId:embId, qtd:1, rastre
 // ── Seed de demonstração (dados fictícios p/ o protótipo abrir "vivo") ──
 function _mktSeed(){
   embaixadoras=[
-    {id:_mntId('emb'), nome:'Marina Alves', instagram:'@marina.alves', seguidores:'48200', cidade:'Curitiba/PR', endereco:'', categoria:'Lifestyle', status:'ativa', obs:'Ótimo engajamento em stories.', entrouEm:today},
-    {id:_mntId('emb'), nome:'Bianca Rocha', instagram:'@bibirocha', seguidores:'132000', cidade:'São Paulo/SP', endereco:'', categoria:'Gastronomia', status:'ativa', obs:'', entrouEm:today},
-    {id:_mntId('emb'), nome:'Yasmin Costa', instagram:'@yasmincosta', seguidores:'27600', cidade:'Florianópolis/SC', endereco:'', categoria:'Fitness', status:'ativa', obs:'', entrouEm:today},
-    {id:_mntId('emb'), nome:'Duda Martins', instagram:'@dudamartins', seguidores:'89400', cidade:'Porto Alegre/RS', endereco:'', categoria:'Maternidade', status:'ativa', obs:'', entrouEm:today},
-    {id:_mntId('emb'), nome:'Larissa Nunes', instagram:'@lari.nunes', seguidores:'15300', cidade:'Belo Horizonte/MG', endereco:'', categoria:'Doces & receitas', status:'pausada', obs:'Pediu pausa neste mês.', entrouEm:today}
+    {id:_mntId('emb'), nome:'Ana Exemplo', instagram:'@ana.exemplo', seguidores:'48200', cidade:'Curitiba/PR', endereco:'', categoria:'Lifestyle', status:'ativa', obs:'Ótimo engajamento em stories.', entrouEm:today},
+    {id:_mntId('emb'), nome:'Beatriz Teste', instagram:'@bia.teste', seguidores:'132000', cidade:'São Paulo/SP', endereco:'', categoria:'Gastronomia', status:'ativa', obs:'', entrouEm:today},
+    {id:_mntId('emb'), nome:'Carla Ficticia', instagram:'@carla.ficticia', seguidores:'27600', cidade:'Florianópolis/SC', endereco:'', categoria:'Fitness', status:'ativa', obs:'', entrouEm:today},
+    {id:_mntId('emb'), nome:'Daniela Modelo', instagram:'@dani.modelo', seguidores:'89400', cidade:'Porto Alegre/RS', endereco:'', categoria:'Maternidade', status:'ativa', obs:'', entrouEm:today},
+    {id:_mntId('emb'), nome:'Elisa Amostra', instagram:'@elisa.amostra', seguidores:'15300', cidade:'Belo Horizonte/MG', endereco:'', categoria:'Doces & receitas', status:'pausada', obs:'Pediu pausa neste mês.', entrouEm:today}
   ];
   const mesRef=String(today).slice(0,7);
   const env={id:_mntId('env'), titulo:'Envio '+_mktMesLabel(mesRef), mesRef, objetivo:'Divulgar a nova linha de doces caramelizados e gerar conteúdo em reels.', produtos:[{nome:'Pipoca caramelizada 100g', qtd:2},{nome:'Paçoca zero 80g', qtd:2},{nome:'Kit degustação', qtd:1}], status:'acompanhamento', criadoEm:new Date().toISOString(), etapas:_mktNovasEtapas(), participantes:[], conteudos:[], problemas:[]};
