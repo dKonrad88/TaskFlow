@@ -422,6 +422,35 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-10-26 (c) — Compras: 6 insumos com nome real, resto inventado
+Farinha de Estrela Cadente e Gordura Vegetal Aurora saíram. No lugar, a matéria-prima
+da área Compras são estes 6, com o nome real do insumo e todo o número inventado
+(código, fornecedor, NF, estoque, consumo, ordem). Sem CNPJ e sem código de ERP.
+
+| código | item | estoque 30/08 | consumo/mês | cobertura |
+|---|---|---|---|---|
+| 1101 | Gordura CBS | 2.500 kg | 985 kg | 76 d |
+| 1102 | Gordura de fritura | 2.200 kg | 4.175 kg | 16 d |
+| 1103 | Amendoim | 6.400 kg | 1.825 kg | 105 d |
+| 1104 | Farinha de milho | 700 kg | 2.563 kg | 8 d |
+| 1105 | Farinha de trigo T1 | 18.000 kg | 6.150 kg | 88 d |
+| 1106 | Farinha de trigo T2 | 42.000 kg | 8.063 kg | 156 d |
+
+- Fornecedores inventados, 1 ou 2 por item: Usina Bruma Dourada, Óleos do Vale Imaginário,
+  Frituras Serra de Papel, Sítio Grão de Mentira, Grãos do Horizonte Pintado, Moinho Vale
+  Imaginário, Cereal Arco de Giz, Moinho Estrela de Giz, Moinho Farol de Trigo.
+- NFs de jan/2025 a ago/2026 (NF-81xxx … NF-86xxx). Quantidade em kg, em múltiplos de
+  saco de 25 kg (milho), 50 kg (amendoim e trigo) ou tonelada (fritura e trigo); a CBS
+  em caixas de 25 kg. ICMS 12% na amostra, CMU = preço × 0,88.
+- OCs de jan a ago/2026. As recebidas ficam em `_CP_OC` com entregue = pedido (não
+  aparecem na aba, porque o saldo é zero). As em aberto têm emissão até ago/2026 e
+  previsão em out–dez, então continuam vivas: 12 linhas, R$ 291.050, duas atrasadas
+  (farinha de milho 21/10 e gordura de fritura 22/10).
+- Óleo, açúcar, cacau e as três embalagens de exemplo continuam. A validade de fábrica
+  do amendoim segue 6 meses. A lista de lotes do Painel usa estes códigos, não códigos
+  com cara de ERP.
+- A busca na área, pelos nomes reais de fornecedor que não podem aparecer, continua zerada.
+
 ### 2026-10-26 — base fictícia no lugar dos exports reais
 O `index.html` público deixou de carregar o export do ERP. Contas a pagar e a receber, Compras (NF, estoque, consumo, OC), Cobertura, Comercial e a necessidade da semana passaram a usar uma amostra pequena e inventada, no mesmo formato, para as telas continuarem de pé. Nomes de cliente, fornecedor, vendedor e banco do export saíram também do texto deste arquivo. A chave do Supabase e o histórico do git não foram mexidos. A nuvem (`app_state`) foi só consultada: não havia esses nomes lá.
 

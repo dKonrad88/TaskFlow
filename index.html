@@ -6467,9 +6467,13 @@ function _necBuscaToggle(){ _necBuscaAberta=!_necBuscaAberta; if(!_necBuscaAbert
 // ⚠️ Códigos e estoque são a MESMA base fictícia de Compras — clicar na linha abre a ficha
 // (_cpAbrirItem). O "a utilizar" continua exemplo (no Oficial vem da programação × ficha técnica).
 const _NEC_SEED=[
-  ['1001','Farinha de Estrela Cadente','Insumos de cozinha',1200,400,4.50],
+  ['1101','Gordura CBS','Insumos de cozinha',2500,250,23.80],
+  ['1102','Gordura de fritura','Insumos de cozinha',2200,2800,9.95],
+  ['1103','Amendoim','Insumos de cozinha',6400,460,12.95],
+  ['1104','Farinha de milho','Insumos de cozinha',700,1600,2.85],
+  ['1105','Farinha de trigo T1','Insumos de cozinha',18000,1540,3.55],
+  ['1106','Farinha de trigo T2','Insumos de cozinha',42000,2020,3.15],
   ['1002','Oleo de Girassol Demo','Insumos de cozinha',400,180,8.20],
-  ['1003','Gordura Vegetal Aurora','Insumos de cozinha',80,220,7.40],
   ['1004','Acucar Cristal Ficticio','Insumos de cozinha',2500,500,3.20],
   ['1005','Cacau em Po Exemplo','Insumos de cozinha',60,40,18.00],
   ['2001','Caixa de Papelao Modelo Demo 10','Embalagens',900,650,1.90],
@@ -8527,27 +8531,30 @@ function renderMarketing(){
 // OC/NF continuam no ERP). v1 = CASCA: cada aba abre um placeholder do que
 // vai vir. Ver o blueprint (debate de 21/07). Preenchemos aba por aba.
 // ===== COMPRAS — base FICTÍCIA de demonstração (out/2026) =====
-// O export real de NFs, fornecedores, estoque e consumo saiu do arquivo.
-// Ficaram 8 itens, 6 fornecedores e um punhado de notas, no mesmo formato.
+// Seis matérias-primas com o nome real do insumo (Gordura CBS, Gordura de fritura,
+// Amendoim, Farinha de milho, Farinha de trigo T1 e T2). Fornecedor, código, NF,
+// estoque, consumo e ordem são inventados — sem CNPJ e sem código de ERP.
+// Óleo, açúcar, cacau e as três embalagens de exemplo continuam, para as telas
+// não ficarem só com matéria-prima.
 // Dicionarios (_CP_IT itens, _CP_FO fornecedores, _CP_TP tipos, _CP_DV divisoes). cls: I=insumo.
-const _CP_IT=JSON.parse('[["1001","Farinha de Estrela Cadente"],["1002","Oleo de Girassol Demo"],["1003","Gordura Vegetal Aurora"],["1004","Acucar Cristal Ficticio"],["1005","Cacau em Po Exemplo"],["2001","Caixa de Papelao Modelo Demo 10"],["2002","Etiqueta Colorida 40 x 20 Demo"],["2003","Bobina Filme Transparente Demo"]]');
-const _CP_FO=JSON.parse('[["S01","Moinho Estrela Cadente Ltda"],["S02","Oficina do Cometa Embalagens"],["S03","Nuvem Laranja Insumos Ltda"],["S04","Quimica do Arco Iris Ltda"],["S05","Farol de Papelao Demo Ltda"],["S06","Usina Lampiao Demo Ltda"]]');
+const _CP_IT=JSON.parse('[["1101","Gordura CBS"],["1102","Gordura de fritura"],["1103","Amendoim"],["1104","Farinha de milho"],["1105","Farinha de trigo T1"],["1106","Farinha de trigo T2"],["1002","Oleo de Girassol Demo"],["1004","Acucar Cristal Ficticio"],["1005","Cacau em Po Exemplo"],["2001","Caixa de Papelao Modelo Demo 10"],["2002","Etiqueta Colorida 40 x 20 Demo"],["2003","Bobina Filme Transparente Demo"]]');
+const _CP_FO=JSON.parse('[["S11","Usina Bruma Dourada Ltda"],["S12","Óleos do Vale Imaginário Ltda"],["S13","Frituras Serra de Papel Ltda"],["S14","Sítio Grão de Mentira Ltda"],["S15","Grãos do Horizonte Pintado Ltda"],["S16","Moinho Vale Imaginário Ltda"],["S19","Cereal Arco de Giz Ltda"],["S17","Moinho Estrela de Giz Ltda"],["S18","Moinho Farol de Trigo Ltda"],["S06","Usina Lampiao Demo Ltda"],["S03","Nuvem Laranja Insumos Ltda"],["S04","Quimica do Arco Iris Ltda"],["S02","Oficina do Cometa Embalagens"],["S05","Farol de Papelao Demo Ltda"]]');
 const _CP_TP=JSON.parse('["Matéria-Prima","Serviços","Outras","Ativo Imobilizado","Material de Uso e Consumo","Embalagem","Mercadoria para Revenda","Produto Acabado"]');
 const _CP_DV=JSON.parse('["( 1 ) INSUMOS DE COZINHA","( 2 ) EMBALAGENS","( 3 ) FRETES"]');
-const _CP_NF=JSON.parse('[["2026-01-15",0,"NF-4101",0,800,"KG",4.5,3600,3.96,12,432,"I",0,0],["2026-03-10",0,"NF-4102",0,900,"KG",4.8,4320,4.22,12,518.4,"I",0,0],["2026-06-20",0,"NF-4103",0,700,"KG",5.1,3570,4.49,12,428.4,"I",0,0],["2026-02-04",5,"NF-4201",1,400,"KG",8.2,3280,7.22,12,393.6,"I",0,0],["2026-05-18",5,"NF-4202",1,500,"KG",8.6,4300,7.57,12,516,"I",0,0],["2026-08-02",5,"NF-4203",1,350,"KG",9,3150,7.92,12,378,"I",0,0],["2026-01-28",2,"NF-4301",2,600,"KG",7.4,4440,6.51,12,532.8,"I",0,0],["2026-04-12",2,"NF-4302",2,650,"KG",7.8,5070,6.86,12,608.4,"I",0,0],["2026-07-22",2,"NF-4303",2,500,"KG",8.1,4050,7.13,12,486,"I",0,0],["2026-02-20",3,"NF-4401",3,1000,"KG",3.2,3200,2.82,12,384,"I",0,0],["2026-06-08",3,"NF-4402",3,1200,"KG",3.4,4080,2.99,12,489.6,"I",0,0],["2026-03-02",2,"NF-4501",4,200,"KG",18,3600,15.84,12,432,"I",0,0],["2026-07-14",2,"NF-4502",4,180,"KG",19,3420,16.72,12,410.4,"I",0,0],["2026-01-20",1,"NF-5101",5,2000,"UN",1.8,3600,1.58,12,432,"I",5,1],["2026-04-25",1,"NF-5102",5,2500,"UN",1.9,4750,1.67,12,570,"I",5,1],["2026-08-10",4,"NF-5103",5,1800,"UN",2,3600,1.76,12,432,"I",5,1],["2026-02-11",1,"NF-5201",6,8000,"UN",0.12,960,0.11,12,115.2,"I",5,1],["2026-05-29",4,"NF-5202",6,9000,"UN",0.13,1170,0.11,12,140.4,"I",5,1],["2026-03-19",1,"NF-5301",7,40,"UN",85,3400,74.8,12,408,"I",5,1],["2026-07-30",4,"NF-5302",7,30,"UN",88,2640,77.44,12,316.8,"I",5,1],["2026-06-15",5,"NF-6101",1,100,"KG",2.5,250,2.2,12,30,"I",0,2]]');
+const _CP_NF=JSON.parse('[["2025-01-08",7,"NF-85001",4,10000,"KG",2.95,29500,2.6,12,3540,"I",0,0],["2025-01-09",3,"NF-83001",2,2000,"KG",11.2,22400,9.86,12,2688,"I",0,0],["2025-01-13",8,"NF-86001",5,20000,"KG",2.55,51000,2.24,12,6120,"I",0,0],["2025-01-16",0,"NF-81001",0,1000,"KG",20.8,20800,18.3,12,2496,"I",0,0],["2025-01-22",2,"NF-82001",1,5000,"KG",8.4,42000,7.39,12,5040,"I",0,0],["2025-01-23",5,"NF-84001",3,5000,"KG",2.3,11500,2.02,12,1380,"I",0,0],["2025-02-19",8,"NF-85002",4,8000,"KG",3,24000,2.64,12,2880,"I",0,0],["2025-02-26",4,"NF-83002",2,1500,"KG",11.35,17025,9.99,12,2043,"I",0,0],["2025-03-03",7,"NF-86002",5,15000,"KG",2.6,39000,2.29,12,4680,"I",0,0],["2025-03-05",1,"NF-82002",1,4000,"KG",8.55,34200,7.52,12,4104,"I",0,0],["2025-03-11",1,"NF-81002",0,750,"KG",21.1,15825,18.57,12,1899,"I",0,0],["2025-03-18",6,"NF-84002",3,2500,"KG",2.35,5875,2.07,12,705,"I",0,0],["2025-04-02",7,"NF-85003",4,12000,"KG",3.05,36600,2.68,12,4392,"I",0,0],["2025-04-16",2,"NF-82003",1,6000,"KG",8.7,52200,7.66,12,6264,"I",0,0],["2025-04-16",3,"NF-83003",2,2500,"KG",11.5,28750,10.12,12,3450,"I",0,0],["2025-04-22",8,"NF-86003",5,20000,"KG",2.65,53000,2.33,12,6360,"I",0,0],["2025-05-07",5,"NF-84003",3,5000,"KG",2.4,12000,2.11,12,1440,"I",0,0],["2025-05-14",0,"NF-81003",0,1000,"KG",21.4,21400,18.83,12,2568,"I",0,0],["2025-05-21",7,"NF-85004",4,10000,"KG",3.1,31000,2.73,12,3720,"I",0,0],["2025-06-03",2,"NF-82004",1,5000,"KG",8.85,44250,7.79,12,5310,"I",0,0],["2025-06-10",8,"NF-86004",5,15000,"KG",2.7,40500,2.38,12,4860,"I",0,0],["2025-06-11",3,"NF-83004",2,2000,"KG",11.7,23400,10.3,12,2808,"I",0,0],["2025-06-25",5,"NF-84004",3,3000,"KG",2.45,7350,2.16,12,882,"I",0,0],["2025-07-09",0,"NF-81004",0,1250,"KG",21.7,27125,19.1,12,3255,"I",0,0],["2025-07-09",8,"NF-85005",4,8000,"KG",3.15,25200,2.77,12,3024,"I",0,0],["2025-07-22",1,"NF-82005",1,4000,"KG",9,36000,7.92,12,4320,"I",0,0],["2025-07-29",7,"NF-86005",5,20000,"KG",2.75,55000,2.42,12,6600,"I",0,0],["2025-08-06",4,"NF-83005",2,2000,"KG",11.9,23800,10.47,12,2856,"I",0,0],["2025-08-20",6,"NF-84005",3,5000,"KG",2.5,12500,2.2,12,1500,"I",0,0],["2025-08-27",7,"NF-85006",4,12000,"KG",3.2,38400,2.82,12,4608,"I",0,0],["2025-09-09",2,"NF-82006",1,5000,"KG",9.1,45500,8.01,12,5460,"I",0,0],["2025-09-16",8,"NF-86006",5,15000,"KG",2.8,42000,2.46,12,5040,"I",0,0],["2025-09-17",1,"NF-81005",0,750,"KG",22,16500,19.36,12,1980,"I",0,0],["2025-10-01",3,"NF-83006",2,2500,"KG",12.05,30125,10.6,12,3615,"I",0,0],["2025-10-15",5,"NF-84006",3,2500,"KG",2.55,6375,2.24,12,765,"I",0,0],["2025-10-15",7,"NF-85007",4,10000,"KG",3.25,32500,2.86,12,3900,"I",0,0],["2025-10-28",2,"NF-82007",1,6000,"KG",9.2,55200,8.1,12,6624,"I",0,0],["2025-11-05",8,"NF-86007",5,20000,"KG",2.85,57000,2.51,12,6840,"I",0,0],["2025-11-12",0,"NF-81006",0,1000,"KG",22.3,22300,19.62,12,2676,"I",0,0],["2025-11-19",4,"NF-83007",2,1500,"KG",12.2,18300,10.74,12,2196,"I",0,0],["2025-12-03",5,"NF-84007",3,5000,"KG",2.6,13000,2.29,12,1560,"I",0,0],["2025-12-04",8,"NF-85008",4,8000,"KG",3.3,26400,2.9,12,3168,"I",0,0],["2025-12-11",1,"NF-82008",1,4000,"KG",9.3,37200,8.18,12,4464,"I",0,0],["2025-12-17",7,"NF-86008",5,15000,"KG",2.9,43500,2.55,12,5220,"I",0,0],["2026-01-14",3,"NF-83008",2,2000,"KG",12.35,24700,10.87,12,2964,"I",0,0],["2026-01-15",0,"NF-81007",0,1000,"KG",22.6,22600,19.89,12,2712,"I",0,0],["2026-01-20",12,"NF-5101",9,2000,"UN",1.8,3600,1.58,12,432,"I",5,1],["2026-01-20",2,"NF-82009",1,5000,"KG",9.4,47000,8.27,12,5640,"I",0,0],["2026-01-21",7,"NF-85009",4,10000,"KG",3.35,33500,2.95,12,4020,"I",0,0],["2026-01-28",5,"NF-84008",3,5000,"KG",2.65,13250,2.33,12,1590,"I",0,0],["2026-02-04",9,"NF-4201",6,400,"KG",8.2,3280,7.22,12,393.6,"I",0,0],["2026-02-04",8,"NF-86009",5,20000,"KG",2.95,59000,2.6,12,7080,"I",0,0],["2026-02-11",12,"NF-5201",10,8000,"UN",0.12,960,0.11,12,115.2,"I",5,1],["2026-02-20",11,"NF-4401",7,1000,"KG",3.2,3200,2.82,12,384,"I",0,0],["2026-03-02",10,"NF-4501",8,200,"KG",18,3600,15.84,12,432,"I",0,0],["2026-03-04",2,"NF-82010",1,4000,"KG",9.55,38200,8.4,12,4584,"I",0,0],["2026-03-04",4,"NF-83009",2,2500,"KG",12.5,31250,11,12,3750,"I",0,0],["2026-03-11",7,"NF-85010",4,12000,"KG",3.4,40800,2.99,12,4896,"I",0,0],["2026-03-18",1,"NF-81008",0,1000,"KG",22.9,22900,20.15,12,2748,"I",0,0],["2026-03-18",6,"NF-84009",3,3000,"KG",2.7,8100,2.38,12,972,"I",0,0],["2026-03-19",12,"NF-5301",11,40,"UN",85,3400,74.8,12,408,"I",5,1],["2026-03-25",8,"NF-86010",5,15000,"KG",3,45000,2.64,12,5400,"I",0,0],["2026-04-15",1,"NF-82011",1,6000,"KG",9.65,57900,8.49,12,6948,"I",0,0],["2026-04-22",3,"NF-83010",2,2000,"KG",12.65,25300,11.13,12,3036,"I",0,0],["2026-04-25",12,"NF-5102",9,2500,"UN",1.9,4750,1.67,12,570,"I",5,1],["2026-04-29",8,"NF-85011",4,8000,"KG",3.45,27600,3.04,12,3312,"I",0,0],["2026-05-06",5,"NF-84010",3,5000,"KG",2.75,13750,2.42,12,1650,"I",0,0],["2026-05-13",0,"NF-81009",0,1250,"KG",23.2,29000,20.42,12,3480,"I",0,0],["2026-05-13",7,"NF-86011",5,20000,"KG",3.05,61000,2.68,12,7320,"I",0,0],["2026-05-18",9,"NF-4202",6,500,"KG",8.6,4300,7.57,12,516,"I",0,0],["2026-05-29",13,"NF-5202",10,9000,"UN",0.13,1170,0.11,12,140.4,"I",5,1],["2026-06-02",2,"NF-82012",1,5000,"KG",9.75,48750,8.58,12,5850,"I",0,0],["2026-06-08",11,"NF-4402",7,1200,"KG",3.4,4080,2.99,12,489.6,"I",0,0],["2026-06-15",9,"NF-6101",6,100,"KG",2.5,250,2.2,12,30,"I",0,2],["2026-06-17",3,"NF-83011",2,2000,"KG",12.8,25600,11.26,12,3072,"I",0,0],["2026-06-17",7,"NF-85012",4,10000,"KG",3.5,35000,3.08,12,4200,"I",0,0],["2026-06-24",5,"NF-84011",3,2500,"KG",2.8,7000,2.46,12,840,"I",0,0],["2026-07-01",8,"NF-86012",5,15000,"KG",3.1,46500,2.73,12,5580,"I",0,0],["2026-07-08",0,"NF-81010",0,1000,"KG",23.5,23500,20.68,12,2820,"I",0,0],["2026-07-14",10,"NF-4502",8,180,"KG",19,3420,16.72,12,410.4,"I",0,0],["2026-07-21",2,"NF-82013",1,4000,"KG",9.85,39400,8.67,12,4728,"I",0,0],["2026-07-30",13,"NF-5302",11,30,"UN",88,2640,77.44,12,316.8,"I",5,1],["2026-08-02",9,"NF-4203",6,350,"KG",9,3150,7.92,12,378,"I",0,0],["2026-08-05",4,"NF-83012",2,2500,"KG",12.95,32375,11.4,12,3885,"I",0,0],["2026-08-05",6,"NF-84012",3,3000,"KG",2.85,8550,2.51,12,1026,"I",0,0],["2026-08-05",7,"NF-85013",4,12000,"KG",3.55,42600,3.12,12,5112,"I",0,0],["2026-08-10",13,"NF-5103",9,1800,"UN",2,3600,1.76,12,432,"I",5,1],["2026-08-12",1,"NF-82014",1,5000,"KG",9.95,49750,8.76,12,5970,"I",0,0],["2026-08-19",1,"NF-81011",0,750,"KG",23.8,17850,20.94,12,2142,"I",0,0],["2026-08-19",8,"NF-86013",5,20000,"KG",3.15,63000,2.77,12,7560,"I",0,0]]');
 
 // ===== ESTOQUE E CONSUMO FICTÍCIOS (mesma forma do export) =====
 // _CP_POSDATA: data da posicao de estoque
 // _CP_EST: [codItem, nome, um, qtdEstoque, almoxarifado, diasSemMovimento]
 // _CP_MESES: rotulos dos meses | _CP_CONS: [codItem, nome, um, [consumo por mes], total, mediaMensal]
 const _CP_POSDATA="2026-08-30";
-const _CP_EST=JSON.parse('[["1001","Farinha de Estrela Cadente","KG",1200,"Almoxarifado Demo",8],["1002","Oleo de Girassol Demo","KG",400,"Almoxarifado Demo",15],["1003","Gordura Vegetal Aurora","KG",80,"Almoxarifado Demo",4],["1004","Acucar Cristal Ficticio","KG",2500,"Almoxarifado Demo",20],["1005","Cacau em Po Exemplo","KG",60,"Almoxarifado Demo",11],["2001","Caixa de Papelao Modelo Demo 10","UN",900,"Almoxarifado Demo",6],["2002","Etiqueta Colorida 40 x 20 Demo","UN",15000,"Almoxarifado Demo",3],["2003","Bobina Filme Transparente Demo","UN",12,"Almoxarifado Demo",25]]');
+const _CP_EST=JSON.parse('[["1101","Gordura CBS","KG",2500,"Almoxarifado Demo",12],["1102","Gordura de fritura","KG",2200,"Almoxarifado Demo",6],["1103","Amendoim","KG",6400,"Almoxarifado Demo",9],["1104","Farinha de milho","KG",700,"Almoxarifado Demo",3],["1105","Farinha de trigo T1","KG",18000,"Almoxarifado Demo",5],["1106","Farinha de trigo T2","KG",42000,"Almoxarifado Demo",18],["1002","Oleo de Girassol Demo","KG",400,"Almoxarifado Demo",15],["1004","Acucar Cristal Ficticio","KG",2500,"Almoxarifado Demo",20],["1005","Cacau em Po Exemplo","KG",60,"Almoxarifado Demo",11],["2001","Caixa de Papelao Modelo Demo 10","UN",900,"Almoxarifado Demo",6],["2002","Etiqueta Colorida 40 x 20 Demo","UN",15000,"Almoxarifado Demo",3],["2003","Bobina Filme Transparente Demo","UN",12,"Almoxarifado Demo",25]]');
 const _CP_MESES=["jan","fev","mar","abr","mai","jun","jul","ago"];
-const _CP_CONS=JSON.parse('[["1001","Farinha de Estrela Cadente","KG",[400,420,380,450,410,430,390,440],3320,415],["1002","Oleo de Girassol Demo","KG",[180,160,200,170,190,150,210,175],1435,179.38],["1003","Gordura Vegetal Aurora","KG",[220,240,200,260,230,210,250,190],1800,225],["1004","Acucar Cristal Ficticio","KG",[500,480,520,510,490,530,470,500],4000,500],["1005","Cacau em Po Exemplo","KG",[40,35,50,45,38,42,48,36],334,41.75],["2001","Caixa de Papelao Modelo Demo 10","UN",[600,700,650,800,720,680,750,640],5540,692.5],["2002","Etiqueta Colorida 40 x 20 Demo","UN",[2000,2200,1800,2400,2100,1900,2300,2000],16700,2087.5],["2003","Bobina Filme Transparente Demo","UN",[4,5,3,6,4,5,4,3],34,4.25]]');
+const _CP_CONS=JSON.parse('[["1101","Gordura CBS","KG",[920,880,1050,980,1100,940,1020,990],7880,985],["1102","Gordura de fritura","KG",[4200,3900,4500,4100,4300,4000,4600,3800],33400,4175],["1103","Amendoim","KG",[1800,1650,1900,1750,2000,1850,1700,1950],14600,1825],["1104","Farinha de milho","KG",[2500,2400,2700,2600,2550,2800,2300,2650],20500,2562.5],["1105","Farinha de trigo T1","KG",[6000,5800,6400,6100,6300,5900,6500,6200],49200,6150],["1106","Farinha de trigo T2","KG",[8000,7600,8400,8100,7900,8500,7800,8200],64500,8062.5],["1002","Oleo de Girassol Demo","KG",[180,160,200,170,190,150,210,175],1435,179.38],["1004","Acucar Cristal Ficticio","KG",[500,480,520,510,490,530,470,500],4000,500],["1005","Cacau em Po Exemplo","KG",[40,35,50,45,38,42,48,36],334,41.75],["2001","Caixa de Papelao Modelo Demo 10","UN",[600,700,650,800,720,680,750,640],5540,692.5],["2002","Etiqueta Colorida 40 x 20 Demo","UN",[2000,2200,1800,2400,2100,1900,2300,2000],16700,2087.5],["2003","Bobina Filme Transparente Demo","UN",[4,5,3,6,4,5,4,3],34,4.25]]');
 // _CP_CONS_25: consumo FICTÍCIO de 2025 (12 meses) de alguns itens de exemplo.
 // Formato [cod,nome,um,[12 meses]] (null = mes sem consumo). Estende a serie do grafico de
 // consumo p/ mostrar 2025+2026 (antes so 2026). Preenchido em o.cons25 (~8485), lido em _cpItemSerie.
-const _CP_CONS_25=JSON.parse('[["1001","Farinha de Estrela Cadente","KG",[300,320,310,340,330,350,360,340,320,300,280,290]],["1003","Gordura Vegetal Aurora","KG",[180,190,200,210,190,180,200,220,210,190,170,160]],["2001","Caixa de Papelao Modelo Demo 10","UN",[500,520,480,540,560,500,530,510,490,470,450,440]]]');
+const _CP_CONS_25=JSON.parse('[["1101","Gordura CBS","KG",[780,800,760,840,820,860,900,880,850,830,790,810]],["1102","Gordura de fritura","KG",[3600,3800,4000,3900,4200,4100,4300,4000,3900,4100,3700,3500]],["1103","Amendoim","KG",[1500,1600,1550,1700,1650,1800,1750,1600,1500,1450,1400,1550]],["1104","Farinha de milho","KG",[2100,2200,2300,2400,2500,2450,2300,2200,2100,2000,1900,2050]],["1105","Farinha de trigo T1","KG",[5200,5400,5600,5800,6000,5900,6100,5700,5500,5300,5100,5400]],["1106","Farinha de trigo T2","KG",[7000,7200,7500,7800,7600,8000,7900,7400,7100,6900,6800,7200]],["2001","Caixa de Papelao Modelo Demo 10","UN",[500,520,480,540,560,500,530,510,490,470,450,440]]]');
 
 let comprasView='painel';
 function setComprasView(v){
@@ -8631,8 +8638,8 @@ function _cpIdx(){
       o.cmu=o.compras[0].cmu||o.compras[0].vun; o.ultForn=o.compras[0].forn[1]; }
     // Preço médio de COMPRA = o que se PAGA por unidade (valor da nota, COM impostos),
     // ponderado pela quantidade. Diferente do cmu/CMU, que é o custo de estoque do ERP
-    // JÁ LÍQUIDO dos impostos recuperáveis (ICMS/PIS/COFINS). Ex.: Amendoim paga ~5,22/kg
-    // mas o CMU fica ~4,20/kg → a diferença é o crédito tributário.
+    // JÁ LÍQUIDO dos impostos recuperáveis (ICMS/PIS/COFINS). Ex.: na amostra, R$ 12,95/kg
+    // com ICMS de 12% vira CMU de R$ 11,40 — a diferença é o crédito tributário.
     const _cq=o.compras.filter(l=>l.qtd>0);
     const _sq=_cq.reduce((a,l)=>a+l.qtd,0), _st=_cq.reduce((a,l)=>a+l.tot,0);
     o.precoCompra = _sq>0 ? _st/_sq : (o.ultPreco||0);
@@ -9649,9 +9656,9 @@ function _cpSetCusteio(cod,val){ const m=_cpCusteioMap(); if(val==null||String(v
 // ⭐ VALIDADE do produto, em meses (Diego, 26/09: "já poderia trazer a validade, e daí o comprador não
 // precisa preencher lá"). Por item, como o preço de custeio.
 // ⚠️ O mapa em CÓDIGO é SEMENTE, não dado: no Hub Oficial a validade é campo do cadastro do produto. Aqui
-// ele dá o valor de fábrica da farinha fictícia (6 meses) SEM gravar nada no boot — a regra P0 é que render não
+// ele dá o valor de fábrica destes insumos (amendoim 6 meses; gorduras e farinhas, 6 a 12) SEM gravar nada no boot — a regra P0 é que render não
 // escreve, e semear o localStorage na abertura seria escrita disfarçada. O que a pessoa digita vence o mapa.
-const _CP_VALIDADE_SEED={'1001':'6'};
+const _CP_VALIDADE_SEED={'1101':'12','1102':'8','1103':'6','1104':'6','1105':'8','1106':'8'};
 const LS_CP_VALIDADE='taskflow_cp_validade';
 let _cpValidade=null;
 function _cpValidadeMap(){ if(_cpValidade===null){ try{ _cpValidade=safeJSON(LS_CP_VALIDADE,{})||{}; }catch(e){ _cpValidade={}; } } return _cpValidade; }
@@ -10170,7 +10177,7 @@ function _cpUltimasComprasCard(o){
 // ⚠️ PROTÓTIPO: este dado NÃO vem dos exports atuais (NF/estoque/consumo). `_CP_OC` está semeado
 // como EXEMPLO só p/ demonstrar o FORMATO ao Guilherme; o dado real virá do export de "pedidos em
 // aberto" do ERP (item nº 1 da lista a decidir com a TI — ver BACKLOG "COMPRAS v4" no CLAUDE.md).
-const _CP_OC=JSON.parse('{"1001":[{"oc":"OC-8001","forn":"Moinho Estrela Cadente Ltda","emissao":"2026-10-10","prevista":"2026-11-05","qtd":800,"entregue":0},{"oc":"OC-8002","forn":"Moinho Estrela Cadente Ltda","emissao":"2026-10-10","prevista":"2026-12-02","qtd":800,"entregue":200}],"1003":[{"oc":"OC-8010","forn":"Nuvem Laranja Insumos Ltda","emissao":"2026-10-18","prevista":"2026-11-20","qtd":400,"entregue":0}],"2001":[{"oc":"OC-8020","forn":"Oficina do Cometa Embalagens","emissao":"2026-10-22","prevista":"2026-11-12","qtd":1500,"entregue":0}]}');
+const _CP_OC=JSON.parse('{"1101":[{"oc":"OC-7002","forn":"Usina Bruma Dourada Ltda","emissao":"2026-01-02","prevista":"2026-01-15","qtd":1000,"entregue":1000},{"oc":"OC-7010","forn":"Óleos do Vale Imaginário Ltda","emissao":"2026-03-02","prevista":"2026-03-18","qtd":1000,"entregue":1000},{"oc":"OC-7017","forn":"Usina Bruma Dourada Ltda","emissao":"2026-05-02","prevista":"2026-05-13","qtd":1250,"entregue":1250},{"oc":"OC-7024","forn":"Usina Bruma Dourada Ltda","emissao":"2026-07-02","prevista":"2026-07-08","qtd":1000,"entregue":1000},{"oc":"OC-7030","forn":"Óleos do Vale Imaginário Ltda","emissao":"2026-08-02","prevista":"2026-08-19","qtd":750,"entregue":750},{"oc":"OC-9101","forn":"Usina Bruma Dourada Ltda","emissao":"2026-08-04","prevista":"2026-11-18","qtd":1000,"entregue":0},{"oc":"OC-9102","forn":"Óleos do Vale Imaginário Ltda","emissao":"2026-08-19","prevista":"2026-12-09","qtd":750,"entregue":250}],"1102":[{"oc":"OC-7003","forn":"Frituras Serra de Papel Ltda","emissao":"2026-01-02","prevista":"2026-01-20","qtd":5000,"entregue":5000},{"oc":"OC-7007","forn":"Frituras Serra de Papel Ltda","emissao":"2026-02-20","prevista":"2026-03-04","qtd":4000,"entregue":4000},{"oc":"OC-7013","forn":"Óleos do Vale Imaginário Ltda","emissao":"2026-04-02","prevista":"2026-04-15","qtd":6000,"entregue":6000},{"oc":"OC-7019","forn":"Frituras Serra de Papel Ltda","emissao":"2026-05-20","prevista":"2026-06-02","qtd":5000,"entregue":5000},{"oc":"OC-7025","forn":"Frituras Serra de Papel Ltda","emissao":"2026-07-02","prevista":"2026-07-21","qtd":4000,"entregue":4000},{"oc":"OC-7029","forn":"Óleos do Vale Imaginário Ltda","emissao":"2026-08-02","prevista":"2026-08-12","qtd":5000,"entregue":5000},{"oc":"OC-9201","forn":"Frituras Serra de Papel Ltda","emissao":"2026-08-11","prevista":"2026-10-22","qtd":4000,"entregue":0},{"oc":"OC-9202","forn":"Óleos do Vale Imaginário Ltda","emissao":"2026-08-26","prevista":"2026-11-28","qtd":3000,"entregue":0}],"1103":[{"oc":"OC-7001","forn":"Sítio Grão de Mentira Ltda","emissao":"2026-01-02","prevista":"2026-01-14","qtd":2000,"entregue":2000},{"oc":"OC-7008","forn":"Grãos do Horizonte Pintado Ltda","emissao":"2026-02-20","prevista":"2026-03-04","qtd":2500,"entregue":2500},{"oc":"OC-7014","forn":"Sítio Grão de Mentira Ltda","emissao":"2026-04-02","prevista":"2026-04-22","qtd":2000,"entregue":2000},{"oc":"OC-7020","forn":"Sítio Grão de Mentira Ltda","emissao":"2026-06-02","prevista":"2026-06-17","qtd":2000,"entregue":2000},{"oc":"OC-7026","forn":"Grãos do Horizonte Pintado Ltda","emissao":"2026-07-20","prevista":"2026-08-05","qtd":2500,"entregue":2500},{"oc":"OC-9301","forn":"Sítio Grão de Mentira Ltda","emissao":"2026-07-21","prevista":"2026-11-10","qtd":2000,"entregue":0},{"oc":"OC-9302","forn":"Grãos do Horizonte Pintado Ltda","emissao":"2026-08-14","prevista":"2026-12-03","qtd":2500,"entregue":500}],"1104":[{"oc":"OC-7005","forn":"Moinho Vale Imaginário Ltda","emissao":"2026-01-02","prevista":"2026-01-28","qtd":5000,"entregue":5000},{"oc":"OC-7011","forn":"Cereal Arco de Giz Ltda","emissao":"2026-03-02","prevista":"2026-03-18","qtd":3000,"entregue":3000},{"oc":"OC-7016","forn":"Moinho Vale Imaginário Ltda","emissao":"2026-04-20","prevista":"2026-05-06","qtd":5000,"entregue":5000},{"oc":"OC-7022","forn":"Moinho Vale Imaginário Ltda","emissao":"2026-06-02","prevista":"2026-06-24","qtd":2500,"entregue":2500},{"oc":"OC-7027","forn":"Cereal Arco de Giz Ltda","emissao":"2026-07-20","prevista":"2026-08-05","qtd":3000,"entregue":3000},{"oc":"OC-9401","forn":"Moinho Vale Imaginário Ltda","emissao":"2026-08-05","prevista":"2026-11-04","qtd":5000,"entregue":0},{"oc":"OC-9402","forn":"Cereal Arco de Giz Ltda","emissao":"2026-08-24","prevista":"2026-10-21","qtd":2500,"entregue":0}],"1105":[{"oc":"OC-7004","forn":"Moinho Estrela de Giz Ltda","emissao":"2026-01-02","prevista":"2026-01-21","qtd":10000,"entregue":10000},{"oc":"OC-7009","forn":"Moinho Estrela de Giz Ltda","emissao":"2026-03-02","prevista":"2026-03-11","qtd":12000,"entregue":12000},{"oc":"OC-7015","forn":"Moinho Farol de Trigo Ltda","emissao":"2026-04-02","prevista":"2026-04-29","qtd":8000,"entregue":8000},{"oc":"OC-7021","forn":"Moinho Estrela de Giz Ltda","emissao":"2026-06-02","prevista":"2026-06-17","qtd":10000,"entregue":10000},{"oc":"OC-7028","forn":"Moinho Estrela de Giz Ltda","emissao":"2026-07-20","prevista":"2026-08-05","qtd":12000,"entregue":12000},{"oc":"OC-9501","forn":"Moinho Estrela de Giz Ltda","emissao":"2026-08-08","prevista":"2026-11-20","qtd":10000,"entregue":2000},{"oc":"OC-9502","forn":"Moinho Farol de Trigo Ltda","emissao":"2026-08-22","prevista":"2026-12-12","qtd":8000,"entregue":0}],"1106":[{"oc":"OC-7006","forn":"Moinho Farol de Trigo Ltda","emissao":"2026-01-20","prevista":"2026-02-04","qtd":20000,"entregue":20000},{"oc":"OC-7012","forn":"Moinho Farol de Trigo Ltda","emissao":"2026-03-02","prevista":"2026-03-25","qtd":15000,"entregue":15000},{"oc":"OC-7018","forn":"Moinho Estrela de Giz Ltda","emissao":"2026-05-02","prevista":"2026-05-13","qtd":20000,"entregue":20000},{"oc":"OC-7023","forn":"Moinho Farol de Trigo Ltda","emissao":"2026-06-20","prevista":"2026-07-01","qtd":15000,"entregue":15000},{"oc":"OC-7031","forn":"Moinho Farol de Trigo Ltda","emissao":"2026-08-02","prevista":"2026-08-19","qtd":20000,"entregue":20000},{"oc":"OC-9601","forn":"Moinho Farol de Trigo Ltda","emissao":"2026-07-28","prevista":"2026-12-16","qtd":15000,"entregue":0}],"2001":[{"oc":"OC-8020","forn":"Oficina do Cometa Embalagens","emissao":"2026-08-22","prevista":"2026-11-12","qtd":1500,"entregue":0}]}');
 // ⚠️ _CP_OC (mapa por item, qtd = pedido total) e _CP_OCABERTO (lista, qtd = saldo a entregar) são
 // gerados do MESMO export, mas com semânticas de quantidade diferentes. O `saldo>0` abaixo garante
 // que uma OC já entregue por completo não engorde o contador do card ("N · X a caminho") enquanto
@@ -10212,30 +10219,30 @@ const _CP_TEND = {
   neutro:{lab:'Neutro', ic:'ti-minus',         cor:'var(--text)',    seta:''}
 };
 const _CP_NOTICIAS = {
-  '1001': { // Farinha de Estrela Cadente — exemplo fictício
+  '1105': { // Farinha de trigo T1 — panorama inventado, sem cotação de mercado real
     tendencia:'neutro', atualizado:'2026-09-01',
-    resumo:'Exemplo de panorama para a farinha fictícia. O preço de demonstração oscila pouco e não há pressa para travar um volume grande. Nenhum número desta aba veio de um export.',
+    resumo:'Panorama inventado da farinha de trigo T1. O quilo de demonstração anda perto de R$ 3,55 e a saca de 50 kg perto de R$ 170. Nenhum número desta aba veio de um export ou de uma bolsa.',
     macro:{
       safraMeses:[3,4,5], safraLabel:'mar–mai', entressafraLabel:'jun–fev',
       indicadores:[
-        {lab:'Preço de demonstração', val:'R$ 4,50/kg', dir:'neutro'},
+        {lab:'Preço de demonstração', val:'R$ 3,55/kg', dir:'neutro'},
         {lab:'Oferta de exemplo', val:'estável', dir:'neutro'},
         {lab:'Demanda de exemplo', val:'na média', dir:'neutro'}
       ]
     },
-    precoSaca:{ fonte:'série fictícia de demonstração · saca de 25 kg', serie:[
-      {ym:'2026-01',v:110},{ym:'2026-02',v:108},{ym:'2026-03',v:112},{ym:'2026-04',v:109},
-      {ym:'2026-05',v:111},{ym:'2026-06',v:107},{ym:'2026-07',v:113},{ym:'2026-08',v:110}
+    precoSaca:{ fonte:'série fictícia de demonstração · saca de 50 kg', serie:[
+      {ym:'2026-01',v:158},{ym:'2026-02',v:155},{ym:'2026-03',v:162},{ym:'2026-04',v:160},
+      {ym:'2026-05',v:166},{ym:'2026-06',v:163},{ym:'2026-07',v:171},{ym:'2026-08',v:168}
     ]},
     itens:[
-      {dir:'neutro', tit:'Preço de demonstração estável', txt:'Na base fictícia o quilo segue perto de R$ 4,50, sem choque de oferta nem de demanda.', fonte:'exemplo do protótipo'},
-      {dir:'baixa', tit:'Há folga para comprar aos poucos', txt:'Com estoque e uma ordem já a caminho, o cenário de exemplo não pede um contrato longo.', fonte:'exemplo do protótipo'}
+      {dir:'neutro', tit:'Preço de demonstração estável', txt:'Na base fictícia o quilo da farinha de trigo T1 segue perto de R$ 3,55, sem choque de oferta nem de demanda.', fonte:'exemplo do protótipo'},
+      {dir:'baixa', tit:'Há folga para comprar aos poucos', txt:'Com estoque e a ordem OC-9501 a caminho, o cenário de exemplo não pede um contrato longo.', fonte:'exemplo do protótipo'}
     ],
     leitura:{
       base:'Cenário de exemplo, equilibrado. Serve só para mostrar o formato da aba.',
       acoes:[
-        'Cobrir o consumo das próximas semanas com a ordem que já está a caminho.',
-        'Deixar uma segunda carga para o mês seguinte, em vez de concentrar tudo agora.'
+        'Receber a carga da ordem OC-9501 antes de abrir outra do mesmo tamanho.',
+        'Deixar a segunda carga (OC-9502) para dezembro, em vez de concentrar tudo agora.'
       ]
     },
     periodos:[
@@ -10244,10 +10251,10 @@ const _CP_NOTICIAS = {
     ],
     fatores:{
       alta:['Uma quebra de safra fictícia firmaria o preço.','Frete de exemplo mais caro no fim do ano.'],
-      limitam:['Estoque de demonstração ainda cobre várias semanas.','Há carga a caminho na ordem OC-8001.']
+      limitam:['Estoque de demonstração ainda cobre cerca de três meses.','Há carga a caminho na ordem OC-9501.']
     },
     cenarios:[
-      {pct:50, tit:'Estabilidade', desc:'preço perto dos R$ 4,50 de exemplo', dir:'neutro'},
+      {pct:50, tit:'Estabilidade', desc:'preço perto dos R$ 3,55 de exemplo', dir:'neutro'},
       {pct:30, tit:'Leve baixa', desc:'mais oferta fictícia no trimestre', dir:'baixa'},
       {pct:20, tit:'Leve alta', desc:'frete e entressafra de exemplo', dir:'alta'}
     ],
@@ -10256,16 +10263,16 @@ const _CP_NOTICIAS = {
       {lab:'Próximos 1–3 meses', txt:'sem gatilho fictício de alta forte'}
     ],
     estimativa:[
-      {per:'Próximas 4 semanas', tend:'Estável', leit:'A ordem em aberto cobre o consumo de exemplo'},
+      {per:'Próximas 4 semanas', tend:'Estável', leit:'A ordem OC-9501 cobre parte do consumo de exemplo'},
       {per:'Até o fim do ano', tend:'Neutro', leit:'Só um número de demonstração, sem histórico real'}
     ],
     comprador:{
       intro:'Na base fictícia não há pressa. A sugestão abaixo é só o formato da recomendação.',
       plano:[
-        'Receber a carga de novembro antes de abrir outra.',
-        'Rever o preço de exemplo quando a segunda carga chegar.'
+        'Receber a carga de novembro (OC-9501) antes de abrir outra.',
+        'Rever o preço de exemplo quando a carga de dezembro chegar.'
       ],
-      nota:'Texto de demonstração. Não descreve um insumo real.'
+      nota:'Texto de demonstração. O nome do insumo é real; o preço, o fornecedor e a ordem são inventados.'
     }
   }
 };
@@ -11470,10 +11477,10 @@ function _cpFichaFornHTML(cod){
 }
 // ════════ ORDENS DE COMPRA EM ABERTO (pedido do Diego, ago/2026) ════════
 // ⚠️ PROTÓTIPO: pedidos em aberto NÃO vêm dos exports atuais do ERP (NF/estoque/consumo).
-// `_CP_OCABERTO` é EXEMPLO (códigos e fornecedores reais; quantidades/datas/prazos fictícios) só p/
+// `_CP_OCABERTO` é EXEMPLO fictício (códigos e fornecedores inventados; qtd = saldo a entregar) só p/
 // demonstrar o FORMATO. O dado real virá do relatório de "pedidos em aberto" do ERP (a definir c/ a TI).
 // "Em aberto" = pedido emitido, ainda não chegou / o contábil não deu entrada da NF.
-const _CP_OCABERTO=JSON.parse('[{"cod":"1001","nome":"Farinha de Estrela Cadente","um":"KG","qtd":800,"valor":4080,"forn":"Moinho Estrela Cadente Ltda","prazo":"30 dias","emissao":"2026-10-10","prevista":"2026-11-05","oc":"OC-8001"},{"cod":"1001","nome":"Farinha de Estrela Cadente","um":"KG","qtd":600,"valor":3060,"forn":"Moinho Estrela Cadente Ltda","prazo":"30 dias","emissao":"2026-10-10","prevista":"2026-12-02","oc":"OC-8002"},{"cod":"1003","nome":"Gordura Vegetal Aurora","um":"KG","qtd":400,"valor":3240,"forn":"Nuvem Laranja Insumos Ltda","prazo":"28 dias","emissao":"2026-10-18","prevista":"2026-11-20","oc":"OC-8010"},{"cod":"2001","nome":"Caixa de Papelao Modelo Demo 10","um":"UN","qtd":1500,"valor":3000,"forn":"Oficina do Cometa Embalagens","prazo":"21 dias","emissao":"2026-10-22","prevista":"2026-11-12","oc":"OC-8020"}]');
+const _CP_OCABERTO=JSON.parse('[{"cod":"1101","nome":"Gordura CBS","um":"KG","qtd":1000,"valor":24200,"forn":"Usina Bruma Dourada Ltda","prazo":"28 dias","emissao":"2026-08-04","prevista":"2026-11-18","oc":"OC-9101"},{"cod":"1101","nome":"Gordura CBS","um":"KG","qtd":500,"valor":12200,"forn":"Óleos do Vale Imaginário Ltda","prazo":"30 dias","emissao":"2026-08-19","prevista":"2026-12-09","oc":"OC-9102"},{"cod":"1102","nome":"Gordura de fritura","um":"KG","qtd":4000,"valor":40400,"forn":"Frituras Serra de Papel Ltda","prazo":"21 dias","emissao":"2026-08-11","prevista":"2026-10-22","oc":"OC-9201"},{"cod":"1102","nome":"Gordura de fritura","um":"KG","qtd":3000,"valor":30600,"forn":"Óleos do Vale Imaginário Ltda","prazo":"28 dias","emissao":"2026-08-26","prevista":"2026-11-28","oc":"OC-9202"},{"cod":"1103","nome":"Amendoim","um":"KG","qtd":2000,"valor":26200,"forn":"Sítio Grão de Mentira Ltda","prazo":"30 dias","emissao":"2026-07-21","prevista":"2026-11-10","oc":"OC-9301"},{"cod":"1103","nome":"Amendoim","um":"KG","qtd":2000,"valor":26400,"forn":"Grãos do Horizonte Pintado Ltda","prazo":"35 dias","emissao":"2026-08-14","prevista":"2026-12-03","oc":"OC-9302"},{"cod":"1104","nome":"Farinha de milho","um":"KG","qtd":5000,"valor":14750,"forn":"Moinho Vale Imaginário Ltda","prazo":"28 dias","emissao":"2026-08-05","prevista":"2026-11-04","oc":"OC-9401"},{"cod":"1104","nome":"Farinha de milho","um":"KG","qtd":2500,"valor":7250,"forn":"Cereal Arco de Giz Ltda","prazo":"21 dias","emissao":"2026-08-24","prevista":"2026-10-21","oc":"OC-9402"},{"cod":"1105","nome":"Farinha de trigo T1","um":"KG","qtd":8000,"valor":29600,"forn":"Moinho Estrela de Giz Ltda","prazo":"30 dias","emissao":"2026-08-08","prevista":"2026-11-20","oc":"OC-9501"},{"cod":"1105","nome":"Farinha de trigo T1","um":"KG","qtd":8000,"valor":29200,"forn":"Moinho Farol de Trigo Ltda","prazo":"28 dias","emissao":"2026-08-22","prevista":"2026-12-12","oc":"OC-9502"},{"cod":"1106","nome":"Farinha de trigo T2","um":"KG","qtd":15000,"valor":47250,"forn":"Moinho Farol de Trigo Ltda","prazo":"35 dias","emissao":"2026-07-28","prevista":"2026-12-16","oc":"OC-9601"},{"cod":"2001","nome":"Caixa de Papelao Modelo Demo 10","um":"UN","qtd":1500,"valor":3000,"forn":"Oficina do Cometa Embalagens","prazo":"21 dias","emissao":"2026-08-22","prevista":"2026-11-12","oc":"OC-8020"}]');
 let _cpOrdBusca='', _cpOrdBuscaAberta=false;
 function _cpOrdBuscaToggle(){ _cpOrdBuscaAberta=!_cpOrdBuscaAberta; if(!_cpOrdBuscaAberta) _cpOrdBusca=''; renderCompras(); if(_cpOrdBuscaAberta) setTimeout(function(){ var el=document.getElementById('cp-ord-busca'); if(el) el.focus(); },30); }
 function _cpOrdBuscaInput(el){ _cpOrdBusca=el.value; const tb=document.getElementById('cp-ord-tbody'); if(tb) tb.innerHTML=_cpOrdRowsHTML(); }
@@ -11814,17 +11821,12 @@ function _comprasPainelHTML(){
   // virão da aba "Lotes e OP's" do SISPRO. Aqui é exemplo p/ desenhar a tela.
   // [cod, nome, qtd, um, validade, consumo mensal]
   const _CP_VALIDADE=[
-    ['703','Leite Em Pó Desnatado','120','kg','2026-07-30','80'],
-    ['30575','Ácido Cítrico','22','kg','2026-08-05','15'],
-    ['1000','Cacau Black','30','kg','2026-08-12','40'],
-    ['20008','Soro de Leite Em Pó 40%','18','kg','2026-08-20','12'],
-    ['1146','Óleo de Algodão Refinado','60','kg','2026-08-24','40'],
-    ['20017','Amendoim','210','kg','2026-09-04','180'],
-    ['30593','Açúcar Cristal Branco','75','kg','2026-09-08','50'],
-    ['20001','Açúcar Cristal','340','kg','2026-09-10','400'],
-    ['20016','Gordura Vegetal CBS','90','kg','2026-09-15','120'],
-    ['1148','Doce de Leite Balde 4,8kg','25','un','2026-09-22','30'],
-    ['20002','Açúcar Líquido','180','kg','2026-09-30','100']
+    ['1104','Farinha de milho','180','kg','2026-09-18','2563'],
+    ['1102','Gordura de fritura','350','kg','2026-08-30','4175'],
+    ['1101','Gordura CBS','400','kg','2026-12-15','985'],
+    ['1103','Amendoim','600','kg','2026-11-20','1825'],
+    ['1105','Farinha de trigo T1','1500','kg','2026-11-28','6150'],
+    ['1106','Farinha de trigo T2','2500','kg','2027-02-10','8063']
   ];
   const _vencidos=_CP_VALIDADE.filter(o=>o[4]<today).sort((a,b)=>a[4]<b[4]?-1:1);
   const _aVencer=_CP_VALIDADE.filter(o=>o[4]>=today).sort((a,b)=>a[4]<b[4]?-1:1);
