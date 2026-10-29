@@ -83,3 +83,75 @@ html[data-bs-theme] .modal-overlay.open,html[data-bs-theme] #task-modal.open{bac
 html[data-bs-theme] .main{max-width:none!important;padding:26px 28px 24px 28px!important;margin:0!important}
 html[data-bs-theme] .fab-menu.hub-fab-menu.open{box-shadow:0 0 0 100vmax rgba(0,0,0,.72),0 8px 24px rgba(0,0,0,.35)!important}
 html[data-bs-theme] .hub-fab-menu .fab-menu-item{white-space:nowrap;font-weight:600!important;min-height:33px}
+/* ================= Fase 3 ================= */
+/* Navbar também escurece com o menu Adicionar aberto */
+body:has(.fab-menu.hub-fab-menu.open) .hdr::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.72);pointer-events:none;z-index:5}
+html[data-bs-theme] .hdr{position:relative}
+/* Ícone no cabeçalho do grupo ativo da sidebar */
+html[data-bs-theme] #sidebar .sbnav-group-header i{display:inline-block!important;color:inherit!important;opacity:.9}
+html[data-bs-theme] #sidebar .sbnav-group:has(.sbnav-group-body .active)>.sbnav-group-header i{color:#fff!important}
+/* Títulos genéricos de tela no padrão oficial */
+html[data-bs-theme] #tab-title{font-size:20px!important;font-weight:700!important;letter-spacing:-.01em;color:var(--bs-emphasis-color)!important}
+html[data-bs-theme] #tab-sub{font-size:13px!important;color:var(--bs-secondary-color)!important;margin-top:2px}
+/* Tabelas das áreas (PCP/Compras) com densidade oficial */
+html[data-bs-theme] #task-container table:not(.tk-table){font-size:12.5px;border-collapse:separate;border-spacing:0}
+html[data-bs-theme] #task-container table:not(.tk-table) th{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;background:var(--bs-tertiary-bg);color:var(--bs-secondary-color);padding:6px 8px}
+html[data-bs-theme] #task-container table:not(.tk-table) td{padding:4px 8px;border-color:var(--bs-border-color)}
+/* ---- Modais de tarefa (3 colunas + Comentários) ---- */
+html[data-bs-theme] .modal.hub-tmodal{width:calc(100vw - 96px)!important;max-width:1830px!important;max-height:calc(100vh - 120px);display:grid!important;background:var(--bs-body-bg)!important;border:1px solid var(--bs-border-color);border-radius:6px!important;padding:0!important;overflow:hidden}
+#edit-modal .modal.hub-tmodal{grid-template-columns:1fr 460px;grid-template-rows:auto 1fr}
+#edit-modal .hub-tmodal .hub-tm-head{grid-column:1;grid-row:1;background:var(--bs-body-bg)!important;border-bottom:1px solid var(--bs-border-color)!important;padding:14px 18px!important}
+#edit-modal .hub-tmodal .modal-2col-body{grid-column:1;grid-row:2;display:grid!important;grid-template-columns:240px 1fr;gap:20px;padding:16px 18px;overflow:auto}
+#edit-modal .hub-tmodal .modal-col-right{border:0!important;padding:0!important;background:none!important;width:auto!important;order:0}
+#edit-modal .hub-tmodal .modal-col-left{padding:0!important}
+#edit-modal .hub-tmodal .hub-tm-coment{grid-column:2;grid-row:1/3}
+.hub-tm-titulo{font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px;color:var(--bs-emphasis-color);margin-right:12px;white-space:nowrap}
+.hub-tm-coment{background:var(--bs-tertiary-bg);border-left:1px solid var(--bs-border-color);display:flex;flex-direction:column;min-height:0}
+.hub-tm-coment-head{font-size:20px;font-weight:500;padding:12px 16px;border-bottom:1px solid var(--bs-border-color);display:flex;gap:8px;align-items:center;color:var(--bs-emphasis-color)}
+.hub-tm-coment-head i{color:var(--bs-primary);font-size:18px}
+.hub-tm-coment-body{flex:1;display:flex;flex-direction:column;padding:12px 16px;min-height:0}
+.hub-tm-coment-body>div{display:flex;flex-direction:column;flex:1}
+.hub-tm-coment-body .comment-list{flex:1;max-height:none!important}
+.hub-tm-coment-body .td-comment-input-row{background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-radius:6px;min-height:90px;align-items:flex-start}
+.hub-tm-coment-vazio{padding:36px 16px;text-align:center;font-size:12px;color:var(--bs-secondary-color)}
+.hub-tm-coment-vazio i{font-size:20px;display:block;margin-bottom:8px}
+.hub-tmodal .td-meta-label,.hub-tmodal .modal-label{font-size:12px!important;font-weight:700!important;color:var(--bs-body-color)!important;text-transform:none!important;letter-spacing:0!important}
+.hub-tmodal .modal-input,.hub-tmodal .td-dd-btn,.hub-tmodal input[type=date],.hub-tmodal select{height:34px;border-radius:6px!important;background:var(--bs-body-bg)!important;border:1px solid var(--bs-border-color)!important;color:var(--bs-body-color)!important;font-size:13px!important}
+.hub-tmodal .td-title-input,.hub-tmodal #inp-title{border:1px solid var(--bs-border-color)!important;border-radius:6px!important;padding:6px 10px!important;font-size:13px!important;font-weight:400!important;background:var(--bs-body-bg)!important}
+.hub-tmodal .td-desc-input{min-height:130px;border:1px solid var(--bs-border-color)!important;border-radius:6px!important;padding:8px 10px!important;background:var(--bs-tertiary-bg)!important}
+/* Nova tarefa */
+#task-modal .modal.hub-tmodal-nova{grid-template-columns:1fr;grid-template-rows:auto 1fr auto}
+#task-modal .hub-tmodal-nova>.modal-header{padding:14px 18px!important;border-bottom:1px solid var(--bs-border-color);margin:0!important}
+.hub-tm-grid{display:grid;grid-template-columns:240px 1fr 320px;gap:20px;padding:16px 18px;overflow:auto;min-height:420px}
+.hub-tm-grid .hub-tm-coment{border:1px solid var(--bs-border-color);border-radius:6px}
+.hub-tm-esq .modal-field,.hub-tm-base .modal-field{margin-bottom:10px}
+.hub-tm-rodape{display:flex;align-items:flex-end;gap:16px;padding:12px 18px;border-top:1px solid var(--bs-border-color)}
+.hub-tm-base{display:flex;gap:16px;flex:1}.hub-tm-base .modal-field{width:300px;margin:0}
+.hub-tm-rodape .modal-footer{margin:0!important;padding:0!important;border:0!important}
+html[data-bs-theme] .modal-overlay.open{background:rgba(0,0,0,.65)!important}
+/* ---- Projeto em tela cheia ---- */
+body.hub-pjv #task-container{position:fixed!important;inset:0!important;z-index:1500!important;background:var(--bs-body-bg)!important;overflow:auto;padding:0!important}
+body.hub-pjv #task-container>*:not(.hub-pjv-top){padding-left:24px;padding-right:24px}
+.hub-pjv-top{position:sticky;top:0;z-index:5;background:var(--bs-body-bg)}
+.hub-pjv-bar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 6px}
+.hub-pjv-nome{font-size:17px;font-weight:600;display:flex;gap:8px;align-items:center;color:var(--bs-emphasis-color)}
+.hub-pjv-acts{display:flex;gap:10px;align-items:center}
+.hub-btn-outline{background:none;border:1px solid var(--bs-border-color);color:var(--bs-secondary-color);border-radius:4px;padding:4px 10px;font-size:13px;display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.hub-pjv-x{background:none;border:0;color:var(--bs-body-color);font-size:22px;cursor:pointer;line-height:1}
+.hub-pjv-tabs{display:flex;gap:2px;padding:0 20px;border-bottom:1px solid var(--bs-border-color);margin-bottom:14px}
+.hub-pjv-tabs .tk-tab{background:none;border:0;border-bottom:3px solid transparent;padding:8px 16px;font-size:.84rem;font-weight:700;color:var(--bs-secondary-color);display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.hub-pjv-tabs .tk-tab.active{color:var(--bs-primary);border-bottom-color:var(--bs-primary)}
+body.hub-pjv .fab-create{z-index:1600}
+html[data-bs-theme] .modal-overlay{z-index:2500!important}
+html[data-bs-theme] #edit-modal .modal.hub-tmodal{height:auto!important;max-height:min(760px,calc(100vh - 80px))!important;background:var(--bs-tertiary-bg)!important}
+html[data-bs-theme] #edit-modal .hub-tmodal .modal-2col-body,html[data-bs-theme] #edit-modal .hub-tmodal .modal-col-left,html[data-bs-theme] #edit-modal .hub-tmodal .modal-col-right{background:transparent!important}
+html[data-bs-theme] #edit-modal .hub-tmodal .hub-tm-head{background:transparent!important}
+html[data-bs-theme] .hub-tm-coment{background:var(--bs-secondary-bg)!important}
+body.hub-pjv .proj-normal-header,body.hub-pjv .proj-subtabs-wrap,body.hub-pjv .proj-focus-bar,body.hub-pjv .proj-focus-rail{display:none!important}
+body.hub-pjv .proj-panel-wrap{max-width:none!important;margin:0!important;padding:0 20px 40px!important}
+body.hub-pjv #task-container{background:var(--bs-tertiary-bg)!important}
+body.hub-pjv .hub-pjv-top{background:var(--bs-tertiary-bg)}
+html[data-bs-theme] #edit-modal .modal.hub-tmodal{height:min(740px,calc(100vh - 120px))!important;align-self:center!important;margin:auto!important}
+.hub-tm-coment-body .td-comment-input-row{width:100%;box-sizing:border-box}
+.hub-tm-coment-body .comment-textarea{width:100%;min-height:70px}
+#edit-modal .hub-tmodal .td-desc-input{min-height:220px!important}
