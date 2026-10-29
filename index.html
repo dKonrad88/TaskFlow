@@ -14740,27 +14740,153 @@ let _ddvFiltrosAberto=false;
 let _ddvPersAberto=false;
 
 // [código, produto, estoque, pedido, OP/OC, maras, vendas 261 dias] — null = veio em branco no SISPRO
+// ⚠️ Base FICTÍCIA de demonstração — nenhum produto, cliente ou fornecedor real. Serve para ver como
+// a tela se comporta com MUITOS itens (pedido do Guilherme, 29/10): 59 produtos em 12 linhas, cobrindo
+// de propósito todos os estados que a tabela sabe pintar — 7 em ruptura (saldo negativo, célula cheia
+// em vermelho), as 4 faixas do semáforo de DDV, item sem nenhum dado de estoque (saldo "—") e item
+// sem venda (DDV "—"). DDV médio agregado do conjunto: ~10,6 dias.
 const _DDV_LINHAS=[
 ['DOCES DEMO',[
 [101,'Biscoito de mel demo 250g',640,180,120,null,18000],
 [102,'Biscoito de cacau demo 250g',90,40,null,null,4200],
-[103,'Biscoito de leite demo 250g',20,80,null,null,6100]]],
+[103,'Biscoito de leite demo 250g',20,80,null,null,6100],
+[104,'Biscoito de mel demo 500g',339,216,324,null,9400],
+[105,'Biscoito de mel demo monodose 30g',449,184,460,66,24000],
+[106,'Biscoito de coco demo 250g',285,36,null,null,3100],
+[107,'Biscoito de mel demo pacote familia 700g',162,80,null,null,5200]]],
 ['SALGADOS DEMO',[
 [201,'Palito sabor brasa demo 140g',420,150,90,null,15000],
 [202,'Palito sabor horta demo 140g',30,70,null,null,2800],
-[203,'Palito sabor brasa demo 70g',110,20,null,null,1600]]],
+[203,'Palito sabor brasa demo 70g',110,20,null,null,1600],
+[204,'Palito sabor queijo demo 140g',227,257,429,null,11200],
+[205,'Rosca salgada demo 200g',324,41,null,null,5400],
+[206,'Palito sabor cebola demo 140g',42,126,null,null,7300],
+[207,'Palito sabor brasa demo granel 5 kg',163,18,null,null,1200]]],
 ['COBERTURAS DEMO',[
 [301,'Cobertura sabor cacau demo 1 kg',48,12,null,null,900],
-[302,'Cobertura sabor leite demo 1 kg',15,30,10,null,1400]]]
+[302,'Cobertura sabor leite demo 1 kg',15,30,10,null,1400],
+[303,'Cobertura sabor branca demo 1 kg',49,15,null,null,760],
+[304,'Cobertura sabor cacau demo 5 kg',113,10,null,null,420],
+[305,'Cobertura sabor leite demo balde 10 kg',5,1,null,null,180]]],
+['PIPOCAS DEMO',[
+[401,'Pipoca doce demo 70g',413,253,759,null,22000],
+[402,'Pipoca sabor manteiga demo 70g',852,299,null,null,19500],
+[403,'Pipoca sabor queijo demo 70g',668,169,null,47,8800],
+[404,'Pipoca caramelo demo 150g',289,147,null,null,6400],
+[405,'Pipoca sabor cacau demo 70g',12,28,null,null,2100],
+[406,'Pipoca doce demo 150g',405,56,94,null,4900]]],
+['EXTRUSADOS DEMO',[
+[501,'Salgadinho sabor brasa demo 50g',332,356,1188,null,31000],
+[502,'Salgadinho sabor queijo demo 50g',1696,421,null,null,27500],
+[503,'Salgadinho sabor cebola demo 50g',400,238,null,null,12400],
+[504,'Salgadinho sabor presunto demo 50g',854,209,null,null,9100],
+[505,'Salgadinho sabor brasa demo 120g',167,36,null,15,4700],
+[506,'Salgadinho sabor pizza demo 50g',1066,72,null,null,6300]]],
+['AMENDOIM DEMO',[
+[601,'Amendoim doce demo 140g',333,159,582,null,13800],
+[602,'Amendoim salgado demo 140g',431,161,null,null,10500],
+[603,'Doce de amendoim demo 80g',232,82,null,null,4300],
+[604,'Amendoim com casca demo 500g',333,60,null,null,2600],
+[605,'Amendoim colorido demo 140g',31,15,null,null,1900]]],
+['ROSQUINHAS DEMO',[
+[701,'Rosquinha de leite demo 300g',97,189,754,61,16400],
+[702,'Rosquinha de coco demo 300g',598,185,null,null,12100],
+[703,'Rosquinha sabor cacau demo 300g',738,149,null,null,7800],
+[704,'Rosquinha de leite demo 700g',20,33,null,null,3400]]],
+['WAFER DEMO',[
+[801,'Wafer sabor cacau demo 110g',682,168,224,null,14600],
+[802,'Wafer sabor morango demo 110g',325,143,null,null,9300],
+[803,'Wafer sabor leite demo 110g',374,128,null,null,6700],
+[804,'Wafer sabor cacau demo 400g',361,51,null,null,2200]]],
+['PALITINHOS DEMO',[
+[901,'Palitinho de milho demo 90g',840,233,389,null,20300],
+[902,'Palitinho de milho demo 180g',324,109,null,null,7100],
+[903,'Palitinho sabor queijo demo 90g',192,100,null,null,5200],
+[904,'Palitinho sabor brasa demo 90g',349,90,null,null,3900]]],
+['ALFAJOR DEMO',[
+[1001,'Alfajor sabor leite demo 55g',322,134,269,null,11700],
+[1002,'Alfajor sabor cacau demo 55g',609,129,null,null,8400],
+[1003,'Alfajor sabor coco demo 55g',127,56,null,null,2900],
+[1004,'Alfajor sabor leite demo caixa 12 un',337,34,null,null,1500]]],
+['PASTAS DEMO',[
+[1101,'Pasta de amendoim demo 450g',277,79,null,21,6900],
+[1102,'Pasta de amendoim demo 1 kg',14,42,null,null,2400],
+[1103,'Pasta sabor cacau demo 450g',207,34,null,null,1800]]],
+['AMOSTRAS DEMO',[
+[1201,'Amostra biscoito demo sem registro',null,null,null,null,1100],
+[1202,'Amostra pipoca demo sem registro',null,null,null,null,480],
+[1203,'Item demo em cadastro sem venda',260,35,null,null,null],
+[1204,'Item demo novo sem venda',80,0,null,null,null]]]
 ];
 
-// Histórico mensal de vendas por produto (o gráfico do topo). Só o 1798 veio no print — os demais
-// mostram o aviso de "sem histórico". Para acrescentar: uma entrada por código, com meses e valores.
-const _DDV_SERIE={
-  201:{ de:'2025-10',
-         meses:['out/25','nov/25','dez/25','jan/26','fev/26','mar/26','abr/26','mai/26','jun/26','jul/26','ago/26','set/26'],
-         vals:[900,980,1100,860,920,1000,1040,990,1080,1020,970,1010] }
-};
+// Histórico mensal de vendas por produto (o gráfico do topo): 18 meses, abr/25 a set/26.
+// ⭐ A soma dos ÚLTIMOS 12 meses bate com a coluna de vendas de 261 dias úteis de cada item — senão o
+// gráfico e a tabela se contradiriam. Item sem venda não tem série, e é o que mantém demonstrável o
+// aviso de "sem histórico mês a mês". Os rótulos dos meses são um array só, compartilhado (nenhuma
+// função da tela muta esse array — `_ddvRecorte` monta um objeto novo).
+const _DDV_MESES_SERIE=['abr/25','mai/25','jun/25','jul/25','ago/25','set/25','out/25','nov/25','dez/25','jan/26','fev/26','mar/26','abr/26','mai/26','jun/26','jul/26','ago/26','set/26'];
+const _DDV_SERIE=(()=>{const M=_DDV_MESES_SERIE, de='2025-04', S={};
+  const d={
+  101:[1339,1641,1514,1365,1581,1384,1770,1775,1637,1283,1187,1598,1466,1341,1649,1503,1278,1514],
+  102:[384,356,325,396,342,296,384,382,474,277,254,347,316,387,357,322,373,326],
+  103:[510,468,573,524,447,527,506,671,627,364,451,458,554,513,468,570,492,426],
+  104:[735,897,830,751,865,760,722,973,900,702,651,654,803,737,902,824,703,829],
+  105:[1640,2033,1863,2259,1953,1697,2195,2186,2700,1586,1456,1983,1808,2205,2040,1846,2127,1867],
+  106:[273,251,306,280,240,282,271,267,336,195,241,245,221,274,251,305,264,229],
+  107:[407,370,459,416,477,420,401,537,499,387,360,363,444,408,498,456,390,458],
+  201:[1318,1215,1105,1355,1164,1359,1313,1298,1621,946,1163,1187,1074,1325,1218,1470,1274,1111],
+  202:[229,209,258,235,268,236,226,302,281,162,203,205,249,230,209,256,220,257],
+  203:[116,143,131,118,137,120,154,154,142,111,103,139,127,116,143,130,149,131],
+  204:[1027,950,866,1058,911,1059,1026,1017,1265,740,676,927,841,1033,952,857,995,870],
+  205:[442,404,496,453,386,456,437,581,542,314,390,396,479,443,404,494,425,494],
+  206:[556,680,628,568,655,575,733,736,680,532,493,494,608,557,684,624,531,628],
+  207:[82,102,93,113,98,85,110,109,135,79,73,99,90,110,102,92,106,93],
+  301:[70,64,79,72,83,73,69,93,86,67,62,63,77,71,86,79,67,79],
+  302:[98,121,111,135,117,102,131,131,161,95,87,118,108,98,122,110,127,112],
+  303:[67,62,56,69,59,69,67,66,82,48,59,60,54,67,62,75,65,56],
+  304:[34,31,38,34,39,35,33,44,41,32,30,30,37,34,31,38,32,38],
+  305:[13,16,15,13,15,13,17,17,16,13,12,16,14,13,16,15,17,15],
+  401:[2014,1865,1704,2075,1789,1549,2014,2000,2481,1454,1330,1820,1654,2027,1871,1687,1953,1710],
+  402:[1632,1497,1832,1674,1429,1684,1618,2145,2004,1162,1442,1464,1770,1639,1498,1824,1573,1362],
+  403:[688,840,777,703,810,711,676,910,842,657,610,612,752,690,844,772,658,776],
+  404:[437,542,497,602,521,452,585,583,720,423,388,529,482,588,544,492,567,498],
+  405:[185,170,207,190,163,191,184,181,227,132,163,166,150,186,170,206,179,155],
+  406:[383,349,432,392,450,396,378,506,470,365,339,342,418,385,469,430,368,431],
+  501:[2536,2315,2854,2597,2967,2618,2505,3342,3110,1795,2243,2268,2759,2545,2314,2838,2437,2846],
+  502:[1995,2450,2258,2033,2359,2062,2643,2647,2437,1914,1768,2387,2187,1997,2461,2240,2559,2258],
+  503:[1137,1052,959,1171,1008,1172,1136,1126,1400,819,748,1027,932,1144,1054,949,1102,963],
+  504:[744,681,836,763,650,768,737,979,913,529,658,667,808,747,682,832,716,833],
+  505:[358,438,404,365,422,370,472,474,438,342,317,318,392,359,440,402,342,404],
+  506:[430,534,489,594,513,445,576,573,710,416,382,521,474,580,536,484,559,490],
+  601:[968,1196,1098,1328,1150,1001,1292,1288,1588,934,859,1167,1065,967,1201,1088,1251,1100],
+  602:[923,851,772,949,814,952,919,907,1136,662,815,831,751,928,852,1031,892,776],
+  603:[345,314,389,353,404,356,340,455,423,328,305,308,376,346,314,386,331,388],
+  604:[188,232,213,192,223,195,250,250,230,181,167,226,207,188,233,212,242,214],
+  605:[171,158,144,176,151,176,171,169,210,123,151,154,140,172,158,142,165,144],
+  701:[1372,1259,1541,1408,1202,1416,1361,1804,1686,977,1213,1231,1489,1378,1260,1534,1323,1145],
+  702:[946,1155,1068,967,1114,978,929,1252,1158,903,838,842,1034,948,1161,1061,905,1067],
+  703:[533,661,606,734,635,551,713,710,878,515,473,645,587,717,663,600,691,607],
+  704:[299,275,336,308,263,309,298,293,368,214,264,269,243,301,276,334,289,251],
+  801:[1059,1301,1199,1079,1252,1095,1403,1405,1294,1016,939,1267,1161,1060,1307,1189,1358,1199],
+  802:[853,789,719,878,756,879,852,844,1050,614,561,770,699,858,791,712,826,722],
+  803:[548,502,616,562,479,565,543,721,672,389,484,491,595,550,502,612,527,613],
+  804:[168,205,189,171,198,173,221,222,205,160,148,149,183,168,206,188,160,189],
+  901:[1785,1644,1493,1835,1573,1841,1777,1753,2195,1279,1576,1607,1451,1795,1647,1993,1725,1501],
+  902:[570,519,641,583,667,588,562,751,698,541,504,509,620,571,519,638,547,640],
+  903:[377,464,427,384,446,389,500,500,460,362,334,452,414,377,466,423,484,427],
+  904:[351,324,295,361,311,362,350,347,432,252,310,317,287,353,325,292,340,297],
+  1001:[915,1117,1033,935,1077,945,898,1210,1120,874,810,814,1000,917,1123,1026,875,1032],
+  1002:[574,712,652,791,684,594,768,765,945,555,510,694,633,772,714,646,744,654],
+  1003:[255,235,286,262,225,263,254,250,314,183,225,230,207,257,235,285,247,214],
+  1004:[117,107,132,120,138,121,116,155,144,112,104,105,128,118,144,131,113,132],
+  1101:[633,585,534,652,561,652,632,627,779,456,416,571,518,637,587,528,613,536],
+  1102:[196,180,221,201,171,203,194,258,241,139,173,176,213,197,180,219,189,220],
+  1103:[137,168,155,140,162,142,181,182,168,131,121,122,150,137,169,154,131,155],
+  1201:[88,80,99,90,103,91,87,116,108,84,78,79,96,89,80,99,85,99],
+  1202:[35,43,39,35,41,36,46,46,42,33,31,42,38,35,43,39,45,39]
+  };
+  Object.keys(d).forEach(k=>{ S[k]={de:de, meses:M, vals:d[k]}; });
+  return S;})();
 // ── Conta ───────────────────────────────────────────────────────────────────────────────────
 // p = [cod, nome, est, ped, opoc, maras, vendas]
 function _ddvCalc(p){
