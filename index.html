@@ -4106,6 +4106,8 @@ async function load(){
     if(typeof _seedImplantacaoHub==='function') _seedImplantacaoHub();
     // Nota 1x com o resumo do Financeiro antigo (recomeço de set/2026)
     if(typeof _seedNotaFinanceiro==='function') _seedNotaFinanceiro();
+    // Grade de produção de demonstração nas 2 semanas vigentes (ver _seedProgDemo)
+    if(typeof _seedProgDemo==='function') _seedProgDemo();
     // Migração 1x: protege datas de tarefas de projeto JÁ existentes contra a projeção do
     // cronograma (que reescrevia t.date a cada render). Marca como dateManual as que já têm
     // data — preserva exatamente o que está hoje (ex.: ondas do projeto-exemplo).
@@ -6248,6 +6250,51 @@ function _prodItens(){ const a=safeJSON(LS_PROD_ITENS,null); return Array.isArra
 function _prodSaveItens(a){ try{ safeSetItem(LS_PROD_ITENS, JSON.stringify(a)); }catch(e){} }
 function _prodProg(){ const o=safeJSON(LS_PROD_PROG,null); return (o&&typeof o==='object'&&!Array.isArray(o))?o:{}; }
 function _prodSaveProg(o){ try{ safeSetItem(LS_PROD_PROG, JSON.stringify(o)); }catch(e){} }
+// ⭐ GRADE DE PRODUÇÃO DE DEMONSTRAÇÃO — o que faz a régua da Cobertura ter o que mostrar.
+// ⚠️ POR QUE ELA EXISTE: a régua de dias na coluna OP/OC lê desta grade. Sem nada programado nas 2
+// semanas vigentes ela nasce toda apagada e parece defeito — foi exatamente o que aconteceu com o
+// Diego em 29/10 (a grade dele tinha 25 células de jul/ago, já fora da janela, e uma só de nov).
+// ⚠️ TRÊS GUARDAS, nessa ordem — ela é conservadora de propósito:
+//   1. NUNCA sobrescreve: só escreve em célula VAZIA. O que o PCP montou fica intocado.
+//   2. 1× POR SEMANA-BASE (flag guarda a segunda da 1ª semana): não repete no mesmo período, e
+//      quando a semana vira ela semeia de novo — senão a demo envelheceria e voltaria a apagar.
+//   3. Só usa item que JÁ ESTÁ no cadastro da Programação; item desconhecido não aparece no picker.
+// Para desligar: tire a chamada no `load()`. Para zerar o que ela pôs: a Programação é editável
+// célula a célula (o × de cada chip) — é dado comum, não tem nada de especial nele.
+const LS_PROD_SEED_DEMO='taskflow_prod_seed_demo';
+// [dia 0-5 da semana, linha, item] — seg a sáb. Montado para dar PADRÕES diferentes na régua:
+// item que roda quase todo dia (palitinho), item 2x na semana (pão de mel), item só na 2ª semana.
+const _PROD_DEMO_S1=[[0,'com','Pão de mel P&B'],[0,'pal','Palitinho'],[0,'pip','Pipoca tradicional'],
+  [1,'com','Pão de mel P&B'],[1,'pal','Palitinho'],[1,'ext','Mega+ intensus'],
+  [2,'com','Duetto'],[2,'pal','Palitinho + bolinha'],[2,'sem','Amanteigado'],
+  [3,'com','Maisena'],[3,'pal','Palitinho'],[3,'pel','Salgadão'],
+  [4,'com','Amendoim P&B'],[4,'sem','Broa'],[4,'pal','Palitinho'],
+  [5,'com','Pão de mel P&B']];
+const _PROD_DEMO_S2=[[0,'com','Pão de mel P&B'],[0,'pal','Palitinho'],
+  [1,'com','Maisena'],[1,'pip','Pipoca tradicional'],
+  [2,'com','Duetto'],[2,'pal','Palitinho + aperitivo'],[2,'ext','Mega+ intensus'],
+  [3,'sem','Banana c/ canela'],[3,'pal','Palitinho'],
+  [4,'com','Amendoim P&B'],[4,'pel','Salgadão']];
+function _seedProgDemo(){
+  try{
+    if(typeof _prodDias!=='function') return;
+    const s1=_prodDias(0), s2=_prodDias(1);
+    if(!s1.length||!s2.length) return;
+    if(safeLSGet(LS_PROD_SEED_DEMO)===s1[0].iso) return;      // já semeado para esta semana-base
+    const prog=_prodProg(), itens=_prodItens();
+    let mexeu=false;
+    [[s1,_PROD_DEMO_S1],[s2,_PROD_DEMO_S2]].forEach(function(par){
+      par[1].forEach(function(c){
+        if(itens.indexOf(c[2])<0) return;                      // item fora do cadastro: não inventa
+        const k=par[0][c[0]].iso+'|'+c[1];
+        if(_prodCellArr(prog,k).length) return;                // célula ocupada: o dado real manda
+        prog[k]=[{p:c[2],t:0}]; mexeu=true;
+      });
+    });
+    if(mexeu) _prodSaveProg(prog);
+    safeSetItem(LS_PROD_SEED_DEMO, s1[0].iso);
+  }catch(e){}
+}
 // Modo de exibição: 'pcp' (edição — cadastro + células com "+") ou 'leitor' (só o que tem produto, sem cadastro).
 function _prodModo(){ try{ return localStorage.getItem(LS_PROD_MODO)==='leitor'?'leitor':'pcp'; }catch(e){ return 'pcp'; } }
 function _prodSetModo(m){ try{ safeSetItem(LS_PROD_MODO, m==='leitor'?'leitor':'pcp'); }catch(e){} _prodRerender(); }
