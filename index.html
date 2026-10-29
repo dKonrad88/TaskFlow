@@ -14922,6 +14922,86 @@ function _ddvProdCels(p,c){
     '<td class="bnd b3" style="font-weight:600">'+(x.mass>0.05?_cpNum(x.mass,1):'—')+'</td>'+
     '<td class="bnd b3 l">'+_regCamHTML(x.e.cam)+'</td>';
 }
+
+// ── PONTE COM A PROGRAMAÇÃO (Produção › Programação) ────────────────────────────────────────
+// A régua de pontos embaixo do número de OP/OC diz em que DIAS o item está programado para rodar.
+// ⚠️⚠️ OS DOIS LADOS FALAM LÍNGUAS DIFERENTES e é isso que a ponte resolve: a Programação guarda
+// NOME LIVRE de item ('Pão de mel P&B', 'Broa', 'Palitinho'), de um cadastro próprio; a Cobertura
+// guarda CÓDIGO de produto. Quem liga os dois é a MASSA — o cadastro de Regras (`_REG_ENG`) já diz
+// a massa de cada código, e o item da Programação é justamente um nome de massa. O casamento é por
+// CONTÉM ('Palitinho + bolinha' contém 'palitinho'), senão cada variação do nome viraria um de-para.
+// ⚠️ Item SEM massa é COMPRADO (cobertura, embalagem, revenda): nunca mostra régua, porque OC de
+// compra não passa pela Programação — mostrá-la encheria essas linhas de pontos mortos para sempre.
+// ⚠️ 1 item da Programação = N produtos (250g, 500g, monodose). Então a régua diz que A MASSA roda
+// naquele dia, NÃO que aquela gramatura está garantida — por isso o verbo é "programado".
+// ⚠️ A régua marca o DIA, nunca a quantidade: a Programação é um planner de quem-roda-quando, sem
+// volume. Logo ela não entra no saldo nem no DDV — é informação ao lado do número, não dentro da conta.
+// ⚠️ SÃO 2 FILEIRAS porque a Programação cobre a PRÓXIMA semana e a seguinte (`_prodDias(0)` começa
+// na segunda que vem, nunca na semana corrente). Quem olha numa quinta precisa enxergar a terça da
+// outra semana — foi o caso que o Diego levantou. Fileira de cima = 1ª semana, de baixo = 2ª.
+// Massa dos produtos de DEMONSTRAÇÃO, por começo do nome. No dado real quem manda é o `_REG_ENG`;
+// este mapa só existe porque os códigos demo não estão no cadastro de engenharia. Os que não
+// aparecem aqui são tratados como comprados — é o que mantém o caso "OC sem régua" demonstrável.
+const _DDV_MASSA_DEMO=[
+  ['biscoito de mel','pão de mel'], ['biscoito de cacau','duetto'], ['biscoito de leite','maisena'],
+  ['biscoito de coco','amanteigado'], ['palito','palitinho'], ['palitinho','palitinho'],
+  ['rosca salgada','salgadão'], ['pipoca','pipoca'], ['salgadinho','mega'],
+  ['amendoim','amendoim'], ['doce de amendoim','amendoim'], ['rosquinha','broa'],
+  ['wafer','banana c/ canela']];
+// null = o item não é produzido (é comprado/revenda) → sem régua.
+function _ddvMassa(p){
+  if(typeof _regEng==='function'){ const e=_regEng(p[0]); if(e&&e.massa) return e.massa; }
+  const n=_ddvNorm(p[1]);
+  for(let i=0;i<_DDV_MASSA_DEMO.length;i++){ if(n.indexOf(_ddvNorm(_DDV_MASSA_DEMO[i][0]))===0) return _DDV_MASSA_DEMO[i][1]; }
+  return null;
+}
+// Índice da grade das 2 semanas, montado UMA vez por render: sem isso seriam 59 JSON.parse do
+// localStorage (um por linha da tabela). Zerado no topo de `_ddvTabelaHTML`.
+function _ddvProgIdx(){
+  if(window.__ddvProgIdx) return window.__ddvProgIdx;
+  const vazio={idx:{}, sem:[[],[]]};
+  if(typeof _prodProg!=='function'||typeof _prodDias!=='function'||typeof PROD_LINHAS==='undefined'){ window.__ddvProgIdx=vazio; return vazio; }
+  const prog=_prodProg(), sem=[_prodDias(0),_prodDias(1)], idx={};
+  sem.forEach(function(dias,si){ dias.forEach(function(d,di){
+    PROD_LINHAS.forEach(function(l){ _prodCellArr(prog, d.iso+'|'+l.k).forEach(function(it){
+      const k=_ddvNorm(it.p);
+      if(!idx[k]) idx[k]={sem:[[0,0,0,0,0,0],[0,0,0,0,0,0]], linhas:{}};
+      idx[k].sem[si][di]=1; idx[k].linhas[l.n]=1; }); }); }); });
+  window.__ddvProgIdx={idx:idx, sem:sem};
+  return window.__ddvProgIdx;
+}
+// Devolve os dias programados do produto, ou null quando ele não é produzido.
+// ⚠️ Devolve objeto mesmo sem NENHUM dia aceso — régua toda apagada é informação: "tem ordem
+// aberta e não entrou na grade das duas semanas".
+// ⚠️ MAS com a grade INTEIRA vazia devolve null: aí ninguém programou nada ainda, e uma coluna de
+// réguas cinzas não informa — parece defeito. São coisas diferentes: "a Programação está vazia" e
+// "este item ficou de fora dela".
+function _ddvProgDe(p){
+  const massa=_ddvMassa(p); if(!massa) return null;
+  const m=_ddvNorm(massa), st=_ddvProgIdx();
+  if(!Object.keys(st.idx).length) return null;
+  const out={sem:[[0,0,0,0,0,0],[0,0,0,0,0,0]], linhas:[], dias:[]}, lin={};
+  Object.keys(st.idx).forEach(function(k){
+    if(k.indexOf(m)<0) return;
+    st.idx[k].sem.forEach(function(f,si){ f.forEach(function(v,di){ if(v) out.sem[si][di]=1; }); });
+    Object.keys(st.idx[k].linhas).forEach(function(n){ lin[n]=1; });
+  });
+  out.linhas=Object.keys(lin);
+  out.sem.forEach(function(f,si){ f.forEach(function(v,di){ if(v&&st.sem[si][di]) out.dias.push(st.sem[si][di]); }); });
+  return out;
+}
+// A célula de OP/OC: o número de sempre e, quando couber, a régua das 2 semanas embaixo.
+function _ddvOpocCel(p){
+  const n=_ddvN(p[4]);
+  if(p[4]==null) return n;                 // sem ordem, a célula fica exatamente como era
+  const g=_ddvProgDe(p);
+  if(!g) return n;                         // comprado: OC não passa pela Programação
+  const tip = g.dias.length
+    ? 'Programado: '+g.dias.map(function(d){ return d.dow.toLowerCase()+' '+d.dd; }).join(' · ')+(g.linhas.length?' — '+g.linhas.join(', '):'')
+    : 'Tem ordem em aberto e nenhum dia programado nas duas semanas da Programação';
+  const fileira=function(f){ return '<div class="ddv-prg-r">'+f.map(function(v){ return '<span class="ddv-prg-d'+(v?' on':'')+'"></span>'; }).join('')+'</div>'; };
+  return n+'<div class="ddv-prg" title="'+escapeAttr(tip)+'">'+fileira(g.sem[0])+fileira(g.sem[1])+'</div>';
+}
 function _ddvSetVer(v){ _ddvVer=v; _ddvSave(); _ddvRefresh(); }
 // ⚠️ devolve '' na última faixa: célula sem `color` fica com o tom padrão da tabela, que é exatamente o
 // "cor normal" que o Diego pediu para o que passa de v3. Quem chama já trata o vazio (é o mesmo que o
@@ -15247,6 +15327,15 @@ function _ddvCSS(){
   .ddv-fchk{width:13px;height:13px;margin:0;flex:none}
   .ddv-pop [disabled]{opacity:.6;cursor:default}
   .ddv-fnota{font-size:10px;color:var(--text3);line-height:1.45;border-top:1px solid var(--border);margin-top:2px;padding-top:9px}
+  .ddv-prg{display:flex;flex-direction:column;align-items:flex-end;gap:2px;margin-top:3px;cursor:help}
+  .ddv-prg-r{display:flex;gap:3px}
+  .ddv-prg-d{width:5px;height:5px;border-radius:50%;background:var(--text3);opacity:.38}
+  .ddv-prg-d.on{background:var(--blue-mid);opacity:1}
+  /* ⚠️ No tema escuro o acento do app é um azul médio: sobre fundo escuro o ponto aceso some e fica
+     igual ao apagado (visto na tela, não deduzido). Clareia o acento e levanta um pouco o apagado,
+     senão não dá para CONTAR os dias. Sai da var do tema, então vale no Klain e no Brasil também. */
+  body.dark .ddv-prg-d{opacity:.5}
+  body.dark .ddv-prg-d.on{background:color-mix(in srgb,var(--blue-mid) 50%,#fff)}
   .ddv-nota{font-size:11.5px;color:var(--text3);line-height:1.5;margin-top:12px;padding:0 2px}
   </style>`;
 }
@@ -15413,6 +15502,7 @@ function _ddvKPIsHTML(){
   </div>`;
 }
 function _ddvTabelaHTML(){
+  window.__ddvProgIdx=null;   // o índice da Programação é remontado uma vez por render
   const th=(c,lab,cls,tit)=>{ const on=_ddvSort.campo===c;
     return `<th class="${cls||''}" onclick="_ddvSortBy('${c}')"${tit?` title="${escapeAttr(tit)}"`:''} style="${on?'color:var(--blue-mid)':''}">${lab}${on?` <i class="ti ti-${_ddvSort.dir<0?'arrow-down':'arrow-up'}" style="font-size:11px"></i>`:''}</th>`; };
   const med=_ddvMedias;
@@ -15465,7 +15555,7 @@ function _ddvTabelaHTML(){
       rows+=`<tr class="ddv-prod" onclick="_ddvAbrirGraf('${p[0]}')" title="Ver o gráfico de vendas deste produto"${aberto?' style="background:color-mix(in srgb,var(--blue-mid) 8%,transparent)"':''}>
         <td class="l ddv-cod">${alerta}${p[0]}</td>
         <td class="l" title="${escapeAttr(p[1])}">${escapeHTML(p[1])}</td>
-        <td class="bnd b1 bs">${_ddvN(p[2])}</td><td class="bnd b1">${_ddvN(p[3])}</td><td class="bnd b1">${_ddvN(p[4])}</td><td class="bnd b1">${_ddvN(p[5])}</td>
+        <td class="bnd b1 bs">${_ddvN(p[2])}</td><td class="bnd b1">${_ddvN(p[3])}</td><td class="bnd b1">${_ddvOpocCel(p)}</td><td class="bnd b1">${_ddvN(p[5])}</td>
         <td class="bnd b1${negS?' ddv-neg':''}"${negS?'':` style="color:${c.saldo==null?'':'var(--blue-mid)'};font-weight:600"`}>${_ddvN(c.saldo)}</td>
         <td class="bnd b2 bs${negD?' ddv-neg':''}"${negD?'':` style="color:${st};font-weight:700"`}>${_ddvN(c.ddv)}</td>
         ${dat?`<td class="bnd b2 ddv-fim"${negD?' title="Saldo negativo — o estoque já acabou"':''}>${_ddvDataFim(c.ddv)||'—'}</td>`:''}
