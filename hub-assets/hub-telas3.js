@@ -30,7 +30,7 @@ function modalNova(){var m=q('#task-modal .modal');if(!m||m._hub)return;m._hub=1
   m.insertBefore(grid,foot||null);if(foot){var fw=el('div','hub-tm-rodape');m.insertBefore(fw,foot);fw.appendChild(base);fw.appendChild(foot);}
 }
 /* ---- Projeto aberto: tela cheia com barra de título e abas oficiais ---- */
-var ABAS=[['visao','ti-layout-kanban','Quadro'],['fases','ti-timeline','Linha do tempo'],['pessoas','ti-users','Pessoas'],['anexos','ti-paperclip','Anexos'],['analise','ti-chart-bar','Análise'],['info','ti-info-circle','Informações'],['anotacoes','ti-messages','Chat'],['tarefas','ti-list-check','Tarefas'],['editar','ti-pencil','Editar']];
+var ABAS=[['h5:quadro','ti-layout-kanban','Quadro'],['h5:linha','ti-timeline','Linha do tempo'],['visao','ti-layout-dashboard','Visão geral'],['fases','ti-stairs','Fases'],['pessoas','ti-users','Pessoas'],['anexos','ti-paperclip','Anexos'],['analise','ti-chart-bar','Análise'],['info','ti-info-circle','Informações'],['anotacoes','ti-messages','Chat'],['tarefas','ti-list-check','Tarefas'],['editar','ti-pencil','Editar']];
 function projeto(){if(typeof activeProjectProId==='undefined'||!activeProjectProId)return;if(typeof currentTab==='undefined'||(currentTab!=='projetos-pro'&&currentTab!=='projetos'))return;
   var tc=document.getElementById('task-container');if(!tc||q('.hub-pjv-top',tc))return;
   var p=(projectsPro||[]).find(function(x){return x.id===activeProjectProId;});if(!p)return;
@@ -40,7 +40,7 @@ function projeto(){if(typeof activeProjectProId==='undefined'||!activeProjectPro
   Object.keys(cont).forEach(function(k){var pai=cont[k];if(pai&&pai.querySelectorAll('[onclick^="setProjectProTab("]').length>=5)pai.classList.add('hub-hide-nav');});
   var tab=(typeof activeProjectProTab!=='undefined')?activeProjectProTab:'visao';
   var top=el('div','hub-pjv-top','<div class="hub-pjv-bar"><div class="hub-pjv-nome"><i class="ti ti-file"></i> '+String(p.nome||p.name||'').replace(/[<>&]/g,'')+'</div><div class="hub-pjv-acts"><button class="hub-btn-outline" onclick="try{setProjectProTab(\'editar\')}catch(e){}"><i class="ti ti-pencil"></i> Editar projeto</button><button class="hub-pjv-x" title="Fechar" onclick="voltarParaProjetosPro()"><i class="ti ti-x"></i></button></div></div>'+
-    '<div class="tk-tabs hub-pjv-tabs">'+ABAS.map(function(a){return '<button class="tk-tab'+(a[0]===tab?' active':'')+'" onclick="setProjectProTab(\''+a[0]+'\')"><i class="ti '+a[1]+'"></i> '+a[2]+'</button>';}).join('')+'</div>');
+    '<div class="tk-tabs hub-pjv-tabs">'+ABAS.map(function(a){var h5=a[0].indexOf('h5:')===0;return '<button class="tk-tab'+(!h5&&a[0]===tab?' active':'')+'"'+(h5?' data-h5="'+a[0].slice(3)+'" onclick="hubPjTab(\''+a[0].slice(3)+'\')"':' onclick="setProjectProTab(\''+a[0]+'\')"')+'><i class="ti '+a[1]+'"></i> '+a[2]+'</button>';}).join('')+'</div>');
   tc.insertBefore(top,tc.firstChild);}
 function envolver(){
   if(typeof window.render==='function'&&!window.render._hub3){var r=window.render;window.render=function(){document.body.classList.remove('hub-pjv');var x=r.apply(this,arguments);try{projeto();}catch(e){}return x;};window.render._hub3=1;}

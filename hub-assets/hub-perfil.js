@@ -20,7 +20,7 @@ function ferr(){var it=[['ti-robot','Assistente IA',/IA|Chat/i,'abrirChatIA'],['
   return '<div class="pf-ferr">'+it.map(function(x,i){return '<button type="button" class="btn btn-sm btn-outline-primary" data-pf-ferr="'+i+'"><i class="ti '+x[0]+'"></i> '+x[1]+'</button>';}).join('')+'</div>';}
 var FERR=[[/IA|Chat/i,'abrirChatIA'],[/Agenda|Google/i,null],[/Nuvem|Cloud/i,'abrirNuvem'],[/Config/i,'abrirConfiguracoes'],[/Escuro|Dark|toggleDark/i,'toggleDark']];
 function corpo(){
-  if(aba==='pers') return card('ti-palette','Cor',corHtml())+card('ti-photo','Fundo',fundoHtml())+card('ti-droplet-half-2','Véu do fundo',veuHtml())+
+  if(aba==='pers') return card('ti-palette','Cor',corHtml())+card('ti-photo','Fundo',fundoHtml())+card('ti-device-desktop-cog','Automático','<div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="pf-auto"'+(window.hubAparencia&&hubAparencia.get().auto?' checked':'')+'><label class="form-check-label" for="pf-auto">Seguir o modo claro/escuro do sistema (usa Claro ou Escuro automaticamente)</label></div>')+card('ti-droplet-half-2','Véu do fundo',veuHtml())+
     card('ti-bell','Sino de notificações','<p class="pf-muted">Escolha quais avisos aparecem no sino e com que frequência.</p><button type="button" class="btn btn-sm btn-outline-primary" data-pf-go="cfg"><i class="ti ti-adjustments"></i> Ajustar notificações</button>')+
     card('ti-tools','Ferramentas',ferr());
   if(aba==='cat') return card('ti-tags','Categorias','<p class="pf-muted">Etiquetas, setores e listas usadas para organizar as tarefas.</p><button type="button" class="btn btn-sm btn-primary" data-pf-go="cfg"><i class="ti ti-settings"></i> Gerenciar nas configurações</button>');
@@ -30,7 +30,7 @@ function render(){var el=document.getElementById('hub-perfil');if(!el)return;var
   var tabs=[['pers','ti-palette','Personalização'],['cat','ti-tags','Categorias'],['grp','ti-users-group','Grupos'],['adm','ti-shield','Admin']];
   el.innerHTML='<div class="pf-wrap"><div class="pf-head">'+(foto?'<img class="pf-foto" src="'+esc(foto)+'" alt="">':'<span class="pf-foto pf-ini">'+esc(nm.charAt(0))+'</span>')+
    '<div class="pf-info"><div class="pf-nome">'+esc(nm)+'</div>'+(em?'<div class="pf-mail">'+esc(em)+'</div>':'')+(cg?'<div class="pf-cargo">'+esc(cg)+'</div>':'')+'</div>'+
-   '<div class="pf-acts"><button type="button" class="btn btn-sm btn-primary" data-pf-go="senha"><i class="ti ti-key"></i> Alterar Senha</button><button type="button" class="btn btn-sm btn-danger" data-pf-go="sair"><i class="ti ti-logout"></i> Deslogar</button></div></div>'+
+   '<div class="pf-acts"><button type="button" class="btn btn-sm btn-primary" data-pf-go="senha"><i class="ti ti-key"></i> Alterar Senha</button><button type="button" class="btn btn-sm btn-primary" data-pf-go="instalar"><i class="ti ti-download"></i> Instalar app</button><button type="button" class="btn btn-sm btn-danger" data-pf-go="sair"><i class="ti ti-logout"></i> Deslogar</button></div></div>'+
    '<ul class="nav nav-tabs pf-tabs">'+tabs.map(function(t){return '<li class="nav-item"><button type="button" class="nav-link'+(aba===t[0]?' active':'')+'" data-pf-aba="'+t[0]+'"><i class="ti '+t[1]+'"></i> '+t[2]+'</button></li>';}).join('')+'</ul>'+corpo()+'</div>';}
 function veuSet(){var on=document.getElementById('pf-veu-on'),c=document.getElementById('pf-veu-cor'),a=document.getElementById('pf-veu-al');if(!c)return;var v=document.getElementById('pf-veu-v');if(v)v.textContent=Math.round(a.value*100)+'%';
   if(window.hubVeuSet)try{hubVeuSet({on:on.checked,cor:c.value,alpha:parseFloat(a.value)});}catch(e){}}
@@ -42,9 +42,10 @@ function onClick(e){var t=e.target.closest('[data-pf-aba],[data-pf-filtro],[data
   var g=t.dataset.pfGo;
   if(g==='cfg')call('abrirConfiguracoes')();else if(g==='nuvem'||g==='senha')call('abrirNuvem')();
   else if(g==='pessoas'){fechar();try{if(typeof setTab==='function')setTab('pessoas');}catch(e){}}
+  else if(g==='instalar'){if(window.hubInstalarApp)hubInstalarApp();}
   else if(g==='sair'){if(confirm('Deseja deslogar da conta na nuvem?'))call('nuvemLogout')();}}
 function abrir(){var el=document.getElementById('hub-perfil');if(!el){el=document.createElement('div');el.id='hub-perfil';el.className='task-page';document.body.appendChild(el);
-  el.addEventListener('click',onClick);el.addEventListener('change',function(e){if(e.target.name==='pf-fundo'&&window.hubFundoSet){hubFundoSet(e.target.value);}if(/^pf-veu/.test(e.target.id))veuSet();});el.addEventListener('input',function(e){if(e.target.id==='pf-veu-al')veuSet();});}
+  el.addEventListener('click',onClick);el.addEventListener('change',function(e){if(e.target.name==='pf-fundo'&&window.hubFundoSet){hubFundoSet(e.target.value);}if(/^pf-veu/.test(e.target.id))veuSet();if(e.target.id==='pf-auto'&&window.hubAutoSet){hubAutoSet(e.target.checked);render();}});el.addEventListener('input',function(e){if(e.target.id==='pf-veu-al')veuSet();});}
   aba='pers';render();document.body.classList.add('hub-perfil-on');el.scrollTop=0;}
 function fechar(){document.body.classList.remove('hub-perfil-on');}
 window.hubPerfilAbrir=abrir;window.hubPerfilFechar=fechar;

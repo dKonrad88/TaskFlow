@@ -2118,6 +2118,7 @@
 <link rel="stylesheet" href="hub-assets/hub-navbar.css">
 <link rel="stylesheet" href="hub-assets/hub-perfil.css">
 <link rel="stylesheet" href="hub-assets/hub-notif.css">
+<link rel="stylesheet" href="hub-assets/hub-fase5.css">
 </head>
 <body class="tab-hoje">
 
@@ -21207,18 +21208,22 @@ function renderSidebar(){
   const _hubTarefas = grupo('hub-tarefas','ti-checklist','Tarefas',
     navSubItem('minhas-tarefas','ti-user','Minhas Tarefas', {badge: minhasCount||null}) +
     navSubItem('solicitadas','ti-send','Solicitadas', {badge: _solicConfirmCount||null}) +
+    `<button class="sbnav-item sbnav-subitem" data-hub="emcopia" onclick="hubScreen('emcopia')"><i class="ti ti-copy"></i><span class="sbnav-label">Em cópia</span></button>` +
     navSubItem('entrada','ti-list-details','Organizar', {badge: entradaCount>=ENTRADA_ALERTA?entradaCount:null}) +
     navSubItem('concluidas','ti-history','Histórico') +
     navSubItem('rotinas','ti-repeat','Rotinas') +
     navSubItem('anotacoes','ti-notes','Notas'));
   const _hubReunioes = grupo('hub-reunioes','ti-users-group','Reuniões',
     navSubItem('agenda','ti-calendar','Minha Agenda') +
-    navSubItem('reunioes','ti-users','Minhas Reuniões', {badge: reunHoje||null}));
+    navSubItem('reunioes','ti-users','Minhas Reuniões', {badge: reunHoje||null}) +
+    `<button class="sbnav-item sbnav-subitem" data-hub="agendamentos" onclick="hubScreen('agendamentos')"><i class="ti ti-calendar-event"></i><span class="sbnav-label">Agendamentos</span></button>` +
+    `<button class="sbnav-item sbnav-subitem" data-hub="visitas" onclick="hubScreen('visitas')"><i class="ti ti-map-pin"></i><span class="sbnav-label">Visitas</span></button>`);
   const _hubProjetos = grupo('hub-projetos','ti-folders','Projetos',
     navSubItem('projetos-pro','ti-folders','Projetos', {badge: projectsPro.filter(p=>p.status==='ativo').length||null}) +
     navSubItem('processos','ti-route','Processos'));
   const _hubPCP = grupo('hub-pcp','ti-building-factory-2','PCP',
     _areaItem('producao',_hubPv,'cobertura','ti-calendar-stats','Cobertura','setProducaoView') +
+    `<button class="sbnav-item sbnav-subitem" data-hub="escala" onclick="hubScreen('escala')"><i class="ti ti-calendar-user"></i><span class="sbnav-label">Escala</span></button>` +
     _areaItem('producao',_hubPv,'programacao','ti-calendar-week','Programação','setProducaoView') +
     _areaItem('producao',_hubPv,'pcp','ti-adjustments-horizontal','PCP','setProducaoView') +
     _areaItem('producao',_hubPv,'indicadores','ti-chart-histogram','Indicadores','setProducaoView') +
@@ -21244,6 +21249,7 @@ function renderSidebar(){
   const _hubFooter = `<div class="opts-sidebar">
     <button id="hub-rail-btn" onclick="hubToggleRail()" title="${_rail?'Expandir menu':'Recolher menu'}"><i class="ti ${_rail?'ti-layout-sidebar-left-expand':'ti-layout-sidebar-left-collapse'}"></i></button>
     <button id="sb-toggle-all-btn" onclick="event.stopPropagation();toggleAllSbnavGroups()" title="Recolher submenus"><i class="ti ti-fold-up"></i></button>
+    <button id="hub-jan-btn" class="${document.body.classList.contains('hub-janelas')?'on':''}" onclick="hubJanelas()" title="Modo janelas"><i class="ti ti-app-window"></i></button>
     <button onclick="hubTemaAbrir()" title="Personalização (tema, fundo e véu)"><i class="ti ti-palette"></i></button>
     <button class="${_atM?'on':''}" onclick="irParaMural()" title="Mural de Ideias"><i class="ti ti-bulb"></i>${_nlid?'<span class="dot"></span>':''}</button>
     <button class="${_atL?'on':''}" onclick="irParaLixeira()" title="Lixeira"><i class="ti ti-trash"></i></button>
@@ -47578,4 +47584,5 @@ function importarDadosJSON(){
 <script src="hub-assets/hub-telas3.js"></script>
 <script src="hub-assets/hub-perfil.js"></script>
 <script src="hub-assets/hub-notif.js"></script>
+<script src="hub-assets/hub-fase5.js"></script>
 </body></html>
