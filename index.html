@@ -21254,9 +21254,6 @@ function renderSidebar(){
     <button id="hub-rail-btn" onclick="hubToggleRail()" title="${_rail?'Expandir menu':'Recolher menu'}"><i class="ti ${_rail?'ti-layout-sidebar-left-expand':'ti-layout-sidebar-left-collapse'}"></i></button>
     <button id="sb-toggle-all-btn" onclick="event.stopPropagation();toggleAllSbnavGroups()" title="Recolher submenus"><i class="ti ti-fold-up"></i></button>
     <button id="hub-jan-btn" class="${document.body.classList.contains('hub-janelas')?'on':''}" onclick="hubJanelas()" title="Modo janelas"><i class="ti ti-app-window"></i></button>
-    <button onclick="hubTemaAbrir()" title="Personalização (tema, fundo e véu)"><i class="ti ti-palette"></i></button>
-    <button class="${_atM?'on':''}" onclick="irParaMural()" title="Mural de Ideias"><i class="ti ti-bulb"></i>${_nlid?'<span class="dot"></span>':''}</button>
-    <button class="${_atL?'on':''}" onclick="irParaLixeira()" title="Lixeira"><i class="ti ti-trash"></i></button>
   </div>`;
   sb.innerHTML = `<div class="hub-sb-scroll">${_hubInicio}${_hubTarefas}${_hubReunioes}${_hubProjetos}${_hubPCP}${_hubCompras}${_hubAreas}</div>${_hubFooter}`;
   // Remove das Áreas os grupos que já aparecem em PCP/Compras
