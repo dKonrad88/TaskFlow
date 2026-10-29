@@ -30,7 +30,7 @@ function modalNova(){var m=q('#task-modal .modal');if(!m||m._hub)return;m._hub=1
   m.insertBefore(grid,foot||null);if(foot){var fw=el('div','hub-tm-rodape');m.insertBefore(fw,foot);fw.appendChild(base);fw.appendChild(foot);}
 }
 /* ---- Projeto aberto: tela cheia com barra de título e abas oficiais ---- */
-var ABAS=[['h5:quadro','ti-layout-kanban','Quadro'],['h5:linha','ti-timeline','Linha do tempo'],['visao','ti-layout-dashboard','Visão geral'],['fases','ti-stairs','Fases'],['pessoas','ti-users','Pessoas'],['anexos','ti-paperclip','Anexos'],['analise','ti-chart-bar','Análise'],['info','ti-info-circle','Informações'],['anotacoes','ti-messages','Chat'],['tarefas','ti-list-check','Tarefas'],['editar','ti-pencil','Editar']];
+var ABAS=[['h5:quadro','ti-layout-kanban','Quadro'],['h5:linha','ti-timeline','Linha do tempo'],['pessoas','ti-users','Pessoas'],['anexos','ti-paperclip','Anexos'],['h5:decisoes','ti-gavel','Decisões'],['info','ti-info-circle','Informações'],['anotacoes','ti-messages','Chat'],['fases','ti-stairs','Etapas (editar)'],['analise','ti-chart-bar','Análise'],['tarefas','ti-list-check','Tarefas']];
 function projeto(){if(typeof activeProjectProId==='undefined'||!activeProjectProId)return;if(typeof currentTab==='undefined'||(currentTab!=='projetos-pro'&&currentTab!=='projetos'))return;
   var tc=document.getElementById('task-container');if(!tc||q('.hub-pjv-top',tc))return;
   var p=(projectsPro||[]).find(function(x){return x.id===activeProjectProId;});if(!p)return;

@@ -49,6 +49,6 @@ function abrir(){var el=document.getElementById('hub-perfil');if(!el){el=documen
   aba='pers';render();document.body.classList.add('hub-perfil-on');el.scrollTop=0;}
 function fechar(){document.body.classList.remove('hub-perfil-on');}
 window.hubPerfilAbrir=abrir;window.hubPerfilFechar=fechar;
-document.addEventListener('click',function(e){if(!document.body.classList.contains('hub-perfil-on'))return;if(e.target.closest('.sidebar a,.sidebar button,.sidebar .nav-item,.sidebar [onclick],.hdr-logo,.fab,#fab-btn'))fechar();},true);
+document.addEventListener('click',function(e){if(!document.body.classList.contains('hub-perfil-on'))return;if(e.target.closest('#sidebar a,#sidebar button,#sidebar [onclick],.hdr-logo,.fab,#fab-btn'))fechar();},true);
 document.addEventListener('keydown',function(e){if(e.key==='Escape')fechar();});
 })();
