@@ -10,7 +10,7 @@
     ['Datas especiais',[['copa','Copa','ti-trophy',1],['halloween','Halloween','ti-pumpkin-scary',1]]]
   ];
   var FUNDOS=[['nenhum','Nenhum',''],['biscoito','Biscoitos','background-cookies.png'],['vick','Vick','background-vick.png'],['vick2','Vick 2','background-vick2.png'],['amarelo','Milho','background-milho.png'],['klain','Klain','background-klain.png']];
-  var DEF={tema:'dark',fundo:'nenhum',veu:{on:true,cor:'#448887',alpha:0.90}};
+  var DEF={tema:'coral',fundo:'nenhum',veu:{on:true,cor:'#448887',alpha:0.90}};
   var ESC={}; TEMAS.forEach(function(g){g[1].forEach(function(t){ESC[t[0]]=!!t[3];});});
   function get(){ try{ var s=JSON.parse(localStorage.getItem(KEY)||'null'); if(s&&ESC.hasOwnProperty(s.tema)) return Object.assign({},DEF,s,{veu:Object.assign({},DEF.veu,s.veu||{})}); }catch(e){} return JSON.parse(JSON.stringify(DEF)); }
   function save(s){ try{ localStorage.setItem(KEY,JSON.stringify(s)); }catch(e){} }
@@ -62,7 +62,7 @@
     h+='<div class="ht-cat">Fundo</div><div class="ht-bgs">'+FUNDOS.map(function(f){ return '<button class="ht-bg'+((s.fundo||'nenhum')===f[0]?' sel':'')+'" style="'+(f[2]?'background-image:url(hub-assets/'+f[2]+')':'')+'" onclick="hubFundoSet(\''+f[0]+'\')">'+f[1]+'</button>'; }).join('')+'</div>';
     h+='<div class="ht-cat">Véu do fundo</div><div class="ht-veu"><label><input type="checkbox" '+(s.veu.on?'checked':'')+' onchange="hubVeuSet({on:this.checked})"> Véu personalizado</label>'
       +'<input type="color" value="'+s.veu.cor+'" oninput="hubVeuSet({on:true,cor:this.value})">'
-      +'<label>Opacidade <input type="range" min="0" max="1" step="0.05" value="'+s.veu.alpha+'" oninput="hubVeuSet({on:true,alpha:parseFloat(this.value)});this.nextElementSibling.textContent=Math.round(this.value*100)+\'%\'"> <span>'+Math.round(s.veu.alpha*100)+'%</span></label>'
+      +'<label>Opacidade <input type="range" min="0" max="1" step="0.05" value="'+s.veu.alpha+'" oninput="hubVeuSet({on:true,alpha:parseFloat(this.value)});this.nextElementSibling.textContent=Math.round(this.value*100)+\'%\'"> <span>'+Math.round(s.veu.alpha*100)+'%</span></label>'+'<code class="ht-rgba">rgba('+hexRgb(s.veu.cor).replace(/\s/g,'').split(',').join(', ')+', '+Number(s.veu.alpha).toFixed(2)+')</code>'
       +'<button class="menu-tab" onclick="hubVeuSet({on:false})">Usar véu do tema</button></div>';
     h+='</div>'; box.innerHTML=h;
   }

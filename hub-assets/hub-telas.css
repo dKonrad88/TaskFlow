@@ -1,0 +1,85 @@
+/* Hub Klain — ajustes finos para igualar o Hub oficial (navbar, sidebar, telas de tarefas, FAB). */
+/* ---------- Navbar ---------- */
+html[data-bs-theme] .hdr.app-navbar-klain{height:59px!important;min-height:59px!important;padding:0 16px 0 12px!important;background:var(--klain-gradient)!important;box-shadow:none!important;border:0!important}
+html[data-bs-theme] .hdr .hdr-logo img{width:35px!important;height:auto!important;max-height:40px}
+html[data-bs-theme] .hdr .hub-brand-txt{font-size:15px;font-weight:600;color:#fff;margin-left:8px;letter-spacing:0}
+html[data-bs-theme] .hdr .brasil-flag{display:none!important}
+html[data-bs-theme] .hdr .hdr-right{gap:8px!important;align-items:center}
+html[data-bs-theme] .hdr .search-wrap{width:220px!important;max-width:220px}
+html[data-bs-theme] .hdr .search-input{height:31px!important;width:220px!important;border-radius:3px!important;border:1px solid rgba(255,255,255,.85)!important;background:rgba(0,0,0,.25)!important;color:#fff!important;font-size:14px!important;font-weight:600;padding:4px 8px!important;box-shadow:none!important}
+html[data-bs-theme] .hdr .search-input::placeholder{color:#fff;opacity:1}
+html[data-bs-theme] .hdr .search-wrap>i,html[data-bs-theme] .hdr .search-kbd{display:none!important}
+.hub-hide-nav{display:none!important}
+.hub-user{display:flex;align-items:center;gap:8px;background:none;border:0;color:#fff;font-size:16px;font-weight:500;padding:0 6px;cursor:pointer}
+.hub-user-foto{width:40px;height:40px;border-radius:4px;object-fit:cover;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.2);font-weight:700}
+html[data-bs-theme] .hdr .notif-btn{width:36px!important;height:32px!important;border:1px solid rgba(255,255,255,.9)!important;border-radius:6px!important;background:transparent!important;color:#fff!important;display:inline-flex;align-items:center;justify-content:center;font-size:15px!important;padding:0!important;margin-left:4px}
+.hub-user-menu{position:absolute;top:56px;right:12px;min-width:220px;background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:6px;display:none;z-index:3000}
+.hub-user-menu.open{display:block}
+.hub-user-menu .hub-um-item{display:flex!important;align-items:center;gap:10px;width:100%;background:none!important;border:0!important;color:var(--bs-body-color)!important;padding:7px 10px!important;border-radius:6px!important;font-size:13px!important;text-align:left;cursor:pointer;box-shadow:none!important;height:auto!important}
+.hub-user-menu .hub-um-item:hover{background:var(--bs-tertiary-bg)!important}
+.hub-user-menu .hub-um-item>*:not(i):not(.hub-um-lbl):not(svg){display:none}
+.hub-user-menu .ai-btn .hub-um-lbl{display:inline}
+/* ---------- Sidebar (165px, linhas de 31px, 13px) ---------- */
+html[data-bs-theme] body:not(.hub-rail) #sidebar{width:165px!important;min-width:165px!important}
+html[data-bs-theme] #sidebar .sbnav-item{min-height:29px;padding:4px 8px!important;font-size:13px!important;font-weight:500!important;margin-bottom:2px;color:var(--bs-body-color)!important}
+html[data-bs-theme] #sidebar .sbnav-subitem{padding-left:12px!important}
+html[data-bs-theme] #sidebar .sbnav-item.active{background:var(--bs-primary)!important;color:#fff!important;font-weight:600!important}
+html[data-bs-theme] #sidebar .sbnav-group-header{font-size:10.5px!important;padding:7px 8px!important;min-height:29px;border-radius:6px}
+/* ---------- Área de conteúdo ---------- */
+body.hub-tela #task-container{margin:0!important}
+body.hub-tela #task-container~*,body.hub-tela .topbar,body.hub-tela #stats-box,body.hub-tela #progress-box,body.hub-tela .menu-tabs,body.hub-tela .pp-subnav{display:none!important}
+body.hub-tela #task-container{display:block!important}
+.hub-oficial{padding:0 0 90px 0;margin:0;font-size:14px;color:var(--bs-body-color)}
+.hub-oficial .hoje-title{font-size:20px}
+.hub-oficial .hoje-toolbar{gap:8px}
+.hub-busca-pag{display:flex;align-items:center;gap:8px;height:36px;width:200px;padding:0 12px;border-radius:8px;background:var(--bs-body-bg);border:1px solid var(--bs-border-color);color:var(--bs-secondary-color)}
+.hub-busca-pag input{border:0;background:transparent;outline:0;color:var(--bs-body-color);font-size:14px;width:100%}
+.hub-oficial .tk-viewswitch{height:36px;align-items:center}
+.hub-oficial .tk-view{min-height:30px}
+.hub-oficial .tk-filterbar{margin-top:12px}
+.hub-oficial .tk-filter:not(.active){background:var(--bs-body-bg)}
+.hub-oficial .tk-filterbar{flex-wrap:wrap;gap:6px}
+.hub-oficial .tk-filter{padding:5px 11px}
+.hub-oficial .hj-agenda-titulo{margin-top:4px}
+.hub-oficial .hj-card{width:190px;min-height:120px;background:color-mix(in srgb,var(--bs-body-bg) 55%,transparent)}
+.hub-oficial .hoje-section{margin-top:10px}
+.hub-oficial .tk-table-wrap{margin-top:8px;border-radius:var(--tk-radius,10px);overflow:hidden;border:1px solid var(--bs-border-color);background:var(--bs-body-bg)}
+.hub-oficial .tk-table{width:100%;border-collapse:separate;border-spacing:0;margin:0}
+.hub-oficial .tk-table thead th{text-align:left;white-space:nowrap}
+.hub-oficial .tk-table td{white-space:nowrap;vertical-align:middle;height:42px}
+.hub-oficial .tk-table .tt-title{white-space:normal;font-weight:600}
+.hub-oficial .tk-chip.hub-st{display:inline-block;min-width:96px;text-align:center;border-radius:99px;padding:3px 12px}
+.hub-vazio{padding:40px;text-align:center;color:var(--bs-secondary-color)}
+/* ---------- FAB "Adicionar" (botões azuis, como no oficial) ---------- */
+html[data-bs-theme] .fab-menu.hub-fab-menu{width:180px!important;min-width:0!important;padding:0 0 8px!important;background:var(--bs-body-bg)!important;border:1px solid var(--bs-border-color)!important;border-radius:6px!important;box-shadow:0 8px 24px rgba(0,0,0,.35)!important;right:24px!important;bottom:96px!important}
+.hub-fab-tit{display:flex;align-items:center;gap:8px;padding:11px 16px;font-size:16px;font-weight:600;border-bottom:1px solid var(--bs-border-color);margin-bottom:8px;color:var(--bs-emphasis-color)}
+html[data-bs-theme] .hub-fab-menu .fab-menu-item{margin:5px 16px!important;padding:3px 10px!important;border-radius:4px!important;background:var(--bs-primary)!important;color:#fff!important;font-size:13px!important;font-weight:500!important;gap:6px;min-height:31px;align-items:center}
+html[data-bs-theme] .hub-fab-menu .fab-menu-item i{color:#fff!important;font-size:14px}
+html[data-bs-theme] .hub-fab-menu .fab-menu-item span{display:none}
+html[data-bs-theme] .hub-fab-menu .fab-menu-item:hover{filter:brightness(1.1)}
+html[data-bs-theme] .hub-fab-menu .fab-menu-divider{margin:8px 16px!important;background:var(--bs-border-color)!important}
+
+/* Logo K com coração (desenhado em CSS, igual ao FAB) */
+html[data-bs-theme] .hdr .hdr-logo{position:relative;display:flex;align-items:center}
+html[data-bs-theme] .hdr .hdr-logo img{display:none!important}
+html[data-bs-theme] .hdr .hdr-logo::before{content:'K';font:italic 900 34px/1 'Segoe UI',Arial,sans-serif;color:#1d9bf0;letter-spacing:-1px;width:35px;text-shadow:0 1px 2px rgba(0,0,0,.3)}
+html[data-bs-theme] .hdr .hdr-logo::after{content:'\2665';position:absolute;left:19px;top:50%;margin-top:-1px;font-size:16px;line-height:1;color:#e3262f}
+html[data-bs-theme] .hdr .hub-brand-txt{margin-left:6px}
+html[data-bs-theme] #sidebar .sbnav-group-header{justify-content:flex-start!important;text-align:left!important}
+html[data-bs-theme] #sidebar .sbnav-group-header>span{flex:1;text-align:left}
+.hub-btn-primary{display:inline-flex;align-items:center;gap:6px;background:var(--bs-primary);color:#fff;border:0;border-radius:6px;padding:5px 12px;font-size:13px;font-weight:500;cursor:pointer}
+.hub-pj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:16px}
+.hub-pj-card{background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-radius:6px;padding:16px 18px;cursor:pointer;min-height:150px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;transition:box-shadow .15s}
+.hub-pj-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.hub-pj-head{display:flex;align-items:flex-start;gap:12px}
+.hub-pj-ico{width:30px;height:30px;border-radius:50%;background:rgba(var(--bs-primary-rgb),.18);color:var(--bs-primary);display:inline-flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.hub-pj-nome{font-size:17px;font-weight:600;line-height:1.4;color:var(--bs-emphasis-color)}
+.hub-pj-badge{font-size:10.5px;font-weight:700;letter-spacing:.3px;padding:2px 7px;border-radius:4px;color:#fff}
+.hub-pj-badge.bg-primary{background:var(--bs-primary)}.hub-pj-badge.bg-secondary{background:var(--bs-secondary-bg-subtle,#6c757d);background:#6c757d}
+.hub-pj-bar{width:100%;height:6px;border-radius:3px;background:var(--bs-secondary-bg);overflow:hidden}.hub-pj-bar>div{height:100%;background:var(--bs-primary)}
+.hub-pj-meta{font-size:13px;color:var(--bs-secondary-color);display:flex;align-items:center;gap:6px}
+/* backdrop dos modais como no oficial */
+html[data-bs-theme] .modal-overlay.open,html[data-bs-theme] #task-modal.open{background:rgba(0,0,0,.6)!important}
+html[data-bs-theme] .main{max-width:none!important;padding:26px 28px 24px 28px!important;margin:0!important}
+html[data-bs-theme] .fab-menu.hub-fab-menu.open{box-shadow:0 0 0 100vmax rgba(0,0,0,.72),0 8px 24px rgba(0,0,0,.35)!important}
+html[data-bs-theme] .hub-fab-menu .fab-menu-item{white-space:nowrap;font-weight:600!important;min-height:33px}
