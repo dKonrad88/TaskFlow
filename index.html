@@ -2123,7 +2123,8 @@
 <link rel="stylesheet" href="hub-assets/hub-fase6.css">
 <link rel="stylesheet" href="hub-assets/hub-projeto6.css">
 <link rel="stylesheet" href="hub-assets/hub-fase8.css?v=8">
-<link rel="stylesheet" href="hub-assets/hub-fase9.css?v=9">
+<link rel="stylesheet" href="hub-assets/hub-fase9.css?v=10">
+<link rel="stylesheet" href="hub-assets/hub-reun10.css?v=10">
 </head>
 <body class="tab-hoje">
 
@@ -21208,23 +21209,29 @@ function renderSidebar(){
   // HUB KLAIN (novo visual): menu na ordem oficial do Hub + extras do TaskFlow.
   const _hubPv=(typeof producaoView!=='undefined')?producaoView:'';
   const _hubCv=(typeof comprasView!=='undefined')?comprasView:'';
+  const _tfv=(typeof hubView==='undefined'||hubView==='taskflow')&&!sidebarPersonId;
+  const _bnInicio=_hubNovos('inicio',getAtrasadas().map(t=>t.id),_tfv&&currentTab==='hoje');
+  const _bnMinhas=_hubNovos('minhas',tasks.filter(t=>!t.done&&t.executor===CURRENT_USER_ID).map(t=>t.id),_tfv&&currentTab==='minhas-tarefas');
+  const _bnEntrada=_hubNovos('entrada',tasks.filter(t=>!t.done&&!t.executor&&!t.someday&&!t.projectProId).map(t=>t.id),_tfv&&currentTab==='entrada');
+  const _bnReun=_hubNovos('reunioes',meetings.filter(m=>m.status!=='encerrada'&&m.status!=='cancelada'&&m.date>=today).map(m=>m.id),_tfv&&currentTab==='reunioes');
+  const _bnProj=_hubNovos('projetos',(projectsPro||[]).filter(p=>p.status==='ativo').map(p=>p.id),_tfv&&currentTab==='projetos-pro');
   const _hubInicioAtivo = (typeof hubView==='undefined'||hubView==='taskflow'||hubView==='meudia') && currentTab==='hoje' && !sidebarPersonId;
-  const _hubInicio = `<div class="sbnav-fixed"><button class="sbnav-item ${_hubInicioAtivo?'active':''}" onclick="voltarMeuDia()"><i class="ti ti-home"></i><span class="sbnav-label">Início</span>${hojeCount?`<span class="sbnav-badge">${hojeCount}</span>`:''}</button></div>`;
+  const _hubInicio = `<div class="sbnav-fixed"><button class="sbnav-item ${_hubInicioAtivo?'active':''}" onclick="voltarMeuDia()"><i class="ti ti-home"></i><span class="sbnav-label">Início</span>${_bnInicio?`<span class="sbnav-badge sbnav-badge-novo">${_bnInicio}</span>`:''}</button></div>`;
   const _hubTarefas = grupo('hub-tarefas','ti-list-check','Tarefas',
-    navSubItem('minhas-tarefas','ti-user-check','Minhas Tarefas', {badge: minhasCount||null}) +
-    navSubItem('solicitadas','ti-send','Solicitadas', {badge: _solicConfirmCount||null}) +
+    navSubItem('minhas-tarefas','ti-user-check','Minhas Tarefas', {badge: _bnMinhas||null, badgeClass:'sbnav-badge-novo'}) +
+    navSubItem('solicitadas','ti-send','Solicitadas', {badge: _solicConfirmCount||null, badgeClass:'sbnav-badge-novo'}) +
     `<button class="sbnav-item sbnav-subitem" data-hub="emcopia" onclick="hubScreen('emcopia')"><i class="ti ti-badge-cc"></i><span class="sbnav-label">Em cópia</span></button>` +
-    navSubItem('entrada','ti-list','Organizar', {badge: entradaCount>=ENTRADA_ALERTA?entradaCount:null}) +
+    navSubItem('entrada','ti-list','Organizar', {badge: _bnEntrada||null, badgeClass:'sbnav-badge-novo'}) +
     navSubItem('concluidas','ti-history','Histórico') +
     navSubItem('rotinas','ti-repeat','Rotinas') +
     navSubItem('anotacoes','ti-notes','Notas'));
   const _hubReunioes = grupo('hub-reunioes','ti-speakerphone','Reuniões',
     navSubItem('agenda','ti-calendar-time','Minha Agenda') +
-    navSubItem('reunioes','ti-speakerphone','Minhas Reuniões', {badge: reunHoje||null}) +
+    navSubItem('reunioes','ti-speakerphone','Minhas Reuniões', {badge: _bnReun||null, badgeClass:'sbnav-badge-novo'}) +
     `<button class="sbnav-item sbnav-subitem" data-hub="agendamentos" onclick="hubScreen('agendamentos')"><i class="ti ti-message-circle-search"></i><span class="sbnav-label">Agendamentos</span></button>` +
     `<button class="sbnav-item sbnav-subitem" data-hub="visitas" onclick="hubScreen('visitas')"><i class="ti ti-map-2"></i><span class="sbnav-label">Visitas</span></button>`);
   const _hubProjetos = grupo('hub-projetos','ti-apps','Projetos',
-    navSubItem('projetos-pro','ti-apps','Projetos', {badge: projectsPro.filter(p=>p.status==='ativo').length||null}) +
+    navSubItem('projetos-pro','ti-apps','Projetos', {badge: _bnProj||null, badgeClass:'sbnav-badge-novo'}) +
     navSubItem('processos','ti-route','Processos'));
   const _hubPCP = grupo('hub-pcp','ti-building-factory','PCP',
     _areaItem('producao',_hubPv,'cobertura','ti-report-search','Cobertura','setProducaoView') +
@@ -21275,6 +21282,16 @@ function renderSidebar(){
 //   - o botão antigo se existir (#menu-{tab}) — mantém compatibilidade
 //   - um dummy com classList.add/remove no-op caso a tab seja nova (ex.: 'entrada')
 // Refatoração futura: setTab deveria aceitar (tab) apenas e marcar active na sidebar via renderSidebar().
+
+// HUB (fase 10): badges do menu = só NOVIDADES não vistas (somem ao abrir a tela; nunca totais).
+// Na 1ª vez (sem histórico) tudo o que já existe conta como visto → badges ocultos.
+function _hubNovos(chave, ids, aberto){
+  ids=(ids||[]).map(String); const k='hub_badge_vistos_'+chave; let v=null;
+  try{ v=JSON.parse(localStorage.getItem(k)||'null'); }catch(e){}
+  if(!Array.isArray(v)&&!ids.length) return 0; // dados ainda não carregados: não inicializa
+  if(!Array.isArray(v)||aberto){ const u=Array.from(new Set((Array.isArray(v)?v:[]).concat(ids))).slice(-3000); try{localStorage.setItem(k,JSON.stringify(u));}catch(e){} return 0; }
+  const set=new Set(v); return ids.filter(i=>!set.has(i)).length;
+}
 function sidebarNavigate(tab){
   const dummyEl = { classList: { add: ()=>{}, remove: ()=>{} } };
   const oldBtn = document.getElementById('menu-'+tab) || dummyEl;
@@ -47590,5 +47607,6 @@ function importarDadosJSON(){
 <script src="hub-assets/hub-fase5.js"></script>
 <script src="hub-assets/hub-fase6.js"></script>
 <script src="hub-assets/hub-tarefas6.js"></script>
+<script src="hub-assets/hub-reun10.js?v=10"></script>
 <script src="hub-assets/hub-projetos7.js"></script>
 </body></html>
