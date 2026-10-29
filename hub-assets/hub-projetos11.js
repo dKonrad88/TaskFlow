@@ -16,7 +16,7 @@ function hoje(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+
 function q(id){return "'"+String(id).replace(/'/g,"\\'")+"'";}
 function salvarT(t){try{saveTask_db(t);}catch(e){try{safeSetItem(LS_TASKS,JSON.stringify(tasks));}catch(_){}}}
 function salvarP(p){try{saveProjectPro_db(p);}catch(e){}}
-var S={tab:'quadro',q:'',st:'todas',et:'',pe:'',dens:'cartoes',sem:true,pre:false,eta:true,gz:'semana',gcol:{},gq:''};
+var S={tab:'quadro',q:'',st:'todas',et:'',pe:'',dens:'lista',sem:true,pre:true,eta:true,gz:'semana',gcol:{},gq:''};
 W.hubP11=S;
 /* ---------- modelo ---------- */
 function modelo(p){var byId={};T().forEach(function(t){byId[t.id]=t;});var usados={};
@@ -62,16 +62,20 @@ function nota(n,solta){var t=n.t,membro=n.agrupada&&n.grupoId!==t.id,eu=!solta&&
    '<i class="ti ti-grip-horizontal gp-postit-alca" title="Arrastar"></i><div class="gp-postit-titulo" role="button" tabindex="0">'+estado(n,solta)+(solta?'':chipItens(t))+
    (n.numero?'<span class="gp-postit-num">'+n.numero+'</span> ':'')+esc(t.title)+(eu?' <span class="gp-vez-chip"><i class="ti ti-player-play"></i> Sua vez</span>':'')+'</div>'+
    (ds?'<div class="gp-postit-desc">'+esc(ds)+'</div>':'')+(solta?'':'<div class="gp-postit-rodape"><span class="gp-postit-pessoa"><i class="ti ti-user"></i> '+esc(resp(t)||'Sem executor')+'</span>'+(d?'<span class="gp-postit-data"><i class="ti ti-calendar-event"></i> '+d+'</span>':'')+'</div>')+'</div>';}
-function linha(n,ant,solta){var t=n.t,d=dataTxt(t),r=resp(t);
-  return '<div class="rd-task gp-task gp-postit gp-postit-lista'+(t.done?' rd-task-done':'')+(n.bloq?' gp-task-bloqueada':'')+(n.agrupada?' gp-task-filha':'')+(n.agrupada&&n.grupoId!==t.id?' gp-postit-membro':'')+(passa(n)?'':' d-none')+'" data-id="'+esc(t.id)+'" onclick="hubP11Tarefa('+q(t.id)+')">'+
-   '<i class="ti ti-grip-vertical gp-task-alca" title="Arrastar para reordenar"></i>'+(n.numero?'<span class="gp-task-num">'+n.numero+'</span>':'')+estado(n,solta)+
-   '<span class="rd-task-title gp-task-titulo" role="button">'+esc(t.title)+'</span>'+chipItens(t)+
-   '<span class="rd-badge gp-task-badge gp-opc-exec'+(r?'':' rd-badge-vago')+'">'+esc(r||'Sem executor')+'</span>'+
-   (d?'<span class="tk-chip rd-task-due gp-task-badge gp-opc-data">'+d+'</span>':'<span class="gp-opc-data"></span>')+
-   (solta?'':'<span class="gp-task-duracao" title="Quantos dias esta tarefa leva"><input type="number" min="1" placeholder="dias" value="'+esc(t.hubDuracao||'')+'" onclick="event.stopPropagation()" onchange="hubP11Dur('+q(t.id)+',this.value)"></span>')+
-   (ant?'<i class="ti ti-link gp-pred-ico'+(n.agrupada&&n.grupoId!==t.id?' ativo':'')+'" role="button" title="Encadear com a anterior" onclick="event.stopPropagation();hubP11Encadear('+q(t.id)+')"></i>':'')+
-   (solta?'':'<i class="ti ti-arrow-fork gp-fila-ico" title="Liberar fila"></i><i class="ti ti-list-check gp-req-ico'+((t.hubPred||[]).some(function(p){return p.modo==='requisito';})?' ativo':'')+'" title="Pré-requisitos"></i>')+
-   '<i class="ti ti-trash gp-task-excluir" role="button" title="Excluir tarefa" onclick="event.stopPropagation();hubP11Excluir('+q(t.id)+')"></i></div>';}
+function linha(n,ant,solta){var t=n.t,r=resp(t),membro=n.agrupada&&n.grupoId!==t.id;
+  var data=(!n.bloq&&(t.dataInicio||t.date))?'<span class="tk-chip rd-task-due gp-task-badge gp-opc-data">'+dataTxt(t)+'</span>':((n.bloq&&(t.dataInicio||t.date))?'<span class="tk-chip rd-task-due gp-task-badge gp-opc-data gp-task-prevista" title="Planejado — recalculado quando a tarefa anterior concluir">'+dataTxt(t)+'</span>':'<span class="gp-opc-data"></span>');
+  var req=(t.hubPred||[]).some(function(p){return p.modo==='requisito';});
+  return '<div class="rd-task gp-task gp-postit gp-postit-lista'+(membro?' gp-postit-membro':'')+(t.done?' rd-task-done':'')+(n.bloq?' gp-task-bloqueada':'')+(n.agrupada?' gp-task-filha':'')+(passa(n)?'':' d-none')+'" data-id="'+esc(t.id)+'">'+
+   '<i class="ti ti-grip-vertical gp-task-alca" draggable="true" title="Arrastar para reordenar"></i>'+(n.numero?'<span class="gp-task-num">'+n.numero+'</span>':'')+estado(n,solta)+
+   '<span class="rd-task-title js-gp-abre-tarefa gp-task-titulo" role="button" onclick="hubP11Tarefa('+q(t.id)+')">'+esc(t.title)+'</span>'+chipItens(t)+
+   '<span class="gp-task-opcoes">'+(solta?'':
+    '<span class="rd-badge gp-task-badge gp-opc-exec'+(r?'':' rd-badge-vago')+' js-gp-troca-exec" role="button" tabindex="0" title="Clique para atribuir a tarefa" onclick="hubP11Tarefa('+q(t.id)+')">'+esc(r||'Sem executor')+'</span>'+data+
+    '<span class="gp-task-duracao" title="Quantos dias esta tarefa leva"><input type="number" class="js-gp-duracao" min="1" max="3650" placeholder="dias"'+(t.hubDuracao?' value="'+esc(t.hubDuracao)+'"':'')+' onchange="hubP11Dur('+q(t.id)+',this.value)"></span>'+
+    '<span class="gp-task-pred gp-opc-pred">'+(ant?'<i class="ti ti-link gp-pred-ico js-gp-encadear'+(membro?' ativo':'')+'" role="button" title="'+esc(membro?'Desencadear — volta a esperar \''+ant.title+'\' concluir':'Encadear com \''+ant.title+'\' — libera junto, sem esperar ela concluir')+'" onclick="hubP11Encadear('+q(t.id)+')"></i>':'')+'</span>'+
+    '<span class="gp-task-pred gp-opc-pred"><i class="ti ti-arrow-fork gp-fila-ico js-gp-nao-bloqueia" role="button" title="Liberar Fila (Tarefas após não dependem dessa para prosseguir)"></i></span>'+
+    '<span class="gp-task-pred gp-opc-pred"><i class="ti ti-list-check gp-req-ico js-gp-requisitos'+(req?' ativo':'')+'" role="button" title="Pré-requisitos — tarefas que também precisam estar concluídas para esta liberar"></i></span>'+
+    (!n.agrupada||!membro?'<button type="button" class="gp-task-sai-etapa gp-opc-sai js-gp-tarefa-sai-etapa" title="Tirar da etapa — volta para Sem etapa" onclick="hubP11Etapa('+q(t.id)+',\'\');hubP11Desenhar()"><i class="ti ti-corner-left-up"></i></button>':'<span class="gp-opc-sai"></span>'))+
+   '<button type="button" class="gp-task-excluir gp-opc-excluir js-gp-tarefa-excluir" title="Excluir tarefa" onclick="hubP11Excluir('+q(t.id)+')"><i class="ti ti-trash"></i></button></span></div>';}
 function zona(z,M){var L=S.dens==='lista';var vis=0;
   var notas=z.nos.map(function(n,i){if(passa(n))vis++;var h=L?linha(n,i>0?z.nos[i-1].t:null,z.solta):nota(n,z.solta);if(!n.agrupada)return h;
     var abre=n.grupoId===n.t.id,pr=z.nos[i+1],fecha=!pr||!pr.agrupada||pr.grupoId!==n.grupoId;
@@ -84,19 +88,19 @@ function zona(z,M){var L=S.dens==='lista';var vis=0;
    '<button type="button" class="gp-zona-sel" title="Selecionar / desmarcar as notas visíveis desta área"><i class="ti ti-checks"></i></button><span class="gp-zona-qtd">'+(z.solta?vis:z.nos.length)+'</span></header>'+
    (z.solta?'<input type="text" class="form-control form-control-sm gp-zona-nova" placeholder="'+(z.pre?'+ Nova tarefa pré-classificada (Enter)':'+ Nova tarefa sem etapa (Enter)')+'" maxlength="255" onkeydown="if(event.key===\'Enter\'&&this.value.trim())hubP11NovaSolta(this.value.trim(),'+(z.pre?1:0)+')">':'')+
    '<div class="gp-zona-corpo">'+notas+'</div></section>';}
-function sel(k,ops){return '<select class="form-select form-select-sm gp-mural-sel" onchange="hubP11F(\''+k+'\',this.value)">'+ops.map(function(o){return '<option value="'+esc(o[0])+'"'+(S[k]===o[0]?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select>';}
+function sel(k,ops){return '<select class="form-select form-select-sm" onchange="hubP11F(\''+k+'\',this.value)">'+ops.map(function(o){return '<option value="'+esc(o[0])+'"'+(S[k]===o[0]?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select>';}
 function quadro(p){var M=modelo(p);var pes={};M.all.concat(M.sem).forEach(function(n){var t=n.t;if(t.executor)pes[t.executor]=pessoa(t.executor)||t.executor;else if(t.hubResp)pes['txt:'+t.hubResp]=t.hubResp;});
   var tot=M.all.length+M.sem.length,vis=M.all.concat(M.sem).filter(passa).length;
   var bar='<div class="gp-mural-barra"><div class="gp-mural-busca"><i class="ti ti-search"></i><input type="search" class="form-control form-control-sm" placeholder="Pesquisar tarefa, pessoa ou etapa" value="'+esc(S.q)+'" oninput="hubP11Busca(this.value)"></div>'+
    sel('st',[['todas','Todas'],['abertas','Abertas'],['concluidas','Concluídas']])+sel('et',[['','Todas as etapas'],['sem','Sem etapa']].concat(M.etapas.map(function(e){return [e.id,e.ordem+'. '+e.nome];})))+
    sel('pe',[['','Todas as pessoas']].concat(Object.keys(pes).sort(function(a,b){return pes[a].localeCompare(pes[b]);}).map(function(k){return [k,pes[k]];})))+
-   '<div class="btn-group btn-group-sm gp-mural-dens"><button type="button" class="btn'+(S.dens==='lista'?' active':'')+'" title="Lista" onclick="hubP11F(\'dens\',\'lista\')"><i class="ti ti-list"></i></button><button type="button" class="btn'+(S.dens!=='lista'?' active':'')+'" title="Cartões" onclick="hubP11F(\'dens\',\'cartoes\')"><i class="ti ti-layout-grid"></i></button></div>'+
-   '<div class="btn-group btn-group-sm gp-mural-paineis"><button type="button" class="btn'+(S.sem?' active':'')+'" onclick="hubP11F(\'sem\','+(!S.sem)+')"><i class="ti ti-square-dashed"></i> Sem etapa</button><button type="button" class="btn'+(S.pre?' active':'')+'" onclick="hubP11F(\'pre\','+(!S.pre)+')"><i class="ti ti-stack-2"></i> Pré-classificação</button><button type="button" class="btn'+(S.eta?' active':'')+'" onclick="hubP11F(\'eta\','+(!S.eta)+')"><i class="ti ti-layout-columns"></i> Etapas</button></div>'+
+   '<div class="btn-group btn-group-sm gp-mural-dens" role="group"><button type="button" class="btn btn-outline-secondary js-gp-mural-dens'+(S.dens==='lista'?' active':'')+'" data-dens="compacto" title="Lista" onclick="hubP11F(\'dens\',\'lista\')"><i class="ti ti-list"></i></button><button type="button" class="btn btn-outline-secondary js-gp-mural-dens'+(S.dens!=='lista'?' active':'')+'" data-dens="completo" title="Cartões" onclick="hubP11F(\'dens\',\'cartoes\')"><i class="ti ti-layout-grid"></i></button></div>'+
+   '<div class="btn-group btn-group-sm gp-mural-paineis" role="group"><button type="button" class="btn btn-outline-secondary js-gp-painel'+(S.sem?' active':'')+'" data-painel="sem" title="Mostrar/ocultar Sem etapa" onclick="hubP11F(\'sem\','+(!S.sem)+')"><i class="ti ti-inbox"></i> Sem etapa</button><button type="button" class="btn btn-outline-secondary js-gp-painel'+(S.pre?' active':'')+'" data-painel="pre" title="Mostrar/ocultar Pré-classificação" onclick="hubP11F(\'pre\','+(!S.pre)+')"><i class="ti ti-stack-2"></i> Pré-classificação</button><button type="button" class="btn btn-outline-secondary js-gp-painel'+(S.eta?' active':'')+'" data-painel="etapas" title="Mostrar/ocultar Etapas" onclick="hubP11F(\'eta\','+(!S.eta)+')"><i class="ti ti-layout-columns"></i> Etapas</button></div>'+
    '<input type="text" class="form-control form-control-sm gp-nova-etapa" placeholder="+ Nova etapa (Enter)" maxlength="120" onkeydown="if(event.key===\'Enter\'&&this.value.trim())hubP11NovaEtapa(this.value.trim())">'+
    '<span class="gp-mural-contagem">'+vis+' de '+tot+' tarefas</span></div>';
   var Z=[{key:'sem',nome:'Sem etapa',solta:true,cor:'neutro',extra:' gp-pilha',nos:M.sem.filter(function(n){return !n.t.hubPre;})},{key:'pre',nome:'Pré-classificação',solta:true,pre:1,cor:'pre',extra:' gp-pre',nos:M.sem.filter(function(n){return n.t.hubPre;})}];
   var et=M.etapas.map(function(e){return {key:e.id,nome:e.nome,cor:'amarelo',ordem:e.ordem,nos:e.nos};});
-  return bar+'<div class="gp-quadro js-gp-mural p11-quadro'+(S.dens==='lista'?' gp-mural-compacto':'')+(S.sem?'':' gp-oculta-sem')+(S.pre?'':' gp-oculta-pre')+(S.eta?'':' gp-oculta-etapas')+'">'+zona(Z[0])+zona(Z[1])+'<div class="gp-etapas">'+et.map(zona).join('')+'</div></div>';}
+  return bar+'<div class="gp-quadro js-gp-mural'+(S.dens==='lista'?' gp-mural-compacto':'')+(S.sem?'':' gp-oculta-sem')+(S.pre?'':' gp-oculta-pre')+(S.eta?'':' gp-oculta-etapas')+'">'+zona(Z[0])+zona(Z[1])+'<div class="gp-etapas">'+et.map(zona).join('')+'</div></div>';}
 /* ---------- Linha do tempo (Gantt) ---------- */
 function addD(s,n){var d=new Date(s+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
 function dias(a,b){return Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/864e5);}
@@ -158,9 +162,9 @@ var ABAS=[['quadro','ti-layout-kanban','Quadro'],['linha','ti-timeline','Linha d
 function proj(){var id=typeof activeProjectProId!=='undefined'?activeProjectProId:null;return P().find(function(p){return p.id===id;});}
 function desenhar(){var tc=document.getElementById('task-container');var p=proj();if(!tc||!p)return;
   var corpo=S.tab==='linha'?linhaTempo(p):S.tab==='pessoas'?pessoas(p):S.tab==='anexos'?anexos(p):S.tab==='decisoes'?decisoes(p):S.tab==='informacoes'?info(p):S.tab==='chat'?chat(p):quadro(p);
-  tc.innerHTML='<div class="p11-pj hub-oficial" data-tab="'+S.tab+'"><div class="p11-head"><div class="p11-tit"><i class="ti ti-file"></i> '+esc(p.nome)+'</div><button class="btn btn-sm p11-modelo" title="Salvar como modelo" onclick="hubP11Modelo()"><i class="ti ti-template"></i> Salvar como modelo</button><button class="p11-x" title="Fechar" onclick="voltarParaProjetosPro()"><i class="ti ti-x"></i></button></div>'+
-   '<ul class="nav nav-tabs p11-tabs">'+ABAS.map(function(a){return '<li class="nav-item"><button class="nav-link'+(S.tab===a[0]?' active':'')+'" onclick="hubPjTab(\''+a[0]+'\')"><i class="ti '+a[1]+'"></i> '+a[2]+'</button></li>';}).join('')+'</ul>'+
-   '<div class="gp-pane active p11-pane" data-gp-pane="'+S.tab+'">'+corpo+'</div></div>';
+  tc.innerHTML='<div class="p11-pj hub-oficial" data-tab="'+S.tab+'"><div class="modal-header p11-head"><h5 class="modal-title p11-tit"><i class="ti ti-file"></i> '+esc(p.nome)+'</h5><button type="button" class="btn btn-sm btn-outline-secondary p11-modelo" title="Salvar como modelo" onclick="hubP11Modelo()"><i class="ti ti-template"></i> Salvar como modelo</button><button type="button" class="p11-x" title="Fechar" aria-label="Fechar" onclick="voltarParaProjetosPro()"><i class="ti ti-x"></i></button></div><div class="modal-body p11-body">'+
+   '<div class="tk-tabs p11-tabs" role="tablist">'+ABAS.map(function(a){return '<button type="button" class="tk-tab'+(S.tab===a[0]?' active':'')+'" onclick="hubPjTab(\''+a[0]+'\')"><i class="ti '+a[1]+'"></i> '+a[2]+'</button>';}).join('')+'</div>'+
+   '<div class="gp-pane active p11-pane" data-gp-pane="'+S.tab+'">'+corpo+'</div></div></div>';
   document.body.classList.add('p11-on');
   var tt=document.getElementById('tab-title');if(tt)tt.style.display='none';var ts=document.getElementById('tab-sub');if(ts)ts.style.display='none';var pa=document.getElementById('pp-header-actions');if(pa)pa.style.display='none';}
 W.hubP11Desenhar=desenhar;
