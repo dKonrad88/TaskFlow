@@ -422,6 +422,44 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-10-29 — PC da Empresa — Cobertura: base fictícia de **59 itens em 12 linhas** + histórico mensal (pedido do Guilherme)
+O Guilherme pediu: *"tu pode atualizar o taskflow com mais itens pra eu ver como a tabela da cobertura se
+comporta quando tiver muitos itens?"*. A tela estava com **8 produtos em 3 linhas** (a amostra mínima que o
+Cursor pôs no lugar do export real em 26/10) e **sem histórico mensal** — o gráfico só sabia mostrar o aviso de
+"sem histórico". Commit `e2a8f10`. ⚠️ **Dado 100% inventado**: todo produto leva "demo" no nome e toda linha
+"DEMO" (a regra de 26/10 segue valendo — este repo é público).
+- **`_DDV_LINHAS` → 59 produtos em 12 linhas** (DOCES · SALGADOS · COBERTURAS · PIPOCAS · EXTRUSADOS · AMENDOIM ·
+  ROSQUINHAS · WAFER · PALITINHOS · ALFAJOR · PASTAS · AMOSTRAS). **Os 8 que já existiam ficaram intactos**, com
+  os mesmos números — a tela que ele já viu não mudou, só ganhou o resto.
+- ⭐ **A base cobre de propósito TODOS os estados que a tabela sabe pintar** — é o que torna o teste dele útil:
+  **7 em ruptura** (saldo negativo → célula cheia em vermelho com texto branco), **11 vermelhos** (DDV < 7),
+  **11 laranjas** (7–10), **13 verdes** (10–15), **13 neutros** (> 15, até 64 dias de excesso), **2 sem nenhum
+  dado de estoque** (saldo "—") e **2 sem venda** (DDV "—"). DDV médio agregado: **10,6 dias**.
+- **`_DDV_SERIE` → 18 meses (abr/25 a set/26)** para os 57 itens com venda. ⚠️ **A soma dos ÚLTIMOS 12 bate com a
+  coluna de vendas de 261 dias úteis de cada item** (conferido: diferença de 0,01%, só arredondamento) — senão o
+  gráfico e a tabela se contradiriam na cara do usuário. Sazonalidade com pico em nov/dez e ruído determinístico
+  por código (nenhuma série igual à outra, e o arquivo não muda sozinho a cada geração).
+- ⚠️ **Os rótulos dos meses são UM array só, compartilhado** por todas as séries (`_DDV_MESES_SERIE`) — conferi
+  antes que nenhuma função da tela muta esse array (`_ddvRecorte` monta objeto novo; `_ddvSerieYM` só lê). Se um
+  dia alguém fizer `s.meses.push(...)`, estraga as 57 de uma vez — aí é dar `M.slice()` por produto.
+- **Os 2 itens sem venda não têm série de propósito**: é o que mantém demonstrável o aviso de "sem histórico mês
+  a mês", que de outro jeito sumiria da tela e ninguém mais saberia que ele existe.
+- **Verificado no navegador** (servidor local :8891, 0 erros de console): 59 linhas na tabela / 12 grupos; os 6
+  cartões batendo com a conta feita por fora (Itens 59 · Ruptura 7 · Atenção 18 · Folga 26 · A produzir 16 · DDV
+  médio 10,6); 14 células negativas em vermelho; busca ("wafer" → 4, "demo 250g" → 4, "zzz" → estado vazio);
+  filtros dos cartões; ordenação por DDV nos 2 sentidos; recolher uma linha (−6) e todas; corte "DDV até 5" → 12;
+  os toggles de colunas (15 → 13 → 11 → 9); gráfico de um produto (polyline de 18 pontos + 18 valores escritos) e
+  **da LINHA inteira** ("soma de 7 de 7 produtos"); as 93 datas de "Até" **nenhuma caindo em fim de semana** (a
+  conta é em dias ÚTEIS).
+- ⚠️ **ACHADO que vale saber (não é regressão):** com as **15 colunas em viewport de 1280px**, número de 4 dígitos
+  ("1.066,00") **corta 2 a 6px** em 8 células. Em **1600px não corta nada** (0 de 885), e **desligar as médias**
+  (11 colunas, toggle que já existe na personalização) zera o corte em 1280 também. O dado real já tinha valores
+  de 4 dígitos, então isso é aperto do layout em tela estreita, não do dado novo — **não mexi no `<colgroup>`**
+  (são 4 lugares a tocar e as larguras foram medidas e aprovadas em 25/09). Se incomodar, a correção é lá.
+- 📌 Como regerar/ampliar: o gerador ficou no scratchpad (`gen_ddv.awk` + `ddv_in.txt`, uma linha por produto com
+  `linha|cod|nome|vendas|DDV-alvo`), e ele **imprime a distribuição conferida** antes de injetar. ⚠️ O scratchpad
+  é temporário e some — se fizer falta, é meia hora para reescrever.
+
 ### 2026-10-26 (c) — Compras: 6 insumos com nome real, resto inventado
 Farinha de Estrela Cadente e Gordura Vegetal Aurora saíram. No lugar, a matéria-prima
 da área Compras são estes 6, com o nome real do insumo e todo o número inventado
