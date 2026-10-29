@@ -1,0 +1,117 @@
+/* hub-layer.css — adapta o TaskFlow (novo.html) ao visual do Hub Klain. Fase 1: tema global + sidebar. */
+html[data-bs-theme]{--hj-sb-w:180px}
+html[data-bs-theme] body,html[data-bs-theme] body.dark,html[data-bs-theme] body[data-theme]{
+  --bg:var(--bs-body-bg)!important;--bg2:var(--bs-secondary-bg)!important;--bg3:var(--bs-tertiary-bg)!important;
+  --card:var(--bs-secondary-bg)!important;--text:var(--bs-body-color)!important;--text2:var(--bs-secondary-color)!important;
+  --text3:var(--bs-tertiary-color,var(--bs-secondary-color))!important;--border:var(--bs-border-color)!important;
+  --blue-mid:var(--bs-primary)!important;--blue-dark:var(--klain-navy)!important;--blue-teal:var(--klain-teal)!important;
+  --danger:var(--bs-danger)!important;--success:var(--bs-success)!important;
+  --danger-bg:var(--bs-danger-bg-subtle,rgba(var(--bs-danger-rgb),.15))!important;--success-bg:var(--bs-success-bg-subtle,rgba(var(--bs-success-rgb),.15))!important;
+  --amber:var(--bs-warning-text-emphasis,#c9953a)!important;--amber-bg:var(--bs-warning-bg-subtle,rgba(255,193,7,.15))!important;
+  --font-title:'Segoe UI',system-ui,-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif!important;
+  --radius:8px!important;
+  color:var(--bs-body-color)!important;
+  background-color:var(--bs-body-bg)!important;
+  background-image:linear-gradient(rgba(var(--veil-rgb,28,28,36),var(--veil-alpha,.9)),rgba(var(--veil-rgb,28,28,36),var(--veil-alpha,.9))),var(--cookie-img,none)!important;
+  background-repeat:no-repeat!important;background-size:cover!important;background-position:center!important;background-attachment:fixed!important;
+}
+/* véu personalizado (Perfil > Personalização > Véu) */
+html[data-hub-veu] body{--veil-rgb:var(--hub-veu-rgb)!important;--veil-alpha:var(--hub-veu-alpha)!important}
+html[data-bs-theme] *{font-family:'Segoe UI',system-ui,-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif}
+html[data-bs-theme=matrix] *{font-family:'More Perfect DOS VGA',monospace}
+html[data-bs-theme] .ti{font-family:"tabler-icons"!important}
+html[data-bs-theme] *{scrollbar-color:var(--bs-primary) transparent}
+html[data-bs-theme] #app,html[data-bs-theme] .app-body,html[data-bs-theme] .main{background:transparent!important}
+
+/* ── Navbar superior (gradiente Klain) ── */
+html[data-bs-theme] .hdr{background:var(--klain-gradient)!important;height:50px;box-shadow:none;border-bottom:0;backdrop-filter:blur(2px)}
+html[data-bs-theme] .hdr .search-input{background:rgba(var(--bs-body-bg-rgb,28,28,36),.55);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:4px;height:30px}
+html[data-bs-theme] .hdr .search-input::placeholder{color:rgba(255,255,255,.85)}
+html[data-bs-theme] .app-body{min-height:calc(100vh - 50px)}
+
+/* ── Sidebar (sbnav oficial) ── */
+html[data-bs-theme] #sidebar{width:var(--sidebar-w,var(--hj-sb-w));background:var(--bs-body-bg)!important;border-right:1px solid var(--bs-border-color);padding:2px 0 0;top:50px;height:calc(100vh - 50px);display:flex;flex-direction:column}
+html[data-bs-theme] #sidebar.sb-hidden{width:0}
+html[data-bs-theme] #sidebar .hub-sb-scroll{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;padding:0 4px}
+html[data-bs-theme] #sidebar .hub-sb-scroll::-webkit-scrollbar{display:none}
+html[data-bs-theme] #sidebar .sbnav-fixed{padding:4px 4px 6px;border-bottom:1px solid var(--bs-border-color);margin-bottom:6px}
+html[data-bs-theme] #sidebar .sbnav-item{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--bs-secondary-color);transition:all .15s;border:none;background:none;width:100%;text-align:left;text-decoration:none;margin-bottom:2px;line-height:1.5}
+html[data-bs-theme] #sidebar .sbnav-item:hover{background:var(--bs-tertiary-bg);color:var(--bs-body-color)}
+html[data-bs-theme] #sidebar .sbnav-item.active{background:var(--bs-primary);color:#fff}
+html[data-bs-theme=matrix] #sidebar .sbnav-item.active,html[data-bs-theme=matrix] #sidebar .sbnav-group:has(.sbnav-group-body .active)>.sbnav-group-header{color:#000!important}
+html[data-bs-theme] #sidebar .sbnav-item i{font-size:16px;flex-shrink:0;opacity:.85;margin:0}
+html[data-bs-theme] #sidebar .sbnav-item .sbnav-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.5}
+html[data-bs-theme] #sidebar .sbnav-subitem{padding:5px 5px 5px 18px;font-size:12.5px;font-weight:500;align-items:center}
+html[data-bs-theme] #sidebar .sbnav-badge{background:var(--bs-danger);color:#fff;border-radius:99px;padding:1px 7px;font-size:10px;font-weight:700;flex-shrink:0;min-width:18px;text-align:right;line-height:1.5}
+html[data-bs-theme] #sidebar .sbnav-group{margin:0}
+html[data-bs-theme] #sidebar .sbnav-group-header{display:flex;align-items:center;gap:8px;padding:7px 6px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;cursor:pointer;border-radius:6px;margin:4px 0 2px;user-select:none;color:var(--bs-secondary-color)!important;border-left:3px solid var(--bs-primary);background:rgba(128,128,128,.06)}
+html[data-bs-theme] #sidebar .sbnav-group:has(.sbnav-group-body .active)>.sbnav-group-header{background-color:var(--bs-primary);color:#fff!important}
+html[data-bs-theme] #sidebar .sbnav-group-header i.sbnav-icon{font-size:13px;opacity:.85}
+html[data-bs-theme] #sidebar .sbnav-group-header i.sbnav-chev{font-size:12px;opacity:.7;transition:transform .2s;margin-left:auto}
+html[data-bs-theme] #sidebar .sbnav-group.colapsado .sbnav-chev{transform:rotate(-90deg)}
+html[data-bs-theme] #sidebar .sbnav-group.colapsado .sbnav-group-body{display:none}
+html[data-bs-theme] #sidebar .sbnav-group-body{padding:4px}
+html[data-bs-theme] #sidebar .hub-sb-divider{font-size:10px;font-weight:800;letter-spacing:.8px;color:var(--bs-tertiary-color,var(--bs-secondary-color));padding:12px 6px 2px;border-top:1px solid var(--bs-border-color);margin-top:8px;text-transform:uppercase}
+html[data-bs-theme] #sidebar .opts-sidebar{flex-shrink:0;display:flex;justify-content:space-around;align-items:center;padding:4px 0 8px;background:var(--bs-body-bg);border-top:1px solid var(--bs-border-color)}
+html[data-bs-theme] #sidebar .opts-sidebar button{border:0;background:transparent;color:var(--bs-secondary-color);cursor:pointer;padding:4px 7px;border-radius:6px;line-height:1;font-size:15px;position:relative}
+html[data-bs-theme] #sidebar .opts-sidebar button:hover{background:var(--bs-tertiary-bg);color:var(--bs-body-color)}
+html[data-bs-theme] #sidebar .opts-sidebar button.on{color:var(--bs-primary)}
+html[data-bs-theme] #sidebar .opts-sidebar .dot{position:absolute;top:1px;right:2px;width:7px;height:7px;border-radius:50%;background:var(--bs-danger)}
+/* rail recolhido (Recolher menu) */
+body.hub-rail #sidebar{width:56px!important}
+body.hub-rail #sidebar-resizer{display:none}
+body.hub-rail #sidebar .sbnav-label,body.hub-rail #sidebar .sbnav-group-header,body.hub-rail #sidebar .hub-sb-divider{display:none!important}
+body.hub-rail #sidebar .sbnav-group.colapsado .sbnav-group-body{display:block}
+body.hub-rail #sidebar .sbnav-group-body{padding:4px 0}
+body.hub-rail #sidebar .sbnav-item{justify-content:center;padding:9px 0;gap:0;position:relative}
+body.hub-rail #sidebar .sbnav-badge{position:absolute;top:4px;right:8px;min-width:8px;width:8px;height:8px;padding:0;font-size:0;border-radius:50%}
+body.hub-rail #sidebar .opts-sidebar{flex-direction:column;gap:2px}
+body.hub-rail .main{max-width:none}
+
+/* ── Conteúdo: títulos, chips, cards, botões, tabelas ── */
+html[data-bs-theme] .topbar-left h2{font-size:20px;font-weight:700;color:var(--bs-body-color)}
+html[data-bs-theme] .topbar-left p{font-size:12px;color:var(--bs-secondary-color)}
+html[data-bs-theme] .menu-tab{border-radius:99px;background:var(--bs-body-bg);border:1px solid var(--bs-border-color);color:var(--bs-body-color);font-size:12px;font-weight:600;padding:4px 12px}
+html[data-bs-theme] .menu-tab:hover{background:var(--bs-tertiary-bg)}
+html[data-bs-theme] .menu-tab.active{background:var(--bs-primary);border-color:var(--bs-primary);color:#fff}
+html[data-bs-theme] .menu-tab .badge{background:rgba(128,128,128,.25);color:inherit;border-radius:99px;font-size:10px}
+html[data-bs-theme] .dash-card,html[data-bs-theme] .task,html[data-bs-theme] .card{background:rgba(var(--bs-body-bg-rgb,28,28,36),.55);border:1px solid var(--bs-border-color);border-radius:8px;box-shadow:none}
+html[data-bs-theme] .task-table{background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-radius:8px;overflow:hidden;border-collapse:separate;border-spacing:0}
+html[data-bs-theme] .task-table th{background:var(--bs-body-bg);color:var(--bs-secondary-color);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--bs-border-color)}
+html[data-bs-theme] .task-table td{background:var(--bs-body-bg);color:var(--bs-body-color);font-size:12px;border-bottom:1px solid var(--bs-border-color)}
+html[data-bs-theme] .task-table tr:hover td{background:var(--bs-secondary-bg)}
+html[data-bs-theme] .btn-primary,html[data-bs-theme] button.primary{background:var(--bs-primary);border-color:var(--bs-primary);color:#fff;border-radius:6px}
+html[data-bs-theme] input,html[data-bs-theme] select,html[data-bs-theme] textarea{background-color:var(--bs-body-bg);color:var(--bs-body-color);border-color:var(--bs-border-color)}
+html[data-bs-theme] .modal,html[data-bs-theme] .modal-content{color:var(--bs-body-color)}
+
+/* ── Botão flutuante "K" ── */
+html[data-bs-theme] .fab-create{background:transparent!important;box-shadow:none!important;width:58px;height:58px;font-size:0}
+html[data-bs-theme] .fab-create>*{display:none}
+html[data-bs-theme] .fab-create::before{content:'K';font:italic 900 50px/1 'Segoe UI',Arial,sans-serif;color:#1d9bf0;text-shadow:0 2px 4px rgba(0,0,0,.35);letter-spacing:-2px}
+html[data-bs-theme] .fab-create::after{content:'\2665';position:absolute;right:4px;bottom:6px;font-size:22px;line-height:1;color:#e3262f;text-shadow:0 1px 2px rgba(0,0,0,.3)}
+html[data-bs-theme] .fab-create.open{transform:none}
+html[data-bs-theme] .fab-create.open::before{opacity:.75}
+
+/* ── Seletor de temas (Perfil › Personalização › Cor) ── */
+#hub-tema-ov{position:fixed;inset:0;z-index:20000;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:40px 12px}
+#hub-tema-ov.open{display:flex}
+#hub-tema-box{width:min(760px,100%);background:var(--bs-body-bg);color:var(--bs-body-color);border:1px solid var(--bs-border-color);border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+#hub-tema-box .ht-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--bs-border-color);background:var(--bs-tertiary-bg);border-radius:8px 8px 0 0;font-weight:600}
+#hub-tema-box .ht-head button{margin-left:auto;border:0;background:transparent;color:inherit;font-size:18px;cursor:pointer}
+#hub-tema-box .ht-body{padding:12px 14px 16px}
+#hub-tema-box .ht-filtro{display:inline-flex;border:1px solid var(--bs-border-color);border-radius:6px;overflow:hidden;margin-bottom:6px}
+#hub-tema-box .ht-filtro button{border:0;background:transparent;color:var(--bs-body-color);font-size:12px;padding:3px 9px;cursor:pointer}
+#hub-tema-box .ht-filtro button.on{background:var(--bs-secondary-color);color:var(--bs-body-bg)}
+#hub-tema-box .ht-cat{font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;margin:12px 0 6px;color:var(--bs-body-color)}
+#hub-tema-box .ht-grid{display:flex;flex-wrap:wrap;gap:8px}
+#hub-tema-box .ht-card{width:160px;border:1px solid var(--bs-border-color);border-radius:6px;padding:5px;cursor:pointer;background:var(--bs-body-bg);color:var(--bs-body-color);text-align:left}
+#hub-tema-box .ht-card.sel{outline:2px solid var(--bs-primary);outline-offset:0}
+#hub-tema-box .ht-sw{height:20px;border-radius:4px;border:1px solid rgba(128,128,128,.35);display:flex;align-items:center;gap:4px;padding:0 6px}
+#hub-tema-box .ht-sw i{width:10px;height:10px;border-radius:50%;display:inline-block}
+#hub-tema-box .ht-nome{font-size:12px;display:flex;align-items:center;gap:4px;margin-top:5px;white-space:nowrap;overflow:hidden}
+#hub-tema-box .ht-nome .ti:last-child{margin-left:auto;font-size:11px;opacity:.7}
+#hub-tema-box .ht-bgs{display:flex;flex-wrap:wrap;gap:8px}
+#hub-tema-box .ht-bg{width:110px;height:64px;border:1px solid var(--bs-border-color);border-radius:6px;cursor:pointer;background:var(--bs-secondary-bg) center/cover;color:var(--bs-body-color);font-size:11px;display:flex;align-items:flex-end;padding:4px;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+#hub-tema-box .ht-bg.sel{outline:2px solid var(--bs-primary)}
+#hub-tema-box .ht-veu{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px}
+#hub-tema-box .ht-veu input[type=color]{width:40px;height:28px;padding:0;border:1px solid var(--bs-border-color);background:none}
