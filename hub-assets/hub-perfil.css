@@ -1,0 +1,48 @@
+/* hub-perfil.css — página de Perfil (layout do Hub Klain) */
+#hub-perfil{display:none;position:fixed;top:59px;left:165px;right:0;bottom:0;z-index:900;overflow:auto;padding:24px 28px 60px;background:transparent}
+body.hub-perfil-on #hub-perfil{display:block}
+body.hub-perfil-on .main{visibility:hidden}
+body.sb-mini #hub-perfil,body.hub-rail #hub-perfil{left:56px}
+#hub-perfil .pf-wrap{max-width:830px;margin:0 auto}
+.pf-head{display:flex;align-items:flex-start;gap:16px;margin-bottom:22px}
+.pf-foto{width:96px;height:96px;object-fit:cover;border-radius:4px;flex:none}
+.pf-ini{display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:600;color:#fff;background:var(--bs-primary)}
+.pf-info{flex:1;min-width:0;padding-top:4px}
+.pf-nome{font-size:28px;font-weight:500;line-height:1.15;color:var(--bs-primary)}
+.pf-mail,.pf-cargo{font-size:15px;color:var(--bs-body-color)}
+.pf-acts{display:flex;flex-direction:column;gap:6px;min-width:125px}
+.pf-acts .btn{font-size:12px;text-align:left}
+.pf-tabs{border-bottom:2px solid var(--bs-primary);margin-bottom:12px}
+.pf-tabs .nav-link{font-size:13px;font-weight:600;color:var(--bs-body-color);border:0;border-bottom:3px solid transparent;background:none;padding:8px 16px}
+.pf-tabs .nav-link.active{color:var(--bs-primary);border-bottom-color:var(--bs-primary);background:none}
+.pf-card{background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-radius:6px;margin-bottom:14px;overflow:hidden}
+.pf-card-h{padding:10px 14px;font-size:15px;background:var(--bs-tertiary-bg);border-bottom:1px solid var(--bs-border-color);color:var(--bs-body-color)}
+.pf-card-b{padding:14px;color:var(--bs-body-color)}
+.pf-filtro{margin-bottom:12px}.pf-filtro .btn{font-size:12px}
+.pf-cat{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin:12px 0 8px;color:var(--bs-body-color)}
+.pf-temas{display:flex;flex-wrap:wrap;gap:10px}
+.pf-tema{width:150px;padding:6px;border:1px solid var(--bs-border-color);border-radius:5px;background:var(--bs-body-bg);color:var(--bs-body-color);text-align:left;position:relative;cursor:pointer}
+.pf-tema.sel{border:2px solid var(--bs-primary);padding:5px}
+.pf-tema:hover{border-color:var(--bs-primary)}
+.pf-prev{display:flex;gap:4px;align-items:center;height:30px;padding:0 8px;border-radius:4px;border:1px solid var(--bs-border-color);background:var(--bs-body-bg)}
+.pf-prev i{width:14px;height:14px;border-radius:50%;background:var(--bs-primary)}
+.pf-prev i+i{background:var(--bs-secondary-color)}
+.pf-tn{display:block;font-size:13px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:18px}
+.pf-ld{position:absolute;right:7px;bottom:7px;font-size:12px;opacity:.75}
+.pf-fundos .form-check{margin-right:18px}
+.pf-veu{display:flex;align-items:center;gap:12px;margin-top:10px;max-width:420px}.pf-veu .form-range{flex:1}
+.pf-muted{font-size:13px;opacity:.75;margin-bottom:10px}
+.pf-ferr{display:flex;flex-wrap:wrap;gap:8px}
+.pf-tabs{display:flex;list-style:none;padding:0;margin:0 0 12px;gap:4px}
+.pf-tabs li{list-style:none}
+#hub-perfil .btn{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:5px;font-size:12px;font-weight:500;border:1px solid transparent;cursor:pointer;line-height:1.4}
+#hub-perfil .btn-primary{background:var(--bs-primary);border-color:var(--bs-primary);color:#fff}
+#hub-perfil .btn-danger{background:var(--bs-danger);border-color:var(--bs-danger);color:#fff}
+#hub-perfil .btn-outline-primary{background:transparent;border-color:var(--bs-primary);color:var(--bs-primary)}
+#hub-perfil .btn-outline-primary:hover{background:var(--bs-primary);color:#fff}
+#hub-perfil .pf-filtro{display:inline-flex}
+#hub-perfil .pf-filtro .btn{border-radius:0;border-color:var(--bs-secondary-color);color:var(--bs-body-color);background:transparent;margin-left:-1px}
+#hub-perfil .pf-filtro .btn:first-child{border-radius:4px 0 0 4px}#hub-perfil .pf-filtro .btn:last-child{border-radius:0 4px 4px 0}
+#hub-perfil .pf-filtro .btn.active{background:var(--bs-secondary-color);color:var(--bs-body-bg)}
+#hub-perfil .pf-acts .btn{justify-content:flex-start}
+#hub-perfil .form-check{display:inline-flex;align-items:center;gap:6px}

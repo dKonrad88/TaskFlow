@@ -6,6 +6,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- HUB KLAIN (novo visual, fase 1): tema/fundo/véu aplicados antes do render -->
+<script src="hub-assets/hub-tema.js"></script>
 <script>
 // Acesso seguro ao armazenamento local. Evita travar o app em contextos onde o navegador bloqueia localStorage.
 (function(){
@@ -2108,7 +2110,15 @@
   </style><style>
     #sininho-card { animation: sininho-in .4s cubic-bezier(.34,1.56,.64,1) both; }
     @keyframes sininho-slideup { from{transform:translateY(120px);opacity:0} to{transform:translateY(0);opacity:1} }
-  </style></head>
+  </style>
+<link rel="stylesheet" href="hub-assets/hub-tema-base.css">
+<link rel="stylesheet" href="hub-assets/hub-oficial.css">
+<link rel="stylesheet" href="hub-assets/hub-layer.css">
+<link rel="stylesheet" href="hub-assets/hub-telas.css">
+<link rel="stylesheet" href="hub-assets/hub-navbar.css">
+<link rel="stylesheet" href="hub-assets/hub-perfil.css">
+<link rel="stylesheet" href="hub-assets/hub-notif.css">
+</head>
 <body class="tab-hoje">
 
 <div id="app">
@@ -5895,7 +5905,7 @@ function _applySidebarVisibilityState(){
 // Cada usuário arrasta a alça na borda direita da sidebar e define a largura que
 // quiser (persistida por aparelho em LS_SIDEBAR_WIDTH). Duplo-clique volta ao padrão.
 const LS_SIDEBAR_WIDTH = 'taskflow_sidebar_width';
-const SIDEBAR_W_MIN = 200, SIDEBAR_W_MAX = 560, SIDEBAR_W_DEFAULT = 211;
+const SIDEBAR_W_MIN = 150, SIDEBAR_W_MAX = 560, SIDEBAR_W_DEFAULT = 180;
 function _applySidebarWidth(px){
   const w = Math.round(Math.min(SIDEBAR_W_MAX, Math.max(SIDEBAR_W_MIN, px||SIDEBAR_W_DEFAULT)));
   document.documentElement.style.setProperty('--sidebar-w', w+'px');
@@ -21189,7 +21199,61 @@ function renderSidebar(){
   const controlsHTML = hubSidebarControls(true, false);
 
   // Sidebar ÚNICA em acordeão: Gerenciador + Gestão + Áreas + rodapé (Mural/Lixeira)
-  sb.innerHTML = controlsHTML + fixosHTML + gestaoHTML + areasHTML + _sbLixeiraFooter();
+  // HUB KLAIN (novo visual): menu na ordem oficial do Hub + extras do TaskFlow.
+  const _hubPv=(typeof producaoView!=='undefined')?producaoView:'';
+  const _hubCv=(typeof comprasView!=='undefined')?comprasView:'';
+  const _hubInicioAtivo = (typeof hubView==='undefined'||hubView==='taskflow'||hubView==='meudia') && currentTab==='hoje' && !sidebarPersonId;
+  const _hubInicio = `<div class="sbnav-fixed"><button class="sbnav-item ${_hubInicioAtivo?'active':''}" onclick="voltarMeuDia()"><i class="ti ti-home"></i><span class="sbnav-label">Início</span>${hojeCount?`<span class="sbnav-badge">${hojeCount}</span>`:''}</button></div>`;
+  const _hubTarefas = grupo('hub-tarefas','ti-checklist','Tarefas',
+    navSubItem('minhas-tarefas','ti-user','Minhas Tarefas', {badge: minhasCount||null}) +
+    navSubItem('solicitadas','ti-send','Solicitadas', {badge: _solicConfirmCount||null}) +
+    navSubItem('entrada','ti-list-details','Organizar', {badge: entradaCount>=ENTRADA_ALERTA?entradaCount:null}) +
+    navSubItem('concluidas','ti-history','Histórico') +
+    navSubItem('rotinas','ti-repeat','Rotinas') +
+    navSubItem('anotacoes','ti-notes','Notas'));
+  const _hubReunioes = grupo('hub-reunioes','ti-users-group','Reuniões',
+    navSubItem('agenda','ti-calendar','Minha Agenda') +
+    navSubItem('reunioes','ti-users','Minhas Reuniões', {badge: reunHoje||null}));
+  const _hubProjetos = grupo('hub-projetos','ti-folders','Projetos',
+    navSubItem('projetos-pro','ti-folders','Projetos', {badge: projectsPro.filter(p=>p.status==='ativo').length||null}) +
+    navSubItem('processos','ti-route','Processos'));
+  const _hubPCP = grupo('hub-pcp','ti-building-factory-2','PCP',
+    _areaItem('producao',_hubPv,'cobertura','ti-calendar-stats','Cobertura','setProducaoView') +
+    _areaItem('producao',_hubPv,'programacao','ti-calendar-week','Programação','setProducaoView') +
+    _areaItem('producao',_hubPv,'pcp','ti-adjustments-horizontal','PCP','setProducaoView') +
+    _areaItem('producao',_hubPv,'indicadores','ti-chart-histogram','Indicadores','setProducaoView') +
+    _areaItem('producao',_hubPv,'regras','ti-shield-check','Regras','setProducaoView') +
+    _areaItem('producao',_hubPv,'ordens','ti-clipboard-list','Ordens de Produção','setProducaoView') +
+    _areaItem('producao',_hubPv,'produtos','ti-package','Produtos','setProducaoView') +
+    _areaItem('producao',_hubPv,'checklists','ti-checkup-list','Check list','setProducaoView'));
+  const _hubCompras = grupo('hub-compras','ti-shopping-cart','Compras',
+    _areaItem('compras',_hubCv,'necessidade','ti-chart-bar','Consumo','setComprasView') +
+    _areaItem('compras',_hubCv,'painel','ti-layout-dashboard','Painel','setComprasView') +
+    _areaItem('compras',_hubCv,'planejamento','ti-clipboard-check','Planejamento de compras','setComprasView') +
+    _areaItem('compras',_hubCv,'estoque','ti-packages','Estoque','setComprasView') +
+    _areaItem('compras',_hubCv,'insumos','ti-cube','Insumos','setComprasView') +
+    _areaItem('compras',_hubCv,'fornecedores','ti-building-store','Fornecedores','setComprasView') +
+    _areaItem('compras',_hubCv,'historico','ti-file-invoice','Histórico de compras','setComprasView') +
+    _areaItem('compras',_hubCv,'ordens','ti-clipboard-list','Ordens de compra','setComprasView'));
+  // Áreas exclusivas do TaskFlow (mesmos grupos de antes, sem Compras/Produção que já subiram p/ PCP e Compras)
+  const _hubAreas = '<div class="hub-sb-divider">Áreas</div>' + areasHTML
+    .replace(hubGroupDivider('ÁREAS'),'');
+  const _atM=(currentTab==='mural'), _atL=(currentTab==='lixeira');
+  const _nlid=(typeof _ideiaNotifNaoLidas==='function')?_ideiaNotifNaoLidas():0;
+  const _rail=document.body.classList.contains('hub-rail');
+  const _hubFooter = `<div class="opts-sidebar">
+    <button id="hub-rail-btn" onclick="hubToggleRail()" title="${_rail?'Expandir menu':'Recolher menu'}"><i class="ti ${_rail?'ti-layout-sidebar-left-expand':'ti-layout-sidebar-left-collapse'}"></i></button>
+    <button id="sb-toggle-all-btn" onclick="event.stopPropagation();toggleAllSbnavGroups()" title="Recolher submenus"><i class="ti ti-fold-up"></i></button>
+    <button onclick="hubTemaAbrir()" title="Personalização (tema, fundo e véu)"><i class="ti ti-palette"></i></button>
+    <button class="${_atM?'on':''}" onclick="irParaMural()" title="Mural de Ideias"><i class="ti ti-bulb"></i>${_nlid?'<span class="dot"></span>':''}</button>
+    <button class="${_atL?'on':''}" onclick="irParaLixeira()" title="Lixeira"><i class="ti ti-trash"></i></button>
+  </div>`;
+  sb.innerHTML = `<div class="hub-sb-scroll">${_hubInicio}${_hubTarefas}${_hubReunioes}${_hubProjetos}${_hubPCP}${_hubCompras}${_hubAreas}</div>${_hubFooter}`;
+  // Remove das Áreas os grupos que já aparecem em PCP/Compras
+  ['sbgrp-compras','sbgrp-producao'].forEach(id=>{ const g=sb.querySelector('#'+id); if(g) g.remove(); });
+  // Tooltip com o nome em cada item (útil no menu recolhido)
+  sb.querySelectorAll('.sbnav-item').forEach(b=>{ const l=b.querySelector('.sbnav-label'); if(l&&!b.title) b.title=l.textContent.trim(); });
+  // (menu antigo, preservado: controlsHTML + fixosHTML + gestaoHTML + areasHTML + _sbLixeiraFooter())
   // Popula o slot de modo após render
   if(temModo && typeof _atualizarModoSidebar==='function') _atualizarModoSidebar();
 
@@ -47510,4 +47574,8 @@ function importarDadosJSON(){
       <div class="fab-undo-sub">Tarefa concluída</div>
     </div>
     <div class="fab-undo-progress"></div>
-  </button></body></html>
+  </button><script src="hub-assets/hub-telas.js"></script>
+<script src="hub-assets/hub-telas3.js"></script>
+<script src="hub-assets/hub-perfil.js"></script>
+<script src="hub-assets/hub-notif.js"></script>
+</body></html>
