@@ -422,6 +422,32 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-10-29 (c) — PC da Empresa — A régua nascia cinza: faltava GRADE, não código (`_seedProgDemo`)
+O Diego abriu a Cobertura depois da entrega (b) e mandou o print: *"acho que não funcionou, tá tudo cinza"*.
+**A régua estava certa — não tinha o que mostrar.** Commit `f8eaa24`.
+- ⭐ **O diagnóstico saiu da NUVEM, não do código:** consultei `taskflow_prod_prog` no Supabase (leitura, via MCP)
+  e a grade dele tinha **25 células de julho/agosto** — já fora da janela das 2 semanas — e **UMA só** dentro
+  dela (`2026-11-03|com` = Amendoim P&B, que ele criou às 16:01 testando). Doze réguas sem nada para acender.
+  📌 **Lição de método:** quando a tela do Diego não bate com a minha, o `app_state` dele responde na hora — é
+  mais rápido que supor, e foi o que separou "bug" de "falta de dado" em dois minutos.
+- **`_seedProgDemo()`** (junto das funções `_prod*`, chamado no `load()` com os outros seeds): preenche as 2
+  semanas vigentes com uma semana de produção plausível, com **padrões variados de propósito** — item que roda
+  quase todo dia (palitinho), item 2× por semana (pão de mel) e **item que só aparece na 2ª semana** (wafer),
+  que é justamente o caso que motivou as duas fileiras.
+- ⚠️ **TRÊS GUARDAS, nessa ordem:** (1) **nunca sobrescreve** — só escreve em célula VAZIA, o que o PCP montou
+  fica intocado; (2) **1× por semana-base** (a flag `taskflow_prod_seed_demo` guarda a segunda da 1ª semana) —
+  não repete no mesmo período e **semeia de novo quando a semana vira**, senão a demo envelheceria em 2 semanas e
+  as réguas voltariam a apagar, que era o problema original; (3) só usa item **já cadastrado** na Programação.
+- ⚠️ **REGRA P0:** roda no `load()`, nunca num render.
+- **Testado com o cenário REAL dele** (grade com as células de jul/ago + a de 03/11): as velhas sobrevivem, **a
+  célula que ele criou é preservada** (o seed queria aquela terça e cedeu), e o resultado são **12 réguas com 44
+  pontos acesos**, 0 erros. Conferido também no tema escuro.
+- ⏳ **Para desligar:** tirar a chamada no `load()` (~4109). O que ela pôs é dado comum — dá para apagar célula a
+  célula pelo × de cada chip na Programação.
+- ⚠️ **Ela escreve na grade do Diego e isso sobe para a nuvem** no próximo push. Como só preenche vazios, nada
+  dele se perde — mas a Programação dele passa a ter itens que ele não montou. É o preço de a régua ter o que
+  mostrar sem depender de alguém preencher a grade antes.
+
 ### ⭐ 2026-10-29 (b) — PC da Empresa — Cobertura: a coluna **OP/OC** mostra os DIAS programados (ponte com a Programação)
 Pedido do Diego: *"nessa coluna OP/OC, gostaria de trazer os dias que foram programados esse item para ser
 produzidos, que foram programados ali na aba programação"* — e **sem ser invasivo**. Mostrei 5 modelos, ele
