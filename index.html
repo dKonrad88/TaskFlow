@@ -2123,6 +2123,7 @@
 <link rel="stylesheet" href="hub-assets/hub-fase6.css">
 <link rel="stylesheet" href="hub-assets/hub-projeto6.css">
 <link rel="stylesheet" href="hub-assets/hub-fase8.css?v=8">
+<link rel="stylesheet" href="hub-assets/hub-fase9.css?v=9">
 </head>
 <body class="tab-hoje">
 
@@ -21209,33 +21210,33 @@ function renderSidebar(){
   const _hubCv=(typeof comprasView!=='undefined')?comprasView:'';
   const _hubInicioAtivo = (typeof hubView==='undefined'||hubView==='taskflow'||hubView==='meudia') && currentTab==='hoje' && !sidebarPersonId;
   const _hubInicio = `<div class="sbnav-fixed"><button class="sbnav-item ${_hubInicioAtivo?'active':''}" onclick="voltarMeuDia()"><i class="ti ti-home"></i><span class="sbnav-label">Início</span>${hojeCount?`<span class="sbnav-badge">${hojeCount}</span>`:''}</button></div>`;
-  const _hubTarefas = grupo('hub-tarefas','ti-checklist','Tarefas',
-    navSubItem('minhas-tarefas','ti-user','Minhas Tarefas', {badge: minhasCount||null}) +
+  const _hubTarefas = grupo('hub-tarefas','ti-list-check','Tarefas',
+    navSubItem('minhas-tarefas','ti-user-check','Minhas Tarefas', {badge: minhasCount||null}) +
     navSubItem('solicitadas','ti-send','Solicitadas', {badge: _solicConfirmCount||null}) +
-    `<button class="sbnav-item sbnav-subitem" data-hub="emcopia" onclick="hubScreen('emcopia')"><i class="ti ti-copy"></i><span class="sbnav-label">Em cópia</span></button>` +
-    navSubItem('entrada','ti-list-details','Organizar', {badge: entradaCount>=ENTRADA_ALERTA?entradaCount:null}) +
+    `<button class="sbnav-item sbnav-subitem" data-hub="emcopia" onclick="hubScreen('emcopia')"><i class="ti ti-badge-cc"></i><span class="sbnav-label">Em cópia</span></button>` +
+    navSubItem('entrada','ti-list','Organizar', {badge: entradaCount>=ENTRADA_ALERTA?entradaCount:null}) +
     navSubItem('concluidas','ti-history','Histórico') +
     navSubItem('rotinas','ti-repeat','Rotinas') +
     navSubItem('anotacoes','ti-notes','Notas'));
-  const _hubReunioes = grupo('hub-reunioes','ti-users-group','Reuniões',
-    navSubItem('agenda','ti-calendar','Minha Agenda') +
-    navSubItem('reunioes','ti-users','Minhas Reuniões', {badge: reunHoje||null}) +
-    `<button class="sbnav-item sbnav-subitem" data-hub="agendamentos" onclick="hubScreen('agendamentos')"><i class="ti ti-calendar-event"></i><span class="sbnav-label">Agendamentos</span></button>` +
-    `<button class="sbnav-item sbnav-subitem" data-hub="visitas" onclick="hubScreen('visitas')"><i class="ti ti-map-pin"></i><span class="sbnav-label">Visitas</span></button>`);
-  const _hubProjetos = grupo('hub-projetos','ti-folders','Projetos',
-    navSubItem('projetos-pro','ti-folders','Projetos', {badge: projectsPro.filter(p=>p.status==='ativo').length||null}) +
+  const _hubReunioes = grupo('hub-reunioes','ti-speakerphone','Reuniões',
+    navSubItem('agenda','ti-calendar-time','Minha Agenda') +
+    navSubItem('reunioes','ti-speakerphone','Minhas Reuniões', {badge: reunHoje||null}) +
+    `<button class="sbnav-item sbnav-subitem" data-hub="agendamentos" onclick="hubScreen('agendamentos')"><i class="ti ti-message-circle-search"></i><span class="sbnav-label">Agendamentos</span></button>` +
+    `<button class="sbnav-item sbnav-subitem" data-hub="visitas" onclick="hubScreen('visitas')"><i class="ti ti-map-2"></i><span class="sbnav-label">Visitas</span></button>`);
+  const _hubProjetos = grupo('hub-projetos','ti-apps','Projetos',
+    navSubItem('projetos-pro','ti-apps','Projetos', {badge: projectsPro.filter(p=>p.status==='ativo').length||null}) +
     navSubItem('processos','ti-route','Processos'));
-  const _hubPCP = grupo('hub-pcp','ti-building-factory-2','PCP',
-    _areaItem('producao',_hubPv,'cobertura','ti-calendar-stats','Cobertura','setProducaoView') +
-    `<button class="sbnav-item sbnav-subitem" data-hub="escala" onclick="hubScreen('escala')"><i class="ti ti-calendar-user"></i><span class="sbnav-label">Escala</span></button>` +
-    _areaItem('producao',_hubPv,'programacao','ti-calendar-week','Programação','setProducaoView') +
+  const _hubPCP = grupo('hub-pcp','ti-building-factory','PCP',
+    _areaItem('producao',_hubPv,'cobertura','ti-report-search','Cobertura','setProducaoView') +
+    `<button class="sbnav-item sbnav-subitem" data-hub="escala" onclick="hubScreen('escala')"><i class="ti ti-users-group"></i><span class="sbnav-label">Escala</span></button>` +
+    _areaItem('producao',_hubPv,'programacao','ti-clipboard-list','Programação','setProducaoView') +
     _areaItem('producao',_hubPv,'pcp','ti-adjustments-horizontal','PCP','setProducaoView') +
     _areaItem('producao',_hubPv,'indicadores','ti-chart-histogram','Indicadores','setProducaoView') +
     _areaItem('producao',_hubPv,'regras','ti-shield-check','Regras','setProducaoView') +
     _areaItem('producao',_hubPv,'ordens','ti-clipboard-list','Ordens de Produção','setProducaoView') +
     _areaItem('producao',_hubPv,'produtos','ti-package','Produtos','setProducaoView') +
     _areaItem('producao',_hubPv,'checklists','ti-checkup-list','Check list','setProducaoView'));
-  const _hubCompras = grupo('hub-compras','ti-shopping-cart','Compras',
+  const _hubCompras = grupo('hub-compras','ti-shopping-bag','Compras',
     _areaItem('compras',_hubCv,'necessidade','ti-chart-bar','Consumo','setComprasView') +
     _areaItem('compras',_hubCv,'painel','ti-layout-dashboard','Painel','setComprasView') +
     _areaItem('compras',_hubCv,'planejamento','ti-clipboard-check','Planejamento de compras','setComprasView') +
@@ -21254,9 +21255,6 @@ function renderSidebar(){
     <button id="hub-rail-btn" onclick="hubToggleRail()" title="${_rail?'Expandir menu':'Recolher menu'}"><i class="ti ${_rail?'ti-layout-sidebar-left-expand':'ti-layout-sidebar-left-collapse'}"></i></button>
     <button id="sb-toggle-all-btn" onclick="event.stopPropagation();toggleAllSbnavGroups()" title="Recolher submenus"><i class="ti ti-fold-up"></i></button>
     <button id="hub-jan-btn" class="${document.body.classList.contains('hub-janelas')?'on':''}" onclick="hubJanelas()" title="Modo janelas"><i class="ti ti-app-window"></i></button>
-    <button onclick="hubTemaAbrir()" title="Personalização (tema, fundo e véu)"><i class="ti ti-palette"></i></button>
-    <button class="${_atM?'on':''}" onclick="irParaMural()" title="Mural de Ideias"><i class="ti ti-bulb"></i>${_nlid?'<span class="dot"></span>':''}</button>
-    <button class="${_atL?'on':''}" onclick="irParaLixeira()" title="Lixeira"><i class="ti ti-trash"></i></button>
   </div>`;
   sb.innerHTML = `<div class="hub-sb-scroll">${_hubInicio}${_hubTarefas}${_hubReunioes}${_hubProjetos}${_hubPCP}${_hubCompras}${_hubAreas}</div>${_hubFooter}`;
   // Remove das Áreas os grupos que já aparecem em PCP/Compras
