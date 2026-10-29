@@ -93,7 +93,7 @@ function navbar(){var h=document.querySelector('.hdr');if(!h||h._hub)return;h._h
   var U=window.CURRENT_USER_ID||(typeof CURRENT_USER_ID!=='undefined'?CURRENT_USER_ID:'');var p=null;try{p=_personById(U);}catch(e){}
   var nm=p&&(p.name||p.nome)||'Usuário';var foto=p&&(p.foto||p.photo||p.avatar);
   u.innerHTML=(foto?'<img class="hub-user-foto" src="'+esc(foto)+'" alt="">':'<span class="hub-user-foto hub-user-ini">'+esc(nm.charAt(0))+'</span>')+'<span class="hub-user-nome">'+esc(nm)+'</span>';
-  u.onclick=function(e){e.stopPropagation();menu.classList.toggle('open');};document.addEventListener('click',function(){menu.classList.remove('open');});
+  u.onclick=function(e){e.stopPropagation();if(window.hubPerfilAbrir)hubPerfilAbrir();else menu.classList.toggle('open');};document.addEventListener('click',function(){menu.classList.remove('open');});
   var nb=document.getElementById('notif-btn');r.insertBefore(u,nb||null);r.appendChild(menu);
   var aj=document.createElement('button');aj.className='hub-um-item';aj.innerHTML='<i class="ti ti-palette"></i><span class="hub-um-lbl">Aparência</span>';aj.onclick=function(){window.hubTemaAbrir&&hubTemaAbrir();};menu.appendChild(aj);}
 function userUpd(){var u=document.querySelector('.hub-user');if(!u)return;var p=null;try{p=_personById(CURRENT_USER_ID);}catch(e){}if(!p)return;var nm=p.name||p.nome;var foto=p.foto||p.photo||p.avatar;u.innerHTML=(foto?'<img class="hub-user-foto" src="'+esc(foto)+'" alt="">':'<span class="hub-user-foto hub-user-ini">'+esc(nm.charAt(0))+'</span>')+'<span class="hub-user-nome">'+esc(nm)+'</span>';}
