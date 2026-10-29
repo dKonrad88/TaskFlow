@@ -422,6 +422,20 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-10-29 (d) — PC da Empresa — O HUB do Guilherme é INTERNO: só abre de dentro da rede da Empresa
+O Diego perguntou se eu enxergo `https://hub.biscoitosklain.com.br/index.php?p=tarefas`. Abri no navegador interno.
+- **Enxergo, mas só a tela de login** (`login.php` — Usuário · Senha · Acessar · Esqueci minha senha). O conteúdo
+  das Tarefas fica atrás disso.
+- ⭐ **E só enxergo porque a sessão roda no PC da Empresa:** o host resolve para um **IP de rede interna**
+  (faixa 172.16/12), ou seja, **o HUB NÃO está exposto na internet**. Do Mac de casa nem eu nem ele abrem.
+  Boa notícia de segurança — e explica por que todo este tempo a gente trabalhou por print: de fora não há como chegar.
+  ⚠️ **Não anoto o IP aqui de propósito** — este repo é público e o número revelaria topologia da rede interna.
+- ⚠️ **SENHA eu não digito** (nem com ele autorizando): é sistema de produção da Empresa, com ~20 pessoas usando.
+  O caminho é ele **digitar no painel do navegador** e me dizer "pronto" — daí eu leio a tela e navego, sem ver a senha.
+  Isso vale para qualquer sessão: **não pedir nem aceitar a senha pelo chat.**
+- ⏳ **PENDENTE p/ o Diego:** ele mandou a senha corporativa no chat desta conversa → **trocar a senha** (e onde
+  estiver reaproveitada), e apagar a conversa no app (o transcript fica nesta máquina até ele apagar).
+
 ### 2026-10-29 (c) — PC da Empresa — A régua nascia cinza: faltava GRADE, não código (`_seedProgDemo`)
 O Diego abriu a Cobertura depois da entrega (b) e mandou o print: *"acho que não funcionou, tá tudo cinza"*.
 **A régua estava certa — não tinha o que mostrar.** Commit `f8eaa24`.
