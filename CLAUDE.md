@@ -422,6 +422,54 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-10-29 (b) — PC da Empresa — Cobertura: a coluna **OP/OC** mostra os DIAS programados (ponte com a Programação)
+Pedido do Diego: *"nessa coluna OP/OC, gostaria de trazer os dias que foram programados esse item para ser
+produzidos, que foram programados ali na aba programação"* — e **sem ser invasivo**. Mostrei 5 modelos, ele
+escolheu os **pontinhos**, depois pediu **duas semanas** (*"a pessoa pode estar olhando numa quinta e a produção
+será na terça da próxima semana"*) e **só quando tem OP/OC**. Commit `24c841a`.
+- **Como ficou:** a célula de OP/OC ganha **duas fileiras de seis pontos** embaixo do número — a de cima é a 1ª
+  semana da Programação, a de baixo é a 2ª. Aceso = dia programado. Tooltip com os dias por extenso e a linha de
+  produção ("Programado: qua 04 · sex 06 · ter 10 — Forno c/ cobertura").
+- ⚠️⚠️ **A PONTE é o coração disto, e os dois lados falam línguas diferentes:** a Programação guarda **nome livre
+  de item** (`'Pão de mel P&B'`, `'Broa'`, `'Palitinho'`), de um cadastro próprio; a Cobertura guarda **código**.
+  Quem liga é a **MASSA** — o cadastro de **Regras** (`_REG_ENG`) já tem a massa de cada código, e o item da
+  Programação é justamente um nome de massa. O casamento é por **CONTÉM** (`'Palitinho + bolinha'` contém
+  `'palitinho'`), senão cada variação do nome viraria uma entrada de de-para.
+- ⚠️ **Item SEM massa é COMPRADO** (cobertura, embalagem, revenda) e **nunca** mostra régua: OC de compra não passa
+  pela Programação, e mostrá-la encheria essas linhas de pontos mortos para sempre. Foi assim que resolvi, sem
+  perguntar, a dúvida "OP ou OC?" — o dado não distingue os dois, mas **ter ou não cadastro de engenharia distingue**.
+- **Quando a régua aparece** (as 4 regras, todas testadas): sem OP/OC → nada, a célula fica como era · item comprado
+  → nada, mesmo com OC · **grade inteira vazia → nada** (ninguém programou ainda; uma coluna de réguas cinzas não
+  informa, parece defeito) · **com ordem e nenhum dia → régua apagada**, que é informação: *tem ordem e não entrou
+  na grade das duas semanas*.
+- ⚠️ **A régua marca o DIA, nunca a quantidade.** A Programação é um planner de quem-roda-quando, sem volume — então
+  ela **não entra no saldo nem no DDV**. É informação ao lado do número, não dentro da conta. E como 1 item da
+  Programação = N SKUs (250g, 500g, monodose), ela diz que **a massa** roda naquele dia, não que aquela gramatura
+  está garantida: por isso o verbo é "programado".
+- **Peças novas** (todas antes do `_ddvCSS`): `_DDV_MASSA_DEMO` (massa por começo do nome, só porque os códigos
+  demo não estão no `_REG_ENG`; no dado real quem manda é o cadastro) · `_ddvMassa(p)` · `_ddvProgIdx()` (índice da
+  grade, **montado 1× por render** — sem isso seriam 59 `JSON.parse` do localStorage, um por linha; zerado no topo
+  de `_ddvTabelaHTML`) · `_ddvProgDe(p)` · `_ddvOpocCel(p)`. CSS `.ddv-prg`/`.ddv-prg-r`/`.ddv-prg-d`.
+- ⚠️ **REGRA P0 respeitada:** só leitura (`_prodProg`/`_prodDias` usam `safeJSON`). Conferido no teste: dois renders
+  seguidos não alteram um byte do `taskflow_prod_prog`.
+- ⚠️ **ACHADO VISUAL que só apareceu na tela:** no **tema escuro** o `--blue-mid` é um azul médio e o ponto aceso
+  **ficava igual ao apagado** — não dava para contar os dias. Corrigido com `body.dark .ddv-prg-d.on{background:
+  color-mix(--blue-mid 50%,#fff)}` + apagado de .38 → .5 de opacidade. **Sai da var do tema**, então continua certo
+  no Klain (caramelo) e no Brasil (verde). Lição de sempre: cor de acento que funciona no claro pode sumir no escuro.
+- **Custo medido:** linha com régua vai de **33 → 48px** (+15px), e só as linhas com ordem crescem — foi o "só quando
+  tem OP/OC" do Diego que pagou essa conta. A régua tem **45px** numa coluna de **68px**; **0 células cortadas**,
+  sem rolagem horizontal, página 3.409px.
+- **Verificado no navegador** (0 erros): 12 réguas de 2×6; grade vazia → 0 réguas; um único dia programado → só os 3
+  produtos daquela massa acendem; grade cheia → 34 pontos; comprados (cobertura, alfajor, pasta, amostra) → 0 réguas;
+  linhas sem OP/OC → 0 réguas; programar `Broa` acende a Rosquinha (massa `broa`); o índice **remonta** quando a
+  grade muda sem reload; busca, ordenação, recolher e o toggle de médias seguem inteiros; 4 temas conferidos.
+- ⏳ **EM ABERTO, levado ao Diego e ainda sem resposta:** a **Programação não deixa programar a semana corrente** —
+  `_prodDias(0)` começa na **segunda que vem**, então quem quiser registrar produção para amanhã não tem onde. É uma
+  linha no `_prodDias`, mas muda a tela da Programação para todo mundo. **Não mexi sozinho.**
+- ⏳ **A régua só acende com a Programação montada** — a grade nasce vazia e eu **não semeei** de propósito: seed
+  datado envelhece em 2 semanas e vira régua apagada, que é pior. Para demonstrar ao Guilherme, basta montar 3–4
+  itens na Programação; de quebra isso mostra o fluxo real (programou lá → apareceu aqui).
+
 ### 2026-10-29 — PC da Empresa — Cobertura: base fictícia de **59 itens em 12 linhas** + histórico mensal (pedido do Guilherme)
 O Guilherme pediu: *"tu pode atualizar o taskflow com mais itens pra eu ver como a tabela da cobertura se
 comporta quando tiver muitos itens?"*. A tela estava com **8 produtos em 3 linhas** (a amostra mínima que o
