@@ -1,6 +1,8 @@
 /* Hub Klain — ajustes finos para igualar o Hub oficial (navbar, sidebar, telas de tarefas, FAB). */
+/* Fase 17: tokens únicos de layout (altura do cabeçalho, largura da sidebar aberta e recolhida). */
+:root{--hub-nav-h:59px;--hub-sb-w:210px;--hub-rail-w:56px}
 /* ---------- Navbar ---------- */
-html[data-bs-theme] .hdr.app-navbar-klain{height:59px!important;min-height:59px!important;padding:0 16px 0 12px!important;box-shadow:none!important;border:0!important}
+html[data-bs-theme] .hdr.app-navbar-klain{height:var(--hub-nav-h)!important;min-height:var(--hub-nav-h)!important;padding:0 16px 0 12px!important;box-shadow:none!important;border:0!important}
 html[data-bs-theme] .hdr .hdr-logo img{width:35px!important;height:auto!important;max-height:40px}
 html[data-bs-theme] .hdr .hub-brand-txt{font-size:15px;font-weight:600;color:#fff;margin-left:8px;letter-spacing:0}
 html[data-bs-theme] .hdr .brasil-flag{display:none!important}
@@ -19,12 +21,10 @@ html[data-bs-theme] .hdr .notif-btn{width:36px!important;height:32px!important;b
 .hub-user-menu .hub-um-item:hover{background:var(--bs-tertiary-bg)!important}
 .hub-user-menu .hub-um-item>*:not(i):not(.hub-um-lbl):not(svg){display:none}
 .hub-user-menu .ai-btn .hub-um-lbl{display:inline}
-/* ---------- Sidebar (210px, linhas de 31px, 13px) ---------- */
-html[data-bs-theme] body:not(.hub-rail) #sidebar{width:210px!important;min-width:210px!important}
-html[data-bs-theme] #sidebar .sbnav-item{min-height:29px;padding:4px 8px!important;font-size:13px!important;font-weight:500!important;margin-bottom:2px;color:var(--bs-body-color)!important}
-html[data-bs-theme] #sidebar .sbnav-subitem{padding-left:12px!important}
-html[data-bs-theme] #sidebar .sbnav-item.active{background:var(--bs-primary)!important;color:#fff!important;font-weight:600!important}
-html[data-bs-theme] #sidebar .sbnav-group-header{font-size:10.5px!important;padding:7px 8px!important;min-height:29px;border-radius:6px}
+/* ---------- Sidebar (var(--hub-sb-w)=210px, linhas de 31px, 13px) ---------- */
+html[data-bs-theme] body:not(.hub-rail) #sidebar{width:var(--hub-sb-w)!important;min-width:var(--hub-sb-w)!important}
+html[data-bs-theme] #sidebar .sbnav-item.active{font-weight:600!important}
+html[data-bs-theme] #sidebar .sbnav-group-header{min-height:29px}
 /* ---------- Área de conteúdo ---------- */
 body.hub-tela #task-container{margin:0!important}
 body.hub-tela #task-container~*,body.hub-tela .topbar,body.hub-tela #stats-box,body.hub-tela #progress-box,body.hub-tela .menu-tabs,body.hub-tela .pp-subnav{display:none!important}
@@ -86,9 +86,8 @@ html[data-bs-theme] .hub-fab-menu .fab-menu-item{white-space:nowrap;font-weight:
 /* ================= Fase 3 ================= */
 /* Navbar também escurece com o menu Adicionar aberto */
 body:has(.fab-menu.hub-fab-menu.open) .hdr::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.72);pointer-events:none;z-index:5}
-html[data-bs-theme] .hdr{position:sticky;top:0}
 /* Ícone no cabeçalho do grupo ativo da sidebar */
-html[data-bs-theme] #sidebar .sbnav-group-header i{display:inline-block!important;color:inherit!important;opacity:.9}
+html[data-bs-theme] #sidebar .sbnav-group-header i{display:inline-block!important;color:inherit!important}
 html[data-bs-theme] #sidebar .sbnav-group:has(.sbnav-group-body .active)>.sbnav-group-header i{color:#fff!important}
 /* Títulos genéricos de tela no padrão oficial */
 html[data-bs-theme] #tab-title{font-size:20px!important;font-weight:700!important;letter-spacing:-.01em;color:var(--bs-emphasis-color)!important}
