@@ -15,6 +15,9 @@ html[data-bs-theme] #sidebar .sbnav-badge.sbnav-badge-novo{background:var(--bs-d
 html[data-bs-theme] #sidebar .sbnav-group-header{padding:7px 6px!important;font-size:10.5px!important;font-weight:800!important;letter-spacing:.7px;border-radius:6px;margin:4px 0 2px!important;border-left:3px solid var(--bs-primary)!important;background:rgba(128,128,128,.06)!important;color:var(--bs-secondary-color)!important}
 html[data-bs-theme] #sidebar .sbnav-group:has(.sbnav-group-body .active)>.sbnav-group-header{background-color:var(--bs-primary)!important;color:#fff!important}
 /* Separador fino entre seções (como no oficial) */
-html[data-bs-theme] #sidebar .sbnav-group+.sbnav-group::before,html[data-bs-theme] #sidebar .sbnav-group+.hub-sb-divider::before{content:"";display:block;height:1px;background:var(--bs-border-color);margin:2px 12px 6px}
+html[data-bs-theme] #sidebar .sbnav-group:not(.colapsado)+.sbnav-group::before,html[data-bs-theme] #sidebar .sbnav-group:not(.colapsado)+.hub-sb-divider::before{content:"";display:block;height:1px;background:var(--bs-border-color);margin:2px 12px 6px}
 html[data-bs-theme] #sidebar .hub-sb-divider{border-top:0!important;margin-top:0!important}
 html[data-bs-theme] #sidebar .hub-sb-scroll{padding:0 2px!important}
+
+/* fase 14: sem margem extra entre grupos (oficial) */
+html[data-bs-theme] #sidebar .sbnav-group{margin:0!important}
