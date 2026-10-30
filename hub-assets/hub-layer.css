@@ -1,5 +1,4 @@
 /* hub-layer.css — adapta o TaskFlow (novo.html) ao visual do Hub Klain. Fase 1: tema global + sidebar. */
-html[data-bs-theme]{--hj-sb-w:180px}
 html[data-bs-theme] body,html[data-bs-theme] body.dark,html[data-bs-theme] body[data-theme]{
   --bg:var(--bs-body-bg)!important;--bg2:var(--bs-secondary-bg)!important;--bg3:var(--bs-tertiary-bg)!important;
   --card:var(--bs-secondary-bg)!important;--text:var(--bs-body-color)!important;--text2:var(--bs-secondary-color)!important;
@@ -24,41 +23,35 @@ html[data-bs-theme] *{scrollbar-color:var(--bs-primary) transparent}
 html[data-bs-theme] #app,html[data-bs-theme] .app-body,html[data-bs-theme] .main{background:transparent!important}
 
 /* ── Navbar superior (gradiente Klain) ── */
-html[data-bs-theme] .hdr{background:var(--klain-gradient)!important;height:50px;box-shadow:none;border-bottom:0;backdrop-filter:blur(2px)}
-html[data-bs-theme] .hdr .search-input{background:rgba(var(--bs-body-bg-rgb,28,28,36),.55);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:4px;height:30px}
-html[data-bs-theme] .hdr .search-input::placeholder{color:rgba(255,255,255,.85)}
+html[data-bs-theme] .hdr{background:var(--klain-gradient)!important;backdrop-filter:blur(2px)}
 html[data-bs-theme] .app-body{min-height:calc(100vh - 50px)}
 
 /* ── Sidebar (sbnav oficial) ── */
-html[data-bs-theme] #sidebar{width:var(--sidebar-w,var(--hj-sb-w));background:var(--bs-body-bg)!important;border-right:1px solid var(--bs-border-color);padding:2px 0 0;top:50px;height:calc(100vh - 50px);display:flex;flex-direction:column}
+html[data-bs-theme] #sidebar{background:var(--bs-body-bg)!important;border-right:1px solid var(--bs-border-color);padding:2px 0 0;display:flex;flex-direction:column}
 html[data-bs-theme] #sidebar.sb-hidden{width:0}
-html[data-bs-theme] #sidebar .hub-sb-scroll{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;padding:0 4px}
+html[data-bs-theme] #sidebar .hub-sb-scroll{flex:1;min-height:0;overflow-y:auto}
 html[data-bs-theme] #sidebar .hub-sb-scroll::-webkit-scrollbar{display:none}
-html[data-bs-theme] #sidebar .sbnav-fixed{padding:4px 4px 6px;border-bottom:1px solid var(--bs-border-color);margin-bottom:6px}
-html[data-bs-theme] #sidebar .sbnav-item{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--bs-secondary-color);transition:all .15s;border:none;background:none;width:100%;text-align:left;text-decoration:none;margin-bottom:2px;line-height:1.5}
+html[data-bs-theme] #sidebar .sbnav-item{display:flex;align-items:center;gap:8px;border-radius:8px;cursor:pointer;transition:all .15s;border:none;background:none;width:100%;text-align:left;text-decoration:none;margin-bottom:2px;line-height:1.5}
 html[data-bs-theme] #sidebar .sbnav-item:hover{background:var(--bs-tertiary-bg);color:var(--bs-body-color)}
-html[data-bs-theme] #sidebar .sbnav-item.active{background:var(--bs-primary);color:#fff}
 html[data-bs-theme=matrix] #sidebar .sbnav-item.active,html[data-bs-theme=matrix] #sidebar .sbnav-group:has(.sbnav-group-body .active)>.sbnav-group-header{color:#000!important}
 html[data-bs-theme] #sidebar .sbnav-item i{font-size:16px;flex-shrink:0;opacity:.85;margin:0}
 html[data-bs-theme] #sidebar .sbnav-item .sbnav-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.5}
-html[data-bs-theme] #sidebar .sbnav-subitem{padding:5px 5px 5px 18px;font-size:12.5px;font-weight:500;align-items:center}
+html[data-bs-theme] #sidebar .sbnav-subitem{align-items:center}
 html[data-bs-theme] #sidebar .sbnav-badge{background:var(--bs-danger);color:#fff;border-radius:99px;padding:1px 7px;font-size:10px;font-weight:700;flex-shrink:0;min-width:18px;text-align:right;line-height:1.5}
-html[data-bs-theme] #sidebar .sbnav-group{margin:0}
-html[data-bs-theme] #sidebar .sbnav-group-header{display:flex;align-items:center;gap:8px;padding:7px 6px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;cursor:pointer;border-radius:6px;margin:4px 0 2px;user-select:none;color:var(--bs-secondary-color)!important;border-left:3px solid var(--bs-primary);background:rgba(128,128,128,.06)}
-html[data-bs-theme] #sidebar .sbnav-group:has(.sbnav-group-body .active)>.sbnav-group-header{background-color:var(--bs-primary);color:#fff!important}
+html[data-bs-theme] #sidebar .sbnav-group-header{display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.7px;cursor:pointer;border-radius:6px;user-select:none}
 html[data-bs-theme] #sidebar .sbnav-group-header i.sbnav-icon{font-size:13px;opacity:.85}
 html[data-bs-theme] #sidebar .sbnav-group-header i.sbnav-chev{font-size:12px;opacity:.7;transition:transform .2s;margin-left:auto}
 html[data-bs-theme] #sidebar .sbnav-group.colapsado .sbnav-chev{transform:rotate(-90deg)}
 html[data-bs-theme] #sidebar .sbnav-group.colapsado .sbnav-group-body{display:none}
 html[data-bs-theme] #sidebar .sbnav-group-body{padding:4px}
-html[data-bs-theme] #sidebar .hub-sb-divider{font-size:10px;font-weight:800;letter-spacing:.8px;color:var(--bs-tertiary-color,var(--bs-secondary-color));padding:12px 6px 2px;border-top:1px solid var(--bs-border-color);margin-top:8px;text-transform:uppercase}
+html[data-bs-theme] #sidebar .hub-sb-divider{font-size:10px;font-weight:800;letter-spacing:.8px;color:var(--bs-tertiary-color,var(--bs-secondary-color));padding:12px 6px 2px;text-transform:uppercase}
 html[data-bs-theme] #sidebar .opts-sidebar{flex-shrink:0;display:flex;justify-content:space-around;align-items:center;padding:4px 0 8px;background:var(--bs-body-bg);border-top:1px solid var(--bs-border-color)}
 html[data-bs-theme] #sidebar .opts-sidebar button{border:0;background:transparent;color:var(--bs-secondary-color);cursor:pointer;padding:4px 7px;border-radius:6px;line-height:1;font-size:15px;position:relative}
 html[data-bs-theme] #sidebar .opts-sidebar button:hover{background:var(--bs-tertiary-bg);color:var(--bs-body-color)}
 html[data-bs-theme] #sidebar .opts-sidebar button.on{color:var(--bs-primary)}
 html[data-bs-theme] #sidebar .opts-sidebar .dot{position:absolute;top:1px;right:2px;width:7px;height:7px;border-radius:50%;background:var(--bs-danger)}
 /* rail recolhido (Recolher menu) */
-body.hub-rail #sidebar{width:56px!important}
+body.hub-rail #sidebar{width:var(--hub-rail-w)!important}
 body.hub-rail #sidebar-resizer{display:none}
 body.hub-rail #sidebar .sbnav-label,body.hub-rail #sidebar .sbnav-group-header,body.hub-rail #sidebar .hub-sb-divider{display:none!important}
 body.hub-rail #sidebar .sbnav-group.colapsado .sbnav-group-body{display:block}
