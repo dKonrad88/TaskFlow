@@ -1,0 +1,8 @@
+/* hub-a11y15.css — Fase 15: acessibilidade sem mudança visual.
+   1) Anel de foco apenas para foco de teclado (:focus-visible); clique não mostra anel.
+      Campos de digitação (input de texto, textarea, contenteditable) ficam de fora porque o
+      navegador marca :focus-visible também no clique neles; eles mantêm o estilo de foco atual.
+   2) Barra de rolagem fina na sidebar (antes oculta). Só aparece quando há rolagem. */
+:focus:not(:focus-visible){outline:none}
+:focus-visible:not(input:not([type=button],[type=submit],[type=reset],[type=checkbox],[type=radio],[type=range],[type=color],[type=file]),textarea,[contenteditable]:not([contenteditable=false])){outline:2px solid var(--bs-primary)!important;outline-offset:2px!important}
+html[data-bs-theme] #sidebar,html[data-bs-theme] #sidebar .hub-sb-scroll{scrollbar-width:thin}
