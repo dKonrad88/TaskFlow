@@ -1,0 +1,5 @@
+/* hub-a11y16.css — Fase 16: reset dos elementos que passaram de <div onclick> para <button type=button>
+   (logo do cabeçalho e cabeçalhos de grupo da sidebar). Especificidade zero (:where) para que as regras
+   visuais existentes continuem valendo exatamente como antes; só neutraliza a aparência nativa do botão. */
+:where(button.hdr-logo,button.sbnav-group-header){-webkit-appearance:none;appearance:none;background:none;border:0;margin:0;padding:0;font:inherit;color:inherit;letter-spacing:inherit;word-spacing:inherit;text-transform:inherit;text-indent:0;text-shadow:inherit;line-height:inherit;text-align:left;cursor:pointer}
+:where(button.sbnav-group-header){width:100%}
