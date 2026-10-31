@@ -2,7 +2,7 @@
 <title>Gravador</title><link rel="manifest" href="manifest.json?v=11"><meta name="theme-color" content="#045ABF">
 <link rel="icon" href="favicon.ico?v=11" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=11"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=11"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-/* Gravador v12 — liquid glass (iOS 26) com a marca Klain */
+/* Gravador v13 — liquid glass (iOS 26) com a marca Klain */
 :root{--brand:#045ABF;--p:#0d6efd;--ok:#19c86e;--err:#ff465a;--txt:#fff;--mut:rgba(255,255,255,.72);
  --font:-apple-system,"SF Pro Display","SF Pro Text",system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
  --sat:env(safe-area-inset-top);--sab:env(safe-area-inset-bottom)}
@@ -32,6 +32,7 @@ input::placeholder{color:rgba(255,255,255,.6)}input:focus{border-color:rgba(255,
 #v-gravar{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - var(--sat) - var(--sab) - 260px)}
 #rec{position:relative;width:180px;height:180px;border-radius:50%;display:grid;place-items:center;padding:0;cursor:pointer;color:#fff;
  box-shadow:inset 0 1px 0 rgba(255,255,255,.7),inset 0 0 40px rgba(120,190,255,.55),0 0 60px rgba(13,110,253,.55),0 14px 40px rgba(0,20,60,.4);transition:transform .15s}
+#recrow{position:relative}#disc{position:absolute;right:calc(100% + 18px);top:50%;transform:translateY(-50%);width:64px;height:64px;border-radius:50%;padding:0;color:#fff;font-family:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:dfade .2s ease-out}#disc .x{font-size:22px;line-height:1}#disc small{position:absolute;top:calc(100% + 6px);font-size:11px;font-weight:600;opacity:.85;white-space:nowrap}#disc:active{transform:translateY(-50%) scale(.94)}@keyframes dfade{from{opacity:0}}
 #rec:active{transform:scale(.96)}
 #rec .in{width:116px;height:116px;border-radius:50%;background:radial-gradient(circle at 50% 35%,rgba(255,255,255,.55),rgba(13,110,253,.55) 70%);border:1px solid rgba(255,255,255,.6);display:grid;place-items:center;transition:background .3s}
 #rec .sq{display:none;width:38px;height:38px;border-radius:10px;background:#fff}
@@ -90,10 +91,10 @@ ul{list-style:none;padding:0;margin:0}
 <div id="login" class="hide"><div class="card g"><p>Entre com seu e-mail e senha.</p>
 <form id="lform" onsubmit="return false"><input id="email" type="email" autocomplete="username" value="konraddiego@gmail.com">
 <input id="pw" type="password" autocomplete="current-password" placeholder="senha">
-<button id="send" class="btn" type="submit">Entrar</button></form><p id="lmsg" class="msg"></p></div><p class="ver">Gravador v12</p></div>
+<button id="send" class="btn" type="submit">Entrar</button></form><p id="lmsg" class="msg"></p></div><p class="ver">Gravador v13</p></div>
 <div id="app" class="hide">
 <section id="v-gravar" class="view" role="tabpanel">
-<button id="rec" class="g" aria-label="Gravar"><div class="in"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3" fill="#fff"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><div class="sq"></div></div></button>
+<div id="recrow"><button id="disc" class="g hide" aria-label="Descartar gravação"><span class="x">✕</span><small>Descartar</small></button><button id="rec" class="g" aria-label="Gravar"><div class="in"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3" fill="#fff"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><div class="sq"></div></div></button></div>
 <div id="timer" class="idle">Toque para gravar</div><p id="msg" class="msg"></p>
 </section>
 <section id="v-fila" class="view hide" role="tabpanel">
@@ -104,7 +105,7 @@ ul{list-style:none;padding:0;margin:0}
 <section id="v-ajustes" class="view hide" role="tabpanel"><h3>Conta</h3>
 <div class="row g"><span>E-mail</span><span id="acct"></span></div>
 <div class="row g"><span>Tipo padrão</span><span id="tipoAj"></span></div>
-<div class="row g"><span>Versão</span><span>Gravador v12</span></div>
+<div class="row g"><span>Versão</span><span>Gravador v13</span></div>
 <button id="upd" class="btn" style="margin:14px 0 10px">🔄 Verificar atualização</button>
 <button id="out" class="btn danger">Sair</button></section>
 </div></main>
@@ -119,7 +120,7 @@ ul{list-style:none;padding:0;margin:0}
 const ALLOWED='konraddiego@gmail.com';
 const sb=supabase.createClient('https://gigkrjetrtbtdmdnqoof.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdpZ2tyamV0cnRidGRtZG5xb29mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5MzI2MzUsImV4cCI6MjA5NzUwODYzNX0.XSeJtNUOh2_DHjat4QL9Lae6PwqflSagvDj9mXL75cA',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});
 const $=id=>document.getElementById(id);let user=null,mr=null,chunks=[],t0=0,tick=null;
-const APP_VERSION='v12';let swReg=null;
+const APP_VERSION='v13';let swReg=null;
 if('serviceWorker'in navigator){const hadCtl=!!navigator.serviceWorker.controller;let reloaded=false;
  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadCtl||reloaded)return;reloaded=true;location.reload()});
  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{swReg=r;r.update().catch(()=>{})}).catch(()=>{});
@@ -177,10 +178,11 @@ $('now').onclick=()=>enviarAgora(false);
   busy=true;set(TH,true);el.classList.add('go');checkUpdate();try{if(user)await load()}finally{setTimeout(()=>{el.classList.remove('go');set(0,true);busy=false},400)}});
 })();
 function pickMime(){for(const m of['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/aac','audio/ogg;codecs=opus'])if(window.MediaRecorder&&MediaRecorder.isTypeSupported(m))return m;return''}
+let discard=false;$('disc').onclick=()=>{if(mr&&mr.state==='recording'){discard=true;chunks=[];mr.stop()}};
 $('rec').onclick=async()=>{if(mr&&mr.state==='recording'){mr.stop();return}
  try{const st=await navigator.mediaDevices.getUserMedia({audio:true});const m=pickMime();mr=new MediaRecorder(st,m?{mimeType:m}:{});chunks=[];
- mr.ondataavailable=e=>e.data.size&&chunks.push(e.data);mr.onstop=()=>{st.getTracks().forEach(x=>x.stop());clearInterval(tick);$('rec').classList.remove('on');$('rec').setAttribute('aria-label','Gravar');$('timer').className='idle';upload((Date.now()-t0)/1000)};
- mr.start(1000);t0=Date.now();$('rec').classList.add('on');$('rec').setAttribute('aria-label','Parar');$('timer').className='';$('timer').textContent='0:00';$('msg').textContent='Gravando… toque para parar';menu(false);
+ mr.ondataavailable=e=>e.data.size&&chunks.push(e.data);discard=false;mr.onstop=()=>{st.getTracks().forEach(x=>x.stop());clearInterval(tick);$('rec').classList.remove('on');$('rec').setAttribute('aria-label','Gravar');$('disc').classList.add('hide');$('timer').className='idle';if(discard){discard=false;chunks=[];$('timer').textContent='Toque para gravar';$('msg').textContent='';toast('Gravação descartada');return}upload((Date.now()-t0)/1000)};
+ mr.start(1000);t0=Date.now();$('rec').classList.add('on');$('rec').setAttribute('aria-label','Parar');$('disc').classList.remove('hide');$('timer').className='';$('timer').textContent='0:00';$('msg').textContent='Gravando… toque para parar';menu(false);
  tick=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);$('timer').textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0')},250)}
  catch(e){$('msg').textContent='Sem acesso ao microfone: '+e.message}};
 async function upload(dur){const mime=(mr.mimeType||chunks[0]?.type||'audio/webm').split(';')[0];const ext=mime.includes('mp4')||mime.includes('aac')?'m4a':mime.includes('ogg')?'ogg':'webm';
