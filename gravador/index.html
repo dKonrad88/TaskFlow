@@ -14,9 +14,11 @@ ul{list-style:none;padding:0}li{background:#1c1c1c;border-radius:10px;padding:10
 #now{display:block;margin:0 auto 8px;background:#1565c0;border-color:#1565c0}
 </style></head><body>
 <h1>🎙️ Gravador</h1>
-<div id="login" class="hide"><p>Entre com seu e-mail para receber o link de acesso.</p>
-<input id="email" type="email" placeholder="seu e-mail" style="width:100%;box-sizing:border-box"><br><br>
-<button id="send">Enviar link mágico</button><p id="lmsg" class="msg"></p></div>
+<div id="login" class="hide"><p>Entre com seu e-mail: enviaremos um código de 6 dígitos.</p>
+<input id="email" type="email" autocomplete="email" value="konraddiego@gmail.com" style="width:100%;box-sizing:border-box"><br><br>
+<button id="send">Enviar código</button>
+<div id="codebox" class="hide"><br><input id="code" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="10" autocomplete="one-time-code" placeholder="código" style="width:100%;box-sizing:border-box;letter-spacing:4px;font-size:22px;text-align:center"><br><br>
+<button id="verify">Entrar</button></div><p id="lmsg" class="msg"></p></div>
 <div id="app" class="hide">
 <label>Tipo: <select id="tipo"><option value="automatico">automático</option><option value="tarefa">tarefa</option><option value="compromisso">compromisso</option><option value="nota">nota</option><option value="rotina">rotina</option></select></label>
 <button id="rec">Gravar</button><div id="timer">0:00</div><p id="msg" class="msg"></p>
@@ -27,7 +29,7 @@ ul{list-style:none;padding:0}li{background:#1c1c1c;border-radius:10px;padding:10
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const ALLOWED='konraddiego@gmail.com';
-const sb=supabase.createClient('https://gigkrjetrtbtdmdnqoof.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdpZ2tyamV0cnRidGRtZG5xb29mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5MzI2MzUsImV4cCI6MjA5NzUwODYzNX0.XSeJtNUOh2_DHjat4QL9Lae6PwqflSagvDj9mXL75cA');
+const sb=supabase.createClient('https://gigkrjetrtbtdmdnqoof.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdpZ2tyamV0cnRidGRtZG5xb29mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5MzI2MzUsImV4cCI6MjA5NzUwODYzNX0.XSeJtNUOh2_DHjat4QL9Lae6PwqflSagvDj9mXL75cA',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});
 const $=id=>document.getElementById(id);let user=null,mr=null,chunks=[],t0=0,tick=null;
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 async function show(s){user=s?.user||null;
@@ -36,8 +38,15 @@ async function show(s){user=s?.user||null;
 sb.auth.onAuthStateChange((_e,s)=>show(s));sb.auth.getSession().then(({data})=>show(data.session));
 $('send').onclick=async()=>{const e=$('email').value.trim().toLowerCase();
  if(e!==ALLOWED){$('lmsg').textContent='E-mail não autorizado.';return}
- $('lmsg').textContent='Enviando…';const{error}=await sb.auth.signInWithOtp({email:e,options:{shouldCreateUser:false,emailRedirectTo:location.origin+location.pathname}});
- $('lmsg').textContent=error?('Erro: '+error.message):'Link enviado! Abra o e-mail neste aparelho.'};
+ $('lmsg').textContent='Enviando…';const{error}=await sb.auth.signInWithOtp({email:e,options:{shouldCreateUser:false}});
+ if(error){$('lmsg').textContent='Erro: '+error.message;return}
+ $('lmsg').textContent='Código enviado! Confira seu e-mail.';$('codebox').classList.remove('hide');$('code').focus()};
+$('verify').onclick=async()=>{const e=$('email').value.trim().toLowerCase(),token=$('code').value.replace(/\D/g,'');
+ if(e!==ALLOWED){$('lmsg').textContent='E-mail não autorizado.';return}
+ if(token.length<6){$('lmsg').textContent='Digite o código recebido.';return}
+ $('lmsg').textContent='Verificando…';const{error}=await sb.auth.verifyOtp({email:e,token,type:'email'});
+ $('lmsg').textContent=error?('Código inválido ou expirado: '+error.message):'';if(!error)$('code').value=''};
+$('code').addEventListener('keydown',ev=>{if(ev.key==='Enter')$('verify').click()});
 $('out').onclick=e=>{e.preventDefault();sb.auth.signOut()};$('ref').onclick=()=>load();
 const FN='https://gigkrjetrtbtdmdnqoof.supabase.co/functions/v1/voice-queue?action=trigger';let tt=null;
 function toast(m,k){const t=$('toast');t.textContent=m;t.className='show '+(k||'');clearTimeout(tt);tt=setTimeout(()=>t.className='',3500)}
