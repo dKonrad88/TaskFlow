@@ -1,0 +1,55 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Gravador</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#e53935">
+<link rel="icon" href="icon.svg"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+body{margin:0;font-family:system-ui,sans-serif;background:#111;color:#eee;padding:16px;padding-top:max(16px,env(safe-area-inset-top))}
+h1{font-size:20px;margin:0 0 12px}.hide{display:none}input,select,button{font-size:17px;padding:10px;border-radius:10px;border:1px solid #444;background:#222;color:#eee}
+#rec{display:block;margin:28px auto;width:180px;height:180px;border-radius:50%;background:#e53935;border:none;font-size:20px;font-weight:600;color:#fff}
+#rec.on{background:#b71c1c;animation:p 1s infinite}@keyframes p{50%{transform:scale(.94)}}
+#timer{text-align:center;font-size:28px;font-variant-numeric:tabular-nums}.msg{text-align:center;color:#aaa;min-height:22px}
+ul{list-style:none;padding:0}li{background:#1c1c1c;border-radius:10px;padding:10px;margin:8px 0;font-size:14px}
+.st{float:right;padding:2px 8px;border-radius:8px;font-size:12px}.pendente{background:#555}.processando{background:#1565c0}.processado{background:#2e7d32}.erro{background:#c62828}
+.t{color:#bbb;margin-top:4px;white-space:pre-wrap}a{color:#90caf9}
+</style></head><body>
+<h1>🎙️ Gravador</h1>
+<div id="login" class="hide"><p>Entre com seu e-mail para receber o link de acesso.</p>
+<input id="email" type="email" placeholder="seu e-mail" style="width:100%;box-sizing:border-box"><br><br>
+<button id="send">Enviar link mágico</button><p id="lmsg" class="msg"></p></div>
+<div id="app" class="hide">
+<label>Tipo: <select id="tipo"><option value="automatico">automático</option><option value="tarefa">tarefa</option><option value="compromisso">compromisso</option><option value="nota">nota</option><option value="rotina">rotina</option></select></label>
+<button id="rec">Gravar</button><div id="timer">0:00</div><p id="msg" class="msg"></p>
+<h2 style="font-size:16px">Recentes <button id="ref" style="font-size:13px;padding:4px 8px">atualizar</button></h2><ul id="list"></ul>
+<p style="text-align:center"><a href="#" id="out">sair</a></p></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const ALLOWED='konraddiego@gmail.com';
+const sb=supabase.createClient('https://gigkrjetrtbtdmdnqoof.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdpZ2tyamV0cnRidGRtZG5xb29mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5MzI2MzUsImV4cCI6MjA5NzUwODYzNX0.XSeJtNUOh2_DHjat4QL9Lae6PwqflSagvDj9mXL75cA');
+const $=id=>document.getElementById(id);let user=null,mr=null,chunks=[],t0=0,tick=null;
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+async function show(s){user=s?.user||null;
+ if(user&&user.email?.toLowerCase()!==ALLOWED){await sb.auth.signOut();user=null;$('lmsg').textContent='E-mail não autorizado.'}
+ $('login').classList.toggle('hide',!!user);$('app').classList.toggle('hide',!user);if(user)load()}
+sb.auth.onAuthStateChange((_e,s)=>show(s));sb.auth.getSession().then(({data})=>show(data.session));
+$('send').onclick=async()=>{const e=$('email').value.trim().toLowerCase();
+ if(e!==ALLOWED){$('lmsg').textContent='E-mail não autorizado.';return}
+ $('lmsg').textContent='Enviando…';const{error}=await sb.auth.signInWithOtp({email:e,options:{shouldCreateUser:false,emailRedirectTo:location.origin+location.pathname}});
+ $('lmsg').textContent=error?('Erro: '+error.message):'Link enviado! Abra o e-mail neste aparelho.'};
+$('out').onclick=e=>{e.preventDefault();sb.auth.signOut()};$('ref').onclick=()=>load();
+function pickMime(){for(const m of['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/aac','audio/ogg;codecs=opus'])if(window.MediaRecorder&&MediaRecorder.isTypeSupported(m))return m;return''}
+$('rec').onclick=async()=>{if(mr&&mr.state==='recording'){mr.stop();return}
+ try{const st=await navigator.mediaDevices.getUserMedia({audio:true});const m=pickMime();mr=new MediaRecorder(st,m?{mimeType:m}:{});chunks=[];
+ mr.ondataavailable=e=>e.data.size&&chunks.push(e.data);mr.onstop=()=>{st.getTracks().forEach(x=>x.stop());clearInterval(tick);$('rec').classList.remove('on');$('rec').textContent='Gravar';upload((Date.now()-t0)/1000)};
+ mr.start(1000);t0=Date.now();$('rec').classList.add('on');$('rec').textContent='Parar';$('msg').textContent='Gravando…';
+ tick=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);$('timer').textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0')},250)}
+ catch(e){$('msg').textContent='Sem acesso ao microfone: '+e.message}};
+async function upload(dur){const mime=(mr.mimeType||chunks[0]?.type||'audio/webm').split(';')[0];const ext=mime.includes('mp4')||mime.includes('aac')?'m4a':mime.includes('ogg')?'ogg':'webm';
+ const blob=new Blob(chunks,{type:mime});const path=`${user.id}/${new Date().toISOString().replace(/[:.]/g,'-')}.${ext}`;$('msg').textContent='Enviando…';
+ let{error}=await sb.storage.from('voice-inbox').upload(path,blob,{contentType:mime});
+ if(!error)({error}=await sb.from('voice_queue').insert({user_id:user.id,tipo:$('tipo').value,audio_path:path,mime,duracao_s:Math.round(dur*10)/10}));
+ $('msg').textContent=error?('Erro: '+error.message):'✅ Enviado para a fila';$('timer').textContent='0:00';load()}
+async function load(){const{data,error}=await sb.from('voice_queue').select('id,created_at,tipo,status,duracao_s,transcricao,erro').order('created_at',{ascending:false}).limit(20);
+ const ul=$('list');ul.innerHTML='';if(error){ul.textContent='Erro: '+error.message;return}
+ for(const r of data){const li=document.createElement('li');const d=new Date(r.created_at).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+ li.innerHTML=`<span class="st ${r.status}"></span><b></b> · <span></span><div class="t"></div>`;li.children[0].textContent=r.status;li.children[1].textContent=r.tipo;
+ li.children[2].textContent=d+(r.duracao_s?` · ${r.duracao_s}s`:'');li.children[3].textContent=r.transcricao||r.erro||'';ul.appendChild(li)}}
+</script></body></html>
