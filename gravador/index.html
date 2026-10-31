@@ -2,7 +2,7 @@
 <title>Gravador</title><link rel="manifest" href="manifest.json?v=11"><meta name="theme-color" content="#045ABF">
 <link rel="icon" href="favicon.ico?v=11" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=11"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=11"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-/* Gravador v14 — liquid glass (iOS 26) com a marca Klain */
+/* Gravador v15 — liquid glass (iOS 26) com a marca Klain */
 :root{--brand:#045ABF;--p:#0d6efd;--ok:#19c86e;--err:#ff465a;--txt:#fff;--mut:rgba(255,255,255,.72);
  --font:-apple-system,"SF Pro Display","SF Pro Text",system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
  --sat:env(safe-area-inset-top);--sab:env(safe-area-inset-bottom)}
@@ -83,6 +83,47 @@ ul{list-style:none;padding:0;margin:0}
 #ptr{position:fixed;left:50%;top:calc(var(--sat) + 70px);width:40px;height:40px;margin-left:-20px;border-radius:50%;display:flex;align-items:center;justify-content:center;transform:translateY(-60px);z-index:25;opacity:0}
 #ptr .spin{animation-play-state:paused}#ptr.go .spin{animation-play-state:running}
 #toast{position:fixed;left:50%;top:calc(var(--sat) + 74px);transform:translateX(-50%);padding:12px 18px;border-radius:20px;font-size:15px;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90%;z-index:30}#toast.show{opacity:1}
+
+/* Aprovar */
+.tab button{position:relative;font-size:10px;padding:6px 2px;margin:0 1px}
+.badge{position:absolute;top:0;right:calc(50% - 22px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#ff3b30;color:#fff;font-size:11px;font-weight:700;line-height:18px;display:inline-block!important;box-shadow:0 0 0 2px rgba(255,255,255,.85)}.badge.hide{display:none!important}
+.ahead{display:flex;justify-content:space-between;align-items:center;margin:0 4px 12px}
+.ahead h3{margin:0}
+.pc{border-radius:26px;padding:16px;margin-bottom:14px}
+.pc .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.tchip{font-size:12px;font-weight:700;padding:4px 11px;border-radius:12px;background:rgba(13,110,253,.65);border:1px solid rgba(255,255,255,.45)}
+.pc .src{font-size:12px;opacity:.7}
+.pc .tt{font-size:18px;font-weight:700;margin:2px 0 4px;line-height:1.25}
+.pc .ds{font-size:14px;opacity:.88;line-height:1.35;white-space:pre-wrap}
+.pc .meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;opacity:.85;margin-top:10px}
+.trx{display:flex;align-items:center;gap:10px;margin-top:12px;padding:8px 12px 8px 8px;border-radius:16px;background:rgba(0,30,80,.28);cursor:pointer}
+.play{width:30px;height:30px;border-radius:50%;flex:none;background:#fff;color:var(--p);border:0;display:grid;place-items:center;font-size:12px;cursor:pointer;padding:0}
+.trx .q{flex:1;font-size:13px;font-style:italic;opacity:.9;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.trx.open .q{display:block;-webkit-line-clamp:unset}
+.trx .d{font-size:12px;opacity:.7;flex:none}
+.acts{display:flex;gap:8px;margin-top:14px}
+.acts button{flex:1;border-radius:20px;padding:11px 6px;font-family:inherit;font-weight:700;font-size:14px;color:#fff;cursor:pointer;border:1px solid rgba(255,255,255,.4)}
+.b-ok{background:linear-gradient(180deg,#3b8bff,#0d6efd);box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
+.b-ed{background:rgba(255,255,255,.16)}
+.b-no{background:rgba(255,70,90,.25);color:#ffd0d6!important}
+.acts button:disabled{opacity:.5}
+#sheetBg{position:fixed;inset:0;background:rgba(0,20,60,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:40}
+#sheet{position:fixed;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;max-height:92vh;overflow:auto;border-radius:28px 28px 0 0;padding:10px 18px calc(var(--sab) + 20px);z-index:41;background:linear-gradient(180deg,rgba(40,120,240,.92),rgba(4,70,170,.95));border:1px solid rgba(255,255,255,.35);box-shadow:0 -10px 40px rgba(0,20,60,.5);animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
+#sheet .grab{width:40px;height:5px;border-radius:3px;background:rgba(255,255,255,.5);margin:0 auto 10px}
+#sheet .sh{display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:10px}
+#sheet .sh b{font-size:18px}#sheet .sh button{position:absolute;left:0;background:none;border:0;color:#fff;font-family:inherit;font-size:16px;cursor:pointer;padding:6px 0}
+#sheet label{display:block;font-size:12px;font-weight:600;opacity:.8;margin:8px 2px 5px}
+#sheet input,#sheet textarea{margin-bottom:2px;font-size:16px;padding:12px 14px}
+#sheet textarea{font-family:inherit;width:100%;border-radius:16px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.14);color:#fff;outline:none;resize:vertical;min-height:70px}
+#sheet input[type=date]{color-scheme:dark}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tsel{display:flex;flex-wrap:wrap;gap:6px}
+.tsel button{border-radius:16px;padding:7px 13px;font-family:inherit;font-size:14px;font-weight:600;color:#fff;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.4);cursor:pointer}
+.tsel button[aria-pressed="true"]{background:#0d6efd;border-color:rgba(255,255,255,.8)}
+.link-no{display:block;margin:14px auto 0;background:none;border:0;color:#ffc2ca;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.st.aprovado{background:rgba(13,110,253,.4);color:#cfe2ff}.st.recusado{background:rgba(255,255,255,.18);color:#e6e6e6}.st.criado{background:rgba(25,200,110,.32);color:#b5ffd4}
+.sub{font-size:12px;text-transform:uppercase;letter-spacing:1px;opacity:.7;margin:18px 4px 8px;font-weight:700}
 </style></head><body>
 <div class="bgfx" aria-hidden="true"><div class="img"></div><div class="blob" style="width:260px;height:260px;background:#4aa3ff;top:120px;left:-80px"></div><div class="blob" style="width:220px;height:220px;background:#7b5cff;bottom:120px;right:-70px"></div></div>
 <div id="ptr" class="g" aria-hidden="true"><span class="spin"></span></div>
@@ -91,21 +132,23 @@ ul{list-style:none;padding:0;margin:0}
 <div id="login" class="hide"><div class="card g"><p>Entre com seu e-mail e senha.</p>
 <form id="lform" onsubmit="return false"><input id="email" type="email" autocomplete="username" placeholder="seu e-mail">
 <input id="pw" type="password" autocomplete="current-password" placeholder="senha">
-<button id="send" class="btn" type="submit">Entrar</button></form><p id="lmsg" class="msg"></p></div><p class="ver">Gravador v14</p></div>
+<button id="send" class="btn" type="submit">Entrar</button></form><p id="lmsg" class="msg"></p></div><p class="ver">Gravador v15</p></div>
 <div id="app" class="hide">
 <section id="v-gravar" class="view" role="tabpanel">
 <div id="recrow"><button id="disc" class="g hide" aria-label="Descartar gravação"><span class="x">✕</span><small>Descartar</small></button><button id="rec" class="g" aria-label="Gravar"><div class="in"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3" fill="#fff"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><div class="sq"></div></div></button></div>
 <div id="timer" class="idle">Toque para gravar</div><p id="msg" class="msg"></p>
 </section>
+<section id="v-aprov" class="view hide" role="tabpanel">
+<div class="ahead"><h3 id="aprovH">Aprovar</h3><button id="aprovAll" class="mini g hide">Aprovar todas</button></div><ul id="aprov"></ul></section>
 <section id="v-fila" class="view hide" role="tabpanel">
 <button id="now" class="btn">📤 Enviar agora</button><div id="sendst" class="sendst g hide" role="status" aria-live="polite"></div>
 <h3>Fila <button id="ref" class="mini g">atualizar</button></h3><p id="pollnote" class="pollnote"></p><ul id="list"></ul>
 </section>
-<section id="v-hist" class="view hide" role="tabpanel"><h3>Histórico <button id="ref2" class="mini g">atualizar</button></h3><ul id="hist"></ul></section>
+<section id="v-hist" class="view hide" role="tabpanel"><h3>Histórico <button id="ref2" class="mini g">atualizar</button></h3><div id="histP"></div><div class="sub" id="histRecH">Gravações</div><ul id="hist"></ul></section>
 <section id="v-ajustes" class="view hide" role="tabpanel"><h3>Conta</h3>
 <div class="row g"><span>E-mail</span><span id="acct"></span></div>
 <div class="row g"><span>Tipo padrão</span><span id="tipoAj"></span></div>
-<div class="row g"><span>Versão</span><span>Gravador v14</span></div>
+<div class="row g"><span>Versão</span><span>Gravador v15</span></div>
 <button id="upd" class="btn" style="margin:14px 0 10px">🔄 Verificar atualização</button>
 <button id="out" class="btn danger">Sair</button></section>
 </div></main>
@@ -113,7 +156,17 @@ ul{list-style:none;padding:0;margin:0}
 <div id="tipoMenu" class="hide" role="menu" aria-label="Tipo de gravação"><div class="h">Tipo de gravação</div></div>
 <div class="tipo-wrap"><button id="tipoBtn" class="g" aria-haspopup="menu" aria-expanded="false"><span id="tipoLbl"></span><span class="car">▲</span></button></div></div>
 <nav id="tabs" class="tab g hide" role="tablist">
-<button role="tab" data-t="gravar" aria-selected="true"><span>🎙️</span>Gravar</button><button role="tab" data-t="fila" aria-selected="false"><span>📥</span>Fila</button><button role="tab" data-t="hist" aria-selected="false"><span>🕘</span>Histórico</button><button role="tab" data-t="ajustes" aria-selected="false"><span>⚙️</span>Ajustes</button></nav>
+<button role="tab" data-t="gravar" aria-selected="true"><span>🎙️</span>Gravar</button><button role="tab" data-t="aprov" aria-selected="false"><span>✅</span>Aprovar<b id="badge" class="badge hide"></b></button><button role="tab" data-t="fila" aria-selected="false"><span>📥</span>Fila</button><button role="tab" data-t="hist" aria-selected="false"><span>🕘</span>Histórico</button><button role="tab" data-t="ajustes" aria-selected="false"><span>⚙️</span>Ajustes</button></nav>
+<div id="sheetBg" class="hide"></div>
+<div id="sheet" class="hide" role="dialog" aria-modal="true" aria-label="Editar proposta"><div class="grab"></div>
+<div class="sh"><button id="shCancel">Cancelar</button><b>Editar proposta</b></div>
+<label>Tipo</label><div class="tsel" id="shTipo"></div>
+<label for="shTit">Título</label><input id="shTit">
+<label for="shDesc">Descrição</label><textarea id="shDesc" rows="3"></textarea>
+<div class="two"><div><label for="shResp">Responsável</label><input id="shResp"></div><div><label for="shPrazo">Prazo</label><input id="shPrazo" type="date"></div></div>
+<div class="two"><div><label for="shProj">Projeto</label><input id="shProj"></div><div><label for="shEtapa">Etapa</label><input id="shEtapa"></div></div>
+<div id="shTrx"></div>
+<button id="shOk" class="btn" style="margin-top:16px">✓ Aprovar e criar no Hub</button><button id="shNo" class="link-no">Recusar proposta</button></div>
 <div id="toast" class="g"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -121,7 +174,7 @@ const ALLOWED=['konraddiego@gmail.com','debiandrade8@gmail.com'];
 const sb=supabase.createClient('https://gigkrjetrtbtdmdnqoof.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdpZ2tyamV0cnRidGRtZG5xb29mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5MzI2MzUsImV4cCI6MjA5NzUwODYzNX0.XSeJtNUOh2_DHjat4QL9Lae6PwqflSagvDj9mXL75cA',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});
 const $=id=>document.getElementById(id);let user=null,mr=null,chunks=[],t0=0,tick=null;
 try{$('email').value=localStorage.getItem('gravador_email')||''}catch(_){}
-const APP_VERSION='v14';let swReg=null;
+const APP_VERSION='v15';let swReg=null;
 if('serviceWorker'in navigator){const hadCtl=!!navigator.serviceWorker.controller;let reloaded=false;
  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadCtl||reloaded)return;reloaded=true;location.reload()});
  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{swReg=r;r.update().catch(()=>{})}).catch(()=>{});
@@ -148,12 +201,12 @@ function setTipo(v){if(!TI[v])v='automatico';tipoAtual=v;const[,e,l]=TI[v];$('ti
 function menu(open){$('tipoMenu').classList.toggle('hide',!open);$('scrim').classList.toggle('hide',!open);$('tipoBtn').setAttribute('aria-expanded',open);$('tipoBtn').querySelector('.car').textContent=open?'▼':'▲'}
 $('tipoBtn').onclick=()=>menu($('tipoMenu').classList.contains('hide'));$('scrim').onclick=()=>menu(false);setTipo(tipoAtual);
 let curTab='gravar';try{curTab=sessionStorage.getItem('gravador_tab')||'gravar'}catch(_){}
-const VIEWS={gravar:'v-gravar',fila:'v-fila',hist:'v-hist',ajustes:'v-ajustes'};
+const VIEWS={gravar:'v-gravar',aprov:'v-aprov',fila:'v-fila',hist:'v-hist',ajustes:'v-ajustes'};
 function setTab(t){if(!VIEWS[t])t='gravar';curTab=t;try{sessionStorage.setItem('gravador_tab',t)}catch(_){}
  for(const[k,id]of Object.entries(VIEWS))$(id).classList.toggle('hide',k!==t);
  document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.t===t));
  $('tipoArea').classList.toggle('hide',!user||t!=='gravar');menu(false);scrollTo(0,0)}
-document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{setTab(b.dataset.t);if(b.dataset.t!=='gravar'&&b.dataset.t!=='ajustes')load()});
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{setTab(b.dataset.t);if(b.dataset.t!=='gravar'&&b.dataset.t!=='ajustes')load();else if(user)loadAprov()});
 const FN='https://gigkrjetrtbtdmdnqoof.supabase.co/functions/v1/voice-queue?action=trigger';let tt=null;
 function toast(m,k){const t=$('toast');t.textContent=m;t.className='g show '+(k||'');clearTimeout(tt);tt=setTimeout(()=>t.className='g',3500)}
 let pollT=null,pollEnd=0;
@@ -199,9 +252,72 @@ function itemEl(r){const li=document.createElement('li');li.className='item g';c
  li.querySelector('.ic').textContent=t[1];li.querySelector('.it').textContent=t[2];li.querySelector('.is').textContent=d+(r.duracao_s?' · '+r.duracao_s+'s':'');
  const tx=r.transcricao||r.erro||'';const x=li.querySelector('.tx');if(tx)x.textContent=tx;else x.remove();
  const st=li.querySelector('.st');st.classList.add(r.status);st.textContent=r.status;return li}
-async function load(){const{data,error}=await sb.from('voice_queue').select('id,created_at,tipo,status,duracao_s,transcricao,erro').order('created_at',{ascending:false}).limit(50);
+async function load(){loadAprov();loadHistP();const{data,error}=await sb.from('voice_queue').select('id,created_at,tipo,status,duracao_s,transcricao,erro').order('created_at',{ascending:false}).limit(50);
  const ul=$('list'),hl=$('hist');ul.innerHTML='';hl.innerHTML='';if(error){ul.textContent='Erro: '+error.message;return}
  const fila=data.filter(r=>r.status!=='processado'),hist=data.filter(r=>r.status==='processado');
  fila.forEach(r=>ul.appendChild(itemEl(r)));hist.forEach(r=>hl.appendChild(itemEl(r)));
  if(!fila.length)ul.innerHTML='<li class="empty">Nada na fila — tudo processado ✓</li>';if(!hist.length)hl.innerHTML='<li class="empty">Nenhum item processado ainda.</li>'}
+
+// ---- Aprovar (v15) ----
+const FNB='https://gigkrjetrtbtdmdnqoof.supabase.co/functions/v1/voice-queue';
+const PTIPOS=['Tarefa','Pauta','Reunião','Ideia','Nota'];
+const el=(t,c,txt)=>{const e=document.createElement(t);if(c)e.className=c;if(txt!=null)e.textContent=txt;return e};
+const cap=s=>s?String(s).charAt(0).toUpperCase()+String(s).slice(1):'';
+function fdata(d){if(!d)return'';const x=new Date(d+'T12:00:00');if(isNaN(x))return d;return x.toLocaleDateString('pt-BR',{weekday:'short'}).replace('.','')+', '+x.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}
+function rel(t){const m=Math.round((Date.now()-new Date(t))/60000);if(m<1)return'agora';if(m<60)return'há '+m+' min';const h=Math.round(m/60);if(h<24)return'há '+h+' h';return'há '+Math.round(h/24)+' d'}
+const mmss=s=>s?Math.floor(s/60)+':'+String(Math.round(s%60)).padStart(2,'0'):'';
+let props=[],aud=null,audBtn=null;
+async function playQ(q,btn){if(aud&&audBtn===btn){if(aud.paused){aud.play();btn.textContent='❚❚'}else{aud.pause();btn.textContent='▶'}return}
+ if(aud){aud.pause();if(audBtn)audBtn.textContent='▶'}aud=null;audBtn=btn;if(!q?.audio_path){toast('Sem áudio para esta proposta');return}
+ btn.textContent='…';const{data,error}=await sb.storage.from('voice-inbox').createSignedUrl(q.audio_path,600);if(error||!data?.signedUrl){btn.textContent='▶';toast('Áudio indisponível');return}
+ aud=new Audio(data.signedUrl);aud.onended=()=>{btn.textContent='▶'};aud.play().then(()=>btn.textContent='❚❚').catch(()=>{btn.textContent='▶';toast('Não foi possível tocar o áudio')})}
+function trxEl(p,full){const q=p.voice_queue;const w=el('div','trx');const b=el('button','play','▶');b.setAttribute('aria-label','Ouvir áudio');
+ b.onclick=e=>{e.stopPropagation();playQ(q,b)};if(!q?.audio_path)b.style.opacity='.45';
+ const t=p.transcricao||'';const tx=el('div','q',t?('“'+t+'”'):'Ver transcrição');const d=el('div','d',(mmss(q?.duracao_s)||'')+(t&&!full?' ▾':''));
+ w.append(b,tx,d);if(t&&!full){tx.textContent='Ver transcrição';w.onclick=()=>{const o=w.classList.toggle('open');tx.textContent=o?('“'+t+'”'):'Ver transcrição';d.textContent=(mmss(q?.duracao_s)||'')+(o?' ▴':' ▾')}}
+ if(full)w.classList.add('open');return w}
+function cardEl(p,i){const c=el('li','pc g');c.dataset.id=p.id;const top=el('div','top');top.append(el('span','tchip',cap(p.tipo)||'Item'),el('span','src','Hub Klain · '+rel(p.created_at)));
+ c.append(top,el('div','tt',p.titulo));if(p.descricao)c.append(el('div','ds',p.descricao));
+ const m=el('div','meta');if(p.responsavel)m.append(el('span',null,'👤 '+p.responsavel));if(p.prazo)m.append(el('span',null,'📅 '+fdata(p.prazo)));
+ if(p.projeto||p.etapa)m.append(el('span',null,'📁 '+[p.projeto,p.etapa].filter(Boolean).join(' › ')));if(m.children.length)c.append(m);
+ if(p.transcricao||p.voice_queue?.audio_path)c.append(trxEl(p,i===0&&!!p.transcricao));
+ const a=el('div','acts');const ok=el('button','b-ok','✓ Aprovar'),ed=el('button','b-ed','✎ Editar'),no=el('button','b-no','✕ Recusar');
+ ok.onclick=()=>decide([p.id],'aprovado',null,a);ed.onclick=()=>openSheet(p);no.onclick=()=>decide([p.id],'recusado',null,a);a.append(ok,ed,no);c.append(a);return c}
+function badge(n){const b=$('badge');b.textContent=n>9?'9+':n;b.classList.toggle('hide',!n)}
+async function loadAprov(){if(!user)return;const{data,error}=await sb.from('voice_proposals').select('*,voice_queue(audio_path,duracao_s)').eq('status','pendente').order('created_at',{ascending:true}).limit(50);
+ const ul=$('aprov');if(error){ul.innerHTML='';ul.append(el('li','empty','Erro: '+error.message));return}
+ props=data||[];badge(props.length);$('aprovH').textContent=props.length?('Aprovar · '+props.length+' pendente'+(props.length==1?'':'s')):'Aprovar';
+ $('aprovAll').classList.toggle('hide',props.length<2);
+ const playing=aud&&!aud.paused;if(playing&&curTab==='aprov')return; // don't re-render under an active player
+ ul.innerHTML='';if(!props.length){ul.append(el('li','empty','Nada para aprovar agora ✓\nQuando o Hub Klain preparar itens das suas gravações, eles aparecem aqui.'));ul.lastChild.style.whiteSpace='pre-line';return}
+ props.forEach((p,i)=>ul.appendChild(cardEl(p,i)))}
+async function loadHistP(){if(!user)return;const{data}=await sb.from('voice_proposals').select('id,created_at,decided_at,tipo,titulo,status,edited,hub_ref,erro').neq('status','pendente').order('decided_at',{ascending:false,nullsFirst:false}).limit(30);
+ const box=$('histP');box.innerHTML='';if(!data?.length)return;box.append(el('div','sub','Propostas'));const ul=el('ul');
+ data.forEach(p=>{const v={...p,...(p.edited||{})};const li=el('li','item g');const t=TI[(v.tipo||'').toLowerCase()];
+  const b=el('div','body');b.append(el('div','it',v.titulo),el('div','is',cap(v.tipo)+' · '+new Date(p.decided_at||p.created_at).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})));
+  if(p.erro)b.append(el('div','tx',p.erro));li.append(el('div','ic',t?t[1]:'📋'),b,el('span','st '+p.status,p.status));ul.append(li)});box.append(ul)}
+async function decide(ids,decision,fields,acts){if(acts)acts.querySelectorAll('button').forEach(b=>b.disabled=true);
+ try{const{data}=await sb.auth.getSession();const tok=data.session?.access_token;if(!tok)throw new Error('sessão expirada, entre novamente');
+  const r=await fetch(FNB+'?action=decide',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({ids,decision,fields:fields||undefined})});
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));
+  const n=(j.updated||[]).length;(j.updated||[]).forEach(id=>{const c=document.querySelector('#aprov li[data-id="'+id+'"]');if(c)c.remove()});if(n<ids.length)toast('Algumas já tinham sido decididas');toast(decision==='aprovado'?('✅ '+(n>1?n+' aprovadas':'Aprovada')+' — o Hub Klain vai criar'):'Proposta recusada')}
+ catch(e){toast('✗ '+e.message,'err');if(acts)acts.querySelectorAll('button').forEach(b=>b.disabled=false)}
+ await loadAprov();loadHistP()}
+$('aprovAll').onclick=()=>{if(props.length&&confirm('Aprovar as '+props.length+' propostas?'))decide(props.map(p=>p.id),'aprovado',null,null)};
+let shP=null,shT='';
+function setShTipo(v){shT=v;$('shTipo').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v.toLowerCase()===String(v).toLowerCase()))}
+function openSheet(p){shP=p;const opts=[...PTIPOS];if(p.tipo&&!opts.some(o=>o.toLowerCase()===p.tipo.toLowerCase()))opts.push(cap(p.tipo));
+ $('shTipo').innerHTML='';opts.forEach(o=>{const b=el('button',null,o);b.dataset.v=o;b.onclick=()=>setShTipo(o);$('shTipo').append(b)});setShTipo(cap(p.tipo)||'Tarefa');
+ $('shTit').value=p.titulo||'';$('shDesc').value=p.descricao||'';$('shResp').value=p.responsavel||'';$('shPrazo').value=p.prazo||'';$('shProj').value=p.projeto||'';$('shEtapa').value=p.etapa||'';
+ $('shTrx').innerHTML='';if(p.transcricao||p.voice_queue?.audio_path)$('shTrx').append(trxEl(p,true));
+ $('sheet').classList.remove('hide');$('sheetBg').classList.remove('hide')}
+function closeSheet(){$('sheet').classList.add('hide');$('sheetBg').classList.add('hide');shP=null;if(aud){aud.pause();if(audBtn)audBtn.textContent='▶';aud=null}}
+$('shCancel').onclick=closeSheet;$('sheetBg').onclick=closeSheet;
+$('shOk').onclick=async()=>{if(!shP)return;if(!$('shTit').value.trim()){toast('Informe um título','err');return}
+ const f={tipo:shT.toLowerCase(),titulo:$('shTit').value.trim(),descricao:$('shDesc').value.trim(),responsavel:$('shResp').value.trim(),prazo:$('shPrazo').value||null,projeto:$('shProj').value.trim(),etapa:$('shEtapa').value.trim()};
+ const ch={};for(const k in f){const o=k==='tipo'?(shP.tipo||'').toLowerCase():(shP[k]??'');if((f[k]??'')!==(o??''))ch[k]=f[k]}
+ const id=shP.id;closeSheet();await decide([id],'aprovado',Object.keys(ch).length?ch:null,null)};
+$('shNo').onclick=async()=>{if(!shP)return;const id=shP.id;closeSheet();await decide([id],'recusado',null,null)};
+setInterval(()=>{if(user&&!document.hidden&&!shP)loadAprov()},30000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&user)loadAprov()});
 </script></body></html>
