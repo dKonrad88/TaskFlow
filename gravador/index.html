@@ -1,32 +1,50 @@
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Gravador</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#e53935">
-<link rel="icon" href="icon.svg"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes">
+<title>Gravador</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#045ABF">
+<link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-body{margin:0;font-family:system-ui,sans-serif;background:#111;color:#eee;padding:16px;padding-top:max(16px,env(safe-area-inset-top))}
-h1{font-size:20px;margin:0 0 12px}.hide{display:none}input,select,button{font-size:17px;padding:10px;border-radius:10px;border:1px solid #444;background:#222;color:#eee}
-#rec{display:block;margin:28px auto;width:180px;height:180px;border-radius:50%;background:#e53935;border:none;font-size:20px;font-weight:600;color:#fff}
-#rec.on{background:#b71c1c;animation:p 1s infinite}@keyframes p{50%{transform:scale(.94)}}
-#timer{text-align:center;font-size:28px;font-variant-numeric:tabular-nums}.msg{text-align:center;color:#aaa;min-height:22px}
-ul{list-style:none;padding:0}li{background:#1c1c1c;border-radius:10px;padding:10px;margin:8px 0;font-size:14px}
-.st{float:right;padding:2px 8px;border-radius:8px;font-size:12px}.pendente{background:#555}.processando{background:#1565c0}.processado{background:#2e7d32}.erro{background:#c62828}
-.t{color:#bbb;margin-top:4px;white-space:pre-wrap}a{color:#90caf9}
-#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#333;color:#fff;padding:12px 18px;border-radius:12px;font-size:15px;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90%}#toast.show{opacity:1}#toast.ok{background:#2e7d32}#toast.err{background:#c62828}
-#now{display:block;margin:0 auto 8px;background:#1565c0;border-color:#1565c0}
-#tipos{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:4px}
-.chip{min-height:44px;padding:10px 16px;border-radius:999px;border:1px solid #444;background:#222;color:#ddd;font-size:16px;flex:0 1 auto}
-.chip[aria-pressed="true"]{background:#1565c0;border-color:#1565c0;color:#fff;font-weight:600}
+/* Tema Klain — página de login pública do Hub Klain (cores, logo, fundo) */
+:root{--k-brand:#045ABF;--k-primary:#0d6efd;--k-primary-h:#0b5ed7;--k-text:#212529;--k-muted:rgba(33,37,41,.75);--k-border:#dee2e6;--k-card:#f8f9fa;--k-success:#198754;--k-danger:#dc3545;--k-logo-blue:#009EE0;--k-logo-red:#E2001A;--k-r:.375rem;--k-r-lg:.5rem;
+ --k-font:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Liberation Sans",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"}
+*{box-sizing:border-box}
+html{background:var(--k-brand)}
+body{margin:0;min-height:100vh;font-family:var(--k-font);color:var(--k-text);line-height:1.5;background-color:var(--k-brand);background-image:url(bg.jpg);background-size:65%;background-repeat:no-repeat;background-position-y:-16em;padding:16px;padding-top:max(16px,env(safe-area-inset-top));padding-bottom:max(16px,env(safe-area-inset-bottom))}
+@media (max-width:600px){body{background-image:radial-gradient(ellipse 90% 45% at 50% 18%,#1f86f0 0%,rgba(4,90,191,0) 70%)}}
+.logo{display:block;margin:8px auto 12px;width:140px;height:auto}
+.ttl{text-align:center;color:#fff;font-size:18px;font-weight:500;margin:-8px 0 16px;letter-spacing:.3px}
+#login,#app{max-width:520px;margin:0 auto}
+.card{background:var(--k-card);border:1px solid var(--k-border);border-radius:var(--k-r-lg);padding:16px;margin-bottom:12px;box-shadow:0 .5rem 1rem rgba(0,0,0,.15)}
+.hide{display:none}
+input{font-family:inherit;font-size:17px;padding:.6rem .75rem;border-radius:var(--k-r);border:1px solid var(--k-border);background:#fff;color:var(--k-text);width:100%}
+input:focus{outline:none;border-color:#86b7fe;box-shadow:0 0 0 .25rem rgba(13,110,253,.25)}
+button{font-family:inherit;font-size:16px;padding:.375rem .75rem;border-radius:var(--k-r);border:1px solid var(--k-primary);background:#fff;color:var(--k-primary);cursor:pointer}
+#send,#now{background:var(--k-primary);border-color:var(--k-primary);color:#fff;font-size:1.25rem;padding:.5rem 1rem;border-radius:var(--k-r-lg);width:100%;font-weight:500}
+#send:active,#now:active{background:var(--k-primary-h);border-color:#0a58ca}
+button:disabled{opacity:.65}
+#rec{display:block;margin:20px auto 8px;width:170px;height:170px;border-radius:50%;background:var(--k-primary);border:6px solid #fff;box-shadow:0 0 0 2px var(--k-primary),0 8px 20px rgba(13,110,253,.35);font-size:20px;font-weight:700;color:#fff}
+#rec.on{background:var(--k-danger);box-shadow:0 0 0 2px var(--k-danger),0 8px 20px rgba(220,53,69,.35);animation:p 1s infinite}@keyframes p{50%{transform:scale(.94)}}
+#timer{text-align:center;font-size:28px;font-variant-numeric:tabular-nums}.msg{text-align:center;color:var(--k-muted);min-height:22px;margin:8px 0 0}
+h2{font-size:16px;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+ul{list-style:none;padding:0;margin:0}li{background:#fff;border:1px solid var(--k-border);border-radius:var(--k-r-lg);padding:10px 12px;margin:8px 0;font-size:14px}
+.st{float:right;padding:.2em .65em;border-radius:50rem;font-size:12px;font-weight:700;color:#fff}
+.pendente{background:#6c757d}.processando{background:var(--k-primary)}.processado{background:var(--k-success)}.erro{background:var(--k-danger)}
+.t{color:var(--k-muted);margin-top:4px;white-space:pre-wrap}a{color:#fff}
+#ref{font-size:13px;padding:2px 10px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--k-text);color:#fff;padding:12px 18px;border-radius:var(--k-r-lg);font-size:15px;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90%}#toast.show{opacity:1}#toast.ok{background:var(--k-success)}#toast.err{background:var(--k-danger)}
+#tipos{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.chip{min-height:44px;padding:10px 16px;border-radius:50rem;border:1.5px solid var(--k-primary);background:#fff;color:var(--k-primary);font-size:16px;flex:0 1 auto}
+.chip[aria-pressed="true"]{background:var(--k-primary);color:#fff;font-weight:600}
 </style></head><body>
-<h1>🎙️ Gravador</h1>
-<div id="login" class="hide"><p>Entre com seu e-mail e senha.</p>
+<img class="logo" src="logo.png" alt="Klain"><div class="ttl">🎙️ Gravador</div>
+<div id="login" class="hide"><div class="card"><p style="margin-top:0">Entre com seu e-mail e senha.</p>
 <form id="lform" onsubmit="return false"><input id="email" type="email" autocomplete="username" value="konraddiego@gmail.com" style="width:100%;box-sizing:border-box"><br><br>
 <input id="pw" type="password" autocomplete="current-password" placeholder="senha" style="width:100%;box-sizing:border-box"><br><br>
-<button id="send" type="submit">Entrar</button></form><p id="lmsg" class="msg"></p></div>
+<button id="send" type="submit">Entrar</button></form><p id="lmsg" class="msg"></p></div></div>
 <div id="app" class="hide">
-<div id="tipos" role="group" aria-label="Tipo da gravação">
+<div class="card"><div id="tipos" role="group" aria-label="Tipo da gravação">
 <button type="button" class="chip" data-v="automatico" aria-pressed="true">automático</button><button type="button" class="chip" data-v="tarefa" aria-pressed="false">tarefa</button><button type="button" class="chip" data-v="compromisso" aria-pressed="false">compromisso</button><button type="button" class="chip" data-v="nota" aria-pressed="false">nota</button><button type="button" class="chip" data-v="rotina" aria-pressed="false">rotina</button></div>
 <button id="rec">Gravar</button><div id="timer">0:00</div><p id="msg" class="msg"></p>
-<button id="now">📤 Enviar agora</button>
-<h2 style="font-size:16px">Recentes <button id="ref" style="font-size:13px;padding:4px 8px">atualizar</button></h2><ul id="list"></ul>
+<button id="now">📤 Enviar agora</button></div>
+<div class="card"><h2>Recentes <button id="ref">atualizar</button></h2><ul id="list"></ul></div>
 <p style="text-align:center"><a href="#" id="out">sair</a></p></div>
 <div id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
