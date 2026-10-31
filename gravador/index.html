@@ -10,6 +10,8 @@ h1{font-size:20px;margin:0 0 12px}.hide{display:none}input,select,button{font-si
 ul{list-style:none;padding:0}li{background:#1c1c1c;border-radius:10px;padding:10px;margin:8px 0;font-size:14px}
 .st{float:right;padding:2px 8px;border-radius:8px;font-size:12px}.pendente{background:#555}.processando{background:#1565c0}.processado{background:#2e7d32}.erro{background:#c62828}
 .t{color:#bbb;margin-top:4px;white-space:pre-wrap}a{color:#90caf9}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#333;color:#fff;padding:12px 18px;border-radius:12px;font-size:15px;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90%}#toast.show{opacity:1}#toast.ok{background:#2e7d32}#toast.err{background:#c62828}
+#now{display:block;margin:0 auto 8px;background:#1565c0;border-color:#1565c0}
 </style></head><body>
 <h1>🎙️ Gravador</h1>
 <div id="login" class="hide"><p>Entre com seu e-mail para receber o link de acesso.</p>
@@ -18,8 +20,10 @@ ul{list-style:none;padding:0}li{background:#1c1c1c;border-radius:10px;padding:10
 <div id="app" class="hide">
 <label>Tipo: <select id="tipo"><option value="automatico">automático</option><option value="tarefa">tarefa</option><option value="compromisso">compromisso</option><option value="nota">nota</option><option value="rotina">rotina</option></select></label>
 <button id="rec">Gravar</button><div id="timer">0:00</div><p id="msg" class="msg"></p>
+<button id="now">📤 Enviar agora</button>
 <h2 style="font-size:16px">Recentes <button id="ref" style="font-size:13px;padding:4px 8px">atualizar</button></h2><ul id="list"></ul>
 <p style="text-align:center"><a href="#" id="out">sair</a></p></div>
+<div id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const ALLOWED='konraddiego@gmail.com';
@@ -35,6 +39,14 @@ $('send').onclick=async()=>{const e=$('email').value.trim().toLowerCase();
  $('lmsg').textContent='Enviando…';const{error}=await sb.auth.signInWithOtp({email:e,options:{shouldCreateUser:false,emailRedirectTo:location.origin+location.pathname}});
  $('lmsg').textContent=error?('Erro: '+error.message):'Link enviado! Abra o e-mail neste aparelho.'};
 $('out').onclick=e=>{e.preventDefault();sb.auth.signOut()};$('ref').onclick=()=>load();
+const FN='https://gigkrjetrtbtdmdnqoof.supabase.co/functions/v1/voice-queue?action=trigger';let tt=null;
+function toast(m,k){const t=$('toast');t.textContent=m;t.className='show '+(k||'');clearTimeout(tt);tt=setTimeout(()=>t.className='',3500)}
+async function enviarAgora(auto){const b=$('now');b.disabled=true;try{const{data}=await sb.auth.getSession();const tok=data.session?.access_token;if(!tok)throw new Error('sessão expirada');
+ const r=await fetch(FN,{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:'{}'});const j=await r.json().catch(()=>({}));
+ if(r.ok&&j.skipped){if(!auto)toast('Já acionado há pouco — aguarde '+(j.wait_s||20)+'s','')}
+ else if(r.ok)toast('🚀 Hub Klain acionado'+(j.pending!=null?' ('+j.pending+' pendente'+(j.pending==1?'':'s')+')':''),'ok');
+ else toast('Erro ao acionar ('+r.status+')','err')}catch(e){toast('Erro: '+e.message,'err')}finally{b.disabled=false}}
+$('now').onclick=()=>enviarAgora(false);
 function pickMime(){for(const m of['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/aac','audio/ogg;codecs=opus'])if(window.MediaRecorder&&MediaRecorder.isTypeSupported(m))return m;return''}
 $('rec').onclick=async()=>{if(mr&&mr.state==='recording'){mr.stop();return}
  try{const st=await navigator.mediaDevices.getUserMedia({audio:true});const m=pickMime();mr=new MediaRecorder(st,m?{mimeType:m}:{});chunks=[];
@@ -46,7 +58,7 @@ async function upload(dur){const mime=(mr.mimeType||chunks[0]?.type||'audio/webm
  const blob=new Blob(chunks,{type:mime});const path=`${user.id}/${new Date().toISOString().replace(/[:.]/g,'-')}.${ext}`;$('msg').textContent='Enviando…';
  let{error}=await sb.storage.from('voice-inbox').upload(path,blob,{contentType:mime});
  if(!error)({error}=await sb.from('voice_queue').insert({user_id:user.id,tipo:$('tipo').value,audio_path:path,mime,duracao_s:Math.round(dur*10)/10}));
- $('msg').textContent=error?('Erro: '+error.message):'✅ Enviado para a fila';$('timer').textContent='0:00';load()}
+ $('msg').textContent=error?('Erro: '+error.message):'✅ Enviado para a fila';$('timer').textContent='0:00';load();if(!error)enviarAgora(true)}
 async function load(){const{data,error}=await sb.from('voice_queue').select('id,created_at,tipo,status,duracao_s,transcricao,erro').order('created_at',{ascending:false}).limit(20);
  const ul=$('list');ul.innerHTML='';if(error){ul.textContent='Erro: '+error.message;return}
  for(const r of data){const li=document.createElement('li');const d=new Date(r.created_at).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
