@@ -2,7 +2,7 @@
 <title>Gravador</title><link rel="manifest" href="manifest.json?v=11"><meta name="theme-color" content="#045ABF">
 <link rel="icon" href="favicon.ico?v=11" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=11"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=11"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-/* Gravador v13 — liquid glass (iOS 26) com a marca Klain */
+/* Gravador v14 — liquid glass (iOS 26) com a marca Klain */
 :root{--brand:#045ABF;--p:#0d6efd;--ok:#19c86e;--err:#ff465a;--txt:#fff;--mut:rgba(255,255,255,.72);
  --font:-apple-system,"SF Pro Display","SF Pro Text",system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
  --sat:env(safe-area-inset-top);--sab:env(safe-area-inset-bottom)}
@@ -89,9 +89,9 @@ ul{list-style:none;padding:0;margin:0}
 <header class="hdr" aria-hidden="true"><img src="logo.png" alt="Klain"><b>Gravador</b></header>
 <main>
 <div id="login" class="hide"><div class="card g"><p>Entre com seu e-mail e senha.</p>
-<form id="lform" onsubmit="return false"><input id="email" type="email" autocomplete="username" value="konraddiego@gmail.com">
+<form id="lform" onsubmit="return false"><input id="email" type="email" autocomplete="username" placeholder="seu e-mail">
 <input id="pw" type="password" autocomplete="current-password" placeholder="senha">
-<button id="send" class="btn" type="submit">Entrar</button></form><p id="lmsg" class="msg"></p></div><p class="ver">Gravador v13</p></div>
+<button id="send" class="btn" type="submit">Entrar</button></form><p id="lmsg" class="msg"></p></div><p class="ver">Gravador v14</p></div>
 <div id="app" class="hide">
 <section id="v-gravar" class="view" role="tabpanel">
 <div id="recrow"><button id="disc" class="g hide" aria-label="Descartar gravação"><span class="x">✕</span><small>Descartar</small></button><button id="rec" class="g" aria-label="Gravar"><div class="in"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3" fill="#fff"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><div class="sq"></div></div></button></div>
@@ -105,7 +105,7 @@ ul{list-style:none;padding:0;margin:0}
 <section id="v-ajustes" class="view hide" role="tabpanel"><h3>Conta</h3>
 <div class="row g"><span>E-mail</span><span id="acct"></span></div>
 <div class="row g"><span>Tipo padrão</span><span id="tipoAj"></span></div>
-<div class="row g"><span>Versão</span><span>Gravador v13</span></div>
+<div class="row g"><span>Versão</span><span>Gravador v14</span></div>
 <button id="upd" class="btn" style="margin:14px 0 10px">🔄 Verificar atualização</button>
 <button id="out" class="btn danger">Sair</button></section>
 </div></main>
@@ -117,24 +117,26 @@ ul{list-style:none;padding:0;margin:0}
 <div id="toast" class="g"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const ALLOWED='konraddiego@gmail.com';
+const ALLOWED=['konraddiego@gmail.com','debiandrade8@gmail.com'];
 const sb=supabase.createClient('https://gigkrjetrtbtdmdnqoof.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdpZ2tyamV0cnRidGRtZG5xb29mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5MzI2MzUsImV4cCI6MjA5NzUwODYzNX0.XSeJtNUOh2_DHjat4QL9Lae6PwqflSagvDj9mXL75cA',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});
 const $=id=>document.getElementById(id);let user=null,mr=null,chunks=[],t0=0,tick=null;
-const APP_VERSION='v13';let swReg=null;
+try{$('email').value=localStorage.getItem('gravador_email')||''}catch(_){}
+const APP_VERSION='v14';let swReg=null;
 if('serviceWorker'in navigator){const hadCtl=!!navigator.serviceWorker.controller;let reloaded=false;
  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadCtl||reloaded)return;reloaded=true;location.reload()});
  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{swReg=r;r.update().catch(()=>{})}).catch(()=>{});
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){checkUpdate();if(user)load()}})}
 function checkUpdate(){if(swReg)swReg.update().catch(()=>{})}
 async function show(s){user=s?.user||null;
- if(user&&user.email?.toLowerCase()!==ALLOWED){await sb.auth.signOut();user=null;$('lmsg').textContent='E-mail não autorizado.'}
+ if(user&&!ALLOWED.includes(user.email?.toLowerCase())){await sb.auth.signOut();user=null;$('lmsg').textContent='E-mail não autorizado.'}
  $('login').classList.toggle('hide',!!user);['app','tabs'].forEach(i=>$(i).classList.toggle('hide',!user));$('acct').textContent=user?user.email:'';setTab(curTab);if(user)load()}
 sb.auth.onAuthStateChange((_e,s)=>show(s));sb.auth.getSession().then(({data})=>show(data.session));
 $('send').onclick=async()=>{const e=$('email').value.trim().toLowerCase(),password=$('pw').value;
- if(e!==ALLOWED){$('lmsg').textContent='E-mail não autorizado.';return}
+ if(!ALLOWED.includes(e)){$('lmsg').textContent='E-mail não autorizado.';return}
  if(!password){$('lmsg').textContent='Digite sua senha.';return}
  $('lmsg').textContent='Entrando…';const{error}=await sb.auth.signInWithPassword({email:e,password});
  if(error){$('lmsg').textContent=/invalid/i.test(error.message)?'E-mail ou senha incorretos':('Erro: '+error.message);return}
+ try{localStorage.setItem('gravador_email',e)}catch(_){}
  $('lmsg').textContent='';$('pw').value=''};
 $('out').onclick=e=>{e.preventDefault();sb.auth.signOut()};$('ref').onclick=()=>load();$('ref2').onclick=()=>load();$('upd').onclick=()=>{checkUpdate();toast('Verificando atualização…')};
 const TIPOS=[['automatico','🤖','Automático'],['tarefa','✅','Tarefa'],['compromisso','📅','Compromisso'],['nota','🗒️','Nota'],['rotina','🔁','Rotina']];
@@ -164,7 +166,8 @@ async function enviarAgora(auto){const b=$('now');b.disabled=true;sendCard('<spa
  try{const{data}=await sb.auth.getSession();const tok=data.session?.access_token;if(!tok)throw new Error('sessão expirada, entre novamente');
  const r=await fetch(FN,{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:'{}'});const j=await r.json().catch(()=>({}));
  const quando='Enviado às '+hhmm(new Date());const n=j.pending??0;
- if(r.ok&&j.skipped){sendCard('⏱️ Já enviado há instantes — o Hub Klain já foi avisado. <small>'+quando.replace('Enviado','Verificado')+'</small>','');startPoll()}
+ if(r.ok&&j.webhook===false){sendCard('✓ Na fila — '+n+' áudio'+(n==1?'':'s')+' aguardando processamento. <small>'+quando.replace('Enviado','Verificado')+'</small>','ok');startPoll()}
+ else if(r.ok&&j.skipped){sendCard('⏱️ Já enviado há instantes — o Hub Klain já foi avisado. <small>'+quando.replace('Enviado','Verificado')+'</small>','');startPoll()}
  else if(r.ok&&n===0){sendCard('✓ Nada pendente — a fila está vazia. <small>'+quando+'</small>','ok');startPoll()}
  else if(r.ok){sendCard('✓ Enviado ao Hub Klain — '+n+' áudio'+(n==1?'':'s')+' pendente'+(n==1?'':'s')+' na fila. <small>'+quando+'</small>','ok');startPoll()}
  else sendCard('✗ Erro ao enviar ao Hub Klain ('+r.status+(j.error?': '+j.error:'')+'). Tente de novo.','err')}
