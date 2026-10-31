@@ -12,6 +12,9 @@ ul{list-style:none;padding:0}li{background:#1c1c1c;border-radius:10px;padding:10
 .t{color:#bbb;margin-top:4px;white-space:pre-wrap}a{color:#90caf9}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#333;color:#fff;padding:12px 18px;border-radius:12px;font-size:15px;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90%}#toast.show{opacity:1}#toast.ok{background:#2e7d32}#toast.err{background:#c62828}
 #now{display:block;margin:0 auto 8px;background:#1565c0;border-color:#1565c0}
+#tipos{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:4px}
+.chip{min-height:44px;padding:10px 16px;border-radius:999px;border:1px solid #444;background:#222;color:#ddd;font-size:16px;flex:0 1 auto}
+.chip[aria-pressed="true"]{background:#1565c0;border-color:#1565c0;color:#fff;font-weight:600}
 </style></head><body>
 <h1>🎙️ Gravador</h1>
 <div id="login" class="hide"><p>Entre com seu e-mail e senha.</p>
@@ -19,7 +22,8 @@ ul{list-style:none;padding:0}li{background:#1c1c1c;border-radius:10px;padding:10
 <input id="pw" type="password" autocomplete="current-password" placeholder="senha" style="width:100%;box-sizing:border-box"><br><br>
 <button id="send" type="submit">Entrar</button></form><p id="lmsg" class="msg"></p></div>
 <div id="app" class="hide">
-<label>Tipo: <select id="tipo"><option value="automatico">automático</option><option value="tarefa">tarefa</option><option value="compromisso">compromisso</option><option value="nota">nota</option><option value="rotina">rotina</option></select></label>
+<div id="tipos" role="group" aria-label="Tipo da gravação">
+<button type="button" class="chip" data-v="automatico" aria-pressed="true">automático</button><button type="button" class="chip" data-v="tarefa" aria-pressed="false">tarefa</button><button type="button" class="chip" data-v="compromisso" aria-pressed="false">compromisso</button><button type="button" class="chip" data-v="nota" aria-pressed="false">nota</button><button type="button" class="chip" data-v="rotina" aria-pressed="false">rotina</button></div>
 <button id="rec">Gravar</button><div id="timer">0:00</div><p id="msg" class="msg"></p>
 <button id="now">📤 Enviar agora</button>
 <h2 style="font-size:16px">Recentes <button id="ref" style="font-size:13px;padding:4px 8px">atualizar</button></h2><ul id="list"></ul>
@@ -42,6 +46,10 @@ $('send').onclick=async()=>{const e=$('email').value.trim().toLowerCase(),passwo
  if(error){$('lmsg').textContent=/invalid/i.test(error.message)?'E-mail ou senha incorretos':('Erro: '+error.message);return}
  $('lmsg').textContent='';$('pw').value=''};
 $('out').onclick=e=>{e.preventDefault();sb.auth.signOut()};$('ref').onclick=()=>load();
+let tipoAtual='automatico';try{tipoAtual=localStorage.getItem('gravador_tipo')||'automatico'}catch(_){}
+function setTipo(v){if(!document.querySelector('.chip[data-v="'+v+'"]'))v='automatico';tipoAtual=v;
+ document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c.dataset.v===v?'true':'false'));try{localStorage.setItem('gravador_tipo',v)}catch(_){}}
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>setTipo(c.dataset.v));setTipo(tipoAtual);
 const FN='https://gigkrjetrtbtdmdnqoof.supabase.co/functions/v1/voice-queue?action=trigger';let tt=null;
 function toast(m,k){const t=$('toast');t.textContent=m;t.className='show '+(k||'');clearTimeout(tt);tt=setTimeout(()=>t.className='',3500)}
 async function enviarAgora(auto){const b=$('now');b.disabled=true;try{const{data}=await sb.auth.getSession();const tok=data.session?.access_token;if(!tok)throw new Error('sessão expirada');
@@ -60,7 +68,7 @@ $('rec').onclick=async()=>{if(mr&&mr.state==='recording'){mr.stop();return}
 async function upload(dur){const mime=(mr.mimeType||chunks[0]?.type||'audio/webm').split(';')[0];const ext=mime.includes('mp4')||mime.includes('aac')?'m4a':mime.includes('ogg')?'ogg':'webm';
  const blob=new Blob(chunks,{type:mime});const path=`${user.id}/${new Date().toISOString().replace(/[:.]/g,'-')}.${ext}`;$('msg').textContent='Enviando…';
  let{error}=await sb.storage.from('voice-inbox').upload(path,blob,{contentType:mime});
- if(!error)({error}=await sb.from('voice_queue').insert({user_id:user.id,tipo:$('tipo').value,audio_path:path,mime,duracao_s:Math.round(dur*10)/10}));
+ if(!error)({error}=await sb.from('voice_queue').insert({user_id:user.id,tipo:tipoAtual,audio_path:path,mime,duracao_s:Math.round(dur*10)/10}));
  $('msg').textContent=error?('Erro: '+error.message):'✅ Enviado para a fila';$('timer').textContent='0:00';load();if(!error)enviarAgora(true)}
 async function load(){const{data,error}=await sb.from('voice_queue').select('id,created_at,tipo,status,duracao_s,transcricao,erro').order('created_at',{ascending:false}).limit(20);
  const ul=$('list');ul.innerHTML='';if(error){ul.textContent='Erro: '+error.message;return}
