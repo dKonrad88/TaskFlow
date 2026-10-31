@@ -3,7 +3,7 @@
    - sw.js nunca é cacheado aqui; registrado com updateViaCache:'none'.
    - Supabase/CDNs (outra origem): não passam pelo SW.
    - Demais arquivos da mesma pasta: stale-while-revalidate. */
-const C='gravador-v10',A=['./','index.html','manifest.json','icon-192.png','icon-512.png','icon-512-maskable.png','logo.png','bg.jpg'];
+const C='gravador-v11',A=['./','index.html','manifest.json','icon-192.png','icon-512.png','icon-512-maskable.png','apple-touch-icon.png','favicon.ico','favicon-32.png','logo.png','bg.jpg'];
 self.addEventListener('message',e=>{if(e.data&&e.data.type==='SKIP_WAITING')self.skipWaiting()});
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>Promise.all(A.map(u=>c.add(new Request(u,{cache:'reload'})).catch(()=>{})))).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C&&x.indexOf('gravador-')===0).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
