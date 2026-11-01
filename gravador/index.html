@@ -2,7 +2,7 @@
 <title>Gravador</title><link rel="manifest" href="manifest.json?v=11"><meta name="theme-color" content="#045ABF">
 <link rel="icon" href="favicon.ico?v=11" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=11"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=11"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-/* Gravador v17 — liquid glass (iOS 26) com a marca Klain */
+/* Gravador v18 — liquid glass (iOS 26) com a marca Klain */
 :root{--brand:#045ABF;--p:#0d6efd;--ok:#19c86e;--err:#ff465a;--txt:#fff;--mut:rgba(255,255,255,.72);
  --font:-apple-system,"SF Pro Display","SF Pro Text",system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
  --sat:env(safe-area-inset-top);--sab:env(safe-area-inset-bottom)}
@@ -88,22 +88,24 @@ ul{list-style:none;padding:0;margin:0}
 .badge{position:absolute;top:1px;left:calc(50% + 4px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#ff3b30;color:#fff;font-size:11px;font-weight:700;line-height:18px;display:inline-block!important;box-shadow:0 0 0 2px rgba(255,255,255,.85)}.badge.hide{display:none!important}
 .ahead{display:flex;justify-content:space-between;align-items:center;margin:0 4px 12px}
 .ahead h3{margin:0}
-.pc{border-radius:26px;padding:16px;margin-bottom:14px}
-.pc .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.tchip{font-size:12px;font-weight:700;padding:4px 11px;border-radius:12px;background:rgba(13,110,253,.65);border:1px solid rgba(255,255,255,.45)}
-.pc .src{font-size:12px;opacity:.7}
-.pc .tt{font-size:18px;font-weight:700;margin:2px 0 4px;line-height:1.25}
-.pc .ds{font-size:14px;opacity:.88;line-height:1.35;white-space:pre-wrap}
-.pc .meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;opacity:.85;margin-top:10px}
+.pc{border-radius:24px;padding:14px 16px 16px;margin-bottom:12px}
+.pc .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
+.tchip{font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px;background:rgba(13,110,253,.65);border:1px solid rgba(255,255,255,.45)}
+.pc .edl{margin-left:auto;background:none;border:0;padding:4px 0;font-family:inherit;font-size:12.5px;font-weight:600;color:#fff;cursor:pointer}
+.pc .edl:active{opacity:.7}
+.pc .kv{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:13.5px;line-height:1.35}
+.pc .kv .k{flex:none;color:rgba(255,255,255,.68);white-space:nowrap}
+.pc .kv .v{font-weight:600;text-align:right;min-width:0;overflow-wrap:anywhere}
+.pc .kv.d{display:block;border-bottom:0;padding-bottom:2px}
+.pc .kv.d .v{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden;text-align:left;font-weight:400;margin-top:3px;color:rgba(255,255,255,.92)}
 .trx{display:flex;align-items:center;gap:10px;margin-top:12px;padding:8px 12px 8px 8px;border-radius:16px;background:rgba(0,30,80,.28);cursor:pointer}
 .play{width:30px;height:30px;border-radius:50%;flex:none;background:#fff;color:var(--p);border:0;display:grid;place-items:center;font-size:12px;cursor:pointer;padding:0}
 .trx .q{flex:1;font-size:13px;font-style:italic;opacity:.9;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .trx.open .q{display:block;-webkit-line-clamp:unset}
 .trx .d{font-size:12px;opacity:.7;flex:none}
-.acts{display:flex;gap:8px;margin-top:14px}
+.acts{display:flex;gap:8px;margin-top:12px}
 .acts button{flex:1;border-radius:20px;padding:11px 6px;font-family:inherit;font-weight:700;font-size:14px;color:#fff;cursor:pointer;border:1px solid rgba(255,255,255,.4)}
 .b-ok{background:linear-gradient(180deg,#3b8bff,#0d6efd);box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
-.b-ed{background:rgba(255,255,255,.16)}
 .b-no{background:rgba(255,70,90,.25);color:#ffd0d6!important}
 .acts button:disabled{opacity:.5}
 #sheetBg{position:fixed;inset:0;background:rgba(0,20,60,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:40}
@@ -146,7 +148,7 @@ ul{list-style:none;padding:0;margin:0}
 <div id="login" class="hide"><div class="card g"><p>Entre com seu e-mail e senha.</p>
 <form id="lform" onsubmit="return false"><input id="email" type="email" autocomplete="username" placeholder="seu e-mail">
 <input id="pw" type="password" autocomplete="current-password" placeholder="senha">
-<button id="send" class="btn" type="submit">Entrar</button></form><p id="lmsg" class="msg"></p></div><p class="ver">Gravador v17</p></div>
+<button id="send" class="btn" type="submit">Entrar</button></form><p id="lmsg" class="msg"></p></div><p class="ver">Gravador v18</p></div>
 <div id="app" class="hide">
 <section id="v-gravar" class="view" role="tabpanel">
 <div id="recrow"><button id="disc" class="g hide" aria-label="Descartar gravação"><span class="x">✕</span><small>Descartar</small></button><button id="rec" class="g" aria-label="Gravar"><div class="in"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3" fill="#fff"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><div class="sq"></div></div></button></div>
@@ -163,7 +165,7 @@ ul{list-style:none;padding:0;margin:0}
 <div class="row g"><span>Tipo padrão</span><span id="tipoAj"></span></div>
 <h3>Hub</h3>
 <div class="row g swrow"><span class="lbl"><b>Aprovar antes de enviar ao Hub</b><small>Ligado, você confirma cada item. Desligado, o Hub cria direto.</small></span><label class="sw"><input id="aprovarAntes" type="checkbox" role="switch" checked disabled aria-label="Aprovar antes de enviar ao Hub"><i></i></label></div>
-<div class="row g"><span>Versão</span><span>Gravador v17</span></div>
+<div class="row g"><span>Versão</span><span>Gravador v18</span></div>
 <button id="upd" class="btn" style="margin:14px 0 10px">🔄 Verificar atualização</button>
 <button id="out" class="btn danger">Sair</button></section>
 </div></main>
@@ -189,7 +191,7 @@ const ALLOWED=['konraddiego@gmail.com','debiandrade8@gmail.com'];
 const sb=supabase.createClient('https://gigkrjetrtbtdmdnqoof.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdpZ2tyamV0cnRidGRtZG5xb29mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5MzI2MzUsImV4cCI6MjA5NzUwODYzNX0.XSeJtNUOh2_DHjat4QL9Lae6PwqflSagvDj9mXL75cA',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});
 const $=id=>document.getElementById(id);let user=null,mr=null,chunks=[],t0=0,tick=null;
 try{$('email').value=localStorage.getItem('gravador_email')||''}catch(_){}
-const APP_VERSION='v17';let swReg=null;
+const APP_VERSION='v18';let swReg=null;
 if('serviceWorker'in navigator){const hadCtl=!!navigator.serviceWorker.controller;let reloaded=false;
  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadCtl||reloaded)return;reloaded=true;location.reload()});
  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{swReg=r;r.update().catch(()=>{})}).catch(()=>{});
@@ -273,13 +275,12 @@ async function load(){const aprov=loadAprov(),histp=loadHistP(),pref=loadPref();
  const hl=$('hist');hl.innerHTML='';if(error){hl.innerHTML='<li class="empty"></li>';hl.firstChild.textContent='Erro: '+error.message;return}
  (data||[]).forEach(r=>hl.appendChild(itemEl(r)));if(!data?.length)hl.innerHTML='<li class="empty">Nenhum item processado ainda.</li>'}
 
-// ---- Aprovar (v16) ----
+// ---- Aprovar (v18) ----
 const FNB='https://gigkrjetrtbtdmdnqoof.supabase.co/functions/v1/voice-queue';
 const PTIPOS=['Tarefa','Pauta','Reunião','Ideia','Nota'];
 const el=(t,c,txt)=>{const e=document.createElement(t);if(c)e.className=c;if(txt!=null)e.textContent=txt;return e};
 const cap=s=>s?String(s).charAt(0).toUpperCase()+String(s).slice(1):'';
-function fdata(d){if(!d)return'';const x=new Date(d+'T12:00:00');if(isNaN(x))return d;return x.toLocaleDateString('pt-BR',{weekday:'short'}).replace('.','')+', '+x.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}
-function rel(t){const m=Math.round((Date.now()-new Date(t))/60000);if(m<1)return'agora';if(m<60)return'há '+m+' min';const h=Math.round(m/60);if(h<24)return'há '+h+' h';return'há '+Math.round(h/24)+' d'}
+function showVal(v){if(Array.isArray(v))return v.map(x=>x==null?'':String(x).trim()).filter(Boolean).join(', ');if(v==null)return'';const s=String(v).trim();const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s);return m?m[3]+'/'+m[2]+'/'+m[1]:s}
 const mmss=s=>s?Math.floor(s/60)+':'+String(Math.round(s%60)).padStart(2,'0'):'';
 let props=[],aud=null,audBtn=null;
 async function playQ(q,btn){if(aud&&audBtn===btn){if(aud.paused){aud.play();btn.textContent='❚❚'}else{aud.pause();btn.textContent='▶'}return}
@@ -291,13 +292,12 @@ function trxEl(p,full){const q=p.voice_queue;const w=el('div','trx');const b=el(
  const t=p.transcricao||'';const tx=el('div','q',t?('“'+t+'”'):'Ver transcrição');const d=el('div','d',(mmss(q?.duracao_s)||'')+(t&&!full?' ▾':''));
  w.append(b,tx,d);if(t&&!full){tx.textContent='Ver transcrição';w.onclick=()=>{const o=w.classList.toggle('open');tx.textContent=o?('“'+t+'”'):'Ver transcrição';d.textContent=(mmss(q?.duracao_s)||'')+(o?' ▴':' ▾')}}
  if(full)w.classList.add('open');return w}
-function cardEl(p,i){const c=el('li','pc g');c.dataset.id=p.id;const top=el('div','top');top.append(el('span','tchip',cap(p.tipo)||'Item'),el('span','src','Hub Klain · '+rel(p.created_at)));
- c.append(top,el('div','tt',p.titulo));if(p.descricao)c.append(el('div','ds',p.descricao));
- const m=el('div','meta');if(p.responsavel)m.append(el('span',null,'👤 '+p.responsavel));if(p.prazo)m.append(el('span',null,'📅 '+fdata(p.prazo)));
- if(p.projeto||p.etapa)m.append(el('span',null,'📁 '+[p.projeto,p.etapa].filter(Boolean).join(' › ')));if(m.children.length)c.append(m);
- if(p.transcricao||p.voice_queue?.audio_path)c.append(trxEl(p,i===0&&!!p.transcricao));
- const a=el('div','acts');const ok=el('button','b-ok','✓ Aprovar'),ed=el('button','b-ed','✎ Editar'),no=el('button','b-no','✕ Recusar');
- ok.onclick=()=>decide([p.id],'aprovado',null,a);ed.onclick=()=>openSheet(p);no.onclick=()=>decide([p.id],'recusado',null,a);a.append(ok,ed,no);c.append(a);return c}
+function cardEl(p){const c=el('li','pc g');c.dataset.id=p.id;const ex=(p.extra&&typeof p.extra==='object'&&!Array.isArray(p.extra))?p.extra:{};
+ const top=el('div','top');top.append(el('span','tchip',cap(p.tipo)||'Item'));const ed=el('button','edl','✎ Editar');ed.type='button';ed.onclick=()=>openSheet(p);top.append(ed);c.append(top);
+ [['Tarefa',p.titulo],['Solicitante',ex.solicitante],['Executor',p.responsavel],['Em cópia',ex.em_copia],['Início',ex.inicio],['Vencimento',p.prazo]].forEach(([k,v])=>{const s=showVal(v);if(!s)return;const r=el('div','kv');r.append(el('span','k',k),el('b','v',s));c.append(r)});
+ const desc=showVal(p.descricao);if(desc){const r=el('div','kv d');r.append(el('span','k','Descrição'),el('b','v',desc));c.append(r)}
+ const a=el('div','acts');const ok=el('button','b-ok','✓ Aprovar'),no=el('button','b-no','✕ Recusar');ok.type='button';no.type='button';
+ ok.onclick=()=>decide([p.id],'aprovado',null,a);no.onclick=()=>decide([p.id],'recusado',null,a);a.append(ok,no);c.append(a);return c}
 function badge(n){const b=$('badge');b.textContent=n>9?'9+':n;b.classList.toggle('hide',!n)}
 let aprovarAntesOn=true,prefBusy=false;
 function paintPref(){if(!prefBusy)$('aprovarAntes').checked=aprovarAntesOn;$('aprovOff').classList.toggle('hide',prefBusy?$('aprovarAntes').checked:aprovarAntesOn)}
@@ -338,7 +338,7 @@ async function loadAprov(){if(!user)return;
  const playing=aud&&!aud.paused&&curTab==='aprov';if(playing)return;
  ul.innerHTML='';if(!props.length){const msg=sem.length?'Nenhuma proposta para aprovar agora.':'Nada para aprovar agora ✓\nQuando o Hub Klain preparar itens das suas gravações, eles aparecem aqui.';
   ul.append(el('li','empty',msg));if(!sem.length)ul.lastChild.style.whiteSpace='pre-line';return}
- props.forEach((p,i)=>ul.appendChild(cardEl(p,i)))}
+ props.forEach(p=>ul.appendChild(cardEl(p)))}
 async function loadHistP(){if(!user)return;const{data}=await sb.from('voice_proposals').select('id,created_at,decided_at,tipo,titulo,status,edited,hub_ref,erro').neq('status','pendente').order('decided_at',{ascending:false,nullsFirst:false}).limit(30);
  const box=$('histP');box.innerHTML='';if(!data?.length)return;box.append(el('div','sub','Propostas'));const ul=el('ul');
  data.forEach(p=>{const v={...p,...(p.edited||{})};const li=el('li','item g');const t=TI[(v.tipo||'').toLowerCase()];
