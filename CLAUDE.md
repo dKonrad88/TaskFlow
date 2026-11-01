@@ -422,6 +422,16 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-11-01 — Gravador v16 (PR, ainda não publicado)
+O app em `gravador/` sobe para **v16** (`sw.js` cache `gravador-v16`). A migration e a edge function **não foram aplicadas** no Supabase — ficam no PR para o Diego publicar, nesta ordem:
+1. `gravador/backend/migrations/20261101120000_voice_prefs.sql` (tabela `voice_prefs`, RLS, padrão aprovar ligado).
+2. Deploy de `gravador/backend/voice-queue/index.ts` como a função `voice-queue`.
+3. Merge do PR (aí o Pages serve o app).
+- Upload continua disparando `?action=trigger` sozinho. O botão **Enviar agora** ficou pequeno, na aba Aprovar, só quando há gravação ainda pendente.
+- Aba **Fila** saiu. Aprovar mostra, compacto, o que ainda não virou proposta: **Processando** (pendente/processando) e **Erro** (mensagem + Reenviar). Reenviar é `?action=retry`: volta aquela linha de `erro` para `pendente` e faz o mesmo webhook.
+- Ajustes: interruptor **Aprovar antes de enviar ao Hub** (padrão ligado), gravado em `voice_prefs` por usuário. Desligado, `?action=propose` cria a proposta já com status `aprovado` (o GET `proposals&status=aprovado` segue igual). Sem linha, ou se a leitura falhar, continua exigindo aprovação. Diego e Débora ficam isolados pelo RLS.
+- A migration foi ensaiada numa transação e desfeita: a tabela não ficou no banco.
+
 ### 2026-10-29 (d) — PC da Empresa — O HUB do Guilherme é INTERNO: só abre de dentro da rede da Empresa
 O Diego perguntou se eu enxergo `https://hub.biscoitosklain.com.br/index.php?p=tarefas`. Abri no navegador interno.
 - **Enxergo, mas só a tela de login** (`login.php` — Usuário · Senha · Acessar · Esqueci minha senha). O conteúdo
