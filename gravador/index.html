@@ -2,7 +2,7 @@
 <title>Gravador</title><link rel="manifest" href="manifest.json?v=11"><meta name="theme-color" content="#045ABF">
 <link rel="icon" href="favicon.ico?v=11" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=11"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=11"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-/* Gravador v16 — liquid glass (iOS 26) com a marca Klain */
+/* Gravador v17 — liquid glass (iOS 26) com a marca Klain */
 :root{--brand:#045ABF;--p:#0d6efd;--ok:#19c86e;--err:#ff465a;--txt:#fff;--mut:rgba(255,255,255,.72);
  --font:-apple-system,"SF Pro Display","SF Pro Text",system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
  --sat:env(safe-area-inset-top);--sab:env(safe-area-inset-bottom)}
@@ -132,9 +132,9 @@ ul{list-style:none;padding:0;margin:0}
 .row.swrow span.lbl small{display:block;font-size:12px;font-weight:400;opacity:.75;margin-top:3px;line-height:1.35}
 .sw{position:relative;width:51px;height:31px;flex:none}
 .sw input{position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
-.sw i{position:absolute;inset:0;border-radius:16px;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.45);transition:background .2s;pointer-events:none}
+.sw i{position:absolute;inset:0;border-radius:16px;background:#8E8E93;border:1px solid rgba(255,255,255,.35);transition:background .2s,border-color .2s;pointer-events:none}
 .sw i:before{content:"";position:absolute;width:27px;height:27px;left:1px;top:1px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 2px 6px rgba(0,20,60,.35)}
-.sw input:checked+i{background:linear-gradient(180deg,#3b8bff,#0d6efd)}
+.sw input:checked+i{background:#34C759;border-color:rgba(255,255,255,.45)}
 .sw input:checked+i:before{transform:translateX(20px)}
 .sw input:focus-visible+i{box-shadow:0 0 0 4px rgba(255,255,255,.28)}
 .sw input:disabled+i{opacity:.55}
@@ -146,7 +146,7 @@ ul{list-style:none;padding:0;margin:0}
 <div id="login" class="hide"><div class="card g"><p>Entre com seu e-mail e senha.</p>
 <form id="lform" onsubmit="return false"><input id="email" type="email" autocomplete="username" placeholder="seu e-mail">
 <input id="pw" type="password" autocomplete="current-password" placeholder="senha">
-<button id="send" class="btn" type="submit">Entrar</button></form><p id="lmsg" class="msg"></p></div><p class="ver">Gravador v16</p></div>
+<button id="send" class="btn" type="submit">Entrar</button></form><p id="lmsg" class="msg"></p></div><p class="ver">Gravador v17</p></div>
 <div id="app" class="hide">
 <section id="v-gravar" class="view" role="tabpanel">
 <div id="recrow"><button id="disc" class="g hide" aria-label="Descartar gravação"><span class="x">✕</span><small>Descartar</small></button><button id="rec" class="g" aria-label="Gravar"><div class="in"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3" fill="#fff"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><div class="sq"></div></div></button></div>
@@ -163,7 +163,7 @@ ul{list-style:none;padding:0;margin:0}
 <div class="row g"><span>Tipo padrão</span><span id="tipoAj"></span></div>
 <h3>Hub</h3>
 <div class="row g swrow"><span class="lbl"><b>Aprovar antes de enviar ao Hub</b><small>Ligado, você confirma cada item. Desligado, o Hub cria direto.</small></span><label class="sw"><input id="aprovarAntes" type="checkbox" role="switch" checked disabled aria-label="Aprovar antes de enviar ao Hub"><i></i></label></div>
-<div class="row g"><span>Versão</span><span>Gravador v16</span></div>
+<div class="row g"><span>Versão</span><span>Gravador v17</span></div>
 <button id="upd" class="btn" style="margin:14px 0 10px">🔄 Verificar atualização</button>
 <button id="out" class="btn danger">Sair</button></section>
 </div></main>
@@ -189,7 +189,7 @@ const ALLOWED=['konraddiego@gmail.com','debiandrade8@gmail.com'];
 const sb=supabase.createClient('https://gigkrjetrtbtdmdnqoof.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdpZ2tyamV0cnRidGRtZG5xb29mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5MzI2MzUsImV4cCI6MjA5NzUwODYzNX0.XSeJtNUOh2_DHjat4QL9Lae6PwqflSagvDj9mXL75cA',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});
 const $=id=>document.getElementById(id);let user=null,mr=null,chunks=[],t0=0,tick=null;
 try{$('email').value=localStorage.getItem('gravador_email')||''}catch(_){}
-const APP_VERSION='v16';let swReg=null;
+const APP_VERSION='v17';let swReg=null;
 if('serviceWorker'in navigator){const hadCtl=!!navigator.serviceWorker.controller;let reloaded=false;
  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadCtl||reloaded)return;reloaded=true;location.reload()});
  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{swReg=r;r.update().catch(()=>{})}).catch(()=>{});
