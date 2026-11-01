@@ -422,6 +422,9 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-11-01 (b) — Gravador v17: interruptor verde quando ligado
+PR da v16 já mergeado (`6155838`). v17 só muda a cor do interruptor **Aprovar antes de enviar ao Hub**: ligado `#34C759`, desligado cinza `#8E8E93`. Cache `gravador-v17`. Sem mudança de banco nem de função.
+
 ### 2026-11-01 — Gravador v16 (PR, ainda não publicado)
 O app em `gravador/` sobe para **v16** (`sw.js` cache `gravador-v16`). A migration e a edge function **não foram aplicadas** no Supabase — ficam no PR para o Diego publicar, nesta ordem:
 1. `gravador/backend/migrations/20261101120000_voice_prefs.sql` (tabela `voice_prefs`, RLS, padrão aprovar ligado).
