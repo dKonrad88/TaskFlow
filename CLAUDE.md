@@ -422,6 +422,9 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-11-01 (c) — Gravador v18: cartão compacto na aba Aprovar
+O cartão de proposta **pendente** passou ao layout do mockup: chip do tipo + **✎ Editar** no topo (abre a mesma ficha), linhas rótulo à esquerda / valor à direita (Tarefa, Solicitante `extra.solicitante`, Executor `responsavel`, Em cópia `extra.em_copia` string ou array juntado com `, `, Início `extra.inicio`, Vencimento `prazo`). Data `YYYY-MM-DD` vira `DD/MM/AAAA`. Descrição em até 3 linhas com reticências. Linha some se o valor está vazio. Aprovar e Recusar seguem o `decide` de antes. API, itens Processando/Erro e o interruptor de Ajustes não mudaram. Cache `gravador-v18`.
+
 ### 2026-11-01 (b) — Gravador v17: interruptor verde quando ligado
 PR da v16 já mergeado (`6155838`). v17 só muda a cor do interruptor **Aprovar antes de enviar ao Hub**: ligado `#34C759`, desligado cinza `#8E8E93`. Cache `gravador-v17`. Sem mudança de banco nem de função.
 
