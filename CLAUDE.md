@@ -422,6 +422,9 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-11-01 (e) — Gravador v20: botão Editar mais forte
+O **✎ Editar** do cartão pendente era texto branco sem fundo e sumia no vidro. Virou pílula azul da marca (`#1565d8` → `#045ABF`, texto branco, contraste ~5,4–6,5:1), no mesmo canto, tamanho de fonte 12,5px. Aprovar e Recusar não mudaram de lugar. Cache `gravador-v20`.
+
 ### 2026-11-01 (d) — Gravador v19: histórico em duas abas, detalhe e microfone
 O Histórico misturava Propostas e Gravações numa lista só. Agora são dois botões lado a lado (controle segmentado, não é um select): **Propostas** | **Gravações**. Padrão = Propostas; a outra lista fica escondida. Vale para Diego e Débora (o mesmo app).
 - Cada item abre no toque, no miolo do cartão da v18: Tarefa, Solicitante (`extra.solicitante`), Executor (`responsavel`), Em cópia, Início, Vencimento, Descrição. Projeto, Etapa e Itens entram se existirem. Resultado: Aprovado (aguardando o Hub), Recusado, Criado no Hub com `hub_ref`, ou Erro. Gravação mostra tipo, duração, transcrição (e ouvir, se houver áudio) e a proposta ligada por `queue_id`.
