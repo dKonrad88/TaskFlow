@@ -2,7 +2,7 @@
 <title>Gravador</title><link rel="manifest" href="manifest.json?v=11"><meta name="theme-color" content="#045ABF">
 <link rel="icon" href="favicon.ico?v=11" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=11"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=11"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-/* Gravador v18 — liquid glass (iOS 26) com a marca Klain */
+/* Gravador v19 — liquid glass (iOS 26) com a marca Klain */
 :root{--brand:#045ABF;--p:#0d6efd;--ok:#19c86e;--err:#ff465a;--txt:#fff;--mut:rgba(255,255,255,.72);
  --font:-apple-system,"SF Pro Display","SF Pro Text",system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
  --sat:env(safe-area-inset-top);--sab:env(safe-area-inset-bottom)}
@@ -140,6 +140,21 @@ ul{list-style:none;padding:0;margin:0}
 .sw input:checked+i:before{transform:translateX(20px)}
 .sw input:focus-visible+i{box-shadow:0 0 0 4px rgba(255,255,255,.28)}
 .sw input:disabled+i{opacity:.55}
+/* Histórico: duas abas lado a lado + cartão que abre */
+.seg{display:flex;gap:3px;padding:3px;border-radius:16px;margin:0 0 14px}
+.seg button{flex:1;border:0;border-radius:13px;padding:10px 8px;font-family:inherit;font-size:13px;font-weight:700;color:#fff;background:transparent;cursor:pointer;opacity:.72}
+.seg button[aria-selected="true"]{background:rgba(255,255,255,.28);opacity:1;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
+.seg button:focus-visible{outline:2px solid rgba(255,255,255,.85);outline-offset:1px}
+.histc{padding:0;overflow:hidden}
+.histsum{display:flex;align-items:flex-start;gap:10px;width:100%;padding:12px 14px;border:0;background:transparent;color:inherit;font-family:inherit;text-align:left;cursor:pointer}
+.histsum:active{opacity:.85}
+.histsum .body{flex:1;min-width:0}
+.histsum .it{overflow-wrap:anywhere}
+.histcar{flex:none;opacity:.75;font-size:11px;line-height:1.6;margin-left:2px}
+.histdet{padding:2px 14px 12px;border-top:1px solid rgba(255,255,255,.12)}
+.histdet .kv.d .v{display:block;-webkit-line-clamp:unset;line-clamp:unset;overflow:visible;white-space:pre-wrap}
+.histdet .trx.open .q{white-space:pre-wrap}
+.histdet .sub{margin-top:12px}
 </style></head><body>
 <div class="bgfx" aria-hidden="true"><div class="img"></div><div class="blob" style="width:260px;height:260px;background:#4aa3ff;top:120px;left:-80px"></div><div class="blob" style="width:220px;height:220px;background:#7b5cff;bottom:120px;right:-70px"></div></div>
 <div id="ptr" class="g" aria-hidden="true"><span class="spin"></span></div>
@@ -148,7 +163,7 @@ ul{list-style:none;padding:0;margin:0}
 <div id="login" class="hide"><div class="card g"><p>Entre com seu e-mail e senha.</p>
 <form id="lform" onsubmit="return false"><input id="email" type="email" autocomplete="username" placeholder="seu e-mail">
 <input id="pw" type="password" autocomplete="current-password" placeholder="senha">
-<button id="send" class="btn" type="submit">Entrar</button></form><p id="lmsg" class="msg"></p></div><p class="ver">Gravador v18</p></div>
+<button id="send" class="btn" type="submit">Entrar</button></form><p id="lmsg" class="msg"></p></div><p class="ver">Gravador v19</p></div>
 <div id="app" class="hide">
 <section id="v-gravar" class="view" role="tabpanel">
 <div id="recrow"><button id="disc" class="g hide" aria-label="Descartar gravação"><span class="x">✕</span><small>Descartar</small></button><button id="rec" class="g" aria-label="Gravar"><div class="in"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3" fill="#fff"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><div class="sq"></div></div></button></div>
@@ -159,13 +174,19 @@ ul{list-style:none;padding:0;margin:0}
 <div id="sendst" class="sendst g hide" role="status" aria-live="polite"></div>
 <p id="aprovOff" class="noteoff hide">Aprovação desligada: as próximas propostas vão direto para o Hub.</p>
 <ul id="aprov"></ul><div id="qbox"></div><p id="pollnote" class="pollnote"></p></section>
-<section id="v-hist" class="view hide" role="tabpanel"><h3>Histórico <button id="ref2" class="mini g">atualizar</button></h3><div id="histP"></div><div class="sub" id="histRecH">Gravações</div><ul id="hist"></ul></section>
+<section id="v-hist" class="view hide" role="tabpanel"><h3>Histórico <button id="ref2" class="mini g" type="button">atualizar</button></h3>
+<div class="seg g" role="tablist" aria-label="Filtrar histórico">
+<button type="button" id="histTabP" role="tab" aria-selected="true" aria-controls="histPaneP">Propostas</button>
+<button type="button" id="histTabR" role="tab" aria-selected="false" aria-controls="histPaneR">Gravações</button>
+</div>
+<div id="histPaneP" role="tabpanel" aria-labelledby="histTabP"><ul id="histP"></ul></div>
+<div id="histPaneR" class="hide" role="tabpanel" aria-labelledby="histTabR"><ul id="hist"></ul></div></section>
 <section id="v-ajustes" class="view hide" role="tabpanel"><h3>Conta</h3>
 <div class="row g"><span>E-mail</span><span id="acct"></span></div>
 <div class="row g"><span>Tipo padrão</span><span id="tipoAj"></span></div>
 <h3>Hub</h3>
 <div class="row g swrow"><span class="lbl"><b>Aprovar antes de enviar ao Hub</b><small>Ligado, você confirma cada item. Desligado, o Hub cria direto.</small></span><label class="sw"><input id="aprovarAntes" type="checkbox" role="switch" checked disabled aria-label="Aprovar antes de enviar ao Hub"><i></i></label></div>
-<div class="row g"><span>Versão</span><span>Gravador v18</span></div>
+<div class="row g"><span>Versão</span><span>Gravador v19</span></div>
 <button id="upd" class="btn" style="margin:14px 0 10px">🔄 Verificar atualização</button>
 <button id="out" class="btn danger">Sair</button></section>
 </div></main>
@@ -191,7 +212,7 @@ const ALLOWED=['konraddiego@gmail.com','debiandrade8@gmail.com'];
 const sb=supabase.createClient('https://gigkrjetrtbtdmdnqoof.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdpZ2tyamV0cnRidGRtZG5xb29mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5MzI2MzUsImV4cCI6MjA5NzUwODYzNX0.XSeJtNUOh2_DHjat4QL9Lae6PwqflSagvDj9mXL75cA',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});
 const $=id=>document.getElementById(id);let user=null,mr=null,chunks=[],t0=0,tick=null;
 try{$('email').value=localStorage.getItem('gravador_email')||''}catch(_){}
-const APP_VERSION='v18';let swReg=null;
+const APP_VERSION='v19';let swReg=null;
 if('serviceWorker'in navigator){const hadCtl=!!navigator.serviceWorker.controller;let reloaded=false;
  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadCtl||reloaded)return;reloaded=true;location.reload()});
  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{swReg=r;r.update().catch(()=>{})}).catch(()=>{});
@@ -222,7 +243,7 @@ const VIEWS={gravar:'v-gravar',aprov:'v-aprov',hist:'v-hist',ajustes:'v-ajustes'
 function setTab(t){if(!VIEWS[t])t='gravar';curTab=t;try{sessionStorage.setItem('gravador_tab',t)}catch(_){}
  for(const[k,id]of Object.entries(VIEWS))$(id).classList.toggle('hide',k!==t);
  document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.t===t));
- $('tipoArea').classList.toggle('hide',!user||t!=='gravar');menu(false);scrollTo(0,0)}
+ $('tipoArea').classList.toggle('hide',!user||t!=='gravar');menu(false);if(t!=='gravar')releaseMicIdle();scrollTo(0,0)}
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{setTab(b.dataset.t);if(b.dataset.t!=='gravar'&&b.dataset.t!=='ajustes')load();else if(user)loadAprov()});
 const FN='https://gigkrjetrtbtdmdnqoof.supabase.co/functions/v1/voice-queue?action=trigger';let tt=null;
 function toast(m,k){const t=$('toast');t.textContent=m;t.className='g show '+(k||'');clearTimeout(tt);tt=setTimeout(()=>t.className='g',3500)}
@@ -251,13 +272,45 @@ $('now').onclick=()=>enviarAgora(false);
   busy=true;set(TH,true);el.classList.add('go');checkUpdate();try{if(user)await load()}finally{setTimeout(()=>{el.classList.remove('go');set(0,true);busy=false},400)}});
 })();
 function pickMime(){for(const m of['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/aac','audio/ogg;codecs=opus'])if(window.MediaRecorder&&MediaRecorder.isTypeSupported(m))return m;return''}
+// Microfone: um stream por sessão visível na aba Gravar (a 2ª gravação não chama getUserMedia).
+// Solta ao sair da aba, bloquear a tela ou fechar — segurar o stream com a tela apagando faz o iOS pedir de novo.
+// Tela de Início no iOS pede de novo a cada abertura fria (WebKit 327237); não há “sempre permitir” nesse ícone.
+let micStream=null,micPerm='unknown';
+function iosLike(){return /iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)}
+function standaloneApp(){try{return navigator.standalone===true||matchMedia('(display-mode: standalone)').matches}catch(e){return false}}
+function refreshMicPerm(){if(!navigator.permissions||!navigator.permissions.query)return;
+ navigator.permissions.query({name:'microphone'}).then(s=>{micPerm=s.state;s.onchange=()=>{micPerm=s.state}}).catch(()=>{})}
+refreshMicPerm();
+function liveMic(){if(!micStream)return null;if(!micStream.getAudioTracks().some(t=>t.readyState==='live')){micStream=null;return null}return micStream}
+function releaseMicIdle(){if(mr&&mr.state==='recording')return;if(!micStream)return;micStream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});micStream=null}
+function micDeniedMsg(){
+ if(iosLike()&&standaloneApp())return 'Microfone bloqueado. No iPhone, o ícone da Tela de Início pede o microfone de novo cada vez que o app é fechado — limite do iOS, sem “sempre permitir” nesse ícone. Pelo Safari: AA → Ajustes do site → Microfone → Permitir.';
+ if(iosLike())return 'Microfone bloqueado. No Safari: AA → Ajustes do site → Microfone → Permitir.';
+ return 'Microfone bloqueado. No aviso, escolha “Permitir enquanto visita o site”, não “Só desta vez”. Chrome: cadeado → Permissões → Microfone → Permitir. Android: Ajustes → Apps → Chrome ou Gravador → Permissões → Microfone → Permitir.'}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')releaseMicIdle();else refreshMicPerm()});
+window.addEventListener('pagehide',()=>releaseMicIdle());
 let discard=false;$('disc').onclick=()=>{if(mr&&mr.state==='recording'){discard=true;chunks=[];mr.stop()}};
-$('rec').onclick=async()=>{if(mr&&mr.state==='recording'){mr.stop();return}
- try{const st=await navigator.mediaDevices.getUserMedia({audio:true});const m=pickMime();mr=new MediaRecorder(st,m?{mimeType:m}:{});chunks=[];
- mr.ondataavailable=e=>e.data.size&&chunks.push(e.data);discard=false;mr.onstop=()=>{st.getTracks().forEach(x=>x.stop());clearInterval(tick);$('rec').classList.remove('on');$('rec').setAttribute('aria-label','Gravar');$('disc').classList.add('hide');$('timer').className='idle';if(discard){discard=false;chunks=[];$('timer').textContent='Toque para gravar';$('msg').textContent='';toast('Gravação descartada');return}upload((Date.now()-t0)/1000)};
+function bindRec(st){const m=pickMime();mr=new MediaRecorder(st,m?{mimeType:m}:{});chunks=[];
+ mr.ondataavailable=e=>e.data.size&&chunks.push(e.data);discard=false;
+ mr.onstop=()=>{const hold=document.visibilityState!=='hidden'&&curTab==='gravar';
+  if(hold){try{st.getAudioTracks().forEach(t=>{if(t.readyState==='live')t.enabled=false})}catch(e){}}
+  else{try{st.getTracks().forEach(t=>t.stop())}catch(e){} if(micStream===st)micStream=null}
+  clearInterval(tick);$('rec').classList.remove('on');$('rec').setAttribute('aria-label','Gravar');$('disc').classList.add('hide');$('timer').className='idle';
+  if(discard){discard=false;chunks=[];$('timer').textContent='Toque para gravar';$('msg').textContent='';toast('Gravação descartada');return}
+  upload((Date.now()-t0)/1000)};
  mr.start(1000);t0=Date.now();$('rec').classList.add('on');$('rec').setAttribute('aria-label','Parar');$('disc').classList.remove('hide');$('timer').className='';$('timer').textContent='0:00';$('msg').textContent='Gravando… toque para parar';menu(false);
  tick=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);$('timer').textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0')},250)}
- catch(e){$('msg').textContent='Sem acesso ao microfone: '+e.message}};
+$('rec').onclick=async()=>{if(mr&&mr.state==='recording'){mr.stop();return}
+ if(micPerm==='denied'){$('msg').textContent=micDeniedMsg();return}
+ try{let st=liveMic();
+  if(!st){if(micPerm==='prompt'&&!iosLike())$('msg').textContent='No aviso, escolha “Permitir enquanto visita o site”. “Só desta vez” pergunta de novo ao reabrir.';
+   st=await navigator.mediaDevices.getUserMedia({audio:true});micStream=st;micPerm='granted';
+   st.getAudioTracks().forEach(t=>t.addEventListener('ended',()=>{if(micStream===st&&!st.getAudioTracks().some(x=>x.readyState==='live'))micStream=null}))}
+  else st.getAudioTracks().forEach(t=>{t.enabled=true});
+  try{bindRec(st)}catch(err){try{st.getTracks().forEach(t=>t.stop())}catch(e){} if(micStream===st)micStream=null;
+   st=await navigator.mediaDevices.getUserMedia({audio:true});micStream=st;micPerm='granted';bindRec(st)}}
+ catch(e){if(e&&(e.name==='NotAllowedError'||e.name==='PermissionDeniedError')){refreshMicPerm();$('msg').textContent=micPerm==='denied'?micDeniedMsg():'O microfone não foi liberado. Toque em Gravar de novo e escolha Permitir.'}
+  else $('msg').textContent='Sem acesso ao microfone: '+(e&&e.message?e.message:e)}};
 async function upload(dur){const mime=(mr.mimeType||chunks[0]?.type||'audio/webm').split(';')[0];const ext=mime.includes('mp4')||mime.includes('aac')?'m4a':mime.includes('ogg')?'ogg':'webm';
  const blob=new Blob(chunks,{type:mime});const path=`${user.id}/${new Date().toISOString().replace(/[:.]/g,'-')}.${ext}`;$('msg').textContent='Enviando…';
  let{error}=await sb.storage.from('voice-inbox').upload(path,blob,{contentType:mime});
@@ -269,13 +322,15 @@ function itemEl(r){const li=document.createElement('li');li.className='item g';c
  li.querySelector('.ic').textContent=t[1];li.querySelector('.it').textContent=t[2];li.querySelector('.is').textContent=d+(r.duracao_s?' · '+r.duracao_s+'s':'');
  const tx=r.transcricao||r.erro||'';const x=li.querySelector('.tx');if(tx)x.textContent=tx;else x.remove();
  const st=li.querySelector('.st');st.classList.add(r.status);st.textContent=r.status;return li}
-async function load(){const aprov=loadAprov(),histp=loadHistP(),pref=loadPref();
- const{data,error}=await sb.from('voice_queue').select('id,created_at,tipo,status,duracao_s,transcricao,erro').eq('status','processado').order('created_at',{ascending:false}).limit(50);
- await Promise.all([aprov,histp,pref]);
- const hl=$('hist');hl.innerHTML='';if(error){hl.innerHTML='<li class="empty"></li>';hl.firstChild.textContent='Erro: '+error.message;return}
- (data||[]).forEach(r=>hl.appendChild(itemEl(r)));if(!data?.length)hl.innerHTML='<li class="empty">Nenhum item processado ainda.</li>'}
+let loadGen=0;
+async function load(){const gen=++loadGen;const aprov=loadAprov(),histp=loadHistP(),pref=loadPref();
+ const{data,error}=await sb.from('voice_queue').select('id,created_at,tipo,status,duracao_s,transcricao,erro,audio_path').eq('status','processado').order('created_at',{ascending:false}).limit(50);
+ const byQ={};
+ if(!error&&data&&data.length){const{data:ps}=await sb.from('voice_proposals').select('id,queue_id,created_at,decided_at,tipo,titulo,descricao,responsavel,prazo,projeto,etapa,transcricao,extra,status,edited,hub_ref,erro').in('queue_id',data.map(r=>r.id));
+  (ps||[]).forEach(p=>{if(p.queue_id)(byQ[p.queue_id]||(byQ[p.queue_id]=[])).push(p)})}
+ await Promise.all([aprov,histp,pref]);if(gen!==loadGen)return;renderHistRec(error,data||[],byQ)}
 
-// ---- Aprovar (v18) ----
+// ---- Aprovar (cartão v18) / histórico v19 ----
 const FNB='https://gigkrjetrtbtdmdnqoof.supabase.co/functions/v1/voice-queue';
 const PTIPOS=['Tarefa','Pauta','Reunião','Ideia','Nota'];
 const el=(t,c,txt)=>{const e=document.createElement(t);if(c)e.className=c;if(txt!=null)e.textContent=txt;return e};
@@ -292,10 +347,46 @@ function trxEl(p,full){const q=p.voice_queue;const w=el('div','trx');const b=el(
  const t=p.transcricao||'';const tx=el('div','q',t?('“'+t+'”'):'Ver transcrição');const d=el('div','d',(mmss(q?.duracao_s)||'')+(t&&!full?' ▾':''));
  w.append(b,tx,d);if(t&&!full){tx.textContent='Ver transcrição';w.onclick=()=>{const o=w.classList.toggle('open');tx.textContent=o?('“'+t+'”'):'Ver transcrição';d.textContent=(mmss(q?.duracao_s)||'')+(o?' ▴':' ▾')}}
  if(full)w.classList.add('open');return w}
-function cardEl(p){const c=el('li','pc g');c.dataset.id=p.id;const ex=(p.extra&&typeof p.extra==='object'&&!Array.isArray(p.extra))?p.extra:{};
+const STATUS_PT={pendente:'Pendente',processando:'Processando',processado:'Processado',erro:'Erro',aprovado:'Aprovado',recusado:'Recusado',criado:'Criado'};
+const quando=s=>{try{return s?new Date(s).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):''}catch(e){return ''}};
+function extraOf(p){const ex=p&&p.extra;return (ex&&typeof ex==='object'&&!Array.isArray(ex))?ex:{}}
+function viewProposal(p){const ed=(p&&p.edited&&typeof p.edited==='object'&&!Array.isArray(p.edited))?p.edited:{};const v={...p,...ed};if(!v.transcricao&&p&&p.voice_queue&&p.voice_queue.transcricao)v.transcricao=p.voice_queue.transcricao;return v}
+function appendKv(parent,k,v,desc){const s=showVal(v);if(!s)return;const r=el('div',desc?'kv d':'kv');r.append(el('span','k',k),el('b','v',s));parent.append(r)}
+function itensText(v){if(Array.isArray(v))return v.map(x=>{if(x==null)return'';if(typeof x==='object')return String(x.titulo||x.nome||x.text||x.item||'').trim();return String(x).trim()}).filter(Boolean).join(', ');return showVal(v)}
+function appendProposalFields(parent,p,more){const v=more?viewProposal(p):p,ex=extraOf(v);
+ [['Tarefa',v.titulo],['Solicitante',ex.solicitante],['Executor',v.responsavel],['Em cópia',ex.em_copia],['Início',ex.inicio],['Vencimento',v.prazo]].forEach(([k,val])=>appendKv(parent,k,val,false));
+ if(more){appendKv(parent,'Projeto',v.projeto,false);appendKv(parent,'Etapa',v.etapa,false);appendKv(parent,'Itens',itensText(ex.itens),true)}
+ appendKv(parent,'Descrição',v.descricao,true)}
+function appendOutcome(parent,p){const label=STATUS_PT[p.status]||cap(p.status)||p.status||'';let res=label;
+ if(p.status==='criado'&&p.hub_ref)res=label+' no Hub';else if(p.status==='aprovado')res='Aprovado — aguardando o Hub';else if(p.status==='recusado')res='Recusado';
+ appendKv(parent,'Resultado',res,false);if(p.hub_ref)appendKv(parent,'Nº no Hub',p.hub_ref,false);if(p.erro)appendKv(parent,'Erro',p.erro,true)}
+function histCard(parts,detail){const li=el('li','pc g histc');const btn=el('button','histsum');btn.type='button';btn.setAttribute('aria-expanded','false');
+ parts.forEach(n=>btn.append(n));const det=el('div','histdet hide');det.append(detail);
+ btn.addEventListener('click',()=>{det.classList.toggle('hide');const on=!det.classList.contains('hide');btn.setAttribute('aria-expanded',on?'true':'false');const c=btn.querySelector('.histcar');if(c)c.textContent=on?'▴':'▾'});
+ li.append(btn,det);return li}
+function trxBlock(p){if(!p||(!p.transcricao&&!(p.voice_queue&&p.voice_queue.audio_path)))return null;const w=trxEl(p,!!p.transcricao);if(!p.transcricao){const q=w.querySelector('.q');if(q)q.textContent='Ouvir áudio'}return w}
+function histPropEl(p){const v=viewProposal(p);const t=TI[(v.tipo||'').toLowerCase()];const b=el('div','body');
+ b.append(el('div','it',v.titulo||cap(v.tipo)||'Proposta'),el('div','is',[cap(v.tipo),quando(p.decided_at||p.created_at)].filter(Boolean).join(' · ')));
+ const det=el('div');appendProposalFields(det,p,true);appendOutcome(det,p);const tr=trxBlock(v);if(tr)det.append(tr);
+ return histCard([el('div','ic',t?t[1]:'📋'),b,el('span','st '+(p.status||''),STATUS_PT[p.status]||p.status||''),el('span','histcar','▾')],det)}
+function histRecEl(r,props){const t=TI[r.tipo]||[r.tipo,'🎙️',r.tipo||'Gravação'];const b=el('div','body');
+ b.append(el('div','it',t[2]||'Gravação'),el('div','is',quando(r.created_at)+(r.duracao_s?' · '+r.duracao_s+'s':'')));
+ const det=el('div');appendKv(det,'Tipo',t[2]||r.tipo,false);if(r.duracao_s)appendKv(det,'Duração',r.duracao_s+'s',false);
+ appendKv(det,'Resultado',STATUS_PT[r.status]||r.status,false);if(r.erro)appendKv(det,'Erro',r.erro,true);
+ const tr=trxBlock({transcricao:r.transcricao||'',voice_queue:{audio_path:r.audio_path,duracao_s:r.duracao_s}});if(tr)det.append(tr);
+ (props||[]).forEach(p=>{det.append(el('div','sub','Proposta'));appendProposalFields(det,p,true);appendOutcome(det,p)});
+ return histCard([el('div','ic',t[1]||'🎙️'),b,el('span','st '+(r.status||''),STATUS_PT[r.status]||r.status||''),el('span','histcar','▾')],det)}
+function renderHistP(data,error){const ul=$('histP');ul.innerHTML='';
+ if(error){ul.append(el('li','empty','Erro: '+(error.message||error)));return}
+ if(!data||!data.length){ul.append(el('li','empty','Nenhuma proposta no histórico.'));return}
+ data.forEach(p=>ul.append(histPropEl(p)))}
+function renderHistRec(error,data,byQ){const hl=$('hist');hl.innerHTML='';
+ if(error){hl.append(el('li','empty','Erro: '+(error.message||error)));return}
+ if(!data||!data.length){hl.append(el('li','empty','Nenhum item processado ainda.'));return}
+ data.forEach(r=>hl.append(histRecEl(r,(byQ&&byQ[r.id])||[])))}
+function cardEl(p){const c=el('li','pc g');c.dataset.id=p.id;
  const top=el('div','top');top.append(el('span','tchip',cap(p.tipo)||'Item'));const ed=el('button','edl','✎ Editar');ed.type='button';ed.onclick=()=>openSheet(p);top.append(ed);c.append(top);
- [['Tarefa',p.titulo],['Solicitante',ex.solicitante],['Executor',p.responsavel],['Em cópia',ex.em_copia],['Início',ex.inicio],['Vencimento',p.prazo]].forEach(([k,v])=>{const s=showVal(v);if(!s)return;const r=el('div','kv');r.append(el('span','k',k),el('b','v',s));c.append(r)});
- const desc=showVal(p.descricao);if(desc){const r=el('div','kv d');r.append(el('span','k','Descrição'),el('b','v',desc));c.append(r)}
+ appendProposalFields(c,p,false);
  const a=el('div','acts');const ok=el('button','b-ok','✓ Aprovar'),no=el('button','b-no','✕ Recusar');ok.type='button';no.type='button';
  ok.onclick=()=>decide([p.id],'aprovado',null,a);no.onclick=()=>decide([p.id],'recusado',null,a);a.append(ok,no);c.append(a);return c}
 function badge(n){const b=$('badge');b.textContent=n>9?'9+':n;b.classList.toggle('hide',!n)}
@@ -339,11 +430,11 @@ async function loadAprov(){if(!user)return;
  ul.innerHTML='';if(!props.length){const msg=sem.length?'Nenhuma proposta para aprovar agora.':'Nada para aprovar agora ✓\nQuando o Hub Klain preparar itens das suas gravações, eles aparecem aqui.';
   ul.append(el('li','empty',msg));if(!sem.length)ul.lastChild.style.whiteSpace='pre-line';return}
  props.forEach(p=>ul.appendChild(cardEl(p)))}
-async function loadHistP(){if(!user)return;const{data}=await sb.from('voice_proposals').select('id,created_at,decided_at,tipo,titulo,status,edited,hub_ref,erro').neq('status','pendente').order('decided_at',{ascending:false,nullsFirst:false}).limit(30);
- const box=$('histP');box.innerHTML='';if(!data?.length)return;box.append(el('div','sub','Propostas'));const ul=el('ul');
- data.forEach(p=>{const v={...p,...(p.edited||{})};const li=el('li','item g');const t=TI[(v.tipo||'').toLowerCase()];
-  const b=el('div','body');b.append(el('div','it',v.titulo),el('div','is',cap(v.tipo)+' · '+new Date(p.decided_at||p.created_at).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})));
-  if(p.erro)b.append(el('div','tx',p.erro));li.append(el('div','ic',t?t[1]:'📋'),b,el('span','st '+p.status,p.status));ul.append(li)});box.append(ul)}
+const HIST_PROP='id,queue_id,created_at,decided_at,tipo,titulo,descricao,responsavel,prazo,projeto,etapa,transcricao,extra,status,edited,hub_ref,erro,voice_queue(audio_path,duracao_s,transcricao)';
+let histPGen=0;
+async function loadHistP(){if(!user)return;const gen=++histPGen;
+ const{data,error}=await sb.from('voice_proposals').select(HIST_PROP).neq('status','pendente').order('decided_at',{ascending:false,nullsFirst:false}).limit(30);
+ if(gen!==histPGen)return;renderHistP(data,error)}
 async function decide(ids,decision,fields,acts){if(acts)acts.querySelectorAll('button').forEach(b=>b.disabled=true);
  try{const{data}=await sb.auth.getSession();const tok=data.session?.access_token;if(!tok)throw new Error('sessão expirada, entre novamente');
   const r=await fetch(FNB+'?action=decide',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({ids,decision,fields:fields||undefined})});
@@ -368,4 +459,12 @@ $('shOk').onclick=async()=>{if(!shP)return;if(!$('shTit').value.trim()){toast('I
 $('shNo').onclick=async()=>{if(!shP)return;const id=shP.id;closeSheet();await decide([id],'recusado',null,null)};
 setInterval(()=>{if(user&&!document.hidden&&!shP)loadAprov()},30000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&user)loadAprov()});
+let histKind='propostas';try{const hs=sessionStorage.getItem('gravador_hist');if(hs==='grav'||hs==='propostas')histKind=hs}catch(e){}
+function setHistKind(k){if(k!=='grav'&&k!=='propostas')k='propostas';histKind=k;try{sessionStorage.setItem('gravador_hist',k)}catch(e){}
+ $('histPaneP').classList.toggle('hide',k!=='propostas');$('histPaneR').classList.toggle('hide',k!=='grav');
+ $('histTabP').setAttribute('aria-selected',k==='propostas');$('histTabR').setAttribute('aria-selected',k==='grav');
+ $('histTabP').tabIndex=k==='propostas'?0:-1;$('histTabR').tabIndex=k==='grav'?0:-1}
+function histKeys(e){if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft')return;e.preventDefault();const k=e.key==='ArrowRight'?'grav':'propostas';setHistKind(k);(k==='grav'?$('histTabR'):$('histTabP')).focus()}
+$('histTabP').onclick=()=>setHistKind('propostas');$('histTabR').onclick=()=>setHistKind('grav');
+$('histTabP').onkeydown=histKeys;$('histTabR').onkeydown=histKeys;setHistKind(histKind);
 </script></body></html>
