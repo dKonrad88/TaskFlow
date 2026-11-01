@@ -422,6 +422,14 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-11-01 (d) — Gravador v19: histórico em duas abas, detalhe e microfone
+O Histórico misturava Propostas e Gravações numa lista só. Agora são dois botões lado a lado (controle segmentado, não é um select): **Propostas** | **Gravações**. Padrão = Propostas; a outra lista fica escondida. Vale para Diego e Débora (o mesmo app).
+- Cada item abre no toque, no miolo do cartão da v18: Tarefa, Solicitante (`extra.solicitante`), Executor (`responsavel`), Em cópia, Início, Vencimento, Descrição. Projeto, Etapa e Itens entram se existirem. Resultado: Aprovado (aguardando o Hub), Recusado, Criado no Hub com `hub_ref`, ou Erro. Gravação mostra tipo, duração, transcrição (e ouvir, se houver áudio) e a proposta ligada por `queue_id`.
+- Aprovar / Recusar / Editar da aba Aprovar não mudaram. Nenhuma migration nem a edge function. Cache `gravador-v19` (login e Ajustes também dizem v19).
+- Microfone: enquanto a aba Gravar segue aberta, o app reaproveita o stream — a segunda gravação não chama `getUserMedia`. Solta ao sair da aba, ao bloquear a tela ou ao fechar (`visibilitychange` / `pagehide`). Se `permissions.query({name:'microphone'})` já está `denied`, não chama `getUserMedia` e explica como liberar. No Chrome, se o estado é `prompt`, a linha pede **“Permitir enquanto visita o site”** (“Só desta vez” pergunta de novo ao reabrir).
+- `manifest.json` `start_url` e `scope` já eram `./` (a pasta `/gravador/`). Não mexi: trocar isso mudaria a identidade do PWA instalado e poderia zerar a permissão no Android.
+- ⚠️ **iOS, ícone da Tela de Início:** o WebKit pede o microfone de novo em cada abertura fria (bug [327237](https://bugs.webkit.org/show_bug.cgi?id=327237)). Não há “sempre permitir” nesse ícone; o ajuste do Safari não vale para ele. Pelo Safari (aba, não o ícone): AA → Ajustes do site → Microfone → Permitir. No Android: no aviso, “Permitir enquanto visita o site”; se já ficou “só desta vez”, Ajustes → Apps → Chrome ou Gravador → Permissões → Microfone → Permitir.
+
 ### 2026-11-01 (c) — Gravador v18: cartão compacto na aba Aprovar
 O cartão de proposta **pendente** passou ao layout do mockup: chip do tipo + **✎ Editar** no topo (abre a mesma ficha), linhas rótulo à esquerda / valor à direita (Tarefa, Solicitante `extra.solicitante`, Executor `responsavel`, Em cópia `extra.em_copia` string ou array juntado com `, `, Início `extra.inicio`, Vencimento `prazo`). Data `YYYY-MM-DD` vira `DD/MM/AAAA`. Descrição em até 3 linhas com reticências. Linha some se o valor está vazio. Aprovar e Recusar seguem o `decide` de antes. API, itens Processando/Erro e o interruptor de Ajustes não mudaram. Cache `gravador-v18`.
 
