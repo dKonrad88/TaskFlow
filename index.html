@@ -36942,7 +36942,7 @@ function _projFocusRailHTML(p){
     <button class="proj-rail-btn" onclick="setProjectProTab('anotacoes')" style="${A('anotacoes')}" title="Chat"><i class="ti ti-messages"></i><span>Chat</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('analise')" style="${A('analise')}" title="Análise"><i class="ti ti-chart-arcs"></i><span>Análise</span></button>
     <button class="proj-rail-btn" onclick="setProjectProTab('info')" style="${A('info')}" title="Info — detalhes do projeto"><i class="ti ti-info-circle"></i><span>Info</span></button>
-    <button class="proj-rail-btn" onclick="setProjectProTab('editar')" style="${A('editar')}" title="Editar projeto (nome, prazo, cor)"><i class="ti ti-pencil"></i><span>Editar</span></button>
+    <button class="proj-rail-btn" onclick="setProjectProTab('editar')" style="${A('editar')}" title="Editar projeto (nome, setor, prazo, cor)"><i class="ti ti-pencil"></i><span>Editar</span></button>
     <div style="flex:1"></div>
     <div class="proj-rail-sep"></div>
     <button class="proj-rail-btn" onclick="_projToggleStatus('${p.id}')" style="color:${_sc.color}" title="Status: ${_sc.label}${_podeAlt?' — clique p/ '+(p.status==='ativo'?'pausar':'colocar em andamento'):' (mude na aba Info)'}"><i class="ti ${_sc.icon}"></i><span>${_sc.label}</span></button>
@@ -40641,6 +40641,10 @@ function _projEditarCamposHTML(p){
           <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Nome</label>
           <input id="ppe-nome" type="text" value="${escapeAttr(p.nome)}" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);box-sizing:border-box" />
         </div>
+        <div style="margin-bottom:12px">
+          <label style="display:block;font-size:12px;font-weight:700;color:var(--text);margin-bottom:5px">Setor <span style="color:#dc3545">*</span></label>
+          <select id="ppe-setor" style="width:100%;padding:9px 12px;border:1.5px solid var(--blue-mid);border-radius:8px;font-size:13px;font-weight:600;background:var(--bg2);color:var(--text);box-sizing:border-box">${(typeof hubSetorOpcoes==='function')?hubSetorOpcoes(p.setor||''):''}</select>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
           <div>
             <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Tipo</label>
@@ -40650,10 +40654,6 @@ function _projEditarCamposHTML(p){
             <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Status</label>
             <select id="ppe-status" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);box-sizing:border-box">${statusOpcoes}</select>
           </div>
-        </div>
-        <div style="margin-bottom:12px">
-          <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Setor</label>
-          <select id="ppe-setor" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);box-sizing:border-box">${(typeof hubSetorOpcoes==='function')?hubSetorOpcoes(p.setor||''):''}</select>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
           <div>
@@ -47713,6 +47713,6 @@ function importarDadosJSON(){
 <script src="hub-assets/hub-projetos7.js"></script>
 <link rel="stylesheet" href="hub-assets/hub-bs-escopo.css?v=12">
 <link rel="stylesheet" href="hub-assets/hub-gp-oficial.css?v=12">
-<link rel="stylesheet" href="hub-assets/hub-projetos11.css?v=12">
-<script src="hub-assets/hub-projetos11.js?v=16"></script>
+<link rel="stylesheet" href="hub-assets/hub-projetos12.css">
+<script src="hub-assets/hub-projetos12.js"></script>
 </body></html>
