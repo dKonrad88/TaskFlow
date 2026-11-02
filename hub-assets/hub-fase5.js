@@ -11,7 +11,9 @@ var DIAS=['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
 var hj=function(){return iso(new Date());};
 var ATUAL=null,SEM={agendamentos:null,visitas:null,escala:null},MODO={agendamentos:'semana',visitas:'semana'},DIA={};
 function cont(){return document.getElementById('task-container');}
-function marcar(id){document.querySelectorAll('#sidebar .sbnav-item').forEach(function(b){b.classList.toggle('active',b.dataset.hub===id);});}
+// Itens normais (sem data-hub) têm o destaque decidido pelo renderSidebar; marcar('') só limpa as telas extras.
+// Antes limpava tudo a cada render() e Projetos/Processos/Fluxograma perdiam o .active (grupo Planejamento não ficava laranja).
+function marcar(id){document.querySelectorAll('#sidebar .sbnav-item').forEach(function(b){if(b.dataset.hub)b.classList.toggle('active',b.dataset.hub===id);else if(id)b.classList.remove('active');});}
 function topo(ic,t,sub,acts){return '<div class="hoje-head"><div><h2 class="hoje-title"><i class="ti '+ic+'"></i>'+t+'</h2><p class="hoje-sub">'+sub+'</p></div><div class="hoje-toolbar">'+(acts||'')+'</div></div>';}
 function nav(k,ini,txt){var f=addD(ini,6);var md=MODO[k];return '<div class="h5-nav"><span class="h5-range">'+(txt||(dt(ini).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' – '+dt(f).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})))+'</span><span class="h5-sp"></span>'+(md?'<div class="tk-viewswitch">'+[['dia','Dia'],['semana','Semana'],['mes','Mês']].map(function(v){return '<button class="tk-view'+(md===v[0]?' active':'')+'" onclick="hubCalModo(\''+k+'\',\''+v[0]+'\')">'+v[1]+'</button>';}).join('')+'</div>':'<div class="tk-viewswitch"><button class="tk-view active">Semana</button></div>')+'<button class="h5-btn" onclick="hubSemana(\''+k+'\',-7)"><i class="ti ti-chevron-left"></i></button><button class="h5-btn" onclick="hubSemana(\''+k+'\',0)">Hoje</button><button class="h5-btn" onclick="hubSemana(\''+k+'\',7)"><i class="ti ti-chevron-right"></i></button></div>';}
 function mm(h){var p=String(h||'').split(':');return (+p[0]||0)*60+(+p[1]||0);}
