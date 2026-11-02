@@ -7001,6 +7001,17 @@ function setProducaoView(v){
   renderSidebar();
   renderProducao();
 }
+function _prodTelaVazia(titulo){
+  const main=document.getElementById('task-container'); if(!main) return;
+  main.innerHTML=`<div style="padding:20px 4px 40px;">
+    ${hubHead(titulo,'')}
+    <div style="margin-top:8px;background:var(--card);border:1px dashed var(--border);border-radius:14px;padding:48px 24px;text-align:center;color:var(--text3);">
+      <i class="ti ti-tools" style="font-size:30px;color:var(--text3);"></i>
+      <div style="font-size:15px;font-weight:700;color:var(--text);margin-top:10px;">Em construção</div>
+      <div style="font-size:13px;margin-top:4px;">Esta tela será recriada do zero.</div>
+    </div>
+  </div>`;
+}
 function renderProducao(){
   const main=document.getElementById('task-container');
   if(!main) return;
@@ -7013,8 +7024,11 @@ function renderProducao(){
   // ⚠️ 'pcp' era o id ANTIGO da Cobertura e agora é a tela nova de montar o dia. Rota salva num aparelho
   // velho cai no PCP em vez da Cobertura — uma vez só, e o menu resolve no primeiro clique.
   if(producaoView === 'cobertura') return renderPCP();
-  if(producaoView === 'pcp') return renderPCPDia();
-  if(producaoView === 'indicadores') return renderIndicadores();
+  // ⭐ (02/11/2026) PCP e Indicadores ZERADOS a pedido do Diego — serão recriados do zero mais à frente.
+  // Menu e rota continuam; renderPCPDia()/renderIndicadores() ficam no código mas não são mais chamados.
+  // Nenhum dado salvo (localStorage/Supabase) é apagado.
+  if(producaoView === 'pcp') return _prodTelaVazia('PCP');
+  if(producaoView === 'indicadores') return _prodTelaVazia('Indicadores');
   if(producaoView === 'regras') return renderRegras();
   if(producaoView === 'programacao') return renderProgramacao();
   if(producaoView !== 'produtos'){
