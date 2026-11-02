@@ -40623,6 +40623,10 @@ function _projEditarCamposHTML(p){
             <select id="ppe-status" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);box-sizing:border-box">${statusOpcoes}</select>
           </div>
         </div>
+        <div style="margin-bottom:12px">
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Setor</label>
+          <select id="ppe-setor" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);box-sizing:border-box">${(typeof hubSetorOpcoes==='function')?hubSetorOpcoes(p.setor||''):''}</select>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
           <div>
             <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">Dono</label>
@@ -40700,6 +40704,7 @@ function salvarEdicaoProjectPro(id){
   p.status = document.getElementById('ppe-status').value;
   // (jul/2026) Prioridade saiu da UI do módulo de projetos — o campo `p.prioridade` continua
   // no dado (projetos antigos e o seed têm), mas não é mais lido nem escrito por nenhuma tela.
+  { const _se=document.getElementById('ppe-setor'); if(_se) p.setor=_se.value||''; } // setor do projeto (nov/2026): agrupa a lista de Projetos
   p.dono = document.getElementById('ppe-dono').value;
   p.cor = document.getElementById('ppe-cor').value;
   p.prazoInicio = document.getElementById('ppe-ini').value || null;
