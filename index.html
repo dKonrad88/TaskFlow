@@ -16984,12 +16984,12 @@ function _procTaskToggle(taskId){ const t=(tasks||[]).find(x=>x.id===taskId); if
 function _procRunExcluir(runId){ confirmModal({title:'Remover execução', message:'Remover esta execução e as tarefas dela?', danger:true, confirmLabel:'Remover', onConfirm:()=>{ const del=(tasks||[]).filter(t=>t.processoRunId===runId); del.forEach(t=>{ const idx=tasks.indexOf(t); if(idx>=0) tasks.splice(idx,1); if(typeof deleteTask_db==='function') deleteTask_db(t.id); }); _procRunsSave(_procRuns().filter(x=>x.id!==runId)); renderProcessos(); if(typeof renderSidebar==='function') renderSidebar(); }}); }
 
 // ═══ PLANEJAMENTO (nov/2026, Diego): abas Projetos · Processos · Fluxograma no topo do conteúdo ═══
-// Fluxograma = porte do "Fluxograma de Agentes" (React empacotado em hub-assets/hub-fluxograma2.js, carregado sob demanda).
+// Fluxograma = porte do "Fluxograma de Agentes" (React empacotado em hub-assets/hub-fluxograma3.js, carregado sob demanda).
 // Dados: localStorage taskflow_fluxogramas / taskflow_fluxo_papeis via safeSetItem → sincroniza no app_state (Supabase) como as demais chaves taskflow_*.
 let _fluxoLoading=null;
 function _fluxoCarregar(cb){
   if(window.TFFluxo){ cb(); return; }
-  if(!_fluxoLoading){ _fluxoLoading=[]; const sc=document.createElement('script'); sc.src='hub-assets/hub-fluxograma2.js'; sc.onload=()=>{ const q=_fluxoLoading; _fluxoLoading=null; q.forEach(f=>f()); }; sc.onerror=()=>{ _fluxoLoading=null; toast&&toast('Não foi possível carregar o Fluxograma.'); }; document.head.appendChild(sc); }
+  if(!_fluxoLoading){ _fluxoLoading=[]; const sc=document.createElement('script'); sc.src='hub-assets/hub-fluxograma3.js'; sc.onload=()=>{ const q=_fluxoLoading; _fluxoLoading=null; q.forEach(f=>f()); }; sc.onerror=()=>{ _fluxoLoading=null; toast&&toast('Não foi possível carregar o Fluxograma.'); }; document.head.appendChild(sc); }
   _fluxoLoading.push(cb);
 }
 function _procGrafo(p){
@@ -17009,7 +17009,7 @@ function renderFluxograma(){
   const _pr=document.getElementById('progress-box'); if(_pr) _pr.style.display='none';
   const _tt=document.getElementById('tab-title'); if(_tt){ _tt.textContent='🔀 Fluxograma'; _tt.style.display=''; }
   const _ts=document.getElementById('tab-sub'); if(_ts){ _ts.style.display=''; _ts.textContent='Desenhe fluxos e processos com peças, ligações e revisões'; }
-  main.innerHTML=`<div id="tf-fluxo-host" style="position:relative;height:600px;min-height:420px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:#f9fafb;color-scheme:light"><div style="padding:30px;color:#6b7280;font-size:13px"><i class="ti ti-loader-2"></i> Carregando fluxograma…</div></div>`;
+  main.innerHTML=`<div id="tf-fluxo-host" style="position:relative;height:600px;min-height:420px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:transparent"><div style="padding:30px;color:#6b7280;font-size:13px"><i class="ti ti-loader-2"></i> Carregando fluxograma…</div></div>`;
   const host=main.querySelector('#tf-fluxo-host');
   const ajusta=()=>{ if(!host.isConnected) return; const top=host.getBoundingClientRect().top; host.style.height=Math.max(420,Math.round(window.innerHeight-Math.max(top,0)-16))+'px'; };
   ajusta(); if(!window._fluxoResize){ window._fluxoResize=true; window.addEventListener('resize',()=>{ const h=document.getElementById('tf-fluxo-host'); if(h&&currentTab==='fluxograma'){ const top=h.getBoundingClientRect().top; h.style.height=Math.max(420,Math.round(window.innerHeight-Math.max(top,0)-16))+'px'; } }); }

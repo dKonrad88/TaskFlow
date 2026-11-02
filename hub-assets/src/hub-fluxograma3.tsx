@@ -33,7 +33,7 @@ const ROLE_TXT: Record<Kind, string> = {
 };
 const KINDS: Kind[] = ["entrada", "diretor", "pesquisador", "trabalhador", "supervisor", "entrega"];
 const STRIPE: Record<Kind, string> = { entrada: "#5eead4", diretor: "#c4b5fd", pesquisador: "#7dd3fc", trabalhador: "#93c5fd", supervisor: "#fdba74", entrega: "#86efac" };
-const SWATCHES: string[] = ["", "#93c5fd", "#7dd3fc", "#5eead4", "#86efac", "#fdba74", "#f9a8d4", "#c4b5fd", "#fca5a5", "#d1d5db"];
+const SWATCHES: string[] = ["", "#93c5fd", "#7dd3fc", "#5eead4", "#86efac", "#fdba74", "#f9a8d4", "#c4b5fd", "#fca5a5", "var(--border,#d1d5db)"];
 const uid = (): string => Math.random().toString(36).slice(2, 9);
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 interface Role { id: string; name: string; icon: string; color: string; base: Kind; desc: string; rounds: number }
@@ -47,7 +47,7 @@ const usedRoles = (g: Graph): Role[] => ROLES.filter((r: Role) => g.nodes.some((
 const rolesMd = (g: Graph): string[] => { const u = usedRoles(g); return u.length ? ["", "## Papéis personalizados", ...u.map((r: Role) => `- **${r.icon} ${r.name}** — comportamento base: ${LABEL[r.base]}${r.base === "supervisor" ? ` (até ${r.rounds} rodadas por padrão)` : ""}${r.desc ? `. ${r.desc}` : ""}`)] : []; };
 const cleanRole = (r: Role): Role => ({ id: r.id, name: r.name, icon: r.icon || "◆", color: r.color || "#5ee0ff", base: KINDS.indexOf(r.base) >= 0 && r.base !== "entrada" ? r.base : "trabalhador", desc: r.desc || "", rounds: r.rounds || 3 });
 function loadRoles(): Role[] { try { const s = window.localStorage.getItem(ROLE_KEY); if (s) { const p = JSON.parse(s) as Role[]; if (Array.isArray(p)) return p.filter((r: Role) => r && r.id && r.name).map(cleanRole); } } catch (_e) { /* ignore */ } return []; }
-const FULL = ":root,html,body{margin:0!important;padding:0!important;width:100%;max-width:none!important;height:100%;background:#f9fafb!important;color-scheme:only light!important;color:#1f2937}.kf,.kf *{color-scheme:only light!important}.kf select,.kf textarea,.kf input{background-color:#fff;color:#1f2937}.kf ::-webkit-scrollbar{width:8px;height:8px;background:transparent}.kf ::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:4px}body>div,#root{width:100%;max-width:none!important}";
+const FULL = ":root,html,body{margin:0!important;padding:0!important;width:100%;max-width:none!important;height:100%;background:transparent!important;color-scheme:only light!important;color:var(--text,#1f2937)}.kf,.kf *{color-scheme:only light!important}.kf select,.kf textarea,.kf input{background-color:var(--card,#fff);color:var(--text,#1f2937)}.kf ::-webkit-scrollbar{width:8px;height:8px;background:transparent}.kf ::-webkit-scrollbar-thumb{background:var(--border,#d1d5db);border-radius:4px}body>div,#root{width:100%;max-width:none!important}";
 
 const EXAMPLE: Graph = {
   objective: "Escrever um artigo curto e revisado sobre o tema colado na entrada.",
@@ -186,15 +186,15 @@ function buildBriefing(name: string, g: Graph): string {
 
 const FONT = '-apple-system,"SF Pro Display","SF Pro Text",system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
 const GSHADOW = "0 4px 18px rgba(0,0,0,.08)";
-const SEC = "#6b7280"; const TER = "#9ca3af";
-const CSS = `.kf input::placeholder,.kf textarea::placeholder{color:#9ca3af}.kf input:focus,.kf textarea:focus,.kf select:focus{border-color:#185FA5!important;box-shadow:0 0 0 3px rgba(24,95,165,.15)}.kf button{transition:background .12s,filter .12s}.kf button:hover:not(:disabled){filter:brightness(.95)}.kf button:disabled{opacity:.4;cursor:default}.kf option{background:#fff;color:#1f2937}.kf .it:hover:not(:disabled){background:#e8f0fe!important;color:#0d3d6b!important;filter:none}.kf kbd{margin-left:auto;font:11px system-ui;opacity:.6;background:none;border:0;color:inherit}`;
-const btn: CSSProperties = { font: "inherit", fontSize: "12.5px", fontWeight: 600, padding: "7px 13px", borderRadius: 10, border: "1px solid #e5e7eb", background: "#fff", backgroundImage: "linear-gradient(#fff,#fff)", color: "#1f2937", cursor: "pointer", boxShadow: "0 1px 2px rgba(17,24,39,.05)" };
-const btnPrimary: CSSProperties = { ...btn, fontSize: "13px", padding: "8px 16px", background: "#185FA5", border: "1px solid #185FA5", color: "#fff", boxShadow: "0 1px 2px rgba(24,95,165,.3)" };
-const btnDanger: CSSProperties = { ...btn, background: "#fff", backgroundImage: "linear-gradient(#fff,#fff)", border: "1px solid #fecaca", color: "#dc2626" };
-const field: CSSProperties = { font: "inherit", fontSize: "13px", fontWeight: 500, width: "100%", boxSizing: "border-box", padding: "8px 11px", borderRadius: 10, border: "1px solid #e5e7eb", background: "#fff", backgroundImage: "linear-gradient(#fff,#fff)", color: "#1f2937", outline: "none", transition: "box-shadow .15s, border-color .15s" };
+const SEC = "var(--text2,var(--text2,#6b7280))"; const TER = "var(--text3,#9ca3af)";
+const CSS = `.kf input::placeholder,.kf textarea::placeholder{color:var(--text3,#9ca3af)}.kf input:focus,.kf textarea:focus,.kf select:focus{border-color:var(--blue-mid,#185FA5)!important;box-shadow:0 0 0 3px rgba(var(--kf-acc-rgb,24,95,165),.15)}.kf button{transition:background .12s,filter .12s}.kf button:hover:not(:disabled){filter:brightness(.95)}.kf button:disabled{opacity:.4;cursor:default}.kf option{background:var(--card,#fff);color:var(--text,#1f2937)}.kf .it:hover:not(:disabled){background:color-mix(in srgb, var(--blue-mid,#185FA5) 16%, var(--card,#fff))!important;color:var(--blue-mid,#0d3d6b)!important;filter:none}.kf kbd{margin-left:auto;font:11px system-ui;opacity:.6;background:none;border:0;color:inherit}`;
+const btn: CSSProperties = { font: "inherit", fontSize: "12.5px", fontWeight: 600, padding: "7px 13px", borderRadius: 10, border: "1px solid var(--border,#e5e7eb)", background: "var(--card,#fff)", backgroundImage: "linear-gradient(var(--card,#fff),var(--card,#fff))", color: "var(--text,#1f2937)", cursor: "pointer", boxShadow: "0 1px 2px rgba(17,24,39,.05)" };
+const btnPrimary: CSSProperties = { ...btn, fontSize: "13px", padding: "8px 16px", background: "var(--blue-mid,#185FA5)", border: "1px solid var(--blue-mid,#185FA5)", color: "#fff", boxShadow: "0 1px 2px rgba(var(--kf-acc-rgb,24,95,165),.3)" };
+const btnDanger: CSSProperties = { ...btn, background: "var(--card,#fff)", backgroundImage: "linear-gradient(var(--card,#fff),var(--card,#fff))", border: "1px solid #fecaca", color: "#dc2626" };
+const field: CSSProperties = { font: "inherit", fontSize: "13px", fontWeight: 500, width: "100%", boxSizing: "border-box", padding: "8px 11px", borderRadius: 10, border: "1px solid var(--border,#e5e7eb)", background: "var(--card,#fff)", backgroundImage: "linear-gradient(var(--card,#fff),var(--card,#fff))", color: "var(--text,#1f2937)", outline: "none", transition: "box-shadow .15s, border-color .15s" };
 const lab: CSSProperties = { fontSize: "11px", fontWeight: 600, color: TER, textTransform: "uppercase", letterSpacing: "0.06em", margin: "14px 0 6px" };
-const panel: CSSProperties = { background: "#fff", backgroundImage: "linear-gradient(#fff,#fff)", border: "1px solid #e5e7eb", boxShadow: GSHADOW, borderRadius: 14, padding: 16, color: "#1f2937", colorScheme: "light" };
-const pill: CSSProperties = { position: "absolute", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4, padding: 6, borderRadius: 14, background: "#fff", backgroundImage: "linear-gradient(#fff,#fff)", border: "1px solid #e5e7eb", boxShadow: GSHADOW };
+const panel: CSSProperties = { background: "var(--card,#fff)", backgroundImage: "linear-gradient(var(--card,#fff),var(--card,#fff))", border: "1px solid var(--border,#e5e7eb)", boxShadow: GSHADOW, borderRadius: 14, padding: 16, color: "var(--text,#1f2937)", colorScheme: "light" };
+const pill: CSSProperties = { position: "absolute", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4, padding: 6, borderRadius: 14, background: "var(--card,#fff)", backgroundImage: "linear-gradient(var(--card,#fff),var(--card,#fff))", border: "1px solid var(--border,#e5e7eb)", boxShadow: GSHADOW };
 const isTyping = (el: EventTarget | null): boolean => { const t = el as HTMLElement | null; return !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable); };
 
 function App() {
@@ -393,7 +393,7 @@ function App() {
   const [pin, setPin] = useState<string | null>(null);
   const hlK: string | null = pop === "roles" ? hov || pin : null;
   const keyOf = (n: GNode): string => (n.rid && ROLES.some((r: Role) => r.id === n.rid) ? "r:" + n.rid : n.kind);
-  const rowSt = (k: string): CSSProperties => ({ display: "flex", alignItems: "center", gap: 10, padding: "6px 8px", borderRadius: 9, cursor: "pointer", background: pin === k ? "#e8f0fe" : hov === k ? "#f3f4f6" : "transparent", outline: pin === k ? "1px solid #185FA5" : "none" });
+  const rowSt = (k: string): CSSProperties => ({ display: "flex", alignItems: "center", gap: 10, padding: "6px 8px", borderRadius: 9, cursor: "pointer", background: pin === k ? "color-mix(in srgb, var(--blue-mid,#185FA5) 16%, var(--card,#fff))" : hov === k ? "var(--bg2,#f3f4f6)" : "transparent", outline: pin === k ? "1px solid var(--blue-mid,#185FA5)" : "none" });
   const rowEv = (k: string) => ({ onMouseEnter: () => setHov(k), onMouseLeave: () => setHov(null), onClick: () => setPin((p: string | null) => (p === k ? null : k)) });
   const [objEdit, setObjEdit] = useState(false);
   const [moreOpts, setMoreOpts] = useState(false);
@@ -416,10 +416,10 @@ function App() {
   const togglePop = (p: string) => setPop((c: string | null) => (c === p ? null : p));
   const ICON: Record<string, string> = { entrada: "📥", diretor: "🎯", pesquisador: "🔎", trabalhador: "✍️", supervisor: "🧐", entrega: "🚀", grupo: "▭", nota: "✎" };
   const iconBtn: CSSProperties = { ...btn, padding: "6px 10px", minWidth: 32, fontSize: "13px" };
-  const primSm: CSSProperties = { ...btnPrimary, fontSize: "12.5px", padding: "7px 14px", boxShadow: "inset 0 1px 0 rgba(255,255,255,.55), 0 6px 16px rgba(24,95,165,.45)" };
-  const menuItem: CSSProperties = { ...btn, background: "transparent", border: "none", boxShadow: "none", textAlign: "left", borderRadius: 9, padding: "7px 8px", fontSize: "13.5px", fontWeight: 500, color: "#1f2937", width: "100%", display: "flex", alignItems: "center", gap: 10 };
-  const popBox: CSSProperties = { ...panel, position: "absolute", top: "calc(100% + 8px)", right: 0, padding: 10, borderRadius: 14, zIndex: 40, minWidth: 250, background: "#fff", backgroundImage: "linear-gradient(#fff,#fff)", display: "flex", flexDirection: "column", gap: 2 };
-  const sep = <div style={{ height: 1, background: "#eef0f3", margin: "5px 6px" }} />;
+  const primSm: CSSProperties = { ...btnPrimary, fontSize: "12.5px", padding: "7px 14px", boxShadow: "inset 0 1px 0 rgba(255,255,255,.55), 0 6px 16px rgba(var(--kf-acc-rgb,24,95,165),.45)" };
+  const menuItem: CSSProperties = { ...btn, background: "transparent", border: "none", boxShadow: "none", textAlign: "left", borderRadius: 9, padding: "7px 8px", fontSize: "13.5px", fontWeight: 500, color: "var(--text,#1f2937)", width: "100%", display: "flex", alignItems: "center", gap: 10 };
+  const popBox: CSSProperties = { ...panel, position: "absolute", top: "calc(100% + 8px)", right: 0, padding: 10, borderRadius: 14, zIndex: 40, minWidth: 250, background: "var(--card,#fff)", backgroundImage: "linear-gradient(var(--card,#fff),var(--card,#fff))", display: "flex", flexDirection: "column", gap: 2 };
+  const sep = <div style={{ height: 1, background: "var(--border,#eef0f3)", margin: "5px 6px" }} />;
   const isHidden = (n: GNode | undefined): boolean => !!n && hidden.indexOf(roleOf(n) ? "r:" + n.rid : n.kind) >= 0;
   const newFrom = (name: string, gr: Graph) => { const id = uid(); change((s: Store) => ({ tabs: [...s.tabs, { id, name, graph: norm(clone(gr)) }], active: id })); setSel(null); setPop(null); };
 
@@ -427,14 +427,14 @@ function App() {
   const [connFrom, setConnFrom] = useState<string | null>(null);
   const linkNodes = (from: string, to: string) => { if (from === to) return; const tn = g.nodes.find((n: GNode) => n.id === to); if (tn && tn.kind === "entrada") return; if (g.edges.some((e: GEdge) => e.from === from && e.to === to)) return; setGraph((p: Graph) => ({ ...p, edges: [...p.edges, { id: uid(), from, to }] })); };
   useEffect(() => { const onDown = (e: globalThis.PointerEvent) => { const t = e.target as HTMLElement | null; if (!t || !t.closest || !t.closest("[data-pop]")) setPop(null); }; window.addEventListener("pointerdown", onDown); return () => window.removeEventListener("pointerdown", onDown); }, []);
-  const rb = (active: boolean, _primary?: boolean): CSSProperties => ({ width: 38, height: 38, borderRadius: 10, border: "none", background: active ? "#185FA5" : "transparent", color: active ? "#fff" : "#374151", fontSize: "17px", cursor: "pointer", display: "grid", placeItems: "center", position: "relative", font: "inherit", padding: 0 });
+  const rb = (active: boolean, _primary?: boolean): CSSProperties => ({ width: 38, height: 38, borderRadius: 10, border: "none", background: active ? "var(--blue-mid,#185FA5)" : "transparent", color: active ? "#fff" : "var(--text,#374151)", fontSize: "17px", cursor: "pointer", display: "grid", placeItems: "center", position: "relative", font: "inherit", padding: 0 });
   const railBtn = (id: string, icon: string, title: string, active: boolean, onClick: () => void, opts?: { primary?: boolean; badge?: number }) => (
     <button key={id} title={title} style={rb(active, opts && opts.primary)} onClick={onClick}>{icon}{opts && opts.badge ? <span style={{ position: "absolute", top: 2, right: 1, minWidth: 15, height: 15, borderRadius: 8, background: "#f59e0b", color: "#fff", fontSize: "9.5px", fontWeight: 700, lineHeight: "15px", padding: "0 3px", boxSizing: "border-box" }}>{opts.badge}</span> : null}</button>
   );
   const side: CSSProperties = { ...popBox, overscrollBehavior: "contain", top: 0, left: "calc(100% + 10px)", right: "auto", maxHeight: Math.max(160, rootH - 90), overflowY: "auto" };
-  const chip = (off: boolean): CSSProperties => ({ display: "flex", alignItems: "center", gap: 5, padding: "4px 9px", borderRadius: 8, cursor: "pointer", fontSize: "11.5px", fontWeight: 600, background: off ? "transparent" : "#f3f4f6", color: off ? TER : "#374151", border: "1px solid #eef0f3", opacity: off ? 0.6 : 1 });
-  const kIcon = (bg: string, ic: string) => <span style={{ width: 26, height: 26, borderRadius: 7, background: bg, color: "#333", display: "grid", placeItems: "center", fontSize: "14px", flexShrink: 0 }}>{ic}</span>;
-  const h4: CSSProperties = { fontSize: "11px", fontWeight: 600, textTransform: "uppercase", opacity: 0.7, margin: "6px 8px", letterSpacing: ".6px", color: "#1f2937" };
+  const chip = (off: boolean): CSSProperties => ({ display: "flex", alignItems: "center", gap: 5, padding: "4px 9px", borderRadius: 8, cursor: "pointer", fontSize: "11.5px", fontWeight: 600, background: off ? "transparent" : "var(--bg2,#f3f4f6)", color: off ? TER : "var(--text,#374151)", border: "1px solid var(--border,#eef0f3)", opacity: off ? 0.6 : 1 });
+  const kIcon = (bg: string, ic: string) => <span style={{ width: 26, height: 26, borderRadius: 7, background: bg, color: "var(--text,#333)", display: "grid", placeItems: "center", fontSize: "14px", flexShrink: 0 }}>{ic}</span>;
+  const h4: CSSProperties = { fontSize: "11px", fontWeight: 600, textTransform: "uppercase", opacity: 0.7, margin: "6px 8px", letterSpacing: ".6px", color: "var(--text,#1f2937)" };
   const sub = (t: string) => <small style={{ display: "block", opacity: 0.7, fontSize: "11px" }}>{t}</small>;
   const drawerOpen = !!(selNode || selLane || selNote);
   const closeAll = () => { setPop(null); setMenuTab(null); };
@@ -442,14 +442,14 @@ function App() {
   const linkRow = (e: GEdge, other: string) => <div key={e.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, color: SEC, fontSize: "12.5px", marginBottom: 3 }}><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nodeById(other)?.name}</span><span style={{ cursor: "pointer", color: "#dc2626" }} title="Remover ligação" onClick={() => cutEdge(e.id)}>×</span></div>;
 
   return (
-    <div ref={rootRef} className="kf" style={{ position: "relative", width: "100%", maxWidth: "none", height: "100%", minHeight: 420, display: "flex", flexDirection: "column", overflow: "hidden", boxSizing: "border-box", fontFamily: FONT, fontWeight: 500, color: "#1f2937", background: "#f9fafb", colorScheme: "light", fontSize: "13px" }}>
+    <div ref={rootRef} className="kf" style={{ position: "relative", width: "100%", maxWidth: "none", height: "100%", minHeight: 420, display: "flex", flexDirection: "column", overflow: "hidden", boxSizing: "border-box", fontFamily: FONT, fontWeight: 500, color: "var(--text,#1f2937)", background: "transparent", colorScheme: "light", fontSize: "13px" }}>
       <style>{CSS}</style>
       <input ref={file} type="file" accept="application/json,.json" style={{ display: "none" }} onChange={onFile} />
 
       <div style={{ position: "absolute", top: 12, left: 12, right: 12, zIndex: 30, display: "flex", alignItems: "center", gap: 8, pointerEvents: "none" }}>
         <div style={{ ...pill, position: "relative", pointerEvents: "auto", padding: "6px 12px", gap: 10, flexWrap: "nowrap", minWidth: 0, flex: "0 1 auto", maxWidth: narrow ? "calc(100% - 96px)" : 640 }}>
-          <div style={{ fontWeight: 700, fontSize: "13.5px", whiteSpace: "nowrap", color: "#111827" }}>{tab.name}</div>
-          <div style={{ width: 1, height: 16, background: "#e5e7eb", flexShrink: 0 }} />
+          <div style={{ fontWeight: 700, fontSize: "13.5px", whiteSpace: "nowrap", color: "var(--text,#111827)" }}>{tab.name}</div>
+          <div style={{ width: 1, height: 16, background: "var(--border,#e5e7eb)", flexShrink: 0 }} />
           {objEdit ? (
             <input autoFocus style={{ ...fieldSm, width: narrow ? 160 : 380, padding: "4px 8px", fontSize: "12.5px" }} placeholder="Objetivo deste fluxograma" value={g.objective} onChange={(e: ChangeEvent<HTMLInputElement>) => { const v = e.target.value; setGraph((p: Graph) => ({ ...p, objective: v }), "obj"); }} onBlur={() => setObjEdit(false)} onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => { if (e.key === "Enter") setObjEdit(false); }} />
           ) : (
@@ -470,7 +470,7 @@ function App() {
         {railBtn("grupo", "▢", "Novo grupo", false, () => addAny("grupo"))}
         {railBtn("nota", "✎", "Nova nota", false, () => addAny("nota"))}
         {railBtn("conn", "⤳", "Conectar: clique na origem e depois no destino", tool === "connect", () => { setTool(tool === "connect" ? "select" : "connect"); setConnFrom(null); setPop(null); })}
-        <div style={{ height: 1, background: "#eef0f3", margin: "4px 4px" }} />
+        <div style={{ height: 1, background: "var(--border,#eef0f3)", margin: "4px 4px" }} />
         {railBtn("search", "🔍", "Buscar e filtrar", pop === "search" || !!ql || hidden.length > 0, () => togglePop("search"))}
         {railBtn("export", "⇪", "Exportar", pop === "export", () => togglePop("export"))}
         {railBtn("warn", "⚠", "Antes de exportar", pop === "warn", () => togglePop("warn"), { badge: warnings.length })}
@@ -490,9 +490,9 @@ function App() {
                 <span title="Excluir papel" style={{ cursor: "pointer", padding: "4px 8px 4px 4px", color: "#dc2626" }} onClick={() => delRole(r)}>×</span>
               </div>
             ))}
-            <button className="it" style={{ ...menuItem, color: "#185FA5" }} onClick={() => { setPop(null); setRoleDlg({ id: uid(), name: "", icon: ROLE_ICONS[0], color: "#f9a8d4", base: "trabalhador", desc: "", rounds: 3 }); }}>{kIcon("#dbeafe", "＋")}Novo papel</button>
+            <button className="it" style={{ ...menuItem, color: "var(--blue-mid,#185FA5)" }} onClick={() => { setPop(null); setRoleDlg({ id: uid(), name: "", icon: ROLE_ICONS[0], color: "#f9a8d4", base: "trabalhador", desc: "", rounds: 3 }); }}>{kIcon("color-mix(in srgb, var(--blue-mid,#185FA5) 16%, var(--card,#fff))", "＋")}Novo papel</button>
             {sep}
-            <button className="it" style={menuItem} onClick={() => addAny("grupo")} title="Caixa para agrupar peças de uma etapa">{kIcon("#d1d5db", "▢")}Grupo<kbd>G</kbd></button>
+            <button className="it" style={menuItem} onClick={() => addAny("grupo")} title="Caixa para agrupar peças de uma etapa">{kIcon("var(--border,#d1d5db)", "▢")}Grupo<kbd>G</kbd></button>
             <button className="it" style={menuItem} onClick={() => addAny("nota")} title="Post-it no quadro">{kIcon("#fde68a", "✎")}Nota<kbd>N</kbd></button>
           </div>
         )}
@@ -510,12 +510,12 @@ function App() {
         )}
         {pop === "export" && (
           <div style={side}>
-            <button className="it" style={menuItem} onClick={() => { setPop(null); setModal({ title: "Prompt para a IA", text: buildPrompt(tab.name, g), file: `${slug(tab.name)}-prompt.md` }); }}>{kIcon("#dbeafe", "🤖")}<span>Para IA{sub("Prompt pronto p/ colar")}</span></button>
+            <button className="it" style={menuItem} onClick={() => { setPop(null); setModal({ title: "Prompt para a IA", text: buildPrompt(tab.name, g), file: `${slug(tab.name)}-prompt.md` }); }}>{kIcon("color-mix(in srgb, var(--blue-mid,#185FA5) 16%, var(--card,#fff))", "🤖")}<span>Para IA{sub("Prompt pronto p/ colar")}</span></button>
             <button className="it" style={menuItem} onClick={() => { setPop(null); setModal({ title: "Briefing do Diretor", text: buildBriefing(tab.name, g), file: `${slug(tab.name)}-briefing-diretor.md` }); }}>{kIcon("#ede9fe", "📋")}<span>Briefing do Diretor{sub("Resumo em texto para o Diretor")}</span></button>
             {sep}
-            <button className="it" style={menuItem} onClick={() => { setPop(null); download(`${slug(tab.name)}.json`, JSON.stringify({ name: tab.name, graph: g, roles: usedRoles(g) }, null, 2), "application/json"); }}>{kIcon("#f3f4f6", "{ }")}<span>JSON desta aba{sub("Baixar arquivo .json")}</span></button>
-            <button className="it" style={menuItem} onClick={() => { setPop(null); download("fluxogramas.json", JSON.stringify({ ...S, roles }, null, 2), "application/json"); }}>{kIcon("#f3f4f6", "🗂")}<span>JSON de tudo{sub("Todas as abas e papéis")}</span></button>
-            <button className="it" style={menuItem} onClick={() => { setPop(null); if (file.current) file.current.click(); }}>{kIcon("#f3f4f6", "📂")}<span>Abrir JSON…{sub("Importar fluxogramas e papéis")}</span></button>
+            <button className="it" style={menuItem} onClick={() => { setPop(null); download(`${slug(tab.name)}.json`, JSON.stringify({ name: tab.name, graph: g, roles: usedRoles(g) }, null, 2), "application/json"); }}>{kIcon("var(--bg2,#f3f4f6)", "{ }")}<span>JSON desta aba{sub("Baixar arquivo .json")}</span></button>
+            <button className="it" style={menuItem} onClick={() => { setPop(null); download("fluxogramas.json", JSON.stringify({ ...S, roles }, null, 2), "application/json"); }}>{kIcon("var(--bg2,#f3f4f6)", "🗂")}<span>JSON de tudo{sub("Todas as abas e papéis")}</span></button>
+            <button className="it" style={menuItem} onClick={() => { setPop(null); if (file.current) file.current.click(); }}>{kIcon("var(--bg2,#f3f4f6)", "📂")}<span>Abrir JSON…{sub("Importar fluxogramas e papéis")}</span></button>
           </div>
         )}
         {pop === "warn" && (
@@ -526,7 +526,7 @@ function App() {
         )}
         {pop === "help" && (
           <div style={{ ...side, width: narrow ? 240 : 300, padding: 14, gap: 6, fontSize: "12.5px", lineHeight: 1.5, color: SEC }}>
-            <div style={{ fontWeight: 700, color: "#1f2937" }}>Como usar</div>
+            <div style={{ fontWeight: 700, color: "var(--text,#1f2937)" }}>Como usar</div>
             <div>＋ Adicionar cria uma peça; digite o nome do agente na hora (ex.: Diretora de Marketing).</div>
             <div>Para ligar: arraste da bolinha direita de uma peça até a esquerda de outra, ou use ⤳ Conectar e clique na origem e no destino. Clique num fio para cortar.</div>
             <div>Arraste o fundo (ou use ✋) para mover, role para zoom. Delete remove, Ctrl+D duplica, Ctrl+Z desfaz, Esc fecha menus.</div>
@@ -551,12 +551,12 @@ function App() {
       </div>
 
       <div ref={box} onPointerDown={(e: PointerEvent<HTMLDivElement>) => { drag.current = { mode: "pan", sx: e.clientX, sy: e.clientY, ox: view.x, oy: view.y }; setSel(null); setConnFrom(null); closeAll(); }}
-        style={{ position: "relative", flex: "1 1 auto", minHeight: 0, overflow: "hidden", backgroundColor: "#f9fafb", backgroundImage: "radial-gradient(rgba(0,0,0,.12) 1px, transparent 1px)", backgroundSize: `${24 * view.k}px ${24 * view.k}px`, backgroundPosition: `${view.x}px ${view.y}px`, cursor: tool === "pan" ? "grab" : tool === "connect" ? "crosshair" : "default", touchAction: "none", userSelect: "none" }}>
+        style={{ position: "relative", flex: "1 1 auto", minHeight: 0, overflow: "hidden", backgroundColor: "transparent", backgroundImage: "radial-gradient(color-mix(in srgb, var(--text,var(--text,#1f2937)) 22%, transparent) 1px, transparent 1px)", backgroundSize: `${24 * view.k}px ${24 * view.k}px`, backgroundPosition: `${view.x}px ${view.y}px`, cursor: tool === "pan" ? "grab" : tool === "connect" ? "crosshair" : "default", touchAction: "none", userSelect: "none" }}>
         <div style={{ position: "absolute", left: 0, top: 0, transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})`, transformOrigin: "0 0" }}>
           {(g.lanes || []).map((l: Lane) => {
             const on = !!sel && sel.t === "lane" && sel.id === l.id; const lw = l.w || W + 32;
             return (
-              <div key={l.id} style={{ position: "absolute", left: l.x - 16, top: l.y, width: lw, height: l.h, boxSizing: "border-box", borderRadius: 24, border: `1.5px ${on ? "solid" : "dashed"} ${on ? "#185FA5" : "#d1d5db"}`, background: "#f3f4f6", backgroundImage: "linear-gradient(#f3f4f6,#f3f4f6)", pointerEvents: "none" }}>
+              <div key={l.id} style={{ position: "absolute", left: l.x - 16, top: l.y, width: lw, height: l.h, boxSizing: "border-box", borderRadius: 24, border: `1.5px ${on ? "solid" : "dashed"} ${on ? "var(--blue-mid,#185FA5)" : "var(--border,#d1d5db)"}`, background: "var(--bg2,#f3f4f6)", backgroundImage: "linear-gradient(var(--bg2,#f3f4f6),var(--bg2,#f3f4f6))", pointerEvents: "none" }}>
                 <div style={{ pointerEvents: "auto", cursor: "move", padding: "10px 14px", fontSize: "14px", fontWeight: 700, color: SEC }}
                   onPointerDown={(e: PointerEvent<HTMLDivElement>) => { e.stopPropagation(); closeAll(); setSel({ t: "lane", id: l.id as string }); push(""); const carry = gRef.current.nodes.filter((n: GNode) => n.x >= l.x - 26 && n.x <= l.x - 16 + lw && n.y >= l.y && n.y <= l.y + l.h).map((n: GNode) => ({ id: n.id, x: n.x, y: n.y })); drag.current = { mode: "lane", id: l.id, sx: e.clientX, sy: e.clientY, ox: l.x, oy: l.y, carry }; }}
                   onDoubleClick={() => setEditLane(l.id as string)}>
@@ -567,7 +567,7 @@ function App() {
           })}
           <svg style={{ position: "absolute", left: 0, top: 0, overflow: "visible" }} width={1} height={1}>
             <defs>
-              <marker id="arA" markerWidth="6" markerHeight="6" refX="5.5" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L6 3L0 6z" fill="#9ca3af" /></marker>
+              <marker id="arA" markerWidth="6" markerHeight="6" refX="5.5" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L6 3L0 6z" fill="var(--text3,#9ca3af)" /></marker>
               <marker id="arB" markerWidth="6" markerHeight="6" refX="5.5" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L6 3L0 6z" fill="#f59e0b" /></marker>
             </defs>
             {g.edges.map((e: GEdge) => {
@@ -579,41 +579,41 @@ function App() {
                   <title>Clique para cortar</title>
                   <path d={d} stroke="transparent" strokeWidth={14} fill="none" />
                   {back && <text x={(a.x + W + b.x) / 2 + 6} y={(a.y + b.y) / 2 + H / 2 + 86} fill="#f59e0b" fontSize={11} fontFamily={FONT}>revisão</text>}
-                  <path d={d} stroke={back ? "#f59e0b" : "#9ca3af"} strokeWidth={2} markerEnd={back ? "url(#arB)" : "url(#arA)"} strokeDasharray={back ? "6 5" : undefined} fill="none" />
+                  <path d={d} stroke={back ? "#f59e0b" : "var(--text3,#9ca3af)"} strokeWidth={2} markerEnd={back ? "url(#arB)" : "url(#arA)"} strokeDasharray={back ? "6 5" : undefined} fill="none" />
                 </g>
               );
             })}
-            {wire && (() => { const a = nodeById(wire.from); return a ? <path d={curve(a.x + W, a.y + H / 2, wire.x, wire.y)} stroke="#185FA5" strokeWidth={2} strokeDasharray="4 4" fill="none" /> : null; })()}
+            {wire && (() => { const a = nodeById(wire.from); return a ? <path d={curve(a.x + W, a.y + H / 2, wire.x, wire.y)} stroke="var(--blue-mid,#185FA5)" strokeWidth={2} strokeDasharray="4 4" fill="none" /> : null; })()}
           </svg>
           {(g.notes || []).map((n: Note) => {
             const on = !!sel && sel.t === "note" && sel.id === n.id;
             return (
-              <div key={n.id} style={{ position: "absolute", left: n.x, top: n.y, width: n.w, height: n.h, boxSizing: "border-box", borderRadius: 18, background: "#fef9c3", backgroundImage: "linear-gradient(#fef9c3,#fef9c3)", border: `1px solid ${on ? "#185FA5" : "#fde68a"}`, boxShadow: "0 2px 8px rgba(17,24,39,.07)", display: "flex", flexDirection: "column" }}>
+              <div key={n.id} style={{ position: "absolute", left: n.x, top: n.y, width: n.w, height: n.h, boxSizing: "border-box", borderRadius: 18, color: "#1f2937", background: "#fef9c3", backgroundImage: "linear-gradient(#fef9c3,#fef9c3)", border: `1px solid ${on ? "var(--blue-mid,#185FA5)" : "#fde68a"}`, boxShadow: "0 2px 8px rgba(17,24,39,.07)", display: "flex", flexDirection: "column" }}>
                 <div style={{ height: 22, cursor: "move", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 10px", fontSize: "10px", fontWeight: 700, color: "#a16207", letterSpacing: "0.06em" }}
                   onPointerDown={(e: PointerEvent<HTMLDivElement>) => { e.stopPropagation(); closeAll(); setSel({ t: "note", id: n.id }); push(""); drag.current = { mode: "note", id: n.id, sx: e.clientX, sy: e.clientY, ox: n.x, oy: n.y }; }}>
                   <span>NOTA</span>
                   <span style={{ cursor: "pointer", fontSize: "14px" }} onPointerDown={stop} onClick={() => removeSel({ t: "note", id: n.id })}>×</span>
                 </div>
                 <textarea value={n.text} placeholder="Escreva uma nota…" onPointerDown={(e: PointerEvent<HTMLTextAreaElement>) => { e.stopPropagation(); setSel({ t: "note", id: n.id }); }} onChange={(e: ChangeEvent<HTMLTextAreaElement>) => updNote(n.id, { text: e.target.value }, "note" + n.id)}
-                  style={{ flex: 1, font: "inherit", fontSize: "12.5px", color: "#1f2937", background: "transparent", border: "none", outline: "none", resize: "none", padding: "2px 10px 10px", lineHeight: 1.4 }} />
+                  style={{ flex: 1, font: "inherit", fontSize: "12.5px", color: "var(--text,#1f2937)", background: "transparent", border: "none", outline: "none", resize: "none", padding: "2px 10px 10px", lineHeight: 1.4 }} />
               </div>
             );
           })}
           {g.nodes.map((n: GNode) => {
             const on = !!sel && sel.t === "node" && sel.id === n.id; const sc = stripeOf(n); const hit = matchSet.has(n.id); const hlOn = !!hlK && keyOf(n) === hlK; const dim = (ql && !hit) || isHidden(n) || (!!hlK && !hlOn);
-            const port: CSSProperties = { position: "absolute", top: H / 2 - 6, width: 12, height: 12, borderRadius: 6, background: "#fff", backgroundImage: "linear-gradient(#fff,#fff)", border: `2px solid ${sc}`, boxSizing: "border-box", cursor: "crosshair" };
+            const port: CSSProperties = { position: "absolute", top: H / 2 - 6, width: 12, height: 12, borderRadius: 6, background: "var(--card,#fff)", backgroundImage: "linear-gradient(var(--card,#fff),var(--card,#fff))", border: `2px solid ${sc}`, boxSizing: "border-box", cursor: "crosshair" };
             return (
               <div key={n.id} onPointerDown={(e: PointerEvent<HTMLDivElement>) => { e.stopPropagation(); closeAll(); if (tool === "pan") { drag.current = { mode: "pan", sx: e.clientX, sy: e.clientY, ox: view.x, oy: view.y }; return; } if (tool === "connect") { if (!connFrom) setConnFrom(n.id); else { linkNodes(connFrom, n.id); setConnFrom(null); } return; } setSel({ t: "node", id: n.id }); push(""); drag.current = { mode: "node", id: n.id, sx: e.clientX, sy: e.clientY, ox: n.x, oy: n.y }; }}
-                style={{ position: "absolute", left: n.x, top: n.y, width: W, height: H, boxSizing: "border-box", opacity: dim ? 0.25 : 1, background: "#fff", backgroundImage: "linear-gradient(#fff,#fff)", boxShadow: hlOn ? `0 0 0 4px ${sc}, 0 0 22px ${sc}` : on || connFrom === n.id ? "0 0 0 3px rgba(24,95,165,.22), 0 4px 18px rgba(0,0,0,.08)" : hit ? "0 0 0 3px rgba(245,158,11,.3), 0 4px 18px rgba(0,0,0,.08)" : "0 4px 18px rgba(0,0,0,.08)", border: `1px solid ${n.decision ? "#f59e0b" : on || connFrom === n.id ? "#185FA5" : "#e5e7eb"}`, borderRadius: 14, overflow: "visible", cursor: tool === "connect" ? "crosshair" : tool === "pan" ? "grab" : "move", display: "flex" }}>
+                style={{ position: "absolute", left: n.x, top: n.y, width: W, height: H, boxSizing: "border-box", opacity: dim ? 0.25 : 1, background: "var(--card,#fff)", backgroundImage: "linear-gradient(var(--card,#fff),var(--card,#fff))", boxShadow: hlOn ? `0 0 0 4px ${sc}, 0 0 22px ${sc}` : on || connFrom === n.id ? "0 0 0 3px rgba(var(--kf-acc-rgb,24,95,165),.22), 0 4px 18px rgba(0,0,0,.08)" : hit ? "0 0 0 3px rgba(245,158,11,.3), 0 4px 18px rgba(0,0,0,.08)" : "0 4px 18px rgba(0,0,0,.08)", border: `1px solid ${n.decision ? "#f59e0b" : on || connFrom === n.id ? "var(--blue-mid,#185FA5)" : "var(--border,#e5e7eb)"}`, borderRadius: 14, overflow: "visible", cursor: tool === "connect" ? "crosshair" : tool === "pan" ? "grab" : "move", display: "flex" }}>
                 <div style={{ width: 4, background: sc, borderRadius: "13px 0 0 13px", flexShrink: 0 }} />
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", overflow: "hidden", minWidth: 0, flex: 1 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 9, background: sc.charAt(0) === "#" && sc.length === 7 ? sc + "55" : "#f3f4f6", display: "grid", placeItems: "center", fontSize: "17px", flexShrink: 0 }}>{roleOf(n)?.icon || ICON[n.kind]}</div>
+                  <div style={{ width: 32, height: 32, borderRadius: 9, background: sc.charAt(0) === "#" && sc.length === 7 ? sc + "55" : "var(--bg2,#f3f4f6)", display: "grid", placeItems: "center", fontSize: "17px", flexShrink: 0 }}>{roleOf(n)?.icon || ICON[n.kind]}</div>
                   <div style={{ minWidth: 0 }}>
-                    <div title={n.name} style={{ fontWeight: 700, fontSize: n.name.length > 40 ? "12px" : "13.5px", lineHeight: 1.25, color: "#1f2937", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{n.name}</div>
-                    <div title={n.role || DESC[n.kind]} style={{ fontSize: "11px", color: "#1f2937", opacity: 0.75, marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{roleOf(n)?.name || LABEL[n.kind]}{n.kind === "supervisor" ? ` · ${n.rounds}x` : ""}{n.role ? ` · ${n.role}` : ""}</div>
+                    <div title={n.name} style={{ fontWeight: 700, fontSize: n.name.length > 40 ? "12px" : "13.5px", lineHeight: 1.25, color: "var(--text,#1f2937)", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{n.name}</div>
+                    <div title={n.role || DESC[n.kind]} style={{ fontSize: "11px", color: "var(--text,#1f2937)", opacity: 0.75, marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{roleOf(n)?.name || LABEL[n.kind]}{n.kind === "supervisor" ? ` · ${n.rounds}x` : ""}{n.role ? ` · ${n.role}` : ""}</div>
                   </div>
                 </div>
-                {n.decision && <div title={n.decision} style={{ position: "absolute", left: -1, bottom: H + 6, width: W + 30, boxSizing: "border-box", padding: "4px 8px", borderRadius: 10, background: "#fffbeb", backgroundImage: "linear-gradient(#fffbeb,#fffbeb)", border: "1px solid #f59e0b", color: "#92400e", fontSize: "10.5px", fontWeight: 700, lineHeight: 1.3 }}>{n.decision}</div>}
+                {n.decision && <div title={n.decision} style={{ position: "absolute", left: -1, bottom: H + 6, width: W + 30, boxSizing: "border-box", padding: "4px 8px", borderRadius: 10, color: "#92400e", background: "#fffbeb", backgroundImage: "linear-gradient(#fffbeb,#fffbeb)", border: "1px solid #f59e0b", color: "#92400e", fontSize: "10.5px", fontWeight: 700, lineHeight: 1.3 }}>{n.decision}</div>}
                 {n.kind !== "entrada" && <div style={{ ...port, left: -7 }} onPointerUp={() => connect(n.id)} onPointerDown={stop} />}
                 <div style={{ ...port, right: -7, background: sc }} onPointerDown={(e: PointerEvent<HTMLDivElement>) => { e.stopPropagation(); const p = toWorld(e.clientX, e.clientY); setWire({ from: n.id, x: p.x, y: p.y }); }} />
               </div>
@@ -631,7 +631,7 @@ function App() {
         </div>
 
         {drawerOpen && (
-          <div data-panel="1" onPointerDown={stop} onWheel={(e: { stopPropagation: () => void }) => e.stopPropagation()} style={{ ...panel, overscrollBehavior: "contain", maxHeight: "calc(100% - 76px)", position: "absolute", top: 64, right: 12, bottom: narrow ? 104 : 60, width: narrow ? "calc(100% - 20px)" : 320, boxSizing: "border-box", overflowY: "auto", zIndex: 25, background: "#fff", backgroundImage: "linear-gradient(#fff,#fff)", padding: 16 }}>
+          <div data-panel="1" onPointerDown={stop} onWheel={(e: { stopPropagation: () => void }) => e.stopPropagation()} style={{ ...panel, overscrollBehavior: "contain", maxHeight: "calc(100% - 76px)", position: "absolute", top: 64, right: 12, bottom: narrow ? 104 : 60, width: narrow ? "calc(100% - 20px)" : 320, boxSizing: "border-box", overflowY: "auto", zIndex: 25, background: "var(--card,#fff)", backgroundImage: "linear-gradient(var(--card,#fff),var(--card,#fff))", padding: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
               {selNode && <div style={{ width: 10, height: 10, borderRadius: 5, background: stripeOf(selNode), boxShadow: `0 0 8px ${stripeOf(selNode)}` }} />}
               <div style={{ fontWeight: 700, flex: 1 }}>{selNode ? (roleOf(selNode) ? `${roleOf(selNode)?.icon} ${roleOf(selNode)?.name}` : LABEL[selNode.kind]) : selLane ? "Grupo" : "Nota"}</div>
@@ -639,7 +639,7 @@ function App() {
             </div>
             {selNode && (
               <div>
-                {selNode.decision && <div style={{ marginTop: 8, padding: "7px 10px", borderRadius: 14, background: "#fffbeb", backgroundImage: "linear-gradient(#fffbeb,#fffbeb)", color: "#92400e", border: "1px solid #f59e0b", fontWeight: 700, fontSize: "12px", lineHeight: 1.4 }}>{selNode.decision}</div>}
+                {selNode.decision && <div style={{ marginTop: 8, padding: "7px 10px", borderRadius: 14, color: "#92400e", background: "#fffbeb", backgroundImage: "linear-gradient(#fffbeb,#fffbeb)", color: "#92400e", border: "1px solid #f59e0b", fontWeight: 700, fontSize: "12px", lineHeight: 1.4 }}>{selNode.decision}</div>}
                 <div style={lab}>Nome</div>
                 <input ref={nameRef} style={fieldSm} placeholder="Ex.: Diretora de Marketing" value={selNode.name} onChange={(e: ChangeEvent<HTMLInputElement>) => upd(selNode.id, { name: e.target.value }, "name" + selNode.id)} onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
                 <div style={lab}>Papel</div>
@@ -667,7 +667,7 @@ function App() {
                     <input style={fieldSm} placeholder="⚠ DECISÃO DA GESTÃO: …" value={selNode.decision || ""} onChange={(e: ChangeEvent<HTMLInputElement>) => upd(selNode.id, { decision: e.target.value || undefined }, "dec" + selNode.id)} />
                     <div style={lab}>Cor</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {SWATCHES.map((c: string) => { const cur = (selNode.color || "") === c; return <div key={c || "auto"} title={c ? c : "Cor do tipo"} onClick={() => upd(selNode.id, { color: c || undefined }, "")} style={{ width: 22, height: 22, borderRadius: 11, background: c || STRIPE[selNode.kind], cursor: "pointer", border: cur ? "2px solid #1f2937" : "2px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", color: "#03357a", fontWeight: 700 }}>{c ? "" : "A"}</div>; })}
+                      {SWATCHES.map((c: string) => { const cur = (selNode.color || "") === c; return <div key={c || "auto"} title={c ? c : "Cor do tipo"} onClick={() => upd(selNode.id, { color: c || undefined }, "")} style={{ width: 22, height: 22, borderRadius: 11, background: c || STRIPE[selNode.kind], cursor: "pointer", border: cur ? "2px solid var(--text,#1f2937)" : "2px solid var(--border,#e5e7eb)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", color: "#03357a", fontWeight: 700 }}>{c ? "" : "A"}</div>; })}
                     </div>
                     <div style={lab}>Recebe de</div>
                     {g.edges.filter((e: GEdge) => e.to === selNode.id).map((e: GEdge) => linkRow(e, e.from))}
@@ -706,8 +706,8 @@ function App() {
 
         <div data-panel="1" data-pop="1" style={{ position: "absolute", left: 72, bottom: 12, zIndex: 45 }} onPointerDown={stop} onWheel={(e: { stopPropagation: () => void }) => e.stopPropagation()}>
           <div style={{ display: "flex", gap: 8 }}>
-            {([["projects", "Projetos", <svg key="p" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z" /><path d="m2 17 10 5 10-5" /><path d="m2 12 10 5 10-5" /></svg>], ["roles", "Papéis", <svg key="r" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="7" r="4" /><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /></svg>]] as [string, string, ReactNode][]).map(([id, t, ic]: [string, string, ReactNode]) => (
-              <button key={id} title={t} aria-label={t} onClick={() => { setMenuTab(null); togglePop(id); }} style={{ width: 44, height: 44, borderRadius: 22, border: `1px solid ${pop === id ? "#185FA5" : "#e5e7eb"}`, background: pop === id ? "#e8f0fe" : "#fff", boxShadow: GSHADOW, cursor: "pointer", display: "grid", placeItems: "center", padding: 0 }}>{ic}</button>
+            {([["projects", "Projetos", <svg key="p" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text2,#4b5563)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z" /><path d="m2 17 10 5 10-5" /><path d="m2 12 10 5 10-5" /></svg>], ["roles", "Papéis", <svg key="r" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text2,#4b5563)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="7" r="4" /><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /></svg>]] as [string, string, ReactNode][]).map(([id, t, ic]: [string, string, ReactNode]) => (
+              <button key={id} title={t} aria-label={t} onClick={() => { setMenuTab(null); togglePop(id); }} style={{ width: 44, height: 44, borderRadius: 22, border: `1px solid ${pop === id ? "var(--blue-mid,#185FA5)" : "var(--border,#e5e7eb)"}`, background: pop === id ? "color-mix(in srgb, var(--blue-mid,#185FA5) 16%, var(--card,#fff))" : "var(--card,#fff)", boxShadow: GSHADOW, cursor: "pointer", display: "grid", placeItems: "center", padding: 0 }}>{ic}</button>
             ))}
           </div>
           {pop === "projects" && (
@@ -716,12 +716,12 @@ function App() {
               {S.tabs.map((tb: Tab, i: number) => { const on = tb.id === tab.id; return (
                 <div key={tb.id}>
                   {editTab === tb.id ? <input autoFocus style={{ ...fieldSm, margin: "2px 0" }} value={tb.name} onChange={(e: ChangeEvent<HTMLInputElement>) => renameTab(tb.id, e.target.value)} onBlur={() => setEditTab(null)} onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => { if (e.key === "Enter") setEditTab(null); }} /> : (
-                  <div style={{ display: "flex", alignItems: "flex-start", borderRadius: 9, background: on ? "#e8f0fe" : "transparent" }}>
-                    <button className="it" style={{ ...menuItem, flex: 1, minWidth: 0, alignItems: "flex-start", whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.35, background: "transparent", color: on ? "#0d3d6b" : "#1f2937", fontWeight: on ? 700 : 500 }} onClick={() => { switchTab(tb.id); setPop(null); }} onDoubleClick={() => setEditTab(tb.id)}><span style={{ flexShrink: 0 }}>{on ? "●" : "○"}</span><span>{tb.name || "Sem nome"}</span></button>
+                  <div style={{ display: "flex", alignItems: "flex-start", borderRadius: 9, background: on ? "color-mix(in srgb, var(--blue-mid,#185FA5) 16%, var(--card,#fff))" : "transparent" }}>
+                    <button className="it" style={{ ...menuItem, flex: 1, minWidth: 0, alignItems: "flex-start", whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.35, background: "transparent", color: on ? "var(--blue-mid,#0d3d6b)" : "var(--text,#1f2937)", fontWeight: on ? 700 : 500 }} onClick={() => { switchTab(tb.id); setPop(null); }} onDoubleClick={() => setEditTab(tb.id)}><span style={{ flexShrink: 0 }}>{on ? "●" : "○"}</span><span>{tb.name || "Sem nome"}</span></button>
                     <span title="Opções" style={{ cursor: "pointer", padding: "6px 10px", fontWeight: 700, color: SEC }} onClick={() => setMenuTab(menuTab === tb.id ? null : tb.id)}>⋯</span>
                   </div>)}
                   {menuTab === tb.id && (
-                    <div style={{ margin: "2px 0 6px 22px", padding: 4, border: "1px solid #eef0f3", borderRadius: 10, display: "flex", flexDirection: "column" }}>
+                    <div style={{ margin: "2px 0 6px 22px", padding: 4, border: "1px solid var(--border,#eef0f3)", borderRadius: 10, display: "flex", flexDirection: "column" }}>
                       <button className="it" style={menuItem} onClick={() => { setEditTab(tb.id); setMenuTab(null); }}>Renomear</button>
                       <button className="it" style={menuItem} onClick={() => dupTab(tb.id)}>Duplicar</button>
                       <button className="it" style={menuItem} disabled={i === 0} onClick={() => moveTab(tb.id, -1)}>↑ Mover para cima</button>
@@ -732,7 +732,7 @@ function App() {
                   )}
                 </div>); })}
               {sep}
-              <button className="it" style={{ ...menuItem, color: "#185FA5" }} onClick={() => { setPop(null); newTab(); }}>＋ Novo fluxograma</button>
+              <button className="it" style={{ ...menuItem, color: "var(--blue-mid,#185FA5)" }} onClick={() => { setPop(null); newTab(); }}>＋ Novo fluxograma</button>
             </div>
           )}
           {pop === "roles" && (
@@ -755,7 +755,7 @@ function App() {
                   <input autoFocus style={{ ...fieldSm, width: 160, padding: "5px 10px", borderRadius: 14 }} value={tb.name} onChange={(e: ChangeEvent<HTMLInputElement>) => renameTab(tb.id, e.target.value)} onBlur={() => setEditTab(null)} onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => { if (e.key === "Enter") setEditTab(null); }} />
                 ) : (
                   <div onClick={() => switchTab(tb.id)} onDoubleClick={() => setEditTab(tb.id)} title={`${tb.name} — duplo clique para renomear`}
-                    style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 4px 5px 11px", borderRadius: 99, cursor: "pointer", fontWeight: on ? 600 : 500, fontSize: "12px", background: on ? "#185FA5" : "transparent", border: "1px solid transparent", color: on ? "#fff" : SEC, maxWidth: narrow ? 220 : 360 }}>
+                    style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 4px 5px 11px", borderRadius: 99, cursor: "pointer", fontWeight: on ? 600 : 500, fontSize: "12px", background: on ? "var(--blue-mid,#185FA5)" : "transparent", border: "1px solid transparent", color: on ? "#fff" : SEC, maxWidth: narrow ? 220 : 360 }}>
                     <span style={{ whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.25 }}>{tb.name || "Sem nome"}</span>
                     <span onClick={(e: { stopPropagation: () => void }) => { e.stopPropagation(); setPop(null); setMenuTab(menuTab === tb.id ? null : tb.id); }} style={{ padding: "0 6px", fontWeight: 700 }} title="Opções">⋯</span>
                   </div>
@@ -780,7 +780,7 @@ function App() {
 
       {modal && (
         <div style={{ position: "absolute", inset: 0, background: "rgba(17,24,39,.25)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: narrow ? 8 : 24, boxSizing: "border-box" }} onClick={() => setModal(null)}>
-          <div style={{ ...panel, width: "100%", maxWidth: 760, height: "100%", maxHeight: 640, boxSizing: "border-box", display: "flex", flexDirection: "column", background: "#fff", backgroundImage: "linear-gradient(#fff,#fff)" }} onClick={(e: { stopPropagation: () => void }) => e.stopPropagation()}>
+          <div style={{ ...panel, width: "100%", maxWidth: 760, height: "100%", maxHeight: 640, boxSizing: "border-box", display: "flex", flexDirection: "column", background: "var(--card,#fff)", backgroundImage: "linear-gradient(var(--card,#fff),var(--card,#fff))" }} onClick={(e: { stopPropagation: () => void }) => e.stopPropagation()}>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 10 }}>
               <div style={{ fontWeight: 700, flex: "1 1 auto" }}>{modal.title} — {tab.name}</div>
               <button style={primSm} onClick={copy}>{copied ? "Copiado" : "Copiar"}</button>
@@ -794,9 +794,9 @@ function App() {
 
       {roleDlg && (
         <div style={{ position: "absolute", inset: 0, background: "rgba(17,24,39,.22)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 55, padding: 12 }} onClick={() => setRoleDlg(null)}>
-          <div style={{ ...panel, width: "100%", maxWidth: 400, maxHeight: "100%", overflowY: "auto", boxSizing: "border-box", background: "#fff", backgroundImage: "linear-gradient(#fff,#fff)" }} onClick={(e: { stopPropagation: () => void }) => e.stopPropagation()}>
+          <div style={{ ...panel, width: "100%", maxWidth: 400, maxHeight: "100%", overflowY: "auto", boxSizing: "border-box", background: "var(--card,#fff)", backgroundImage: "linear-gradient(var(--card,#fff),var(--card,#fff))" }} onClick={(e: { stopPropagation: () => void }) => e.stopPropagation()}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 12, display: "grid", placeItems: "center", fontSize: "17px", background: "#f3f4f6", border: `2px solid ${roleDlg.color}` }}>{roleDlg.icon}</div>
+              <div style={{ width: 34, height: 34, borderRadius: 12, display: "grid", placeItems: "center", fontSize: "17px", background: "var(--bg2,#f3f4f6)", border: `2px solid ${roleDlg.color}` }}>{roleDlg.icon}</div>
               <div style={{ fontWeight: 700, flex: 1 }}>{roles.some((x: Role) => x.id === roleDlg.id) ? "Editar papel" : "Novo papel"}</div>
               <button style={{ ...iconBtn, background: "transparent", boxShadow: "none" }} onClick={() => setRoleDlg(null)}>×</button>
             </div>
@@ -804,15 +804,15 @@ function App() {
             <input autoFocus style={fieldSm} placeholder="Ex.: Crítico, Designer" value={roleDlg.name} onChange={(e: ChangeEvent<HTMLInputElement>) => setRoleDlg({ ...roleDlg, name: e.target.value })} onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => { if (e.key === "Enter") saveRole(); }} />
             <div style={lab}>Ícone</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {ROLE_ICONS.map((ic: string) => <div key={ic} onClick={() => setRoleDlg({ ...roleDlg, icon: ic })} style={{ width: 32, height: 32, borderRadius: 10, display: "grid", placeItems: "center", cursor: "pointer", fontSize: "16px", background: roleDlg.icon === ic ? "#e7f0ff" : "#f3f4f6", border: `1px solid ${roleDlg.icon === ic ? "#185FA5" : "#e5e7eb"}` }}>{ic}</div>)}
+              {ROLE_ICONS.map((ic: string) => <div key={ic} onClick={() => setRoleDlg({ ...roleDlg, icon: ic })} style={{ width: 32, height: 32, borderRadius: 10, display: "grid", placeItems: "center", cursor: "pointer", fontSize: "16px", background: roleDlg.icon === ic ? "color-mix(in srgb, var(--blue-mid,#185FA5) 16%, var(--card,#fff))" : "var(--bg2,#f3f4f6)", border: `1px solid ${roleDlg.icon === ic ? "var(--blue-mid,#185FA5)" : "var(--border,#e5e7eb)"}` }}>{ic}</div>)}
             </div>
             <div style={lab}>Cor</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {SWATCHES.filter((c: string) => c).map((c: string) => <div key={c} onClick={() => setRoleDlg({ ...roleDlg, color: c })} style={{ width: 24, height: 24, borderRadius: 12, background: c, cursor: "pointer", border: roleDlg.color === c ? "2px solid #1f2937" : "2px solid #e5e7eb", boxShadow: roleDlg.color === c ? "0 0 0 3px rgba(255,255,255,.25)" : "none" }} />)}
+              {SWATCHES.filter((c: string) => c).map((c: string) => <div key={c} onClick={() => setRoleDlg({ ...roleDlg, color: c })} style={{ width: 24, height: 24, borderRadius: 12, background: c, cursor: "pointer", border: roleDlg.color === c ? "2px solid var(--text,#1f2937)" : "2px solid var(--border,#e5e7eb)", boxShadow: roleDlg.color === c ? "0 0 0 3px rgba(255,255,255,.25)" : "none" }} />)}
             </div>
             <div style={lab}>Comportamento base</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {ROLE_BASES.map(([k, l]: [Kind, string]) => <div key={k} title={DESC[k]} onClick={() => setRoleDlg({ ...roleDlg, base: k })} style={{ padding: "6px 11px", borderRadius: 12, cursor: "pointer", fontSize: "12px", fontWeight: 600, background: roleDlg.base === k ? "#e7f0ff" : "#f3f4f6", border: `1px solid ${roleDlg.base === k ? "#185FA5" : "#e5e7eb"}` }}>{l} <span style={{ color: TER, fontWeight: 500 }}>· {LABEL[k]}</span></div>)}
+              {ROLE_BASES.map(([k, l]: [Kind, string]) => <div key={k} title={DESC[k]} onClick={() => setRoleDlg({ ...roleDlg, base: k })} style={{ padding: "6px 11px", borderRadius: 12, cursor: "pointer", fontSize: "12px", fontWeight: 600, background: roleDlg.base === k ? "color-mix(in srgb, var(--blue-mid,#185FA5) 16%, var(--card,#fff))" : "var(--bg2,#f3f4f6)", border: `1px solid ${roleDlg.base === k ? "var(--blue-mid,#185FA5)" : "var(--border,#e5e7eb)"}` }}>{l} <span style={{ color: TER, fontWeight: 500 }}>· {LABEL[k]}</span></div>)}
             </div>
             {roleDlg.base === "supervisor" && (<><div style={lab}>Rodadas</div><input style={{ ...fieldSm, width: 90 }} type="number" min={1} max={20} value={roleDlg.rounds} onChange={(e: ChangeEvent<HTMLInputElement>) => setRoleDlg({ ...roleDlg, rounds: Math.max(1, Math.min(20, Number(e.target.value) || 1)) })} /></>)}
             <div style={lab}>Descrição curta</div>
@@ -827,7 +827,7 @@ function App() {
 
       {ask && (
         <div style={{ position: "absolute", inset: 0, background: "rgba(17,24,39,.22)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 16 }} onClick={() => setAsk(null)}>
-          <div style={{ ...panel, maxWidth: 360, background: "#fff", backgroundImage: "linear-gradient(#fff,#fff)" }} onClick={(e: { stopPropagation: () => void }) => e.stopPropagation()}>
+          <div style={{ ...panel, maxWidth: 360, background: "var(--card,#fff)", backgroundImage: "linear-gradient(var(--card,#fff),var(--card,#fff))" }} onClick={(e: { stopPropagation: () => void }) => e.stopPropagation()}>
             <div style={{ lineHeight: 1.5, marginBottom: 14 }}>{ask.msg}</div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button style={btn} onClick={() => setAsk(null)}>Cancelar</button>
