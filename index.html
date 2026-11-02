@@ -6823,17 +6823,31 @@ const TIPOS_PRODUCAO = [
   'Produto de Revenda - SEM DESP. ADM.',
 ];
 
+// ⭐ (02/11) Catálogo oficial: 32 linhas / 143 produtos (ordem da Cobertura). Todos ganham a ficha com a
+// MESMA estrutura, mas VAZIA; só o Pão de Mel (cód. 17) mantém o conteúdo real. A 1ª carga nesta versão
+// (flag LS_FICHAS_CAT_V) descarta as fichas antigas (exceto o Pão de Mel) e monta o catálogo.
+const PRODUTOS_CATALOGO = [["LINHA AMENDOIM",[["9","Biscoito Broa de Amendoim 250g (ES01)"],["70","Biscoito de Amendoim com Chocolate ao Leite 250g (ES01)"],["71","Biscoito de Amendoim com Chocolate Branco 250g (ES01)"]]],["LINHA PALITINHOS",[["1793","Salgadinho Palitinho sabor Calabresa 138g (ES08)"],["1794","Salgadinho Palitinho sabor Original 138g (ES08)"],["1795","Salgadinho Palitinho sabor Churrasco 138g (ES08)"],["1796","Salgadinho Palitinho sabor Pizza 138g (ES08)"],["1797","Salgadinho Palitinho sabor Salsa 138g (ES08)"],["1798","Salgadinho Palitinho sabor Bacon 138g (ES08)"],["1811","Salgadinho Palitinho sabor Oregano 138g (ES08)"],["1815","Salgadinho Palitinho sabor Queijo 138g (ES08)"]]],["LINHA SUSPIRO",[["34","Suspiro Tradicional 100g (ES22)"],["72","Suspiro com Chocolate ao Leite 140g (ES22)"],["77","Suspiro com Chocolate Branco 140g (ES22)"],["3035","Suspiro Tradicional 500g"]]],["LINHA PÃO DE MEL",[["2","Pão de Mel Menta com Choc. ao Leite 250g (ES02)"],["17","Pão de Mel com Chocolate ao Leite 250g (ES02)"],["47","Pão de Mel com Chocolate Branco 250g (ES02)"],["1239","Pão de Mel Natural 250g"]]],["LINHA SALGADÃO",[["787","Salgadão sabor Bacon 100g (ES10)"],["901","Salgadão sabor Churrasco 100g (ES10)"],["930","Salgadão Sabor Bacon 50g (ES10)"],["931","Salgadão Sabor Churrasco 50g (ES10)"]]],["LINHA POLVILHO",[["874","Biscoito de Polvilho sabor Tradicional 60g (ES05)"],["878","Biscoito de Polvilho sabor Queijo 60g (ES05)"],["1248","Biscoito de Polvilho sabor Tradicional 120g"],["1249","Biscoito de Polvilho sabor Queijo 120g"]]],["LINHA CHOCOLOVERS",[["10","Biscoito Mignon com Chocolate ao Leite 180g (ES07)"],["12","Biscoito Choco Rosca 250g (ES07)"],["29","Biscoito Duetto 250g (ES07)"],["48","Biscoito Choco Bola 180g (ES07)"]]],["LINHA BISCOITOS SALGADOS",[["27","Biscoito Mignon sabor Tradicional 180g (ES05)"],["28","Biscoito Mignon sabor Bacon 180g (ES05)"]]],["LINHA COBERTURAS",[["510","Cobertura Sab. Choc. KLAIN 1,010kg - Ao Leite (Pacote)(ES04)"],["511","Cobertura Sab. Choc. KLAIN 1,010kg - Branco (Pacote) (ES04)"],["512","Cobertura Sab. Choc. KLAIN 1,010kg - Meio Amargo(Pcte)(ES04)"]]],["LINHA RECHEIO FORNEÁVEL",[["540","Recheio Forn. KLAIN 1,010kg - Ao Leite (Bisnaga) (ES04)"],["541","Recheio Forn. KLAIN 1,010kg - Branco (Bisnaga) (ES04)"],["542","Recheio Forn. KLAIN 1,010kg - Meio Amargo (Bisnaga) (ES04)"],["543","Recheio Forn. KLAIN 1,010kg - Avelã (Bisnaga) (ES04)"],["952","Recheio Forn. KLAIN 1,010kg - Leitinho (Bisnaga) (ES04)"]]],["LINHA CLÁSSICOS",[["30","Biscoito Amanteigado 240g (ES03)"],["39","Biscoito de Milho 240g (ES03)"],["69","Biscoito de Maisena 240g (ES03)"],["743","Biscoito Manteiguinha com Chocolate 240g (ES03)"],["1175","Biscoito de Banana com Canela 240g (ES03)"],["1214","Biscoito de Limão 240g (ES03)"],["1222","Biscoito de Maracujá 240g (ES03)"]]],["LINHA ECONÔMICA",[["3","Biscoito Manteiguinha Pacotão Econômico 500g (ES03)"],["740","Biscoito Manteiguinha de Choc Pacotão Econômico 500g (ES03)"],["741","Biscoito de Maisena Pacotão Econômico 500g (ES03)"],["742","Biscoito de Milho Pacotão Econômico 500g (ES03)"],["1176","Biscoito de Banana com Canela Pacotão Econômico 500g (ES03)"],["1216","Biscoito de Limão Pacotão Econômico 500g (ES03)"],["1223","Biscoito de Maracujá Pacotão Econômico 500g (ES03)"]]],["LINHA RECHEIO FORNEÁVEL",[["545","Recheio Forn. KLAIN 4kg - Ao Leite (BLD)"],["546","Recheio Forn. KLAIN 4kg - Branco (BLD)"],["547","Recheio Forn. KLAIN 4kg - Meio Amargo (BLD)"],["548","Recheio Forn. KLAIN 4kg - Avelã (BLD)"]]],["LINHA MONODOSE",[["944","MONODOSE - Biscoito de Milho 34g"],["945","MONODOSE - Biscoito de Amendoim com Choc ao Leite 44g"],["946","MONODOSE - Biscoito Choco Bola 30g"],["947","MONODOSE - Biscoito Broa de Amendoim 38g"],["948","MONODOSE - Biscoito Choco Rosca 38g"],["949","MONODOSE - Biscoito Mignon sabor Tradicional 30g"],["961","MONODOSE - Pão de Mel com Choc ao Leite 36g"]]],["LINHA COBERTURA 20KG",[["520","Cobertura Sabor Choc. KLAIN 20kg - Ao Leite (SC)"],["521","Cobertura Sabor Choc. KLAIN 20kg - Branco (SC)"],["522","Cobertura Sabor Choc. KLAIN 20kg - Meio Amargo (SC)"]]],["LINHA APERITIVOS",[["788","Salgadinho Aperitivo sabor Churrasco 140g (ES12)"],["789","Salgadinho Aperitivo sabor Costelinha com Limão 140g (ES12)"],["790","Salgadinho Aperitivo sabor Bacon 140g (ES12)"],["1170","Salgadinho Aperitivo Sabor Original 140g (ES12)"]]],["LINHA BISCOITOS DOCES",[["45","Biscoito Folhadinho Doce 250g (ES05)"]]],["LINHA ROSQUINHAS",[["885","Biscoito Rosquinha de Coco 500g (ES03)"],["886","Biscoito Rosquinha de Leite 500g (ES03)"],["1097","Biscoito Rosquinha de Coco 240g (ES03)"],["1098","Biscoito Rosquinha de Leite 240g (ES03)"]]],["LINHA FRITAR",[["924","Pastilha de Trigo 250g"]]],["LINHA PREMIUM",[["1150","Alfajor Premium Meio Amargo 38g (ES09)"],["1151","Alfajor Premium Branco 38g (ES09)"],["1152","Alfajor Premium Pasta de Amendoim 38g (ES09)"]]],["LINHA FLOCOS DE ARROZ",[["310","Flocos de Arroz Tradicional 100g"],["311","Flocos de Arroz Integral 100g"]]],["LINHA POTES MOÇAS E PAÇOCAS",[["104","Pé de Moça (Pote 960g - 32 unid.)"],["105","Chocomoça (Pote 960g - 32 unid.)"],["990","Paçoca Tradicional 14g (Pote 560g - 40un.) (ES19)"],["991","Paçoca Zero Açúcar 14g (Pote 560g - 40un.) (ES19)"],["994","Paçoca Tradicional 14g (Pote 196g - 14un.) (ES19)"],["1014","Paçoca Zero Açúcar 14g (Pote 196g - 14un.) (ES19)"]]],["LINHA BITZ",[["926","Salgadinho BITZ Sabor Bacon 38g (ES12)"],["928","Salgadinho BITZ Sabor Pão de Alho 38g (ES12)"],["929","Salgadinho BITZ Sabor Churrasco 38g (ES12)"]]],["LINHA MASSA CASEIRA",[["903","Massa Tipo Caseira Bandeja 400g - N1 (ES14)"],["904","Massa Tipo Caseira Bandeja 400g - N2 (ES14)"],["905","Massa Tipo Caseira Bandeja 400g - N3 (ES14)"],["906","Massa Tipo Caseira Bandeja 400g - N4 (ES14)"],["1231","Massa Tipo Caseira Ninho 400g - N1 (ES14)"],["1232","Massa Tipo Caseira Ninho 400g - N2 (ES14)"],["1233","Massa Tipo Caseira Ninho 400g - N3 (ES14)"],["1235","Massa Tipo Caseira Ninho 400g - N4 (ES14)"]]],["LINHA PASTA DE AMENDOIM",[["958","Pasta de Amendoim Tradicional 450g (ES18)"],["959","Pasta de Amendoim Crunchy 450g (ES18)"],["960","Pasta de Amendoim Tradicional com Cacau 450g (ES18)"]]],["INDÚSTRIA - SKIMO 14KG",[["975","Skimo Choc. KLAIN 14kg - Ao Leite (BLD)"],["976","Skimo Choc. KLAIN 14kg - Branco (BLD)"],["977","Skimo Choc. KLAIN 14kg - Meio Amargo (BLD)"]]],["LINHA PIPOCAS",[["941","Pipoca Doce Tradicional 100g (ES16) ( 10 unid. )"],["943","Pipoca Caramelizada 100g (ES16) ( 10 unid. )"],["1162","Pipoca Doce Rosa 100g (ES16) ( 10 unid. )"]]],["LINHAS BOLINHAS",[["1135","Salgadinho de Bolinhas Sabor Churrasco 138g (ES08)"],["1136","Salgadinho de Bolinhas Sabor Bacon 138g (ES08)"]]],["LINHA BATATAS",[["24","Batata Frita sabor Churrasco 40g (ES11)"],["31","Batata Frita sabor Original 40g (ES11)"],["215","Batata Palha 80g (ES11)"],["1178","Batata Frita sabor Churrasco 85g (ES11)"],["1179","Batata Frita sabor Original 85g (ES11)"],["1181","Batata Frita sabor Cebola e Salsa 85g (ES11)"]]],["LINHA INTENSUS",[["1153","Salgadinho Intensus Sabor Cebola e Salsa 130g (ES06)"],["1154","Salgadinho Intensus Sabor Presunto 140g (ES06)"],["1155","Salgadinho Intensus Sabor Requeijão Cremoso 140g (ES06)"],["1156","Salgadinho Intensus Sabor Queijo Parmesão 140g (ES06)"],["1158","Salgadinho Intensus Sabor Cebola e Salsa 70g (ES06)"],["1159","Salgadinho Intensus Sabor Presunto 80g (ES06)"],["1160","Salgadinho Intensus Sabor Requeijão Cremoso 80g (ES06)"],["1161","Salgadinho Intensus Sabor Queijo Parmesão 80g (ES06)"],["1989","Salgadinho Intensus Sabor Cebola e Salsa 10g"],["2041","Salgadinho Intensus Sabor Presunto 10g"],["2042","Salgadinho Intensus Sabor Queijo Parmesão 10g"],["2043","Salgadinho Intensus Sabor Requeijão Cremoso 10g"]]],["LINHA MEGA MILHO",[["985","Salgadinho MEGA MILHO Sabor Presunto 150g (ES21)"],["986","Salgadinho MEGA MILHO Sabor Cebola e Salsa 150g (ES21)"],["987","Salgadinho MEGA MILHO Sabor Queijo 150g (ES21)"],["988","Salgadinho MEGA MILHO Sabor Requeijão 150g (ES21)"],["1985","Salgadinho MEGA MILHO Sabor Presunto 10g"],["1986","Salgadinho MEGA MILHO Sabor Cebola e Salsa 10g"],["1987","Salgadinho MEGA MILHO Sabor Queijo 10g"],["1988","Salgadinho MEGA MILHO Sabor Requeijão 10g"]]],["LINHA PROTEICO",[["1219","Salg. Protein Sabor Presunto Defumado 50g (ES13)"],["1220","Salg. Protein Sabor Azeite de Oliva c/ Manjericão 50g (ES13)"],["1221","Salg. Protein Sabor Barbecue 50g (ES13)"],["1237","Salg. Protein Sabor Azeite de Oliva c/ Manjericão 10g"],["1238","Salg. Protein Sabor Barbecue 10g"]]]];
+const LS_FICHAS_CAT_V = 'taskflow_fichas_catalogo_v1';
+const _FP_ID_PAODEMEL = 'f_paodemel_exemplo';
+function _fpCatId(li,cod){ return (String(cod)==='17' && li===3) ? _FP_ID_PAODEMEL : ('p_'+li+'_'+cod); }
+function _fpAplicaCatalogo(lista){
+  const reset = safeLSGet(LS_FICHAS_CAT_V)!=='1';
+  const byId = {}; lista.forEach(f=>{ if(f&&f.id) byId[f.id]=f; });
+  let pm = byId[_FP_ID_PAODEMEL] || lista.find(f=>f && String(f.codigo)==='17' && /p[aã]o de mel/i.test(f.produto||'')) || _fichaExemploPaoDeMel();
+  const out=[];
+  PRODUTOS_CATALOGO.forEach(([linha,prods],li)=>prods.forEach(([cod,nome])=>{
+    const id=_fpCatId(li,cod);
+    let f = id===_FP_ID_PAODEMEL ? pm : (reset ? null : byId[id]);
+    if(!f) f={id, codigo:String(cod), produto:nome};
+    f.id=id; f.linha=linha; f.linhaIdx=li; f.nomeLista=nome;
+    out.push(f);
+  }));
+  if(reset) safeLSSet(LS_FICHAS_CAT_V,'1');
+  return out;
+}
 function loadFichasProduto(){
-  fichasProduto = safeJSON(LS_FICHAS_PRODUTO, []);
-  // Remove produtos de simulação (ids f_ex*) que possam ter sido semeados em versões anteriores.
-  const _antes = fichasProduto.length;
-  fichasProduto = fichasProduto.filter(f => !(f.id && String(f.id).startsWith('f_ex')));
-  if(fichasProduto.length !== _antes) safeSetItem(LS_FICHAS_PRODUTO, JSON.stringify(fichasProduto));
-  // Seed (1ª vez) — apenas a ficha real do Pão de Mel.
-  if(fichasProduto.length === 0){
-    fichasProduto = [ _fichaExemploPaoDeMel() ];
-    safeSetItem(LS_FICHAS_PRODUTO, JSON.stringify(fichasProduto));
-  }
+  fichasProduto = _fpAplicaCatalogo(safeJSON(LS_FICHAS_PRODUTO, []));
+  safeSetItem(LS_FICHAS_PRODUTO, JSON.stringify(fichasProduto));
 }
 function saveFichasProduto(){ safeSetItem(LS_FICHAS_PRODUTO, JSON.stringify(fichasProduto)); }
 
@@ -20366,65 +20380,63 @@ function _sensPresRender(){
   ov.innerHTML=wrap(btnClose+topLeft+_sensPresSlideHTML(t,key), footer);
 }
 
-// ─── Lista de produtos ───
-function _cardProduto(f){
-  return `
-    <div onclick="abrirFichaProduto('${f.id}')" style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px 13px; cursor:pointer; transition:all .15s; display:flex; align-items:center; gap:11px;" onmouseover="this.style.borderColor='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)'">
-      <i class="ti ti-package" style="font-size:17px; color:var(--blue-mid); flex-shrink:0;"></i>
-      <div style="flex:1; min-width:0;">
-        <div style="font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(f.produto||'Produto sem nome')}</div>
-        <div style="font-size:11.5px; color:var(--text3); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Cód. ${escapeHTML(f.codigo||'—')} · ${escapeHTML(f.marca||'')}${f.tipoProducao?' · '+escapeHTML(f.tipoProducao):''} ${f.ativo==='Não'?'· <span style="color:var(--danger)">Inativo</span>':''}</div>
-      </div>
-      <button onclick="event.stopPropagation(); duplicarFichaProduto('${f.id}')" title="Duplicar em branco (herda só o nome; preencher do zero)" style="background:none; border:none; color:var(--text3); cursor:pointer; padding:3px; border-radius:6px; flex-shrink:0;" onmouseover="this.style.color='var(--blue-mid)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-copy" style="font-size:15px"></i></button>
-      <button onclick="event.stopPropagation(); excluirFichaProduto('${f.id}')" title="Excluir (vai para a Lixeira)" style="background:none; border:none; color:var(--text3); cursor:pointer; padding:3px; border-radius:6px; flex-shrink:0;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-trash" style="font-size:15px"></i></button>
-      <i class="ti ti-chevron-right" style="color:var(--text3); font-size:16px; flex-shrink:0;"></i>
-    </div>`;
+// ─── Lista de produtos (mockup lista-1-a: tabela agrupada por LINHA, cabeçalhos recolhíveis) ───
+let _plColl = {};   // linhaIdx -> recolhida?
+const _FP_IDENT_KEYS = ['codigo','produto'];
+// % da ficha = campos reais preenchidos (fora a identificação código/produto, que todo item já tem).
+function _fpPctFicha(f){
+  let tot=0, ok=0;
+  FICHA_SECOES.forEach(s=>s.grupos.forEach(g=>g.campos.forEach(c=>{ if(_FP_IDENT_KEYS.includes(c.k)) return; tot++; if(!_fpVazio(f[c.k])) ok++; })));
+  return tot? Math.round(ok*100/tot) : 0;
 }
 function _produtosFiltrados(){
-  let arr = fichasProduto.slice();
-  if(produtoTipoFiltro!=='todos') arr = arr.filter(f=>(f.tipoProducao||'')===produtoTipoFiltro);
   const q = produtoBusca.trim().toLowerCase();
-  if(q) arr = arr.filter(f=> (f.produto||'').toLowerCase().includes(q) || String(f.codigo||'').toLowerCase().includes(q));
-  return arr;
+  if(!q) return fichasProduto.slice();
+  return fichasProduto.filter(f=> (f.nomeLista||f.produto||'').toLowerCase().includes(q) || String(f.codigo||'').toLowerCase().includes(q) || (f.linha||'').toLowerCase().includes(q));
 }
+function _plToggle(li){ _plColl[li]=!_plColl[li]; const el=document.getElementById('produtos-lista'); if(el) el.innerHTML=_cardsProdutosHTML(); }
 function _cardsProdutosHTML(){
-  const arr = _produtosFiltrados();
-  if(fichasProduto.length===0) return '<div style="text-align:center; padding:50px 0; color:var(--text3);"><i class="ti ti-package-off" style="font-size:38px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum produto cadastrado ainda</div>';
-  if(arr.length===0) return '<div style="text-align:center; padding:40px 0; color:var(--text3);"><i class="ti ti-search-off" style="font-size:34px; display:block; margin-bottom:10px; opacity:.4;"></i>Nenhum produto encontrado com esse filtro</div>';
-  return `<div style="font-size:12px; color:var(--text3); margin-bottom:10px;">${arr.length} ${arr.length===1?'produto':'produtos'}</div><div style="display:flex; flex-direction:column; gap:7px;">${arr.map(_cardProduto).join('')}</div>`;
+  const arr=_produtosFiltrados(), busca=!!produtoBusca.trim();
+  if(arr.length===0) return '<div class="pl-empty"><i class="ti ti-search-off"></i>Nenhum produto encontrado</div>';
+  const grupos=[]; let cur=null;
+  arr.forEach(f=>{ if(!cur||cur.li!==f.linhaIdx){ cur={li:f.linhaIdx, nome:f.linha||'Sem linha', itens:[]}; grupos.push(cur); } cur.itens.push(f); });
+  const rows=grupos.map(g=>{
+    const fech=!busca && _plColl[g.li];
+    const head=`<tr class="pl-gh" data-linha="${g.li}" onclick="_plToggle(${g.li})"><td colspan="3"><i class="ti ti-chevron-${fech?'right':'down'}"></i> ${escapeHTML(g.nome)} <span class="pl-badge">${g.itens.length}</span></td></tr>`;
+    if(fech) return head;
+    return head+g.itens.map(f=>{ const pc=_fpPctFicha(f); return `<tr class="pl-row" data-id="${f.id}" onclick="abrirFichaProduto('${f.id}')"><td class="pl-cod">${escapeHTML(f.codigo||'')}</td><td class="pl-nome">${escapeHTML(f.nomeLista||f.produto||'')}</td><td class="pl-pct${pc?'':' zero'}">${pc}%</td></tr>`; }).join('');
+  }).join('');
+  return `<div class="pl-card"><table class="pl-tab"><thead><tr><th class="pl-cod">CÓDIGO</th><th>PRODUTO</th><th class="pl-pct">FICHA</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
-// Busca: atualiza só a lista (mantém o foco no input)
 function _filtrarProdutos(v){
   produtoBusca = v;
   const el=document.getElementById('produtos-lista');
   if(el) el.innerHTML=_cardsProdutosHTML();
 }
 function setProdutoTipoFiltro(t){ produtoTipoFiltro = t; renderListaProdutos(); }
-
+const _PL_CSS=`<style id="pl-css">
+.pl-wrap{padding:16px 4px 110px;width:100%;box-sizing:border-box}
+.pl-busca{width:100%;max-width:340px;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;color:var(--text);font-family:inherit;margin-bottom:14px}
+.pl-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 12px}
+.pl-tab{width:100%;border-collapse:collapse;font-size:13px}
+.pl-tab th{font-size:11px;font-weight:600;color:var(--text3);text-align:left;padding:10px 8px;border-bottom:1px solid var(--border)}
+.pl-tab td{padding:8px;border-bottom:1px solid var(--border);color:var(--text)}
+.pl-tab .pl-cod{width:70px;text-align:right;padding-right:22px;color:var(--text3)}
+.pl-tab .pl-pct{width:110px;color:var(--text2)} .pl-pct.zero{color:var(--text3)}
+.pl-nome{font-weight:600}
+.pl-row{cursor:pointer} .pl-row:hover td{background:color-mix(in srgb,var(--blue-mid) 8%,transparent)}
+.pl-gh td{cursor:pointer;color:var(--accent,var(--orange));font-weight:700;font-size:12px;background:var(--bg2);user-select:none}
+.pl-badge{display:inline-block;margin-left:6px;font-size:10.5px;padding:1px 7px;border-radius:99px;background:color-mix(in srgb,var(--accent,var(--orange)) 22%,transparent)}
+.pl-empty{text-align:center;padding:40px 0;color:var(--text3)} .pl-empty i{font-size:34px;display:block;margin-bottom:10px;opacity:.4}
+</style>`;
 function renderListaProdutos(){
   const main=document.getElementById('task-container');
-  main.innerHTML = `
-    <div style="padding:20px 4px 40px; max-width:1180px;">
-      ${hubHead('Produtos','Ficha completa de cada produto — produtiva, fiscal, comercial e qualidade.',`<div style="display:flex; gap:8px; align-items:center;"><button onclick="_fpGerAbrir()" title="Estrutura da ficha — a mesma para todos os produtos" style="background:var(--card); color:var(--text2); border:1px solid var(--border); border-radius:9px; padding:10px 14px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-list-tree"></i> Estrutura</button><button onclick="novaFichaProduto()" style="background:var(--blue-mid); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px;"><i class="ti ti-plus"></i> Nova ficha</button></div>`)}
-
-      <!-- Filtros: busca + tipo de produção -->
-      <div style="display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap;">
-        <div style="flex:1; min-width:220px; position:relative;">
-          <i class="ti ti-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text3); font-size:15px;"></i>
-          <input value="${escapeAttr(produtoBusca)}" oninput="_filtrarProdutos(this.value)" placeholder="Buscar por nome ou código..." style="width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); border-radius:9px; padding:9px 12px 9px 35px; font-size:13px; color:var(--text); font-family:inherit;">
-        </div>
-        <select onchange="setProdutoTipoFiltro(this.value)" style="min-width:240px; background:var(--bg3); border:1px solid var(--border); border-radius:9px; padding:9px 12px; font-size:13px; color:var(--text); font-family:inherit; cursor:pointer;">
-          <option value="todos" ${produtoTipoFiltro==='todos'?'selected':''}>Todos os tipos (${fichasProduto.length})</option>
-          ${TIPOS_PRODUCAO.map(t=>{
-            const n=fichasProduto.filter(f=>(f.tipoProducao||'')===t).length;
-            return `<option value="${escapeAttr(t)}" ${produtoTipoFiltro===t?'selected':''}>${escapeHTML(t)} (${n})</option>`;
-          }).join('')}
-        </select>
-      </div>
-
+  main.innerHTML = `${_PL_CSS}
+    <div class="pl-wrap">
+      ${hubBreadcrumb([{label:'Produção'},{label:'Produtos'}])}
+      <input id="pl-busca" class="pl-busca" value="${escapeAttr(produtoBusca)}" oninput="_filtrarProdutos(this.value)" placeholder="Buscar produto, código ou linha">
       <div id="produtos-lista">${_cardsProdutosHTML()}</div>
-    </div>
-  `;
+    </div>`;
 }
 
 // ─── Ficha individual — PAINEL com abas (Resumo + uma seção por vez) ───
