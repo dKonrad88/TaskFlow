@@ -16998,12 +16998,12 @@ function _procTaskToggle(taskId){ const t=(tasks||[]).find(x=>x.id===taskId); if
 function _procRunExcluir(runId){ confirmModal({title:'Remover execução', message:'Remover esta execução e as tarefas dela?', danger:true, confirmLabel:'Remover', onConfirm:()=>{ const del=(tasks||[]).filter(t=>t.processoRunId===runId); del.forEach(t=>{ const idx=tasks.indexOf(t); if(idx>=0) tasks.splice(idx,1); if(typeof deleteTask_db==='function') deleteTask_db(t.id); }); _procRunsSave(_procRuns().filter(x=>x.id!==runId)); renderProcessos(); if(typeof renderSidebar==='function') renderSidebar(); }}); }
 
 // ═══ PLANEJAMENTO (nov/2026, Diego): abas Projetos · Processos · Fluxograma no topo do conteúdo ═══
-// Fluxograma = porte do "Fluxograma de Agentes" (React empacotado em hub-assets/hub-fluxograma4.js, carregado sob demanda).
+// Fluxograma = porte do "Fluxograma de Agentes" (React empacotado em hub-assets/hub-fluxograma5.js, carregado sob demanda).
 // Dados: localStorage taskflow_fluxogramas / taskflow_fluxo_papeis via safeSetItem → sincroniza no app_state (Supabase) como as demais chaves taskflow_*.
 let _fluxoLoading=null;
 function _fluxoCarregar(cb){
   if(window.TFFluxo){ cb(); return; }
-  if(!_fluxoLoading){ _fluxoLoading=[]; const sc=document.createElement('script'); sc.src='hub-assets/hub-fluxograma4.js'; sc.onload=()=>{ const q=_fluxoLoading; _fluxoLoading=null; q.forEach(f=>f()); }; sc.onerror=()=>{ _fluxoLoading=null; toast&&toast('Não foi possível carregar o Fluxograma.'); }; document.head.appendChild(sc); }
+  if(!_fluxoLoading){ _fluxoLoading=[]; const sc=document.createElement('script'); sc.src='hub-assets/hub-fluxograma5.js'; sc.onload=()=>{ const q=_fluxoLoading; _fluxoLoading=null; q.forEach(f=>f()); }; sc.onerror=()=>{ _fluxoLoading=null; toast&&toast('Não foi possível carregar o Fluxograma.'); }; document.head.appendChild(sc); }
   _fluxoLoading.push(cb);
 }
 function _procGrafo(p){
