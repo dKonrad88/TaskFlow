@@ -20482,7 +20482,10 @@ const FICHA_IDENT=['codBarras','codBarrasCaixa','gramatura','validade','tipoEmb'
 function _fpCSS(){
   // (sem crase em comentário dentro deste template: fecharia a string)
   return `<style>
-  .fp-wrap{padding:26px 4px 48px;max-width:1220px}
+  /* ⭐ (02/11/2026) largura toda + até o fim da tela, mas com folga à direita/embaixo pro botão K (#fab-create)
+     — o conteúdo e a rolagem terminam antes dele (Diego). A folga é medida do botão em _fpFolgaK(). */
+  .fp-wrap{padding:26px var(--fp-fr,76px) var(--fp-fb,96px) 4px;max-width:none;box-sizing:border-box;display:flex;flex-direction:column}
+  .fp-ficha{flex:1 0 auto}
   /* ⭐ (27/09) mais respiro: o título estava colado no breadcrumb e nos cards de baixo (Diego). */
   .fp-head{display:flex;align-items:center;gap:14px;margin:6px 0 30px;flex-wrap:wrap}
   .fp-back{background:var(--card);border:1px solid var(--border);border-radius:10px;width:36px;height:36px;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -20592,7 +20595,7 @@ function _fpCSS(){
   .fp-tg button{background:none;border:0;border-radius:7px;padding:6px 12px;font-weight:600;font-size:12.5px;font-family:inherit;color:var(--text3);cursor:pointer}
   .fp-tg button.a{background:var(--card);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.18)}
   .fp-gcs{display:flex;gap:8px;position:relative;margin:0 0 16px;overflow-x:auto;padding:3px 3px 6px;scrollbar-width:thin}
-  .fp-gc{flex:1 0 112px;min-width:112px;position:relative;text-align:left;background:var(--card);border:1px solid var(--border);border-radius:11px;padding:10px 12px;cursor:pointer;font-family:inherit;color:var(--text);display:flex;flex-direction:column;gap:7px}
+  .fp-gc{flex:1 1 0;min-width:112px;position:relative;text-align:left;background:var(--card);border:1px solid var(--border);border-radius:11px;padding:10px 12px;cursor:pointer;font-family:inherit;color:var(--text);display:flex;flex-direction:column;gap:7px}
   .fp-gc:hover{border-color:color-mix(in srgb,var(--blue-mid) 45%,var(--border))}
   .fp-gc.on{border-color:var(--blue-mid);box-shadow:0 0 0 1px var(--blue-mid)}
   .fp-gc-t{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -20656,6 +20659,16 @@ function _fpGcStat(i,st){
   const p=st.tot?Math.round(st.ok/st.tot*100):0, full=st.tot>0&&st.ok===st.tot;
   return `<span id="fp-gc-${i}" class="fp-gc-st"><span class="fp-gc-bar"><i style="width:${full?100:p}%;background:${full?'var(--success)':'var(--blue-mid)'}"></i></span><span class="fp-gc-n">${full?'completo':(st.ok+'/'+st.tot)}</span></span>`;
 }
+// Folga do botão K flutuante: direita = largura dele + respiro; embaixo = altura + respiro. A ficha estica
+// até o fim da janela (min-height) e termina acima do K. Sem o botão, folga padrão pequena.
+function _fpFolgaK(w){
+  if(!w) return;
+  const k=document.getElementById('fab-create'), rr=k&&k.getBoundingClientRect(), r=rr&&rr.width>0&&getComputedStyle(k).display!=='none'?rr:null;
+  const fr=r?Math.max(24,Math.round(innerWidth-r.left+14)):24, fb=r?Math.max(32,Math.round(innerHeight-r.top+16)):32;
+  w.style.setProperty('--fp-fr',fr+'px'); w.style.setProperty('--fp-fb',fb+'px');
+  const top=w.getBoundingClientRect().top+window.scrollY;
+  w.style.minHeight=Math.max(0,innerHeight-top)+'px';
+}
 function renderFichaProduto(id){
   const main=document.getElementById('task-container');
   if(!_fpDraft || _fpDraftId!==id) _fpInitDraft(id);
@@ -20716,7 +20729,8 @@ function renderFichaProduto(id){
     </div>
     <nav class="fp-gcs">${cards}</nav>
     <div class="fp-ficha">${corpo}</div>
-  </div>`;  // cartão escolhido sempre à vista na fileira (rola só a fileira, não a página)
+  </div>`;  _fpFolgaK(main.querySelector('.fp-wrap'));
+  // cartão escolhido sempre à vista na fileira (rola só a fileira, não a página)
   const nav=main.querySelector('.fp-gcs'), on=nav&&nav.querySelector('.fp-gc.on');
   if(on && (on.offsetLeft+on.offsetWidth>nav.scrollLeft+nav.clientWidth || on.offsetLeft<nav.scrollLeft)) nav.scrollLeft=on.offsetLeft-nav.clientWidth/2+on.offsetWidth/2;
 }
