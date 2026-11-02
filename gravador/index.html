@@ -97,6 +97,8 @@ ul{list-style:none;padding:0;margin:0}
 .pc .kv{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:13.5px;line-height:1.35}
 .pc .kv .k{flex:none;color:rgba(255,255,255,.68);white-space:nowrap}
 .pc .kv .v{font-weight:600;text-align:right;min-width:0;overflow-wrap:anywhere}
+.pc .kv .sug{display:block;font-weight:500;font-size:12px;color:#FFD60A;margin-top:2px}
+.shsug{font-size:12px;color:#FFD60A;margin:-2px 2px 8px}
 .pc .kv.d{display:block;border-bottom:0;padding-bottom:2px}
 .pc .kv.d .v{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden;text-align:left;font-weight:400;margin-top:3px;color:rgba(255,255,255,.92)}
 .trx{display:flex;align-items:center;gap:10px;margin-top:12px;padding:8px 12px 8px 8px;border-radius:16px;background:rgba(0,30,80,.28);cursor:pointer}
@@ -213,7 +215,7 @@ const ALLOWED=['konraddiego@gmail.com','debiandrade8@gmail.com'];
 const sb=supabase.createClient('https://gigkrjetrtbtdmdnqoof.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdpZ2tyamV0cnRidGRtZG5xb29mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5MzI2MzUsImV4cCI6MjA5NzUwODYzNX0.XSeJtNUOh2_DHjat4QL9Lae6PwqflSagvDj9mXL75cA',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});
 const $=id=>document.getElementById(id);let user=null,mr=null,chunks=[],t0=0,tick=null;
 try{$('email').value=localStorage.getItem('gravador_email')||''}catch(_){}
-const APP_VERSION='v20';let swReg=null;
+const MIC_C={noiseSuppression:true,echoCancellation:true,autoGainControl:true,channelCount:1};const APP_VERSION='v21';let swReg=null;
 if('serviceWorker'in navigator){const hadCtl=!!navigator.serviceWorker.controller;let reloaded=false;
  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadCtl||reloaded)return;reloaded=true;location.reload()});
  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{swReg=r;r.update().catch(()=>{})}).catch(()=>{});
@@ -305,11 +307,11 @@ $('rec').onclick=async()=>{if(mr&&mr.state==='recording'){mr.stop();return}
  if(micPerm==='denied'){$('msg').textContent=micDeniedMsg();return}
  try{let st=liveMic();
   if(!st){if(micPerm==='prompt'&&!iosLike())$('msg').textContent='No aviso, escolha “Permitir enquanto visita o site”. “Só desta vez” pergunta de novo ao reabrir.';
-   st=await navigator.mediaDevices.getUserMedia({audio:true});micStream=st;micPerm='granted';
+   st=await navigator.mediaDevices.getUserMedia({audio:MIC_C});micStream=st;micPerm='granted';
    st.getAudioTracks().forEach(t=>t.addEventListener('ended',()=>{if(micStream===st&&!st.getAudioTracks().some(x=>x.readyState==='live'))micStream=null}))}
   else st.getAudioTracks().forEach(t=>{t.enabled=true});
   try{bindRec(st)}catch(err){try{st.getTracks().forEach(t=>t.stop())}catch(e){} if(micStream===st)micStream=null;
-   st=await navigator.mediaDevices.getUserMedia({audio:true});micStream=st;micPerm='granted';bindRec(st)}}
+   st=await navigator.mediaDevices.getUserMedia({audio:MIC_C});micStream=st;micPerm='granted';bindRec(st)}}
  catch(e){if(e&&(e.name==='NotAllowedError'||e.name==='PermissionDeniedError')){refreshMicPerm();$('msg').textContent=micPerm==='denied'?micDeniedMsg():'O microfone não foi liberado. Toque em Gravar de novo e escolha Permitir.'}
   else $('msg').textContent='Sem acesso ao microfone: '+(e&&e.message?e.message:e)}};
 async function upload(dur){const mime=(mr.mimeType||chunks[0]?.type||'audio/webm').split(';')[0];const ext=mime.includes('mp4')||mime.includes('aac')?'m4a':mime.includes('ogg')?'ogg':'webm';
@@ -352,10 +354,13 @@ const STATUS_PT={pendente:'Pendente',processando:'Processando',processado:'Proce
 const quando=s=>{try{return s?new Date(s).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):''}catch(e){return ''}};
 function extraOf(p){const ex=p&&p.extra;return (ex&&typeof ex==='object'&&!Array.isArray(ex))?ex:{}}
 function viewProposal(p){const ed=(p&&p.edited&&typeof p.edited==='object'&&!Array.isArray(p.edited))?p.edited:{};const v={...p,...ed};if(!v.transcricao&&p&&p.voice_queue&&p.voice_queue.transcricao)v.transcricao=p.voice_queue.transcricao;return v}
-function appendKv(parent,k,v,desc){const s=showVal(v);if(!s)return;const r=el('div',desc?'kv d':'kv');r.append(el('span','k',k),el('b','v',s));parent.append(r)}
+function appendKv(parent,k,v,desc,note){const s=showVal(v);if(!s)return;const r=el('div',desc?'kv d':'kv');const b=el('b','v',s);if(note)b.append(el('span','sug',note));r.append(el('span','k',k),b);parent.append(r)}
+// v21: sugestões automáticas (extra.sugestoes) que o Diego ainda não editou.
+function sugMap(p){const ex=extraOf(p),ed=(p&&p.edited&&typeof p.edited==='object')?p.edited:{},m={};(Array.isArray(ex.sugestoes)?ex.sugestoes:[]).forEach(x=>{if(!x||!x.campo||!x.auto)return;if(x.campo in ed&&ed[x.campo]!==x.sugerido)return;m[x.campo]=x});return m}
+const sugNote=x=>x?'(sugerido; ouvido: '+x.ouvido+')':'';
 function itensText(v){if(Array.isArray(v))return v.map(x=>{if(x==null)return'';if(typeof x==='object')return String(x.titulo||x.nome||x.text||x.item||'').trim();return String(x).trim()}).filter(Boolean).join(', ');return showVal(v)}
-function appendProposalFields(parent,p,more){const v=more?viewProposal(p):p,ex=extraOf(v);
- [['Tarefa',v.titulo],['Solicitante',ex.solicitante],['Executor',v.responsavel],['Em cópia',ex.em_copia],['Início',ex.inicio],['Vencimento',v.prazo]].forEach(([k,val])=>appendKv(parent,k,val,false));
+function appendProposalFields(parent,p,more){const v=more?viewProposal(p):p,ex=extraOf(v),sg=sugMap(p);
+ [['Tarefa',v.titulo,'titulo'],['Solicitante',ex.solicitante,'extra.solicitante'],['Executor',v.responsavel,'responsavel'],['Em cópia',ex.em_copia,'extra.em_copia'],['Início',ex.inicio],['Vencimento',v.prazo]].forEach(([k,val,c])=>appendKv(parent,k,val,false,c?sugNote(sg[c]):''));
  if(more){appendKv(parent,'Projeto',v.projeto,false);appendKv(parent,'Etapa',v.etapa,false);appendKv(parent,'Itens',itensText(ex.itens),true)}
  appendKv(parent,'Descrição',v.descricao,true)}
 function appendOutcome(parent,p){const label=STATUS_PT[p.status]||cap(p.status)||p.status||'';let res=label;
@@ -449,6 +454,7 @@ function setShTipo(v){shT=v;$('shTipo').querySelectorAll('button').forEach(b=>b.
 function openSheet(p){shP=p;const opts=[...PTIPOS];if(p.tipo&&!opts.some(o=>o.toLowerCase()===p.tipo.toLowerCase()))opts.push(cap(p.tipo));
  $('shTipo').innerHTML='';opts.forEach(o=>{const b=el('button',null,o);b.dataset.v=o;b.onclick=()=>setShTipo(o);$('shTipo').append(b)});setShTipo(cap(p.tipo)||'Tarefa');
  $('shTit').value=p.titulo||'';$('shDesc').value=p.descricao||'';$('shResp').value=p.responsavel||'';$('shPrazo').value=p.prazo||'';$('shProj').value=p.projeto||'';$('shEtapa').value=p.etapa||'';
+ {const sg=sugMap(p);[['shTit','titulo'],['shResp','responsavel']].forEach(([id,c])=>{let n=$(id+'Sug');if(!n){n=el('div','shsug');n.id=id+'Sug';$(id).insertAdjacentElement('afterend',n)}n.textContent=sg[c]?'Sugerido; ouvido: “'+sg[c].ouvido+'”. Corrija se preciso — eu aprendo.':'';n.classList.toggle('hide',!sg[c])})}
  $('shTrx').innerHTML='';if(p.transcricao||p.voice_queue?.audio_path)$('shTrx').append(trxEl(p,true));
  $('sheet').classList.remove('hide');$('sheetBg').classList.remove('hide')}
 function closeSheet(){$('sheet').classList.add('hide');$('sheetBg').classList.add('hide');shP=null;if(aud){aud.pause();if(audBtn)audBtn.textContent='▶';aud=null}}
