@@ -178,7 +178,7 @@ function buildBriefing(name: string, g: Graph): string {
   }
   L.push("", "## Etapas", ...s.lines);
   if (s.loops.length) L.push("", "## Loops de revisão", ...s.loops);
-  if (decisions.length) L.push("", "## Decisões que só o Diego toma", ...decisions.map((n: GNode) => `- ${n.name}: ${n.decision}`));
+  if (decisions.length) L.push("", "## Decisões da gestão", ...decisions.map((n: GNode) => `- ${n.name}: ${n.decision}`));
   L.push(...rolesMd(g), ...notesMd(g));
   L.push("", "## Checklist do Diretor", "- [ ] Objetivo e entrada confirmados com o Diego", ...order(g).filter((n: GNode) => n.kind !== "entrada").map((n: GNode) => `- [ ] ${n.name}`), "- [ ] Relatório final entregue ao Diego");
   return L.join("\n");
@@ -408,7 +408,8 @@ function App() {
   const rootRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const focusName = useRef(false);
-  useEffect(() => { const el = rootRef.current; if (!el) return; const upd0 = () => setNarrow(el.clientWidth < 640); upd0(); if (typeof ResizeObserver === "undefined") { window.addEventListener("resize", upd0); return () => window.removeEventListener("resize", upd0); } const ro = new ResizeObserver(upd0); ro.observe(el); return () => ro.disconnect(); }, []);
+  const [rootH, setRootH] = useState<number>(600);
+  useEffect(() => { const el = rootRef.current; if (!el) return; const upd0 = () => { setNarrow(el.clientWidth < 640); setRootH(el.clientHeight || 600); }; upd0(); if (typeof ResizeObserver === "undefined") { window.addEventListener("resize", upd0); return () => window.removeEventListener("resize", upd0); } const ro = new ResizeObserver(upd0); ro.observe(el); return () => ro.disconnect(); }, []);
   useEffect(() => { if (focusName.current && nameRef.current) { focusName.current = false; nameRef.current.focus(); nameRef.current.select(); } });
   const addAny = (k: string) => { setPop(null); if (k === "grupo") addLane(); else if (k === "nota") addNote(); else if (k.indexOf("r:") === 0) { const r = roles.find((x: Role) => x.id === k.slice(2)); if (r) { focusName.current = true; setMoreOpts(false); addNode(r.base, r); } } else { const kk = k as Kind; if (kk === "entrada" && hasEntrada) return; focusName.current = true; setMoreOpts(false); addNode(kk); } };
   const toggleKind = (k: string) => setHidden((p: string[]) => (p.indexOf(k) >= 0 ? p.filter((x: string) => x !== k) : [...p, k]));
@@ -430,7 +431,7 @@ function App() {
   const railBtn = (id: string, icon: string, title: string, active: boolean, onClick: () => void, opts?: { primary?: boolean; badge?: number }) => (
     <button key={id} title={title} style={rb(active, opts && opts.primary)} onClick={onClick}>{icon}{opts && opts.badge ? <span style={{ position: "absolute", top: 2, right: 1, minWidth: 15, height: 15, borderRadius: 8, background: "#f59e0b", color: "#fff", fontSize: "9.5px", fontWeight: 700, lineHeight: "15px", padding: "0 3px", boxSizing: "border-box" }}>{opts.badge}</span> : null}</button>
   );
-  const side: CSSProperties = { ...popBox, overscrollBehavior: "contain", top: 0, left: "calc(100% + 10px)", right: "auto", maxHeight: "calc(100% - 90px)", overflowY: "auto" };
+  const side: CSSProperties = { ...popBox, overscrollBehavior: "contain", top: 0, left: "calc(100% + 10px)", right: "auto", maxHeight: Math.max(160, rootH - 90), overflowY: "auto" };
   const chip = (off: boolean): CSSProperties => ({ display: "flex", alignItems: "center", gap: 5, padding: "4px 9px", borderRadius: 8, cursor: "pointer", fontSize: "11.5px", fontWeight: 600, background: off ? "transparent" : "#f3f4f6", color: off ? TER : "#374151", border: "1px solid #eef0f3", opacity: off ? 0.6 : 1 });
   const kIcon = (bg: string, ic: string) => <span style={{ width: 26, height: 26, borderRadius: 7, background: bg, color: "#333", display: "grid", placeItems: "center", fontSize: "14px", flexShrink: 0 }}>{ic}</span>;
   const h4: CSSProperties = { fontSize: "11px", fontWeight: 600, textTransform: "uppercase", opacity: 0.7, margin: "6px 8px", letterSpacing: ".6px", color: "#1f2937" };
@@ -622,7 +623,7 @@ function App() {
 
         {tool === "connect" && <div style={{ ...pill, left: "50%", top: 64, transform: "translateX(-50%)", padding: "6px 12px", fontSize: "12px", color: SEC, zIndex: 20 }} onPointerDown={stop}>{connFrom ? "Agora clique na peça de destino" : "Conectar: clique na peça de origem"}</div>}
 
-        <div style={{ ...pill, right: 12, bottom: 12, padding: 4, gap: 2, flexWrap: "nowrap" }} onPointerDown={stop}>
+        <div style={{ ...pill, right: 12, top: 64, padding: 4, gap: 2, flexWrap: "nowrap" }} onPointerDown={stop}>
           <button style={rb(false)} onClick={() => setView((v) => ({ ...v, k: Math.max(0.2, v.k / 1.15) }))}>−</button>
           <button style={{ ...iconBtn, border: "none", boxShadow: "none", fontWeight: 500, color: SEC }} onClick={() => setView({ x: 20, y: 20, k: 1 })} title="Voltar a 100%">{Math.round(view.k * 100)}%</button>
           <button style={rb(false)} onClick={() => setView((v) => ({ ...v, k: Math.min(2.2, v.k * 1.15) }))}>+</button>
@@ -662,8 +663,8 @@ function App() {
                     <div style={lab}>Ferramentas / fontes</div>
                     <input style={fieldSm} placeholder="Ex.: busca na web, Gmail, planilha" value={selNode.tools || ""} onChange={(e: ChangeEvent<HTMLInputElement>) => upd(selNode.id, { tools: e.target.value }, "tools" + selNode.id)} />
                     {selNode.kind === "supervisor" && (<><div style={lab}>Máximo de rodadas</div><input style={fieldSm} type="number" min={1} max={20} value={selNode.rounds} onChange={(e: ChangeEvent<HTMLInputElement>) => upd(selNode.id, { rounds: Math.max(1, Math.min(20, Number(e.target.value) || 1)) }, "rounds" + selNode.id)} /></>)}
-                    <div style={lab}>Decisão do Diego</div>
-                    <input style={fieldSm} placeholder="⚠ DECISÃO DO DIEGO: …" value={selNode.decision || ""} onChange={(e: ChangeEvent<HTMLInputElement>) => upd(selNode.id, { decision: e.target.value || undefined }, "dec" + selNode.id)} />
+                    <div style={lab}>Decisão da gestão</div>
+                    <input style={fieldSm} placeholder="⚠ DECISÃO DA GESTÃO: …" value={selNode.decision || ""} onChange={(e: ChangeEvent<HTMLInputElement>) => upd(selNode.id, { decision: e.target.value || undefined }, "dec" + selNode.id)} />
                     <div style={lab}>Cor</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {SWATCHES.map((c: string) => { const cur = (selNode.color || "") === c; return <div key={c || "auto"} title={c ? c : "Cor do tipo"} onClick={() => upd(selNode.id, { color: c || undefined }, "")} style={{ width: 22, height: 22, borderRadius: 11, background: c || STRIPE[selNode.kind], cursor: "pointer", border: cur ? "2px solid #1f2937" : "2px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", color: "#03357a", fontWeight: 700 }}>{c ? "" : "A"}</div>; })}
@@ -710,7 +711,7 @@ function App() {
             ))}
           </div>
           {pop === "projects" && (
-            <div style={{ ...popBox, top: "auto", right: "auto", left: 0, bottom: "calc(100% + 10px)", width: narrow ? 270 : 360, maxHeight: "calc(100% - 140px)", overflowY: "auto", overscrollBehavior: "contain" }}>
+            <div style={{ ...popBox, top: "auto", right: "auto", left: 0, bottom: "calc(100% + 10px)", width: narrow ? 270 : 360, maxHeight: Math.max(160, rootH - 140), overflowY: "auto", overscrollBehavior: "contain" }}>
               <div style={h4}>Projetos ({S.tabs.length})</div>
               {S.tabs.map((tb: Tab, i: number) => { const on = tb.id === tab.id; return (
                 <div key={tb.id}>
@@ -735,7 +736,7 @@ function App() {
             </div>
           )}
           {pop === "roles" && (
-            <div style={{ ...popBox, top: "auto", right: "auto", left: 0, bottom: "calc(100% + 10px)", width: narrow ? 270 : 340, maxHeight: "calc(100% - 140px)", overflowY: "auto", overscrollBehavior: "contain" }}>
+            <div style={{ ...popBox, top: "auto", right: "auto", left: 0, bottom: "calc(100% + 10px)", width: narrow ? 270 : 340, maxHeight: Math.max(160, rootH - 140), overflowY: "auto", overscrollBehavior: "contain" }}>
               <div style={h4}>Papéis · {tab.name}</div>
               <div style={{ fontSize: "11px", color: TER, margin: "0 8px 4px" }}>Passe o mouse para destacar no fluxo; clique para fixar.</div>
               {KINDS.map((k: Kind) => <div key={k} style={rowSt(k)} {...rowEv(k)}>{kIcon(STRIPE[k] + "55", ICON[k])}<div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 600 }}>{LABEL[k]}</div><div style={{ fontSize: "11.5px", color: SEC, lineHeight: 1.3 }}>{DESC[k]}</div></div><span style={{ fontWeight: 700, color: SEC }}>{g.nodes.filter((n: GNode) => n.kind === k && !roleOf(n)).length}</span></div>)}
