@@ -1,6 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import type { ChangeEvent, PointerEvent, CSSProperties, KeyboardEvent, ReactNode } from "react";
+import type { ChangeEvent, PointerEvent, MouseEvent, CSSProperties, KeyboardEvent, ReactNode } from "react";
 
 type Kind = "entrada" | "diretor" | "pesquisador" | "trabalhador" | "supervisor" | "entrega";
 interface GNode { id: string; kind: Kind; name: string; x: number; y: number; instr: string; format: string; rounds: number; decision?: string; role?: string; tools?: string; color?: string; rid?: string }
@@ -11,7 +11,7 @@ interface Graph { objective: string; nodes: GNode[]; edges: GEdge[]; lanes?: Lan
 interface Tab { id: string; name: string; graph: Graph }
 interface Store { tabs: Tab[]; active: string }
 type Sel = { t: "node" | "note" | "lane"; id: string } | null;
-interface Drag { mode: "pan" | "node" | "note" | "lane"; id?: string; sx: number; sy: number; ox: number; oy: number; carry?: { id: string; x: number; y: number }[] }
+interface Drag { mode: "pan" | "node" | "note" | "lane" | "marq" | "multi"; add?: boolean; id?: string; sx: number; sy: number; ox: number; oy: number; carry?: { id: string; x: number; y: number }[] }
 
 const W = 220; const H = 66; const KEY = "taskflow_fluxogramas"; const OLD_KEY = "fluxograma-agentes-v3";
 const LABEL: Record<Kind, string> = { entrada: "Entrada", diretor: "Diretor", pesquisador: "Pesquisador", trabalhador: "Trabalhador", supervisor: "Supervisor", entrega: "Entrega" };
@@ -197,11 +197,25 @@ const panel: CSSProperties = { background: "var(--card,#fff)", backgroundImage: 
 const pill: CSSProperties = { position: "absolute", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4, padding: 6, borderRadius: 14, background: "var(--card,#fff)", backgroundImage: "linear-gradient(var(--card,#fff),var(--card,#fff))", border: "1px solid var(--border,#e5e7eb)", boxShadow: GSHADOW };
 const isTyping = (el: EventTarget | null): boolean => { const t = el as HTMLElement | null; return !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable); };
 
+// Botão flutuante "K" do Hub (#fab-create, position:fixed no canto inferior direito): afasta o botão Atalhos para a esquerda dele.
+function hubFabOffset(root: HTMLElement): number {
+  const fab = document.getElementById("fab-create"); if (!fab) return 12;
+  const f = fab.getBoundingClientRect(); const r = root.getBoundingClientRect();
+  if (!f.width || getComputedStyle(fab).display === "none" || getComputedStyle(fab).visibility === "hidden") return 12;
+  if (f.top > r.bottom || f.bottom < r.bottom - 70 || f.left > r.right) return 12;
+  return Math.max(12, Math.round(r.right - f.left + 10));
+}
+
 function App() {
   const [S, setS] = useState<Store>(loadStore);
   const SRef = useRef<Store>(S); SRef.current = S;
   const hist = useRef<{ past: Store[]; future: Store[]; last: number; tag: string }>({ past: [], future: [], last: 0, tag: "" });
   const [sel, setSel] = useState<Sel>(null);
+  const [msel, setMsel] = useState<string[]>([]);
+  const mselRef = useRef<string[]>(msel); mselRef.current = msel;
+  const [marq, setMarq] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  const marqRef = useRef<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  const spaceRef = useRef(false);
   const [view, setView] = useState({ x: 20, y: 20, k: 0.6 });
   const [wire, setWire] = useState<{ from: string; x: number; y: number } | null>(null);
   const [modal, setModal] = useState<{ title: string; text: string; file: string } | null>(null);
@@ -269,6 +283,8 @@ function App() {
         if (d.mode === "pan") setView((v) => ({ ...v, x: d.ox + e.clientX - d.sx, y: d.oy + e.clientY - d.sy }));
         else {
           const k = viewRef.current.k; const dx = (e.clientX - d.sx) / k; const dy = (e.clientY - d.sy) / k;
+          if (d.mode === "marq") { const p = toWorld(e.clientX, e.clientY); const m = { x0: d.sx, y0: d.sy, x1: p.x, y1: p.y }; marqRef.current = m; setMarq(m); }
+          if (d.mode === "multi") setGraphQuiet((p: Graph) => ({ ...p, nodes: p.nodes.map((n: GNode) => { const c = (d.carry || []).find((m: { id: string; x: number; y: number }) => m.id === n.id); return c ? { ...n, x: c.x + dx, y: c.y + dy } : n; }) }));
           if (d.mode === "node") setGraphQuiet((p: Graph) => ({ ...p, nodes: p.nodes.map((n: GNode) => (n.id === d.id ? { ...n, x: d.ox + dx, y: d.oy + dy } : n)) }));
           if (d.mode === "note") setGraphQuiet((p: Graph) => ({ ...p, notes: (p.notes || []).map((n: Note) => (n.id === d.id ? { ...n, x: d.ox + dx, y: d.oy + dy } : n)) }));
           if (d.mode === "lane") setGraphQuiet((p: Graph) => ({ ...p, lanes: (p.lanes || []).map((l: Lane) => (l.id === d.id ? { ...l, x: d.ox + dx, y: d.oy + dy } : l)), nodes: p.nodes.map((n: GNode) => { const c = (d.carry || []).find((m: { id: string; x: number; y: number }) => m.id === n.id); return c ? { ...n, x: c.x + dx, y: c.y + dy } : n; }) }));
@@ -276,9 +292,22 @@ function App() {
       }
       setWire((w) => { if (!w) return w; const p = toWorld(e.clientX, e.clientY); return { ...w, x: p.x, y: p.y }; });
     };
-    const up = () => { drag.current = null; setWire(null); };
+    const up = () => {
+      const d = drag.current; const m = marqRef.current;
+      if (d && d.mode === "marq" && m) {
+        const x0 = Math.min(m.x0, m.x1); const x1 = Math.max(m.x0, m.x1); const y0 = Math.min(m.y0, m.y1); const y1 = Math.max(m.y0, m.y1);
+        if (x1 - x0 > 4 || y1 - y0 > 4) {
+          const ids = gRef.current.nodes.filter((n: GNode) => n.x < x1 && n.x + W > x0 && n.y < y1 && n.y + H > y0).map((n: GNode) => n.id);
+          const all = d.add ? Array.from(new Set<string>([...mselRef.current, ...ids])) : ids;
+          setMsel(all); setSel(all.length === 1 ? { t: "node", id: all[0] } : null);
+        }
+      }
+      marqRef.current = null; setMarq(null); drag.current = null; setWire(null);
+    };
+    const kup = (e: globalThis.KeyboardEvent) => { if (e.key === " ") spaceRef.current = false; };
+    window.addEventListener("keyup", kup);
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
-    return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("keyup", kup); };
   }, [toWorld]);
 
   const center = () => { const r = box.current ? box.current.getBoundingClientRect() : { width: 600, height: 400 }; const v = viewRef.current; return { x: (r.width / 2 - v.x) / v.k, y: (r.height / 2 - v.y) / v.k }; };
@@ -306,6 +335,15 @@ function App() {
   const upd = (id: string, patch: Partial<GNode>, tag: string) => setGraph((p: Graph) => ({ ...p, nodes: p.nodes.map((n: GNode) => (n.id === id ? { ...n, ...patch } : n)) }), tag);
   const updLane = (id: string, patch: Partial<Lane>, tag: string) => setGraph((p: Graph) => ({ ...p, lanes: (p.lanes || []).map((l: Lane) => (l.id === id ? { ...l, ...patch } : l)) }), tag);
   const updNote = (id: string, patch: Partial<Note>, tag: string) => setGraph((p: Graph) => ({ ...p, notes: (p.notes || []).map((n: Note) => (n.id === id ? { ...n, ...patch } : n)) }), tag);
+  const addAt = (x: number, y: number) => { const count = g.nodes.filter((n: GNode) => n.kind === "trabalhador").length + 1; const n: GNode = { id: uid(), kind: "trabalhador", name: `Trabalhador ${count}`, x: x - W / 2, y: y - H / 2, instr: "", format: "", rounds: 3, role: "", tools: "" }; setGraph((p: Graph) => ({ ...p, nodes: [...p.nodes, n] })); setMsel([]); setSel({ t: "node", id: n.id }); focusName.current = true; };
+  const dupMany = (ids: string[]) => { const map: Record<string, string> = {}; const add: GNode[] = []; g.nodes.forEach((o: GNode) => { if (ids.indexOf(o.id) >= 0 && o.kind !== "entrada") { const id = uid(); map[o.id] = id; add.push({ ...o, id, name: `${o.name} (cópia)`, x: o.x + 30, y: o.y + 30 }); } }); if (!add.length) return; const ne: GEdge[] = g.edges.filter((e: GEdge) => !!map[e.from] && !!map[e.to]).map((e: GEdge) => ({ id: uid(), from: map[e.from], to: map[e.to] })); setGraph((p: Graph) => ({ ...p, nodes: [...p.nodes, ...add], edges: [...p.edges, ...ne] })); if (add.length === 1) { setMsel([]); setSel({ t: "node", id: add[0].id }); } else { setSel(null); setMsel(add.map((n: GNode) => n.id)); } };
+  const removeMany = (ids: string[]) => { setGraph((p: Graph) => ({ ...p, nodes: p.nodes.filter((n: GNode) => ids.indexOf(n.id) < 0), edges: p.edges.filter((e: GEdge) => ids.indexOf(e.from) < 0 && ids.indexOf(e.to) < 0) })); setMsel([]); setSel(null); };
+  const nudge = (ids: string[], dx: number, dy: number) => {
+    if (ids.length) setGraph((p: Graph) => ({ ...p, nodes: p.nodes.map((n: GNode) => (ids.indexOf(n.id) >= 0 ? { ...n, x: n.x + dx, y: n.y + dy } : n)) }), "nudge");
+    else if (sel && sel.t === "note") setGraph((p: Graph) => ({ ...p, notes: (p.notes || []).map((n: Note) => (n.id === sel.id ? { ...n, x: n.x + dx, y: n.y + dy } : n)) }), "nudge");
+    else if (sel && sel.t === "lane") setGraph((p: Graph) => ({ ...p, lanes: (p.lanes || []).map((l: Lane) => (l.id === sel.id ? { ...l, x: l.x + dx, y: l.y + dy } : l)) }), "nudge");
+  };
+  const zoomBy = (f: number) => { const el = box.current; const r = el ? el.getBoundingClientRect() : { width: 600, height: 400 }; const mx = r.width / 2; const my = r.height / 2; setView((v) => { const k = Math.min(2.2, Math.max(0.2, v.k * f)); return { k, x: mx - ((mx - v.x) * k) / v.k, y: my - ((my - v.y) * k) / v.k }; }); };
   const cutEdge = (id: string) => setGraph((p: Graph) => ({ ...p, edges: p.edges.filter((x: GEdge) => x.id !== id) }));
 
   const connect = (to: string) => {
@@ -316,7 +354,7 @@ function App() {
   };
 
   // Tabs
-  const switchTab = (id: string) => { setS((s: Store) => ({ ...s, active: id })); setSel(null); setMenuTab(null); setQ(""); };
+  const switchTab = (id: string) => { setS((s: Store) => ({ ...s, active: id })); setSel(null); setMsel([]); setMenuTab(null); setQ(""); };
   const newTab = () => { const id = uid(); change((s: Store) => ({ tabs: [...s.tabs, { id, name: `Fluxograma ${s.tabs.length + 1}`, graph: blank() }], active: id })); setSel(null); setEditTab(id); };
   const renameTab = (id: string, name: string) => change((s: Store) => ({ ...s, tabs: s.tabs.map((t: Tab) => (t.id === id ? { ...t, name } : t)) }), "tabname" + id);
   const dupTab = (id: string) => { const nid = uid(); change((s: Store) => { const i = s.tabs.findIndex((t: Tab) => t.id === id); const o = s.tabs[i]; const tabs = [...s.tabs]; tabs.splice(i + 1, 0, { id: nid, name: `${o.name} (cópia)`, graph: clone(o.graph) }); return { tabs, active: nid }; }); setMenuTab(null); };
@@ -326,15 +364,31 @@ function App() {
   useEffect(() => {
     const key = (e: globalThis.KeyboardEvent) => {
       { const r = rootRef.current; if (!r || !r.isConnected || r.offsetParent === null) return; const ae = document.activeElement as HTMLElement | null; if (ae && ae !== document.body && !r.contains(ae)) return; }
-      if (e.key === "Escape") { setPop(null); setConnFrom(null); setMenuTab(null); setAsk(null); setModal(null); setEditLane(null); setEditTab(null); return; }
+      if (e.key === "Escape") { setPop(null); setConnFrom(null); setMenuTab(null); setAsk(null); setModal(null); setEditLane(null); setEditTab(null); if (!isTyping(e.target)) { setSel(null); setMsel([]); } return; }
       if (isTyping(e.target)) return;
-      const mod = e.ctrlKey || e.metaKey;
-      if (mod && (e.key === "z" || e.key === "Z")) { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
-      if (mod && (e.key === "y" || e.key === "Y")) { e.preventDefault(); redo(); return; }
-      if (!mod && !e.altKey) { const i = "123456".indexOf(e.key); if (i >= 0) { e.preventDefault(); addAny(KINDS[i]); return; } if (e.key === "g" || e.key === "G") { e.preventDefault(); addAny("grupo"); return; } if (e.key === "n" || e.key === "N") { e.preventDefault(); addAny("nota"); return; } }
-      if (!sel) return;
-      if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); removeSel(sel); }
-      if (mod && (e.key === "d" || e.key === "D") && sel.t === "node") { e.preventDefault(); dupNode(sel.id); }
+      const mod = e.ctrlKey || e.metaKey; const k = e.key; const lk = k.toLowerCase();
+      const ids = msel.length ? msel : sel && sel.t === "node" ? [sel.id] : [];
+      const hit0 = (fn: () => void) => { e.preventDefault(); fn(); };
+      if (k === " ") { e.preventDefault(); spaceRef.current = true; return; }
+      if (mod && lk === "z") return hit0(() => { if (e.shiftKey) redo(); else undo(); });
+      if (mod && lk === "y") return hit0(redo);
+      if (mod && lk === "a") return hit0(() => { setMsel(g.nodes.map((n: GNode) => n.id)); setSel(null); });
+      if (mod && lk === "f") return hit0(() => setPop("search"));
+      if (mod && lk === "d") return hit0(() => { if (ids.length) dupMany(ids); });
+      if (k === "Delete" || k === "Backspace") return hit0(() => { if (ids.length > 1) removeMany(ids); else if (sel) removeSel(sel); });
+      if (k.indexOf("Arrow") === 0) { if (ids.length || sel) { const st = e.shiftKey ? 10 : 1; hit0(() => nudge(ids, k === "ArrowLeft" ? -st : k === "ArrowRight" ? st : 0, k === "ArrowUp" ? -st : k === "ArrowDown" ? st : 0)); } return; }
+      if (mod || e.altKey) return;
+      const i = "123456".indexOf(k); if (i >= 0) return hit0(() => addAny(KINDS[i]));
+      if (lk === "g") return hit0(() => addAny("grupo"));
+      if (lk === "n") return hit0(() => addAny("nota"));
+      if (lk === "v") return hit0(() => { setTool("select"); setConnFrom(null); });
+      if (lk === "h") return hit0(() => { setTool("pan"); setConnFrom(null); });
+      if (lk === "f") return hit0(() => fit(g));
+      if (lk === "a" || (k === "Enter" && (e.target as HTMLElement | null)?.tagName !== "BUTTON")) return hit0(() => addAny("trabalhador"));
+      if (k === "+" || k === "=") return hit0(() => zoomBy(1.15));
+      if (k === "-" || k === "_") return hit0(() => zoomBy(1 / 1.15));
+      if (k === "0") return hit0(() => setView({ x: 20, y: 20, k: 1 }));
+      if (k === "?") return hit0(() => setPop("shortcuts"));
     };
     window.addEventListener("keydown", key); return () => window.removeEventListener("keydown", key);
   });
@@ -409,7 +463,9 @@ function App() {
   const nameRef = useRef<HTMLInputElement>(null);
   const focusName = useRef(false);
   const [rootH, setRootH] = useState<number>(600);
-  useEffect(() => { const el = rootRef.current; if (!el) return; const upd0 = () => { setNarrow(el.clientWidth < 640); setRootH(el.clientHeight || 600); }; upd0(); if (typeof ResizeObserver === "undefined") { window.addEventListener("resize", upd0); return () => window.removeEventListener("resize", upd0); } const ro = new ResizeObserver(upd0); ro.observe(el); return () => ro.disconnect(); }, []);
+  const [KOFF, setKOff] = useState<number>(12);
+  useEffect(() => { const el = rootRef.current; if (!el) return; const f = () => setKOff(hubFabOffset(el)); const id = setInterval(f, 1500); window.addEventListener("resize", f); f(); return () => { clearInterval(id); window.removeEventListener("resize", f); }; }, []);
+  useEffect(() => { const el = rootRef.current; if (!el) return; const upd0 = () => { setNarrow(el.clientWidth < 640); setRootH(el.clientHeight || 600); setKOff(hubFabOffset(el)); }; upd0(); if (typeof ResizeObserver === "undefined") { window.addEventListener("resize", upd0); return () => window.removeEventListener("resize", upd0); } const ro = new ResizeObserver(upd0); ro.observe(el); return () => ro.disconnect(); }, []);
   useEffect(() => { if (focusName.current && nameRef.current) { focusName.current = false; nameRef.current.focus(); nameRef.current.select(); } });
   const addAny = (k: string) => { setPop(null); if (k === "grupo") addLane(); else if (k === "nota") addNote(); else if (k.indexOf("r:") === 0) { const r = roles.find((x: Role) => x.id === k.slice(2)); if (r) { focusName.current = true; setMoreOpts(false); addNode(r.base, r); } } else { const kk = k as Kind; if (kk === "entrada" && hasEntrada) return; focusName.current = true; setMoreOpts(false); addNode(kk); } };
   const toggleKind = (k: string) => setHidden((p: string[]) => (p.indexOf(k) >= 0 ? p.filter((x: string) => x !== k) : [...p, k]));
@@ -529,7 +585,7 @@ function App() {
             <div style={{ fontWeight: 700, color: "var(--text,#1f2937)" }}>Como usar</div>
             <div>＋ Adicionar cria uma peça; digite o nome do agente na hora (ex.: Diretora de Marketing).</div>
             <div>Para ligar: arraste da bolinha direita de uma peça até a esquerda de outra, ou use ⤳ Conectar e clique na origem e no destino. Clique num fio para cortar.</div>
-            <div>Arraste o fundo (ou use ✋) para mover, role para zoom. Delete remove, Ctrl+D duplica, Ctrl+Z desfaz, Esc fecha menus.</div>
+            <div>Arraste o fundo para selecionar várias peças (Shift soma). Para mover o quadro use ✋ (H), segure Espaço ou o botão do meio; role para zoom. Delete remove, Ctrl+D duplica, Ctrl+Z desfaz, Esc fecha menus. ? mostra todos os atalhos.</div>
             <div>Grupo é uma caixa para juntar peças de uma mesma etapa ou equipe. Arraste o título do grupo e as peças de dentro vão junto. Serve para organizar o quadro; quem define o fluxo são as ligações.</div>
             <div>＋ Adicionar → Novo papel cria um tipo seu (ex.: Crítico) com ícone, cor e comportamento base. Ele fica salvo para todas as abas.</div>
             <div>Duplo clique no nome da aba ou do grupo para renomear. ⋯ na aba: duplicar, mover, excluir.</div>
@@ -550,7 +606,8 @@ function App() {
         )}
       </div>
 
-      <div ref={box} onPointerDown={(e: PointerEvent<HTMLDivElement>) => { drag.current = { mode: "pan", sx: e.clientX, sy: e.clientY, ox: view.x, oy: view.y }; setSel(null); setConnFrom(null); closeAll(); }}
+            <div ref={box} onPointerDown={(e: PointerEvent<HTMLDivElement>) => { closeAll(); setConnFrom(null); if (tool === "pan" || spaceRef.current || e.button === 1) { drag.current = { mode: "pan", sx: e.clientX, sy: e.clientY, ox: view.x, oy: view.y }; return; } const p = toWorld(e.clientX, e.clientY); if (!e.shiftKey) { setSel(null); setMsel([]); } drag.current = { mode: "marq", sx: p.x, sy: p.y, ox: 0, oy: 0, add: e.shiftKey }; }}
+        onDoubleClick={(e: MouseEvent<HTMLDivElement>) => { const t = e.target as HTMLElement | null; if (!t || (t.closest && t.closest("[data-node],[data-nodbl],[data-panel],[data-pop],textarea,input,button"))) return; const p = toWorld(e.clientX, e.clientY); addAt(p.x, p.y); }}
         style={{ position: "relative", flex: "1 1 auto", minHeight: 0, overflow: "hidden", backgroundColor: "transparent", backgroundImage: "radial-gradient(color-mix(in srgb, var(--text,var(--text,#1f2937)) 22%, transparent) 1px, transparent 1px)", backgroundSize: `${24 * view.k}px ${24 * view.k}px`, backgroundPosition: `${view.x}px ${view.y}px`, cursor: tool === "pan" ? "grab" : tool === "connect" ? "crosshair" : "default", touchAction: "none", userSelect: "none" }}>
         <div style={{ position: "absolute", left: 0, top: 0, transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})`, transformOrigin: "0 0" }}>
           {(g.lanes || []).map((l: Lane) => {
@@ -600,10 +657,10 @@ function App() {
             );
           })}
           {g.nodes.map((n: GNode) => {
-            const on = !!sel && sel.t === "node" && sel.id === n.id; const sc = stripeOf(n); const hit = matchSet.has(n.id); const hlOn = !!hlK && keyOf(n) === hlK; const dim = (ql && !hit) || isHidden(n) || (!!hlK && !hlOn);
+            const on = (!!sel && sel.t === "node" && sel.id === n.id) || msel.indexOf(n.id) >= 0; const sc = stripeOf(n); const hit = matchSet.has(n.id); const hlOn = !!hlK && keyOf(n) === hlK; const dim = (ql && !hit) || isHidden(n) || (!!hlK && !hlOn);
             const port: CSSProperties = { position: "absolute", top: H / 2 - 6, width: 12, height: 12, borderRadius: 6, background: "var(--card,#fff)", backgroundImage: "linear-gradient(var(--card,#fff),var(--card,#fff))", border: `2px solid ${sc}`, boxSizing: "border-box", cursor: "crosshair" };
             return (
-              <div key={n.id} onPointerDown={(e: PointerEvent<HTMLDivElement>) => { e.stopPropagation(); closeAll(); if (tool === "pan") { drag.current = { mode: "pan", sx: e.clientX, sy: e.clientY, ox: view.x, oy: view.y }; return; } if (tool === "connect") { if (!connFrom) setConnFrom(n.id); else { linkNodes(connFrom, n.id); setConnFrom(null); } return; } setSel({ t: "node", id: n.id }); push(""); drag.current = { mode: "node", id: n.id, sx: e.clientX, sy: e.clientY, ox: n.x, oy: n.y }; }}
+              <div key={n.id} onPointerDown={(e: PointerEvent<HTMLDivElement>) => { e.stopPropagation(); closeAll(); if (tool === "pan" || spaceRef.current || e.button === 1) { drag.current = { mode: "pan", sx: e.clientX, sy: e.clientY, ox: view.x, oy: view.y }; return; } if (tool === "connect") { if (!connFrom) setConnFrom(n.id); else { linkNodes(connFrom, n.id); setConnFrom(null); } return; } if (e.shiftKey) { const base = msel.length ? msel : sel && sel.t === "node" ? [sel.id] : []; const nx = base.indexOf(n.id) >= 0 ? base.filter((x: string) => x !== n.id) : [...base, n.id]; setMsel(nx); setSel(nx.length === 1 ? { t: "node", id: nx[0] } : null); return; } if (msel.length > 1 && msel.indexOf(n.id) >= 0) { push(""); drag.current = { mode: "multi", sx: e.clientX, sy: e.clientY, ox: 0, oy: 0, carry: g.nodes.filter((m: GNode) => msel.indexOf(m.id) >= 0).map((m: GNode) => ({ id: m.id, x: m.x, y: m.y })) }; return; } setMsel([]); setSel({ t: "node", id: n.id }); push(""); drag.current = { mode: "node", id: n.id, sx: e.clientX, sy: e.clientY, ox: n.x, oy: n.y }; }} data-node="1"
                 style={{ position: "absolute", left: n.x, top: n.y, width: W, height: H, boxSizing: "border-box", opacity: dim ? 0.25 : 1, background: "var(--card,#fff)", backgroundImage: "linear-gradient(var(--card,#fff),var(--card,#fff))", boxShadow: hlOn ? `0 0 0 4px ${sc}, 0 0 22px ${sc}` : on || connFrom === n.id ? "0 0 0 3px rgba(var(--kf-acc-rgb,24,95,165),.22), 0 4px 18px rgba(0,0,0,.08)" : hit ? "0 0 0 3px rgba(245,158,11,.3), 0 4px 18px rgba(0,0,0,.08)" : "0 4px 18px rgba(0,0,0,.08)", border: `1px solid ${n.decision ? "#f59e0b" : on || connFrom === n.id ? "var(--blue-mid,#185FA5)" : "var(--border,#e5e7eb)"}`, borderRadius: 14, overflow: "visible", cursor: tool === "connect" ? "crosshair" : tool === "pan" ? "grab" : "move", display: "flex" }}>
                 <div style={{ width: 4, background: sc, borderRadius: "13px 0 0 13px", flexShrink: 0 }} />
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", overflow: "hidden", minWidth: 0, flex: 1 }}>
@@ -619,6 +676,7 @@ function App() {
               </div>
             );
           })}
+          {marq && <div style={{ position: "absolute", left: Math.min(marq.x0, marq.x1), top: Math.min(marq.y0, marq.y1), width: Math.abs(marq.x1 - marq.x0), height: Math.abs(marq.y1 - marq.y0), border: "1px solid var(--blue-mid,#185FA5)", background: "color-mix(in srgb, var(--blue-mid,#185FA5) 10%, transparent)", borderRadius: 4, pointerEvents: "none" }} />}
         </div>
 
         {tool === "connect" && <div style={{ ...pill, left: "50%", top: 64, transform: "translateX(-50%)", padding: "6px 12px", fontSize: "12px", color: SEC, zIndex: 20 }} onPointerDown={stop}>{connFrom ? "Agora clique na peça de destino" : "Conectar: clique na peça de origem"}</div>}
@@ -628,6 +686,22 @@ function App() {
           <button style={{ ...iconBtn, border: "none", boxShadow: "none", fontWeight: 500, color: SEC }} onClick={() => setView({ x: 20, y: 20, k: 1 })} title="Voltar a 100%">{Math.round(view.k * 100)}%</button>
           <button style={rb(false)} onClick={() => setView((v) => ({ ...v, k: Math.min(2.2, v.k * 1.15) }))}>+</button>
           <button style={{ ...rb(false), fontSize: "15px" }} onClick={() => fit(g)} title="Ajustar à tela">⤢</button>
+        </div>
+
+        <div data-panel="1" data-pop="1" style={{ position: "absolute", right: KOFF, bottom: 12, zIndex: 45, display: "flex", alignItems: "center", gap: 8 }} onPointerDown={stop} onWheel={(e: { stopPropagation: () => void }) => e.stopPropagation()}>
+          <button title="Atalhos" aria-label="Atalhos" onClick={() => { setMenuTab(null); togglePop("shortcuts"); }} style={{ width: 44, height: 44, borderRadius: 22, border: `1px solid ${pop === "shortcuts" ? "var(--blue-mid,#185FA5)" : "var(--border,#e5e7eb)"}`, background: pop === "shortcuts" ? "color-mix(in srgb, var(--blue-mid,#185FA5) 16%, var(--card,#fff))" : "var(--card,#fff)", boxShadow: GSHADOW, cursor: "pointer", display: "grid", placeItems: "center", padding: 0 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text2,#4b5563)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M10 13h4M7 16h10" /></svg></button>
+          {pop === "shortcuts" && (
+            <div style={{ ...popBox, top: "auto", bottom: "calc(100% + 10px)", right: 0, width: narrow ? 280 : 390, maxHeight: Math.max(160, rootH - 140), overflowY: "auto", overscrollBehavior: "contain" }}>
+              <div style={{ fontWeight: 700, fontSize: "13px", color: "var(--text,#1f2937)", margin: "6px 8px" }}>Atalhos</div>
+              {([["Criar", [["1–6", "Adicionar tipo (Entrada…Entrega)"], ["Enter / A", "Novo Trabalhador no centro"], ["Duplo clique no fundo", "Novo Trabalhador ali"], ["G", "Novo grupo"], ["N", "Nova nota"]]], ["Selecionar", [["V", "Ferramenta Selecionar"], ["Clique", "Selecionar uma peça"], ["Shift+clique", "Adicionar/remover da seleção"], ["Arrastar no fundo", "Selecionar vários"], ["Ctrl+A", "Selecionar tudo"], ["Esc", "Limpar seleção e fechar menus"]]], ["Editar", [["Ctrl+D", "Duplicar seleção"], ["Delete", "Excluir seleção"], ["Setas", "Mover 1 px (com Shift, 10 px)"], ["Ctrl+Z", "Desfazer"], ["Ctrl+Shift+Z / Ctrl+Y", "Refazer"]]], ["Navegar", [["H", "Ferramenta Mão"], ["Espaço (segurar)", "Arrastar o quadro"], ["Roda do mouse", "Zoom"], ["+ / −", "Aproximar / afastar"], ["0", "Zoom 100%"], ["F", "Ajustar à tela"], ["Ctrl+F", "Buscar"], ["?", "Abrir atalhos"]]]] as [string, string[][]][]).map(([grp, items]: [string, string[][]]) => (
+                <div key={grp}>
+                  <div style={h4}>{grp}</div>
+                  {items.map((it: string[]) => <div key={it[0]} style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 8px", fontSize: "12.5px" }}><span style={{ display: "flex", flexWrap: "wrap", gap: 4, minWidth: 140 }}>{it[0].split(" / ").map((kk: string) => <span key={kk} style={{ font: "600 11px system-ui", padding: "2px 7px", borderRadius: 6, border: "1px solid var(--border,#e5e7eb)", borderBottomWidth: 2, background: "var(--bg2,#f9fafb)", color: "var(--text,#374151)" }}>{kk}</span>)}</span><span style={{ color: SEC }}>{it[1]}</span></div>)}
+                </div>
+              ))}
+              <div style={{ fontSize: "11px", color: TER, margin: "6px 8px" }}>No Mac, Ctrl = ⌘. Atalhos não funcionam enquanto você digita.</div>
+            </div>
+          )}
         </div>
 
         {drawerOpen && (
