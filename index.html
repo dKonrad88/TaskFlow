@@ -16963,7 +16963,8 @@ function _procDataSpread(baseIso,n){ const d=new Date((baseIso||today)+'T00:00:0
 function setProcView(v){ procView=v; _procSel=null; renderProcessos(); }
 function _procAbrir(id){ _procSel=id; procView='biblioteca'; renderProcessos(); }
 function _procVoltar(){ _procSel=null; renderProcessos(); }
-function _procNovo(){ const a=_procLoad(); const novo={id:_procId('proc'),nome:'Novo processo',icone:'ti-list-check',contexto:'ambos',desc:'',criadoEm:today,passos:[]}; a.push(novo); _procSaveAll(a); _procSel=novo.id; procView='biblioteca'; renderProcessos(); }
+function _procNovo(){ const a=_procLoad(); const novo={id:_procId('proc'),nome:'Novo processo',icone:'ti-list-check',contexto:'ambos',desc:'',criadoEm:today,passos:[]}; a.push(novo); _procSaveAll(a); _procSel=novo.id; procView='biblioteca'; renderProcessos();
+  _fluxoCarregar(()=>{ try{ const b=_procLoad(), q=b.find(x=>x.id===novo.id); if(q&&!q.fluxoId){ q.fluxoId=window.TFFluxo.createTab(q.nome,_procGrafo(q)); _procSaveAll(b); if(_procSel===novo.id&&currentTab==='processos') renderProcessos(); } }catch(e){ console.warn('[proc] fluxo',e); } }); }
 function _procSetCampo(id,campo,val){ const a=_procLoad(),p=a.find(x=>x.id===id); if(p){ p[campo]=val; _procSaveAll(a); } }
 function _procAddPasso(id,titulo){ const a=_procLoad(),p=a.find(x=>x.id===id); if(p){ if(!p.passos) p.passos=[]; p.passos.push({id:_procId('ps'),titulo:(titulo||'').trim()||'Novo passo',setor:''}); _procSaveAll(a); _procRerenderDetalhe(id); } }
 function _procDelPasso(id,psId){ const a=_procLoad(),p=a.find(x=>x.id===id); if(p){ p.passos=(p.passos||[]).filter(x=>x.id!==psId); _procSaveAll(a); _procRerenderDetalhe(id); } }
@@ -16981,6 +16982,54 @@ function _procIniciar(id){ const p=_procFind(id); if(!p) return; const runId=_pr
   if(typeof toast==='function') toast(`Processo iniciado — ${novas.length} tarefas criadas (no Meu Dia de cada um)`); procView='andamento'; _procSel=null; renderProcessos(); if(typeof renderSidebar==='function') renderSidebar(); }
 function _procTaskToggle(taskId){ const t=(tasks||[]).find(x=>x.id===taskId); if(!t) return; t.done=!t.done; t.doneAt=t.done?today:null; t.kanbanCol=t.done?'done':'todo'; if(typeof saveTask_db==='function') saveTask_db(t); _procRerenderRuns(); }
 function _procRunExcluir(runId){ confirmModal({title:'Remover execução', message:'Remover esta execução e as tarefas dela?', danger:true, confirmLabel:'Remover', onConfirm:()=>{ const del=(tasks||[]).filter(t=>t.processoRunId===runId); del.forEach(t=>{ const idx=tasks.indexOf(t); if(idx>=0) tasks.splice(idx,1); if(typeof deleteTask_db==='function') deleteTask_db(t.id); }); _procRunsSave(_procRuns().filter(x=>x.id!==runId)); renderProcessos(); if(typeof renderSidebar==='function') renderSidebar(); }}); }
+
+// ═══ PLANEJAMENTO (nov/2026, Diego): abas Projetos · Processos · Fluxograma no topo do conteúdo ═══
+// Fluxograma = porte do "Fluxograma de Agentes" (React empacotado em hub-assets/hub-fluxograma1.js, carregado sob demanda).
+// Dados: localStorage taskflow_fluxogramas / taskflow_fluxo_papeis via safeSetItem → sincroniza no app_state (Supabase) como as demais chaves taskflow_*.
+const PLAN_ABAS=[['projetos-pro','ti-apps','Projetos'],['processos','ti-route','Processos'],['fluxograma','ti-hierarchy-2','Fluxograma']];
+function _planTabsHTML(){
+  const cur=currentTab==='projetos'?'projetos-pro':currentTab;
+  return `<div class="tf-plan-tabs" role="tablist" style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin:2px 0 14px;flex-wrap:wrap">${PLAN_ABAS.map(([t,ic,l])=>`<button role="tab" data-plan-tab="${t}" aria-selected="${cur===t}" onclick="setTab('${t}')" style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border:none;border-bottom:3px solid ${cur===t?'var(--blue-mid)':'transparent'};margin-bottom:-2px;background:none;color:${cur===t?'var(--blue-mid)':'var(--text2)'};font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap"><i class="ti ${ic}"></i>${l}</button>`).join('')}</div>`;
+}
+function _planInjetarAbas(){
+  const c=document.getElementById('task-container'); if(!c) return;
+  if(!['projetos-pro','projetos','processos','fluxograma'].includes(currentTab)) return;
+  if(currentTab!=='fluxograma' && window.TFFluxo) try{ window.TFFluxo.unmount(); }catch(e){}
+  window._planUltimaAba=currentTab==='projetos'?'projetos-pro':currentTab;
+  if(typeof activeProjectProId!=='undefined' && activeProjectProId && currentTab!=='processos' && currentTab!=='fluxograma') return; // projeto aberto: sem abas
+  if(c.querySelector(':scope > .tf-plan-tabs')) return;
+  c.insertAdjacentHTML('afterbegin',_planTabsHTML());
+}
+let _fluxoLoading=null;
+function _fluxoCarregar(cb){
+  if(window.TFFluxo){ cb(); return; }
+  if(!_fluxoLoading){ _fluxoLoading=[]; const sc=document.createElement('script'); sc.src='hub-assets/hub-fluxograma1.js'; sc.onload=()=>{ const q=_fluxoLoading; _fluxoLoading=null; q.forEach(f=>f()); }; sc.onerror=()=>{ _fluxoLoading=null; toast&&toast('Não foi possível carregar o Fluxograma.'); }; document.head.appendChild(sc); }
+  _fluxoLoading.push(cb);
+}
+function _procGrafo(p){
+  const ps=(p.passos||[]); const nodes=ps.map((x,i)=>({id:'p'+i,kind:'trabalhador',name:x.titulo||('Passo '+(i+1)),x:40+i*300,y:160,instr:x.setor?('Setor: '+x.setor):'',format:'',rounds:3}));
+  const edges=nodes.slice(1).map((n,i)=>({id:'e'+i,from:nodes[i].id,to:n.id}));
+  return {objective:p.desc||p.nome||'',nodes,edges,lanes:[],notes:[]};
+}
+function _procAbrirFluxo(id){
+  _fluxoCarregar(()=>{ const a=_procLoad(), p=a.find(x=>x.id===id); if(!p) return;
+    if(!p.fluxoId || !window.TFFluxo.hasTab(p.fluxoId)){ p.fluxoId=window.TFFluxo.createTab(p.nome,_procGrafo(p)); _procSaveAll(a); }
+    else window.TFFluxo.activate(p.fluxoId);
+    setTab('fluxograma'); });
+}
+function renderFluxograma(){
+  const main=document.getElementById('task-container'); if(!main) return;
+  const _st=document.getElementById('stats-box'); if(_st) _st.style.display='none';
+  const _pr=document.getElementById('progress-box'); if(_pr) _pr.style.display='none';
+  const _tt=document.getElementById('tab-title'); if(_tt){ _tt.textContent='🗂️ Planejamento'; _tt.style.display=''; }
+  const _ts=document.getElementById('tab-sub'); if(_ts){ _ts.style.display=''; _ts.textContent='Desenhe fluxos e processos com peças, ligações e revisões'; }
+  main.innerHTML=_planTabsHTML()+`<div id="tf-fluxo-host" style="position:relative;height:600px;min-height:420px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:#f9fafb;color-scheme:light"><div style="padding:30px;color:#6b7280;font-size:13px"><i class="ti ti-loader-2"></i> Carregando fluxograma…</div></div>`;
+  window._planUltimaAba='fluxograma';
+  const host=main.querySelector('#tf-fluxo-host');
+  const ajusta=()=>{ if(!host.isConnected) return; const top=host.getBoundingClientRect().top; host.style.height=Math.max(420,Math.round(window.innerHeight-Math.max(top,0)-16))+'px'; };
+  ajusta(); if(!window._fluxoResize){ window._fluxoResize=true; window.addEventListener('resize',()=>{ const h=document.getElementById('tf-fluxo-host'); if(h&&currentTab==='fluxograma'){ const top=h.getBoundingClientRect().top; h.style.height=Math.max(420,Math.round(window.innerHeight-Math.max(top,0)-16))+'px'; } }); }
+  _fluxoCarregar(()=>{ if(currentTab!=='fluxograma'||!host.isConnected) return; host.innerHTML=''; window.TFFluxo.mount(host); });
+}
 function renderProcessos(){
   const main=document.getElementById('task-container'); if(!main) return;
   const _st=document.getElementById('stats-box'); if(_st) _st.style.display='none';
@@ -16993,6 +17042,8 @@ function renderProcessos(){
     ${corpo}
   </div>`;
 }
+// Abas do Planejamento: injetadas sempre que #task-container é redesenhado (vale também para as telas do hub-telas.js, que embrulham renderProjetosPro/render).
+window.addEventListener('load',function(){ const c=document.getElementById('task-container'); if(!c) return; try{ new MutationObserver(()=>{ try{ _planInjetarAbas(); }catch(e){} }).observe(c,{childList:true}); }catch(e){} try{ _planInjetarAbas(); }catch(e){} });
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // ════ INÍCIO DO BLOCO CHAT - GRUPOS ════
 // CHAT - GRUPOS (aba Gestão) — conversa em GRUPOS para tirar do WhatsApp o que é da empresa.
@@ -19217,7 +19268,7 @@ function _procBibliotecaHTML(){
     return `<div onclick="_procAbrir('${p.id}')" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 15px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)'">
       <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px"><i class="ti ${escapeAttr(p.icone||'ti-list-check')}" style="font-size:19px;color:var(--blue-mid)"></i><span style="font-size:14px;font-weight:700;color:var(--text)">${escapeHTML(p.nome)}</span></div>
       <span style="display:inline-block;font-size:11px;font-weight:600;color:${ctx.cor};background:color-mix(in srgb, ${ctx.cor} 13%, transparent);border-radius:20px;padding:2px 10px">${ctx.lab}</span>
-      <div style="font-size:11.5px;color:var(--text3);margin-top:9px">${(p.passos||[]).length} passos${nRuns?` · rodou ${nRuns}×`:''}</div>
+      <div style="font-size:11.5px;color:var(--text3);margin-top:9px">${(p.passos||[]).length} passos${nRuns?` · rodou ${nRuns}×`:''}${p.fluxoId?' · <i class="ti ti-hierarchy-2"></i> fluxograma':''}</div>
     </div>`; }).join('');
   return `<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button onclick="_procNovo()" style="display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border:none;border-radius:8px;background:var(--blue-mid);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ti-plus"></i>Novo processo</button></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">${cards||_procVazio('Nenhum processo ainda. Clique em "Novo processo".')}</div>`;
@@ -19237,6 +19288,7 @@ function _procDetalheHTML(p){
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
       <button onclick="_procVoltar()" style="display:inline-flex;align-items:center;gap:5px;border:none;background:none;color:var(--blue-mid);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit"><i class="ti ti-arrow-left"></i>Processos</button>
       <div style="margin-left:auto;display:flex;gap:8px">
+        <button onclick="_procAbrirFluxo('${p.id}')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border:1px solid var(--blue-mid);border-radius:8px;background:var(--card);color:var(--blue-mid);font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ti-hierarchy-2"></i>${p.fluxoId?'Abrir fluxograma':'Criar fluxograma'}</button>
         <button onclick="_procIniciar('${p.id}')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border:none;border-radius:8px;background:var(--success);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit"><i class="ti ti-player-play"></i>Iniciar (avulso)</button>
         <button onclick="_procExcluir('${p.id}')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-trash"></i>Excluir</button>
       </div>
@@ -21233,9 +21285,9 @@ function renderSidebar(){
     navSubItem('reunioes','ti-speakerphone','Minhas Reuniões', {badge: _bnReun||null, badgeClass:'sbnav-badge-novo'}) +
     `<button class="sbnav-item sbnav-subitem" data-hub="agendamentos" onclick="hubScreen('agendamentos')"><i class="ti ti-message-circle-search"></i><span class="sbnav-label">Agendamentos</span></button>` +
     `<button class="sbnav-item sbnav-subitem" data-hub="visitas" onclick="hubScreen('visitas')"><i class="ti ti-map-2"></i><span class="sbnav-label">Visitas</span></button>`);
-  const _hubProjetos = grupo('hub-projetos','ti-apps','Projetos',
-    navSubItem('projetos-pro','ti-apps','Projetos', {badge: _bnProj||null, badgeClass:'sbnav-badge-novo'}) +
-    navSubItem('processos','ti-route','Processos'));
+  // PLANEJAMENTO (nov/2026, Diego): antigo grupo "Projetos". Projetos · Processos · Fluxograma viram abas no topo do conteúdo.
+  const _planAtivo = _tfv && ['projetos-pro','projetos','processos','fluxograma'].includes(currentTab);
+  const _hubProjetos = `<div class="sbnav-fixed"><button class="sbnav-item ${_planAtivo?'active':''}" data-tab="projetos-pro" onclick="setTab(window._planUltimaAba||'projetos-pro')"><i class="ti ti-apps"></i><span class="sbnav-label">Planejamento</span>${_bnProj?`<span class="sbnav-badge sbnav-badge-novo">${_bnProj}</span>`:''}</button></div>`;
   const _hubPCP = grupo('hub-pcp','ti-building-factory','PCP',
     _areaItem('producao',_hubPv,'cobertura','ti-report-search','Cobertura','setProducaoView') +
     `<button class="sbnav-item sbnav-subitem" data-hub="escala" onclick="hubScreen('escala')"><i class="ti ti-users-group"></i><span class="sbnav-label">Escala</span></button>` +
@@ -26327,7 +26379,7 @@ function setTab(tab,el){
   if(el && el.classList) el.classList.add('active');
   renderSidebar();
   // Mapa de títulos e subtítulos para cada aba
-  const titles={dash:'📊 Painel',rotinas:'🔁 Rotinas',hoje:'📅 Tarefas de Hoje','minhas-tarefas':'👤 Minhas Tarefas',solicitadas:'📤 Solicitadas',equipe:'👥 Tarefas da Equipe',entrada:'📥 Organizar',someday:'💤 Lembrete',atrasadas:'🚨 Tarefas Atrasadas',amanha:'🌅 Tarefas de Amanhã',semana:'📆 Tarefas da Semana',pendentes:'⏰ Tarefas Pendentes','prox-semana':'📆 Próxima Semana',concluidas:'✅ Concluídas',todas:'📋 Todas as Tarefas',pessoas:'👤 Por Pessoa',anotacoes:'📝 Anotações',agenda:'🗓️ Agenda',projetos:'📁 Projetos',['projetos-pro']:'📁 Projetos',processos:'🧩 Processos',reunioes:'📅 Reuniões',analise:'📊 Análise',lixeira:'🗑️ Lixeira',ajuda:'❓ Ajuda',mural:'💡 Mural de Ideias',oficina:'🧰 Oficina de Ideias',chat:'💬 Chat - Grupos'};
+  const titles={dash:'📊 Painel',rotinas:'🔁 Rotinas',hoje:'📅 Tarefas de Hoje','minhas-tarefas':'👤 Minhas Tarefas',solicitadas:'📤 Solicitadas',equipe:'👥 Tarefas da Equipe',entrada:'📥 Organizar',someday:'💤 Lembrete',atrasadas:'🚨 Tarefas Atrasadas',amanha:'🌅 Tarefas de Amanhã',semana:'📆 Tarefas da Semana',pendentes:'⏰ Tarefas Pendentes','prox-semana':'📆 Próxima Semana',concluidas:'✅ Concluídas',todas:'📋 Todas as Tarefas',pessoas:'👤 Por Pessoa',anotacoes:'📝 Anotações',agenda:'🗓️ Agenda',projetos:'📁 Projetos',['projetos-pro']:'🗂️ Planejamento',processos:'🗂️ Planejamento',fluxograma:'🗂️ Planejamento',reunioes:'📅 Reuniões',analise:'📊 Análise',lixeira:'🗑️ Lixeira',ajuda:'❓ Ajuda',mural:'💡 Mural de Ideias',oficina:'🧰 Oficina de Ideias',chat:'💬 Chat - Grupos'};
   const _fmtTab=x=>x.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit'}).replace('.','');
   const subs={dash:'Visão geral de todas as suas tarefas',rotinas:'Tarefas que se repetem automaticamente',hoje:'Foque no que importa agora','minhas-tarefas':'Tarefas onde você é o executor',solicitadas:'Tarefas que você pediu a outras pessoas — e confirmações pendentes',equipe:'Atrasadas e de hoje — o que precisa da sua atenção agora',entrada:'Tarefas sem executor — classifique com calma',someday:'Tarefas sem urgência — sem data definida',atrasadas:'Tarefas com data vencida ainda não concluídas',amanha:'O que vem pela frente',semana:`Visão semanal — ${_fmtTab(_mon)} a ${_fmtTab(_sun)}`,pendentes:'Tarefas ainda não concluídas','prox-semana':`Visão da próxima semana — ${_fmtTab(_proxMon)} a ${_fmtTab(_proxSun)}`,concluidas:'Ótimo trabalho!',todas:'Visão completa',pessoas:'Selecione uma pessoa para filtrar',anotacoes:'Blocos rápidos para ideias, reuniões, lembretes e decisões',agenda:'Visualização por dias, estilo Notion',projetos:'Gerencie projetos e equipas',['projetos-pro']:'Projetos com fases, setores e tarefas vinculadas',processos:'Mini-fluxos reutilizáveis — rode avulso ou dentro de um projeto',reunioes:'Hub de reuniões — histórico, pauta e ATA',analise:'Pontualidade e gargalos — pessoal, equipe e reuniões',lixeira:'Itens excluídos — recuperáveis em 30 dias',ajuda:'Tudo o que você precisa saber para usar o sistema',mural:'Ideias e melhorias — vote, comente e acompanhe',oficina:'Métodos guiados para pensar, planejar e melhorar',chat:'Conversas da equipe, organizadas por grupo'};
   document.getElementById('tab-title').textContent=titles[tab];
@@ -27471,6 +27523,7 @@ function render(){
   if(currentTab==='pessoas'){renderFilterView('pessoas');return;}
   if(currentTab==='anotacoes'){renderNotes();return;}
   if(currentTab==='processos'){renderProcessos();return;}
+  if(currentTab==='fluxograma'){renderFluxograma();return;}
   if(currentTab==='oficina'){renderOficina();return;}
   // GUILHERME V3 (mai/2026): "Projetos" antigo foi removido — redireciona para Projetos Pro.
   if(currentTab==='projetos'){ currentTab='projetos-pro'; renderProjetosPro(); return; }
@@ -36542,7 +36595,7 @@ function renderProjetosPro(){
   if(activeProjectProId){ renderProjectProView(activeProjectProId); return; }
   const container = document.getElementById('task-container');
   // Título do topo de volta ao normal
-  const _tt=document.getElementById('tab-title'); if(_tt){ _tt.textContent='📁 Projetos'; _tt.style.display=''; }
+  const _tt=document.getElementById('tab-title'); if(_tt){ _tt.textContent='🗂️ Planejamento'; _tt.style.display=''; }
   const _ts=document.getElementById('tab-sub'); if(_ts){ _ts.style.display=''; if(!sidebarPersonId) _ts.textContent='Projetos com fases, setores e tarefas vinculadas'; }
   const _ppa=document.getElementById('pp-header-actions'); if(_ppa) _ppa.style.display='flex';
 
