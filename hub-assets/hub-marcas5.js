@@ -367,15 +367,19 @@
   function refreshSkus(){ var t=document.getElementById('mp-sktab'); if(t) t.innerHTML=skTabelaHTML(); else rerender(); }
 
   // ── Modal genérico ──
-  function abrirModal(titulo, icone, corpo, onSalvar, rotSalvar){
+  function abrirModal(titulo, icone, corpo, onSalvar, rotSalvar, opts){
+    opts=opts||{};
     fecharModal();
     var ov=document.createElement('div'); ov.className='mp-ov mp-wrap'; ov.id='mp-modal';
+    var foot=opts.ro
+      ?'<div class="mp-mod-f"><button class="mp-btn gho" data-x="1">Fechar</button></div>'
+      :'<div class="mp-mod-f"><button class="mp-btn gho" data-x="1">Cancelar</button><button class="mp-btn pri" id="mp-salvar"><i class="ti ti-check"></i>'+(rotSalvar||'Salvar')+'</button></div>';
     ov.innerHTML='<div class="mp-mod" role="dialog" aria-modal="true"><div class="mp-mod-h"><h3><i class="ti '+icone+'"></i>'+titulo+'</h3><button class="mp-x" title="Fechar" data-x="1">&times;</button></div>'
       +'<div class="mp-mod-b">'+corpo+'<div class="mp-err" id="mp-err"></div></div>'
-      +'<div class="mp-mod-f"><button class="mp-btn gho" data-x="1">Cancelar</button><button class="mp-btn pri" id="mp-salvar"><i class="ti ti-check"></i>'+(rotSalvar||'Salvar')+'</button></div></div>';
+      +foot+'</div>';
     ov.addEventListener('mousedown',function(e){ if(e.target===ov) ov._down=true; });
     ov.addEventListener('click',function(e){ if((e.target===ov&&ov._down)||(e.target.closest&&e.target.closest('[data-x]'))) fecharModal(); ov._down=false; });
-    ov.querySelector('#mp-salvar').onclick=onSalvar;
+    var sav=ov.querySelector('#mp-salvar'); if(sav) sav.onclick=onSalvar;
     var limpaErro=function(e){ var f=e.target.closest&&e.target.closest('.mp-f.err'); if(f&&String(e.target.value).trim()){ f.classList.remove('err');
       if(!ov.querySelector('.mp-f.err')){ var m=ov.querySelector('#mp-err'); if(m) m.textContent=''; } } };
     ov.addEventListener('input',limpaErro); ov.addEventListener('change',limpaErro);
@@ -385,7 +389,7 @@
     return ov;
   }
   function escKey(e){ if(e.key==='Escape') fecharModal(); }
-  function fecharModal(){ var o=document.getElementById('mp-modal'); if(o) o.remove(); document.removeEventListener('keydown', escKey); }
+  function fecharModal(){ var o=document.getElementById('mp-modal'); if(o) o.remove(); document.removeEventListener('keydown', escKey); PAL_RO=false; }
   function fIn(id,rot,val,opt){ opt=opt||{};
     var ctl=opt.area?'<textarea class="mp-in" id="'+id+'" placeholder="'+esc(opt.ph||'')+'">'+esc(val||'')+'</textarea>'
       :'<input class="mp-in" id="'+id+'" type="'+(opt.type||'text')+'"'+(opt.min!=null?' min="'+opt.min+'"':'')+' placeholder="'+esc(opt.ph||'')+'" value="'+esc(val==null?'':val)+'">';
@@ -437,6 +441,7 @@
   // ── Form de SKU (com Configuração do Palete) ──
   var PAL=null;   // rascunho do palete enquanto o modal está aberto
   var PAL_DIRECT=false; // true quando o modal é só a configuração do palete
+  var PAL_RO=false;     // true = visualização somente leitura (Terceiros reusa este modal)
   function palDraft(src){
     PAL={on:!!(src&&src.modelo), modelo:(src&&src.modelo)||OPT.paleteModelo[0], lastros:(src&&src.lastros)||7,
       orientacao:(src&&src.orientacao||[]).slice(), chapas:(src&&src.chapas||[]).slice()};
@@ -470,6 +475,11 @@
   function palRefresh(){ var b=document.getElementById('mp-pal-b'), s=document.getElementById('mp-pal-s');
     if(b) b.innerHTML=palBodyHTML(); if(s) s.textContent=palResumo(PAL&&PAL.on?PAL:null);
     var l=document.getElementById('mpp-lastros'); if(l) l.onchange=function(){ if(this.value==='') return; palAjusta(this.value); palRefresh(); };
+    if(PAL_RO){
+      var ov=document.getElementById('mp-modal');
+      if(ov){ ov.querySelectorAll('select,input,textarea,.mp-qk button').forEach(function(el){ el.disabled=true; });
+        var q=ov.querySelector('.mp-qk'); if(q) q.style.display='none'; }
+    }
   }
   function formSku(id, clienteId){
     var s=id?load().skus.find(function(x){return x.id===id;}):null;
@@ -562,6 +572,16 @@
     novoSku:function(cid){ formSku(null, cid||(S.tab==='clientes'?S.sel:'')); },
     editarSku:function(id){ formSku(id); },
     abrirPalete:function(id){ formPalete(id); },
+    /* Visualização somente leitura — usada por Terceiros (mesmo modal e CSS). */
+    verPalete:function(palete, label){
+      palDraft(palete||null); PAL_DIRECT=true; PAL.on=!!(palete && palete.modelo);
+      var b='<div class="mp-pal-sku">'+esc(label||'')+'</div>';
+      if(PAL.on) b+='<div class="mp-pal open" id="mp-pal"><div class="mp-pal-b" id="mp-pal-b"></div></div>';
+      else b+='<div class="mp-pal-off"><i class="ti ti-box" style="font-size:28px"></i>Este item ainda não tem configuração de palete.</div>';
+      abrirModal('Configuração do palete','ti-box',b,null,'',{ro:true});
+      PAL_RO=true; PAL_DIRECT=true; // abrirModal chama fecharModal, que zera as flags
+      if(PAL.on) palRefresh();
+    },
     excluirSku:function(id){ var s=load().skus.find(function(x){return x.id===id;}); if(!s) return;
       confirma('Excluir SKU','Excluir o SKU "'+escMsg((s.codigo?s.codigo+' · ':'')+s.nome)+'"?\n\nEssa ação não pode ser desfeita.',function(){
         DB.skus=DB.skus.filter(function(x){return x.id!==id;}); save(); rerender(); toastMsg('SKU excluído'); }); },
