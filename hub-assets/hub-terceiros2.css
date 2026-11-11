@@ -5,7 +5,10 @@
    Busca + funil à direita, toggle Pacotes|Caixas|Paletes, sem paginação.
    Status OP: ícone colorido + texto curto, sem pills.
    Tudo prefixado .tr- para não vazar. */
-.tr-wrap{--tr-acc:var(--blue-mid,#ff7f61);--tr-pri:#2b6de0;--tr-nav:var(--hub-nav-h,59px);--tr-tools-h:50px;--tr-h1:27px;--tr-h2:27px;--tr-grid:color-mix(in srgb,var(--border) 75%,transparent);--tr-grid-v:color-mix(in srgb,var(--border) 45%,transparent);--tr-gborder:color-mix(in srgb,var(--border) 70%,var(--text) 16%);position:relative;z-index:2;min-width:0}
+.tr-wrap{--tr-acc:var(--blue-mid,#ff7f61);--tr-pri:#2b6de0;--tr-pri-soft:#4d86e6;--tr-nav:var(--hub-nav-h,59px);--tr-tools-h:50px;--tr-h1:27px;--tr-h2:27px;--tr-grid:color-mix(in srgb,var(--border) 75%,transparent);--tr-grid-v:color-mix(in srgb,var(--border) 45%,transparent);--tr-gborder:color-mix(in srgb,var(--border) 70%,var(--text) 16%);position:relative;z-index:2;min-width:0}
+
+/* No escuro, o azul #2b6de0 fica um pouco apagado sobre o card: usa um tom mais claro. */
+body.dark .tr-wrap{--tr-pri:#6b9af5;--tr-pri-soft:#8bb4ff}
 .tr-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:0 0 12px}
 .tr-head h2{font-size:20px;font-weight:700;letter-spacing:-.01em;color:var(--text);margin:0;display:flex;align-items:center;gap:8px}
 .tr-head h2 i{color:var(--tr-acc);font-size:22px}
@@ -47,7 +50,8 @@ table.tr-tbl th,table.tr-tbl td{padding:3px 8px;border-bottom:1px solid var(--tr
 table.tr-tbl th:last-child,table.tr-tbl td:last-child{border-right:0}
 table.tr-tbl th.g-start,table.tr-tbl td.g-start{border-left:1px solid var(--tr-gborder)}
 table.tr-tbl thead th{background:var(--bg2);color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;user-select:none}
-table.tr-tbl thead tr.tr-hg th{top:calc(var(--tr-nav) + var(--tr-tools-h));position:sticky;z-index:6;height:var(--tr-h1);padding:0 8px;font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--text3);text-align:center;border-bottom:1px solid var(--tr-grid);box-shadow:inset 0 1px 0 var(--border)}
+/* especificidade acima de html[data-bs-theme] #task-container table th (hub-telas) */
+#task-container table.tr-tbl thead tr.tr-hg th,table.tr-tbl thead tr.tr-hg th{top:calc(var(--tr-nav) + var(--tr-tools-h));position:sticky;z-index:6;height:var(--tr-h1);padding:0 8px;font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--tr-pri);text-align:center;border-bottom:1px solid var(--tr-grid);box-shadow:inset 0 1px 0 var(--border)}
 table.tr-tbl thead tr.tr-hc th{top:calc(var(--tr-nav) + var(--tr-tools-h) + var(--tr-h1));position:sticky;z-index:6;height:var(--tr-h2);padding:0 8px;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--text2);text-align:left;border-bottom:1px solid var(--border)}
 table.tr-tbl thead th.so{cursor:pointer}
 table.tr-tbl thead th.so:hover{color:var(--text)}
@@ -84,11 +88,12 @@ table.tr-tbl tbody tr.tr-gped td{background:color-mix(in srgb,var(--bg2) 40%,var
 table.tr-tbl tbody tr.tr-gmarca:hover td,table.tr-tbl tbody tr.tr-gped:hover td{filter:brightness(1.06)}
 .tr-gbtn{display:inline-flex;align-items:center;gap:7px;min-width:0;max-width:100%}
 .tr-gbtn>i.ch{font-size:14px;color:var(--text3);flex-shrink:0}
-.tr-gmarca .tr-gname{font-weight:800}
+.tr-gmarca .tr-gname{font-weight:800;color:var(--tr-pri)}
 .tr-gmarca .city{font-weight:500;letter-spacing:0;text-transform:none;color:var(--text3);font-size:11px;margin-left:8px}
 .tr-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 5px;margin-left:6px;border-radius:99px;background:color-mix(in srgb,var(--text) 10%,transparent);color:var(--text2);font-size:10px;font-weight:700;letter-spacing:0;vertical-align:1px}
-.tr-gped .pn{font-weight:700}
-.tr-gped .plab{font-weight:600;color:var(--text3);margin-right:4px}
+.tr-gmarca .tr-cnt{background:color-mix(in srgb,var(--tr-pri) 20%,transparent);color:var(--tr-pri)}
+.tr-gped .pn{font-weight:700;color:var(--tr-pri-soft)}
+.tr-gped .plab{font-weight:600;color:var(--tr-pri-soft);margin-right:4px}
 .tr-gped .cid,.tr-gped .dot{color:var(--text3);font-weight:500}
 .tr-gped .dates{color:var(--text3);font-weight:500;font-size:11px;margin-left:10px}
 .tr-gped .dates b{font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-right:4px}
