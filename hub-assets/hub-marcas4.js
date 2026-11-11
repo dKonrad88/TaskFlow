@@ -2,12 +2,15 @@
    Leva para o HUB a tela "Marcas Próprias" do SisPro (Mockup 1 escolhido pelo Diego, 11/11/2026,
    SEM Dashboard): duas abas, Clientes (padrão) e SKUs.
    · Lista de clientes em tabela neutra (Código, Cliente, Cidade/UF, Frequência, Situação) — sem
-     avatar nem pills coloridas. Filtros no padrão da Cobertura: busca + funil com popover,
-     alinhados à direita na mesma linha das abas Clientes/SKUs (não numa fileira abaixo).
+     avatar nem pills coloridas; cabeçalhos ordenáveis no mesmo estilo da tabela de SKUs
+     (clique alterna crescente/decrescente). Filtros no padrão da Cobertura: busca + funil
+     com popover, alinhados à direita na mesma linha das abas Clientes/SKUs (não numa fileira abaixo).
    · Ficha do cliente (Mockup 2): cabeçalho compacto com ações em ícone, abas internas
-     Dados / Embalagem / SKUs. Dados em duas colunas + Informações operacionais em texto simples
-     (sem caixa amarela nem títulos laranja). Embalagem em tabela Tipo / Responsável / Notas.
-     SKUs em lista com ícones de palete/editar/excluir e "+ SKU".
+     Dados / Embalagem / SKUs. Dados em duas colunas + Informações operacionais em texto simples,
+     com destaque amarelo bem sutil (fundo e borda em color-mix de âmbar baixo; rótulo levemente
+     quente; texto do corpo na cor normal). Embalagem em tabela Tipo / Responsável / Notas.
+     SKUs vinculados em tabela ordenável (Código, Produto, Linha, Empac.) com ícones de
+     palete/editar/excluir e "+ SKU".
    · Ícone de palete nas ações de cada SKU (tabela de SKUs e SKUs vinculados do cliente) abre a
      Configuração do palete em modal; Confirmar grava na hora via safeSetItem. O formulário de
      Novo/Editar SKU não tem mais o bloco do palete; editar o SKU preserva a configuração já gravada.
@@ -135,7 +138,7 @@
   function skusDe(id){ return load().skus.filter(function(s){return s.clienteId===id;}); }
 
   // ── Estado de tela (não persiste) ──
-  var S={ tab:'clientes', pTab:'dados', sel:null, busca:'', f:{}, fOpen:false, skBusca:'', skLinha:'', skFOpen:false, skPag:1, skTam:25, skSort:{c:'criado',d:-1}, modal:null };
+  var S={ tab:'clientes', pTab:'dados', sel:null, busca:'', f:{}, fOpen:false, skBusca:'', skLinha:'', skFOpen:false, skPag:1, skTam:25, skSort:{c:'criado',d:-1}, cliSort:{c:'nome',d:1}, pSkSort:{c:'codigo',d:1}, modal:null };
 
   // ── Render principal ──
   function render(main){
@@ -161,7 +164,7 @@
   // ── CLIENTES ──
   function filtrados(){
     var q=norm(S.busca);
-    return load().clientes.filter(function(c){
+    var L=load().clientes.filter(function(c){
       if(q && norm(c.nome+' '+c.cidade+' '+c.codigo+' '+c.razao).indexOf(q)<0) return false;
       var f=S.f;
       if(f.estado && c.estado!==f.estado) return false;
@@ -172,7 +175,17 @@
       if(f.notaEtiqueta && c.etiqueta.notas!==f.notaEtiqueta) return false;
       if(f.situacao && c.situacao!==f.situacao) return false;
       return true;
-    }).sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); });
+    });
+    var so=S.cliSort||{c:'nome',d:1};
+    L.sort(function(a,b){ var x=cliAcc(a,so.c), y=cliAcc(b,so.c);
+      return String(x).localeCompare(String(y),'pt-BR',{numeric:true,sensitivity:'base'})*so.d; });
+    return L;
+  }
+  function cliAcc(c,col){ if(col==='cidade') return (c.cidade||'')+' / '+(c.estado||''); return c[col]==null?'':c[col]; }
+  var CLI_COLS=[['codigo','Código'],['nome','Cliente'],['cidade','Cidade/UF'],['frequencia','Frequência'],['situacao','Situação']];
+  var PSK_COLS=[['codigo','Código'],['nome','Produto'],['linha','Linha'],['empacotamento','Empac.']];
+  function sortTh(cols,sort,fn){ return cols.map(function(c){ var on=sort.c===c[0];
+    return '<th class="so'+(on?' on':'')+'" data-col="'+c[0]+'" onclick="'+fn+'(\''+c[0]+'\')">'+c[1]+'<i class="ti ti-'+(on?(sort.d>0?'arrow-up':'arrow-down'):'arrows-sort')+'"></i></th>'; }).join('');
   }
   function selOpts(lista, val, vazio){
     return (vazio!=null?'<option value="">'+esc(vazio)+'</option>':'')+lista.map(function(o){return '<option value="'+esc(o)+'"'+(o===val?' selected':'')+'>'+esc(o)+'</option>';}).join('');
@@ -254,7 +267,7 @@
     if(!S.sel && L.length) S.sel=L[0].id;
     var h='<div class="mp-list-h">'+L.length+' cliente'+(L.length===1?'':'s')+'</div>';
     if(!L.length) return h+'<div class="mp-empty"><i class="ti ti-search"></i>Nenhum cliente para esse filtro.</div>';
-    return h+'<div class="mp-tw"><table class="mp-t"><thead><tr><th>Código</th><th>Cliente</th><th>Cidade/UF</th><th>Frequência</th><th>Situação</th></tr></thead><tbody>'
+    return h+'<div class="mp-tw"><table class="mp-t"><thead><tr>'+sortTh(CLI_COLS,S.cliSort,'MP.cliSort')+'</tr></thead><tbody>'
       +L.map(function(c){
         return '<tr class="mp-cli'+(c.id===S.sel?' on':'')+'" data-id="'+esc(c.id)+'" onclick="MP.sel(\''+esc(c.id)+'\')">'
           +'<td class="mu">'+esc(c.codigo||'—')+'</td>'
@@ -268,7 +281,9 @@
     var c=S.sel?cliById(S.sel):null;
     if(!c) return '<div class="mp-empty"><i class="ti ti-building"></i>Selecione um cliente na lista.</div>';
     var tab=S.pTab==='embalagem'?'embalagem':(S.pTab==='skus'?'skus':'dados');
-    var sk=skusDe(c.id).slice().sort(function(a,b){return String(a.codigo).localeCompare(String(b.codigo),'pt-BR',{numeric:true});});
+    var so=S.pSkSort||{c:'codigo',d:1};
+    var sk=skusDe(c.id).slice().sort(function(a,b){ var x=skAcc(a,so.c), y=skAcc(b,so.c);
+      return String(x).localeCompare(String(y),'pt-BR',{numeric:true,sensitivity:'base'})*so.d; });
     var h='<div class="mp-ph"><div class="tt"><h3>'+(c.codigo?'<span class="cd">'+esc(c.codigo)+' · </span>':'')+esc(c.nome)+'</h3>'
       +'<div class="rz">'+esc(c.razao||'')+'</div>'
       +'<div class="ci">'+esc(c.cidade||'—')+' / '+esc(c.estado)+' · atualizado em '+fmtDt(c.atualizado)+'</div></div>'
@@ -301,12 +316,11 @@
       h+='<div class="mp-sku-h"><span class="mp-sec-n">SKUs vinculados</span><span class="mp-sec-count">'+sk.length+'</span><span class="sp"></span>'
         +'<button class="mp-add-sku" type="button" onclick="MP.novoSku(\''+esc(c.id)+'\')"><i class="ti ti-plus"></i>SKU</button></div>';
       if(!sk.length) h+='<div class="mp-empty">Nenhum SKU cadastrado para este cliente.</div>';
-      else h+='<ul class="mp-skus">'+sk.map(function(s){
-        var meta=[s.linha,s.empacotamento].filter(Boolean).join(' · ');
-        return '<li><div class="mp-sku-code">'+esc(s.codigo||'—')+'</div><div class="mp-sku-body"><div class="mp-sku-name">'+esc(s.nome)+'</div>'
-          +(meta?'<div class="mp-sku-meta">'+esc(meta)+'</div>':'')+'</div>'
-          +'<div class="mp-sku-acts">'+actsHTML(s.id, {discreto:true})+'</div></li>';
-      }).join('')+'</ul>';
+      else h+='<div class="mp-tw"><table class="mp-t"><thead><tr>'+sortTh(PSK_COLS,S.pSkSort,'MP.pSkSort')+'<th></th></tr></thead><tbody>'
+        +sk.map(function(s){
+          return '<tr data-id="'+esc(s.id)+'"><td class="mu">'+esc(s.codigo||'—')+'</td><td class="pr">'+esc(s.nome)+'</td>'
+            +'<td class="mu">'+esc(s.linha||'—')+'</td><td>'+esc(s.empacotamento||'—')+'</td><td>'+actsHTML(s.id,{discreto:true})+'</td></tr>';
+        }).join('')+'</tbody></table></div>';
     }
     return h+'</div>';
   }
@@ -346,8 +360,7 @@
     var L=skFiltrados(), tot=L.length, np=Math.max(1,Math.ceil(tot/S.skTam));
     if(S.skPag>np) S.skPag=np;
     var ini=(S.skPag-1)*S.skTam, P=L.slice(ini,ini+S.skTam);
-    var th=SK_COLS.map(function(c){ var on=S.skSort.c===c[0];
-      return '<th class="so'+(on?' on':'')+'" data-col="'+c[0]+'" onclick="MP.skSort(\''+c[0]+'\')">'+c[1]+'<i class="ti ti-'+(on?(S.skSort.d>0?'arrow-up':'arrow-down'):'arrows-sort')+'"></i></th>'; }).join('')+'<th></th>';
+    var th=sortTh(SK_COLS,S.skSort,'MP.skSort')+'<th></th>';
     var body=P.length?P.map(function(s){ var k=cliById(s.clienteId);
       return '<tr data-id="'+esc(s.id)+'"><td class="mu">'+fmtDt(s.criado)+'</td><td class="mu">'+esc(s.codigo||'—')+'</td><td class="pr">'+esc(s.nome)+'</td>'
         +'<td>'+(k?'<button class="lk" onclick="MP.abrirCliente(\''+esc(k.id)+'\')">'+esc(k.nome)+'</button>':'<span class="mu">—</span>')+'</td>'
@@ -549,6 +562,8 @@
     skTam:function(n){ S.skTam=parseInt(n,10)||25; S.skPag=1; refreshSkus(); },
     skPag:function(p){ S.skPag=Math.max(1,p); refreshSkus(); },
     skSort:function(c){ if(S.skSort.c===c) S.skSort.d*=-1; else S.skSort={c:c,d:(c==='criado'?-1:1)}; S.skPag=1; refreshSkus(); },
+    cliSort:function(c){ if(S.cliSort.c===c) S.cliSort.d*=-1; else S.cliSort={c:c,d:1}; var l=document.getElementById('mp-list'); if(l) l.innerHTML=listaHTML(); else refreshClientes(); },
+    pSkSort:function(c){ if(S.pSkSort.c===c) S.pSkSort.d*=-1; else S.pSkSort={c:c,d:1}; var p=document.getElementById('mp-panel'); if(p) p.innerHTML=painelHTML(); else rerender(); },
     novoCliente:function(){ formCliente(null); },
     editarCliente:function(id){ formCliente(id); },
     excluirCliente:function(id){ var c=cliById(id); if(!c) return; var n=skusDe(id).length;
