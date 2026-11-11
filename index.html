@@ -15789,7 +15789,7 @@ let _comCmp=false;               // coluna "vs. período anterior" na tabela (os
 let _comAbFiltro='';             // pedidos em aberto: '' | 'atraso' | 'rota'
 let _comSort={campo:'valor',dir:-1};
 const _comFechadas={};           // linhas recolhidas — estado de tela, não persiste
-// Marcas Próprias (nov/2026): porte da tela do SisPro — código em hub-assets/hub-marcas3.js (MP.render).
+// Marcas Próprias (nov/2026): porte da tela do SisPro — código em hub-assets/hub-marcas4.js (MP.render).
 const COM_MENU=[['pedidos','ti-shopping-cart','Pedidos'],['marcas','ti-tags','Marcas Próprias']];
 const COM_PERIODOS=[['aberto','Em aberto'],['ontem','Ontem'],['hoje','Hoje'],['semana','Semana'],['semanaAnt','Semana ant.'],['mes','Mês'],['mesAnt','Mês ant.'],['ano','Ano']];
 // Totais do rodapé do Power BI. Clientes e pedidos NÃO são a soma das linhas (o mesmo pedido leva
@@ -15923,7 +15923,7 @@ function renderComercial(){
   const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
-  // Marcas Próprias: tela própria (hub-assets/hub-marcas3.js) — Clientes e SKUs, dados no localStorage.
+  // Marcas Próprias: tela própria (hub-assets/hub-marcas4.js) — Clientes e SKUs, dados no localStorage.
   if(comercialView==='marcas'){
     if(window.MP && typeof MP.render==='function') MP.render(main);
     else main.innerHTML=_cpTela('Marcas Próprias','', '<p style="color:var(--text3)">Não foi possível carregar Marcas Próprias.</p>');
@@ -47734,6 +47734,6 @@ function importarDadosJSON(){
 <link rel="stylesheet" href="hub-assets/hub-gp-oficial.css?v=12">
 <link rel="stylesheet" href="hub-assets/hub-projetos12.css">
 <script src="hub-assets/hub-projetos12.js"></script>
-<link rel="stylesheet" href="hub-assets/hub-marcas3.css">
-<script src="hub-assets/hub-marcas3.js"></script>
+<link rel="stylesheet" href="hub-assets/hub-marcas4.css">
+<script src="hub-assets/hub-marcas4.js"></script>
 </body></html>
