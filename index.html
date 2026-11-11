@@ -6738,7 +6738,7 @@ function irParaProjetos(){
 // MÓDULO PRODUÇÃO (SISPRO) — Ficha de Produto
 // Protótipo de layout. Migração de dados do Sispro atual → backend (Guilherme).
 // ════════════════════════════════════════════════════════════════════
-let producaoView = 'produtos';        // 'produtos' | 'cobertura' | 'pcp' | 'indicadores' | 'regras' | 'programacao' | 'ordens' | 'checklists'
+let producaoView = 'produtos';        // 'produtos' | 'cobertura' | 'pcp' | 'terceiros' | 'indicadores' | 'regras' | 'programacao' | 'ordens' | 'checklists'
 let produtoTipoFiltro = 'todos';      // filtro por tipo de produção na lista
 let produtoBusca = '';                // busca textual na lista de produtos
 let fichaProdutoAberta = null;        // id da ficha em edição (null = lista)
@@ -7045,6 +7045,11 @@ function renderProducao(){
   if(producaoView === 'indicadores') return _prodTelaVazia('Indicadores');
   if(producaoView === 'regras') return renderRegras();
   if(producaoView === 'programacao') return renderProgramacao();
+  if(producaoView === 'terceiros'){
+    if(window.TR && typeof TR.render==='function') TR.render(main);
+    else main.innerHTML=`<div style="padding:20px 4px;">${hubHead('Terceiros','Não foi possível carregar Terceiros.')}</div>`;
+    return;
+  }
   if(producaoView !== 'produtos'){
     const titulo = producaoView==='ordens'?'Ordens de Produção':'Checklists';
     main.innerHTML = `<div style="padding:20px 4px;">
@@ -21301,6 +21306,7 @@ function renderSidebar(){
         _areaItem('producao',_pv,'indicadores','ti-chart-histogram','Indicadores','setProducaoView') +
         _areaItem('producao',_pv,'regras','ti-shield-check','Regras','setProducaoView') +
         _areaItem('producao',_pv,'programacao','ti-calendar-week','Programação','setProducaoView') +
+        _areaItem('producao',_pv,'terceiros','ti-building-warehouse','Terceiros','setProducaoView') +
         _areaItem('producao',_pv,'ordens','ti-clipboard-list','Ordens de Produção','setProducaoView') +
         _areaItem('producao',_pv,'produtos','ti-package','Produtos','setProducaoView') +
         _areaItem('producao',_pv,'checklists','ti-checkup-list','Check list','setProducaoView')
@@ -21352,6 +21358,7 @@ function renderSidebar(){
     _areaItem('producao',_hubPv,'cobertura','ti-report-search','Cobertura','setProducaoView') +
     `<button class="sbnav-item sbnav-subitem" data-hub="escala" onclick="hubScreen('escala')"><i class="ti ti-users-group"></i><span class="sbnav-label">Escala</span></button>` +
     _areaItem('producao',_hubPv,'programacao','ti-clipboard-list','Programação','setProducaoView') +
+    _areaItem('producao',_hubPv,'terceiros','ti-building-warehouse','Terceiros','setProducaoView') +
     _areaItem('producao',_hubPv,'pcp','ti-adjustments-horizontal','PCP','setProducaoView') +
     _areaItem('producao',_hubPv,'indicadores','ti-chart-histogram','Indicadores','setProducaoView') +
     _areaItem('producao',_hubPv,'regras','ti-shield-check','Regras','setProducaoView') +
@@ -47736,4 +47743,6 @@ function importarDadosJSON(){
 <script src="hub-assets/hub-projetos12.js"></script>
 <link rel="stylesheet" href="hub-assets/hub-marcas5.css">
 <script src="hub-assets/hub-marcas5.js"></script>
+<link rel="stylesheet" href="hub-assets/hub-terceiros1.css">
+<script src="hub-assets/hub-terceiros1.js"></script>
 </body></html>
