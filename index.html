@@ -15789,7 +15789,8 @@ let _comCmp=false;               // coluna "vs. período anterior" na tabela (os
 let _comAbFiltro='';             // pedidos em aberto: '' | 'atraso' | 'rota'
 let _comSort={campo:'valor',dir:-1};
 const _comFechadas={};           // linhas recolhidas — estado de tela, não persiste
-const COM_MENU=[['pedidos','ti-shopping-cart','Pedidos']];
+// Marcas Próprias (nov/2026): porte da tela do SisPro — código em hub-assets/hub-marcas1.js (MP.render).
+const COM_MENU=[['pedidos','ti-shopping-cart','Pedidos'],['marcas','ti-tags','Marcas Próprias']];
 const COM_PERIODOS=[['aberto','Em aberto'],['ontem','Ontem'],['hoje','Hoje'],['semana','Semana'],['semanaAnt','Semana ant.'],['mes','Mês'],['mesAnt','Mês ant.'],['ano','Ano']];
 // Totais do rodapé do Power BI. Clientes e pedidos NÃO são a soma das linhas (o mesmo pedido leva
 // produtos de várias linhas) — por isso vêm do total, nunca somados. As CAIXAS por produto vêm
@@ -15922,6 +15923,12 @@ function renderComercial(){
   const _topbar=document.querySelector('.main .topbar'); if(_topbar) _topbar.style.display='none';
   const _stats=document.getElementById('stats-box'); if(_stats) _stats.style.display='none';
   const _prog=document.getElementById('progress-box'); if(_prog) _prog.style.display='none';
+  // Marcas Próprias: tela própria (hub-assets/hub-marcas1.js) — Clientes e SKUs, dados no localStorage.
+  if(comercialView==='marcas'){
+    if(window.MP && typeof MP.render==='function') MP.render(main);
+    else main.innerHTML=_cpTela('Marcas Próprias','', '<p style="color:var(--text3)">Não foi possível carregar Marcas Próprias.</p>');
+    return;
+  }
   // sem subtítulo: ele repetia em voz alta as 3 sub-abas logo abaixo (Diego, 24/09 — "queria algo clean")
   main.innerHTML=_cpTela('Pedidos','', _comCorpoHTML(), null, _comAcaoHTML());
   // fecha o popover do período ao clicar fora (mesmo padrão dos filtros de Compras)
@@ -47727,4 +47734,6 @@ function importarDadosJSON(){
 <link rel="stylesheet" href="hub-assets/hub-gp-oficial.css?v=12">
 <link rel="stylesheet" href="hub-assets/hub-projetos12.css">
 <script src="hub-assets/hub-projetos12.js"></script>
+<link rel="stylesheet" href="hub-assets/hub-marcas1.css">
+<script src="hub-assets/hub-marcas1.js"></script>
 </body></html>
