@@ -131,9 +131,9 @@
     return {unid:'caixas', mode:'w2', wOff:0, mOff:0,
       ped:{campo:'entrega', preset:'prox4', de:'', ate:''},
       sab:true, dom:false, tot:true,
-      f:{prods:[], linhas:[], marca:'', almox:['Klain']},
+      f:{prods:[], linhas:[], marca:'', almox:['Klain'], pbusca:'', lbusca:''},
       col:{}, pedAberto:false,
-      busca:'', pop:null, popM:0, fBusca:''};
+      busca:'', pop:null, popM:0, fBusca:'', fLbusca:''};
   }
   function load(){
     if(S) return S;
@@ -149,10 +149,12 @@
       if(typeof u.dom==='boolean') S.dom=u.dom;
       if(typeof u.tot==='boolean') S.tot=u.tot;
       if(u.f&&typeof u.f==='object'){
-        S.f={prods:Array.isArray(u.f.prods)?u.f.prods.filter(function(c){return PROD[c];}):[],
-             linhas:Array.isArray(u.f.linhas)?u.f.linhas:[],
+        S.f={prods:[],
+             linhas:[],
              marca:typeof u.f.marca==='string'?u.f.marca:'',
-             almox:Array.isArray(u.f.almox)?u.f.almox.filter(function(a){return ALMOX.indexOf(a)>=0;}):['Klain']};
+             almox:Array.isArray(u.f.almox)?u.f.almox.filter(function(a){return ALMOX.indexOf(a)>=0;}):['Klain'],
+             pbusca:typeof u.f.pbusca==='string'?u.f.pbusca:'',
+             lbusca:typeof u.f.lbusca==='string'?u.f.lbusca:''};
       }
       if(u.col&&typeof u.col==='object') S.col=u.col;
       if(typeof u.pedAberto==='boolean') S.pedAberto=u.pedAberto;
@@ -194,8 +196,8 @@
   /* ── visão (filtros + busca) ── */
   function prodPassaFunil(p){
     var f=S.f;
-    if(f.prods.length && f.prods.indexOf(p.c)<0) return false;
-    if(f.linhas.length && f.linhas.indexOf(p.linha)<0) return false;
+    if(f.pbusca){ var q=norm(f.pbusca).trim(); if(q && norm(p.c).indexOf(q)<0 && norm(p.n).indexOf(q)<0) return false; }
+    if(f.lbusca){ var lq=norm(f.lbusca).trim(); var lnome=(function(){ for(var i=0;i<LINHAS.length;i++) if(LINHAS[i].id===p.linha) return LINHAS[i].nome; return p.linha; })(); if(lq && norm(p.linha).indexOf(lq)<0 && norm(lnome).indexOf(lq)<0) return false; }
     if(f.marca && p.marca!==f.marca) return false;
     return true;
   }
@@ -319,28 +321,26 @@
   }
   function funilCount(){
     var f=S.f, n=0;
-    if(f.prods.length) n++; if(f.linhas.length) n++; if(f.marca) n++; if(f.almox.length && f.almox.length<ALMOX.length) n++;
+    if((f.pbusca||'').trim()) n++; if((f.lbusca||'').trim()) n++; if(f.marca) n++; if(f.almox.length && f.almox.length<ALMOX.length) n++;
     return n;
   }
   function chk(on, label, a, v, extra){
     return '<button type="button" class="cbp-chk'+(on?' on':'')+'" data-a="'+a+'" data-v="'+esc(v)+'"><span class="b">'+(on?'<i class="ti ti-check"></i>':'')+'</span>'+(extra||'')+'<span class="lb">'+esc(label)+'</span></button>';
   }
   function funilHTML(){
-    var F=FDRAFT, fq=norm(S.fBusca).trim();
-    var lista=PRODS.filter(function(p){ return !fq || norm(p.c).indexOf(fq)>=0 || norm(p.n).indexOf(fq)>=0; });
+    var F=FDRAFT;
     return '<div class="cbp-pop cbp-fun" style="--ar:52px" role="dialog" aria-label="Filtros">'
-      +'<div class="cbp-cols2"><div class="cbp-sec"><h4>Produtos <span class="c">'+(F.prods.length?F.prods.length+' selecionado'+(F.prods.length>1?'s':''):'Todos')+'</span></h4>'
+      +'<div class="cbp-sec"><h4>Produtos</h4>'
       +'<label class="cbp-mini"><i class="ti ti-search"></i><input id="cbp-fbusca" type="text" autocomplete="off" placeholder="Buscar produto…" value="'+esc(S.fBusca)+'"></label>'
-      +'<div class="cbp-plist">'+(lista.length?lista.map(function(p){ return chk(F.prods.indexOf(p.c)>=0, p.n, 'fProd', p.c, '<span class="cd">'+esc(p.c)+'</span>'); }).join(''):'<div class="cbp-vazio">Nenhum produto.</div>')+'</div></div>'
-      +'<div class="cbp-sec"><h4>Linhas <span class="c">'+(F.linhas.length?F.linhas.length+' selecionada'+(F.linhas.length>1?'s':''):'Todas')+'</span></h4>'
-      +LINHAS.map(function(l){ return chk(F.linhas.indexOf(l.id)>=0, l.nome, 'fLinha', l.id).replace('</button>','<span class="n">'+l.prods.length+'</span></button>'); }).join('')
+      +'<h4 style="margin-top:14px">Linhas</h4>'
+      +'<label class="cbp-mini"><i class="ti ti-search"></i><input id="cbp-flinha" type="text" autocomplete="off" placeholder="Buscar linha…" value="'+esc(S.fLbusca)+'"></label>'
       +'<h4 style="margin-top:14px">Marcas</h4><div class="cbp-tags">'
       +'<button type="button" class="cbp-tag'+(!F.marca?' on':'')+'" data-a="fMarca" data-v="">Todas</button>'
       +MARCAS.map(function(m){ return '<button type="button" class="cbp-tag'+(F.marca===m?' on':'')+'" data-a="fMarca" data-v="'+esc(m)+'">'+esc(m)+'</button>'; }).join('')
       +'</div>'
       +'<h4 style="margin-top:14px">Almoxarifados <span class="c">'+(F.almox.length&&F.almox.length<ALMOX.length?F.almox.length+' selecionado'+(F.almox.length>1?'s':''):'Todos')+'</span></h4>'
       +ALMOX.map(function(a){ return chk(F.almox.indexOf(a)>=0, a, 'fAlmox', a); }).join('')
-      +'</div></div>'
+      +'</div>'
       +'<div class="cbp-ft"><button type="button" class="cbp-lnk" data-a="fLimpar">Limpar filtros</button><span class="cbp-ftb"><button type="button" class="cbp-btn" data-a="pop" data-v="">Cancelar</button><button type="button" class="cbp-btn pri" data-a="fAplicar"><i class="ti ti-check"></i>Aplicar</button></span></div>'
       +'</div>';
   }
@@ -511,7 +511,7 @@
   function screenHTML(){
     return '<style>.main{max-width:none !important}</style>'
       +'<div class="cbp-wrap" style="padding:20px 4px 40px">'
-      +'<div class="cbp-head"><h2><i class="ti ti-chart-bar"></i> Cobertura</h2><p>Demanda e entregas por produto, semana a semana — pedidos em aberto e quantidades previstas por dia.</p></div>'
+      +'<div class="cbp-head"><h2><i class="ti ti-chart-bar"></i> Entrega diária</h2><p>Demanda e entregas por produto, semana a semana — pedidos em aberto e quantidades previstas por dia.</p></div>'
       +toolsHTML()
       +'<div id="cbp-body">'+bodyHTML()+'</div>'
       +'</div>';
@@ -550,7 +550,7 @@
     fn();
     var sc2=MAIN.querySelector('.cbp-scroll'); if(sc2){ sc2.scrollLeft=x; sc2.scrollTop=y; }
     var ps2=MAIN.querySelector('.cbp-plist'); if(ps2) ps2.scrollTop=py;
-    if(id==='cbp-busca'||id==='cbp-fbusca'){ var n=document.getElementById(id); if(n){ n.focus(); if(caret>=0) try{ n.setSelectionRange(caret,caret); }catch(e){} } }
+    if(id==='cbp-busca'||id==='cbp-fbusca'||id==='cbp-flinha'){ var n=document.getElementById(id); if(n){ n.focus(); if(caret>=0) try{ n.setSelectionRange(caret,caret); }catch(e){} } }
   }
   function refresh(){ if(!MAIN) return; keepScroll(function(){ MAIN.innerHTML=screenHTML(); bind(); fit(); }); }
   function refreshBody(){
@@ -563,7 +563,7 @@
   }
 
   function openPop(w){
-    if(w==='fun'){ FDRAFT=JSON.parse(JSON.stringify(S.f)); S.fBusca=''; }
+    if(w==='fun'){ FDRAFT=JSON.parse(JSON.stringify(S.f)); S.fBusca=S.f.pbusca||''; S.fLbusca=S.f.lbusca||''; }
     if(w==='cal'){ DRAFT={campo:S.ped.campo, preset:S.ped.preset, de:S.ped.de, ate:S.ped.ate, sab:S.sab, dom:S.dom, tot:S.tot, cal:0};
       var rg=pedRange(S.ped); if(rg&&rg[0]) DRAFT.cal=(rg[0].getFullYear()-TODAY.getFullYear())*12+rg[0].getMonth()-TODAY.getMonth();
       S.popM=0; }
@@ -581,12 +581,10 @@
       case 'ped': S.pedAberto=!S.pedAberto; persist(); refreshBody(); return;
       case 'lin': if(S.col[v]) delete S.col[v]; else S.col[v]=1; persist(); refreshBody(); return;
       /* funil */
-      case 'fProd': tog(FDRAFT.prods, v); refresh(); return;
-      case 'fLinha': tog(FDRAFT.linhas, v); refresh(); return;
       case 'fMarca': FDRAFT.marca=v||''; refresh(); return;
       case 'fAlmox': tog(FDRAFT.almox, v); refresh(); return;
-      case 'fLimpar': FDRAFT={prods:[], linhas:[], marca:'', almox:[]}; S.fBusca=''; refresh(); return;
-      case 'fAplicar': S.f=FDRAFT; S.pop=null; persist(); refresh(); return;
+      case 'fLimpar': FDRAFT={prods:[], linhas:[], marca:'', almox:[], pbusca:'', lbusca:''}; S.fBusca=''; S.fLbusca=''; refresh(); return;
+      case 'fAplicar': FDRAFT.pbusca=(S.fBusca||'').trim(); FDRAFT.lbusca=(S.fLbusca||'').trim(); S.f=FDRAFT; S.pop=null; persist(); refresh(); return;
       /* período da planilha (aplica na hora) */
       case 'mode':
         if(v==='mes' && S.mode!=='mes'){ S.mOff=S.popM; }
@@ -628,7 +626,8 @@
   function onInput(e){
     var t=e.target;
     if(t.id==='cbp-busca'){ S.busca=t.value; refreshBody(); }
-    else if(t.id==='cbp-fbusca'){ S.fBusca=t.value; refresh(); }
+    else if(t.id==='cbp-fbusca'){ S.fBusca=t.value; }
+    else if(t.id==='cbp-flinha'){ S.fLbusca=t.value; }
   }
   function bind(){
     var w=MAIN.querySelector('.cbp-wrap'); if(!w) return;
