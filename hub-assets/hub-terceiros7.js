@@ -1,8 +1,7 @@
 /* ══ PCP › TERCEIROS (hub-terceiros7)
    Planilha no padrão da Cobertura do Hub (v7): layout igual ao v6.
-   Duas paletas de Status OP (data-tr-pal=a|b): A Cobertura (preenchimentos
-   firmes) e B Suave limpo (mesmas matizes, mais leves e limpas).
-   TR.setPalette('a'|'b') alterna. Tela somente leitura.
+   Status OP na paleta Cobertura (preenchimentos firmes). Faixa da marca
+   #E7EBEB; faixa do pedido em azul bem claro (#E8F0FB). Tela somente leitura.
    Dados no localStorage (chave taskflow_terceiros), sempre via safeSetItem.
    Entrada: renderProducao() chama TR.render(main) quando producaoView==='terceiros'.
    O ícone de palete abre MP.verPalete (modal de Marcas, somente leitura). */
@@ -121,7 +120,7 @@
   }
 
   var DB=null;
-  var S={ unid:'caixas', busca:'', funil:false, pal:'a',
+  var S={ unid:'caixas', busca:'', funil:false,
           f:{linha:'',marca:'',fin:'',sop:''},
           sort:{k:'', dir:''}, col:{} };
 
@@ -133,7 +132,6 @@
         S.unid=v.ui.unid||'caixas'; S.busca=v.ui.busca||'';
         var fIn=v.ui.f||{}, keep={linha:1,marca:1,fin:1,sop:1}; Object.keys(fIn).forEach(function(k){ if(keep[k]) S.f[k]=fIn[k]; }); S.sort=v.ui.sort||S.sort;
         S.col=v.ui.col||S.col||{};
-        if(v.ui.pal==='a'||v.ui.pal==='b') S.pal=v.ui.pal;
       }
     } else {
       DB=seed();
@@ -142,7 +140,7 @@
     return DB;
   }
   function persist(){
-    lsSet(LS_KEY, {v:1, data:DB, ui:{unid:S.unid, busca:S.busca, f:S.f, sort:S.sort, col:S.col, pal:S.pal}});
+    lsSet(LS_KEY, {v:1, data:DB, ui:{unid:S.unid, busca:S.busca, f:S.f, sort:S.sort, col:S.col}});
   }
 
   function parseN(n){ return typeof n==='number'?n:(parseFloat(String(n).replace(/\./g,'').replace(',','.'))||0); }
@@ -531,7 +529,7 @@
     load();
     var v=visao();
     var sub='Pedidos de industrialização — '+v.nPed+' pedido'+(v.nPed===1?'':'s')+' · '+v.nIt+' '+(v.nIt===1?'item':'itens')+' · quantidades em '+unidLabel();
-    main.innerHTML='<div class="tr-wrap" data-tr-pal="'+(S.pal==='b'?'b':'a')+'" style="padding:20px 4px 80px">'
+    main.innerHTML='<div class="tr-wrap" style="padding:20px 4px 80px">'
       +'<div class="tr-head"><div><h2><i class="ti ti-building-warehouse"></i> Terceiros</h2><p>'+sub+'</p></div></div>'
       +sheetHTML()
       +'</div>';
@@ -542,7 +540,6 @@
     render:render,
     setUnid:function(u){ S.unid=u; persist(); if(MAIN) refresh(); },
     _db:function(){ load(); return DB; },
-    setPalette:function(p){ S.pal=(p==='b'?'b':'a'); persist(); if(MAIN) refresh(); },
-    _reset:function(){ DB=seed(); S={unid:'caixas',busca:'',funil:false,pal:'a',f:{linha:'',marca:'',fin:'',sop:''},sort:{k:'',dir:''},col:{}}; persist(); if(MAIN) refresh(); }
+    _reset:function(){ DB=seed(); S={unid:'caixas',busca:'',funil:false,f:{linha:'',marca:'',fin:'',sop:''},sort:{k:'',dir:''},col:{}}; persist(); if(MAIN) refresh(); }
   };
 })();
