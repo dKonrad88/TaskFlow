@@ -2,17 +2,18 @@
    Planilha no padrão da Cobertura do Hub (v6): cada marca é um card
    próprio. Superfície branca (igual ao Cobertura) / a mesma do cabeçalho
    no escuro; faixa da marca sem fundo azul, só o nome azul.
-   Célula Status OP pintada inteira. Cabeçalho compartilhado congelado.
+   Célula Status OP pintada inteira. Zebra suave nos itens (recomeça
+   a cada pedido; o primeiro fica cinza-claro). Cabeçalho compartilhado congelado.
    Grade fina,
    cabeçalho de duas linhas congelado (grupos + colunas) ao rolar a página,
    grupos de marca e subgrupos de pedido recolhíveis.
    Busca + funil à direita, toggle Pacotes|Caixas|Paletes, sem paginação.
    Status OP: ícone colorido + texto curto, sem pills.
    Tudo prefixado .tr- para não vazar. */
-.tr-wrap{--tr-acc:var(--blue-mid,#ff7f61);--tr-pri:#2b6de0;--tr-pri-soft:#4d86e6;--tr-surface:#fff;--tr-nav:var(--hub-nav-h,59px);--tr-tools-h:50px;--tr-h1:27px;--tr-h2:27px;--tr-grid:color-mix(in srgb,var(--border) 75%,transparent);--tr-grid-v:color-mix(in srgb,var(--border) 45%,transparent);--tr-gborder:color-mix(in srgb,var(--border) 70%,var(--text) 16%);position:relative;z-index:2;min-width:0}
+.tr-wrap{--tr-acc:var(--blue-mid,#ff7f61);--tr-pri:#2b6de0;--tr-pri-soft:#4d86e6;--tr-surface:#fff;--tr-zebra:color-mix(in srgb,#0f172a 3.8%,var(--tr-surface));--tr-nav:var(--hub-nav-h,59px);--tr-tools-h:50px;--tr-h1:27px;--tr-h2:27px;--tr-grid:color-mix(in srgb,var(--border) 75%,transparent);--tr-grid-v:color-mix(in srgb,var(--border) 45%,transparent);--tr-gborder:color-mix(in srgb,var(--border) 70%,var(--text) 16%);position:relative;z-index:2;min-width:0}
 
 /* No escuro, o azul #2b6de0 fica um pouco apagado sobre o card: usa um tom mais claro. */
-body.dark .tr-wrap{--tr-pri:#6b9af5;--tr-pri-soft:#8bb4ff;--tr-surface:var(--card)}
+body.dark .tr-wrap{--tr-pri:#6b9af5;--tr-pri-soft:#8bb4ff;--tr-surface:var(--card);--tr-zebra:color-mix(in srgb,#fff 5.5%,var(--tr-surface))}
 .tr-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:0 0 12px}
 .tr-head h2{font-size:20px;font-weight:700;letter-spacing:-.01em;color:var(--text);margin:0;display:flex;align-items:center;gap:8px}
 .tr-head h2 i{color:var(--tr-acc);font-size:22px}
@@ -68,7 +69,9 @@ table.tr-tbl thead th.so.on{color:var(--text)}
 table.tr-tbl thead th.so.on i{opacity:1;color:var(--tr-acc)}
 table.tr-tbl thead th.num{text-align:right}
 table.tr-tbl tbody tr.tr-item td{height:auto;min-height:34px;padding:7px 12px;vertical-align:middle}
-table.tr-tbl tbody tr.tr-item:hover td:not(.tr-stc){background:color-mix(in srgb,var(--text) 4%,var(--tr-surface))}
+table.tr-tbl tbody tr.tr-item:hover td:not(.tr-stc){background:color-mix(in srgb,var(--text) 7%,var(--tr-surface))}
+table.tr-tbl tbody tr.tr-item.tr-z td:not(.tr-stc){background:var(--tr-zebra)}
+table.tr-tbl tbody tr.tr-item.tr-z:hover td:not(.tr-stc){background:color-mix(in srgb,var(--text) 7%,var(--tr-zebra))}
 table.tr-tbl td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:650;font-size:13px}
 table.tr-tbl td.tr-cod{font-variant-numeric:tabular-nums;color:var(--text3);font-size:12px;padding-left:10px;padding-right:10px}
 table.tr-tbl td.tr-stc{padding-left:16px;padding-right:16px;white-space:nowrap}
@@ -221,7 +224,7 @@ html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-item td:not(.tr-stc
   background:var(--tr-surface);
 }
 html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-item:hover td:not(.tr-stc){
-  background:color-mix(in srgb,var(--text) 4%,var(--tr-surface));
+  background:color-mix(in srgb,var(--text) 7%,var(--tr-surface));
 }
 html[data-bs-theme] body.dark #task-container table.tr-tbl th,
 html[data-bs-theme] body.dark #task-container table.tr-tbl thead th,
@@ -230,4 +233,19 @@ html[data-bs-theme] body.dark #task-container table.tr-tbl tbody tr.tr-gmarca td
 html[data-bs-theme] body.dark #task-container table.tr-tbl tbody tr.tr-gped td,
 html[data-bs-theme] body.dark #task-container table.tr-tbl tbody tr.tr-item td:not(.tr-stc){
   background:var(--tr-surface);
+}
+
+/* Zebra só nas linhas de item, recomeçando a cada pedido. Não pinta
+   marca/pedido nem as células Status OP. */
+html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-item.tr-z td:not(.tr-stc),
+html[data-bs-theme] body.dark #task-container table.tr-tbl tbody tr.tr-item.tr-z td:not(.tr-stc){
+  background:var(--tr-zebra);
+}
+html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-item:hover td:not(.tr-stc),
+html[data-bs-theme] body.dark #task-container table.tr-tbl tbody tr.tr-item:hover td:not(.tr-stc){
+  background:color-mix(in srgb,var(--text) 7%,var(--tr-surface));
+}
+html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-item.tr-z:hover td:not(.tr-stc),
+html[data-bs-theme] body.dark #task-container table.tr-tbl tbody tr.tr-item.tr-z:hover td:not(.tr-stc){
+  background:color-mix(in srgb,var(--text) 7%,var(--tr-zebra));
 }

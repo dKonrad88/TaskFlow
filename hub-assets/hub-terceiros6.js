@@ -3,6 +3,7 @@
    próprio, com o fundo da página entre eles. Superfície da tabela no
    branco (ou a mesma cor do cabeçalho no escuro), como no Cobertura;
    faixa da marca sem fundo azul. Célula Status OP pintada por inteiro.
+   Itens com zebra suave (recomeça a cada pedido, primeiro item cinza).
    Cabeçalho compartilhado congelado. Tela somente leitura.
    Dados no localStorage (chave taskflow_terceiros), sempre via safeSetItem.
    Entrada: renderProducao() chama TR.render(main) quando producaoView==='terceiros'.
@@ -296,11 +297,12 @@
       +'</tr></thead>';
   }
 
-  function rowHTML(it, mid, pid){
+  function rowHTML(it, mid, pid, idx){
     var note=it.obs?'<div class="note"><i class="ti ti-notes"></i>'+esc(it.obs)+'</div>':'';
     var has=!!(it.palete && it.palete.modelo);
     var hide=isHidden(mid,pid)?' is-hidden':'';
-    return '<tr class="tr-item'+hide+'" data-mid="'+esc(mid)+'" data-pid="'+esc(pid)+'">'
+    var zebra=(idx%2===0)?' tr-z':'';
+    return '<tr class="tr-item'+zebra+hide+'" data-mid="'+esc(mid)+'" data-pid="'+esc(pid)+'">'
       +'<td class="tr-palc"><button type="button" class="tr-pal'+(has?' has':'')+'" title="Palete" data-pal="'+esc(it.id)+'"><i class="ti ti-box"></i></button></td>'
       +'<td class="tr-cod">'+esc(it.codigo||'')+'</td>'
       +'<td class="tr-stc '+statusClass(it.status)+'">'+statusHTML(it.status)+'</td>'
@@ -358,7 +360,7 @@
       var inner=marcaRow(g);
       g.peds.forEach(function(x){
         inner+=pedRow(x.p, g.m.id, x.itens.length);
-        x.itens.forEach(function(it){ inner+=rowHTML(it, g.m.id, x.p.id); });
+        x.itens.forEach(function(it,i){ inner+=rowHTML(it, g.m.id, x.p.id, i); });
       });
       h+='<article class="tr-card" data-mid="'+esc(g.m.id)+'">'+cardTable(inner)+'</article>';
     });
