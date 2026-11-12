@@ -2,7 +2,7 @@
    Planilha no padrão da Cobertura do Hub (v8): layout igual ao v7.
    Cabeçalho congelado em cinza mais escuro (#CDD2D2), para se destacar
    do branco da tabela. Status OP paleta Cobertura; marca #E7EBEB;
-   pedido #E8F0FB. Tela somente leitura.
+   linha do pedido no branco da tabela. Tela somente leitura.
    Dados no localStorage (chave taskflow_terceiros), sempre via safeSetItem.
    Entrada: renderProducao() chama TR.render(main) quando producaoView==='terceiros'.
    O ícone de palete abre MP.verPalete (modal de Marcas, somente leitura). */

@@ -3,7 +3,7 @@
    próprio. Superfície branca (igual ao Cobertura) / a mesma do cabeçalho
    no escuro; faixa da marca sem fundo azul, só o nome azul.
    Status OP na paleta Cobertura (preenchimentos firmes). Faixa da marca
-   #E7EBEB; faixa do pedido com um azul bem claro que combina com o Hub.
+   #E7EBEB; linha do pedido no branco da tabela.
    Zebra suave nos itens. Cabeçalho compartilhado congelado, em cinza
    mais escuro (#CDD2D2) nas duas linhas (grupos + nomes das colunas).
    Grade fina,
@@ -12,10 +12,10 @@
    Busca + funil à direita, toggle Pacotes|Caixas|Paletes, sem paginação.
    Status OP: ícone colorido + texto curto, sem pills.
    Tudo prefixado .tr- para não vazar. */
-.tr-wrap{--tr-acc:var(--blue-mid,#ff7f61);--tr-pri:#2b6de0;--tr-pri-soft:#4d86e6;--tr-surface:#fff;--tr-zebra:color-mix(in srgb,#0f172a 3.8%,var(--tr-surface));--tr-marca:#E7EBEB;--tr-ped:#E8F0FB;--tr-head:#CDD2D2;--tr-nav:var(--hub-nav-h,59px);--tr-tools-h:50px;--tr-h1:27px;--tr-h2:27px;--tr-grid:color-mix(in srgb,var(--border) 75%,transparent);--tr-grid-v:color-mix(in srgb,var(--border) 45%,transparent);--tr-gborder:color-mix(in srgb,var(--border) 70%,var(--text) 16%);position:relative;z-index:2;min-width:0}
+.tr-wrap{--tr-acc:var(--blue-mid,#ff7f61);--tr-pri:#2b6de0;--tr-pri-soft:#4d86e6;--tr-surface:#fff;--tr-zebra:color-mix(in srgb,#0f172a 3.8%,var(--tr-surface));--tr-marca:#E7EBEB;--tr-head:#CDD2D2;--tr-nav:var(--hub-nav-h,59px);--tr-tools-h:50px;--tr-h1:27px;--tr-h2:27px;--tr-grid:color-mix(in srgb,var(--border) 75%,transparent);--tr-grid-v:color-mix(in srgb,var(--border) 45%,transparent);--tr-gborder:color-mix(in srgb,var(--border) 70%,var(--text) 16%);position:relative;z-index:2;min-width:0}
 
 /* No escuro, o azul #2b6de0 fica um pouco apagado sobre o card: usa um tom mais claro. */
-body.dark .tr-wrap{--tr-pri:#6b9af5;--tr-pri-soft:#8bb4ff;--tr-surface:var(--card);--tr-zebra:color-mix(in srgb,#fff 5.5%,var(--tr-surface));--tr-marca:color-mix(in srgb,#E7EBEB 16%,var(--tr-surface));--tr-ped:color-mix(in srgb,#2B6DE0 16%,var(--tr-surface));--tr-head:color-mix(in srgb,#000 30%,var(--tr-surface))}
+body.dark .tr-wrap{--tr-pri:#6b9af5;--tr-pri-soft:#8bb4ff;--tr-surface:var(--card);--tr-zebra:color-mix(in srgb,#fff 5.5%,var(--tr-surface));--tr-marca:color-mix(in srgb,#E7EBEB 16%,var(--tr-surface));--tr-head:color-mix(in srgb,#000 30%,var(--tr-surface))}
 
 /* Status OP: paleta Cobertura (preenchimento firme, como a célula
    vermelha negativa do Hub). Única paleta. */
@@ -114,7 +114,7 @@ table.tr-tbl .tr-prod .note i{font-size:13px;opacity:.85;flex-shrink:0;margin-to
 /* grupos */
 table.tr-tbl tbody tr.tr-gmarca td,table.tr-tbl tbody tr.tr-gped td{border-right:0;cursor:pointer;user-select:none}
 table.tr-tbl tbody tr.tr-gmarca td{background:var(--tr-marca);padding:10px 14px;border-top:0;border-bottom:1px solid var(--border);font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text);white-space:normal}
-table.tr-tbl tbody tr.tr-gped td{background:var(--tr-ped);padding:10px 14px 10px 40px;font-size:13px;font-weight:600;color:var(--text);letter-spacing:0;text-transform:none;white-space:normal}
+table.tr-tbl tbody tr.tr-gped td{background:var(--tr-surface);padding:10px 14px 10px 40px;font-size:13px;font-weight:600;color:var(--text);letter-spacing:0;text-transform:none;white-space:normal}
 table.tr-tbl tbody tr.tr-gmarca:hover td,table.tr-tbl tbody tr.tr-gped:hover td{filter:brightness(1.06)}
 .tr-gbtn{display:inline-flex;align-items:flex-start;gap:8px;min-width:0;max-width:100%}
 .tr-gbtn>i.ch{font-size:16px;color:var(--text3);flex-shrink:0;margin-top:2px}
@@ -245,17 +245,16 @@ html[data-bs-theme] body.dark #task-container table.tr-tbl tbody tr.tr-item.tr-z
   background:color-mix(in srgb,var(--text) 7%,var(--tr-zebra));
 }
 
-/* Faixa da marca/cliente: #E7EBEB. Faixa do pedido: azul bem claro
-   (#E8F0FB no claro; lavagem azul-teal no escuro), distinta da marca
-   e mais quieta que as células de Status. O respiro de 7px acima
-   continua na superfície da tabela. */
+/* Faixa da marca/cliente: #E7EBEB. Linha do pedido na superfície
+   da tabela (branco no claro). O respiro de 7px acima continua
+   na superfície. */
 html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-gmarca td,
 html[data-bs-theme] body.dark #task-container table.tr-tbl tbody tr.tr-gmarca td{
   background:var(--tr-marca);
 }
 html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-gped td,
 html[data-bs-theme] body.dark #task-container table.tr-tbl tbody tr.tr-gped td{
-  background:var(--tr-ped);
+  background:var(--tr-surface);
 }
 
 /* Cabeçalho em cinza mais escuro (as duas linhas: grupos + colunas).
