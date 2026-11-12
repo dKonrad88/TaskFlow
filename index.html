@@ -15795,7 +15795,9 @@ let _comAbFiltro='';             // pedidos em aberto: '' | 'atraso' | 'rota'
 let _comSort={campo:'valor',dir:-1};
 const _comFechadas={};           // linhas recolhidas — estado de tela, não persiste
 // Marcas Próprias (nov/2026): porte da tela do SisPro — código em hub-assets/hub-marcas6.js (MP.render).
-const COM_MENU=[['pedidos','ti-shopping-cart','Pedidos'],['marcas','ti-tags','Marcas Próprias']];
+// Cobertura (nov/2026): planilha de semanas por produto — código em hub-assets/hub-cobertura1.js (CBP.render).
+// Não confundir com PCP › Cobertura (dias de estoque), que segue no PCP.
+const COM_MENU=[['pedidos','ti-shopping-cart','Pedidos'],['marcas','ti-tags','Marcas Próprias'],['cobertura','ti-table','Cobertura']];
 const COM_PERIODOS=[['aberto','Em aberto'],['ontem','Ontem'],['hoje','Hoje'],['semana','Semana'],['semanaAnt','Semana ant.'],['mes','Mês'],['mesAnt','Mês ant.'],['ano','Ano']];
 // Totais do rodapé do Power BI. Clientes e pedidos NÃO são a soma das linhas (o mesmo pedido leva
 // produtos de várias linhas) — por isso vêm do total, nunca somados. As CAIXAS por produto vêm
@@ -15932,6 +15934,12 @@ function renderComercial(){
   if(comercialView==='marcas'){
     if(window.MP && typeof MP.render==='function') MP.render(main);
     else main.innerHTML=_cpTela('Marcas Próprias','', '<p style="color:var(--text3)">Não foi possível carregar Marcas Próprias.</p>');
+    return;
+  }
+  // Cobertura: planilha de semanas (hub-assets/hub-cobertura1.js) — pedidos recolhidos + grade por produto/dia.
+  if(comercialView==='cobertura'){
+    if(window.CBP && typeof CBP.render==='function') CBP.render(main);
+    else main.innerHTML=_cpTela('Cobertura','', '<p style="color:var(--text3)">Não foi possível carregar a Cobertura.</p>');
     return;
   }
   // sem subtítulo: ele repetia em voz alta as 3 sub-abas logo abaixo (Diego, 24/09 — "queria algo clean")
@@ -47747,4 +47755,6 @@ function importarDadosJSON(){
 <script src="hub-assets/hub-terceiros15.js"></script>
 <link rel="stylesheet" href="hub-assets/hub-prog1.css">
 <script src="hub-assets/hub-prog1.js"></script>
+<link rel="stylesheet" href="hub-assets/hub-cobertura1.css">
+<script src="hub-assets/hub-cobertura1.js"></script>
 </body></html>
