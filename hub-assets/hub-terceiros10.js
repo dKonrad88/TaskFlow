@@ -1,8 +1,8 @@
-/* ══ PCP › TERCEIROS (hub-terceiros9)
+/* ══ PCP › TERCEIROS (hub-terceiros10)
    Planilha no padrão da Cobertura do Hub (v8): layout igual ao v7.
    Só o cabeçalho das colunas congela ao rolar (cinza #CDD2D2), sob a
-   barra do Hub. A barra de ferramentas (busca, funil, unidades) rola
-   com a página e não fica presa. Status OP paleta Cobertura; marca #E7EBEB;
+   barra do Hub. A barra de ferramentas rola com a página.
+   Observações é a última coluna da planilha (não mais sob o produto). Status OP paleta Cobertura; marca #E7EBEB;
    linha do pedido no branco da tabela. Tela somente leitura.
    Dados no localStorage (chave taskflow_terceiros), sempre via safeSetItem.
    Entrada: renderProducao() chama TR.render(main) quando producaoView==='terceiros'.
@@ -210,7 +210,8 @@
     op:function(it){ return qtd(it,'op'); },
     nop:function(it){ return it.nop||''; },
     status:function(it){ return STATUS_ORD[it.status]!=null?STATUS_ORD[it.status]:9; },
-    prev:function(it){ return it.prev||''; }
+    prev:function(it){ return it.prev||''; },
+    obs:function(it){ return it.obs||''; }
   };
   var SORT_NUM={pedido:1,estoque:1,op:1,status:1};
 
@@ -267,12 +268,13 @@
       +'<col style="width:36px">'
       +'<col style="width:72px">'
       +'<col style="width:156px">'
-      +'<col>'
+      +'<col style="width:320px">'
       +'<col style="width:78px">'
       +'<col style="width:78px">'
       +'<col style="width:70px">'
       +'<col style="width:72px">'
       +'<col style="width:118px">'
+      +'<col style="width:260px">'
       +'</colgroup>';
   }
 
@@ -282,6 +284,7 @@
       +'<th colspan="4">Item</th>'
       +'<th colspan="3" class="g-start">Quantidades</th>'
       +'<th colspan="2" class="g-start">Produção</th>'
+      +'<th colspan="1" class="g-start">Observações</th>'
       +'</tr>'
       +'<tr class="tr-hc">'
       +'<th class="pal"></th>'
@@ -293,24 +296,26 @@
       +th('op','OP','num')
       +th('nop','Nº OP','g-start')
       +th('prev','Prev. Produção')
+      +th('obs','Observações','g-start')
       +'</tr></thead>';
   }
 
   function rowHTML(it, mid, pid, idx){
-    var note=it.obs?'<div class="note"><i class="ti ti-notes"></i>'+esc(it.obs)+'</div>':'';
     var has=!!(it.palete && it.palete.modelo);
     var hide=isHidden(mid,pid)?' is-hidden':'';
     var zebra=(idx%2===0)?' tr-z':'';
+    var obs=it.obs?'<span class="tr-obs-t">'+esc(it.obs)+'</span>':'';
     return '<tr class="tr-item'+zebra+hide+'" data-mid="'+esc(mid)+'" data-pid="'+esc(pid)+'">'
       +'<td class="tr-palc"><button type="button" class="tr-pal'+(has?' has':'')+'" title="Palete" data-pal="'+esc(it.id)+'"><i class="ti ti-box"></i></button></td>'
       +'<td class="tr-cod">'+esc(it.codigo||'')+'</td>'
       +'<td class="tr-stc '+statusClass(it.status)+'">'+statusHTML(it.status)+'</td>'
-      +'<td class="tr-prod"><div class="nm">'+esc(it.nome)+'</div>'+note+'</td>'
+      +'<td class="tr-prod"><div class="nm">'+esc(it.nome)+'</div></td>'
       +'<td class="num g-start">'+(it.pedido!=null&&it.pedido!==''?fmtQtd(qtd(it,'pedido')):'')+'</td>'
       +'<td class="num">'+(it.estoque!=null&&it.estoque!==''?fmtQtd(qtd(it,'estoque')):'')+'</td>'
       +'<td class="num">'+(it.op!=null&&it.op!==''?fmtQtd(qtd(it,'op')):'')+'</td>'
       +'<td class="tr-nop g-start">'+esc(it.nop||'')+'</td>'
       +'<td class="tr-prev">'+esc(it.prev||'')+'</td>'
+      +'<td class="tr-obs g-start">'+obs+'</td>'
       +'</tr>';
   }
 
@@ -321,7 +326,7 @@
     var n=0; g.peds.forEach(function(x){ n+=x.itens.length; });
     var col=isCol(g.m.id);
     return '<tr class="tr-gmarca" data-mid="'+esc(g.m.id)+'" data-toggle="m" title="Recolher ou expandir marca">'
-      +'<td colspan="9"><span class="tr-gbtn"><i class="ti '+(col?'ti-chevron-right':'ti-chevron-down')+' ch"></i>'
+      +'<td colspan="10"><span class="tr-gbtn"><i class="ti '+(col?'ti-chevron-right':'ti-chevron-down')+' ch"></i>'
       +'<span class="tr-gmain"><span class="tr-gline"><span class="tr-gname">'+esc(g.m.codigo)+' — '+esc(g.m.nome)+'</span>'
       +'<span class="tr-cnt">'+n+'</span></span>'
       +(g.m.cidade?'<span class="city">'+esc(g.m.cidade)+'</span>':'')
@@ -332,7 +337,7 @@
     var col=isCol(p.id);
     var hide=isCol(mid)?' is-hidden':'';
     return '<tr class="tr-gped'+hide+'" data-mid="'+esc(mid)+'" data-pid="'+esc(p.id)+'" data-toggle="p" title="Recolher ou expandir pedido">'
-      +'<td colspan="9"><span class="tr-gbtn"><i class="ti '+(col?'ti-chevron-right':'ti-chevron-down')+' ch"></i>'
+      +'<td colspan="10"><span class="tr-gbtn"><i class="ti '+(col?'ti-chevron-right':'ti-chevron-down')+' ch"></i>'
       +'<span class="tr-ped-block">'
       +'<span class="tr-ped-l1"><span class="plab">Pedido</span><span class="pn">'+esc(p.numero)+'</span>'
       +'<span class="dot">·</span>'
@@ -352,7 +357,7 @@
   function cardsHTML(){
     var v=visao();
     if(!v.grupos.length){
-      return '<div class="tr-cards"><article class="tr-card">'+cardTable('<tr><td colspan="9"><div class="tr-empty"><i class="ti ti-search-off"></i>Nenhum pedido encontrado.</div></td></tr>')+'</article></div>';
+      return '<div class="tr-cards"><article class="tr-card">'+cardTable('<tr><td colspan="10"><div class="tr-empty"><i class="ti ti-search-off"></i>Nenhum pedido encontrado.</div></td></tr>')+'</article></div>';
     }
     var h='<div class="tr-cards">';
     v.grupos.forEach(function(g){
@@ -447,6 +452,24 @@
         applyCollapse(root);
       });
     });
+    bindHScroll(root);
+  }
+
+  function bindHScroll(root){
+    var head=root.querySelector('.tr-headtbl-in');
+    var cards=Array.prototype.slice.call(root.querySelectorAll('.tr-card'));
+    if(!head) return;
+    var lock=false;
+    function sync(from){
+      if(lock) return;
+      lock=true;
+      var x=from.scrollLeft;
+      if(from!==head) head.scrollLeft=x;
+      cards.forEach(function(c){ if(c!==from) c.scrollLeft=x; });
+      lock=false;
+    }
+    head.addEventListener('scroll', function(){ sync(head); });
+    cards.forEach(function(c){ c.addEventListener('scroll', function(){ sync(c); }); });
   }
 
   function applyCollapse(root){
