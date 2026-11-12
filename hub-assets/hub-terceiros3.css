@@ -128,3 +128,18 @@ html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-item td.tr-palc{pad
 html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-item td.tr-cod{padding-left:10px;padding-right:10px}
 html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-gmarca td{padding:10px 14px}
 html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-gped td{padding:10px 14px 10px 40px}
+
+/* Respiro entre marcas (~14px) e antes de cada pedido (~7px).
+   Usa border-top na cor do card + background-clip, para não aparecer
+   uma linha-vazia com a grade da tabela. */
+html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-gmarca:not(:first-child) td,
+#task-container table.tr-tbl tbody tr.tr-gmarca:not(:first-child) td{
+  border-top:14px solid var(--card);
+  background-clip:padding-box;
+  box-shadow:inset 0 1px 0 var(--border);
+}
+html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-gped td,
+#task-container table.tr-tbl tbody tr.tr-gped td{
+  border-top:7px solid var(--card);
+  background-clip:padding-box;
+}
