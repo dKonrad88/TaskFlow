@@ -354,7 +354,6 @@
     if(w.getMonth()!==pm.m && addD(w,5)<monthStart(pm.y,pm.m)) w=addD(w,7);
     while(w<=me){ chips.push(w); w=addD(w,7); }
     var sel={}; pc.weeks.forEach(function(x){ sel[key(x)]=1; });
-    var nDias=pc.days.length;
     var D=DRAFT, rg=pedRange(D);
     var h='<div class="cbp-pop cbp-cal" style="--ar:12px" role="dialog" aria-label="Período">'
       +'<div class="cbp-blk pl"><h4><i class="ti ti-table"></i>Período da planilha</h4>'
@@ -368,14 +367,15 @@
         var lab=(c.getMonth()===z.getMonth()? p2(c.getDate())+'–'+ddmm(z) : ddmm(c)+'–'+ddmm(z));
         return '<button type="button" class="cbp-wch'+(sel[key(c)]?' on':'')+(now?' now':'')+'" data-a="wk" data-v="'+key(c)+'"><small>Sem '+isoWeek(c)+'</small>'+lab+'</button>';
       }).join('')+'</div>'
-      +'<div class="cbp-pnote"><b>'+esc(periodoTitulo(pc).split(' · ')[0])+'</b> · '+(pc.days.length?ddmm(pc.days[0])+' a '+ddmm(pc.days[nDias-1]):'')+' · '+nDias+' dias na planilha · <button type="button" class="cbp-lnk" data-a="hoje">Voltar para hoje</button></div></div>';
+      +((S.wOff||S.mOff||S.popM)?'<div class="cbp-pnote"><button type="button" class="cbp-lnk" data-a="hoje">Voltar para hoje</button></div>':'')
+      +'</div>';
     /* período dos pedidos */
     var cm=new Date(TODAY.getFullYear(), TODAY.getMonth()+D.cal, 1);
     h+='<div class="cbp-blk"><h4><i class="ti ti-clipboard-list"></i>Período dos pedidos</h4>'
       +'<div class="cbp-prow"><div class="cbp-seg"><button type="button" data-a="dCampo" data-v="emissao"'+(D.campo==='emissao'?' class="on"':'')+'>Emissão</button><button type="button" data-a="dCampo" data-v="entrega"'+(D.campo==='entrega'?' class="on"':'')+'>Prev. entrega</button></div>'
-      +'<div class="cbp-dates"><div class="cbp-date"><i class="ti ti-calendar"></i><small>DE</small>'+(rg&&rg[0]?ddmmyyyy(rg[0]):'—')+'</div><div class="cbp-date"><i class="ti ti-calendar"></i><small>ATÉ</small>'+(rg&&rg[1]?ddmmyyyy(rg[1]):'—')+'</div></div></div>'
-      +'<div class="cbp-tags" style="margin-bottom:12px">'+PRESETS.map(function(p){ return '<button type="button" class="cbp-tag'+(D.preset===p[0]?' on':'')+'" data-a="dPreset" data-v="'+p[0]+'">'+p[1]+'</button>'; }).join('')+'</div>'
-      +'<div class="cbp-cals">'+miniCal(cm.getFullYear(), cm.getMonth(), rg, 'L')+miniCal(cm.getFullYear(), cm.getMonth()+1, rg, 'R')+'</div>'
+      +'<div class="cbp-dates"><button type="button" class="cbp-date'+(D.pick==='de'?' on':'')+'" data-a="dPick" data-v="de"><i class="ti ti-calendar"></i><small>DE</small>'+(rg&&rg[0]?ddmmyyyy(rg[0]):'—')+'</button><button type="button" class="cbp-date'+(D.pick==='ate'?' on':'')+'" data-a="dPick" data-v="ate"><i class="ti ti-calendar"></i><small>ATÉ</small>'+(rg&&rg[1]?ddmmyyyy(rg[1]):'—')+'</button></div></div>'
+      +'<div class="cbp-tags"'+(D.pick?' style="margin-bottom:10px"':'')+'>'+PRESETS.map(function(p){ return '<button type="button" class="cbp-tag'+(D.preset===p[0]?' on':'')+'" data-a="dPreset" data-v="'+p[0]+'">'+p[1]+'</button>'; }).join('')+'</div>'
+      +(D.pick?'<div class="cbp-cals one">'+miniCal(cm.getFullYear(), cm.getMonth(), rg, 'C')+'</div>':'')
       +'<div class="cbp-opts">'+chk(D.sab,'Mostrar sábados','dSab','1')+chk(D.dom,'Mostrar domingos','dDom','1')+chk(D.tot,'Totais por semana e mês','dTot','1')+'</div></div>'
       +'<div class="cbp-ft"><button type="button" class="cbp-lnk" data-a="dLimpar">Limpar período</button><span class="cbp-ftb"><button type="button" class="cbp-btn" data-a="pop" data-v="">Cancelar</button><button type="button" class="cbp-btn pri" data-a="dAplicar"><i class="ti ti-check"></i>Aplicar</button></span></div>'
       +'</div>';
@@ -384,9 +384,9 @@
   function miniCal(y, m, rg, lado){
     var b=new Date(y,m,1); y=b.getFullYear(); m=b.getMonth();
     var ini=monday(b), h='<div><div class="cbp-calh">'
-      +(lado==='L'?'<button type="button" class="ar" data-a="dCal" data-v="-1" aria-label="Mês anterior"><i class="ti ti-chevron-left"></i></button>':'<span></span>')
+      +(lado!=='R'?'<button type="button" class="ar" data-a="dCal" data-v="-1" aria-label="Mês anterior"><i class="ti ti-chevron-left"></i></button>':'<span></span>')
       +MESES[m]+' '+y
-      +(lado==='R'?'<button type="button" class="ar" data-a="dCal" data-v="1" aria-label="Próximo mês"><i class="ti ti-chevron-right"></i></button>':'<span></span>')
+      +(lado!=='L'?'<button type="button" class="ar" data-a="dCal" data-v="1" aria-label="Próximo mês"><i class="ti ti-chevron-right"></i></button>':'<span></span>')
       +'</div><table class="cbp-mcal"><tr>'+DOWH.map(function(d){ return '<th>'+d+'</th>'; }).join('')+'</tr>';
     var a=rg&&rg[0], z=rg&&rg[1];
     for(var r=0;r<6;r++){
@@ -414,15 +414,9 @@
 
   function pbarHTML(v){
     var peds=v.peds, n=peds.length;
-    var tot=0; peds.forEach(function(p){ tot+=v.pedQtd(p); });
-    var emis=peds.map(function(p){ return p.emis; }), ents=peds.map(function(p){ return p.ent; });
-    function rgTxt(a){ if(!a.length) return '—'; var mn=new Date(Math.min.apply(null,a)), mx=new Date(Math.max.apply(null,a)); return ddmm(mn)+' a '+ddmm(mx); }
-    var prox=peds.filter(function(p){ return p.ent>=TODAY; }).sort(function(a,b){ return a.ent-b.ent; })[0];
     var open=S.pedAberto;
     var h='<div class="cbp-pbar'+(open?' open':'')+'">'
       +'<button type="button" class="cbp-pbar-t" data-a="ped" aria-expanded="'+open+'"><i class="ti '+(open?'ti-chevron-down':'ti-chevron-right')+' ch"></i><i class="ti ti-clipboard-list"></i><b>'+n+' pedido'+(n===1?'':'s')+'</b></button>'
-      +'<span class="dot">·</span><span class="m">emissão '+rgTxt(emis)+'</span><span class="dot">·</span><span class="m">entregas '+rgTxt(ents)+'</span><span class="dot">·</span><span class="m">'+fmt0(tot)+' '+unidLabel()+'</span>'
-      +(prox?'<span class="dot nx">·</span><span class="m nx mut">próxima entrega: <b>'+esc(prox.num)+' · '+esc(prox.cli)+' · '+ddmm(prox.ent)+'</b></span>':'')
       +'<button type="button" class="cbp-pbar-r" data-a="ped">'+(open?'Recolher<i class="ti ti-chevron-up"></i>':'Expandir pedidos<i class="ti ti-chevron-down"></i>')+'</button></div>';
     if(open){
       h+='<div class="cbp-pexp"><div class="cbp-pscroll"><table class="cbp-ped"><colgroup><col style="width:110px"><col style="width:300px"><col style="width:120px"><col style="width:120px"><col style="width:120px"><col></colgroup>'
@@ -564,7 +558,7 @@
 
   function openPop(w){
     if(w==='fun'){ FDRAFT=JSON.parse(JSON.stringify(S.f)); S.fBusca=S.f.pbusca||''; S.fLbusca=S.f.lbusca||''; }
-    if(w==='cal'){ DRAFT={campo:S.ped.campo, preset:S.ped.preset, de:S.ped.de, ate:S.ped.ate, sab:S.sab, dom:S.dom, tot:S.tot, cal:0};
+    if(w==='cal'){ DRAFT={campo:S.ped.campo, preset:S.ped.preset, de:S.ped.de, ate:S.ped.ate, sab:S.sab, dom:S.dom, tot:S.tot, cal:0, pick:null};
       var rg=pedRange(S.ped); if(rg&&rg[0]) DRAFT.cal=(rg[0].getFullYear()-TODAY.getFullYear())*12+rg[0].getMonth()-TODAY.getMonth();
       S.popM=0; }
     S.pop=w||null;
@@ -602,21 +596,36 @@
       /* período dos pedidos (rascunho + Aplicar) */
       case 'dCampo': DRAFT.campo=v; refresh(); return;
       case 'dPreset':
-        DRAFT.preset=v; var pr=presetRange(v);
+        DRAFT.preset=v; DRAFT.pick=null; var pr=presetRange(v);
         if(pr&&pr[0]) DRAFT.cal=(pr[0].getFullYear()-TODAY.getFullYear())*12+pr[0].getMonth()-TODAY.getMonth();
         else if(pr&&pr[1]) DRAFT.cal=(pr[1].getFullYear()-TODAY.getFullYear())*12+pr[1].getMonth()-TODAY.getMonth()-1;
+        refresh(); return;
+      case 'dPick':
+        DRAFT.pick=DRAFT.pick===v?null:v;
+        var prg=pedRange(DRAFT), ancora=DRAFT.pick==='ate'?(prg&&prg[1]):(prg&&prg[0]);
+        if(ancora) DRAFT.cal=(ancora.getFullYear()-TODAY.getFullYear())*12+ancora.getMonth()-TODAY.getMonth();
         refresh(); return;
       case 'dCal': DRAFT.cal+=(+v); refresh(); return;
       case 'dDia':
         var cur=pedRange(DRAFT), de=cur&&cur[0]?key(cur[0]):'', ate=cur&&cur[1]?key(cur[1]):'';
-        if(DRAFT.preset==='custom' && de && !DRAFT.ate){
+        if(DRAFT.pick==='de'){
+          DRAFT.de=v; DRAFT.preset='custom';
+          if(ate && v>ate) DRAFT.ate=v;
+          DRAFT.pick=ate?'':('ate');
+        } else if(DRAFT.pick==='ate'){
+          DRAFT.ate=v; DRAFT.preset='custom';
+          if(de && v<de){ DRAFT.de=v; DRAFT.ate=de; }
+          else if(!de) DRAFT.de=v;
+          DRAFT.pick=null;
+        } else if(DRAFT.preset==='custom' && de && !DRAFT.ate){
           if(v<de){ DRAFT.ate=de; DRAFT.de=v; } else DRAFT.ate=v;
-        } else { DRAFT.de=v; DRAFT.ate=''; }
-        DRAFT.preset='custom'; refresh(); return;
+        } else { DRAFT.de=v; DRAFT.ate=''; DRAFT.preset='custom'; DRAFT.pick='ate'; }
+        if(DRAFT.pick==='') DRAFT.pick=null;
+        refresh(); return;
       case 'dSab': DRAFT.sab=!DRAFT.sab; refresh(); return;
       case 'dDom': DRAFT.dom=!DRAFT.dom; refresh(); return;
       case 'dTot': DRAFT.tot=!DRAFT.tot; refresh(); return;
-      case 'dLimpar': DRAFT.preset=''; DRAFT.de=''; DRAFT.ate=''; refresh(); return;
+      case 'dLimpar': DRAFT.preset=''; DRAFT.de=''; DRAFT.ate=''; DRAFT.pick=null; refresh(); return;
       case 'dAplicar':
         if(DRAFT.preset==='custom' && DRAFT.de && !DRAFT.ate) DRAFT.ate=DRAFT.de;
         S.ped={campo:DRAFT.campo, preset:DRAFT.preset, de:DRAFT.de, ate:DRAFT.ate};
