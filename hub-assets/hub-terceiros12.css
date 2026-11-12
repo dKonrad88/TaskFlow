@@ -82,7 +82,7 @@ table.tr-tbl thead th{background:var(--tr-head);color:var(--text2);font-weight:7
 #task-container table.tr-tbl thead tr.tr-hg th,table.tr-tbl thead tr.tr-hg th{height:var(--tr-h1);padding:0 8px;font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--tr-pri);text-align:center;border-bottom:1px solid var(--tr-grid);box-shadow:inset 0 1px 0 var(--border)}
 table.tr-tbl thead tr.tr-hc th{height:var(--tr-h2);padding:0 8px;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--text2);text-align:left;border-bottom:0}
 .tr-headtbl table.tr-tbl thead tr.tr-hc th{border-bottom:0}
-table.tr-tbl thead th.so{cursor:pointer}
+table.tr-tbl thead th.so{cursor:grab}
 table.tr-tbl thead th.so:hover{color:var(--text)}
 table.tr-tbl thead th.so i{font-size:10px;opacity:.4;margin-left:2px;vertical-align:-1px}
 table.tr-tbl thead th.so.on{color:var(--text)}
@@ -276,3 +276,24 @@ html[data-bs-theme] body.dark #task-container table.tr-tbl thead tr.tr-hg th,
 html[data-bs-theme] body.dark #task-container table.tr-tbl thead tr.tr-hc th{
   background:var(--tr-head);
 }
+
+/* reordenar colunas */
+table.tr-tbl thead th.so.is-dragging{cursor:grabbing;opacity:.35}
+body.tr-col-dragging,body.tr-col-dragging *{cursor:grabbing !important;user-select:none !important}
+.tr-col-ghost{
+  position:fixed;z-index:400;pointer-events:none;box-sizing:border-box;
+  background:var(--tr-head,#CDD2D2);color:var(--text);
+  border:1px solid var(--border);border-radius:6px;
+  box-shadow:0 8px 22px rgba(0,0,0,.22);
+  display:flex;align-items:center;padding:0 10px;
+  font:700 10px/1 inherit;letter-spacing:.04em;text-transform:uppercase;
+  white-space:nowrap;opacity:.95
+}
+.tr-col-ind{
+  position:fixed;z-index:399;pointer-events:none;width:2px;
+  background:var(--tr-pri,#2b6de0);border-radius:1px;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--tr-pri,#2b6de0) 35%,transparent)
+}
+.tr-fpop-foot{margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}
+.tr-fpop-foot u{text-decoration:none;font-size:11px;font-weight:600;color:var(--tr-acc);cursor:pointer}
+.tr-fpop-foot u:hover{text-decoration:underline}

@@ -2,9 +2,11 @@
    Planilha no padrão da Cobertura do Hub (v8): layout igual ao v7.
    Só o cabeçalho das colunas congela ao rolar (cinza #CDD2D2), sob a
    barra do Hub. A barra de ferramentas rola com a página.
-   Observações é a última coluna. A linha do pedido mostra só o número;
-   cliente, entrega e emissão vão para colunas nos itens.
-   Status OP paleta Cobertura; marca #E7EBEB; pedido no branco da tabela.
+   Observações é a última coluna (ordem padrão). A linha do pedido mostra
+   só o número; cliente, entrega e emissão vão para colunas nos itens.
+   Cidade da marca na mesma linha do nome. Colunas arrastáveis (ordem em
+   taskflow_terceiros.ui.colOrder). Status OP paleta Cobertura; marca #E7EBEB;
+   pedido no branco da tabela.
    Dados no localStorage (chave taskflow_terceiros), sempre via safeSetItem.
    Entrada: renderProducao() chama TR.render(main) quando producaoView==='terceiros'.
    O ícone de palete abre MP.verPalete (modal de Marcas, somente leitura). */
@@ -125,7 +127,7 @@
   var DB=null;
   var S={ unid:'caixas', busca:'', funil:false,
           f:{linha:'',marca:'',fin:'',sop:''},
-          sort:{k:'', dir:''}, col:{} };
+          sort:{k:'', dir:''}, col:{}, colOrder:null };
 
   function load(){
     var v=lsGet(LS_KEY, null);
@@ -135,15 +137,18 @@
         S.unid=v.ui.unid||'caixas'; S.busca=v.ui.busca||'';
         var fIn=v.ui.f||{}, keep={linha:1,marca:1,fin:1,sop:1}; Object.keys(fIn).forEach(function(k){ if(keep[k]) S.f[k]=fIn[k]; }); S.sort=v.ui.sort||S.sort;
         S.col=v.ui.col||S.col||{};
+        S.colOrder=normalizeOrder(v.ui.colOrder);
       }
     } else {
       DB=seed();
+      S.colOrder=COL_DEFAULT.slice();
       persist();
     }
+    S.colOrder=normalizeOrder(S.colOrder);
     return DB;
   }
   function persist(){
-    lsSet(LS_KEY, {v:1, data:DB, ui:{unid:S.unid, busca:S.busca, f:S.f, sort:S.sort, col:S.col}});
+    lsSet(LS_KEY, {v:1, data:DB, ui:{unid:S.unid, busca:S.busca, f:S.f, sort:S.sort, col:S.col, colOrder:colOrder()}});
   }
 
   function parseN(n){ return typeof n==='number'?n:(parseFloat(String(n).replace(/\./g,'').replace(',','.'))||0); }
@@ -277,54 +282,109 @@
     return S.unid==='pacotes'?'PACOTES':(S.unid==='paletes'?'PALETES':'CAIXAS');
   }
 
-  function th(k,lab,cls){
+  var COL_DEFAULT=['codigo','status','produto','pedido','estoque','op','nop','prev','cliente','entrega','emissao','obs'];
+  var COL_DEF={
+    codigo:{w:'72px', lab:'Código', group:'Item'},
+    status:{w:'156px', lab:'Status OP', group:'Item'},
+    produto:{w:'320px', lab:'Produto', group:'Item'},
+    pedido:{w:'78px', lab:'Pedido', group:'Quantidades', num:1},
+    estoque:{w:'78px', lab:'Estoque', group:'Quantidades', num:1},
+    op:{w:'70px', lab:'OP', group:'Quantidades', num:1},
+    nop:{w:'72px', lab:'Nº OP', group:'Produção'},
+    prev:{w:'118px', lab:'Prev. Produção', group:'Produção'},
+    cliente:{w:'210px', lab:'Cliente', group:'Cliente'},
+    entrega:{w:'108px', lab:'Entrega', group:'Datas'},
+    emissao:{w:'120px', lab:'Emissão', group:'Datas'},
+    obs:{w:'260px', lab:'Observações', group:'Observações'}
+  };
+  var DRAG_THRESH=8;
+
+  function normalizeOrder(arr){
+    var seen={}, out=[];
+    if(Array.isArray(arr)){
+      arr.forEach(function(k){
+        if(COL_DEF[k] && !seen[k]){ seen[k]=1; out.push(k); }
+      });
+    }
+    if(out.length!==COL_DEFAULT.length) return COL_DEFAULT.slice();
+    return out;
+  }
+  function colOrder(){ return normalizeOrder(S.colOrder); }
+  function orderIsDefault(){
+    var a=colOrder();
+    return a.every(function(k,i){ return k===COL_DEFAULT[i]; });
+  }
+  function groupStarts(){
+    var keys=colOrder(), starts={}, prev='Item';
+    keys.forEach(function(k){
+      var g=COL_DEF[k].group;
+      if(g!==prev) starts[k]=1;
+      prev=g;
+    });
+    return starts;
+  }
+  function groupBands(){
+    var keys=['__pal__'].concat(colOrder());
+    var bands=[], i, g;
+    for(i=0;i<keys.length;i++){
+      g=keys[i]==='__pal__'?'Item':COL_DEF[keys[i]].group;
+      if(bands.length && bands[bands.length-1].name===g) bands[bands.length-1].span++;
+      else bands.push({name:g, span:1});
+    }
+    return bands;
+  }
+  function gs(k, starts){ return starts[k]?' g-start':''; }
+
+  function th(k, starts){
+    var d=COL_DEF[k];
     var on=S.sort.k===k, icon=on?(S.sort.dir==='desc'?'ti-chevron-down':'ti-chevron-up'):'ti-selector';
-    return '<th class="so '+(cls||'')+(on?' on':'')+'" data-sort="'+k+'">'+lab+'<i class="ti '+icon+'"></i></th>';
+    var cls='so'+(d.num?' num':'')+gs(k, starts)+(on?' on':'');
+    return '<th class="'+cls+'" data-sort="'+k+'" data-col="'+k+'" title="Clique para ordenar · arraste para mover">'+d.lab+'<i class="ti '+icon+'"></i></th>';
   }
 
   function colgroupHTML(){
-    return '<colgroup>'
-      +'<col style="width:36px">'
-      +'<col style="width:72px">'
-      +'<col style="width:156px">'
-      +'<col style="width:320px">'
-      +'<col style="width:78px">'
-      +'<col style="width:78px">'
-      +'<col style="width:70px">'
-      +'<col style="width:72px">'
-      +'<col style="width:118px">'
-      +'<col style="width:210px">'
-      +'<col style="width:108px">'
-      +'<col style="width:120px">'
-      +'<col style="width:260px">'
-      +'</colgroup>';
+    var h='<colgroup><col style="width:36px">';
+    colOrder().forEach(function(k){ h+='<col style="width:'+COL_DEF[k].w+'">'; });
+    return h+'</colgroup>';
   }
 
   function theadHTML(){
-    return '<thead>'
-      +'<tr class="tr-hg">'
-      +'<th colspan="4">Item</th>'
-      +'<th colspan="3" class="g-start">Quantidades</th>'
-      +'<th colspan="2" class="g-start">Produção</th>'
-      +'<th colspan="1" class="g-start">Cliente</th>'
-      +'<th colspan="2" class="g-start">Datas</th>'
-      +'<th colspan="1" class="g-start">Observações</th>'
-      +'</tr>'
-      +'<tr class="tr-hc">'
-      +'<th class="pal"></th>'
-      +th('codigo','Código')
-      +th('status','Status OP')
-      +th('produto','Produto')
-      +th('pedido','Pedido','num g-start')
-      +th('estoque','Estoque','num')
-      +th('op','OP','num')
-      +th('nop','Nº OP','g-start')
-      +th('prev','Prev. Produção')
-      +th('cliente','Cliente','g-start')
-      +th('entrega','Entrega')
-      +th('emissao','Emissão')
-      +th('obs','Observações','g-start')
-      +'</tr></thead>';
+    var starts=groupStarts();
+    var bands=groupBands();
+    var hg='<tr class="tr-hg">';
+    bands.forEach(function(b,i){
+      hg+='<th colspan="'+b.span+'"'+(i?' class="g-start"':'')+'>'+b.name+'</th>';
+    });
+    hg+='</tr>';
+    var hc='<tr class="tr-hc"><th class="pal"></th>';
+    colOrder().forEach(function(k){ hc+=th(k, starts); });
+    hc+='</tr>';
+    return '<thead>'+hg+hc+'</thead>';
+  }
+
+  function cellHTML(k, it, p, starts){
+    var g=gs(k, starts);
+    if(k==='codigo') return '<td class="tr-cod'+g+'">'+esc(it.codigo||'')+'</td>';
+    if(k==='status') return '<td class="tr-stc '+statusClass(it.status)+g+'">'+statusHTML(it.status)+'</td>';
+    if(k==='produto') return '<td class="tr-prod'+g+'"><div class="nm">'+esc(it.nome)+'</div></td>';
+    if(k==='pedido') return '<td class="num'+g+'">'+(it.pedido!=null&&it.pedido!==''?fmtQtd(qtd(it,'pedido')):'')+'</td>';
+    if(k==='estoque') return '<td class="num'+g+'">'+(it.estoque!=null&&it.estoque!==''?fmtQtd(qtd(it,'estoque')):'')+'</td>';
+    if(k==='op') return '<td class="num'+g+'">'+(it.op!=null&&it.op!==''?fmtQtd(qtd(it,'op')):'')+'</td>';
+    if(k==='nop') return '<td class="tr-nop'+g+'">'+esc(it.nop||'')+'</td>';
+    if(k==='prev') return '<td class="tr-prev'+g+'">'+esc(it.prev||'')+'</td>';
+    if(k==='cliente'){
+      var cli='';
+      if(p&&p.cliente) cli+='<span class="tr-cli-n">'+esc(p.cliente)+'</span>';
+      if(p&&p.cliId) cli+=(cli?' ':'')+'<span class="tr-cid">('+esc(p.cliId)+')</span>';
+      return '<td class="tr-cli'+g+'">'+cli+'</td>';
+    }
+    if(k==='entrega') return '<td class="tr-ent'+g+'">'+esc((p&&p.entrega)||'')+'</td>';
+    if(k==='emissao') return '<td class="tr-emi'+g+'">'+esc((p&&p.emissao)||'')+'</td>';
+    if(k==='obs'){
+      var obs=it.obs?'<span class="tr-obs-t">'+esc(it.obs)+'</span>':'';
+      return '<td class="tr-obs'+g+'">'+obs+'</td>';
+    }
+    return '<td></td>';
   }
 
   function rowHTML(it, mid, p, idx){
@@ -332,25 +392,11 @@
     var has=!!(it.palete && it.palete.modelo);
     var hide=isHidden(mid,pid)?' is-hidden':'';
     var zebra=(idx%2===0)?' tr-z':'';
-    var obs=it.obs?'<span class="tr-obs-t">'+esc(it.obs)+'</span>':'';
-    var cli='';
-    if(p&&p.cliente) cli+='<span class="tr-cli-n">'+esc(p.cliente)+'</span>';
-    if(p&&p.cliId) cli+=(cli?' ':'')+'<span class="tr-cid">('+esc(p.cliId)+')</span>';
-    return '<tr class="tr-item'+zebra+hide+'" data-mid="'+esc(mid)+'" data-pid="'+esc(pid)+'">'
-      +'<td class="tr-palc"><button type="button" class="tr-pal'+(has?' has':'')+'" title="Palete" data-pal="'+esc(it.id)+'"><i class="ti ti-box"></i></button></td>'
-      +'<td class="tr-cod">'+esc(it.codigo||'')+'</td>'
-      +'<td class="tr-stc '+statusClass(it.status)+'">'+statusHTML(it.status)+'</td>'
-      +'<td class="tr-prod"><div class="nm">'+esc(it.nome)+'</div></td>'
-      +'<td class="num g-start">'+(it.pedido!=null&&it.pedido!==''?fmtQtd(qtd(it,'pedido')):'')+'</td>'
-      +'<td class="num">'+(it.estoque!=null&&it.estoque!==''?fmtQtd(qtd(it,'estoque')):'')+'</td>'
-      +'<td class="num">'+(it.op!=null&&it.op!==''?fmtQtd(qtd(it,'op')):'')+'</td>'
-      +'<td class="tr-nop g-start">'+esc(it.nop||'')+'</td>'
-      +'<td class="tr-prev">'+esc(it.prev||'')+'</td>'
-      +'<td class="tr-cli g-start">'+cli+'</td>'
-      +'<td class="tr-ent">'+esc((p&&p.entrega)||'')+'</td>'
-      +'<td class="tr-emi">'+esc((p&&p.emissao)||'')+'</td>'
-      +'<td class="tr-obs g-start">'+obs+'</td>'
-      +'</tr>';
+    var starts=groupStarts();
+    var h='<tr class="tr-item'+zebra+hide+'" data-mid="'+esc(mid)+'" data-pid="'+esc(pid)+'">'
+      +'<td class="tr-palc"><button type="button" class="tr-pal'+(has?' has':'')+'" title="Palete" data-pal="'+esc(it.id)+'"><i class="ti ti-box"></i></button></td>';
+    colOrder().forEach(function(k){ h+=cellHTML(k, it, p, starts); });
+    return h+'</tr>';
   }
 
   function isCol(id){ return !!(S.col && S.col[id]); }
@@ -413,7 +459,8 @@
         +lis.map(function(v){ return '<option value="'+esc(v)+'"'+(v===sel?' selected':'')+'>'+esc(v)+'</option>'; }).join('')
         +'</select></div>';
     }).join('');
-    return '<div class="tr-fpop" id="tr-fpop"><div class="tr-fpop-h"><u data-act="limpar">Limpar filtros</u></div>'+grupos+'</div>';
+    return '<div class="tr-fpop" id="tr-fpop"><div class="tr-fpop-h"><u data-act="limpar">Limpar filtros</u></div>'+grupos
+      +'<div class="tr-fpop-foot"><u data-act="restore-cols">Restaurar ordem das colunas</u></div></div>';
   }
 
   function toolsHTML(v){
@@ -456,14 +503,13 @@
     root.querySelectorAll('.tr-fsel').forEach(function(sel){
       sel.addEventListener('change',function(){ S.f[sel.getAttribute('data-fk')]=sel.value; persist(); refresh(); });
     });
-    root.querySelectorAll('th[data-sort]').forEach(function(thEl){
-      thEl.addEventListener('click',function(){
-        var k=thEl.getAttribute('data-sort');
-        if(S.sort.k===k) S.sort.dir=S.sort.dir==='asc'?'desc':'asc';
-        else { S.sort.k=k; S.sort.dir=SORT_NUM[k]?'desc':'asc'; }
-        persist(); refreshSheet();
-      });
+    var rest=root.querySelector('[data-act="restore-cols"]');
+    if(rest) rest.addEventListener('click',function(e){
+      e.stopPropagation();
+      S.colOrder=COL_DEFAULT.slice();
+      persist(); refresh();
     });
+    bindColDrag(root);
     root.querySelectorAll('[data-pal]').forEach(function(btn){
       btn.addEventListener('click',function(e){ e.stopPropagation(); abrirPalete(btn.getAttribute('data-pal')); });
     });
@@ -496,6 +542,156 @@
     }
     head.addEventListener('scroll', function(){ sync(head); });
     cards.forEach(function(c){ c.addEventListener('scroll', function(){ sync(c); }); });
+  }
+
+  var COLDRAG=null;
+  function bindColDrag(root){
+    var head=root.querySelector('.tr-headtbl thead tr.tr-hc');
+    if(!head) return;
+    head.querySelectorAll('th[data-sort]').forEach(function(th){
+      th.addEventListener('pointerdown', onColDown);
+    });
+  }
+  function sheetScrollX(){
+    var el=MAIN && MAIN.querySelector('.tr-headtbl-in');
+    return el?el.scrollLeft:0;
+  }
+  function setSheetScrollX(x){
+    var el=MAIN && MAIN.querySelector('.tr-headtbl-in');
+    if(el) el.scrollLeft=x;
+  }
+  function applyColMove(from, to){
+    var a=colOrder().slice();
+    if(from<0 || from>=a.length) return false;
+    if(to>from) to--;
+    if(to<0) to=0;
+    if(to>a.length) to=a.length;
+    if(to===from) return false;
+    var k=a.splice(from,1)[0];
+    a.splice(to,0,k);
+    S.colOrder=a;
+    persist();
+    var x=sheetScrollX();
+    refreshSheet();
+    setSheetScrollX(x);
+    return true;
+  }
+  function sortByKey(k){
+    if(S.sort.k===k) S.sort.dir=S.sort.dir==='asc'?'desc':'asc';
+    else { S.sort.k=k; S.sort.dir=SORT_NUM[k]?'desc':'asc'; }
+    persist(); refreshSheet();
+  }
+  function colThs(){
+    if(!MAIN) return [];
+    return Array.prototype.slice.call(MAIN.querySelectorAll('.tr-headtbl thead tr.tr-hc th[data-sort]'));
+  }
+  function dropIdxAt(clientX){
+    var ths=colThs(), i, r;
+    for(i=0;i<ths.length;i++){
+      r=ths[i].getBoundingClientRect();
+      if(clientX < r.left + r.width/2) return i;
+    }
+    return ths.length;
+  }
+  function indicatorX(idx){
+    var ths=colThs();
+    if(!ths.length) return 0;
+    if(idx<=0) return ths[0].getBoundingClientRect().left;
+    if(idx>=ths.length) return ths[ths.length-1].getBoundingClientRect().right;
+    return ths[idx].getBoundingClientRect().left;
+  }
+  function clearColDragUI(){
+    document.body.classList.remove('tr-col-dragging');
+    var g=document.getElementById('tr-col-ghost');
+    var n=document.getElementById('tr-col-ind');
+    if(g && g.parentNode) g.parentNode.removeChild(g);
+    if(n && n.parentNode) n.parentNode.removeChild(n);
+    if(MAIN) MAIN.querySelectorAll('th.is-dragging').forEach(function(el){ el.classList.remove('is-dragging'); });
+  }
+  function startColGhost(d, e){
+    d.th.classList.add('is-dragging');
+    document.body.classList.add('tr-col-dragging');
+    var ghost=document.createElement('div');
+    ghost.id='tr-col-ghost';
+    ghost.className='tr-col-ghost';
+    ghost.textContent=COL_DEF[d.k].lab;
+    var r=d.th.getBoundingClientRect();
+    ghost.style.width=Math.max(72, r.width)+'px';
+    ghost.style.height=r.height+'px';
+    document.body.appendChild(ghost);
+    var ind=document.createElement('div');
+    ind.id='tr-col-ind';
+    ind.className='tr-col-ind';
+    document.body.appendChild(ind);
+    d.ghost=ghost; d.ind=ind;
+    d.offX=e.clientX-r.left; d.offY=e.clientY-r.top;
+    try{ d.th.setPointerCapture(d.pointerId); }catch(err){}
+    placeColGhost(d, e);
+  }
+  function placeColGhost(d, e){
+    if(!d.ghost) return;
+    d.ghost.style.left=(e.clientX - (d.offX||24))+'px';
+    d.ghost.style.top=(e.clientY - (d.offY||10))+'px';
+    var idx=dropIdxAt(e.clientX);
+    d.dropIdx=idx;
+    var x=indicatorX(idx);
+    var head=MAIN && MAIN.querySelector('.tr-headtbl');
+    var wrap=MAIN && MAIN.querySelector('.tr-wrap');
+    var top=head?head.getBoundingClientRect().top:e.clientY;
+    var bot=wrap?Math.min(wrap.getBoundingClientRect().bottom, window.innerHeight):top+56;
+    d.ind.style.left=(x-1)+'px';
+    d.ind.style.top=top+'px';
+    d.ind.style.height=Math.max(56, bot-top)+'px';
+  }
+  function autoHScroll(e){
+    var box=MAIN && MAIN.querySelector('.tr-headtbl-in');
+    if(!box) return;
+    var r=box.getBoundingClientRect();
+    var edge=44, step=0;
+    if(e.clientX < r.left+edge) step=-Math.ceil((edge-(e.clientX-r.left))/3);
+    else if(e.clientX > r.right-edge) step=Math.ceil((e.clientX-(r.right-edge))/3);
+    if(step){
+      step=Math.max(-28, Math.min(28, step));
+      box.scrollLeft += step;
+    }
+  }
+  function onColDown(e){
+    if(e.button!==0) return;
+    var th=e.currentTarget;
+    var k=th.getAttribute('data-sort');
+    if(!k || !COL_DEF[k]) return;
+    if(COLDRAG) clearColDragUI();
+    COLDRAG={k:k, th:th, startX:e.clientX, startY:e.clientY, moved:false, pointerId:e.pointerId, from:colOrder().indexOf(k), dropIdx:null};
+    window.addEventListener('pointermove', onColMove);
+    window.addEventListener('pointerup', onColUp);
+    window.addEventListener('pointercancel', onColUp);
+    e.preventDefault();
+  }
+  function onColMove(e){
+    var d=COLDRAG; if(!d) return;
+    if(!d.moved){
+      var dx=e.clientX-d.startX, dy=e.clientY-d.startY;
+      if(Math.sqrt(dx*dx+dy*dy)<DRAG_THRESH) return;
+      d.moved=true;
+      startColGhost(d, e);
+    }
+    autoHScroll(e);
+    placeColGhost(d, e);
+  }
+  function onColUp(e){
+    window.removeEventListener('pointermove', onColMove);
+    window.removeEventListener('pointerup', onColUp);
+    window.removeEventListener('pointercancel', onColUp);
+    var d=COLDRAG; COLDRAG=null;
+    if(!d) return;
+    var moved=d.moved;
+    var k=d.k, from=d.from, to=d.dropIdx;
+    clearColDragUI();
+    if(moved){
+      if(to!=null && to!==from && to!==from+1) applyColMove(from, to);
+    } else {
+      sortByKey(k);
+    }
   }
 
   function applyCollapse(root){
@@ -540,13 +736,14 @@
     if(!MAIN) return;
     var sheet=MAIN.querySelector('.tr-body');
     if(!sheet){ refresh(); return; }
-    var caret=-1, foc=false;
+    var caret=-1, foc=false, hx=sheetScrollX();
     var b=MAIN.querySelector('#tr-busca');
     if(b && document.activeElement===b){ foc=true; try{ caret=b.selectionStart; }catch(e){} }
     var tmp=document.createElement('div');
     tmp.innerHTML=sheetHTML();
     sheet.replaceWith(tmp.firstElementChild);
     bind(MAIN);
+    setSheetScrollX(hx);
     if(foc){
       var n=MAIN.querySelector('#tr-busca');
       if(n){ n.focus(); if(caret>=0) try{ n.setSelectionRange(caret,caret);}catch(e){} }
@@ -591,6 +788,9 @@
     render:render,
     setUnid:function(u){ S.unid=u; persist(); if(MAIN) refresh(); },
     _db:function(){ load(); return DB; },
-    _reset:function(){ DB=seed(); S={unid:'caixas',busca:'',funil:false,f:{linha:'',marca:'',fin:'',sop:''},sort:{k:'',dir:''},col:{}}; persist(); if(MAIN) refresh(); }
+    colOrder:function(){ return colOrder().slice(); },
+    setColOrder:function(a){ S.colOrder=normalizeOrder(a); persist(); if(MAIN) refreshSheet(); },
+    resetColOrder:function(){ S.colOrder=COL_DEFAULT.slice(); persist(); if(MAIN) refresh(); },
+    _reset:function(){ DB=seed(); S={unid:'caixas',busca:'',funil:false,f:{linha:'',marca:'',fin:'',sop:''},sort:{k:'',dir:''},col:{},colOrder:COL_DEFAULT.slice()}; persist(); if(MAIN) refresh(); }
   };
 })();
