@@ -1,4 +1,4 @@
-/* ══ PCP › TERCEIROS (hub-terceiros11)
+/* ══ PCP › TERCEIROS (hub-terceiros12)
    Planilha no padrão da Cobertura do Hub (v8): layout igual ao v7.
    Só o cabeçalho das colunas congela ao rolar (cinza #CDD2D2), sob a
    barra do Hub. A barra de ferramentas rola com a página.
@@ -362,8 +362,8 @@
     return '<tr class="tr-gmarca" data-mid="'+esc(g.m.id)+'" data-toggle="m" title="Recolher ou expandir marca">'
       +'<td colspan="13"><span class="tr-gbtn"><i class="ti '+(col?'ti-chevron-right':'ti-chevron-down')+' ch"></i>'
       +'<span class="tr-gmain"><span class="tr-gline"><span class="tr-gname">'+esc(g.m.codigo)+' — '+esc(g.m.nome)+'</span>'
-      +'<span class="tr-cnt">'+n+'</span></span>'
       +(g.m.cidade?'<span class="city">'+esc(g.m.cidade)+'</span>':'')
+      +'<span class="tr-cnt">'+n+'</span></span>'
       +'</span></span></td></tr>';
   }
 
