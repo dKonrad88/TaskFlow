@@ -1,4 +1,4 @@
-/* ══ PCP › TERCEIROS (hub-terceiros10) ══
+/* ══ PCP › TERCEIROS (hub-terceiros11) ══
    Planilha no padrão da Cobertura do Hub (v6): cada marca é um card
    próprio. Superfície branca (igual ao Cobertura) / a mesma do cabeçalho
    no escuro; faixa da marca sem fundo azul, só o nome azul.
@@ -73,7 +73,7 @@ body.dark .tr-wrap{
 
 /* planilha */
 .tr-scroller{overflow:visible}
-table.tr-tbl{width:100%;min-width:1260px;border-collapse:separate;border-spacing:0;font-size:12px;color:var(--text);table-layout:fixed}
+table.tr-tbl{width:100%;min-width:1700px;border-collapse:separate;border-spacing:0;font-size:12px;color:var(--text);table-layout:fixed}
 table.tr-tbl th,table.tr-tbl td{padding:3px 8px;border-bottom:1px solid var(--tr-grid);border-right:1px solid var(--tr-grid-v);vertical-align:middle;background:var(--tr-surface)}
 table.tr-tbl th:last-child,table.tr-tbl td:last-child{border-right:0}
 table.tr-tbl th.g-start,table.tr-tbl td.g-start{border-left:1px solid var(--tr-gborder)}
@@ -117,25 +117,25 @@ table.tr-tbl td.tr-obs .tr-obs-t{display:block}
 /* grupos */
 table.tr-tbl tbody tr.tr-gmarca td,table.tr-tbl tbody tr.tr-gped td{border-right:0;cursor:pointer;user-select:none}
 table.tr-tbl tbody tr.tr-gmarca td{background:var(--tr-marca);padding:10px 14px;border-top:0;border-bottom:1px solid var(--border);font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text);white-space:normal}
-table.tr-tbl tbody tr.tr-gped td{background:var(--tr-surface);padding:10px 14px 10px 40px;font-size:13px;font-weight:600;color:var(--text);letter-spacing:0;text-transform:none;white-space:normal}
+table.tr-tbl tbody tr.tr-gped td{background:var(--tr-surface);padding:8px 14px 8px 40px;font-size:13px;font-weight:600;color:var(--text);letter-spacing:0;text-transform:none;white-space:nowrap}
 table.tr-tbl tbody tr.tr-gmarca:hover td,table.tr-tbl tbody tr.tr-gped:hover td{filter:brightness(1.06)}
 .tr-gbtn{display:inline-flex;align-items:flex-start;gap:8px;min-width:0;max-width:100%}
 .tr-gbtn>i.ch{font-size:16px;color:var(--text3);flex-shrink:0;margin-top:2px}
+.tr-gped .tr-gbtn{align-items:center}
+.tr-gped .tr-gbtn>i.ch{margin-top:0}
 .tr-gmarca .tr-gmain{display:flex;flex-direction:column;gap:3px;min-width:0}
 .tr-gmarca .tr-gline{display:flex;align-items:center;gap:8px;min-width:0}
 .tr-gmarca .tr-gname{font-size:13px;font-weight:800;color:var(--tr-pri);line-height:1.25}
 .tr-gmarca .city{display:block;font-weight:500;letter-spacing:0;text-transform:none;color:var(--text3);font-size:11.5px;margin:0;line-height:1.3}
 .tr-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 6px;margin-left:0;border-radius:99px;background:color-mix(in srgb,var(--text) 10%,transparent);color:var(--text2);font-size:10px;font-weight:700;letter-spacing:0}
 .tr-gmarca .tr-cnt{background:color-mix(in srgb,var(--tr-pri) 20%,transparent);color:var(--tr-pri)}
-.tr-ped-block{display:flex;flex-direction:column;gap:4px;min-width:0}
-.tr-ped-l1{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:13.5px;line-height:1.3}
+.tr-ped-l1{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;line-height:1.3}
 .tr-gped .pn{font-weight:700;color:var(--tr-pri-soft)}
 .tr-gped .plab{font-weight:600;color:var(--tr-pri-soft)}
-.tr-gped .cli{font-weight:600;color:var(--text)}
-.tr-gped .cid,.tr-gped .dot{color:var(--text3);font-weight:500}
-.tr-ped-l2{display:flex;align-items:baseline;gap:28px;flex-wrap:wrap;font-size:11.5px;font-weight:500;color:var(--text3);line-height:1.3}
-.tr-ped-l2 span{display:inline-flex;align-items:baseline;gap:6px}
-.tr-ped-l2 b{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text3)}
+table.tr-tbl td.tr-cli{white-space:normal;font-size:12.5px;line-height:1.35;padding-left:12px;padding-right:12px}
+table.tr-tbl td.tr-cli .tr-cli-n{font-weight:600;color:var(--text)}
+table.tr-tbl td.tr-cli .tr-cid{font-weight:500;color:var(--text3)}
+table.tr-tbl td.tr-ent,table.tr-tbl td.tr-emi{font-variant-numeric:tabular-nums;color:var(--text3);font-size:12px;white-space:nowrap}
 
 table.tr-tbl tbody tr.is-hidden{display:none}
 .tr-empty{color:var(--text3);font-size:13px;text-align:center;padding:36px 16px}
@@ -146,7 +146,7 @@ table.tr-tbl tbody tr.is-hidden{display:none}
   .tr-tools-right{width:100%;margin-left:0}
   .tr-busca{width:min(248px,calc(100vw - 120px))}
   .tr-card,.tr-headtbl-in{overflow-x:auto}
-  table.tr-tbl{min-width:1260px}
+  table.tr-tbl{min-width:1700px}
 }
 
 /* Sobrescreve o padding compacto de hub-telas
@@ -158,7 +158,9 @@ html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-item td.tr-palc{pad
 html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-item td.tr-cod{padding-left:10px;padding-right:10px}
 html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-item td.tr-obs{padding-left:12px;padding-right:14px;white-space:normal}
 html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-gmarca td{padding:10px 14px}
-html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-gped td{padding:10px 14px 10px 40px}
+html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-gped td{padding:8px 14px 8px 40px}
+html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-item td.tr-cli{padding-left:12px;padding-right:12px;white-space:normal}
+html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-item td.tr-ent,html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-item td.tr-emi{padding-left:10px;padding-right:10px;white-space:nowrap}
 
 /* Faixa da marca encosta no topo do card (o respiro entre marcas é o vão
    de 18px com o fundo da página, entre os cards). Pedidos mantêm ~7px. */

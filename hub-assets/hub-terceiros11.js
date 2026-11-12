@@ -1,9 +1,10 @@
-/* ══ PCP › TERCEIROS (hub-terceiros10)
+/* ══ PCP › TERCEIROS (hub-terceiros11)
    Planilha no padrão da Cobertura do Hub (v8): layout igual ao v7.
    Só o cabeçalho das colunas congela ao rolar (cinza #CDD2D2), sob a
    barra do Hub. A barra de ferramentas rola com a página.
-   Observações é a última coluna da planilha (não mais sob o produto). Status OP paleta Cobertura; marca #E7EBEB;
-   linha do pedido no branco da tabela. Tela somente leitura.
+   Observações é a última coluna. A linha do pedido mostra só o número;
+   cliente, entrega e emissão vão para colunas nos itens.
+   Status OP paleta Cobertura; marca #E7EBEB; pedido no branco da tabela.
    Dados no localStorage (chave taskflow_terceiros), sempre via safeSetItem.
    Entrada: renderProducao() chama TR.render(main) quando producaoView==='terceiros'.
    O ícone de palete abre MP.verPalete (modal de Marcas, somente leitura). */
@@ -211,19 +212,37 @@
     nop:function(it){ return it.nop||''; },
     status:function(it){ return STATUS_ORD[it.status]!=null?STATUS_ORD[it.status]:9; },
     prev:function(it){ return it.prev||''; },
+    cliente:function(it,p){ return p?((p.cliente||'')+' '+(p.cliId||'')):''; },
+    entrega:function(it,p){ return (p&&p.entrega)||''; },
+    emissao:function(it,p){ return (p&&p.emissao)||''; },
     obs:function(it){ return it.obs||''; }
   };
   var SORT_NUM={pedido:1,estoque:1,op:1,status:1};
+  var SORT_DATE={entrega:1,emissao:1};
+  var SORT_PED={cliente:1,entrega:1,emissao:1};
 
-  function sortItens(itens){
+  function parseDateBR(s){
+    var m=String(s||'').match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/);
+    if(!m) return 0;
+    return Date.UTC(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0));
+  }
+  function cmpVal(va, vb, k, sgn){
+    if(SORT_DATE[k]) return (parseDateBR(va)-parseDateBR(vb))*sgn;
+    if(SORT_NUM[k]) return (parseN(va)-parseN(vb))*sgn;
+    return String(va).localeCompare(String(vb),'pt-BR',{numeric:true})*sgn;
+  }
+
+  function sortItens(itens, p){
     var k=S.sort.k, dir=S.sort.dir;
     if(!k || !SORT_ACC[k]) return itens.slice();
-    var acc=SORT_ACC[k], num=!!SORT_NUM[k], sgn=dir==='desc'?-1:1;
-    return itens.slice().sort(function(a,b){
-      var va=acc(a), vb=acc(b);
-      if(num) return (parseN(va)-parseN(vb))*sgn;
-      return String(va).localeCompare(String(vb),'pt-BR',{numeric:true})*sgn;
-    });
+    var acc=SORT_ACC[k], sgn=dir==='desc'?-1:1;
+    return itens.slice().sort(function(a,b){ return cmpVal(acc(a,p), acc(b,p), k, sgn); });
+  }
+  function sortPeds(peds){
+    var k=S.sort.k, dir=S.sort.dir;
+    if(!k || !SORT_PED[k] || !SORT_ACC[k]) return peds;
+    var acc=SORT_ACC[k], sgn=dir==='desc'?-1:1;
+    return peds.slice().sort(function(a,b){ return cmpVal(acc(null,a.p), acc(null,b.p), k, sgn); });
   }
 
   function visao(){
@@ -234,10 +253,10 @@
       (m.pedidos||[]).forEach(function(p){
         var itens=(p.itens||[]).filter(function(it){ return matchFiltro(m,p,it) && matchBusca(m,p,it,q); });
         if(!itens.length) return;
-        peds.push({p:p, itens:sortItens(itens)});
+        peds.push({p:p, itens:sortItens(itens, p)});
         nPed++; nIt+=itens.length;
       });
-      if(peds.length) out.push({m:m, peds:peds});
+      if(peds.length) out.push({m:m, peds:sortPeds(peds)});
     });
     return {grupos:out, nPed:nPed, nIt:nIt};
   }
@@ -274,6 +293,9 @@
       +'<col style="width:70px">'
       +'<col style="width:72px">'
       +'<col style="width:118px">'
+      +'<col style="width:210px">'
+      +'<col style="width:108px">'
+      +'<col style="width:120px">'
       +'<col style="width:260px">'
       +'</colgroup>';
   }
@@ -284,6 +306,8 @@
       +'<th colspan="4">Item</th>'
       +'<th colspan="3" class="g-start">Quantidades</th>'
       +'<th colspan="2" class="g-start">Produção</th>'
+      +'<th colspan="1" class="g-start">Cliente</th>'
+      +'<th colspan="2" class="g-start">Datas</th>'
       +'<th colspan="1" class="g-start">Observações</th>'
       +'</tr>'
       +'<tr class="tr-hc">'
@@ -296,15 +320,22 @@
       +th('op','OP','num')
       +th('nop','Nº OP','g-start')
       +th('prev','Prev. Produção')
+      +th('cliente','Cliente','g-start')
+      +th('entrega','Entrega')
+      +th('emissao','Emissão')
       +th('obs','Observações','g-start')
       +'</tr></thead>';
   }
 
-  function rowHTML(it, mid, pid, idx){
+  function rowHTML(it, mid, p, idx){
+    var pid=p&&p.id||'';
     var has=!!(it.palete && it.palete.modelo);
     var hide=isHidden(mid,pid)?' is-hidden':'';
     var zebra=(idx%2===0)?' tr-z':'';
     var obs=it.obs?'<span class="tr-obs-t">'+esc(it.obs)+'</span>':'';
+    var cli='';
+    if(p&&p.cliente) cli+='<span class="tr-cli-n">'+esc(p.cliente)+'</span>';
+    if(p&&p.cliId) cli+=(cli?' ':'')+'<span class="tr-cid">('+esc(p.cliId)+')</span>';
     return '<tr class="tr-item'+zebra+hide+'" data-mid="'+esc(mid)+'" data-pid="'+esc(pid)+'">'
       +'<td class="tr-palc"><button type="button" class="tr-pal'+(has?' has':'')+'" title="Palete" data-pal="'+esc(it.id)+'"><i class="ti ti-box"></i></button></td>'
       +'<td class="tr-cod">'+esc(it.codigo||'')+'</td>'
@@ -315,6 +346,9 @@
       +'<td class="num">'+(it.op!=null&&it.op!==''?fmtQtd(qtd(it,'op')):'')+'</td>'
       +'<td class="tr-nop g-start">'+esc(it.nop||'')+'</td>'
       +'<td class="tr-prev">'+esc(it.prev||'')+'</td>'
+      +'<td class="tr-cli g-start">'+cli+'</td>'
+      +'<td class="tr-ent">'+esc((p&&p.entrega)||'')+'</td>'
+      +'<td class="tr-emi">'+esc((p&&p.emissao)||'')+'</td>'
       +'<td class="tr-obs g-start">'+obs+'</td>'
       +'</tr>';
   }
@@ -326,7 +360,7 @@
     var n=0; g.peds.forEach(function(x){ n+=x.itens.length; });
     var col=isCol(g.m.id);
     return '<tr class="tr-gmarca" data-mid="'+esc(g.m.id)+'" data-toggle="m" title="Recolher ou expandir marca">'
-      +'<td colspan="10"><span class="tr-gbtn"><i class="ti '+(col?'ti-chevron-right':'ti-chevron-down')+' ch"></i>'
+      +'<td colspan="13"><span class="tr-gbtn"><i class="ti '+(col?'ti-chevron-right':'ti-chevron-down')+' ch"></i>'
       +'<span class="tr-gmain"><span class="tr-gline"><span class="tr-gname">'+esc(g.m.codigo)+' — '+esc(g.m.nome)+'</span>'
       +'<span class="tr-cnt">'+n+'</span></span>'
       +(g.m.cidade?'<span class="city">'+esc(g.m.cidade)+'</span>':'')
@@ -337,17 +371,9 @@
     var col=isCol(p.id);
     var hide=isCol(mid)?' is-hidden':'';
     return '<tr class="tr-gped'+hide+'" data-mid="'+esc(mid)+'" data-pid="'+esc(p.id)+'" data-toggle="p" title="Recolher ou expandir pedido">'
-      +'<td colspan="10"><span class="tr-gbtn"><i class="ti '+(col?'ti-chevron-right':'ti-chevron-down')+' ch"></i>'
-      +'<span class="tr-ped-block">'
+      +'<td colspan="13"><span class="tr-gbtn"><i class="ti '+(col?'ti-chevron-right':'ti-chevron-down')+' ch"></i>'
       +'<span class="tr-ped-l1"><span class="plab">Pedido</span><span class="pn">'+esc(p.numero)+'</span>'
-      +'<span class="dot">·</span>'
-      +'<span class="cli">'+esc(p.cliente)+'</span>'
-      +'<span class="cid">('+esc(p.cliId)+')</span>'
-      +'<span class="tr-cnt">'+nIt+'</span></span>'
-      +'<span class="tr-ped-l2">'
-      +(p.entrega?'<span><b>Entrega</b>'+esc(p.entrega)+'</span>':'')
-      +(p.emissao?'<span><b>Emissão</b>'+esc(p.emissao)+'</span>':'')
-      +'</span></span></span></td></tr>';
+      +'<span class="tr-cnt">'+nIt+'</span></span></span></td></tr>';
   }
 
   function cardTable(inner){
@@ -357,14 +383,14 @@
   function cardsHTML(){
     var v=visao();
     if(!v.grupos.length){
-      return '<div class="tr-cards"><article class="tr-card">'+cardTable('<tr><td colspan="10"><div class="tr-empty"><i class="ti ti-search-off"></i>Nenhum pedido encontrado.</div></td></tr>')+'</article></div>';
+      return '<div class="tr-cards"><article class="tr-card">'+cardTable('<tr><td colspan="13"><div class="tr-empty"><i class="ti ti-search-off"></i>Nenhum pedido encontrado.</div></td></tr>')+'</article></div>';
     }
     var h='<div class="tr-cards">';
     v.grupos.forEach(function(g){
       var inner=marcaRow(g);
       g.peds.forEach(function(x){
         inner+=pedRow(x.p, g.m.id, x.itens.length);
-        x.itens.forEach(function(it,i){ inner+=rowHTML(it, g.m.id, x.p.id, i); });
+        x.itens.forEach(function(it,i){ inner+=rowHTML(it, g.m.id, x.p, i); });
       });
       h+='<article class="tr-card" data-mid="'+esc(g.m.id)+'">'+cardTable(inner)+'</article>';
     });
