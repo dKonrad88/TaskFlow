@@ -123,7 +123,7 @@
 
   var DB=null;
   var S={ unid:'caixas', busca:'', funil:false,
-          f:{prod:'',linha:'',marca:'',cli:'',fin:'',exp:'',sop:'',op:''},
+          f:{linha:'',marca:'',fin:'',sop:''},
           sort:{k:'', dir:''}, col:{} };
 
   function load(){
@@ -132,7 +132,7 @@
       DB=v.data;
       if(v.ui){
         S.unid=v.ui.unid||'caixas'; S.busca=v.ui.busca||'';
-        S.f=Object.assign(S.f, v.ui.f||{}); S.sort=v.ui.sort||S.sort;
+        var fIn=v.ui.f||{}, keep={linha:1,marca:1,fin:1,sop:1}; Object.keys(fIn).forEach(function(k){ if(keep[k]) S.f[k]=fIn[k]; }); S.sort=v.ui.sort||S.sort;
         S.col=v.ui.col||S.col||{};
       }
     } else {
@@ -160,26 +160,22 @@
   }
 
   var FILTROS=[
-    ['prod','Produtos','prod'],
     ['linha','Linhas','linha'],
     ['marca','Marcas','marca'],
-    ['cli','Clientes','cli'],
     ['fin','Status Financeiro','fin'],
-    ['exp','Status Expedição','exp'],
-    ['sop','Status OP','sop'],
-    ['op','OP','op']
+    ['sop','Status OP','sop']
   ];
 
   function optsUnicas(){
-    var o={prod:[],linha:[],marca:[],cli:[],fin:[],exp:[],sop:[],op:[]};
+    var o={linha:[],marca:[],fin:[],sop:[]};
     var seen={};
     function add(k,v){ if(!v) return; var s=k+'::'+v; if(seen[s]) return; seen[s]=1; o[k].push(v); }
     (DB.marcas||[]).forEach(function(m){
       add('marca', m.nome);
       (m.pedidos||[]).forEach(function(p){
-        add('cli', p.cliente); add('fin', p.fin); add('exp', p.exp);
+        add('fin', p.fin);
         (p.itens||[]).forEach(function(it){
-          add('prod', it.nome); add('linha', it.linha); add('sop', it.status); add('op', it.nop);
+          add('linha', it.linha); add('sop', it.status);
         });
       });
     });
@@ -199,13 +195,9 @@
   function matchFiltro(m,p,it){
     var f=S.f;
     if(f.marca && f.marca!==m.nome) return false;
-    if(f.cli && f.cli!==p.cliente) return false;
     if(f.fin && f.fin!==p.fin) return false;
-    if(f.exp && f.exp!==p.exp) return false;
-    if(f.prod && f.prod!==it.nome) return false;
     if(f.linha && f.linha!==it.linha) return false;
     if(f.sop && f.sop!==it.status) return false;
-    if(f.op && f.op!==it.nop) return false;
     return true;
   }
 
@@ -549,6 +541,6 @@
     render:render,
     setUnid:function(u){ S.unid=u; persist(); if(MAIN) refresh(); },
     _db:function(){ load(); return DB; },
-    _reset:function(){ DB=seed(); S={unid:'caixas',busca:'',funil:false,f:{prod:'',linha:'',marca:'',cli:'',fin:'',exp:'',sop:'',op:''},sort:{k:'',dir:''},col:{}}; persist(); if(MAIN) refresh(); }
+    _reset:function(){ DB=seed(); S={unid:'caixas',busca:'',funil:false,f:{linha:'',marca:'',fin:'',sop:''},sort:{k:'',dir:''},col:{}}; persist(); if(MAIN) refresh(); }
   };
 })();
