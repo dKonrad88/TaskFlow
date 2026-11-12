@@ -10,10 +10,10 @@
    Busca + funil à direita, toggle Pacotes|Caixas|Paletes, sem paginação.
    Status OP: ícone colorido + texto curto, sem pills.
    Tudo prefixado .tr- para não vazar. */
-.tr-wrap{--tr-acc:var(--blue-mid,#ff7f61);--tr-pri:#2b6de0;--tr-pri-soft:#4d86e6;--tr-surface:#fff;--tr-zebra:color-mix(in srgb,#0f172a 3.8%,var(--tr-surface));--tr-nav:var(--hub-nav-h,59px);--tr-tools-h:50px;--tr-h1:27px;--tr-h2:27px;--tr-grid:color-mix(in srgb,var(--border) 75%,transparent);--tr-grid-v:color-mix(in srgb,var(--border) 45%,transparent);--tr-gborder:color-mix(in srgb,var(--border) 70%,var(--text) 16%);position:relative;z-index:2;min-width:0}
+.tr-wrap{--tr-acc:var(--blue-mid,#ff7f61);--tr-pri:#2b6de0;--tr-pri-soft:#4d86e6;--tr-surface:#fff;--tr-zebra:color-mix(in srgb,#0f172a 3.8%,var(--tr-surface));--tr-ped:#E7EBEB;--tr-nav:var(--hub-nav-h,59px);--tr-tools-h:50px;--tr-h1:27px;--tr-h2:27px;--tr-grid:color-mix(in srgb,var(--border) 75%,transparent);--tr-grid-v:color-mix(in srgb,var(--border) 45%,transparent);--tr-gborder:color-mix(in srgb,var(--border) 70%,var(--text) 16%);position:relative;z-index:2;min-width:0}
 
 /* No escuro, o azul #2b6de0 fica um pouco apagado sobre o card: usa um tom mais claro. */
-body.dark .tr-wrap{--tr-pri:#6b9af5;--tr-pri-soft:#8bb4ff;--tr-surface:var(--card);--tr-zebra:color-mix(in srgb,#fff 5.5%,var(--tr-surface))}
+body.dark .tr-wrap{--tr-pri:#6b9af5;--tr-pri-soft:#8bb4ff;--tr-surface:var(--card);--tr-zebra:color-mix(in srgb,#fff 5.5%,var(--tr-surface));--tr-ped:color-mix(in srgb,#E7EBEB 16%,var(--tr-surface))}
 .tr-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:0 0 12px}
 .tr-head h2{font-size:20px;font-weight:700;letter-spacing:-.01em;color:var(--text);margin:0;display:flex;align-items:center;gap:8px}
 .tr-head h2 i{color:var(--tr-acc);font-size:22px}
@@ -97,7 +97,7 @@ table.tr-tbl .tr-prod .note i{font-size:13px;opacity:.85;flex-shrink:0;margin-to
 /* grupos */
 table.tr-tbl tbody tr.tr-gmarca td,table.tr-tbl tbody tr.tr-gped td{border-right:0;cursor:pointer;user-select:none}
 table.tr-tbl tbody tr.tr-gmarca td{background:var(--tr-surface);padding:10px 14px;border-top:0;border-bottom:1px solid var(--border);font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text);white-space:normal}
-table.tr-tbl tbody tr.tr-gped td{background:var(--tr-surface);padding:10px 14px 10px 40px;font-size:13px;font-weight:600;color:var(--text);letter-spacing:0;text-transform:none;white-space:normal}
+table.tr-tbl tbody tr.tr-gped td{background:var(--tr-ped);padding:10px 14px 10px 40px;font-size:13px;font-weight:600;color:var(--text);letter-spacing:0;text-transform:none;white-space:normal}
 table.tr-tbl tbody tr.tr-gmarca:hover td,table.tr-tbl tbody tr.tr-gped:hover td{filter:brightness(1.06)}
 .tr-gbtn{display:inline-flex;align-items:flex-start;gap:8px;min-width:0;max-width:100%}
 .tr-gbtn>i.ch{font-size:16px;color:var(--text3);flex-shrink:0;margin-top:2px}
@@ -213,13 +213,12 @@ html[data-bs-theme] body.dark #task-container table.tr-tbl td.tr-stc.otr .tr-st,
 html[data-bs-theme] body.dark #task-container table.tr-tbl td.tr-stc.otr .tr-st i{color:#f0d78a}
 
 /* Superfície única da tabela (branco no claro, a mesma do cabeçalho no escuro),
-   inclusive faixa de marca e sublinha de pedido — como o Cobertura do Hub.
+   inclusive faixa de marca — como o Cobertura do Hub.
    Não pisa nas células Status OP coloridas. */
 html[data-bs-theme] #task-container table.tr-tbl th,
 html[data-bs-theme] #task-container table.tr-tbl thead th,
 html[data-bs-theme] #task-container table.tr-tbl td:not(.tr-stc),
 html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-gmarca td,
-html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-gped td,
 html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-item td:not(.tr-stc){
   background:var(--tr-surface);
 }
@@ -230,7 +229,6 @@ html[data-bs-theme] body.dark #task-container table.tr-tbl th,
 html[data-bs-theme] body.dark #task-container table.tr-tbl thead th,
 html[data-bs-theme] body.dark #task-container table.tr-tbl td:not(.tr-stc),
 html[data-bs-theme] body.dark #task-container table.tr-tbl tbody tr.tr-gmarca td,
-html[data-bs-theme] body.dark #task-container table.tr-tbl tbody tr.tr-gped td,
 html[data-bs-theme] body.dark #task-container table.tr-tbl tbody tr.tr-item td:not(.tr-stc){
   background:var(--tr-surface);
 }
@@ -248,4 +246,12 @@ html[data-bs-theme] body.dark #task-container table.tr-tbl tbody tr.tr-item:hove
 html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-item.tr-z:hover td:not(.tr-stc),
 html[data-bs-theme] body.dark #task-container table.tr-tbl tbody tr.tr-item.tr-z:hover td:not(.tr-stc){
   background:color-mix(in srgb,var(--text) 7%,var(--tr-zebra));
+}
+
+/* Faixa do pedido/cliente: #E7EBEB no claro; no escuro, um cinza-teal
+   muto de contraste parecido com o branco da tabela. O respiro de 7px
+   acima continua no fundo da superfície. */
+html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-gped td,
+html[data-bs-theme] body.dark #task-container table.tr-tbl tbody tr.tr-gped td{
+  background:var(--tr-ped);
 }
