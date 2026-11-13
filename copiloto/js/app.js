@@ -53,7 +53,14 @@ const ICO = {
   lapis: svg('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>'),
   ok: svg('<path d="M5 12.5 10 17.5 19 7"/>'),
   volta: svg('<path d="M14 6 8 12l6 6"/>'),
+  sol: svg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
+  lua: svg('<path d="M21 14.5A8.5 8.5 0 1 1 9.5 3a7 7 0 0 0 11.5 11.5z"/>'),
+  cafe: svg('<path d="M5 8h10v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8z"/><path d="M15 9h1.5a2.5 2.5 0 0 1 0 5H15"/><path d="M8 3v2M12 3v2"/>'),
+  lista: svg('<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>'),
 };
+
+const ICONE_TEMA = { claro: 'sol', escuro: 'lua', cafe: 'cafe' };
+const PROXIMO_TEMA = { claro: 'Escuro', escuro: 'Café', cafe: 'Claro' };
 
 function aplicarTema(nome, gravar) {
   const t = TEMAS.includes(nome) ? nome : 'escuro';
@@ -190,10 +197,13 @@ function olho() {
 }
 
 function botaoTema() {
-  const nome = TEMA_NOME[temaAtual()];
-  return `<button class="bolinhas" data-acao="tema" aria-label="Tema ${esc(nome)}. Toque para mudar.">
-    <i class="a"></i><i class="s"></i>
-  </button>`;
+  const atual = temaAtual();
+  const nome = TEMA_NOME[atual];
+  return `<button class="icone" data-acao="tema" aria-label="Tema ${esc(nome)}. Toque para ${esc(PROXIMO_TEMA[atual])}.">${ICO[ICONE_TEMA[atual]]}</button>`;
+}
+
+function botaoLista() {
+  return `<button class="icone" data-acao="ir" data-hash="#/lista" aria-label="Lista de compras">${ICO.lista}</button>`;
 }
 
 function cabeca(titulo, opts = {}) {
@@ -203,11 +213,13 @@ function cabeca(titulo, opts = {}) {
   if (opts.cancelar) esq = `<button class="link" data-acao="cancelar-edicao">Cancelar</button>`;
   let dir = '<span class="lado"></span>';
   if (opts.concluir) dir = `<button class="link forte" data-acao="concluir-edicao" data-id="${esc(opts.id)}">Concluir</button>`;
-  if (opts.ferramentas) {
+  if (opts.ferramentas || opts.tema) {
     const ponto = (filtros.area !== 'todas' || filtros.status || filtros.periodo) ? '<i class="ponto"></i>' : '';
     dir = `<span class="lado">
-      <button class="icone" data-acao="ir" data-hash="#/filtros" aria-label="Filtros">${ICO.filtro}${ponto}</button>
+      ${opts.ferramentas ? `<button class="icone" data-acao="ir" data-hash="#/filtros" aria-label="Filtros">${ICO.filtro}${ponto}</button>` : ''}
       ${opts.relogio ? `<button class="icone" data-acao="ir" data-hash="#/historico" aria-label="Histórico">${ICO.relogio}</button>` : ''}
+      ${opts.lista ? botaoLista() : ''}
+      ${opts.tema ? botaoTema() : ''}
     </span>`;
   }
   const h = opts.centro
@@ -405,16 +417,12 @@ function telaPrincipal() {
   const fase = filtros.area === 'casamento' || filtros.area === 'cartao'
     ? `<button class="cartao" data-acao="ir" data-hash="#/fase2/${filtros.area === 'casamento' ? 'casamento' : 'cartao'}"><span><span class="t">Layout da Fase 2</span><span class="m">Não entra na fila</span></span></button>`
     : '';
-  return `${cabeca('Copiloto', { ferramentas: true, relogio: true })}
+  return `${cabeca('Copiloto', { ferramentas: true, relogio: true, lista: true, tema: true })}
     <main>
       <div class="gravar-wrap"><button class="gravar" data-acao="gravar">Gravar</button></div>
       ${erroFila ? `<p class="aviso">${esc(erroFila)}</p>` : ''}
       <div class="fila">${fase}${lista}</div>
-    </main>
-    <div class="rodape">
-      <button class="atalho-lista" data-acao="ir" data-hash="#/lista">Lista de compras</button>
-      ${botaoTema()}
-    </div>`;
+    </main>`;
 }
 
 function telaFiltros() {
@@ -565,7 +573,7 @@ function telaFase2(qual) {
 
 function telaLogin() {
   return `${olho()}
-    <div class="nav"><h1>Copiloto</h1></div>
+    <div class="nav"><h1>Copiloto</h1><span class="lado">${botaoTema()}</span></div>
     <main>
       <p class="dica">Entre com a conta do Diego. A leitura e a decisão usam esse login. Sem chave anônima e sem service role.</p>
       ${erroBoot ? `<p class="aviso">${esc(erroBoot)}</p>` : ''}
@@ -576,18 +584,16 @@ function telaLogin() {
         <button class="botao sim" type="submit">Entrar</button>
       </form>
       <button class="botao cheio" data-acao="voltar-mock">Usar os exemplos</button>
-    </main>
-    <div class="rodape">${botaoTema()}</div>`;
+    </main>`;
 }
 
 function telaErroBoot() {
   return `${olho()}
-    <div class="nav"><h1>Copiloto</h1></div>
+    <div class="nav"><h1>Copiloto</h1><span class="lado">${botaoTema()}</span></div>
     <main>
       <p class="aviso">${esc(erroBoot)}</p>
       <button class="botao sim cheio" data-acao="voltar-mock">Voltar aos exemplos</button>
-    </main>
-    <div class="rodape">${botaoTema()}</div>`;
+    </main>`;
 }
 
 function desenhar() {
