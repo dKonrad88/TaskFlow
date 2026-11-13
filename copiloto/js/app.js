@@ -1,5 +1,5 @@
 import { abrirDados } from './dados.js';
-import { adaptadorAtivo } from './config.js';
+import { modoDemo } from './config.js';
 import {
   COMODOS, emAberto, fData, fDataHora, fHora, fValor, filtrar, idPadrao, montarListaPessoas,
   normalizarPessoas, ordenarFila, pValor, payloadCanonico, rotuloArea, rotuloStatus, rotuloTipo, soCsmt, tituloFila,
@@ -34,6 +34,11 @@ let timer = null;
 let mic = null;
 let aoVivo = false;
 let simulou = false;
+let reconhecimento = null;
+let textoFala = '';
+let textoParcial = '';
+let pedindoTexto = false;
+let ultimoEnvio = null;
 let folha = null;
 let rascunho = null;
 let buscaMenu = '';
@@ -509,17 +514,34 @@ function telaFila(aba, titulo, cheio) {
     </main>`;
 }
 
+function falaDoNavegador() {
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
 function telaGravando() {
   const seg = pose() ? 7 : segundos;
   const mm = String(Math.floor(seg / 60));
   const ss = String(seg % 60).padStart(2, '0');
+  if (pedindoTexto && modo !== 'mock') {
+    return `${cabeca('Copiloto', { centro: true })}
+      <main><div class="meio">
+        <h2>O que foi dito</h2>
+        <p>Este navegador não transcreve, ou a fala veio vazia. Escreva e envie.</p>
+        <textarea class="area" id="texto-entrada" aria-label="Texto para enviar" placeholder="Ex.: comprar lâmpadas para a sala"></textarea>
+        <button class="botao sim cheio" data-acao="enviar-texto">Enviar</button>
+      </div></main>`;
+  }
+  const ouvido = [textoFala, textoParcial].filter(Boolean).join(' ');
+  const fala = modo === 'mock'
+    ? '<p class="dica">No exemplo, parar acrescenta um item local.</p>'
+    : `<p class="transcricao" id="fala-ao-vivo">${esc(ouvido || 'Ouvindo…')}</p>`;
   return `${cabeca('Copiloto', { centro: true })}
     <main><div class="meio">
       <button class="gravar vivo" data-acao="parar" aria-label="Parar"><span class="mic">${ICO.mic}</span><span class="parada" aria-hidden="true"></span></button>
       <div class="relogio">${mm}:${ss}</div>
       <h2>Gravando</h2>
-      <p>Toque para parar e enviar. A transcrição acontece no iPhone.</p>
-      <p class="dica">O PWA não posta o áudio. Quem chama copiloto-entrada é o Atalho.</p>
+      <p>Toque para parar e enviar.</p>
+      ${fala}
     </div></main>`;
 }
 
@@ -529,7 +551,7 @@ function telaEnviado() {
       <div class="selo">${ICO.ok}</div>
       <h2>Enviado</h2>
       <p>A proposta deve aparecer na fila em instantes, com o card do tipo, para você conferir.</p>
-      <p class="dica">${simulou ? 'No exemplo, a fila ganhou um item local. ' : ''}No iPhone, o Atalho é quem envia.</p>
+      <p class="dica">${simulou ? 'No exemplo, a fila ganhou um item local.' : (ultimoEnvio?.tipo ? `Entrou como ${rotuloTipo(ultimoEnvio.tipo)}.` : 'O texto foi para a fila.')}</p>
       <button class="fantasma" data-acao="ir" data-hash="#/aprovar">Ir para aprovar</button>
     </div></main>`;
 }
@@ -643,6 +665,7 @@ function telaAjustes() {
       <div class="grupo">Conta</div>
       <div class="ajuste"><span>Modo</span><b>${esc(conta.modo)}</b></div>
       <div class="ajuste"><span>Login</span><b>${esc(conta.login)}</b></div>
+      ${modo === 'supabase' && dados?._sessao ? '<button type="button" class="botao cheio" data-acao="sair">Sair</button>' : ''}
       <div class="grupo">Tela de gravar</div>
       <button type="button" class="botao cheio" data-acao="editar-layout">Editar layout</button>
       <p class="dica">Move e redimensiona o botão Gravar e o chip de área.</p>
@@ -681,7 +704,7 @@ function telaLogin() {
   return `${olho()}
     <div class="nav centro"><span class="lado esq"></span><h1>Copiloto</h1><span class="lado"></span></div>
     <main>
-      <p class="dica">Entre com a conta do Diego. A leitura e a decisão usam esse login. Sem chave anônima e sem service role.</p>
+      <p class="dica">Entre com o e-mail e a senha. É o mesmo login do Hub.</p>
       ${erroBoot ? `<p class="aviso">${esc(erroBoot)}</p>` : ''}
       ${erroFila ? `<p class="aviso">${esc(erroFila)}</p>` : ''}
       <form class="login" data-acao="login">
@@ -689,7 +712,6 @@ function telaLogin() {
         <input name="senha" type="password" autocomplete="current-password" placeholder="Senha" required aria-label="Senha">
         <button class="botao sim" type="submit">Entrar</button>
       </form>
-      <button class="botao cheio" data-acao="voltar-mock">Usar os exemplos</button>
     </main>`;
 }
 
@@ -698,7 +720,7 @@ function telaErroBoot() {
     <div class="nav centro"><span class="lado esq"></span><h1>Copiloto</h1><span class="lado"></span></div>
     <main>
       <p class="aviso">${esc(erroBoot)}</p>
-      <button class="botao sim cheio" data-acao="voltar-mock">Voltar aos exemplos</button>
+      <button class="botao sim cheio" data-acao="recarregar">Tentar de novo</button>
     </main>`;
 }
 
@@ -802,8 +824,71 @@ function pararMic() {
   aoVivo = false;
 }
 
+function pintarFala() {
+  const el = document.getElementById('fala-ao-vivo');
+  if (!el) return;
+  const t = [textoFala, textoParcial].filter(Boolean).join(' ');
+  el.textContent = t || 'Ouvindo…';
+}
+
+function pararReconhecimento() {
+  const rec = reconhecimento;
+  reconhecimento = null;
+  if (!rec) return;
+  rec.onresult = null;
+  rec.onerror = null;
+  rec.onend = null;
+  try { rec.stop(); } catch { /* já parado */ }
+}
+
+function comecarFala() {
+  const SR = falaDoNavegador();
+  if (!SR || modo === 'mock') {
+    pedindoTexto = modo !== 'mock';
+    if (pedindoTexto) {
+      clearInterval(timer);
+      timer = null;
+      aoVivo = false;
+    }
+    return;
+  }
+  pedindoTexto = false;
+  textoFala = '';
+  textoParcial = '';
+  const rec = new SR();
+  rec.lang = 'pt-BR';
+  rec.interimResults = true;
+  rec.continuous = true;
+  rec.onresult = (ev) => {
+    let finais = '';
+    let parcial = '';
+    for (const res of ev.results) {
+      const t = res[0]?.transcript || '';
+      if (res.isFinal) finais += `${t} `;
+      else parcial += t;
+    }
+    textoFala = finais.trim();
+    textoParcial = parcial.trim();
+    pintarFala();
+  };
+  rec.onerror = () => {
+    if (!aoVivo) return;
+    pedindoTexto = true;
+    desenhar();
+  };
+  rec.onend = () => {
+    if (reconhecimento === rec && aoVivo) {
+      try { rec.start(); } catch { /* o navegador encerrou a sessão */ }
+    }
+  };
+  reconhecimento = rec;
+  try { rec.start(); } catch { pedindoTexto = true; }
+}
+
 async function comecarGravar() {
   aoVivo = true;
+  simulou = false;
+  ultimoEnvio = null;
   segundos = 0;
   clearInterval(timer);
   timer = setInterval(() => {
@@ -813,19 +898,40 @@ async function comecarGravar() {
       el.textContent = `${Math.floor(segundos / 60)}:${String(segundos % 60).padStart(2, '0')}`;
     }
   }, 1000);
-  if (navigator.mediaDevices?.getUserMedia) {
-    try { mic = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch { mic = null; }
-  }
+  comecarFala();
   ir('#/gravando');
 }
 
+async function enviarTexto(texto) {
+  const limpo = String(texto || '').trim();
+  if (!limpo) {
+    pedindoTexto = true;
+    mostrar('Não ouvi nada. Escreva o que quer enviar.');
+    desenhar();
+    return;
+  }
+  const r = await dados.enviarTexto(limpo);
+  if (!r?.ok) {
+    mostrar(r?.mensagem || 'Não deu para enviar.');
+    pedindoTexto = true;
+    desenhar();
+    return;
+  }
+  ultimoEnvio = { tipo: r.tipo, status: r.status };
+  ir('#/enviado');
+}
+
 async function pararGravar() {
+  const texto = [textoFala, textoParcial].filter(Boolean).join(' ').trim();
+  pararReconhecimento();
   pararMic();
   if (modo === 'mock' && dados?.simularChegada) {
     await dados.simularChegada('Lembrete de voz (exemplo)');
     simulou = true;
+    ir('#/enviado');
+    return;
   }
-  ir('#/enviado');
+  await enviarTexto(texto);
 }
 
 function lerRascunho() {
@@ -889,6 +995,22 @@ async function noClique(e) {
   if (acao === 'abrir') { ir(`#/item/${el.dataset.id}`); return; }
   if (acao === 'gravar') { await comecarGravar(); return; }
   if (acao === 'parar') { await pararGravar(); return; }
+  if (acao === 'enviar-texto') {
+    await enviarTexto(document.getElementById('texto-entrada')?.value || '');
+    return;
+  }
+  if (acao === 'sair') {
+    pararReconhecimento();
+    pararMic();
+    await dados?.sair?.();
+    if (dados) dados._sessao = null;
+    itens = [];
+    pessoas = [];
+    compras = [];
+    ir('#/');
+    return;
+  }
+  if (acao === 'recarregar') { location.reload(); return; }
   if (acao === 'fase2') { mostrar('Fase 2: este card ainda não grava.'); return; }
   if (acao === 'fechar') { folha = null; buscaMenu = ''; if (history.length > 1) history.back(); else ir(`#/item/${rota().id || ''}`); return; }
   if (acao === 'busca-menu') return;
@@ -961,13 +1083,6 @@ async function noClique(e) {
   if (acao === 'cancelar-edicao') { rascunho = null; history.back(); return; }
   if (acao === 'concluir-edicao') { await concluirEdicao(el.dataset.id); return; }
   if (acao === 'restaurar') { await dados.restaurar(); filtrosAba = { aprovar: { status: '', periodo: '' }, historico: { status: '', periodo: '' } }; await depoisDeMudar(); mostrar('Exemplos restaurados.'); return; }
-  if (acao === 'voltar-mock') {
-    try {
-      localStorage.setItem('copiloto_adaptador', 'mock');
-      localStorage.removeItem('copiloto_supabase');
-    } catch { /* segue */ }
-    location.reload();
-  }
 }
 
 function noInput(e) {
@@ -1127,11 +1242,17 @@ async function iniciar() {
   document.addEventListener('pointerup', noPonteiroUp);
   document.addEventListener('pointercancel', noPonteiroUp);
   window.addEventListener('resize', aplicarLayout);
-  window.addEventListener('hashchange', desenhar);
+  window.addEventListener('hashchange', () => {
+    if (rota().tela !== 'gravando') {
+      pararReconhecimento();
+      pararMic();
+    }
+    desenhar();
+  });
   if (pose() && rota().tela === 'gravando') segundos = 7;
   desenhar();
   registrarSw();
-  if (adaptadorAtivo() === 'mock') document.documentElement.dataset.adaptador = 'mock';
+  if (modoDemo()) document.documentElement.dataset.adaptador = 'mock';
 }
 
 iniciar();

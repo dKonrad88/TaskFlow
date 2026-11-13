@@ -4,7 +4,7 @@ PWA de fila e aprovação dos agentes pessoais do Diego, em português. O nome �
 
 Publicação prevista: `https://dkonrad88.github.io/TaskFlow/copiloto/`.
 
-O app abre com o **adaptador mock** (valores de exemplo). O adaptador Supabase existe, aponta para o projeto Pessoal e fica **desligado**.
+O app abre no **projeto Pessoal** (`jlouesrrmqeauzlgvrpw`), com a chave publicável e login por e-mail e senha — o mesmo do Hub. Sem sessão, a tela pede o login. O adaptador mock só aparece com `?demo=1`.
 
 ## O que a tela faz
 
@@ -24,36 +24,25 @@ Pauta e reunião chegam como `klain-compromisso`: participantes, data/hora e loc
 
 ## Entrada de voz
 
-Quem grava, transcreve e envia é o **Atalho do iOS**, não este PWA.
+O botão Gravar transcreve no navegador (Web Speech API, `pt-BR`) quando ele existe. Sem a API, ou se a fala vier vazia, abre um campo de texto. O texto vai para `copiloto-entrada` com o JWT da sessão. A `COPILOTO_ENTRADA_KEY` do Atalho não está no PWA.
 
 ```http
 POST https://jlouesrrmqeauzlgvrpw.supabase.co/functions/v1/copiloto-entrada
-Authorization: Bearer <chave do Atalho>
+Authorization: Bearer <access_token do usuário>
 Content-Type: application/json
 
-{ "texto": "…", "origem": "atalho" }
+{ "texto": "…", "origem": "pwa" }
 ```
 
-A função classifica e grava em `copiloto_itens`. O botão Gravar daqui só mostra o fluxo. No mock, ele acrescenta um exemplo local com status `para o BOSS`. Com o Supabase ligado, o botão não chama a rede.
+O Atalho continua podendo mandar `Authorization: Bearer <COPILOTO_ENTRADA_KEY>`. A função aceita os dois. Ela ainda está em **modo teste**: grava só em `copiloto_itens`, com `teste: true`. O código novo está em `supabase/copiloto-entrada/` e **não foi publicado**.
 
-## Como ligar o adaptador Supabase
+No `?demo=1`, parar acrescenta um exemplo local e não chama a rede.
 
-O arquivo publicado continua com `adaptador: 'mock'` em `js/config.js`. Não commite chave. No aparelho, no console do PWA:
+## Login
 
-```js
-localStorage.setItem('copiloto_adaptador', 'supabase');
-localStorage.setItem('copiloto_supabase', JSON.stringify({
-  url: 'https://jlouesrrmqeauzlgvrpw.supabase.co',
-  key: 'sb_publishable_…'
-}));
-location.reload();
-```
+A URL e a chave publicável estão em `js/config.js`, no mesmo formato do Hub (`sb_publishable_…`). O app recusa `service_role` e `sb_secret_`. A sessão é o JWT de `authenticated`. Ajustes mostra o e-mail e o botão Sair.
 
-A `key` tem de ser a chave **publicável** (`sb_publishable_…`). O app recusa JWT com role `anon`, qualquer `service_role` e chave `sb_secret_`. Sem essa chave, nada conecta.
-
-Depois do reload, entre com o e-mail e a senha do Diego. A sessão é o JWT de `authenticated`. Leitura e lista de compras saem com esse login (RLS). Não há fallback para a chave de serviço.
-
-Para voltar aos exemplos: `localStorage.setItem('copiloto_adaptador', 'mock')` e recarregar. O botão "Usar os exemplos" na tela de login faz o mesmo.
+A leitura depende de RLS. O SQL está em `supabase/rls-leitura.sql` e **não foi aplicado**.
 
 ### O que o adaptador lê
 
@@ -81,7 +70,7 @@ No cadastro, grupo tem `papel = 'grupo'` e `usos = {solicitante, executor}`. Pes
 
 ### Decisão: a primeira vale
 
-Aprovar e recusar chamam a edge function **`copiloto-decidir`** (ainda não publicada) com o JWT do usuário:
+Aprovar e recusar chamam a edge function **`copiloto-decidir`** com o JWT do usuário. A função publicada está em modo teste. A cópia do repositório (`supabase/copiloto-decidir/`) ainda não foi publicada: ela aceita as pessoas no formato do PWA (`solicitante`, `executor`, `em_copia`, `participantes`).
 
 ```http
 POST /functions/v1/copiloto-decidir
@@ -109,7 +98,7 @@ O PWA não faz `update` direto em `copiloto_itens` para decidir. Se a função n
 
 `para o BOSS` é fila aberta: a pessoa escolhe o tipo e só então aprova. Recusar não exige tipo.
 
-RLS está ligado. `apto_compras_itens` já tem policy para `authenticated`. `copiloto_itens`, `hub_pessoas` e `apto_compras_propostas` ainda não têm policy para esse papel: a leitura autenticada volta vazia ou com erro até essa policy existir. O app não fura isso.
+RLS está ligado. `apto_compras_itens` já deixa o membro da lista ler (`apto_ci_all`). `copiloto_itens` e `hub_pessoas` ainda não têm policy de leitura para `authenticated`: a fila e as pessoas ficam vazias até aplicar `supabase/rls-leitura.sql`. O app não fura isso.
 
 ## PWA no iPhone
 

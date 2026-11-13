@@ -1,4 +1,4 @@
-import { FUNCAO_DECIDIR } from './config.js';
+import { FUNCAO_DECIDIR, FUNCAO_ENTRADA } from './config.js';
 import {
   COMODOS, DECISOES, TIPOS, emAberto, normalizarPessoas, payloadCanonico, chaveProibida,
 } from './contrato.js';
@@ -21,7 +21,7 @@ function urlOk(url) {
 /**
  * Lê como o usuário logado (JWT). Não usa anon nem service_role.
  * Decisão só pela função copiloto-decidir, que confere o JWT.
- * copiloto-entrada não é chamada daqui.
+ * copiloto-entrada recebe o mesmo JWT. A chave do Atalho não sai do servidor.
  */
 export async function criarAdaptadorSupabase({ url, key }) {
   const motivo = chaveProibida(key);
@@ -51,8 +51,9 @@ export async function criarAdaptadorSupabase({ url, key }) {
   }
 
   function mesclar(item) {
+    const pessoasBanco = item.payload && item.payload.pessoas;
     const r = rascunhos.get(item.id);
-    if (!r || !emAberto(item.status)) return { ...item, pessoas: item.pessoas || {}, notas: item.notas || '' };
+    if (!r || !emAberto(item.status)) return { ...item, pessoas: item.pessoas || pessoasBanco || {}, notas: item.notas || '' };
     return {
       ...item,
       tipo: r.tipo || item.tipo,
@@ -241,6 +242,33 @@ export async function criarAdaptadorSupabase({ url, key }) {
 
     async restaurar() {
       return { ok: false, motivo: 'supabase' };
+    },
+
+    async enviarTexto(texto) {
+      const limpo = String(texto || '').trim();
+      if (!limpo) return { ok: false, mensagem: 'Escreva ou fale o que quer enviar.' };
+      let session;
+      try {
+        session = await exigirSessao();
+      } catch (e) {
+        return { ok: false, mensagem: e.message };
+      }
+      const { data, error } = await sb.functions.invoke(FUNCAO_ENTRADA, {
+        body: { texto: limpo, origem: 'pwa' },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (error) {
+        let detalhe = error.message || 'A função copiloto-entrada não respondeu.';
+        try {
+          if (error.context && typeof error.context.json === 'function') {
+            const corpo = await error.context.json();
+            if (corpo?.erro) detalhe = corpo.erro;
+          }
+        } catch { /* corpo vazio */ }
+        return { ok: false, mensagem: detalhe };
+      }
+      if (data && data.ok === false) return { ok: false, mensagem: data.erro || 'A função recusou o texto.' };
+      return { ok: true, id: data?.id, tipo: data?.tipo, status: data?.status };
     },
   };
 }
