@@ -1,8 +1,8 @@
 import { abrirDados } from './dados.js';
 import { adaptadorAtivo } from './config.js';
 import {
-  COMODOS, emAberto, fData, fDataHora, fHora, fValor, filtrar, ordenarFila,
-  pValor, payloadCanonico, rotuloArea, rotuloStatus, rotuloTipo, soCsmt, tituloFila,
+  COMODOS, emAberto, fData, fDataHora, fHora, fValor, filtrar, idPadrao, montarListaPessoas,
+  ordenarFila, pValor, payloadCanonico, rotuloArea, rotuloStatus, rotuloTipo, soCsmt, tituloFila,
 } from './contrato.js';
 
 const TEMAS = ['claro', 'escuro', 'cafe'];
@@ -37,6 +37,7 @@ let aoVivo = false;
 let simulou = false;
 let folha = null;
 let rascunho = null;
+let buscaMenu = '';
 
 const $ = (html) => html;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -99,13 +100,26 @@ function itemPor(id) {
 }
 
 function nomePessoa(id) {
-  if (!id) return 'Escolher';
-  return pessoas.find((p) => p.id === id)?.nome || 'Escolher';
+  if (!id) return '';
+  return pessoas.find((p) => p.id === id)?.nome || '';
 }
 
-function nomesPessoas(ids) {
-  const lista = (ids || []).map(nomePessoa).filter((n) => n !== 'Escolher');
-  return lista.length ? lista.join(', ') : 'Escolher';
+function valorPessoa(item, campo) {
+  const g = item.pessoas || {};
+  if (campo === 'participantes_ids') return g.participantes_ids || [];
+  if (campo === 'em_copia_id') return g.em_copia_id || '';
+  if (Object.prototype.hasOwnProperty.call(g, campo)) return g[campo] || '';
+  return idPadrao(pessoas) || '';
+}
+
+function rotuloPessoa(item, campo) {
+  const valor = valorPessoa(item, campo);
+  if (Array.isArray(valor)) {
+    const nomes = valor.map(nomePessoa).filter(Boolean);
+    return nomes.length ? nomes.join(', ') : 'Escolher';
+  }
+  if (!valor) return campo === 'em_copia_id' ? 'Escolher' : '— Ninguém —';
+  return nomePessoa(valor) || 'Escolher';
 }
 
 function klain(item) {
@@ -223,7 +237,6 @@ function kick(item) {
 
 function corpoCard(item) {
   const p = item.payload || {};
-  const g = item.pessoas || {};
   const id = esc(item.id);
   if (item.tipo === 'indefinido') {
     const candidatos = (p.candidatos || []).map((t) => `<button class="chip" data-acao="escolher-tipo" data-id="${id}" data-tipo="${esc(t)}">${esc(rotuloTipo(t))}</button>`).join('');
@@ -235,16 +248,16 @@ function corpoCard(item) {
   if (item.tipo === 'klain-tarefa') {
     return `${campoLeitura('Tipo', 'Tarefa', true)}
       ${campoLeitura('Título', textoDe(item, p.titulo), true)}
-      ${campoCaixa('Solicitante', nomePessoa(g.solicitante_id), '▾', 'abrir-menu', `data-id="${id}" data-campo="solicitante_id"`, false)}
-      ${campoCaixa('Executor', nomePessoa(g.executor_id), '▾', 'abrir-menu', `data-id="${id}" data-campo="executor_id"`, false)}
-      ${campoCaixa('Em cópia', nomePessoa(g.em_copia_id), '▾', 'abrir-menu', `data-id="${id}" data-campo="em_copia_id"`, false)}
+      ${campoCaixa('Solicitante', rotuloPessoa(item, 'solicitante_id'), '▾', 'abrir-menu', `data-id="${id}" data-campo="solicitante_id"`, false)}
+      ${campoCaixa('Executor', rotuloPessoa(item, 'executor_id'), '▾', 'abrir-menu', `data-id="${id}" data-campo="executor_id"`, false)}
+      ${campoCaixa('Em cópia', rotuloPessoa(item, 'em_copia_id'), '▾', 'abrir-menu', `data-id="${id}" data-campo="em_copia_id"`, false)}
       ${campoCaixa('Vencimento', fData(p.vencimento) || 'Escolher', 'alterar', 'abrir-data', `data-id="${id}" data-campo="vencimento"`, false)}
       ${campoLeitura('Descrição', textoDe(item, p.descricao), false)}`;
   }
   if (item.tipo === 'klain-compromisso') {
     return `${campoLeitura('Tipo', 'Compromisso', true)}
       ${campoLeitura('Título', textoDe(item, p.titulo), true)}
-      ${campoCaixa('Participantes', nomesPessoas(g.participantes_ids), '▾', 'abrir-menu', `data-id="${id}" data-campo="participantes_ids"`, true)}
+      ${campoCaixa('Participantes', rotuloPessoa(item, 'participantes_ids'), '▾', 'abrir-menu', `data-id="${id}" data-campo="participantes_ids"`, true)}
       ${campoCaixa('Data e hora', fDataHora(p.data_hora) || 'Escolher', 'alterar', 'abrir-data', `data-id="${id}" data-campo="data_hora"`, true)}
       ${campoTexto(item, 'local', 'Local', p.local, false)}
       ${campoLeitura('Descrição', textoDe(item, p.descricao), false)}`;
@@ -275,30 +288,49 @@ function acoes(item) {
   </div>`;
 }
 
-function menuHtml(item, campo) {
-  const g = item.pessoas || {};
-  let opcoes = [];
-  let multi = false;
-  let pe = pessoasExemplo
-    ? 'Lista de exemplo — o cadastro oficial de pessoas do Hub ainda é decisão em aberto'
-    : 'Pessoas ativas em hub_pessoas';
-  if (campo === 'ambiente') {
-    const atual = item.payload?.ambiente;
-    const nomes = [...COMODOS];
-    if (atual && !nomes.includes(atual)) nomes.unshift(atual);
-    opcoes = nomes.map((n) => ({ id: n, nome: n, sel: n === atual }));
-    pe = 'Cômodo do apartamento. Sala sozinha continua ambígua na entrada de voz.';
-  } else if (campo === 'participantes_ids') {
-    multi = true;
-    const ids = g.participantes_ids || [];
-    opcoes = pessoas.map((p) => ({ id: p.id, nome: p.nome, sel: ids.includes(p.id) }));
-  } else {
-    opcoes = [{ id: '', nome: 'Ninguém', sel: !g[campo] }, ...pessoas.map((p) => ({ id: p.id, nome: p.nome, sel: g[campo] === p.id }))];
+function linhaMenu(item, campo, opcao, multi) {
+  return `<button class="mi${opcao.sel ? ' sel' : ''}" data-acao="${multi ? 'toggle-pessoa' : 'escolher'}" data-id="${esc(item.id)}" data-campo="${esc(campo)}" data-valor="${esc(opcao.id)}"><span>${esc(opcao.nome)}</span>${opcao.sel ? '<span>✓</span>' : ''}</button>`;
+}
+
+function htmlListaPessoas(item, campo) {
+  const multi = campo === 'participantes_ids';
+  const lista = montarListaPessoas(pessoas, campo, valorPessoa(item, campo), buscaMenu);
+  let html = '';
+  if (lista.ninguem) html += linhaMenu(item, campo, { id: '', nome: '— Ninguém —', sel: lista.ninguemSel }, false);
+  if (lista.grupos.length) {
+    html += '<div class="sec">Grupos</div>';
+    html += lista.grupos.map((op) => linhaMenu(item, campo, op, multi)).join('');
   }
-  const lis = opcoes.map((o) => `<button class="mi${o.sel ? ' sel' : ''}" data-acao="${multi ? 'toggle-pessoa' : 'escolher'}" data-id="${esc(item.id)}" data-campo="${esc(campo)}" data-valor="${esc(o.id)}"><span>${esc(o.nome)}</span>${o.sel ? '<span>✓</span>' : ''}</button>`).join('');
-  const ok = multi ? `<button class="mi" data-acao="fechar"><span>OK</span></button>` : '';
+  for (const bloco of lista.setores) {
+    html += `<div class="sec">${esc(bloco.setor)}</div>`;
+    html += bloco.pessoas.map((op) => linhaMenu(item, campo, op, multi)).join('');
+  }
+  if (!lista.ninguem && !lista.grupos.length && !lista.setores.length) html += '<p class="pe">Nada com esse nome.</p>';
+  return html;
+}
+
+function menuPessoas(item, campo) {
+  const multi = campo === 'participantes_ids';
+  const pe = pessoasExemplo
+    ? 'Exemplo. Grupos só em solicitante e executor. O padrão é Diego Konrad.'
+    : 'Grupos só em solicitante e executor. Pessoa entra em todos os campos.';
+  const ok = multi ? '<button class="mi" data-acao="fechar"><span>OK</span></button>' : '';
   return `<button class="dim" data-acao="fechar" aria-label="Fechar"></button>
-    <div class="menu" role="listbox">${lis}${ok}<p class="pe">${esc(pe)}</p></div>`;
+    <div class="menu menu-pessoas" role="listbox">
+      <div class="busca-wrap"><input class="menu-busca" data-acao="busca-menu" placeholder="Buscar" aria-label="Buscar" value="${esc(buscaMenu)}"></div>
+      <div class="lista-pessoas">${htmlListaPessoas(item, campo)}</div>
+      ${ok}<p class="pe">${esc(pe)}</p>
+    </div>`;
+}
+
+function menuHtml(item, campo) {
+  if (campo !== 'ambiente') return menuPessoas(item, campo);
+  const atual = item.payload?.ambiente;
+  const nomes = [...COMODOS];
+  if (atual && !nomes.includes(atual)) nomes.unshift(atual);
+  const lis = nomes.map((nome) => linhaMenu(item, campo, { id: nome, nome, sel: nome === atual }, false)).join('');
+  return `<button class="dim" data-acao="fechar" aria-label="Fechar"></button>
+    <div class="menu" role="listbox">${lis}<p class="pe">Cômodo do apartamento. Sala sozinha continua ambígua na entrada de voz.</p></div>`;
 }
 
 function prepararFolha(valor) {
@@ -599,7 +631,11 @@ async function salvarCampo(id, chave, valor) {
 async function aoDecidir(id, decisao) {
   const item = itemPor(id);
   if (!item) return;
-  const patch = { payload: item.payload, pessoas: item.pessoas, tipo: item.tipo };
+  const pessoasEnvio = { ...(item.pessoas || {}) };
+  for (const chave of ['solicitante_id', 'executor_id']) {
+    if (!Object.prototype.hasOwnProperty.call(item.pessoas || {}, chave)) pessoasEnvio[chave] = idPadrao(pessoas);
+  }
+  const patch = { payload: item.payload, pessoas: pessoasEnvio, tipo: item.tipo };
   const r = await dados.decidir(id, decisao, patch);
   if (r.jaDecidido) {
     mostrar(`Já foi decidido: ${rotuloStatus(r.status)}. A primeira decisão vale.`);
@@ -696,7 +732,8 @@ async function noClique(e) {
   if (acao === 'gravar') { await comecarGravar(); return; }
   if (acao === 'parar') { await pararGravar(); return; }
   if (acao === 'fase2') { mostrar('Fase 2: este card ainda não grava.'); return; }
-  if (acao === 'fechar') { folha = null; if (history.length > 1) history.back(); else ir(`#/item/${rota().id || ''}`); return; }
+  if (acao === 'fechar') { folha = null; buscaMenu = ''; if (history.length > 1) history.back(); else ir(`#/item/${rota().id || ''}`); return; }
+  if (acao === 'busca-menu') return;
   if (acao === 'filtro') {
     const g = el.dataset.grupo;
     const v = el.dataset.valor;
@@ -706,7 +743,7 @@ async function noClique(e) {
     desenhar();
     return;
   }
-  if (acao === 'abrir-menu') { ir(`#/item/${el.dataset.id}/menu/${el.dataset.campo}`); return; }
+  if (acao === 'abrir-menu') { buscaMenu = ''; ir(`#/item/${el.dataset.id}/menu/${el.dataset.campo}`); return; }
   if (acao === 'abrir-data') { folha = null; ir(`#/item/${el.dataset.id}/data/${el.dataset.campo}`); return; }
   if (acao === 'dia') { folha.dia = Number(el.dataset.dia); desenhar(); return; }
   if (acao === 'mes') {
@@ -721,6 +758,7 @@ async function noClique(e) {
   }
   if (acao === 'data-ok') { await diaOk(el.dataset.id, el.dataset.campo); return; }
   if (acao === 'escolher') {
+    buscaMenu = '';
     await salvarCampo(el.dataset.id, el.dataset.campo, el.dataset.valor);
     ir(`#/item/${el.dataset.id}`);
     return;
@@ -764,6 +802,15 @@ async function noClique(e) {
 }
 
 function noInput(e) {
+  const busca = e.target.closest('[data-acao="busca-menu"]');
+  if (busca) {
+    buscaMenu = busca.value;
+    const r = rota();
+    const item = itemPor(r.id);
+    const box = document.querySelector('.lista-pessoas');
+    if (item && box && r.menu) box.innerHTML = htmlListaPessoas(item, r.menu);
+    return;
+  }
   const el = e.target.closest('[data-rascunho]');
   if (!el || !rascunho) return;
   rascunho[el.dataset.rascunho] = el.value;
@@ -798,6 +845,7 @@ async function noKey(e) {
     const r = rota();
     if (r.menu || r.data) {
       folha = null;
+      buscaMenu = '';
       ir(`#/item/${r.id}`);
     }
   }

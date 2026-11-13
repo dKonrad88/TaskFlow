@@ -4,7 +4,7 @@ import {
 } from './contrato.js';
 
 const COLUNAS_ITEM = 'id, origem, tipo, transcricao, payload, status, decidido_em, ref_tabela, ref_id, teste, created_at';
-const COLUNAS_PESSOA = 'id, nome, papel, ativo, created_at, updated_at';
+const COLUNAS_PESSOA = 'id, nome, papel, usos, padrao, ativo, created_at, updated_at';
 const COLUNAS_PROPOSTA = 'id, lista_id, nome, ambiente, quantidade, valor_estimado, descricao, transcricao, status, copiloto_item_id, item_id, decidido_em, created_at';
 const COLUNAS_COMPRA = 'id, lista_id, nome, ambiente, quantidade, valor_estimado, descricao, comprado, ordem, created_at';
 

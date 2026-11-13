@@ -2,13 +2,18 @@ import {
   COMODOS, DECISOES, TIPOS, emAberto, payloadCanonico, soCsmt,
 } from './contrato.js';
 
-const CHAVE = 'copiloto_mock_v1';
+const CHAVE = 'copiloto_mock_v2';
+
+const QUANDO = '2026-11-01T12:00:00-03:00';
 
 export const PESSOAS_EXEMPLO = [
-  { id: 'p-diego', nome: 'Diego Konrad', papel: 'exemplo', ativo: true, created_at: '2026-11-01T12:00:00-03:00', updated_at: '2026-11-01T12:00:00-03:00' },
-  { id: 'p-guilherme', nome: 'Guilherme Rex', papel: 'exemplo', ativo: true, created_at: '2026-11-01T12:00:00-03:00', updated_at: '2026-11-01T12:00:00-03:00' },
-  { id: 'p-tamires', nome: 'Tamires Hübner', papel: 'exemplo', ativo: true, created_at: '2026-11-01T12:00:00-03:00', updated_at: '2026-11-01T12:00:00-03:00' },
-  { id: 'p-everaldo', nome: 'Everaldo Oliveira', papel: 'exemplo', ativo: true, created_at: '2026-11-01T12:00:00-03:00', updated_at: '2026-11-01T12:00:00-03:00' },
+  { id: 'g-compras', nome: 'Compras', papel: 'grupo', usos: ['solicitante', 'executor'], padrao: false, ativo: true, created_at: QUANDO, updated_at: QUANDO },
+  { id: 'g-pcp', nome: 'PCP', papel: 'grupo', usos: ['solicitante', 'executor'], padrao: false, ativo: true, created_at: QUANDO, updated_at: QUANDO },
+  { id: 'g-qualidade', nome: 'Qualidade', papel: 'grupo', usos: ['solicitante', 'executor'], padrao: false, ativo: true, created_at: QUANDO, updated_at: QUANDO },
+  { id: 'p-everaldo', nome: 'Everaldo Oliveira', papel: 'Comercial', usos: null, padrao: false, ativo: true, created_at: QUANDO, updated_at: QUANDO },
+  { id: 'p-diego', nome: 'Diego Konrad', papel: 'Direção', usos: null, padrao: true, ativo: true, created_at: QUANDO, updated_at: QUANDO },
+  { id: 'p-tamires', nome: 'Tamires Hübner', papel: 'Qualidade', usos: null, padrao: false, ativo: true, created_at: QUANDO, updated_at: QUANDO },
+  { id: 'p-guilherme', nome: 'Guilherme Rex', papel: 'T.I.', usos: null, padrao: false, ativo: true, created_at: QUANDO, updated_at: QUANDO },
 ];
 
 function itemBase(parcial) {

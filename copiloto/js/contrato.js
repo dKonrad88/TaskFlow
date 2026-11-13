@@ -87,6 +87,73 @@ export function rotuloArea(tipo) {
   }[areaDo(tipo)] || 'Indefinido';
 }
 
+export function semAcento(texto) {
+  return String(texto ?? '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+}
+
+export function ehGrupo(pessoa) {
+  return pessoa?.papel === 'grupo';
+}
+
+/** usos nulo (ou ausente) vale para todos os campos. */
+export function usoLiberado(pessoa, uso) {
+  if (!pessoa || pessoa.ativo === false) return false;
+  if (pessoa.usos == null) return true;
+  return Array.isArray(pessoa.usos) && pessoa.usos.includes(uso);
+}
+
+export function idPadrao(lista) {
+  const pessoa = (lista || []).find((p) => p.padrao && p.ativo !== false && !ehGrupo(p));
+  return pessoa ? pessoa.id : null;
+}
+
+const USO_DO_CAMPO = {
+  solicitante_id: 'solicitante',
+  executor_id: 'executor',
+  em_copia_id: 'em_copia',
+  participantes_ids: 'participantes',
+};
+
+function porNome(a, b) {
+  return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+}
+
+/**
+ * Solicitante e executor: Ninguém, grupos, pessoas por setor.
+ * Em cópia e participantes: só pessoas, sem Ninguém.
+ */
+export function montarListaPessoas(lista, campo, selecionado, busca) {
+  const uso = USO_DO_CAMPO[campo];
+  const q = semAcento(busca).trim();
+  const casa = (texto) => !q || semAcento(texto).includes(q);
+  const comNinguem = campo === 'solicitante_id' || campo === 'executor_id';
+  const soPessoas = campo === 'em_copia_id' || campo === 'participantes_ids';
+  const base = (lista || []).filter((p) => usoLiberado(p, uso));
+  const grupos = soPessoas ? [] : base.filter(ehGrupo).filter((p) => casa(p.nome)).sort(porNome);
+  const gente = base.filter((p) => !ehGrupo(p)).filter((p) => casa(p.nome) || casa(p.papel));
+  const porSetor = new Map();
+  for (const pessoa of gente) {
+    const setor = pessoa.papel || 'Sem setor';
+    if (!porSetor.has(setor)) porSetor.set(setor, []);
+    porSetor.get(setor).push(pessoa);
+  }
+  const setores = [...porSetor.keys()].sort((a, b) => a.localeCompare(b, 'pt-BR')).map((setor) => ({
+    setor,
+    pessoas: porSetor.get(setor).sort(porNome),
+  }));
+  const escolhidos = Array.isArray(selecionado) ? selecionado : null;
+  const selId = escolhidos ? '' : (selecionado || '');
+  return {
+    ninguem: comNinguem && (!q || casa('ninguém')),
+    ninguemSel: comNinguem && !escolhidos && !selId,
+    grupos: grupos.map((p) => ({ ...p, sel: escolhidos ? escolhidos.includes(p.id) : p.id === selId })),
+    setores: setores.map((bloco) => ({
+      setor: bloco.setor,
+      pessoas: bloco.pessoas.map((p) => ({ ...p, sel: escolhidos ? escolhidos.includes(p.id) : p.id === selId })),
+    })),
+  };
+}
+
 export function rotuloStatus(status) {
   if (status === 'para o BOSS') return 'para o BOSS';
   if (status === 'aguardando você') return 'Aguardando você';

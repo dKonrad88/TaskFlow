@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  STATUS, TIPOS, fData, filtrar, payloadCanonico, soCsmt, termosCsmt, tituloFila, chaveProibida,
+  STATUS, TIPOS, fData, filtrar, montarListaPessoas, payloadCanonico, soCsmt, termosCsmt, tituloFila, chaveProibida,
 } from './contrato.js';
-import { criarAdaptadorMock, estadoExemplo } from './adaptador-mock.js';
+import { PESSOAS_EXEMPLO, criarAdaptadorMock, estadoExemplo } from './adaptador-mock.js';
 
 function disco() {
   let json = null;
@@ -84,6 +84,30 @@ test('para o BOSS entra na fila e precisa de tipo para aprovar', async () => {
   assert.equal(item.tipo, 'klain-tarefa');
   assert.equal(item.payload.titulo.includes('casamento'), false);
   assert.equal(item.payload.titulo.includes('CSMT'), true);
+});
+
+test('dropdown de tarefa separa grupo, setor e em cópia', () => {
+  const sol = montarListaPessoas(PESSOAS_EXEMPLO, 'solicitante_id', 'p-diego', '');
+  assert.equal(sol.ninguem, true);
+  assert.equal(sol.ninguemSel, false);
+  assert.deepEqual(sol.grupos.map((g) => g.nome), ['Compras', 'PCP', 'Qualidade']);
+  assert.equal(sol.setores.find((s) => s.setor === 'Direção').pessoas[0].sel, true);
+  assert.equal(sol.setores.some((s) => s.pessoas.some((p) => p.papel === 'grupo')), false);
+
+  const copia = montarListaPessoas(PESSOAS_EXEMPLO, 'em_copia_id', 'p-tamires', '');
+  assert.equal(copia.ninguem, false);
+  assert.equal(copia.grupos.length, 0);
+  assert.equal(copia.setores.find((s) => s.setor === 'Qualidade').pessoas[0].sel, true);
+
+  const busca = montarListaPessoas(PESSOAS_EXEMPLO, 'executor_id', 'p-guilherme', 'hub');
+  assert.equal(busca.ninguem, false);
+  assert.equal(busca.grupos.length, 0);
+  assert.equal(busca.setores.length, 1);
+  assert.equal(busca.setores[0].pessoas[0].nome, 'Tamires Hübner');
+
+  const porSetor = montarListaPessoas(PESSOAS_EXEMPLO, 'executor_id', '', 'direcao');
+  assert.equal(porSetor.setores[0].setor, 'Direção');
+  assert.equal(porSetor.setores[0].pessoas[0].nome, 'Diego Konrad');
 });
 
 test('chave anon e service_role são recusadas', () => {

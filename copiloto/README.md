@@ -60,7 +60,7 @@ Para voltar aos exemplos: `localStorage.setItem('copiloto_adaptador', 'mock')` e
 | Tabela | Uso |
 |---|---|
 | `copiloto_itens` | Fila. Colunas: `id`, `origem`, `tipo`, `transcricao`, `payload`, `status`, `decidido_em`, `ref_tabela`, `ref_id`, `teste`, `created_at`. |
-| `hub_pessoas` | Dropdown de pessoas ativas: `id`, `nome`, `papel`, `ativo`, `created_at`, `updated_at`. |
+| `hub_pessoas` | Dropdown: `id`, `nome`, `papel`, `usos` (text[]), `padrao`, `ativo`, `created_at`, `updated_at`. |
 | `apto_compras_itens` | Lista, inclusive `quantidade` (text) e `valor_estimado` (numeric). |
 | `apto_compras_propostas` | Proposta ligada por `copiloto_item_id`. A decisão não grava aqui direto. |
 | `listas` | Acha a lista do apartamento para incluir um item. |
@@ -76,6 +76,8 @@ Payload por tipo:
 `csmt` é `{ aplicado, termos }`. A tela mostra a sigla, não os termos.
 
 As pessoas do card (solicitante, executor, em cópia, participantes) **não entram no payload**. Vão à parte, no corpo da decisão, porque `hub_pessoas` alimenta o dropdown e o contrato do payload não tem esses campos.
+
+No cadastro, grupo tem `papel = 'grupo'` e `usos = {solicitante, executor}`. Pessoa tem `papel` igual ao setor e `usos` nulo, o que vale para todos os campos (no banco a coluna também pode vir com a lista completa). Solicitante e executor mostram "— Ninguém —", depois os grupos e as pessoas por setor, com busca e uma escolha. O padrão (`padrao`) é o Diego Konrad. Em cópia mostra só pessoas, sem grupo e sem "Ninguém", também com busca.
 
 ### Decisão: a primeira vale
 
