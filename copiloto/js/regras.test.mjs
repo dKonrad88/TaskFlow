@@ -5,6 +5,10 @@ import {
 } from './contrato.js';
 import { PESSOAS_EXEMPLO, criarAdaptadorMock, estadoExemplo } from './adaptador-mock.js';
 import { exigeAprovacao } from './prefs.js';
+import { montarEntrada } from '../supabase/copiloto-entrada/classificar.mjs';
+
+const AGORA = new Date('2026-11-13T15:00:00-03:00');
+const entrada = (texto) => montarEntrada(texto, AGORA);
 
 function disco() {
   let json = null;
@@ -146,4 +150,65 @@ test('chave anon e service_role são recusadas', () => {
   assert.equal(chaveProibida(jwt('service_role')), 'service_role');
   assert.equal(chaveProibida('sb_secret_abc'), 'service_role');
   assert.equal(chaveProibida('sb_publishable_exemplo'), null);
+});
+
+test('frase de compra vira item da lista', () => {
+  const sala = entrada('comprar lâmpadas para a sala');
+  assert.equal(sala.tipo, 'compras-item');
+  assert.equal(sala.status, 'aguardando você');
+  assert.equal(sala.payload.nome, 'lâmpadas');
+  assert.equal(sala.payload.quantidade, null);
+  assert.equal(sala.payload.ambiente, null);
+  assert.equal(sala.payload.comodo_incerto, true);
+
+  const leite = entrada('preciso de 2 litros de leite na cozinha');
+  assert.equal(leite.tipo, 'compras-item');
+  assert.equal(leite.payload.nome, 'leite');
+  assert.equal(leite.payload.quantidade, '2 litros');
+  assert.equal(leite.payload.ambiente, 'Cozinha');
+  assert.equal(leite.payload.comodo_incerto, false);
+
+  assert.equal(entrada('falta papel higiênico no lavabo').payload.ambiente, 'Lavabo');
+  assert.equal(entrada('acabou o café').payload.nome, 'café');
+  assert.equal(entrada('adicionar na lista detergente').payload.nome, 'detergente');
+  assert.equal(entrada('preciso de duas lâmpadas').payload.quantidade, '2');
+  assert.equal(entrada('preciso de duas lâmpadas').payload.nome, 'lâmpadas');
+});
+
+test('tarefa, compromisso e gasto em português', () => {
+  const tarefa = entrada('criar uma tarefa para revisar o relatório amanhã');
+  assert.equal(tarefa.tipo, 'klain-tarefa');
+  assert.equal(tarefa.payload.titulo, 'revisar o relatório amanhã');
+  assert.equal(tarefa.payload.vencimento, '2026-11-14');
+
+  const lembra = entrada('me lembra de ligar para o Guilherme');
+  assert.equal(lembra.tipo, 'klain-tarefa');
+  assert.equal(lembra.payload.titulo, 'ligar para o Guilherme');
+
+  const reuniao = entrada('reunião com o João amanhã às 15');
+  assert.equal(reuniao.tipo, 'klain-compromisso');
+  assert.equal(reuniao.payload.data_hora, '2026-11-14T15:00:00');
+
+  const consulta = entrada('marcar consulta na sexta');
+  assert.equal(consulta.tipo, 'klain-compromisso');
+  assert.equal(consulta.payload.data_hora, '2026-11-20');
+  assert.equal(consulta.payload.local, '');
+
+  const gasto = entrada('gastei 40 reais no mercado hoje');
+  assert.equal(gasto.tipo, 'apto-gasto');
+  assert.equal(gasto.payload.valor, 40);
+  assert.equal(gasto.payload.data, '2026-11-13');
+  assert.equal(entrada('paguei o boleto de 120 reais').payload.valor, 120);
+  assert.equal(entrada('comprei pão por 8 reais').tipo, 'apto-gasto');
+
+  const csmt = entrada('criar uma tarefa do casamento com a noiva');
+  assert.equal(csmt.tipo, 'klain-tarefa');
+  assert.equal(/casamento|noiva/i.test(csmt.payload.titulo), false);
+  assert.equal(csmt.payload.csmt.aplicado, true);
+
+  assert.equal(entrada('oi tudo bem').tipo, 'indefinido');
+  assert.equal(entrada('oi tudo bem').status, 'para o BOSS');
+  const misturado = entrada('tarefa de comprar leite');
+  assert.equal(misturado.tipo, 'indefinido');
+  assert.deepEqual(misturado.payload.candidatos, ['klain-tarefa', 'compras-item']);
 });

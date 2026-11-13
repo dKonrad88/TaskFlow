@@ -1,32 +1,20 @@
 /**
- * O adaptador publicado é o mock.
- * Para ligar o Supabase no aparelho, sem commitar chave, o README explica o localStorage.
- * O PWA não chama copiloto-entrada: isso é do Atalho.
+ * O PWA entra no projeto Pessoal com a mesma chave publicável do Hub
+ * (e-mail e senha). A chave de serviço e a COPILOTO_ENTRADA_KEY não ficam aqui.
+ * O mock só abre com ?demo=1.
  */
-export const CONFIG = {
-  adaptador: 'mock',
+export const PROJETO = {
+  url: 'https://jlouesrrmqeauzlgvrpw.supabase.co',
+  key: 'sb_publishable_ulG1woVG1p1Seax63GGYPQ_PG6-8l-G',
 };
 
 export const FUNCAO_DECIDIR = 'copiloto-decidir';
+export const FUNCAO_ENTRADA = 'copiloto-entrada';
 
-export function adaptadorAtivo() {
+export function modoDemo() {
   try {
-    const local = localStorage.getItem('copiloto_adaptador');
-    if (local === 'supabase' || local === 'mock') return local;
+    return new URLSearchParams(location.search).get('demo') === '1';
   } catch {
-    /* armazenamento bloqueado */
-  }
-  return CONFIG.adaptador;
-}
-
-export function lerCredenciais() {
-  try {
-    const cru = localStorage.getItem('copiloto_supabase');
-    if (!cru) return null;
-    const o = JSON.parse(cru);
-    if (!o || !o.url || !o.key) return null;
-    return { url: String(o.url).replace(/\/$/, ''), key: String(o.key).trim() };
-  } catch {
-    return null;
+    return false;
   }
 }
