@@ -1,4 +1,5 @@
 * { box-sizing: border-box; }
+html { --safe-bottom: env(safe-area-inset-bottom, 0px); }
 html, body { margin: 0; min-height: 100%; background: var(--fundo); color: var(--texto); }
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -35,8 +36,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
   align-items: center;
   gap: 8px;
   min-height: 48px;
-  padding: 4px 12px 8px;
+  padding: calc(4px + env(safe-area-inset-top)) 12px 8px;
 }
+.olho + .nav { padding-top: 4px; }
 .nav h1 {
   flex: 1;
   margin: 0;
@@ -208,7 +210,7 @@ main.com-abas { padding-bottom: 150px; }
   position: fixed;
   z-index: 17;
   left: calc(var(--ax, 0.5) * 100vw);
-  top: calc(var(--ay, 0.86) * 100vh);
+  top: calc(var(--ay, 0.9) * 100vh);
   transform: translate(-50%, -50%);
 }
 .area-chip {
