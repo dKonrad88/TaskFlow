@@ -2,6 +2,7 @@ import { FUNCAO_DECIDIR } from './config.js';
 import {
   COMODOS, DECISOES, TIPOS, emAberto, normalizarPessoas, payloadCanonico, chaveProibida,
 } from './contrato.js';
+import { exigeAprovacao, gravarPrefs, lerPrefs } from './prefs.js';
 
 const COLUNAS_ITEM = 'id, origem, tipo, transcricao, payload, status, decidido_em, ref_tabela, ref_id, teste, created_at';
 const COLUNAS_PESSOA = 'id, nome, papel, usos, padrao, ativo, created_at, updated_at';
@@ -76,6 +77,9 @@ export async function criarAdaptadorSupabase({ url, key }) {
     nome: 'supabase',
     exemplo: false,
     comodos: COMODOS,
+    prefs() { return lerPrefs(); },
+    definirPrefs(parcial) { return gravarPrefs(parcial); },
+    exigeAprovacao(tipo) { return exigeAprovacao(tipo, lerPrefs()); },
 
     async sessao() {
       const { data } = await sb.auth.getSession();

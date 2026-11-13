@@ -4,6 +4,7 @@ import {
   STATUS, TIPOS, fData, filtrar, montarListaPessoas, normalizarPessoas, payloadCanonico, soCsmt, termosCsmt, tituloFila, chaveProibida,
 } from './contrato.js';
 import { PESSOAS_EXEMPLO, criarAdaptadorMock, estadoExemplo } from './adaptador-mock.js';
+import { exigeAprovacao } from './prefs.js';
 
 function disco() {
   let json = null;
@@ -125,6 +126,15 @@ test('em cópia é array e solicitante/executor são um só', () => {
   assert.deepEqual(varios.em_copia, ['a', 'b']);
   assert.equal(varios.solicitante, null);
   assert.equal(varios.executor, null);
+});
+
+test('aprovação obrigatória em gasto e Hub, opcional na lista', () => {
+  assert.equal(exigeAprovacao('klain-tarefa', { aprovar: false }), true);
+  assert.equal(exigeAprovacao('klain-compromisso', { aprovar: false }), true);
+  assert.equal(exigeAprovacao('apto-gasto', { aprovar: false }), true);
+  assert.equal(exigeAprovacao('indefinido', { aprovar: false }), true);
+  assert.equal(exigeAprovacao('compras-item', { aprovar: false }), false);
+  assert.equal(exigeAprovacao('compras-item', { aprovar: true }), true);
 });
 
 test('chave anon e service_role são recusadas', () => {

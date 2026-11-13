@@ -1,6 +1,7 @@
 import {
   COMODOS, DECISOES, TIPOS, emAberto, normalizarPessoas, payloadCanonico, soCsmt,
 } from './contrato.js';
+import { exigeAprovacao, gravarPrefs, lerPrefs } from './prefs.js';
 
 const CHAVE = 'copiloto_mock_v3';
 
@@ -338,24 +339,46 @@ export function criarAdaptadorMock(persistencia) {
       return { ok: true, comprado: item.comprado };
     },
 
+    prefs() { return lerPrefs(); },
+    definirPrefs(parcial) { return gravarPrefs(parcial); },
+    exigeAprovacao(tipo) { return exigeAprovacao(tipo, lerPrefs()); },
+
     /** Simula a chegada de um item. Não chama a rede: o Atalho é quem posta. */
     async simularChegada(transcricao) {
       const estado = ler();
+      const prefs = lerPrefs();
       const texto = (transcricao || 'Lembrete de voz (exemplo)').trim();
+      const area = prefs.area;
+      let tipo = 'indefinido';
+      let payload = payloadCanonico('indefinido', {
+        motivo: 'Exemplo local. No iPhone, quem envia é o Atalho.',
+        candidatos: [],
+      });
+      if (area === 'hub') {
+        tipo = 'klain-tarefa';
+        payload = payloadCanonico('klain-tarefa', { titulo: texto, descricao: texto, vencimento: null });
+      } else if (area === 'apto') {
+        tipo = 'apto-gasto';
+        payload = payloadCanonico('apto-gasto', { titulo: texto, valor: null, data: null, ambiente: null, comodo_incerto: true });
+      } else if (area === 'compras') {
+        tipo = 'compras-item';
+        payload = payloadCanonico('compras-item', { nome: texto, ambiente: null, quantidade: null, valor_estimado: null, comodo_incerto: true });
+      }
+      const espera = exigeAprovacao(tipo, prefs);
       const id = `voz-${Date.now()}`;
-      estado.itens.push(itemBase({
+      const item = itemBase({
         id,
-        tipo: 'indefinido',
+        tipo,
         transcricao: texto,
-        status: 'para o BOSS',
+        status: espera ? (tipo === 'indefinido' ? 'para o BOSS' : 'aguardando você') : 'aprovado',
+        decidido_em: espera ? null : new Date().toISOString(),
         created_at: new Date().toISOString(),
-        payload: payloadCanonico('indefinido', {
-          motivo: 'Exemplo local. No iPhone, quem envia é o Atalho.',
-          candidatos: [],
-        }),
-      }));
+        payload,
+      });
+      estado.itens.push(item);
+      if (!espera && tipo === 'compras-item') porNaLista(estado, item);
       gravar(estado);
-      return { ok: true, id };
+      return { ok: true, id, status: item.status };
     },
 
     async restaurar() {
