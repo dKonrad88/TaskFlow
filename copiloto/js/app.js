@@ -8,17 +8,6 @@ import {
 const TEMAS = ['claro', 'escuro', 'cafe'];
 const TEMA_BS = { claro: 'light', escuro: 'dark', cafe: 'cafe' };
 const TEMA_NOME = { claro: 'Claro', escuro: 'Escuro', cafe: 'Café' };
-const AREAS = [
-  ['todas', 'Todas'],
-  ['hub', 'Hub Klain'],
-  ['apto', 'Apto'],
-  ['casamento', 'Casamento'],
-  ['cartao', 'Cartão'],
-  ['compras', 'Compras'],
-  ['indefinido', 'Indefinido'],
-];
-const STATUS_FILTRO = ['aguardando você', 'para o BOSS', 'aprovado', 'recusado', 'criado', 'erro'];
-
 let dados = null;
 let modo = 'mock';
 let erroBoot = '';
@@ -27,7 +16,17 @@ let pessoas = [];
 let pessoasExemplo = false;
 let compras = [];
 let erroFila = '';
-let filtros = { area: 'todas', status: '', periodo: '' };
+let filtrosAba = { aprovar: { status: '', periodo: '' }, historico: { status: '', periodo: '' } };
+let filtroAberto = false;
+let areaAberta = false;
+let editando = false;
+let layoutAtivo = 'gravar';
+let arrastou = false;
+const LAYOUT_KEY = 'copiloto_layout';
+const LAYOUT_PADRAO = { gravar: { x: 0.5, y: 0.74, s: 1 }, area: { x: 0.5, y: 0.86, s: 1 } };
+let layout = carregarLayout();
+const ponteiros = new Map();
+let gesto = null;
 let toast = '';
 let toastTimer = 0;
 let segundos = 0;
@@ -57,10 +56,10 @@ const ICO = {
   lua: svg('<path d="M21 14.5A8.5 8.5 0 1 1 9.5 3a7 7 0 0 0 11.5 11.5z"/>'),
   cafe: svg('<path d="M5 8h10v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8z"/><path d="M15 9h1.5a2.5 2.5 0 0 1 0 5H15"/><path d="M8 3v2M12 3v2"/>'),
   lista: svg('<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>'),
+  engrenagem: svg('<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="8" cy="7" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="9" cy="17" r="2"/>'),
+  mic: svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
+  check: svg('<path d="M5 12.5 10 17.5 19 7"/>'),
 };
-
-const ICONE_TEMA = { claro: 'sol', escuro: 'lua', cafe: 'cafe' };
-const PROXIMO_TEMA = { claro: 'Escuro', escuro: 'Café', cafe: 'Claro' };
 
 function aplicarTema(nome, gravar) {
   const t = TEMAS.includes(nome) ? nome : 'escuro';
@@ -73,12 +72,6 @@ function aplicarTema(nome, gravar) {
   }
 }
 
-function cicloTema() {
-  const i = TEMAS.indexOf(temaAtual());
-  aplicarTema(TEMAS[(i + 1) % TEMAS.length], true);
-  desenhar();
-}
-
 function mostrar(msg) {
   toast = msg;
   clearTimeout(toastTimer);
@@ -89,12 +82,12 @@ function mostrar(msg) {
 function rota() {
   const p = (location.hash.replace(/^#/, '') || '/').split('?')[0].split('/').filter(Boolean);
   const [a, b, c, d] = p;
-  if (!a) return { tela: 'principal' };
-  if (['filtros', 'historico', 'gravando', 'enviado', 'lista'].includes(a)) return { tela: a };
+  if (!a || a === 'gravar') return { tela: 'gravar' };
+  if (['aprovar', 'historico', 'lista', 'ajustes', 'gravando', 'enviado'].includes(a)) return { tela: a };
   if (a === 'fase2' && (b === 'casamento' || b === 'cartao')) return { tela: 'fase2', qual: b };
   if (a === 'item' && b) return { tela: 'item', id: b, menu: c === 'menu' ? d : '', data: c === 'data' ? d : '' };
   if (a === 'editar' && b) return { tela: 'editar', id: b };
-  return { tela: 'principal' };
+  return { tela: 'gravar' };
 }
 
 function ir(hash) {
@@ -171,9 +164,13 @@ function classeStatus(status) {
   return 'st-erro';
 }
 
-function filaVisivel() {
-  if (filtros.area === 'casamento' || filtros.area === 'cartao') return [];
-  return ordenarFila(filtrar(itens, filtros));
+function aguardando() {
+  return itens.filter((item) => emAberto(item.status));
+}
+
+function itensDaAba(aba) {
+  const base = aba === 'aprovar' ? aguardando() : itens.filter((item) => !emAberto(item.status));
+  return ordenarFila(filtrar(base, filtrosAba[aba] || {}));
 }
 
 function metaQuando(item, cheio) {
@@ -196,16 +193,6 @@ function olho() {
   return `<p class="olho">${esc(nome + extra)}</p>`;
 }
 
-function botaoTema() {
-  const atual = temaAtual();
-  const nome = TEMA_NOME[atual];
-  return `<button class="icone" data-acao="tema" aria-label="Tema ${esc(nome)}. Toque para ${esc(PROXIMO_TEMA[atual])}.">${ICO[ICONE_TEMA[atual]]}</button>`;
-}
-
-function botaoLista() {
-  return `<button class="icone" data-acao="ir" data-hash="#/lista" aria-label="Lista de compras">${ICO.lista}</button>`;
-}
-
 function cabeca(titulo, opts = {}) {
   const centro = opts.centro ? ' centro' : '';
   let esq = '<span class="lado esq"></span>';
@@ -213,15 +200,7 @@ function cabeca(titulo, opts = {}) {
   if (opts.cancelar) esq = `<button class="link" data-acao="cancelar-edicao">Cancelar</button>`;
   let dir = '<span class="lado"></span>';
   if (opts.concluir) dir = `<button class="link forte" data-acao="concluir-edicao" data-id="${esc(opts.id)}">Concluir</button>`;
-  if (opts.ferramentas || opts.tema) {
-    const ponto = (filtros.area !== 'todas' || filtros.status || filtros.periodo) ? '<i class="ponto"></i>' : '';
-    dir = `<span class="lado">
-      ${opts.ferramentas ? `<button class="icone" data-acao="ir" data-hash="#/filtros" aria-label="Filtros">${ICO.filtro}${ponto}</button>` : ''}
-      ${opts.relogio ? `<button class="icone" data-acao="ir" data-hash="#/historico" aria-label="Histórico">${ICO.relogio}</button>` : ''}
-      ${opts.lista ? botaoLista() : ''}
-      ${opts.tema ? botaoTema() : ''}
-    </span>`;
-  }
+  else if (opts.ajustes) dir = `<span class="lado"><button class="icone" data-acao="ir" data-hash="#/ajustes" aria-label="Ajustes">${ICO.engrenagem}</button></span>`;
   const h = opts.centro
     ? `<div class="nav${centro}">${esq}<h1>${esc(titulo)}</h1>${dir}</div>`
     : `<div class="nav"><h1>${esc(titulo)}</h1>${dir}</div>`;
@@ -412,42 +391,122 @@ function dataHtml(item, campo) {
     </div>`;
 }
 
-function telaPrincipal() {
-  const lista = filaVisivel().map((item) => linhaFila(item, false)).join('') || '<p class="vazio">Nada nesta combinação.</p>';
-  const fase = filtros.area === 'casamento' || filtros.area === 'cartao'
-    ? `<button class="cartao" data-acao="ir" data-hash="#/fase2/${filtros.area === 'casamento' ? 'casamento' : 'cartao'}"><span><span class="t">Layout da Fase 2</span><span class="m">Não entra na fila</span></span></button>`
-    : '';
-  return `${cabeca('Copiloto', { ferramentas: true, relogio: true, lista: true, tema: true })}
-    <main>
-      <div class="gravar-wrap"><button class="gravar" data-acao="gravar">Gravar</button></div>
+const ROTULO_AREA = { auto: 'Automático', hub: 'Hub Klain', apto: 'Apto', compras: 'Compras' };
+
+function prefsAtuais() {
+  return dados?.prefs ? dados.prefs() : { aprovar: true, area: 'auto' };
+}
+
+function carregarLayout() {
+  try {
+    const o = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null');
+    return {
+      gravar: { ...LAYOUT_PADRAO.gravar, ...(o && o.gravar) },
+      area: { ...LAYOUT_PADRAO.area, ...(o && o.area) },
+    };
+  } catch {
+    return { gravar: { ...LAYOUT_PADRAO.gravar }, area: { ...LAYOUT_PADRAO.area } };
+  }
+}
+
+function limitarPeca(id) {
+  const vw = window.innerWidth || 390;
+  const vh = window.innerHeight || 844;
+  const barra = 96;
+  const p = layout[id];
+  const minS = id === 'gravar' ? 0.72 : 0.85;
+  const maxS = id === 'gravar' ? 1.55 : 1.35;
+  p.s = Math.min(maxS, Math.max(minS, Number(p.s) || 1));
+  const w = (id === 'gravar' ? 132 : 180) * p.s;
+  const h = (id === 'gravar' ? 132 : 48) * p.s;
+  const m = 8;
+  p.x = Math.min(1 - (w / 2 + m) / vw, Math.max((w / 2 + m) / vw, p.x));
+  p.y = Math.min((vh - barra - h / 2 - m) / vh, Math.max((h / 2 + m) / vh, p.y));
+}
+
+function aplicarLayout() {
+  limitarPeca('gravar');
+  limitarPeca('area');
+  const r = document.documentElement;
+  r.style.setProperty('--lx', String(layout.gravar.x));
+  r.style.setProperty('--ly', String(layout.gravar.y));
+  r.style.setProperty('--ls', String(layout.gravar.s));
+  r.style.setProperty('--ax', String(layout.area.x));
+  r.style.setProperty('--ay', String(layout.area.y));
+  r.style.setProperty('--as', String(layout.area.s));
+}
+
+function persistirLayout() {
+  try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch { /* segue na memória */ }
+}
+
+function atualizarBarraEdicao() {
+  const bar = document.querySelector('.barra-edicao');
+  if (!bar) return;
+  const min = layoutAtivo === 'gravar' ? 0.72 : 0.85;
+  const max = layoutAtivo === 'gravar' ? 1.55 : 1.35;
+  const nome = layoutAtivo === 'gravar' ? 'botão Gravar' : 'chip de área';
+  const label = bar.querySelector('label');
+  const input = bar.querySelector('input[type=range]');
+  if (label) label.firstChild.textContent = `Tamanho do ${nome}`;
+  if (input) {
+    input.min = String(min);
+    input.max = String(max);
+    input.value = String(layout[layoutAtivo].s);
+    input.setAttribute('aria-label', `Tamanho do ${nome}`);
+  }
+}
+
+function barraEdicao() {
+  if (!editando) return '';
+  const min = layoutAtivo === 'gravar' ? 0.72 : 0.85;
+  const max = layoutAtivo === 'gravar' ? 1.55 : 1.35;
+  const nome = layoutAtivo === 'gravar' ? 'botão Gravar' : 'chip de área';
+  return `<div class="barra-edicao vidro">
+    <p>Arraste para mover. Pinça ou o controle muda o tamanho.</p>
+    <label>Tamanho do ${nome}<input type="range" min="${min}" max="${max}" step="0.01" value="${layout[layoutAtivo].s}" data-acao="tamanho-layout" aria-label="Tamanho do ${nome}"></label>
+    <div class="acoes-edicao">
+      <button type="button" class="botao" data-acao="restaurar-layout">Restaurar padrão</button>
+      <button type="button" class="botao sim" data-acao="concluir-layout">Concluir</button>
+    </div>
+  </div>`;
+}
+
+function telaGravar() {
+  return `<div class="fundo-gravar" aria-hidden="true"><img src="assets/fundo-familia.webp" alt=""></div>
+    ${cabeca('Gravar', { centro: true, ajustes: true })}
+    ${barraEdicao()}
+    <main class="so-gravar">
+      <button class="gravar" data-acao="gravar" data-layout="gravar" aria-label="Gravar"><span class="mic">${ICO.mic}</span><span class="parada" aria-hidden="true"></span></button>
+    </main>`;
+}
+
+function painelFiltro(aba) {
+  if (!filtroAberto) return '';
+  const f = filtrosAba[aba];
+  const statusOpcoes = aba === 'aprovar' ? ['aguardando você', 'para o BOSS'] : ['aprovado', 'recusado', 'criado', 'erro'];
+  const chip = (grupo, valor, rotulo, on) => `<button class="chip${on ? ' on' : ''}" data-acao="filtro" data-aba="${aba}" data-grupo="${grupo}" data-valor="${esc(valor)}">${esc(rotulo)}</button>`;
+  const status = statusOpcoes.map((s) => chip('status', s, rotuloStatus(s), f.status === s)).join('');
+  const pers = [['hoje', 'Hoje'], ['7', '7 dias'], ['30', '30 dias']].map(([v, r]) => chip('periodo', v, r, f.periodo === v)).join('');
+  return `<div class="painel-filtro vidro">
+    <div class="grupo">Status</div><div class="chips">${status}</div>
+    <div class="grupo">Período</div><div class="chips">${pers}</div>
+  </div>`;
+}
+
+function telaFila(aba, titulo, cheio) {
+  const f = filtrosAba[aba];
+  const ativo = !!(f.status || f.periodo);
+  const lista = itensDaAba(aba).map((item) => linhaFila(item, cheio)).join('') || '<p class="vazio">Nada nesta combinação.</p>';
+  return `${cabeca(titulo, { centro: true, ajustes: true })}
+    <main class="com-abas">
+      <div class="aba-topo">
+        <button class="icone" data-acao="filtro-aba" aria-expanded="${filtroAberto}" aria-label="Filtros desta aba">${ICO.filtro}${ativo ? '<i class="ponto"></i>' : ''}</button>
+      </div>
+      ${painelFiltro(aba)}
       ${erroFila ? `<p class="aviso">${esc(erroFila)}</p>` : ''}
-      <div class="fila">${fase}${lista}</div>
+      <div class="fila">${lista}</div>
     </main>`;
-}
-
-function telaFiltros() {
-  const chip = (grupo, valor, rotulo, on) => `<button class="chip${on ? ' on' : ''}" data-acao="filtro" data-grupo="${grupo}" data-valor="${esc(valor)}">${esc(rotulo)}</button>`;
-  const areas = AREAS.map(([v, r]) => chip('area', v, r, filtros.area === v)).join('');
-  const status = STATUS_FILTRO.map((s) => chip('status', s, rotuloStatus(s), filtros.status === s)).join('');
-  const pers = [['hoje', 'Hoje'], ['7', '7 dias'], ['30', '30 dias']].map(([v, r]) => chip('periodo', v, r, filtros.periodo === v)).join('');
-  const restaurar = modo === 'mock' ? '<button class="botao cheio" data-acao="restaurar">Restaurar exemplos</button>' : '';
-  return `${cabeca('Filtros', { centro: true, voltar: true })}
-    <main>
-      <p class="dica">Abre só quando você toca no ícone. Na tela principal, isso não aparece.</p>
-      <div class="grupo">Área</div><div class="chips">${areas}</div>
-      <div class="grupo">Status</div><div class="chips">${status}</div>
-      <div class="grupo">Período</div><div class="chips">${pers}</div>
-      ${restaurar}
-    </main>`;
-}
-
-function telaHistorico() {
-  const lista = filaVisivel().map((item) => linhaFila(item, true)).join('') || '<p class="vazio">Nada nesta combinação.</p>';
-  const fase = filtros.area === 'casamento' || filtros.area === 'cartao'
-    ? '<p class="aviso">Casamento e cartão são layout da Fase 2. Não há linha desses tipos na fila.</p>'
-    : '';
-  return `${cabeca('Histórico', { centro: true, voltar: true, ferramentas: true })}
-    <main>${fase}<div class="fila">${lista}</div></main>`;
 }
 
 function telaGravando() {
@@ -456,7 +515,7 @@ function telaGravando() {
   const ss = String(seg % 60).padStart(2, '0');
   return `${cabeca('Copiloto', { centro: true })}
     <main><div class="meio">
-      <button class="gravar vivo" data-acao="parar">Parar</button>
+      <button class="gravar vivo" data-acao="parar" aria-label="Parar"><span class="mic">${ICO.mic}</span><span class="parada" aria-hidden="true"></span></button>
       <div class="relogio">${mm}:${ss}</div>
       <h2>Gravando</h2>
       <p>Toque para parar e enviar. A transcrição acontece no iPhone.</p>
@@ -471,7 +530,7 @@ function telaEnviado() {
       <h2>Enviado</h2>
       <p>A proposta deve aparecer na fila em instantes, com o card do tipo, para você conferir.</p>
       <p class="dica">${simulou ? 'No exemplo, a fila ganhou um item local. ' : ''}No iPhone, o Atalho é quem envia.</p>
-      <button class="fantasma" data-acao="ir" data-hash="#/">Ir para a fila</button>
+      <button class="fantasma" data-acao="ir" data-hash="#/aprovar">Ir para aprovar</button>
     </div></main>`;
 }
 
@@ -495,7 +554,7 @@ function telaLista() {
     html += `<input class="add" data-acao="add-compra" data-ambiente="${esc(ambiente)}" placeholder="Adicionar em ${esc(ambiente)}" aria-label="Adicionar em ${esc(ambiente)}" enterkeyhint="done">`;
   }
   if (!grupos.size) html += '<p class="vazio">A lista está vazia.</p>';
-  return `${cabeca('Lista', { centro: true, voltar: true })}<main>${html}</main>`;
+  return `${cabeca('Lista', { centro: true, ajustes: true })}<main class="com-abas">${html}</main>`;
 }
 
 function telaItem(r) {
@@ -571,9 +630,56 @@ function telaFase2(qual) {
     </main>`;
 }
 
+function telaAjustes() {
+  const prefs = prefsAtuais();
+  const conta = modo === 'supabase' && dados?._sessao?.user
+    ? { modo: 'Conectado', login: dados._sessao.user.email || 'Conta autenticada' }
+    : { modo: 'Exemplo', login: 'Sem login — dados de exemplo' };
+  const temas = TEMAS.map((t) => `<button class="chip${temaAtual() === t ? ' on' : ''}" data-acao="definir-tema" data-tema="${t}">${esc(TEMA_NOME[t])}</button>`).join('');
+  return `${cabeca('Ajustes', { centro: true, voltar: true })}
+    <main>
+      <div class="grupo">Tema</div>
+      <div class="chips">${temas}</div>
+      <div class="grupo">Conta</div>
+      <div class="ajuste"><span>Modo</span><b>${esc(conta.modo)}</b></div>
+      <div class="ajuste"><span>Login</span><b>${esc(conta.login)}</b></div>
+      <div class="grupo">Tela de gravar</div>
+      <button type="button" class="botao cheio" data-acao="editar-layout">Editar layout</button>
+      <p class="dica">Move e redimensiona o botão Gravar e o chip de área.</p>
+      <div class="grupo">Aprovação</div>
+      <div class="ajuste interruptor">
+        <span><b>Passar por aprovação</b><small>Ligada, você confirma cada item. Desligada, só o que não é gasto nem item do Hub Klain segue direto — um item da lista, por exemplo. Gastos e itens do Hub Klain sempre passam por você.</small></span>
+        <label class="sw"><input type="checkbox" role="switch" data-acao="aprovar-pref" ${prefs.aprovar ? 'checked' : ''} aria-label="Passar por aprovação"><i></i></label>
+      </div>
+    </main>`;
+}
+
+function chromeAba(tela) {
+  if (!['gravar', 'aprovar', 'historico', 'lista'].includes(tela)) return '';
+  const n = aguardando().length;
+  const aba = (id, icone, rotulo, extra = '') => `<button type="button" role="tab" data-acao="aba" data-aba="${id}" aria-selected="${tela === id}" aria-label="${esc(rotulo)}">${ICONE(icone)}<span>${esc(rotulo)}</span>${extra}</button>`;
+  const badge = n ? `<b class="selo-n">${n > 99 ? '99' : n}</b>` : '';
+  const area = tela === 'gravar' ? chipArea() : '';
+  return `${area}<nav class="abas vidro" role="tablist">
+    ${aba('gravar', ICO.mic, 'Gravar')}
+    ${aba('aprovar', ICO.check, 'Aprovar', badge)}
+    ${aba('historico', ICO.relogio, 'Histórico')}
+    ${aba('lista', ICO.lista, 'Lista')}
+  </nav>`;
+}
+
+function ICONE(html) { return `<i class="aba-ico">${html}</i>`; }
+
+function chipArea() {
+  const prefs = prefsAtuais();
+  const opcoes = [['auto', 'Automático'], ['hub', 'Hub Klain'], ['apto', 'Apto'], ['compras', 'Compras']];
+  const menu = areaAberta ? `<div class="area-menu vidro" role="menu">${opcoes.map(([v, r]) => `<button type="button" role="menuitemradio" aria-checked="${prefs.area === v}" data-acao="definir-area" data-area="${v}">${esc(r)}${prefs.area === v ? '<span>✓</span>' : ''}</button>`).join('')}</div><button class="dim dim-area" data-acao="fechar-area" aria-label="Fechar áreas"></button>` : '';
+  return `<div class="area-wrap">${menu}<button type="button" class="area-chip vidro" data-acao="area-menu" data-layout="area" aria-expanded="${areaAberta}" aria-haspopup="menu">${esc(ROTULO_AREA[prefs.area] || 'Automático')}<span class="car">▲</span></button></div>`;
+}
+
 function telaLogin() {
   return `${olho()}
-    <div class="nav"><h1>Copiloto</h1><span class="lado">${botaoTema()}</span></div>
+    <div class="nav centro"><span class="lado esq"></span><h1>Copiloto</h1><span class="lado"></span></div>
     <main>
       <p class="dica">Entre com a conta do Diego. A leitura e a decisão usam esse login. Sem chave anônima e sem service role.</p>
       ${erroBoot ? `<p class="aviso">${esc(erroBoot)}</p>` : ''}
@@ -589,7 +695,7 @@ function telaLogin() {
 
 function telaErroBoot() {
   return `${olho()}
-    <div class="nav"><h1>Copiloto</h1><span class="lado">${botaoTema()}</span></div>
+    <div class="nav centro"><span class="lado esq"></span><h1>Copiloto</h1><span class="lado"></span></div>
     <main>
       <p class="aviso">${esc(erroBoot)}</p>
       <button class="botao sim cheio" data-acao="voltar-mock">Voltar aos exemplos</button>
@@ -599,27 +705,33 @@ function telaErroBoot() {
 function desenhar() {
   const raiz = document.getElementById('app');
   if (!dados && erroBoot) {
+    raiz.classList.remove('com-foto');
     raiz.innerHTML = telaErroBoot();
     return;
   }
   if (modo === 'supabase' && dados && !dados._sessao) {
+    raiz.classList.remove('com-foto');
     raiz.innerHTML = telaLogin();
     if (toast) raiz.insertAdjacentHTML('beforeend', `<div class="toast" role="status">${esc(toast)}</div>`);
     return;
   }
   const r = rota();
+  raiz.classList.toggle('com-foto', r.tela === 'gravar');
+  raiz.classList.toggle('editando', editando && r.tela === 'gravar');
+  aplicarLayout();
   if (!r.data) folha = null;
   let html = '';
-  if (r.tela === 'principal') html = telaPrincipal();
-  else if (r.tela === 'filtros') html = telaFiltros();
-  else if (r.tela === 'historico') html = telaHistorico();
+  if (r.tela === 'gravar') html = telaGravar();
+  else if (r.tela === 'aprovar') html = telaFila('aprovar', 'Aprovar', false);
+  else if (r.tela === 'historico') html = telaFila('historico', 'Histórico', true);
   else if (r.tela === 'gravando') html = telaGravando();
   else if (r.tela === 'enviado') html = telaEnviado();
   else if (r.tela === 'lista') html = telaLista();
+  else if (r.tela === 'ajustes') html = telaAjustes();
   else if (r.tela === 'item') html = telaItem(r);
   else if (r.tela === 'editar') html = telaEditar(r);
   else if (r.tela === 'fase2') html = telaFase2(r.qual);
-  raiz.innerHTML = html;
+  raiz.innerHTML = html + chromeAba(r.tela);
   if (toast) raiz.insertAdjacentHTML('beforeend', `<div class="toast" role="status">${esc(toast)}</div>`);
 }
 
@@ -752,12 +864,28 @@ async function diaOk(id, campo) {
 }
 
 async function noClique(e) {
+  if (arrastou) { arrastou = false; return; }
   const el = e.target.closest('[data-acao]');
   if (!el) return;
   const acao = el.dataset.acao;
+  if (editando && (acao === 'gravar' || acao === 'area-menu')) return;
   if (acao === 'ir') { ir(el.dataset.hash); return; }
   if (acao === 'voltar') { if (history.length > 1) history.back(); else ir('#/'); return; }
-  if (acao === 'tema') { cicloTema(); return; }
+  if (acao === 'aba') { filtroAberto = false; areaAberta = false; ir(el.dataset.aba === 'gravar' ? '#/' : `#/${el.dataset.aba}`); return; }
+  if (acao === 'filtro-aba') { filtroAberto = !filtroAberto; desenhar(); return; }
+  if (acao === 'area-menu') { areaAberta = !areaAberta; desenhar(); return; }
+  if (acao === 'editar-layout') { editando = true; areaAberta = false; ir('#/'); return; }
+  if (acao === 'concluir-layout') { editando = false; persistirLayout(); desenhar(); return; }
+  if (acao === 'restaurar-layout') {
+    layout = { gravar: { ...LAYOUT_PADRAO.gravar }, area: { ...LAYOUT_PADRAO.area } };
+    persistirLayout();
+    aplicarLayout();
+    desenhar();
+    return;
+  }
+  if (acao === 'fechar-area') { areaAberta = false; desenhar(); return; }
+  if (acao === 'definir-area') { dados?.definirPrefs?.({ area: el.dataset.area }); areaAberta = false; desenhar(); return; }
+  if (acao === 'definir-tema') { aplicarTema(el.dataset.tema, true); desenhar(); return; }
   if (acao === 'abrir') { ir(`#/item/${el.dataset.id}`); return; }
   if (acao === 'gravar') { await comecarGravar(); return; }
   if (acao === 'parar') { await pararGravar(); return; }
@@ -767,9 +895,10 @@ async function noClique(e) {
   if (acao === 'filtro') {
     const g = el.dataset.grupo;
     const v = el.dataset.valor;
-    if (g === 'area') filtros.area = filtros.area === v && v !== 'todas' ? 'todas' : v;
-    else if (filtros[g] === v) filtros[g] = '';
-    else filtros[g] = v;
+    const f = filtrosAba[el.dataset.aba];
+    if (!f) return;
+    if (f[g] === v) f[g] = '';
+    else f[g] = v;
     desenhar();
     return;
   }
@@ -831,7 +960,7 @@ async function noClique(e) {
   }
   if (acao === 'cancelar-edicao') { rascunho = null; history.back(); return; }
   if (acao === 'concluir-edicao') { await concluirEdicao(el.dataset.id); return; }
-  if (acao === 'restaurar') { await dados.restaurar(); filtros = { area: 'todas', status: '', periodo: '' }; await depoisDeMudar(); mostrar('Exemplos restaurados.'); return; }
+  if (acao === 'restaurar') { await dados.restaurar(); filtrosAba = { aprovar: { status: '', periodo: '' }, historico: { status: '', periodo: '' } }; await depoisDeMudar(); mostrar('Exemplos restaurados.'); return; }
   if (acao === 'voltar-mock') {
     try {
       localStorage.setItem('copiloto_adaptador', 'mock');
@@ -842,6 +971,13 @@ async function noClique(e) {
 }
 
 function noInput(e) {
+  if (e.target?.dataset?.acao === 'tamanho-layout') {
+    layout[layoutAtivo].s = Number(e.target.value);
+    aplicarLayout();
+    e.target.value = String(layout[layoutAtivo].s);
+    persistirLayout();
+    return;
+  }
   const busca = e.target.closest('[data-acao="busca-menu"]');
   if (busca) {
     buscaMenu = busca.value;
@@ -857,6 +993,10 @@ function noInput(e) {
 }
 
 async function noChange(e) {
+  if (e.target?.dataset?.acao === 'aprovar-pref') {
+    dados?.definirPrefs?.({ aprovar: e.target.checked });
+    return;
+  }
   const el = e.target.closest('[data-acao="valor"], [data-acao="texto"]');
   if (!el) return;
   await salvarCampo(el.dataset.id, el.dataset.chave, el.value);
@@ -900,6 +1040,67 @@ async function noKey(e) {
   }
 }
 
+function distPonteiros() {
+  const pts = [...ponteiros.values()];
+  return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+}
+
+function noPonteiroDown(e) {
+  if (!editando || rota().tela !== 'gravar') return;
+  if (e.target.closest('.area-menu, .barra-edicao')) return;
+  const alvo = e.target.closest('[data-layout]');
+  if (!alvo) return;
+  ponteiros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  const id = alvo.dataset.layout;
+  layoutAtivo = id;
+  if (ponteiros.size === 1) {
+    gesto = { id, x: e.clientX, y: e.clientY, ox: layout[id].x, oy: layout[id].y, s: layout[id].s, pinça: 0 };
+    arrastou = false;
+  } else if (gesto) {
+    gesto.pinça = distPonteiros();
+    gesto.s = layout[gesto.id].s;
+  }
+  alvo.setPointerCapture?.(e.pointerId);
+  atualizarBarraEdicao();
+  e.preventDefault();
+}
+
+function noPonteiroMove(e) {
+  if (!ponteiros.has(e.pointerId) || !gesto) return;
+  ponteiros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (ponteiros.size >= 2 && gesto.pinça) {
+    layout[gesto.id].s = gesto.s * (distPonteiros() / gesto.pinça);
+    arrastou = true;
+  } else {
+    const dx = e.clientX - gesto.x;
+    const dy = e.clientY - gesto.y;
+    if (Math.hypot(dx, dy) > 5) arrastou = true;
+    layout[gesto.id].x = gesto.ox + dx / window.innerWidth;
+    layout[gesto.id].y = gesto.oy + dy / window.innerHeight;
+  }
+  aplicarLayout();
+  const slider = document.querySelector('[data-acao="tamanho-layout"]');
+  if (slider) slider.value = String(layout[layoutAtivo].s);
+  e.preventDefault();
+}
+
+function noPonteiroUp(e) {
+  if (!ponteiros.has(e.pointerId)) return;
+  ponteiros.delete(e.pointerId);
+  if (ponteiros.size === 0) {
+    if (gesto && arrastou) persistirLayout();
+    gesto = null;
+  } else if (gesto) {
+    const p = [...ponteiros.values()][0];
+    gesto.x = p.x;
+    gesto.y = p.y;
+    gesto.ox = layout[gesto.id].x;
+    gesto.oy = layout[gesto.id].y;
+    gesto.pinça = 0;
+    gesto.s = layout[gesto.id].s;
+  }
+}
+
 function registrarSw() {
   if (!('serviceWorker' in navigator)) return;
   const escopo = '/TaskFlow/copiloto/';
@@ -921,6 +1122,11 @@ async function iniciar() {
   raiz.addEventListener('change', (e) => { noChange(e).catch((err) => mostrar(err.message)); });
   raiz.addEventListener('submit', (e) => { noSubmit(e).catch((err) => mostrar(err.message)); });
   document.addEventListener('keydown', (e) => { noKey(e).catch((err) => mostrar(err.message)); });
+  document.addEventListener('pointerdown', noPonteiroDown, { passive: false });
+  document.addEventListener('pointermove', noPonteiroMove, { passive: false });
+  document.addEventListener('pointerup', noPonteiroUp);
+  document.addEventListener('pointercancel', noPonteiroUp);
+  window.addEventListener('resize', aplicarLayout);
   window.addEventListener('hashchange', desenhar);
   if (pose() && rota().tela === 'gravando') segundos = 7;
   desenhar();

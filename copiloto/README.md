@@ -13,7 +13,7 @@ O app abre com o **adaptador mock** (valores de exemplo). O adaptador Supabase e
 - Um card por tipo da fila: `klain-tarefa`, `klain-compromisso`, `apto-gasto`, `compras-item`, `indefinido`.
 - Valor, data e cômodo editam no próprio card. O resto passa pelo lápis.
 - Lista de compras agrupada por cômodo, com inclusão no estilo do app Lembretes.
-- Temas Claro, Escuro e Café, com a paleta do Hub (`hub-assets/hub-tema-base.css` e `hub-tema.js`). Um ícone no topo direito mostra o tema atual e, a cada toque, segue Claro → Escuro → Café. A escolha fica em `localStorage`. Ao lado, o ícone da lista abre as compras.
+- A navegação é a barra inferior do Gravador do Hub: Gravar, Aprovar, Histórico e Lista. Gravar fica só com o botão. O chip de área (Automático, Hub Klain, Apto, Compras) fica logo acima da barra. Tema, conta e "Passar por aprovação" ficam em Ajustes.
 - Datas em `dd/mm/yyyy`.
 
 Itens do Hub Klain (`klain-tarefa` e `klain-compromisso`) nunca mostram palavra de casamento. A frase é reescrita para a sigla **CSMT**. O termo original pode ficar dentro de `payload.csmt.termos`, e a tela não o escreve.
