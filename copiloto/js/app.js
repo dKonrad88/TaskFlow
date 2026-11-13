@@ -1,5 +1,6 @@
 import { abrirDados } from './dados.js';
 import { modoDemo } from './config.js';
+import { AVISO_VERSAO, ativarNaHora, mostrarAvisoDeVersao, recarregarPorVersao } from './versao.js';
 import {
   COMODOS, emAberto, fData, fDataHora, fHora, fValor, filtrar, idPadrao, montarListaPessoas,
   normalizarPessoas, ordenarFila, pValor, payloadCanonico, rotuloArea, rotuloStatus, rotuloTipo, soCsmt, tituloFila,
@@ -39,6 +40,11 @@ let textoFala = '';
 let textoParcial = '';
 let pedindoTexto = false;
 let ultimoEnvio = null;
+let versaoNova = false;
+let recarregarAoAssumir = false;
+let recarregarDepois = false;
+let registroSw = null;
+let primeiraInstalacao = false;
 let folha = null;
 let rascunho = null;
 let buscaMenu = '';
@@ -439,6 +445,7 @@ function aplicarLayout() {
   r.style.setProperty('--ax', String(layout.area.x));
   r.style.setProperty('--ay', String(layout.area.y));
   r.style.setProperty('--as', String(layout.area.s));
+  posicionarAviso();
 }
 
 function persistirLayout() {
@@ -691,6 +698,49 @@ function chromeAba(tela) {
   </nav>`;
 }
 
+function avisoForcado() {
+  try { return new URLSearchParams(location.search).get('versao') === '1'; } catch { return false; }
+}
+
+function avisoVersaoHTML() {
+  if (!mostrarAvisoDeVersao(versaoNova || avisoForcado(), aoVivo)) return '';
+  return `<button type="button" class="aviso-versao vidro" data-acao="atualizar-versao">${esc(AVISO_VERSAO)}</button>`;
+}
+
+function posicionarAviso() {
+  const aviso = document.querySelector('.aviso-versao');
+  if (!aviso) return;
+  const nav = document.querySelector('.abas');
+  const chip = document.querySelector('.area-chip');
+  let topo = window.innerHeight - 78;
+  if (nav) topo = nav.getBoundingClientRect().top;
+  if (chip) topo = Math.min(topo, chip.getBoundingClientRect().top);
+  aviso.style.bottom = `${Math.round(window.innerHeight - topo + 8)}px`;
+}
+
+function pintarAvisoVersao() {
+  const raiz = document.getElementById('app');
+  if (!raiz) return;
+  const html = avisoVersaoHTML();
+  const ja = raiz.querySelector('.aviso-versao');
+  if (!html) {
+    ja?.remove();
+    return;
+  }
+  if (ja) {
+    posicionarAviso();
+    return;
+  }
+  raiz.insertAdjacentHTML('beforeend', html);
+  posicionarAviso();
+}
+
+function marcarVersaoNova() {
+  versaoNova = true;
+  if (aoVivo) return;
+  pintarAvisoVersao();
+}
+
 function ICONE(html) { return `<i class="aba-ico">${html}</i>`; }
 
 function chipArea() {
@@ -728,12 +778,14 @@ function desenhar() {
   const raiz = document.getElementById('app');
   if (!dados && erroBoot) {
     raiz.classList.remove('com-foto');
-    raiz.innerHTML = telaErroBoot();
+    raiz.innerHTML = telaErroBoot() + avisoVersaoHTML();
+    posicionarAviso();
     return;
   }
   if (modo === 'supabase' && dados && !dados._sessao) {
     raiz.classList.remove('com-foto');
-    raiz.innerHTML = telaLogin();
+    raiz.innerHTML = telaLogin() + avisoVersaoHTML();
+    posicionarAviso();
     if (toast) raiz.insertAdjacentHTML('beforeend', `<div class="toast" role="status">${esc(toast)}</div>`);
     return;
   }
@@ -753,7 +805,8 @@ function desenhar() {
   else if (r.tela === 'item') html = telaItem(r);
   else if (r.tela === 'editar') html = telaEditar(r);
   else if (r.tela === 'fase2') html = telaFase2(r.qual);
-  raiz.innerHTML = html + chromeAba(r.tela);
+  raiz.innerHTML = html + chromeAba(r.tela) + avisoVersaoHTML();
+  posicionarAviso();
   if (toast) raiz.insertAdjacentHTML('beforeend', `<div class="toast" role="status">${esc(toast)}</div>`);
 }
 
@@ -821,7 +874,9 @@ function pararMic() {
   }
   clearInterval(timer);
   timer = null;
+  const estava = aoVivo;
   aoVivo = false;
+  if (estava && recarregarDepois && recarregarPorVersao(false)) location.reload();
 }
 
 function pintarFala() {
@@ -993,6 +1048,7 @@ async function noClique(e) {
   if (acao === 'definir-area') { dados?.definirPrefs?.({ area: el.dataset.area }); areaAberta = false; desenhar(); return; }
   if (acao === 'definir-tema') { aplicarTema(el.dataset.tema, true); desenhar(); return; }
   if (acao === 'abrir') { ir(`#/item/${el.dataset.id}`); return; }
+  if (acao === 'atualizar-versao') { await aplicarVersao(); return; }
   if (acao === 'gravar') { await comecarGravar(); return; }
   if (acao === 'parar') { await pararGravar(); return; }
   if (acao === 'enviar-texto') {
@@ -1216,11 +1272,70 @@ function noPonteiroUp(e) {
   }
 }
 
+const ARQUIVOS_VERSAO = ['app.css', 'temas.css', 'js/app.js', 'js/dados.js', 'js/config.js', 'js/prefs.js', 'js/versao.js', 'js/contrato.js', 'js/adaptador-mock.js', 'js/adaptador-supabase.js'];
+
+function assumirSePrimeira() {
+  if (!ativarNaHora(!navigator.serviceWorker.controller)) return;
+  const w = registroSw?.waiting || registroSw?.installing;
+  if (w) w.postMessage('SKIP_WAITING');
+}
+
+async function checarVersao() {
+  if (!registroSw) return;
+  try { await registroSw.update(); } catch { /* offline */ }
+  await Promise.all(ARQUIVOS_VERSAO.map((p) => fetch(new URL(p, location.href), { cache: 'no-cache' }).catch(() => {})));
+  if (registroSw.waiting && navigator.serviceWorker.controller) marcarVersaoNova();
+}
+
+async function aplicarVersao() {
+  if (aoVivo) return;
+  const w = registroSw?.waiting || registroSw?.installing;
+  if (w) {
+    recarregarAoAssumir = true;
+    w.postMessage('SKIP_WAITING');
+    return;
+  }
+  location.reload();
+}
+
 function registrarSw() {
   if (!('serviceWorker' in navigator)) return;
   const escopo = '/TaskFlow/copiloto/';
   if (!location.pathname.startsWith(escopo)) return;
-  navigator.serviceWorker.register(`${escopo}sw.js`, { scope: escopo, updateViaCache: 'none' }).catch(() => {});
+  primeiraInstalacao = !navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (primeiraInstalacao) {
+      primeiraInstalacao = false;
+      return;
+    }
+    if (!recarregarAoAssumir) return;
+    if (!recarregarPorVersao(aoVivo)) {
+      recarregarDepois = true;
+      return;
+    }
+    location.reload();
+  });
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    if (e.data?.tipo === 'versao') marcarVersaoNova();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checarVersao();
+  });
+  navigator.serviceWorker.register(`${escopo}sw.js`, { scope: escopo, updateViaCache: 'none' }).then((reg) => {
+    registroSw = reg;
+    reg.addEventListener('updatefound', () => {
+      const novo = reg.installing;
+      if (!novo) return;
+      novo.addEventListener('statechange', () => {
+        if (novo.state !== 'installed') return;
+        if (ativarNaHora(!navigator.serviceWorker.controller)) assumirSePrimeira();
+        else marcarVersaoNova();
+      });
+    });
+    if (reg.waiting && navigator.serviceWorker.controller) marcarVersaoNova();
+    else assumirSePrimeira();
+    checarVersao();
+  }).catch(() => {});
 }
 
 async function iniciar() {

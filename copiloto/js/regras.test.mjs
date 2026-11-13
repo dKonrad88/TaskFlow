@@ -6,6 +6,8 @@ import {
 import { PESSOAS_EXEMPLO, criarAdaptadorMock, estadoExemplo } from './adaptador-mock.js';
 import { exigeAprovacao } from './prefs.js';
 import { montarEntrada } from '../supabase/copiloto-entrada/classificar.mjs';
+import { readFileSync } from 'node:fs';
+import { ativarNaHora, mostrarAvisoDeVersao, recarregarPorVersao, redePrimeiro } from './versao.js';
 
 const AGORA = new Date('2026-11-13T15:00:00-03:00');
 const entrada = (texto) => montarEntrada(texto, AGORA);
@@ -205,7 +207,27 @@ test('tarefa, compromisso e gasto em português', () => {
   assert.equal(csmt.tipo, 'klain-tarefa');
   assert.equal(/casamento|noiva/i.test(csmt.payload.titulo), false);
   assert.equal(csmt.payload.csmt.aplicado, true);
+});
 
+test('aviso de versão espera a gravação acabar', () => {
+  assert.equal(mostrarAvisoDeVersao(true, false), true);
+  assert.equal(mostrarAvisoDeVersao(true, true), false);
+  assert.equal(mostrarAvisoDeVersao(false, false), false);
+  assert.equal(recarregarPorVersao(true), false);
+  assert.equal(recarregarPorVersao(false), true);
+  assert.equal(ativarNaHora(false), true);
+  assert.equal(ativarNaHora(true), false);
+  assert.equal(redePrimeiro('/TaskFlow/copiloto/js/app.js'), true);
+  assert.equal(redePrimeiro('/TaskFlow/copiloto/app.css'), true);
+  assert.equal(redePrimeiro('/TaskFlow/copiloto/assets/fundo-familia.webp'), false);
+  const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+  const install = sw.slice(sw.indexOf("addEventListener('install'"), sw.indexOf("addEventListener('message'"));
+  assert.equal(install.includes('skipWaiting'), false);
+  assert.match(sw, /SKIP_WAITING/);
+  assert.match(sw, /copiloto-v9/);
+});
+
+test('frase solta continua indefinida', () => {
   assert.equal(entrada('oi tudo bem').tipo, 'indefinido');
   assert.equal(entrada('oi tudo bem').status, 'para o BOSS');
   const misturado = entrada('tarefa de comprar leite');
