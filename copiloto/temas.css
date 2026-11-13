@@ -1,0 +1,59 @@
+/* Temas do Copiloto = Essenciais Claro/Escuro + Café do seletor de tema do Hub (hub-tema.js).
+ * Valores copiados literalmente do cascade efetivo de hub-assets/hub-tema-base.css
+ * (lidos com Chromium aplicando data-bs-theme=light|dark|cafe). "Lx" = linha do arquivo;
+ * "L3 herdado" = valor padrão do Bootstrap em :root (linha 3), que o tema não sobrescreve.
+ * Bolinhas do seletor (hub-tema.js L59): fundo = --bs-body-bg, bolinha 1 = --bs-primary, bolinha 2 = --bs-secondary-color. */
+
+[data-tema=claro]{
+  --secundario: #6c757d; /* 2ª bolinha · origem: captura do seletor do Diego, 13/11/2026 */
+  --fundo: #f4f3ef; /* --bs-body-bg · L31 */
+  --superficie: #e9ecef; /* --bs-secondary-bg · L3 */
+  --superficie-2: #f8f9fa; /* --bs-tertiary-bg · L3 */
+  --borda: #dee2e6; /* --bs-border-color · L3 */
+  --texto: #212529; /* --bs-body-color · L3 */
+  --texto-2: #000000d5; /* --bs-secondary-color · L32 */
+  --enfase: #000; /* --bs-emphasis-color · L3 */
+  --acento: #185FA5; /* --bs-primary · L25 */
+  --link: #0c65e9; /* --bs-link-color · L1773 */
+  --sucesso: #0F6E56; /* --bs-success · L29 */
+  --alerta: #ffc107; /* --bs-warning · L3 */
+  --perigo: #c44f4f; /* --bs-danger · L27 */
+  --info: #0dcaf0; /* --bs-info · L3 */
+  color-scheme: light;
+}
+
+[data-tema=escuro]{
+  --secundario: #81888f; /* 2ª bolinha · origem: captura do seletor do Diego, 13/11/2026 */
+  --fundo: #1c1c24; /* --bs-body-bg · L40 */
+  --superficie: #262632; /* --bs-secondary-bg · L42 */
+  --superficie-2: #30303c; /* --bs-tertiary-bg · L43 */
+  --borda: #3a3a48; /* --bs-border-color · L44 */
+  --texto: #dee2e6; /* --bs-body-color · L4 */
+  --texto-2: rgba(222, 226, 230, 0.75); /* --bs-secondary-color · L4 */
+  --enfase: #fff; /* --bs-emphasis-color · L4 */
+  --acento: #4a8ddc; /* --bs-primary · L36 */
+  --link: #6ea8fe; /* --bs-link-color · L4 */
+  --sucesso: #198754; /* --bs-success · L3 herdado */
+  --alerta: #ffc107; /* --bs-warning · L3 herdado */
+  --perigo: #c44f4f; /* --bs-danger · L38 */
+  --info: #0dcaf0; /* --bs-info · L3 herdado */
+  color-scheme: dark;
+}
+
+[data-tema=cafe]{
+  --secundario: #7bb8c4; /* 2ª bolinha · origem: captura do seletor do Diego, 13/11/2026 */
+  --fundo: #2a1a12; /* --bs-body-bg · L197 */
+  --superficie: #38241a; /* --bs-secondary-bg · L203 */
+  --superficie-2: #402b1f; /* --bs-tertiary-bg · L206 */
+  --borda: #5a3c2b; /* --bs-border-color · L246 */
+  --texto: #efe3d6; /* --bs-body-color · L195 */
+  --texto-2: #cbb6a2; /* --bs-secondary-color · L201 */
+  --enfase: #fff; /* --bs-emphasis-color · L199 */
+  --acento: #c98a4b; /* --bs-primary · L208 */
+  --link: #e0a869; /* --bs-link-color · L239 */
+  --sucesso: #7a9b4e; /* --bs-success · L212 */
+  --alerta: #ffc107; /* --bs-warning · L3 herdado */
+  --perigo: #c65f45; /* --bs-danger · L217 */
+  --info: #0dcaf0; /* --bs-info · L3 herdado */
+  color-scheme: dark;
+}
