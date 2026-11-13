@@ -11,6 +11,8 @@
    pedido no branco da tabela.
    Dados no localStorage (chave taskflow_terceiros), sempre via safeSetItem.
    Entrada: renderProducao() chama TR.render(main) quando producaoView==='terceiros'.
+   Grupo Embalagens (13/11/2026): Etiqueta / Filme / Caixa antes de Observações, com o estoque
+   atual da aba Contagem (hub-contagem1, CTG.emb); vermelho no mínimo ou abaixo, "—" se não usa.
    O ícone de palete abre MP.verPalete (modal de Marcas, somente leitura). */
 (function(){
   'use strict';
@@ -221,9 +223,12 @@
     prev:function(it){ return it.prev||''; },
     entrega:function(it,p){ return (p&&p.entrega)||''; },
     emissao:function(it,p){ return (p&&p.emissao)||''; },
-    obs:function(it){ return it.obs||''; }
+    obs:function(it){ return it.obs||''; },
+    etq:function(it){ return window.CTG?CTG.sortTerceiros('etq',it.codigo):-1; },
+    fil:function(it){ return window.CTG?CTG.sortTerceiros('fil',it.codigo):-1; },
+    cxa:function(it){ return window.CTG?CTG.sortTerceiros('cxa',it.codigo):-1; }
   };
-  var SORT_NUM={pedido:1,estoque:1,op:1,status:1};
+  var SORT_NUM={pedido:1,estoque:1,op:1,status:1,etq:1,fil:1,cxa:1};
   var SORT_DATE={entrega:1,emissao:1};
   var SORT_PED={entrega:1,emissao:1};
 
@@ -283,18 +288,22 @@
     return S.unid==='pacotes'?'PACOTES':(S.unid==='paletes'?'PALETES':'CAIXAS');
   }
 
-  var COL_DEFAULT=['codigo','status','produto','pedido','estoque','op','nop','prev','entrega','emissao','obs'];
+  var COL_DEFAULT=['codigo','status','produto','pedido','estoque','op','nop','prev','entrega','emissao','etq','fil','cxa','obs'];
   var COL_DEF={
     codigo:{share:54, lab:'Código', group:'Item'},
-    status:{share:124, lab:'Status OP', group:'Item'},
-    produto:{share:174, lab:'Produto', group:'Item'},
+    status:{share:112, lab:'Status OP', group:'Item'},
+    produto:{share:196, lab:'Produto', group:'Item'},
     pedido:{share:64, lab:'Pedido', group:'Quantidades', num:1},
     estoque:{share:64, lab:'Estoque', group:'Quantidades', num:1},
     op:{share:58, lab:'OP', group:'Quantidades', num:1},
     nop:{share:56, lab:'Nº OP', group:'Produção'},
-    prev:{share:110, lab:'Prev. Produção', group:'Produção'},
-    entrega:{share:84, lab:'Entrega', group:'Datas'},
-    emissao:{share:120, lab:'Emissão', group:'Datas'},
+    prev:{share:92, lab:'Prev. Produção', group:'Produção'},
+    entrega:{share:80, lab:'Entrega', group:'Datas'},
+    emissao:{share:100, lab:'Emissão', group:'Datas'},
+    // Embalagens (13/11/2026): estoque atual da aba Contagem (CTG.emb) — mesma fonte
+    etq:{share:60, lab:'Etiqueta', group:'Embalagens', num:1},
+    fil:{share:48, lab:'Filme', group:'Embalagens', num:1},
+    cxa:{share:48, lab:'Caixa', group:'Embalagens', num:1},
     obs:{share:92, lab:'Observações', group:'Observações'}
   };
   var COL_SHARE_TOT=0;
@@ -313,6 +322,8 @@
         if(COL_DEF[k] && !seen[k]){ seen[k]=1; out.push(k); }
       });
     }
+    // ordem salva antes das Embalagens: encaixa as colunas novas antes de Observações
+    ['etq','fil','cxa'].forEach(function(k){ if(out.length && !seen[k]){ var i=out.indexOf('obs'); if(i<0) out.push(k); else out.splice(i,0,k); seen[k]=1; } });
     if(out.length!==COL_DEFAULT.length) return COL_DEFAULT.slice();
     return out;
   }
@@ -380,7 +391,9 @@
     if(k==='nop') return '<td class="tr-nop'+g+'">'+esc(it.nop||'')+'</td>';
     if(k==='prev') return '<td class="tr-prev'+g+'">'+esc(it.prev||'')+'</td>';
     if(k==='entrega') return '<td class="tr-ent'+g+'">'+esc((p&&p.entrega)||'')+'</td>';
-    if(k==='emissao') return '<td class="tr-emi'+g+'">'+esc((p&&p.emissao)||'')+'</td>';
+    if(k==='emissao'){ var em=String((p&&p.emissao)||''), sp=em.indexOf(' '); // hora some em telas estreitas (CSS)
+      return '<td class="tr-emi'+g+'"'+(em?' title="'+esc(em)+'"':'')+'>'+(sp>0?esc(em.slice(0,sp))+'<span class="h">'+esc(em.slice(sp+1))+'</span>':esc(em))+'</td>'; }
+    if(k==='etq'||k==='fil'||k==='cxa') return window.CTG?CTG.cellTerceiros(k, it.codigo, g):'<td class="tr-emb'+g+'"></td>';
     if(k==='obs'){
       var raw=it.obs||'';
       var obs=raw?'<span class="tr-obs-t">'+esc(raw)+'</span>':'';
@@ -426,7 +439,7 @@
     var cliTxt=clis.map(fmtCliPart).filter(Boolean).join('; ');
     var title=[(g.m.codigo||'')+' — '+(g.m.nome||''), cliTxt?('('+cliTxt+')'):'', g.m.cidade?('— '+g.m.cidade):''].filter(Boolean).join(' ');
     return '<tr class="tr-gmarca" data-mid="'+esc(g.m.id)+'" data-toggle="m" title="'+esc(title)+'">'
-      +'<td colspan="12"><span class="tr-gbtn"><i class="ti '+(col?'ti-chevron-right':'ti-chevron-down')+' ch"></i>'
+      +'<td colspan="'+(colOrder().length+1)+'"><span class="tr-gbtn"><i class="ti '+(col?'ti-chevron-right':'ti-chevron-down')+' ch"></i>'
       +'<span class="tr-gmain"><span class="tr-gline"><span class="tr-gtitle">'
       +'<span class="tr-gname">'+esc(g.m.codigo)+' — '+esc(g.m.nome)+'</span>'
       +(cliTxt?'<span class="tr-gcli">('+esc(cliTxt)+')</span>':'')
@@ -439,7 +452,7 @@
     var col=isCol(p.id);
     var hide=isCol(mid)?' is-hidden':'';
     return '<tr class="tr-gped'+hide+'" data-mid="'+esc(mid)+'" data-pid="'+esc(p.id)+'" data-toggle="p" title="Recolher ou expandir pedido">'
-      +'<td colspan="12"><span class="tr-gbtn"><i class="ti '+(col?'ti-chevron-right':'ti-chevron-down')+' ch"></i>'
+      +'<td colspan="'+(colOrder().length+1)+'"><span class="tr-gbtn"><i class="ti '+(col?'ti-chevron-right':'ti-chevron-down')+' ch"></i>'
       +'<span class="tr-ped-l1"><span class="plab">Pedido</span><span class="pn">'+esc(p.numero)+'</span>'
       +'<span class="tr-cnt">'+nIt+'</span></span></span></td></tr>';
   }
@@ -451,7 +464,7 @@
   function cardsHTML(){
     var v=visao();
     if(!v.grupos.length){
-      return '<div class="tr-cards"><article class="tr-card">'+cardTable('<tr><td colspan="12"><div class="tr-empty"><i class="ti ti-search-off"></i>Nenhum pedido encontrado.</div></td></tr>')+'</article></div>';
+      return '<div class="tr-cards"><article class="tr-card">'+cardTable('<tr><td colspan="'+(colOrder().length+1)+'"><div class="tr-empty"><i class="ti ti-search-off"></i>Nenhum pedido encontrado.</div></td></tr>')+'</article></div>';
     }
     var h='<div class="tr-cards">';
     v.grupos.forEach(function(g){

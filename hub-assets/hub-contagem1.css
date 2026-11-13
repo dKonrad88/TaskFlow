@@ -1,0 +1,77 @@
+/* ══ COMERCIAL › MARCAS PRÓPRIAS › CONTAGEM (hub-contagem1) + células Embalagens do Terceiros ══ */
+#ctg-root{--ctg-red:#A32D2D;--ctg-amb-bg:#F7E7B9;--ctg-amb-fg:#5C3D00;--ctg-g:#E7EBEB}
+body.dark #ctg-root{--ctg-amb-bg:color-mix(in srgb,#E8A317 30%,var(--card));--ctg-amb-fg:#FFE3A3;--ctg-g:color-mix(in srgb,#E7EBEB 16%,var(--card))}
+.ctg-ind{display:flex;gap:10px;margin:2px 0 12px;flex-wrap:wrap}
+.ctg-card{flex:0 0 auto;min-width:168px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 14px;cursor:pointer;display:flex;flex-direction:column;gap:2px;text-align:left;font-family:inherit;color:var(--text)}
+.ctg-card:hover{border-color:var(--text2)}
+.ctg-card .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.45px;color:var(--text2)}
+.ctg-card .v{font-size:22px;font-weight:700;color:var(--text);line-height:1.15;font-variant-numeric:tabular-nums}
+.ctg-card .h{font-size:11.5px;color:var(--text3)}
+.ctg-card.on{border-color:var(--mp-acc,#2b6de0);box-shadow:inset 0 -3px 0 var(--mp-acc,#2b6de0)}
+.ctg-card.red .v{color:var(--ctg-red)}
+.ctg-card.amb .v{color:#9A6700}
+body.dark .ctg-card.red .v{color:#ff8a8a}
+body.dark .ctg-card.amb .v{color:#f2c35b}
+.ctg-t{width:100%;border-collapse:collapse;font-size:13px}
+.ctg-t td.pr{white-space:nowrap}
+.ctg-t td.n,.ctg-t th.n{text-align:right;font-variant-numeric:tabular-nums}
+.ctg-t th .sub{display:block;font-size:9.5px;font-weight:600;letter-spacing:.2px;text-transform:none;color:var(--text3);margin-top:1px}
+.ctg-t th.at,.ctg-t td.at{border-left:1px solid var(--border);border-right:1px solid var(--border)}
+.ctg-t td.at{font-weight:700;font-size:13.5px;color:var(--text)}
+.ctg-t tbody tr td.red{background:var(--ctg-red,#A32D2D)!important;color:#fff!important;font-weight:700}
+.ctg-t tbody tr td.amb{background:var(--ctg-amb-bg)!important;color:var(--ctg-amb-fg)!important}
+.ctg-t .dt{font-size:10.5px;font-weight:500;opacity:.8;margin-left:5px}
+.ctg-t tr.ctg-g td{background:var(--ctg-g)!important;padding:7px 10px;font-size:13px;border-bottom:1px solid var(--border)}
+.ctg-t tr.ctg-g .gn{font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--text)}
+.ctg-t tr.ctg-g .gc{color:var(--text2);margin-left:6px}
+.ctg-t tr.ctg-g .cnt{display:inline-block;margin-left:8px;font-size:11px;color:var(--text2);border:1px solid var(--border);border-radius:9px;padding:0 6px;background:var(--card)}
+.ctg-glk{float:right;background:none;border:0;padding:0;font:inherit;font-size:12px;color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.ctg-glk:hover{color:var(--mp-acc,#2b6de0)}
+.ctg-t .un{color:var(--text3);font-size:11.5px;margin-left:4px}
+.ctg-t td.ob{color:var(--text2);max-width:260px;overflow:hidden;text-overflow:ellipsis}
+.ctg-t td.fl,.ctg-t th.fl{border-left:1px solid var(--border)}
+.ctg-t td.ctg-vz{text-align:center;color:var(--text3);padding:26px 10px}
+.ctg-obsic{display:none;margin-left:6px;font-size:13px;color:var(--text3);cursor:help;vertical-align:-1px}
+.ctg-leg{display:flex;gap:16px;align-items:center;font-size:11.5px;color:var(--text2);margin:8px 2px 0;flex-wrap:wrap}
+.ctg-leg b{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-2px;margin-right:5px}
+.ctg-leg b.lr{background:var(--ctg-red)}
+.ctg-leg b.la{background:var(--ctg-amb-bg);border:1px solid color-mix(in srgb,#9A6700 35%,transparent)}
+/* Telas < 1600px: 3 semanas e Observações vira dica */
+@media (max-width:1599px){
+  .ctg-t .w4,.ctg-t .w5,.ctg-t .ob{display:none}
+  .ctg-obsic{display:inline-block}
+  .mp-t.ctg-t td,.mp-t.ctg-t th{padding-left:6px!important;padding-right:6px!important}
+}
+/* funil */
+.ctg-pop .mp-fgrp{margin-bottom:10px}
+.ctg-chk{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0;color:var(--text);cursor:pointer;font-weight:400;text-transform:none;letter-spacing:0}
+.ctg-chk .un{color:var(--text3);font-size:11px}
+.ctg-pct{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text);font-weight:400;text-transform:none;letter-spacing:0}
+.ctg-pct input{width:64px;height:28px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);padding:2px 6px;text-align:right;font:inherit}
+/* formulário */
+.ctg-mod-l{max-width:880px}
+.ctg-fl{display:grid;grid-template-columns:1fr 200px;gap:12px;margin-bottom:12px}
+.ctg-fl .mp-f>span{display:block;font-size:11px;font-weight:700;color:var(--text2);margin-bottom:4px}
+.ctg-ftw{max-height:52vh}
+.ctg-ft td{padding:5px 10px}
+.ctg-qin{width:110px!important;height:30px!important;text-align:right;border-radius:6px!important}
+.ctg-qin.err{border-color:var(--danger)}
+.ctg-fhint{font-size:11.5px;color:var(--text3);margin:8px 2px 4px}
+.ctg-esub{font-size:12.5px;color:var(--text2);margin-bottom:12px}
+/* ── Terceiros: grupo Embalagens (dados da Contagem) ── */
+table.tr-tbl td.tr-emb{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;padding-right:10px}
+table.tr-tbl td.tr-emb.vz{color:var(--text3);opacity:.55;text-align:center}
+html[data-bs-theme] #task-container table.tr-tbl tbody tr.tr-item td.tr-emb.red,table.tr-tbl tbody tr.tr-item td.tr-emb.red{background:#A32D2D!important;color:#fff!important;font-weight:700}
+.tr-emi .h{margin-left:4px}
+@media (max-width:1599px){ .tr-emi .h{display:none} }
+@media (max-width:1599px){
+  table.tr-tbl thead tr.tr-hc th.so:not(.on) i.ti-selector{display:none}
+  table.tr-tbl td.tr-emb{padding-right:6px}
+  html[data-bs-theme] #task-container table.tr-tbl thead tr.tr-hc th[data-col=etq],html[data-bs-theme] #task-container table.tr-tbl thead tr.tr-hc th[data-col=fil],html[data-bs-theme] #task-container table.tr-tbl thead tr.tr-hc th[data-col=cxa]{padding:0 3px;letter-spacing:0;font-size:9.5px!important}
+}
+/* celular: 3 abas não cabem — a fileira de abas rola sozinha (sem estourar a página) */
+@media (max-width:700px){
+  #mp-root .mp-tabs{overflow-x:auto;max-width:100%;scrollbar-width:none}
+  #mp-root .mp-tab{flex:0 0 auto;padding:8px 10px}
+  .ctg-card{min-width:0;flex:1 1 140px}
+}

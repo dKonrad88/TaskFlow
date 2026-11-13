@@ -22,6 +22,8 @@
    · Dados no localStorage (chave taskflow_marcas_proprias), sempre via safeSetItem.
    · ⚠️ DADOS FICTÍCIOS: clientes, códigos e SKUs de exemplo foram inventados para o protótipo.
      As listas de opções (estados, frequências, bobina, notas, situação, empacotamento) são as do SisPro.
+   · Aba Contagem (13/11/2026): vive em hub-contagem1.js (window.CTG); aqui só o botão da aba,
+     o setTab('contagem') e a troca de ações/ferramentas/corpo quando S.tab==='contagem'.
    · Entrada: renderComercial() chama MP.render(main) quando comercialView==='marcas'.
    · Regra P0 da base: funções de render NÃO gravam; só as ações (salvar/excluir/seed) gravam. */
 (function(){
@@ -150,14 +152,16 @@
     main=main||document.getElementById('task-container'); if(!main) return;
     load();
     var nC=DB.clientes.length, nS=DB.skus.length;
-    var acao='<span class="mp-head-acts" style="display:flex;gap:8px">'
+    var CT=(S.tab==='contagem' && window.CTG)?window.CTG:null; // aba Contagem (hub-contagem1)
+    var acao=CT?CT.acaoHTML():'<span class="mp-head-acts" style="display:flex;gap:8px">'
       +'<button class="mp-btn gho" onclick="MP.novoSku()"><i class="ti ti-plus"></i><span>Novo SKU</span></button>'
       +'<button class="mp-btn pri" onclick="MP.novoCliente()"><i class="ti ti-plus"></i><span>Novo cliente</span></button></span>';
     var tabs='<div class="mp-tabs-row"><div class="mp-tabs">'
       +'<button class="mp-tab'+(S.tab==='clientes'?' on':'')+'" data-tab="clientes" onclick="MP.setTab(\'clientes\')"><i class="ti ti-building"></i>Clientes<span class="n">'+nC+'</span></button>'
-      +'<button class="mp-tab'+(S.tab==='skus'?' on':'')+'" data-tab="skus" onclick="MP.setTab(\'skus\')"><i class="ti ti-barcode"></i>SKUs<span class="n">'+nS+'</span></button></div>'
-      +'<div class="mp-tabs-tools">'+toolsHTML()+'</div></div>';
-    var corpo='<div class="mp-wrap" id="mp-root">'+tabs+'<div id="mp-body">'+(S.tab==='skus'?skusHTML():clientesHTML())+'</div></div>';
+      +'<button class="mp-tab'+(S.tab==='skus'?' on':'')+'" data-tab="skus" onclick="MP.setTab(\'skus\')"><i class="ti ti-barcode"></i>SKUs<span class="n">'+nS+'</span></button>'
+      +(window.CTG?window.CTG.tabHTML(!!CT):'')+'</div>'
+      +'<div class="mp-tabs-tools">'+(CT?CT.toolsHTML():toolsHTML())+'</div></div>';
+    var corpo='<div class="mp-wrap" id="mp-root">'+tabs+'<div id="mp-body">'+(CT?CT.bodyHTML():S.tab==='skus'?skusHTML():clientesHTML())+'</div></div>';
     var titulo='<span style="display:inline-flex;align-items:center;gap:8px"><i class="ti ti-tags" style="color:var(--blue-mid);font-size:22px"></i>Marcas Próprias</span>';
     var sub='Clientes e SKUs de marca própria — Klain';
     main.innerHTML=(typeof _cpTela==='function') ? _cpTela(titulo, sub, corpo, null, acao)
@@ -842,7 +846,7 @@
   // ── API pública (onclicks) ──
   window.MP={
     render:render,
-    setTab:function(t){ S.tab=(t==='skus')?'skus':'clientes'; S.fOpen=false; S.skFOpen=false; rerender(); },
+    setTab:function(t){ S.tab=(t==='skus')?'skus':(t==='contagem'&&window.CTG)?'contagem':'clientes'; S.fOpen=false; S.skFOpen=false; rerender(); },
     setPTab:function(t){ S.pTab=(t==='embalagem'||t==='skus'||t==='negociacao')?t:'dados'; var p=document.getElementById('mp-panel'); if(p) p.innerHTML=painelHTML(); else rerender(); },
     sel:function(id){ S.sel=id; refreshClientes(); },
     abrirCliente:function(id){ S.tab='clientes'; S.sel=id; S.fOpen=false; S.skFOpen=false; if(!filtrados().some(function(x){return x.id===id;})){ S.busca=''; S.f={}; } rerender();
