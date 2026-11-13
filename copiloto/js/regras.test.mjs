@@ -7,7 +7,7 @@ import { PESSOAS_EXEMPLO, criarAdaptadorMock, estadoExemplo } from './adaptador-
 import { exigeAprovacao } from './prefs.js';
 import { montarEntrada } from '../supabase/copiloto-entrada/classificar.mjs';
 import { readFileSync } from 'node:fs';
-import { ativarNaHora, mostrarAvisoDeVersao, recarregarPorVersao, redePrimeiro } from './versao.js';
+import { ativarNaHora, limiteY, mostrarAvisoDeVersao, recarregarPorVersao, redePrimeiro } from './versao.js';
 
 const AGORA = new Date('2026-11-13T15:00:00-03:00');
 const entrada = (texto) => montarEntrada(texto, AGORA);
@@ -224,7 +224,23 @@ test('aviso de versão espera a gravação acabar', () => {
   const install = sw.slice(sw.indexOf("addEventListener('install'"), sw.indexOf("addEventListener('message'"));
   assert.equal(install.includes('skipWaiting'), false);
   assert.match(sw, /SKIP_WAITING/);
-  assert.match(sw, /copiloto-v9/);
+  assert.match(sw, /copiloto-v10/);
+});
+
+test('o chip fica 15px acima da barra, com a área segura', () => {
+  const folga = (vh, safe, altura) => {
+    const y = limiteY(vh, safe, altura);
+    const bottom = y * vh + altura / 2;
+    const menu = vh - 12 - 66 - safe;
+    return Math.round((menu - bottom) * 10) / 10;
+  };
+  assert.equal(folga(844, 0, 48), 15);
+  assert.equal(folga(844, 34, 48), 15);
+  assert.equal(folga(700, 34, 132), 15);
+  const padrao = 0.86;
+  const centro = Math.min(padrao, limiteY(844, 34, 48)) * 844;
+  const menu = 844 - 12 - 66 - 34;
+  assert.ok(menu - (centro + 24) >= 14.9);
 });
 
 test('frase solta continua indefinida', () => {

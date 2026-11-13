@@ -1,6 +1,6 @@
 import { abrirDados } from './dados.js';
 import { modoDemo } from './config.js';
-import { AVISO_VERSAO, ativarNaHora, mostrarAvisoDeVersao, recarregarPorVersao } from './versao.js';
+import { AVISO_VERSAO, ativarNaHora, limiteY, mostrarAvisoDeVersao, recarregarPorVersao } from './versao.js';
 import {
   COMODOS, emAberto, fData, fDataHora, fHora, fValor, filtrar, idPadrao, montarListaPessoas,
   normalizarPessoas, ordenarFila, pValor, payloadCanonico, rotuloArea, rotuloStatus, rotuloTipo, soCsmt, tituloFila,
@@ -24,7 +24,7 @@ let editando = false;
 let layoutAtivo = 'gravar';
 let arrastou = false;
 const LAYOUT_KEY = 'copiloto_layout';
-const LAYOUT_PADRAO = { gravar: { x: 0.5, y: 0.74, s: 1 }, area: { x: 0.5, y: 0.86, s: 1 } };
+const LAYOUT_PADRAO = { gravar: { x: 0.5, y: 0.74, s: 1 }, area: { x: 0.5, y: 0.9, s: 1 } };
 let layout = carregarLayout();
 const ponteiros = new Map();
 let gesto = null;
@@ -52,6 +52,7 @@ let buscaMenu = '';
 const $ = (html) => html;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pose = () => new URLSearchParams(location.search).get('pose') === '1';
+const mostrarOlho = () => modoDemo() || pose();
 const temaAtual = () => document.documentElement.getAttribute('data-tema') || 'escuro';
 
 function svg(caminho) {
@@ -199,6 +200,7 @@ function linhaFila(item, cheio) {
 }
 
 function olho() {
+  if (!mostrarOlho()) return '';
   const nome = TEMA_NOME[temaAtual()];
   const extra = modo === 'mock' ? ' · Valores de exemplo' : '';
   return `<p class="olho">${esc(nome + extra)}</p>`;
@@ -420,10 +422,15 @@ function carregarLayout() {
   }
 }
 
+function safeBottom() {
+  const cru = getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom').trim();
+  const n = parseFloat(cru);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function limitarPeca(id) {
   const vw = window.innerWidth || 390;
   const vh = window.innerHeight || 844;
-  const barra = 96;
   const p = layout[id];
   const minS = id === 'gravar' ? 0.72 : 0.85;
   const maxS = id === 'gravar' ? 1.55 : 1.35;
@@ -432,7 +439,28 @@ function limitarPeca(id) {
   const h = (id === 'gravar' ? 132 : 48) * p.s;
   const m = 8;
   p.x = Math.min(1 - (w / 2 + m) / vw, Math.max((w / 2 + m) / vw, p.x));
-  p.y = Math.min((vh - barra - h / 2 - m) / vh, Math.max((h / 2 + m) / vh, p.y));
+  p.y = Math.min(limiteY(vh, safeBottom(), h), Math.max((h / 2 + m) / vh, p.y));
+}
+
+function corrigirFolga() {
+  const nav = document.querySelector('.abas');
+  if (!nav) return;
+  const limite = nav.getBoundingClientRect().top - 15;
+  const vh = window.innerHeight || 1;
+  const pares = [['area', '.area-chip'], ['gravar', 'main.so-gravar .gravar']];
+  let mudou = false;
+  for (const [id, sel] of pares) {
+    const el = document.querySelector(sel);
+    if (!el) continue;
+    const estouro = el.getBoundingClientRect().bottom - limite;
+    if (estouro <= 0.5) continue;
+    layout[id].y -= estouro / vh;
+    mudou = true;
+  }
+  if (!mudou) return;
+  const r = document.documentElement;
+  r.style.setProperty('--ly', String(layout.gravar.y));
+  r.style.setProperty('--ay', String(layout.area.y));
 }
 
 function aplicarLayout() {
@@ -445,6 +473,7 @@ function aplicarLayout() {
   r.style.setProperty('--ax', String(layout.area.x));
   r.style.setProperty('--ay', String(layout.area.y));
   r.style.setProperty('--as', String(layout.area.s));
+  corrigirFolga();
   posicionarAviso();
 }
 
@@ -806,6 +835,7 @@ function desenhar() {
   else if (r.tela === 'editar') html = telaEditar(r);
   else if (r.tela === 'fase2') html = telaFase2(r.qual);
   raiz.innerHTML = html + chromeAba(r.tela) + avisoVersaoHTML();
+  corrigirFolga();
   posicionarAviso();
   if (toast) raiz.insertAdjacentHTML('beforeend', `<div class="toast" role="status">${esc(toast)}</div>`);
 }
