@@ -1,6 +1,6 @@
 import { FUNCAO_DECIDIR } from './config.js';
 import {
-  COMODOS, DECISOES, TIPOS, emAberto, payloadCanonico, chaveProibida,
+  COMODOS, DECISOES, TIPOS, emAberto, normalizarPessoas, payloadCanonico, chaveProibida,
 } from './contrato.js';
 
 const COLUNAS_ITEM = 'id, origem, tipo, transcricao, payload, status, decidido_em, ref_tabela, ref_id, teste, created_at';
@@ -56,7 +56,7 @@ export async function criarAdaptadorSupabase({ url, key }) {
       ...item,
       tipo: r.tipo || item.tipo,
       payload: payloadCanonico(r.tipo || item.tipo, { ...item.payload, ...(r.payload || {}) }),
-      pessoas: { ...(item.pessoas || {}), ...(r.pessoas || {}) },
+      pessoas: normalizarPessoas({ ...(item.pessoas || {}), ...(r.pessoas || {}) }),
       notas: r.notas ?? item.notas ?? '',
     };
   }
@@ -142,7 +142,7 @@ export async function criarAdaptadorSupabase({ url, key }) {
       rascunhos.set(id, {
         tipo,
         payload: payloadCanonico(tipo, { ...atual.payload, ...(prev.payload || {}), ...(patch.payload || {}) }),
-        pessoas: { ...(prev.pessoas || {}), ...(patch.pessoas || {}) },
+        pessoas: normalizarPessoas({ ...(atual.pessoas || {}), ...(prev.pessoas || {}), ...(patch.pessoas || {}) }),
         notas: Object.prototype.hasOwnProperty.call(patch, 'notas') ? patch.notas : prev.notas,
       });
       return { ok: true };
@@ -168,7 +168,7 @@ export async function criarAdaptadorSupabase({ url, key }) {
           decisao,
           tipo: r.tipo,
           payload: r.payload,
-          pessoas: r.pessoas || {},
+          pessoas: normalizarPessoas(r.pessoas || {}),
         },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });

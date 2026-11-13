@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  STATUS, TIPOS, fData, filtrar, montarListaPessoas, payloadCanonico, soCsmt, termosCsmt, tituloFila, chaveProibida,
+  STATUS, TIPOS, fData, filtrar, montarListaPessoas, normalizarPessoas, payloadCanonico, soCsmt, termosCsmt, tituloFila, chaveProibida,
 } from './contrato.js';
 import { PESSOAS_EXEMPLO, criarAdaptadorMock, estadoExemplo } from './adaptador-mock.js';
 
@@ -94,10 +94,11 @@ test('dropdown de tarefa separa grupo, setor e em cópia', () => {
   assert.equal(sol.setores.find((s) => s.setor === 'Direção').pessoas[0].sel, true);
   assert.equal(sol.setores.some((s) => s.pessoas.some((p) => p.papel === 'grupo')), false);
 
-  const copia = montarListaPessoas(PESSOAS_EXEMPLO, 'em_copia_id', 'p-tamires', '');
+  const copia = montarListaPessoas(PESSOAS_EXEMPLO, 'em_copia', ['p-tamires', 'p-everaldo', 'p-guilherme'], '');
   assert.equal(copia.ninguem, false);
   assert.equal(copia.grupos.length, 0);
-  assert.equal(copia.setores.find((s) => s.setor === 'Qualidade').pessoas[0].sel, true);
+  const marcadas = copia.setores.flatMap((s) => s.pessoas).filter((p) => p.sel).map((p) => p.id);
+  assert.deepEqual(marcadas.sort(), ['p-everaldo', 'p-guilherme', 'p-tamires']);
 
   const busca = montarListaPessoas(PESSOAS_EXEMPLO, 'executor_id', 'p-guilherme', 'hub');
   assert.equal(busca.ninguem, false);
@@ -108,6 +109,22 @@ test('dropdown de tarefa separa grupo, setor e em cópia', () => {
   const porSetor = montarListaPessoas(PESSOAS_EXEMPLO, 'executor_id', '', 'direcao');
   assert.equal(porSetor.setores[0].setor, 'Direção');
   assert.equal(porSetor.setores[0].pessoas[0].nome, 'Diego Konrad');
+});
+
+test('em cópia é array e solicitante/executor são um só', () => {
+  const n = normalizarPessoas({
+    solicitante: ['p-diego', 'p-outro'],
+    executor: 'p-guilherme',
+    em_copia: 'p-tamires',
+  });
+  assert.equal(n.solicitante, 'p-diego');
+  assert.equal(n.executor, 'p-guilherme');
+  assert.equal(Array.isArray(n.solicitante), false);
+  assert.deepEqual(n.em_copia, ['p-tamires']);
+  const varios = normalizarPessoas({ em_copia: ['a', 'a', 'b', ''] });
+  assert.deepEqual(varios.em_copia, ['a', 'b']);
+  assert.equal(varios.solicitante, null);
+  assert.equal(varios.executor, null);
 });
 
 test('chave anon e service_role são recusadas', () => {

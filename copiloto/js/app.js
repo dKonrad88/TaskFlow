@@ -2,7 +2,7 @@ import { abrirDados } from './dados.js';
 import { adaptadorAtivo } from './config.js';
 import {
   COMODOS, emAberto, fData, fDataHora, fHora, fValor, filtrar, idPadrao, montarListaPessoas,
-  ordenarFila, pValor, payloadCanonico, rotuloArea, rotuloStatus, rotuloTipo, soCsmt, tituloFila,
+  normalizarPessoas, ordenarFila, pValor, payloadCanonico, rotuloArea, rotuloStatus, rotuloTipo, soCsmt, tituloFila,
 } from './contrato.js';
 
 const TEMAS = ['claro', 'escuro', 'cafe'];
@@ -104,12 +104,21 @@ function nomePessoa(id) {
   return pessoas.find((p) => p.id === id)?.nome || '';
 }
 
+function pessoasDoItem(item) {
+  const cru = item.pessoas || {};
+  const pessoasItem = normalizarPessoas(cru);
+  if (!('solicitante' in cru) && !('solicitante_id' in cru)) pessoasItem.solicitante = idPadrao(pessoas);
+  if (!('executor' in cru) && !('executor_id' in cru)) pessoasItem.executor = idPadrao(pessoas);
+  return pessoasItem;
+}
+
 function valorPessoa(item, campo) {
-  const g = item.pessoas || {};
-  if (campo === 'participantes_ids') return g.participantes_ids || [];
-  if (campo === 'em_copia_id') return g.em_copia_id || '';
-  if (Object.prototype.hasOwnProperty.call(g, campo)) return g[campo] || '';
-  return idPadrao(pessoas) || '';
+  const g = pessoasDoItem(item);
+  if (campo === 'participantes' || campo === 'participantes_ids') return g.participantes;
+  if (campo === 'em_copia' || campo === 'em_copia_id') return g.em_copia;
+  if (campo === 'solicitante' || campo === 'solicitante_id') return g.solicitante || '';
+  if (campo === 'executor' || campo === 'executor_id') return g.executor || '';
+  return '';
 }
 
 function rotuloPessoa(item, campo) {
@@ -118,8 +127,24 @@ function rotuloPessoa(item, campo) {
     const nomes = valor.map(nomePessoa).filter(Boolean);
     return nomes.length ? nomes.join(', ') : 'Escolher';
   }
-  if (!valor) return campo === 'em_copia_id' ? 'Escolher' : '— Ninguém —';
+  if (!valor) return '— Ninguém —';
   return nomePessoa(valor) || 'Escolher';
+}
+
+function campoCopia(item) {
+  const ids = valorPessoa(item, 'em_copia');
+  const aberto = emAberto(item.status);
+  const chips = ids.map((pid) => {
+    const nome = nomePessoa(pid) || 'Pessoa';
+    const tirar = aberto
+      ? `<button type="button" data-acao="tirar-copia" data-id="${esc(item.id)}" data-pessoa="${esc(pid)}" aria-label="Tirar ${esc(nome)} da cópia">×</button>`
+      : '';
+    return `<span class="chip-pessoa">${esc(nome)}${tirar}</span>`;
+  }).join('');
+  const add = aberto
+    ? `<button type="button" class="chip-add" data-acao="abrir-menu" data-id="${esc(item.id)}" data-campo="em_copia">Adicionar</button>`
+    : '';
+  return `<div class="campo"><div class="rot">Em cópia<span class="opc"> (Opcional)</span></div><div class="chips-pessoas">${chips}${add}</div></div>`;
 }
 
 function klain(item) {
@@ -248,16 +273,16 @@ function corpoCard(item) {
   if (item.tipo === 'klain-tarefa') {
     return `${campoLeitura('Tipo', 'Tarefa', true)}
       ${campoLeitura('Título', textoDe(item, p.titulo), true)}
-      ${campoCaixa('Solicitante', rotuloPessoa(item, 'solicitante_id'), '▾', 'abrir-menu', `data-id="${id}" data-campo="solicitante_id"`, false)}
-      ${campoCaixa('Executor', rotuloPessoa(item, 'executor_id'), '▾', 'abrir-menu', `data-id="${id}" data-campo="executor_id"`, false)}
-      ${campoCaixa('Em cópia', rotuloPessoa(item, 'em_copia_id'), '▾', 'abrir-menu', `data-id="${id}" data-campo="em_copia_id"`, false)}
+      ${campoCaixa('Solicitante', rotuloPessoa(item, 'solicitante'), '▾', 'abrir-menu', `data-id="${id}" data-campo="solicitante"`, false)}
+      ${campoCaixa('Executor', rotuloPessoa(item, 'executor'), '▾', 'abrir-menu', `data-id="${id}" data-campo="executor"`, false)}
+      ${campoCopia(item)}
       ${campoCaixa('Vencimento', fData(p.vencimento) || 'Escolher', 'alterar', 'abrir-data', `data-id="${id}" data-campo="vencimento"`, false)}
       ${campoLeitura('Descrição', textoDe(item, p.descricao), false)}`;
   }
   if (item.tipo === 'klain-compromisso') {
     return `${campoLeitura('Tipo', 'Compromisso', true)}
       ${campoLeitura('Título', textoDe(item, p.titulo), true)}
-      ${campoCaixa('Participantes', rotuloPessoa(item, 'participantes_ids'), '▾', 'abrir-menu', `data-id="${id}" data-campo="participantes_ids"`, true)}
+      ${campoCaixa('Participantes', rotuloPessoa(item, 'participantes'), '▾', 'abrir-menu', `data-id="${id}" data-campo="participantes"`, true)}
       ${campoCaixa('Data e hora', fDataHora(p.data_hora) || 'Escolher', 'alterar', 'abrir-data', `data-id="${id}" data-campo="data_hora"`, true)}
       ${campoTexto(item, 'local', 'Local', p.local, false)}
       ${campoLeitura('Descrição', textoDe(item, p.descricao), false)}`;
@@ -293,7 +318,7 @@ function linhaMenu(item, campo, opcao, multi) {
 }
 
 function htmlListaPessoas(item, campo) {
-  const multi = campo === 'participantes_ids';
+  const multi = campo === 'em_copia' || campo === 'participantes';
   const lista = montarListaPessoas(pessoas, campo, valorPessoa(item, campo), buscaMenu);
   let html = '';
   if (lista.ninguem) html += linhaMenu(item, campo, { id: '', nome: '— Ninguém —', sel: lista.ninguemSel }, false);
@@ -310,7 +335,7 @@ function htmlListaPessoas(item, campo) {
 }
 
 function menuPessoas(item, campo) {
-  const multi = campo === 'participantes_ids';
+  const multi = campo === 'em_copia' || campo === 'participantes';
   const pe = pessoasExemplo
     ? 'Exemplo. Grupos só em solicitante e executor. O padrão é Diego Konrad.'
     : 'Grupos só em solicitante e executor. Pessoa entra em todos os campos.';
@@ -609,10 +634,13 @@ async function depoisDeMudar() {
 }
 
 function patchDoCampo(item, chave, valor) {
-  if (chave === 'solicitante_id' || chave === 'executor_id' || chave === 'em_copia_id') {
-    return { pessoas: { [chave]: valor || null } };
+  if (chave === 'solicitante' || chave === 'executor') {
+    const unico = Array.isArray(valor) ? valor[0] : valor;
+    return { pessoas: { [chave]: unico || null } };
   }
-  if (chave === 'participantes_ids') return { pessoas: { participantes_ids: valor } };
+  if (chave === 'em_copia' || chave === 'participantes') {
+    return { pessoas: { [chave]: Array.isArray(valor) ? valor : [] } };
+  }
   if (chave === 'ambiente') return { payload: { ambiente: valor, comodo_incerto: false } };
   if (chave === 'valor' || chave === 'valor_estimado') {
     return { payload: { [chave]: pValor(valor) } };
@@ -631,11 +659,7 @@ async function salvarCampo(id, chave, valor) {
 async function aoDecidir(id, decisao) {
   const item = itemPor(id);
   if (!item) return;
-  const pessoasEnvio = { ...(item.pessoas || {}) };
-  for (const chave of ['solicitante_id', 'executor_id']) {
-    if (!Object.prototype.hasOwnProperty.call(item.pessoas || {}, chave)) pessoasEnvio[chave] = idPadrao(pessoas);
-  }
-  const patch = { payload: item.payload, pessoas: pessoasEnvio, tipo: item.tipo };
+  const patch = { payload: item.payload, pessoas: pessoasDoItem(item), tipo: item.tipo };
   const r = await dados.decidir(id, decisao, patch);
   if (r.jaDecidido) {
     mostrar(`Já foi decidido: ${rotuloStatus(r.status)}. A primeira decisão vale.`);
@@ -765,11 +789,21 @@ async function noClique(e) {
   }
   if (acao === 'toggle-pessoa') {
     const item = itemPor(el.dataset.id);
-    const ids = new Set(item?.pessoas?.participantes_ids || []);
+    const campo = el.dataset.campo;
+    const ids = new Set(valorPessoa(item, campo));
     if (ids.has(el.dataset.valor)) ids.delete(el.dataset.valor); else ids.add(el.dataset.valor);
-    await dados.atualizar(el.dataset.id, { pessoas: { participantes_ids: [...ids] } });
+    await dados.atualizar(el.dataset.id, { pessoas: { [campo]: [...ids] } });
     await carregar();
     desenhar();
+    const busca = document.querySelector('[data-acao="busca-menu"]');
+    if (busca) busca.focus();
+    return;
+  }
+  if (acao === 'tirar-copia') {
+    const item = itemPor(el.dataset.id);
+    const ids = valorPessoa(item, 'em_copia').filter((pid) => pid !== el.dataset.pessoa);
+    await dados.atualizar(el.dataset.id, { pessoas: { em_copia: ids } });
+    await depoisDeMudar();
     return;
   }
   if (acao === 'escolher-tipo') {

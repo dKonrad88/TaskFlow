@@ -1,8 +1,8 @@
 import {
-  COMODOS, DECISOES, TIPOS, emAberto, payloadCanonico, soCsmt,
+  COMODOS, DECISOES, TIPOS, emAberto, normalizarPessoas, payloadCanonico, soCsmt,
 } from './contrato.js';
 
-const CHAVE = 'copiloto_mock_v2';
+const CHAVE = 'copiloto_mock_v3';
 
 const QUANDO = '2026-11-01T12:00:00-03:00';
 
@@ -52,7 +52,11 @@ export function estadoExemplo() {
         transcricao: 'Revisar pesquisa do casamento com o comitê',
         status: 'aguardando você',
         created_at: '2026-11-13T08:40:00-03:00',
-        pessoas: { solicitante_id: 'p-diego', executor_id: 'p-guilherme', em_copia_id: 'p-tamires' },
+        pessoas: {
+          solicitante: 'p-diego',
+          executor: 'p-guilherme',
+          em_copia: ['p-tamires', 'p-everaldo', 'p-guilherme'],
+        },
         payload: payloadCanonico('klain-tarefa', {
           titulo: 'Revisar a pesquisa do CSMT com o comitê',
           descricao: 'Levar os preços e gramagens para a reunião.',
@@ -92,7 +96,7 @@ export function estadoExemplo() {
         transcricao: 'Alinhamento com o comitê do CSMT',
         status: 'aguardando você',
         created_at: '2026-11-13T08:05:00-03:00',
-        pessoas: { participantes_ids: ['p-diego', 'p-guilherme'] },
+        pessoas: { participantes: ['p-diego', 'p-guilherme'] },
         payload: payloadCanonico('klain-compromisso', {
           titulo: 'Alinhamento com o comitê do CSMT',
           descricao: 'Revisar os pontos da pauta e os prazos.',
@@ -214,7 +218,7 @@ function aplicarPatch(item, patch) {
   } else if (patch.payload) {
     item.payload = payloadCanonico(item.tipo, { ...item.payload, ...patch.payload });
   }
-  if (patch.pessoas) item.pessoas = { ...(item.pessoas || {}), ...patch.pessoas };
+  if (patch.pessoas) item.pessoas = normalizarPessoas({ ...(item.pessoas || {}), ...patch.pessoas });
   if (Object.prototype.hasOwnProperty.call(patch, 'notas')) item.notas = patch.notas || '';
 }
 

@@ -108,11 +108,42 @@ export function idPadrao(lista) {
 }
 
 const USO_DO_CAMPO = {
+  solicitante: 'solicitante',
   solicitante_id: 'solicitante',
+  executor: 'executor',
   executor_id: 'executor',
+  em_copia: 'em_copia',
   em_copia_id: 'em_copia',
+  participantes: 'participantes',
   participantes_ids: 'participantes',
 };
+
+function umSo(valor) {
+  const item = Array.isArray(valor) ? valor[0] : valor;
+  if (item === undefined || item === null || item === '') return null;
+  return String(item);
+}
+
+function varios(valor) {
+  const lista = Array.isArray(valor) ? valor : (valor ? [valor] : []);
+  const ids = [];
+  for (const item of lista) {
+    const id = umSo(item);
+    if (id && !ids.includes(id)) ids.push(id);
+  }
+  return ids;
+}
+
+/** solicitante e executor são um id ou null. em_copia é sempre um array. */
+export function normalizarPessoas(bruto) {
+  const p = bruto && typeof bruto === 'object' ? bruto : {};
+  return {
+    solicitante: umSo(p.solicitante ?? p.solicitante_id),
+    executor: umSo(p.executor ?? p.executor_id),
+    em_copia: varios(p.em_copia ?? p.em_copia_id),
+    participantes: varios(p.participantes ?? p.participantes_ids),
+  };
+}
 
 function porNome(a, b) {
   return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
@@ -126,8 +157,8 @@ export function montarListaPessoas(lista, campo, selecionado, busca) {
   const uso = USO_DO_CAMPO[campo];
   const q = semAcento(busca).trim();
   const casa = (texto) => !q || semAcento(texto).includes(q);
-  const comNinguem = campo === 'solicitante_id' || campo === 'executor_id';
-  const soPessoas = campo === 'em_copia_id' || campo === 'participantes_ids';
+  const comNinguem = campo === 'solicitante' || campo === 'executor' || campo === 'solicitante_id' || campo === 'executor_id';
+  const soPessoas = campo === 'em_copia' || campo === 'em_copia_id' || campo === 'participantes' || campo === 'participantes_ids';
   const base = (lista || []).filter((p) => usoLiberado(p, uso));
   const grupos = soPessoas ? [] : base.filter(ehGrupo).filter((p) => casa(p.nome)).sort(porNome);
   const gente = base.filter((p) => !ehGrupo(p)).filter((p) => casa(p.nome) || casa(p.papel));

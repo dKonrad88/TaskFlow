@@ -77,7 +77,7 @@ Payload por tipo:
 
 As pessoas do card (solicitante, executor, em cópia, participantes) **não entram no payload**. Vão à parte, no corpo da decisão, porque `hub_pessoas` alimenta o dropdown e o contrato do payload não tem esses campos.
 
-No cadastro, grupo tem `papel = 'grupo'` e `usos = {solicitante, executor}`. Pessoa tem `papel` igual ao setor e `usos` nulo, o que vale para todos os campos (no banco a coluna também pode vir com a lista completa). Solicitante e executor mostram "— Ninguém —", depois os grupos e as pessoas por setor, com busca e uma escolha. O padrão (`padrao`) é o Diego Konrad. Em cópia mostra só pessoas, sem grupo e sem "Ninguém", também com busca.
+No cadastro, grupo tem `papel = 'grupo'` e `usos = {solicitante, executor}`. Pessoa tem `papel` igual ao setor e `usos` nulo, o que vale para todos os campos (no banco a coluna também pode vir com a lista completa). Solicitante e executor são um valor só: "— Ninguém —", depois os grupos e as pessoas por setor, com busca. O padrão (`padrao`) é o Diego Konrad. Em cópia é um array: só pessoas, sem grupo e sem "Ninguém", com busca, e os escolhidos aparecem como chips removíveis.
 
 ### Decisão: a primeira vale
 
@@ -94,7 +94,7 @@ Authorization: Bearer <access_token do Diego>
   "decisao": "aprovado",
   "tipo": "klain-tarefa",
   "payload": { "titulo": "…", "descricao": "…", "vencimento": "2026-11-17", "csmt": { "aplicado": false, "termos": [] } },
-  "pessoas": { "solicitante_id": null, "executor_id": null, "em_copia_id": null, "participantes_ids": [] }
+  "pessoas": { "solicitante": null, "executor": null, "em_copia": [], "participantes": [] }
 }
 ```
 
