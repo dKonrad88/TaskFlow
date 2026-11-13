@@ -19,6 +19,14 @@ let erroFila = '';
 let filtrosAba = { aprovar: { status: '', periodo: '' }, historico: { status: '', periodo: '' } };
 let filtroAberto = false;
 let areaAberta = false;
+let editando = false;
+let layoutAtivo = 'gravar';
+let arrastou = false;
+const LAYOUT_KEY = 'copiloto_layout';
+const LAYOUT_PADRAO = { gravar: { x: 0.5, y: 0.74, s: 1 }, area: { x: 0.5, y: 0.86, s: 1 } };
+let layout = carregarLayout();
+const ponteiros = new Map();
+let gesto = null;
 let toast = '';
 let toastTimer = 0;
 let segundos = 0;
@@ -389,11 +397,87 @@ function prefsAtuais() {
   return dados?.prefs ? dados.prefs() : { aprovar: true, area: 'auto' };
 }
 
+function carregarLayout() {
+  try {
+    const o = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null');
+    return {
+      gravar: { ...LAYOUT_PADRAO.gravar, ...(o && o.gravar) },
+      area: { ...LAYOUT_PADRAO.area, ...(o && o.area) },
+    };
+  } catch {
+    return { gravar: { ...LAYOUT_PADRAO.gravar }, area: { ...LAYOUT_PADRAO.area } };
+  }
+}
+
+function limitarPeca(id) {
+  const vw = window.innerWidth || 390;
+  const vh = window.innerHeight || 844;
+  const barra = 96;
+  const p = layout[id];
+  const minS = id === 'gravar' ? 0.72 : 0.85;
+  const maxS = id === 'gravar' ? 1.55 : 1.35;
+  p.s = Math.min(maxS, Math.max(minS, Number(p.s) || 1));
+  const w = (id === 'gravar' ? 132 : 180) * p.s;
+  const h = (id === 'gravar' ? 132 : 48) * p.s;
+  const m = 8;
+  p.x = Math.min(1 - (w / 2 + m) / vw, Math.max((w / 2 + m) / vw, p.x));
+  p.y = Math.min((vh - barra - h / 2 - m) / vh, Math.max((h / 2 + m) / vh, p.y));
+}
+
+function aplicarLayout() {
+  limitarPeca('gravar');
+  limitarPeca('area');
+  const r = document.documentElement;
+  r.style.setProperty('--lx', String(layout.gravar.x));
+  r.style.setProperty('--ly', String(layout.gravar.y));
+  r.style.setProperty('--ls', String(layout.gravar.s));
+  r.style.setProperty('--ax', String(layout.area.x));
+  r.style.setProperty('--ay', String(layout.area.y));
+  r.style.setProperty('--as', String(layout.area.s));
+}
+
+function persistirLayout() {
+  try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch { /* segue na memória */ }
+}
+
+function atualizarBarraEdicao() {
+  const bar = document.querySelector('.barra-edicao');
+  if (!bar) return;
+  const min = layoutAtivo === 'gravar' ? 0.72 : 0.85;
+  const max = layoutAtivo === 'gravar' ? 1.55 : 1.35;
+  const nome = layoutAtivo === 'gravar' ? 'botão Gravar' : 'chip de área';
+  const label = bar.querySelector('label');
+  const input = bar.querySelector('input[type=range]');
+  if (label) label.firstChild.textContent = `Tamanho do ${nome}`;
+  if (input) {
+    input.min = String(min);
+    input.max = String(max);
+    input.value = String(layout[layoutAtivo].s);
+    input.setAttribute('aria-label', `Tamanho do ${nome}`);
+  }
+}
+
+function barraEdicao() {
+  if (!editando) return '';
+  const min = layoutAtivo === 'gravar' ? 0.72 : 0.85;
+  const max = layoutAtivo === 'gravar' ? 1.55 : 1.35;
+  const nome = layoutAtivo === 'gravar' ? 'botão Gravar' : 'chip de área';
+  return `<div class="barra-edicao vidro">
+    <p>Arraste para mover. Pinça ou o controle muda o tamanho.</p>
+    <label>Tamanho do ${nome}<input type="range" min="${min}" max="${max}" step="0.01" value="${layout[layoutAtivo].s}" data-acao="tamanho-layout" aria-label="Tamanho do ${nome}"></label>
+    <div class="acoes-edicao">
+      <button type="button" class="botao" data-acao="restaurar-layout">Restaurar padrão</button>
+      <button type="button" class="botao sim" data-acao="concluir-layout">Concluir</button>
+    </div>
+  </div>`;
+}
+
 function telaGravar() {
   return `<div class="fundo-gravar" aria-hidden="true"><img src="assets/fundo-familia.webp" alt=""></div>
     ${cabeca('Gravar', { centro: true, ajustes: true })}
+    ${barraEdicao()}
     <main class="so-gravar">
-      <button class="gravar" data-acao="gravar">Gravar</button>
+      <button class="gravar" data-acao="gravar" data-layout="gravar" aria-label="Gravar"><span class="mic">${ICO.mic}</span><span class="parada" aria-hidden="true"></span></button>
     </main>`;
 }
 
@@ -431,7 +515,7 @@ function telaGravando() {
   const ss = String(seg % 60).padStart(2, '0');
   return `${cabeca('Copiloto', { centro: true })}
     <main><div class="meio">
-      <button class="gravar vivo" data-acao="parar">Parar</button>
+      <button class="gravar vivo" data-acao="parar" aria-label="Parar"><span class="mic">${ICO.mic}</span><span class="parada" aria-hidden="true"></span></button>
       <div class="relogio">${mm}:${ss}</div>
       <h2>Gravando</h2>
       <p>Toque para parar e enviar. A transcrição acontece no iPhone.</p>
@@ -559,6 +643,9 @@ function telaAjustes() {
       <div class="grupo">Conta</div>
       <div class="ajuste"><span>Modo</span><b>${esc(conta.modo)}</b></div>
       <div class="ajuste"><span>Login</span><b>${esc(conta.login)}</b></div>
+      <div class="grupo">Tela de gravar</div>
+      <button type="button" class="botao cheio" data-acao="editar-layout">Editar layout</button>
+      <p class="dica">Move e redimensiona o botão Gravar e o chip de área.</p>
       <div class="grupo">Aprovação</div>
       <div class="ajuste interruptor">
         <span><b>Passar por aprovação</b><small>Ligada, você confirma cada item. Desligada, só o que não é gasto nem item do Hub Klain segue direto — um item da lista, por exemplo. Gastos e itens do Hub Klain sempre passam por você.</small></span>
@@ -587,7 +674,7 @@ function chipArea() {
   const prefs = prefsAtuais();
   const opcoes = [['auto', 'Automático'], ['hub', 'Hub Klain'], ['apto', 'Apto'], ['compras', 'Compras']];
   const menu = areaAberta ? `<div class="area-menu vidro" role="menu">${opcoes.map(([v, r]) => `<button type="button" role="menuitemradio" aria-checked="${prefs.area === v}" data-acao="definir-area" data-area="${v}">${esc(r)}${prefs.area === v ? '<span>✓</span>' : ''}</button>`).join('')}</div><button class="dim dim-area" data-acao="fechar-area" aria-label="Fechar áreas"></button>` : '';
-  return `${menu}<div class="area-wrap"><button type="button" class="area-chip vidro" data-acao="area-menu" aria-expanded="${areaAberta}" aria-haspopup="menu">${esc(ROTULO_AREA[prefs.area] || 'Automático')}<span class="car">▲</span></button></div>`;
+  return `<div class="area-wrap">${menu}<button type="button" class="area-chip vidro" data-acao="area-menu" data-layout="area" aria-expanded="${areaAberta}" aria-haspopup="menu">${esc(ROTULO_AREA[prefs.area] || 'Automático')}<span class="car">▲</span></button></div>`;
 }
 
 function telaLogin() {
@@ -630,6 +717,8 @@ function desenhar() {
   }
   const r = rota();
   raiz.classList.toggle('com-foto', r.tela === 'gravar');
+  raiz.classList.toggle('editando', editando && r.tela === 'gravar');
+  aplicarLayout();
   if (!r.data) folha = null;
   let html = '';
   if (r.tela === 'gravar') html = telaGravar();
@@ -775,14 +864,25 @@ async function diaOk(id, campo) {
 }
 
 async function noClique(e) {
+  if (arrastou) { arrastou = false; return; }
   const el = e.target.closest('[data-acao]');
   if (!el) return;
   const acao = el.dataset.acao;
+  if (editando && (acao === 'gravar' || acao === 'area-menu')) return;
   if (acao === 'ir') { ir(el.dataset.hash); return; }
   if (acao === 'voltar') { if (history.length > 1) history.back(); else ir('#/'); return; }
   if (acao === 'aba') { filtroAberto = false; areaAberta = false; ir(el.dataset.aba === 'gravar' ? '#/' : `#/${el.dataset.aba}`); return; }
   if (acao === 'filtro-aba') { filtroAberto = !filtroAberto; desenhar(); return; }
   if (acao === 'area-menu') { areaAberta = !areaAberta; desenhar(); return; }
+  if (acao === 'editar-layout') { editando = true; areaAberta = false; ir('#/'); return; }
+  if (acao === 'concluir-layout') { editando = false; persistirLayout(); desenhar(); return; }
+  if (acao === 'restaurar-layout') {
+    layout = { gravar: { ...LAYOUT_PADRAO.gravar }, area: { ...LAYOUT_PADRAO.area } };
+    persistirLayout();
+    aplicarLayout();
+    desenhar();
+    return;
+  }
   if (acao === 'fechar-area') { areaAberta = false; desenhar(); return; }
   if (acao === 'definir-area') { dados?.definirPrefs?.({ area: el.dataset.area }); areaAberta = false; desenhar(); return; }
   if (acao === 'definir-tema') { aplicarTema(el.dataset.tema, true); desenhar(); return; }
@@ -871,6 +971,13 @@ async function noClique(e) {
 }
 
 function noInput(e) {
+  if (e.target?.dataset?.acao === 'tamanho-layout') {
+    layout[layoutAtivo].s = Number(e.target.value);
+    aplicarLayout();
+    e.target.value = String(layout[layoutAtivo].s);
+    persistirLayout();
+    return;
+  }
   const busca = e.target.closest('[data-acao="busca-menu"]');
   if (busca) {
     buscaMenu = busca.value;
@@ -933,6 +1040,67 @@ async function noKey(e) {
   }
 }
 
+function distPonteiros() {
+  const pts = [...ponteiros.values()];
+  return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+}
+
+function noPonteiroDown(e) {
+  if (!editando || rota().tela !== 'gravar') return;
+  if (e.target.closest('.area-menu, .barra-edicao')) return;
+  const alvo = e.target.closest('[data-layout]');
+  if (!alvo) return;
+  ponteiros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  const id = alvo.dataset.layout;
+  layoutAtivo = id;
+  if (ponteiros.size === 1) {
+    gesto = { id, x: e.clientX, y: e.clientY, ox: layout[id].x, oy: layout[id].y, s: layout[id].s, pinça: 0 };
+    arrastou = false;
+  } else if (gesto) {
+    gesto.pinça = distPonteiros();
+    gesto.s = layout[gesto.id].s;
+  }
+  alvo.setPointerCapture?.(e.pointerId);
+  atualizarBarraEdicao();
+  e.preventDefault();
+}
+
+function noPonteiroMove(e) {
+  if (!ponteiros.has(e.pointerId) || !gesto) return;
+  ponteiros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (ponteiros.size >= 2 && gesto.pinça) {
+    layout[gesto.id].s = gesto.s * (distPonteiros() / gesto.pinça);
+    arrastou = true;
+  } else {
+    const dx = e.clientX - gesto.x;
+    const dy = e.clientY - gesto.y;
+    if (Math.hypot(dx, dy) > 5) arrastou = true;
+    layout[gesto.id].x = gesto.ox + dx / window.innerWidth;
+    layout[gesto.id].y = gesto.oy + dy / window.innerHeight;
+  }
+  aplicarLayout();
+  const slider = document.querySelector('[data-acao="tamanho-layout"]');
+  if (slider) slider.value = String(layout[layoutAtivo].s);
+  e.preventDefault();
+}
+
+function noPonteiroUp(e) {
+  if (!ponteiros.has(e.pointerId)) return;
+  ponteiros.delete(e.pointerId);
+  if (ponteiros.size === 0) {
+    if (gesto && arrastou) persistirLayout();
+    gesto = null;
+  } else if (gesto) {
+    const p = [...ponteiros.values()][0];
+    gesto.x = p.x;
+    gesto.y = p.y;
+    gesto.ox = layout[gesto.id].x;
+    gesto.oy = layout[gesto.id].y;
+    gesto.pinça = 0;
+    gesto.s = layout[gesto.id].s;
+  }
+}
+
 function registrarSw() {
   if (!('serviceWorker' in navigator)) return;
   const escopo = '/TaskFlow/copiloto/';
@@ -954,6 +1122,11 @@ async function iniciar() {
   raiz.addEventListener('change', (e) => { noChange(e).catch((err) => mostrar(err.message)); });
   raiz.addEventListener('submit', (e) => { noSubmit(e).catch((err) => mostrar(err.message)); });
   document.addEventListener('keydown', (e) => { noKey(e).catch((err) => mostrar(err.message)); });
+  document.addEventListener('pointerdown', noPonteiroDown, { passive: false });
+  document.addEventListener('pointermove', noPonteiroMove, { passive: false });
+  document.addEventListener('pointerup', noPonteiroUp);
+  document.addEventListener('pointercancel', noPonteiroUp);
+  window.addEventListener('resize', aplicarLayout);
   window.addEventListener('hashchange', desenhar);
   if (pose() && rota().tela === 'gravando') segundos = 7;
   desenhar();
