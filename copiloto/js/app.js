@@ -390,7 +390,8 @@ function prefsAtuais() {
 }
 
 function telaGravar() {
-  return `${cabeca('Gravar', { centro: true, ajustes: true })}
+  return `<div class="fundo-gravar" aria-hidden="true"><img src="assets/fundo-familia.webp" alt=""></div>
+    ${cabeca('Gravar', { centro: true, ajustes: true })}
     <main class="so-gravar">
       <button class="gravar" data-acao="gravar">Gravar</button>
     </main>`;
@@ -617,15 +618,18 @@ function telaErroBoot() {
 function desenhar() {
   const raiz = document.getElementById('app');
   if (!dados && erroBoot) {
+    raiz.classList.remove('com-foto');
     raiz.innerHTML = telaErroBoot();
     return;
   }
   if (modo === 'supabase' && dados && !dados._sessao) {
+    raiz.classList.remove('com-foto');
     raiz.innerHTML = telaLogin();
     if (toast) raiz.insertAdjacentHTML('beforeend', `<div class="toast" role="status">${esc(toast)}</div>`);
     return;
   }
   const r = rota();
+  raiz.classList.toggle('com-foto', r.tela === 'gravar');
   if (!r.data) folha = null;
   let html = '';
   if (r.tela === 'gravar') html = telaGravar();

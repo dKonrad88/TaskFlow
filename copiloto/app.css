@@ -86,7 +86,47 @@ main {
 main.justa { padding-left: 14px; padding-right: 14px; }
 
 .gravar-wrap { display: flex; flex-direction: column; align-items: center; padding: 28px 0 18px; }
-main.so-gravar { display: flex; align-items: center; justify-content: center; min-height: calc(100dvh - 240px); }
+main.so-gravar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: calc(100dvh - 200px);
+  padding-bottom: 156px;
+  position: relative;
+  z-index: 1;
+}
+main.so-gravar .gravar { margin-top: auto; }
+.fundo-gravar { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.fundo-gravar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 22%;
+  display: block;
+}
+.fundo-gravar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom,
+    color-mix(in srgb, var(--fundo) 58%, transparent) 0%,
+    color-mix(in srgb, var(--fundo) 16%, transparent) 12%,
+    color-mix(in srgb, var(--fundo) 8%, transparent) 34%,
+    color-mix(in srgb, var(--fundo) 78%, transparent) 62%,
+    var(--fundo) 80%,
+    var(--fundo) 100%);
+}
+.app.com-foto { background: transparent; }
+.app.com-foto .olho,
+.app.com-foto .nav { position: relative; z-index: 2; }
+.app.com-foto .olho,
+.app.com-foto .nav h1 {
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--fundo) 75%, #000), 0 0 14px color-mix(in srgb, var(--fundo) 85%, transparent);
+}
+.app.com-foto .nav .icone {
+  background: color-mix(in srgb, var(--fundo) 78%, transparent);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--fundo) 55%, #000);
+}
 main.com-abas { padding-bottom: 150px; }
 .aba-topo { display: flex; justify-content: flex-end; margin: 0 0 8px; }
 .painel-filtro { border-radius: 18px; padding: 8px 12px 12px; margin-bottom: 12px; }
