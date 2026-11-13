@@ -14,10 +14,11 @@
    · Ícone de palete nas ações de cada SKU (tabela de SKUs e SKUs vinculados do cliente) abre a
      Configuração do palete em modal; Confirmar grava na hora via safeSetItem. O formulário de
      Novo/Editar SKU não tem mais o bloco do palete; editar o SKU preserva a configuração já gravada.
-   · v7 (13/11/2026): 4ª aba na ficha, "Negociação" — cotação atual (cartão com nº, envio, validade,
-     quem enviou, PDF, itens com Faixa 1/2/3 e condições) + histórico de todas as cotações enviadas.
-     "Anexar cotação" lê o PDF (até 1,5 MB, data URL), a nova vira a atual e a anterior fica como
-     Substituída; qualquer linha do histórico pode ser marcada como atual. Chave taskflow_marcas_cotacoes.
+   · v7 (13/11/2026): 4ª aba na ficha, "Negociação", com sub-abas Ativa | Enviadas e botão "Criar cotação".
+     Ativa = a negociação fechada com o cliente (uma por vez); Enviadas = todas as cotações mandadas
+     (Enviada / Vencida / Recusada / Substituída / Fechada / Encerrada), com "Marcar como fechada" e menu ⋯.
+     "Criar cotação" monta a cotação no layout Klain (pré-visualização + PDF via pdfMake) e salva em Enviadas;
+     "Anexar PDF" guarda cotações feitas fora (até 1,5 MB). Chave taskflow_marcas_cotacoes (v2).
    · Dados no localStorage (chave taskflow_marcas_proprias), sempre via safeSetItem.
    · ⚠️ DADOS FICTÍCIOS: clientes, códigos e SKUs de exemplo foram inventados para o protótipo.
      As listas de opções (estados, frequências, bobina, notas, situação, empacotamento) são as do SisPro.
@@ -142,7 +143,7 @@
   function skusDe(id){ return load().skus.filter(function(s){return s.clienteId===id;}); }
 
   // ── Estado de tela (não persiste) ──
-  var S={ tab:'clientes', pTab:'dados', sel:null, busca:'', f:{}, fOpen:false, skBusca:'', skLinha:'', skFOpen:false, skSort:{c:'criado',d:-1}, cliSort:{c:'nome',d:1}, pSkSort:{c:'codigo',d:1}, modal:null };
+  var S={ tab:'clientes', pTab:'dados', sel:null, busca:'', f:{}, fOpen:false, skBusca:'', skLinha:'', skFOpen:false, skSort:{c:'criado',d:-1}, cliSort:{c:'nome',d:1}, pSkSort:{c:'codigo',d:1}, nTab:'ativa', modal:null };
 
   // ── Render principal ──
   function render(main){
@@ -330,126 +331,218 @@
     }
     return h+'</div>';
   }
-  // ── NEGOCIAÇÃO (cotações enviadas por marca) ──
-  // Guarda as cotações de cada cliente com histórico e uma marcada como "atual".
-  // Chave própria (taskflow_marcas_cotacoes) para não inflar a de clientes/SKUs; PDF anexado vai como
-  // data URL (protótipo), limitado a COT_MAX por arquivo. ⚠️ Seed fictício (nomes/pessoas inventados).
+  // ── NEGOCIAÇÃO (cotações por cliente) ──
+  // Duas visões dentro da aba: "Ativa" (a negociação fechada com o cliente — só uma por vez) e
+  // "Enviadas" (todas as cotações mandadas: Enviada / Vencida / Recusada / Substituída / Fechada / Encerrada).
+  // "Criar cotação" monta a cotação no layout Klain (pré-visualização + PDF via pdfMake, o mesmo já usado
+  // nas Atas/OS) e salva como enviada; "Anexar PDF" guarda cotações feitas fora (data URL, até 1,5 MB).
+  // Cotações geradas aqui guardam só os dados — o PDF é remontado igual a cada download (não ocupa espaço).
+  // Chave taskflow_marcas_cotacoes (v2). ⚠️ Seed fictício: pessoas e contatos inventados.
   var LS_COT='taskflow_marcas_cotacoes';
-  var COT_MAX=1536*1024;            // 1,5 MB por PDF
-  var COT_TOTAL=4*1024*1024;        // teto da chave inteira (~4 MB) para não estourar o localStorage
-  var FAIXAS=[['Faixa 1','50–100 cx'],['Faixa 2','100–1.000 cx'],['Faixa 3','> 1.000 cx']];
-  var COND_PAD={frete:'CIF (desc. retirada 2%)',entrega:'10 dias após pedido',pagto:'Boleto bancário',prazo:'14/21 dias'};
+  var COT_MAX=1536*1024, COT_TOTAL=4*1024*1024;
+  var FAIXAS=[['Faixa 1','50–100 cx','50 à 100cx'],['Faixa 2','100–1.000 cx','100 à 1.000cx'],['Faixa 3','> 1.000 cx','Acima de 1.000cx']];
+  var FORN=['Fornecida pela indústria','Fornecida pelo cliente','Não incluso'];
+  var EMB_ROWS=[['primaria','Primária'],['secundaria','Secundária'],['etiqueta','Etiqueta'],['aplicacao','Aplicação de etiqueta']];
+  var INFO_PAD='** Para gramagens diferentes da indústria, o pedido mínimo é 1 mil fardos.';
+  var OBS_PAD=['a) Somos do Regime Tributário Lucro Real; informação a título de aproveitamento de impostos.',
+    'b) Quando em caixa, todos os produtos têm como base 10 unidades na caixa. Esta quantidade pode variar conforme a acomodação dos produtos na caixa; temos 6 modelos de caixa à disposição. Caso queiram uma caixa impressa ou diferente dos nossos modelos, é possível; a compra dela fica a cargo do cliente, que ganha o desconto no produto.',
+    'c) Personalização de pesos a partir de 1 mil caixas por sabor.',
+    'd) Valores sem troca. Realizamos trocas somente se houver alguma inconformidade no produto.',
+    'e) Prazo de pagamento condicionado à análise de crédito do setor financeiro. O prazo de 14/21 dias só será aplicado caso o CNPJ esteja sem restrições.'].join('\n');
+  function condPad(){ return {frete:'CIF',descRet:'2',entrega:'10 dias após pedido',pagto:'Boleto bancário',prazo:'14/21 dias'}; }
+  function embPad(){ return {primaria:{desc:'Plástico transparente / impresso',forn:'Fornecida pela indústria'},secundaria:{desc:'Caixa de papelão sem impressão',forn:'Fornecida pela indústria'},
+    etiqueta:{desc:'Da embalagem',forn:'Não incluso'},aplicacao:{desc:'Aplicação de etiqueta na embalagem',forn:'Não incluso'}}; }
+  function freteTxt(cd){ cd=cd||{}; if(cd.frete==='FOB') return 'FOB (retirada na fábrica)'; return 'CIF'+(cd.descRet?' (desc. retirada '+cd.descRet+'%)':''); }
+  function slug(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_|_$/g,''); }
+  function arqNome(num,cli){ return 'Cotacao_'+String(num).replace(/\//g,'-')+'_'+slug(cli&&cli.nome||'cliente')+'.pdf'; }
   function cotSeed(){
-    var it=function(d,cx,mn,f1,f2,f3){ return {desc:d,cx:cx,min:mn,f:[f1,f2,f3]}; };
-    var mk=function(id,num,data,val,por,contato,arq,tam,itens,cond,obs){
-      return {id:id,numero:num,data:data,validade:val,por:por,contato:contato,arquivo:{nome:arq,tam:tam},itens:itens,
-        cond:Object.assign({},COND_PAD,cond||{}),obs:obs||'',criado:data+'T10:00:00'}; };
-    var at=function(f){ return [
-      it('Salgadinho Palitinho sabor Orégano 138g',20,'50 cx',f[0],f[1],f[2]),
-      it('Salgadinho Palitinho sabor Calabresa 138g',20,'50 cx',f[0],f[1],f[2]),
-      it('Salgadão sabor Bacon 100g',24,'50 cx',f[3],f[4],f[5])]; };
-    var cb=function(f){ return [
-      it('Biscoito de Amendoim com Chocolate Branco 250g',12,'50 cx',f[0],f[1],f[2]),
-      it('Biscoito Broa de Amendoim 250g',12,'50 cx',f[3],f[4],f[5])]; };
-    return {v:1, m:{
-      mpc8809:{atual:'cot8809c', lista:[
-        mk('cot8809a','0118/26','2026-09-22',10,'Marina Couto','Rafael Nunes','Cotacao_0118-26_Atlantico_Snacks.pdf',214000,
-          at([3.40,3.30,3.22,2.95,2.86,2.79]),null,'Primeira proposta.'),
-        mk('cot8809b','0131/26','2026-10-14',10,'Marina Couto','Rafael Nunes','Cotacao_0131-26_Atlantico_Snacks.pdf',219000,
-          at([3.28,3.18,3.10,2.89,2.80,2.73]),{prazo:'21 dias'},'Cliente pediu revisão de preço e prazo de 21 dias.'),
-        mk('cot8809c','0142/26','2026-11-10',10,'Marina Couto','Rafael Nunes','Cotacao_0142-26_Atlantico_Snacks.pdf',221000,
-          at([3.19,3.09,3.02,2.84,2.75,2.68]),{prazo:'21 dias'},'Volume previsto de 400 cx/mês — preço da Faixa 2.')
-      ]},
-      mpc8807:{atual:'cot8807b', lista:[
-        mk('cot8807a','0125/26','2026-10-02',10,'Paulo Henrique Lima','Juliana Rocha','Cotacao_0125-26_Costa_Brava.pdf',198000,
-          cb([4.10,3.98,3.89,3.75,3.64,3.55])),
-        mk('cot8807b','0136/26','2026-10-20',10,'Paulo Henrique Lima','Juliana Rocha','Cotacao_0136-26_Costa_Brava.pdf',203000,
-          cb([3.96,3.85,3.77,3.62,3.52,3.44]),{frete:'FOB (retirada na fábrica)'},'Aguardando retorno do cliente.')
-      ]}
-    }};
+    var it=function(d,cx,mn,f){ return {desc:d,cx:cx,min:mn,f:f}; };
+    var mk=function(o){ return Object.assign({origem:'gerada',validade:10,info:INFO_PAD,obs:OBS_PAD,cond:condPad(),emb:embPad(),arquivo:null,st:'enviada',criado:o.data+'T10:00:00'},o); };
+    var at=function(a,b){ return [it('Salgadinho Palitinho sabor Orégano 138g',20,'50 cx',a),it('Salgadinho Palitinho sabor Calabresa 138g',20,'50 cx',a),it('Salgadão sabor Bacon 100g',24,'50 cx',b)]; };
+    var cb=function(a,b){ return [it('Biscoito de Amendoim com Chocolate Branco 250g',12,'50 cx',a),it('Biscoito Broa de Amendoim 250g',12,'50 cx',b)]; };
+    var cA={nome:'Atlântico Snacks'}, cB={nome:'Costa Brava Foods'};
+    var A=[
+      mk({id:'cot8809f',numero:'0097/26',data:'2026-08-18',por:'Marina Couto',contato:'Rafael Nunes',fone:'(47) 90000-1001',itens:at([3.52,3.41,3.33],[3.05,2.96,2.88]),
+        cond:Object.assign(condPad(),{prazo:'21 dias'}),fechadaEm:'2026-08-25',nota:'Fechada por telefone; pedido inicial de 380 cx.'}),
+      mk({id:'cot8809a',numero:'0118/26',data:'2026-09-22',por:'Marina Couto',contato:'Rafael Nunes',fone:'(47) 90000-1001',itens:at([3.40,3.30,3.22],[2.95,2.86,2.79]),st:'recusada',nota:'Cliente achou o prazo de 14 dias curto.'}),
+      mk({id:'cot8809b',numero:'0131/26',data:'2026-10-14',por:'Marina Couto',contato:'Rafael Nunes',fone:'(47) 90000-1001',itens:at([3.28,3.18,3.10],[2.89,2.80,2.73]),cond:Object.assign(condPad(),{prazo:'21 dias'}),st:'substituida'}),
+      mk({id:'cot8809c',numero:'0142/26',data:'2026-11-10',por:'Marina Couto',contato:'Rafael Nunes',fone:'(47) 90000-1001',itens:at([3.19,3.09,3.02],[2.84,2.75,2.68]),cond:Object.assign(condPad(),{prazo:'21 dias'}),nota:'Revisão para 400 cx/mês — aguardando retorno.'})
+    ];
+    var B=[
+      mk({id:'cot8807a',numero:'0125/26',data:'2026-10-02',por:'Paulo Henrique Lima',contato:'Juliana Rocha',fone:'(48) 90000-2002',itens:cb([4.10,3.98,3.89],[3.75,3.64,3.55]),st:'substituida'}),
+      mk({id:'cot8807b',numero:'0136/26',data:'2026-10-20',por:'Paulo Henrique Lima',contato:'Juliana Rocha',fone:'(48) 90000-2002',itens:cb([3.96,3.85,3.77],[3.62,3.52,3.44]),cond:Object.assign(condPad(),{frete:'FOB',descRet:''})})
+    ];
+    A.concat(B).forEach(function(c){ c.arquivo={nome:arqNome(c.numero,c.id.indexOf('8809')>0?cA:cB),tam:0}; });
+    return {v:2, m:{mpc8809:{ativa:'cot8809f',lista:A}, mpc8807:{ativa:null,lista:B}}};
   }
   var COT=null;
   function cotLoad(){
     if(COT) return COT;
     var raw=null; try{ raw=localStorage.getItem(LS_COT); }catch(e){}
     if(raw){ try{ COT=JSON.parse(raw); }catch(e){ COT=null; } }
-    if(!COT||typeof COT.m!=='object'||!COT.m){ COT=cotSeed(); cotSave(); }
+    if(!COT||COT.v!==2||typeof COT.m!=='object'||!COT.m){ COT=cotSeed(); cotSave(); }
     return COT;
   }
   function cotSave(){ var s=JSON.stringify(COT); if(s.length>COT_TOTAL) return false; return lsSet(LS_COT, s)!==false; }
-  function cotDe(id){ var r=cotLoad().m[id]; return r&&Array.isArray(r.lista)?r:{atual:null,lista:[]}; }
+  function cotDe(id){ var r=cotLoad().m[id]; return r&&Array.isArray(r.lista)?r:{ativa:null,lista:[]}; }
+  function cotReg(id){ var db=cotLoad(); return db.m[id]||(db.m[id]={ativa:null,lista:[]}); }
   function cotOrd(id){ return cotDe(id).lista.slice().sort(function(a,b){ return String(b.data+b.criado).localeCompare(String(a.data+a.criado)); }); }
   function dParse(s){ if(!s) return null; var p=String(s).slice(0,10).split('-'); var d=new Date(+p[0],(+p[1])-1,+p[2]); return isNaN(d)?null:d; }
   function dBr(d){ return d?pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear():'—'; }
   function dCurta(d){ return d?pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+String(d.getFullYear()).slice(2):'—'; }
+  function dPonto(d){ return d?pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear():'—'; }
   function hoje0(){ var d=new Date(); d.setHours(0,0,0,0); return d; }
+  function hojeIso(){ var d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
   function cotAte(c){ var d=dParse(c.data); if(!d) return null; d.setDate(d.getDate()+(parseInt(c.validade,10)||0)); return d; }
   function cotVencida(c){ var a=cotAte(c); return !!a && a<hoje0(); }
-  function cotStatus(c,atualId){ if(c.id!==atualId) return 'Substituída'; return cotVencida(c)?'Vencida':'Atual'; }
+  function cotStatus(c,reg){ if(reg && c.id===reg.ativa) return 'Fechada'; if(c.st==='encerrada') return 'Encerrada'; if(c.st==='recusada') return 'Recusada';
+    if(c.st==='substituida') return 'Substituída'; return cotVencida(c)?'Vencida':'Enviada'; }
+  var ST_CLS={'Fechada':'a','Enviada':'e','Vencida':'v','Recusada':'v','Substituída':'x','Encerrada':'x'};
   function brl(n){ if(n==null||n===''||isNaN(n)) return '—'; return 'R$ '+Number(n).toFixed(2).replace('.',','); }
   function kb(n){ if(!n) return ''; return n>=1048576?(n/1048576).toFixed(1).replace('.',',')+' MB':Math.max(1,Math.round(n/1024))+' KB'; }
   function nPrice(s){ s=String(s==null?'':s).replace(/[^\d,.-]/g,''); if(!s) return null; if(s.indexOf(',')>=0) s=s.replace(/\./g,'').replace(',','.'); var n=parseFloat(s); return isNaN(n)?null:Math.round(n*100)/100; }
-  function arqBtns(c){
-    return '<button class="mp-act" title="Ver cotação" onclick="MP.cotVer(\''+esc(c.id)+'\')"><i class="ti ti-eye"></i></button>'
-      +'<button class="mp-act" title="Baixar PDF" onclick="MP.cotBaixar(\''+esc(c.id)+'\')"><i class="ti ti-download"></i></button>';
-  }
-  function negHTML(cli){
-    var r=cotDe(cli.id), L=cotOrd(cli.id);
-    var atual=L.find(function(c){return c.id===r.atual;})||null;
-    var h='<input type="file" id="mp-cot-file" accept="application/pdf,.pdf" style="display:none" onchange="MP.cotArquivo(this)">'
-      +'<div class="mp-sku-h"><span class="mp-sec-n">Cotação atual</span><span class="sp"></span>'
-      +(atual?'<button class="mp-add-sku" type="button" id="mp-cot-add" onclick="MP.cotAnexar()"><i class="ti ti-paperclip"></i>Anexar cotação</button>':'')+'</div>';
-    if(!atual){
-      h+='<div class="mp-cot mp-cot-vz"><i class="ti ti-file-invoice"></i><div>Nenhuma cotação anexada para este cliente.</div>'
-        +'<div class="mu">Anexe o PDF enviado ao cliente. Cada nova cotação vira a atual e a anterior fica no histórico.</div>'
-        +'<button class="mp-btn gho sm" type="button" id="mp-cot-add" onclick="MP.cotAnexar()"><i class="ti ti-paperclip"></i>Anexar cotação</button></div>';
-      return h;
-    }
-    var ate=cotAte(atual), venc=cotVencida(atual);
-    var dias=ate?Math.round((ate-hoje0())/86400000):null;
-    var valTxt=venc?dBr(ate)+' · vencida':(dBr(ate)+(dias!=null?' · '+(dias===0?'vence hoje':(dias===1?'1 dia':dias+' dias')):''));
-    var ix=L.indexOf(atual), ant=L[ix+1]||null, delta='';
-    if(ant && atual.itens[0] && ant.itens[0] && atual.itens[0].f[0]!=null && ant.itens[0].f[0]){
-      var p=(atual.itens[0].f[0]/ant.itens[0].f[0]-1)*100;
-      delta='<div class="mp-cot-dl">Faixa 1 do 1º item '+(p<0?'−':'+')+Math.abs(p).toFixed(1).replace('.',',')+'% em relação à '+esc(ant.numero)+'</div>';
-    }
-    var kv=function(k,v,cls){ return '<div class="mp-kv-row"><div class="mp-kv-k">'+k+'</div><div class="mp-kv-v'+(cls?' '+cls:'')+'">'+esc(v==null||v===''?'—':v)+'</div></div>'; };
-    var cd=atual.cond||{};
-    h+='<div class="mp-cot" id="mp-cot-atual"><div class="mp-cot-t"><div class="nb">Nº '+esc(atual.numero)+'</div>'
-      +'<span class="mp-cot-st'+(venc?' venc':'')+'">'+(venc?'Vencida':'Válida')+'</span><span class="sp"></span>'
-      +'<span class="mp-cot-arq" title="'+esc(atual.arquivo&&atual.arquivo.nome||'')+'"><i class="ti ti-file-type-pdf"></i><span class="nm">'+esc(atual.arquivo&&atual.arquivo.nome||'—')+'</span>'
-      +(atual.arquivo&&atual.arquivo.tam?'<span class="tm">'+kb(atual.arquivo.tam)+'</span>':'')+'</span>'
-      +'<span class="mp-acts">'+arqBtns(atual)
-      +'<button class="mp-act" title="Excluir cotação" onclick="MP.cotExcluir(\''+esc(cli.id)+'\',\''+esc(atual.id)+'\')"><i class="ti ti-trash"></i></button></span></div>'
-      +'<div class="mp-kv2"><div class="mp-kv">'
-      +kv('Data de envio',dBr(dParse(atual.data)))+kv('Validade',valTxt,venc?'venc':'')+kv('Enviada por',atual.por)+kv('Contato',atual.contato)
-      +'</div><div class="mp-kv">'
-      +kv('Frete',cd.frete)+kv('Entrega',cd.entrega)+kv('Pagamento',cd.pagto)+kv('Prazo',cd.prazo)
-      +'</div></div>'
-      +'<table class="mp-emb mp-cot-it"><thead><tr><th>Descrição</th><th class="n">Cx</th><th class="n">Ped. mín.</th>'
-      +FAIXAS.map(function(f){ return '<th class="n" title="'+f[1]+'">'+f[0]+'<small>'+f[1]+'</small></th>'; }).join('')+'</tr></thead><tbody>'
-      +atual.itens.map(function(i){ return '<tr><td>'+esc(i.desc)+'</td><td class="n">'+esc(i.cx==null||i.cx===''?'—':i.cx)+'</td><td class="n">'+esc(i.min||'—')+'</td>'
-        +[0,1,2].map(function(k){ return '<td class="n pz">'+brl(i.f&&i.f[k])+'</td>'; }).join('')+'</tr>'; }).join('')
-      +'</tbody></table>'+delta
-      +(atual.obs?'<div class="mp-cot-obs"><b>Observações:</b> '+esc(atual.obs)+'</div>':'')
-      +'</div>';
-    h+='<div class="mp-sku-h mp-cot-hh"><span class="mp-sec-n">Histórico</span><span class="mp-sec-count">'+L.length+'</span></div>'
-      +'<div class="mp-tw mp-cot-tw"><table class="mp-t mp-cot-hist"><thead><tr><th>Nº</th><th>Envio</th><th>Validade</th><th class="n c-it">Itens</th><th>Enviada por</th><th class="c">PDF</th><th>Status</th><th></th></tr></thead><tbody>'
-      +L.map(function(c){ var st=cotStatus(c,r.atual), on=c.id===r.atual;
-        return '<tr data-id="'+esc(c.id)+'"'+(on?' class="on"':'')+'><td class="'+(on?'pr':'mu')+'">'+esc(c.numero)+'</td><td>'+dCurta(dParse(c.data))+'</td><td>'+dCurta(cotAte(c))+'</td>'
-          +'<td class="n c-it">'+(c.itens||[]).length+'</td><td class="mp-cot-por" title="'+esc(c.por||'')+'">'+esc(c.por||'—')+'</td>'
-          +'<td class="c"><button class="mp-act" title="Ver '+esc(c.arquivo&&c.arquivo.nome||'cotação')+'" onclick="MP.cotVer(\''+esc(c.id)+'\')"><i class="ti ti-file-type-pdf"></i></button></td>'
-          +'<td><span class="mp-cot-s s-'+(st==='Atual'?'a':(st==='Vencida'?'v':'x'))+'">'+st+'</span></td>'
-          +'<td class="c">'+(on?'':'<button class="mp-act" title="Marcar como atual" onclick="MP.cotAtual(\''+esc(cli.id)+'\',\''+esc(c.id)+'\')"><i class="ti ti-pin"></i></button>')+'</td></tr>';
-      }).join('')+'</tbody></table></div>';
-    return h;
-  }
-  function cotById(id){ var m=cotLoad().m; for(var k in m){ var f=(m[k].lista||[]).find(function(c){return c.id===id;}); if(f) return {c:f,cli:k}; } return null; }
+  function cotById(id){ var m=cotLoad().m; for(var k in m){ var f=(m[k].lista||[]).find(function(c){return c.id===id;}); if(f) return {c:f,cli:k,reg:m[k]}; } return null; }
   function proxNumero(){ var mx=0, yy=String(new Date().getFullYear()).slice(2); var m=cotLoad().m;
     Object.keys(m).forEach(function(k){ (m[k].lista||[]).forEach(function(c){ var n=parseInt(String(c.numero).split('/')[0],10); if(n>mx) mx=n; }); });
     var s=String(mx+1); while(s.length<4) s='0'+s; return s+'/'+yy; }
-  function hojeIso(){ var d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
-  var COT_ARQ=null; // arquivo em preparo no modal
+  function arqBtns(c){
+    return '<button class="mp-act" title="Ver cotação" onclick="MP.cotVer(\''+esc(c.id)+'\')"><i class="ti ti-eye"></i></button>'
+      +'<button class="mp-act" title="Baixar PDF" onclick="MP.cotBaixar(\''+esc(c.id)+'\')"><i class="ti ti-download"></i></button>'; }
+  function itensTabHTML(c){
+    if(!c.itens||!c.itens.length) return '<div class="mp-cot-dl">Itens e preços estão no PDF anexado.</div>';
+    return '<table class="mp-emb mp-cot-it"><thead><tr><th>Descrição</th><th class="n">Cx</th><th class="n">Ped. mín.</th>'
+      +FAIXAS.map(function(f){ return '<th class="n" title="'+f[1]+'">'+f[0]+'<small>'+f[1]+'</small></th>'; }).join('')+'</tr></thead><tbody>'
+      +c.itens.map(function(i){ return '<tr><td>'+esc(i.desc)+'</td><td class="n">'+esc(i.cx==null||i.cx===''?'—':i.cx)+'</td><td class="n">'+esc(i.min||'—')+'</td>'
+        +[0,1,2].map(function(k){ return '<td class="n pz">'+brl(i.f&&i.f[k])+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody></table>'; }
+  function negHTML(cli){
+    var reg=cotDe(cli.id), L=cotOrd(cli.id), vw=S.nTab==='enviadas'?'enviadas':'ativa';
+    var h='<input type="file" id="mp-cot-file" accept="application/pdf,.pdf" style="display:none" onchange="MP.cotArquivo(this)">'
+      +'<div class="mp-neg-bar"><div class="mp-seg" role="tablist">'
+      +'<button type="button" class="'+(vw==='ativa'?'on':'')+'" data-ntab="ativa" onclick="MP.negTab(\'ativa\')">Ativa</button>'
+      +'<button type="button" class="'+(vw==='enviadas'?'on':'')+'" data-ntab="enviadas" onclick="MP.negTab(\'enviadas\')">Enviadas<span class="n">'+L.length+'</span></button></div>'
+      +'<span class="sp"></span>'
+      +(vw==='enviadas'?'<button class="mp-btn gho sm" type="button" id="mp-cot-add" title="Anexar PDF de cotação feita fora do HUB" onclick="MP.cotAnexar()"><i class="ti ti-paperclip"></i>Anexar PDF</button>':'')
+      +'<button class="mp-btn pri sm" type="button" id="mp-cot-new" onclick="MP.cotCriar(\''+esc(cli.id)+'\')"><i class="ti ti-plus"></i>Criar cotação</button></div>';
+    return h+(vw==='enviadas'?enviadasHTML(cli,reg,L):ativaHTML(cli,reg,L));
+  }
+  function ativaHTML(cli,reg,L){
+    var a=L.find(function(c){return c.id===reg.ativa;})||null;
+    if(!a) return '<div class="mp-cot mp-cot-vz"><i class="ti ti-file-certificate"></i><div>Nenhuma negociação fechada</div>'
+      +'<div class="mu">Quando o cliente aceitar uma cotação, abra <u class="mp-lk" onclick="MP.negTab(\'enviadas\')">Enviadas</u> e use “Marcar como fechada”.'
+      +(L.length?'':' Ainda não há cotações enviadas para este cliente.')+'</div></div>';
+    var kv=function(k,v,cls){ return '<div class="mp-kv-row"><div class="mp-kv-k">'+k+'</div><div class="mp-kv-v'+(cls?' '+cls:'')+'">'+esc(v==null||v===''?'—':v)+'</div></div>'; };
+    var cd=a.cond||{};
+    var nova=L.filter(function(c){ return c.data>a.data && cotStatus(c,reg)==='Enviada'; })[0];
+    return '<div class="mp-cot" id="mp-cot-ativa"><div class="mp-cot-t"><div class="nb">Nº '+esc(a.numero)+'</div>'
+      +'<span class="mp-cot-st">Ativa</span><span class="sp"></span>'
+      +'<span class="mp-cot-arq" title="'+esc(a.arquivo&&a.arquivo.nome||'')+'"><i class="ti ti-file-type-pdf"></i><span class="nm">'+esc(a.arquivo&&a.arquivo.nome||'—')+'</span></span>'
+      +'<span class="mp-acts">'+arqBtns(a)+'</span></div>'
+      +'<div class="mp-kv2"><div class="mp-kv">'
+      +kv('Vigente desde',dBr(dParse(a.fechadaEm)))+kv('Enviada em',dBr(dParse(a.data)))+kv('Elaborada por',a.por)+kv('Contato',a.contato)
+      +'</div><div class="mp-kv">'+kv('Frete',freteTxt(cd))+kv('Entrega',cd.entrega)+kv('Pagamento',cd.pagto)+kv('Prazo',cd.prazo)+'</div></div>'
+      +itensTabHTML(a)
+      +(a.nota?'<div class="mp-cot-obs"><b>Nota:</b> '+esc(a.nota)+'</div>':'')+'</div>'
+      +(nova?'<div class="mp-cot-hint mp-cot-nova"><i class="ti ti-info-circle"></i>A cotação '+esc(nova.numero)+' (enviada em '+dBr(dParse(nova.data))+') está aguardando retorno — <u class="mp-lk" onclick="MP.negTab(\'enviadas\')">ver em Enviadas</u>.</div>':'');
+  }
+  function enviadasHTML(cli,reg,L){
+    if(!L.length) return '<div class="mp-cot mp-cot-vz"><i class="ti ti-send"></i><div>Nenhuma cotação enviada</div>'
+      +'<div class="mu">Crie a cotação aqui no HUB ou anexe o PDF de uma cotação feita fora.</div></div>';
+    return '<div class="mp-tw mp-cot-tw"><table class="mp-t mp-cot-hist"><thead><tr><th>Nº</th><th>Envio</th><th>Validade</th><th class="c-por">Elaborada por</th><th class="c">PDF</th><th>Status</th><th></th></tr></thead><tbody>'
+      +L.map(function(c){ var st=cotStatus(c,reg), on=c.id===reg.ativa;
+        return '<tr data-id="'+esc(c.id)+'"'+(on?' class="on"':'')+'><td class="'+(on?'pr':'mu')+'">'+esc(c.numero)+'</td><td>'+dCurta(dParse(c.data))+'</td><td>'+dCurta(cotAte(c))+'</td>'
+          +'<td class="mp-cot-por c-por" title="'+esc(c.por||'')+'">'+esc(c.por||'—')+'</td>'
+          +'<td class="c"><button class="mp-act" title="Ver '+esc(c.arquivo&&c.arquivo.nome||'cotação')+'" onclick="MP.cotVer(\''+esc(c.id)+'\')"><i class="ti ti-file-type-pdf"></i></button></td>'
+          +'<td><span class="mp-cot-s s-'+ST_CLS[st]+'">'+st+'</span></td>'
+          +'<td><div class="mp-acts">'+(on?'':'<button class="mp-act" title="Marcar como fechada" onclick="MP.cotFechar(\''+esc(cli.id)+'\',\''+esc(c.id)+'\')"><i class="ti ti-circle-check"></i></button>')
+          +'<button class="mp-act" title="Mais ações" onclick="MP.cotMenu(this,\''+esc(cli.id)+'\',\''+esc(c.id)+'\')"><i class="ti ti-dots"></i></button></div></td></tr>';
+      }).join('')+'</tbody></table></div>'
+      +'<div class="mp-cot-hint">Enviada → aguardando retorno · Vencida → passou da validade · Substituída → houve uma cotação mais nova · Fechada → é a negociação ativa.</div>';
+  }
+  // menu "⋯" das linhas de Enviadas
+  function fecharMenu(){ var m=document.getElementById('mp-cot-menu'); if(m) m.remove(); document.removeEventListener('mousedown',menuFora,true); window.removeEventListener('scroll',fecharMenu,true); }
+  function menuFora(e){ if(e.target.closest && e.target.closest('#mp-cot-menu')) return; fecharMenu(); }
+  // ── Layout Klain (pré-visualização HTML; o PDF segue a mesma estrutura) ──
+  function cotDados(c,cliId){ var cli=cliById(cliId)||{}; return {c:c,cli:cli}; }
+  function layoutHTML(c,cli){
+    var itens=(c.itens||[]).slice(); var n=Math.max(itens.length,6);
+    var rows=''; for(var i=0;i<n;i++){ var it=itens[i];
+      rows+='<tr><td class="i">'+(i+1)+'</td><td class="d">'+(it?esc(it.desc):'')+'</td><td class="c">'+(it?esc(it.cx==null?'':it.cx):'')+'</td><td class="c">'+(it?esc(it.min||''):'')+'</td>'
+        +[0,1,2].map(function(k){ return '<td class="c b">'+(it&&it.f&&it.f[k]!=null?brl(it.f[k]):'')+'</td>'; }).join('')+'</tr>'; }
+    var emb=c.emb||embPad(), cd=c.cond||{};
+    var obs=String(c.obs||'').split('\n').filter(function(x){return x.trim();}).map(function(l){ return '<li>'+esc(l)+'</li>'; }).join('');
+    return '<div class="kq"><div class="kq-h"><div class="kq-logo"><b>Klain</b><i>Feito com amor.</i></div>'
+      +'<div class="kq-sl"><b>SUA MARCA FORTE COM PRODUTOS DE ALTO GIRO!</b><span>TERCEIRIZAÇÃO COM KLAIN ALIMENTOS</span><span>DO SEU JEITO, NO SEU TEMPO!</span><span>LOGÍSTICA PRÓPRIA PARA MELHOR LHE ATENDER.</span><span>40 ANOS DE EXPERIÊNCIA.</span></div>'
+      +'<div class="kq-box"><div><span>COTAÇÃO</span><span>DATA</span></div><div><b>'+esc(c.numero||'—')+'</b><b>'+dPonto(dParse(c.data))+'</b></div></div></div>'
+      +'<table class="kq-cli"><tr><td colspan="2"><span>CLIENTE:</span> '+esc((cli.nome||'').toUpperCase())+'</td></tr>'
+      +'<tr><td><span>CIDADE:</span> '+esc((cli.cidade||'').toUpperCase())+'</td><td><span>CONTATO:</span> '+esc((c.contato||'').toUpperCase())+'</td></tr>'
+      +'<tr><td><span>ESTADO:</span> '+esc(cli.estado||'')+'</td><td><span>FONE:</span> '+esc(c.fone||'')+'</td></tr></table>'
+      +'<table class="kq-it"><thead><tr><th class="i"></th><th>Descrição</th><th class="c">Quantidade<br>na caixa</th><th class="c">Pedido mínimo<br>por sabor</th>'
+      +FAIXAS.map(function(f){ return '<th class="c">'+f[0].toUpperCase()+'<br><small>'+f[2]+'</small></th>'; }).join('')+'</tr></thead><tbody>'+rows+'</tbody></table>'
+      +(c.info?'<div class="kq-info"><b>INFORMAÇÕES COMPLEMENTARES:</b><p>'+esc(c.info).replace(/\n/g,'<br>')+'</p></div>':'')
+      +(obs?'<div class="kq-sec">OBSERVAÇÕES</div><ul class="kq-obs">'+obs+'</ul>':'')
+      +'<div class="kq-sec">EMBALAGENS</div><table class="kq-g"><tr>'+EMB_ROWS.map(function(r){ return '<th>'+r[1].toUpperCase()+'<small>'+esc(emb[r[0]]&&emb[r[0]].desc||'')+'</small></th>'; }).join('')+'</tr>'
+      +'<tr>'+EMB_ROWS.map(function(r){ return '<td>'+esc(emb[r[0]]&&emb[r[0]].forn||'—')+'</td>'; }).join('')+'</tr></table>'
+      +'<table class="kq-g kq-cd"><tr><th>Condições de envio</th><th>Data de entrega</th><th>Condições de pagamento</th><th>Data de vencimento</th></tr>'
+      +'<tr><td>'+(cd.frete==='FOB'?'Valores da cotação com frete FOB<br><small>(retirada na fábrica)</small>':'Valores da cotação com frete CIF'+(cd.descRet?'<br><small>(desc. de retirada: '+esc(cd.descRet)+'%)</small>':''))+'</td>'
+      +'<td>'+esc(cd.entrega||'—')+'</td><td>'+esc(cd.pagto||'—')+'</td><td>'+esc(cd.prazo||'—')+'</td></tr></table>'
+      +'<div class="kq-ft"><p>Esta é uma cotação referente às mercadorias acima citadas e está sujeita às condições indicadas acima.</p>'
+      +'<p><b>VALIDADE DA PROPOSTA:</b> '+esc(c.validade)+' dias a partir da data de elaboração.</p>'
+      +'<p>OBS.: mensalmente todas as tabelas de preço são revistas e atualizadas (para mais ou para menos) se necessário.</p>'
+      +'<p class="by">Cotação elaborada por: '+esc((c.por||'').toUpperCase())+'</p><p>Agradecemos a preferência.</p>'
+      +'<p class="co">KLAIN ALIMENTOS · Terceirização de marcas próprias</p></div></div>';
+  }
+  // ── PDF (pdfMake, carregado sob demanda pelo HUB) ──
+  function pdfDoc(c,cli){
+    var RED='#c8202e', G='#555', L='#bbbbbb';
+    var grid={hLineWidth:function(){return .6;},vLineWidth:function(){return .6;},hLineColor:function(){return L;},vLineColor:function(){return L;},paddingTop:function(){return 3;},paddingBottom:function(){return 3;}};
+    var itens=(c.itens||[]).slice(), n=Math.max(itens.length,6), body=[];
+    body.push([{text:''},{text:'Descrição',bold:true,alignment:'center'},{text:'Quantidade\nna caixa',bold:true,alignment:'center'},{text:'Pedido mínimo\npor sabor',bold:true,alignment:'center'}]
+      .concat(FAIXAS.map(function(f){ return {text:[{text:f[0].toUpperCase()+'\n',bold:true},{text:f[2],fontSize:7}],alignment:'center'}; })));
+    for(var i=0;i<n;i++){ var it=itens[i];
+      body.push([{text:String(i+1),alignment:'center',color:G},{text:it?it.desc:''},{text:it?String(it.cx==null?'':it.cx):'',alignment:'center'},{text:it?(it.min||''):'',alignment:'center'}]
+        .concat([0,1,2].map(function(k){ return {text:it&&it.f&&it.f[k]!=null?brl(it.f[k]):'',alignment:'center',bold:true}; }))); }
+    var emb=c.emb||embPad(), cd=c.cond||{};
+    var cli3=function(a,b){ return {text:[{text:a+' ',bold:true,fontSize:7.5,color:G},{text:b||''}]}; };
+    var sec=function(t){ return {table:{widths:['*'],body:[[{text:t,bold:true,alignment:'center',fontSize:8}]]},layout:grid,margin:[0,10,0,0]}; };
+    var obs=String(c.obs||'').split('\n').filter(function(x){return x.trim();});
+    var freteC=cd.frete==='FOB'?[{text:'Valores da cotação com frete FOB\n'},{text:'(retirada na fábrica)',fontSize:7.5}]
+      :[{text:'Valores da cotação com frete CIF\n'}].concat(cd.descRet?[{text:'(Desc. de retirada: '+cd.descRet+'%)',fontSize:7.5}]:[]);
+    return {pageSize:'A4',pageMargins:[32,28,32,34],defaultStyle:{fontSize:8.5,color:'#222'},
+      info:{title:'Cotação '+(c.numero||'')+' · '+(cli.nome||''),author:'Klain Alimentos'},
+      content:[
+        {columns:[
+          {width:110,stack:[{text:'Klain',fontSize:30,bold:true,italics:true,color:RED},{text:'Feito com amor.',italics:true,color:RED,fontSize:8,margin:[2,-2,0,0]}]},
+          {width:'*',margin:[6,2,0,0],stack:[{text:'SUA MARCA FORTE COM PRODUTOS DE ALTO GIRO!',bold:true,fontSize:9},{text:'TERCEIRIZAÇÃO COM KLAIN ALIMENTOS',bold:true,fontSize:8},{text:'DO SEU JEITO, NO SEU TEMPO!',bold:true,fontSize:8},{text:'LOGÍSTICA PRÓPRIA PARA MELHOR LHE ATENDER.',bold:true,fontSize:8},{text:'40 ANOS DE EXPERIÊNCIA.',bold:true,fontSize:8}]},
+          {width:130,table:{widths:['*','*'],body:[[{text:'COTAÇÃO',fontSize:7,color:G,alignment:'center'},{text:'DATA',fontSize:7,color:G,alignment:'center'}],[{text:c.numero||'—',fontSize:12,bold:true,alignment:'center'},{text:dPonto(dParse(c.data)),fontSize:12,bold:true,alignment:'center'}]]},layout:grid}
+        ]},
+        {margin:[0,12,0,0],table:{widths:['*','*'],body:[[Object.assign(cli3('CLIENTE:',(cli.nome||'').toUpperCase()),{colSpan:2}),{}],[cli3('CIDADE:',(cli.cidade||'').toUpperCase()),cli3('CONTATO:',(c.contato||'').toUpperCase())],[cli3('ESTADO:',cli.estado||''),cli3('FONE:',c.fone||'')]]},layout:grid},
+        {margin:[0,10,0,0],table:{headerRows:1,widths:[14,'*',52,58,58,58,64],body:body},layout:grid},
+        c.info?{margin:[0,8,0,0],stack:[{text:'INFORMAÇÕES COMPLEMENTARES:',bold:true},{text:c.info,margin:[0,3,0,0]}]}:'',
+        obs.length?sec('OBSERVAÇÕES'):'',
+        obs.length?{margin:[6,4,0,0],stack:obs.map(function(l){ return {text:l,margin:[0,1,0,1],fontSize:8}; })}:'',
+        sec('EMBALAGENS'),
+        {table:{widths:['*','*','*','*'],body:[EMB_ROWS.map(function(r){ return {text:[{text:r[1].toUpperCase()+'\n',bold:true,fontSize:7.5},{text:emb[r[0]]&&emb[r[0]].desc||'',fontSize:7,color:G}],alignment:'center'}; }),
+          EMB_ROWS.map(function(r){ return {text:emb[r[0]]&&emb[r[0]].forn||'—',alignment:'center'}; })]},layout:grid},
+        {margin:[0,8,0,0],table:{widths:['*','*','*','*'],body:[['Condições de envio','Data de entrega','Condições de pagamento','Data de vencimento'].map(function(t){ return {text:t,bold:true,fontSize:7.5,alignment:'center'}; }),
+          [{text:freteC,alignment:'center'},{text:cd.entrega||'—',alignment:'center'},{text:cd.pagto||'—',alignment:'center'},{text:cd.prazo||'—',alignment:'center'}]]},layout:grid},
+        {margin:[0,16,0,0],alignment:'center',fontSize:8,stack:[
+          'Esta é uma cotação referente às mercadorias acima citadas e está sujeita às condições indicadas acima.',
+          {text:[{text:'VALIDADE DA PROPOSTA: ',bold:true},c.validade+' dias a partir da data de elaboração.']},
+          'OBS.: mensalmente todas as tabelas de preço são revistas e atualizadas (para mais ou para menos) se necessário.',
+          {text:'Cotação elaborada por: '+(c.por||'').toUpperCase(),fontSize:9.5,margin:[0,10,0,0]},'Agradecemos a preferência.']}
+      ],
+      footer:function(){ return {text:'KLAIN ALIMENTOS · Terceirização de marcas próprias',alignment:'center',fontSize:7.5,color:G,margin:[0,10,0,0]}; }};
+  }
+  function comPdf(fn){
+    var go=function(){ if(window.pdfMake&&pdfMake.createPdf){ try{ fn(); }catch(e){ console.error(e); toastMsg('Não foi possível gerar o PDF.'); } } else toastMsg('Biblioteca de PDF não carregou. Tente de novo em instantes.'); };
+    if(window.pdfMake&&pdfMake.createPdf) return go();
+    if(typeof ensurePdfMakeLoaded==='function') ensurePdfMakeLoaded().then(go,function(){ toastMsg('Não foi possível carregar a biblioteca de PDF.'); });
+    else go();
+  }
+  function baixarPdf(c,cli,nome){ comPdf(function(){ pdfMake.createPdf(pdfDoc(c,cli)).download(nome||arqNome(c.numero,cli)); }); }
+  function dataUrlBlob(u){ var p=String(u).split(','), bin=atob(p[1]||''), a=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i);
+    var mt=(p[0].match(/data:([^;]+)/)||[])[1]||'application/pdf'; return new Blob([a],{type:mt}); }
+  // ── Form Criar cotação ──
   function itRowHTML(i){ i=i||{desc:'',cx:'',min:'',f:[null,null,null]};
     var pv=function(k){ var n=i.f&&i.f[k]; return n==null?'':Number(n).toFixed(2).replace('.',','); };
     return '<tr><td><input class="mp-in ci-d" value="'+esc(i.desc)+'" placeholder="Produto e gramagem"></td>'
@@ -457,55 +550,80 @@
       +'<td><input class="mp-in ci-min" value="'+esc(i.min||'')+'"></td>'
       +[0,1,2].map(function(k){ return '<td><input class="mp-in ci-f'+k+'" value="'+pv(k)+'" inputmode="decimal" placeholder="0,00"></td>'; }).join('')
       +'<td><button class="mp-act" type="button" title="Remover item" onclick="MP.cotItRm(this)"><i class="ti ti-x"></i></button></td></tr>'; }
-  function formCot(cliId){
-    var c=cliById(cliId); if(!c||!COT_ARQ) return;
-    var r=cotDe(cliId), base=r.lista.find(function(x){return x.id===r.atual;})||null;
-    var itens=base?base.itens:skusDe(cliId).map(function(s){ return {desc:s.nome,cx:'',min:'',f:[null,null,null]}; });
+  function lerItens(){ return [].slice.call(document.querySelectorAll('#cf-it tr')).map(function(tr){ var g=function(s){ var e=tr.querySelector(s); return e?String(e.value).trim():''; };
+      return {desc:g('.ci-d'),cx:g('.ci-cx')?(parseInt(g('.ci-cx'),10)||g('.ci-cx')):'',min:g('.ci-min'),f:[nPrice(g('.ci-f0')),nPrice(g('.ci-f1')),nPrice(g('.ci-f2'))]}; })
+      .filter(function(i){ return i.desc||i.f.some(function(x){return x!=null;}); }); }
+  var CF=null; // {cliId}
+  function cfLer(){ var emb={}; EMB_ROWS.forEach(function(r){ emb[r[0]]={desc:v('cf-e-'+r[0]+'-d'),forn:v('cf-e-'+r[0]+'-f')}; });
+    return {numero:v('cf-num'),data:v('cf-data'),validade:parseInt(v('cf-val'),10)||'',por:v('cf-por'),contato:v('cf-cont'),fone:v('cf-fone'),itens:lerItens(),info:v('cf-info'),
+      cond:{frete:v('cf-frete')||'CIF',descRet:v('cf-desc'),entrega:v('cf-ent'),pagto:v('cf-pag'),prazo:v('cf-prazo')},emb:emb,obs:v('cf-obs')}; }
+  function cfValida(d){ var req=[['cf-num',d.numero],['cf-data',d.data],['cf-val',d.validade],['cf-por',d.por],['cf-ent',d.cond.entrega],['cf-pag',d.cond.pagto],['cf-prazo',d.cond.prazo]]
+      .filter(function(x){ return !x[1]; }).map(function(x){ return x[0]; });
+    var itOk=d.itens.length && d.itens.every(function(i){ return i.desc && i.f[0]!=null; });
+    if(req.length||!itOk){ cfForm(true); marcaErro(itOk?req:req.concat(['cf-itens']), itOk?'Preencha os campos obrigatórios.':'Informe ao menos um item com descrição e preço da Faixa 1.'); return false; }
+    marcaErro([],''); return true; }
+  function cfForm(show){ var f=document.getElementById('cf-form'), p=document.getElementById('cf-prev'), b=document.getElementById('cf-pv-btn'); if(!f||!p) return;
+    f.style.display=show?'':'none'; p.style.display=show?'none':''; if(b) b.innerHTML=show?'<i class="ti ti-eye"></i>Pré-visualizar':'<i class="ti ti-pencil"></i>Voltar ao formulário'; }
+  function formCriar(cliId, baseId){
+    var cli=cliById(cliId); if(!cli) return;
+    var L=cotOrd(cliId), base=baseId?(cotById(baseId)||{}).c:L.find(function(c){ return c.itens&&c.itens.length; });
+    var prev=function(desc){ var src=base&&base.itens||[]; return src.find(function(i){ return norm(i.desc)===norm(desc); }); };
+    var itens=baseId&&base?base.itens.slice():skusDe(cliId).map(function(s){ var p=prev(s.nome); return p?Object.assign({},p):{desc:s.nome,cx:'',min:'',f:[null,null,null]}; });
     if(!itens.length) itens=[null];
-    var cd=Object.assign({},COND_PAD,base&&base.cond||{});
-    var b='<div class="mp-cot-file"><i class="ti ti-file-type-pdf"></i><span class="nm">'+esc(COT_ARQ.nome)+'</span><span class="tm">'+kb(COT_ARQ.tam)+'</span></div>'
-      +'<div class="mp-g c4">'+fIn('cf-num','Nº da cotação',proxNumero(),{req:true})+fIn('cf-data','Data de envio',hojeIso(),{req:true,type:'date'})
-      +fIn('cf-val','Validade',base?base.validade:10,{req:true,type:'number',min:1,suf:'dias'})+fIn('cf-por','Enviada por',base?base.por:'',{req:true})+'</div>'
-      +'<div class="mp-g c2" style="margin-top:10px">'+fIn('cf-cont','Contato no cliente <i class="op">(Opcional)</i>',base?base.contato:'')+'<span></span></div>'
+    var cd=Object.assign(condPad(),base&&base.cond||{}), emb=Object.assign(embPad(),base&&base.emb||{});
+    var embRow=function(r){ var e=emb[r[0]]||{}; return '<tr><td class="k">'+r[1]+'</td><td><input class="mp-in" id="cf-e-'+r[0]+'-d" value="'+esc(e.desc||'')+'"></td>'
+      +'<td><select class="mp-sel" id="cf-e-'+r[0]+'-f">'+selOpts(FORN,e.forn||FORN[0])+'</select></td></tr>'; };
+    var b='<div id="cf-form">'
+      +'<div class="mp-cot-cli"><div><span>Cliente</span><b>'+esc(cli.nome)+'</b></div><div><span>Cidade/UF</span><b>'+esc((cli.cidade||'—')+' / '+(cli.estado||'—'))+'</b></div><div><span>Código</span><b>'+esc(cli.codigo||'—')+'</b></div></div>'
+      +'<div class="mp-g c4">'+fIn('cf-num','Nº da cotação',proxNumero(),{req:true})+fIn('cf-data','Data',hojeIso(),{req:true,type:'date'})
+      +fIn('cf-val','Validade',base?base.validade:10,{req:true,type:'number',min:1,suf:'dias'})+fIn('cf-por','Elaborada por',base?base.por:'',{req:true})+'</div>'
+      +'<div class="mp-g c2" style="margin-top:10px">'+fIn('cf-cont','Contato no cliente <i class="op">(Opcional)</i>',base?base.contato:'')+fIn('cf-fone','Fone <i class="op">(Opcional)</i>',base?base.fone:'')+'</div>'
       +'<div class="mp-cot-fh"><span class="mp-sec-n">Itens</span><span class="sp"></span><button class="mp-add-sku" type="button" onclick="MP.cotItAdd()"><i class="ti ti-plus"></i>Item</button></div>'
-      +'<div class="mp-f" data-f="cf-itens"><table class="mp-cot-ed"><thead><tr><th>Descrição <b>*</b></th><th>Qtd cx</th><th>Ped. mín.</th>'
-      +FAIXAS.map(function(f,k){ return '<th title="'+f[1]+'">'+f[0]+(k===0?' <b>*</b>':'')+'<small>'+f[1]+'</small></th>'; }).join('')+'<th></th></tr></thead><tbody id="cf-it">'
+      +'<div class="mp-f" data-f="cf-itens"><table class="mp-cot-ed"><thead><tr><th>Descrição <b>*</b></th><th>Qtd na caixa</th><th>Ped. mín. por sabor</th>'
+      +FAIXAS.map(function(f,k){ return '<th title="'+f[2]+'">'+f[0]+(k===0?' <b>*</b>':'')+'<small>'+f[1]+'</small></th>'; }).join('')+'<th></th></tr></thead><tbody id="cf-it">'
       +itens.map(itRowHTML).join('')+'</tbody></table></div>'
-      +(base?'<div class="mp-cot-hint">Itens e condições copiados da cotação '+esc(base.numero)+' — ajuste o que mudou.</div>':'')
-      +'<div class="mp-sec-n" style="margin:12px 0 6px">Condições</div>'
-      +'<div class="mp-g c4">'+fIn('cf-frete','Frete',cd.frete)+fIn('cf-ent','Entrega',cd.entrega)+fIn('cf-pag','Pagamento',cd.pagto)+fIn('cf-prazo','Prazo',cd.prazo)+'</div>'
-      +'<div style="margin-top:10px">'+fIn('cf-obs','Observações <i class="op">(Opcional)</i>',base?'':'',{area:true})+'</div>'
-      +'<div class="mp-cot-hint">Ao salvar, esta cotação passa a ser a atual'+(base?' e a '+esc(base.numero)+' vai para o histórico como substituída':'')+'.</div>';
-    abrirModal('Anexar cotação · '+esc(c.nome),'ti-paperclip',b,function(){
+      +'<div class="mp-cot-hint">'+(baseId&&base?'Itens copiados da cotação '+esc(base.numero)+'.':'Itens vindos dos SKUs do cliente'+(base?'; preços da cotação '+esc(base.numero)+' quando o item é o mesmo.':'.'))+'</div>'
+      +'<div style="margin-top:10px">'+fIn('cf-info','Informações complementares <i class="op">(Opcional)</i>',base?base.info:INFO_PAD,{area:true})+'</div>'
+      +'<div class="mp-sec-n" style="margin:14px 0 6px">Condições</div>'
+      +'<div class="mp-g c5">'+fSel('cf-frete','Frete',[['CIF','CIF'],['FOB','FOB (retirada)']],cd.frete,{req:true})+fIn('cf-desc','Desc. retirada <i class="op">(Opcional)</i>',cd.descRet,{suf:'%'})
+      +fIn('cf-ent','Entrega',cd.entrega,{req:true})+fIn('cf-pag','Pagamento',cd.pagto,{req:true})+fIn('cf-prazo','Prazo',cd.prazo,{req:true})+'</div>'
+      +'<div class="mp-sec-n" style="margin:14px 0 6px">Embalagens</div>'
+      +'<table class="mp-cot-emb"><thead><tr><th></th><th>Descrição</th><th>Fornecida por</th></tr></thead><tbody>'+EMB_ROWS.map(embRow).join('')+'</tbody></table>'
+      +'<div style="margin-top:12px">'+fIn('cf-obs','Observações <i class="op">(Opcional)</i>',base&&base.obs?base.obs:OBS_PAD,{area:true})+'</div>'
+      +'</div><div id="cf-prev" style="display:none"></div>'
+      +'<div class="mp-cot-hint" style="margin-top:8px">“Salvar como enviada” coloca a cotação em Enviadas'+(L.some(function(c){return cotStatus(c,cotDe(cliId))==='Enviada';})?' e marca a anterior em aberto como substituída':'')+'.</div>';
+    CF={cliId:cliId};
+    var ov=abrirModal('Criar cotação · '+esc(cli.nome),'ti-file-plus',b,function(){ MP.cotSalvarCriada(); },'Salvar como enviada');
+    ov.querySelector('.mp-mod').classList.add('mp-mod-xl');
+    var obsEl=document.getElementById('cf-obs'); if(obsEl) obsEl.rows=6;
+    var sv=ov.querySelector('#mp-salvar');
+    sv.insertAdjacentHTML('beforebegin','<button class="mp-btn gho" type="button" id="cf-pv-btn" onclick="MP.cotPrevia()"><i class="ti ti-eye"></i>Pré-visualizar</button>'
+      +'<button class="mp-btn gho" type="button" id="cf-pdf-btn" onclick="MP.cotGerarPdf()"><i class="ti ti-file-download"></i>Gerar PDF</button>');
+  }
+  function formAnexar(cliId, arq){
+    var cli=cliById(cliId); if(!cli) return; var base=cotOrd(cliId)[0];
+    var b='<div class="mp-cot-file"><i class="ti ti-file-type-pdf"></i><span class="nm">'+esc(arq.nome)+'</span><span class="tm">'+kb(arq.tam)+'</span></div>'
+      +'<div class="mp-g c4">'+fIn('cf-num','Nº da cotação',proxNumero(),{req:true})+fIn('cf-data','Data de envio',hojeIso(),{req:true,type:'date'})
+      +fIn('cf-val','Validade',10,{req:true,type:'number',min:1,suf:'dias'})+fIn('cf-por','Elaborada por',base?base.por:'',{req:true})+'</div>'
+      +'<div class="mp-g c2" style="margin-top:10px">'+fIn('cf-cont','Contato no cliente <i class="op">(Opcional)</i>',base?base.contato:'')+fIn('cf-nota','Nota <i class="op">(Opcional)</i>','')+'</div>'
+      +'<div class="mp-cot-hint" style="margin-top:8px">Cotação feita fora do HUB: os itens e preços ficam no PDF. Ela entra em Enviadas.</div>';
+    abrirModal('Anexar PDF · '+esc(cli.nome),'ti-paperclip',b,function(){
       var req=['cf-num','cf-data','cf-val','cf-por'].filter(function(id){ return !v(id); });
-      var rows=[].slice.call(document.querySelectorAll('#cf-it tr')).map(function(tr){ var g=function(s){ var e=tr.querySelector(s); return e?String(e.value).trim():''; };
-        return {desc:g('.ci-d'),cx:g('.ci-cx')?(parseInt(g('.ci-cx'),10)||g('.ci-cx')):'',min:g('.ci-min'),f:[nPrice(g('.ci-f0')),nPrice(g('.ci-f1')),nPrice(g('.ci-f2'))]}; })
-        .filter(function(i){ return i.desc||i.f.some(function(x){return x!=null;}); });
-      var itOk=rows.length && rows.every(function(i){ return i.desc && i.f[0]!=null; });
-      if(req.length||!itOk){ marcaErro(itOk?req:req.concat(['cf-itens']), itOk?'Preencha os campos obrigatórios.':'Informe ao menos um item com descrição e preço da Faixa 1.'); return; }
-      var novo={id:uid('cot'),numero:v('cf-num'),data:v('cf-data'),validade:parseInt(v('cf-val'),10)||10,por:v('cf-por'),contato:v('cf-cont'),
-        arquivo:{nome:COT_ARQ.nome,tam:COT_ARQ.tam,data:COT_ARQ.data},itens:rows,
-        cond:{frete:v('cf-frete'),entrega:v('cf-ent'),pagto:v('cf-pag'),prazo:v('cf-prazo')},obs:v('cf-obs'),criado:new Date().toISOString()};
-      var db=cotLoad(); var reg=db.m[cliId]||(db.m[cliId]={atual:null,lista:[]}); var antes=reg.atual;
-      reg.lista.push(novo); reg.atual=novo.id;
-      if(!cotSave()){ reg.lista.pop(); reg.atual=antes; marcaErro([],'Sem espaço para guardar este PDF no navegador. Use um arquivo menor ou exclua cotações antigas.'); return; }
-      COT_ARQ=null; fecharModal(); S.pTab='negociacao'; refreshPanel(); toastMsg('Cotação '+novo.numero+' anexada como atual');
-    },'Salvar como atual');
+      if(req.length){ marcaErro(req,'Preencha os campos obrigatórios.'); return; }
+      salvarEnviada(cliId,{numero:v('cf-num'),data:v('cf-data'),validade:parseInt(v('cf-val'),10)||10,por:v('cf-por'),contato:v('cf-cont'),nota:v('cf-nota'),
+        itens:[],origem:'anexada',arquivo:{nome:arq.nome,tam:arq.tam,data:arq.data}});
+    },'Salvar em enviadas');
+  }
+  function salvarEnviada(cliId,d){
+    var reg=cotReg(cliId), mudou=[];
+    reg.lista.forEach(function(c){ if(c.id!==reg.ativa && (!c.st||c.st==='enviada') && !cotVencida(c)){ c.st='substituida'; mudou.push(c); } });
+    var novo=Object.assign({id:uid('cot'),st:'enviada',origem:'gerada',criado:new Date().toISOString()},d);
+    if(!novo.arquivo) novo.arquivo={nome:arqNome(novo.numero,cliById(cliId)),tam:0};
+    reg.lista.push(novo);
+    if(!cotSave()){ reg.lista.pop(); mudou.forEach(function(c){ c.st='enviada'; }); marcaErro([],'Sem espaço para guardar no navegador. Use um PDF menor ou exclua cotações antigas.'); return false; }
+    CF=null; fecharModal(); S.nTab='enviadas'; refreshPanel(); toastMsg('Cotação '+novo.numero+' salva em Enviadas'); return true;
   }
   function refreshPanel(){ var p=document.getElementById('mp-panel'); if(p) p.innerHTML=painelHTML(); else rerender(); }
-  function cotPreviewHTML(x){
-    var c=x.c, cli=cliById(x.cli)||{};
-    return '<div class="mp-cot-pv"><div class="pv-h"><div><b>Klain Alimentos</b><div class="mu">Terceirização de marca própria</div></div>'
-      +'<div class="pv-n"><span>Cotação</span><b>'+esc(c.numero)+'</b><span>'+dBr(dParse(c.data))+'</span></div></div>'
-      +'<div class="pv-c"><div><span>Cliente</span>'+esc(cli.nome||'—')+'</div><div><span>Cidade</span>'+esc((cli.cidade||'—')+' / '+(cli.estado||''))+'</div><div><span>Contato</span>'+esc(c.contato||'—')+'</div></div>'
-      +'<table class="mp-emb mp-cot-it"><thead><tr><th>Descrição</th><th class="n">Cx</th><th class="n">Ped. mín.</th>'+FAIXAS.map(function(f){ return '<th class="n">'+f[0]+'<small>'+f[1]+'</small></th>'; }).join('')+'</tr></thead><tbody>'
-      +c.itens.map(function(i){ return '<tr><td>'+esc(i.desc)+'</td><td class="n">'+esc(i.cx||'—')+'</td><td class="n">'+esc(i.min||'—')+'</td>'+[0,1,2].map(function(k){ return '<td class="n pz">'+brl(i.f[k])+'</td>'; }).join('')+'</tr>'; }).join('')
-      +'</tbody></table><div class="pv-g"><div><span>Frete</span>'+esc(c.cond.frete||'—')+'</div><div><span>Entrega</span>'+esc(c.cond.entrega||'—')+'</div><div><span>Pagamento</span>'+esc(c.cond.pagto||'—')+'</div><div><span>Prazo</span>'+esc(c.cond.prazo||'—')+'</div></div>'
-      +'<div class="mu" style="margin-top:10px">Validade: '+esc(c.validade)+' dias (até '+dBr(cotAte(c))+') · Elaborada por '+esc(c.por||'—')+'</div>'
-      +'<div class="pv-note"><i class="ti ti-info-circle"></i>Cotação de exemplo (protótipo): sem PDF real anexado — esta é uma prévia montada com os dados cadastrados.</div></div>';
-  }
-  function dataUrlBlob(u){ var p=String(u).split(','), bin=atob(p[1]||''), a=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i);
-    var mt=(p[0].match(/data:([^;]+)/)||[])[1]||'application/pdf'; return new Blob([a],{type:mt}); }
   function hasPalete(s){ return !!(s && s.palete && s.palete.modelo); }
   function actsHTML(id, opt){
     var s=load().skus.find(function(x){return x.id===id;});
@@ -783,31 +901,61 @@
       var vz=document.querySelector('#mp-pal-b .mp-viz'); if(vz){ var tmp=document.createElement('div'); tmp.innerHTML=palBodyHTML(); var nv=tmp.querySelector('.mp-viz'); if(nv) vz.innerHTML=nv.innerHTML; } },
     palTodos:function(o){ PAL.orientacao=PAL.orientacao.map(function(_,i){ return o==='alt'?(i%2?'Direita':'Esquerda'):o; }); palRefresh(); },
     // negociação
+    negTab:function(t){ S.nTab=t==='enviadas'?'enviadas':'ativa'; fecharMenu(); refreshPanel(); },
+    cotCriar:function(cliId,baseId){ fecharMenu(); formCriar(cliId||S.sel, baseId); },
+    cotPrevia:function(){ var f=document.getElementById('cf-form'), p=document.getElementById('cf-prev'); if(!f||!p||!CF) return;
+      if(f.style.display==='none'){ cfForm(true); return; }
+      var d=cfLer(); p.innerHTML=layoutHTML(d,cliById(CF.cliId)||{}); cfForm(false); var mb=document.querySelector('#mp-modal .mp-mod-b'); if(mb) mb.scrollTop=0; var ov=document.getElementById('mp-modal'); if(ov) ov.scrollTop=0; },
+    cotGerarPdf:function(){ if(!CF) return; var d=cfLer(); if(!cfValida(d)) return; baixarPdf(d,cliById(CF.cliId)||{}); },
+    cotSalvarCriada:function(){ if(!CF) return; var d=cfLer(); if(!cfValida(d)) return; salvarEnviada(CF.cliId,d); },
     cotAnexar:function(){ var i=document.getElementById('mp-cot-file'); if(i){ i.value=''; i.click(); } },
     cotArquivo:function(inp){ var f=inp&&inp.files&&inp.files[0]; if(!f||!S.sel) return; var cid=S.sel;
       if(!/pdf$/i.test(f.type||'') && !/\.pdf$/i.test(f.name||'')){ toastMsg('Anexe a cotação em PDF.'); inp.value=''; return; }
       if(f.size>COT_MAX){ toastMsg('PDF com '+kb(f.size)+' — o limite no protótipo é '+kb(COT_MAX)+'. Reduza o arquivo e tente de novo.'); inp.value=''; return; }
       var rd=new FileReader();
-      rd.onload=function(){ COT_ARQ={nome:f.name,tam:f.size,data:String(rd.result||'')}; inp.value=''; formCot(cid); };
+      rd.onload=function(){ inp.value=''; formAnexar(cid,{nome:f.name,tam:f.size,data:String(rd.result||'')}); };
       rd.onerror=function(){ toastMsg('Não foi possível ler o arquivo.'); };
       rd.readAsDataURL(f); },
     cotItAdd:function(){ var t=document.getElementById('cf-it'); if(!t) return; t.insertAdjacentHTML('beforeend',itRowHTML()); var l=t.lastElementChild.querySelector('input'); if(l) l.focus(); },
     cotItRm:function(btn){ var tr=btn&&btn.closest('tr'), t=document.getElementById('cf-it'); if(!tr||!t) return; if(t.children.length<=1){ tr.querySelectorAll('input').forEach(function(i){i.value='';}); return; } tr.remove(); },
-    cotAtual:function(cliId,id){ var db=cotLoad(), reg=db.m[cliId]; if(!reg) return; var x=reg.lista.find(function(c){return c.id===id;}); if(!x) return;
-      var antes=reg.atual; reg.atual=id; if(!cotSave()){ reg.atual=antes; return; } refreshPanel(); toastMsg('Cotação '+x.numero+' marcada como atual'); },
-    cotExcluir:function(cliId,id){ var reg=cotLoad().m[cliId]; if(!reg) return; var x=reg.lista.find(function(c){return c.id===id;}); if(!x) return;
-      confirma('Excluir cotação','Excluir a cotação '+escMsg(x.numero)+' do histórico?'+(reg.atual===id?'\n\nEla é a atual; a mais recente das restantes passa a ser a atual.':'')+'\n\nEssa ação não pode ser desfeita.',function(){
-        reg.lista=reg.lista.filter(function(c){return c.id!==id;});
-        if(reg.atual===id){ var r=reg.lista.slice().sort(function(a,b){ return String(b.data+b.criado).localeCompare(String(a.data+a.criado)); }); reg.atual=r[0]?r[0].id:null; }
+    cotFechar:function(cliId,id){ fecharMenu(); var reg=cotReg(cliId), x=reg.lista.find(function(c){return c.id===id;}); if(!x) return;
+      var ant=reg.lista.find(function(c){return c.id===reg.ativa;}), bk=JSON.stringify(reg);
+      if(ant && ant.id!==id){ ant.st='encerrada'; ant.encerradaEm=hojeIso(); }
+      x.st='fechada'; x.fechadaEm=hojeIso(); reg.ativa=id;
+      if(!cotSave()){ COT.m[cliId]=JSON.parse(bk); return; }
+      S.nTab='ativa'; refreshPanel(); toastMsg('Cotação '+x.numero+' marcada como fechada'+(ant&&ant.id!==id?' · '+ant.numero+' encerrada':'')); },
+    cotSt:function(cliId,id,st){ fecharMenu(); var reg=cotReg(cliId), x=reg.lista.find(function(c){return c.id===id;}); if(!x) return;
+      if(reg.ativa===id){ reg.ativa=null; x.fechadaEm=''; }
+      x.st=st; cotSave(); refreshPanel(); toastMsg('Cotação '+x.numero+': '+(st==='recusada'?'recusada':(st==='encerrada'?'negociação encerrada':'voltou para enviada'))); },
+    cotMenu:function(btn,cliId,id){ var aberto=document.getElementById('mp-cot-menu'); var mesmo=aberto&&aberto.getAttribute('data-id')===id; fecharMenu(); if(mesmo) return;
+      var x=cotById(id); if(!x) return; var st=cotStatus(x.c,x.reg), q=function(s){ return '\''+esc(s)+'\''; };
+      var it=function(ic,t,fn,cls){ return '<button type="button"'+(cls?' class="'+cls+'"':'')+' onclick="'+fn+'"><i class="ti ti-'+ic+'"></i>'+t+'</button>'; };
+      var h=(st!=='Fechada'?it('circle-check','Marcar como fechada','MP.cotFechar('+q(cliId)+','+q(id)+')'):it('circle-minus','Encerrar negociação','MP.cotSt('+q(cliId)+','+q(id)+',\'encerrada\')'))
+        +(st==='Enviada'||st==='Vencida'?it('circle-x','Marcar como recusada','MP.cotSt('+q(cliId)+','+q(id)+',\'recusada\')'):'')
+        +(st==='Recusada'||st==='Substituída'||st==='Encerrada'?it('arrow-back-up','Voltar para enviada','MP.cotSt('+q(cliId)+','+q(id)+',\'enviada\')'):'')
+        +(x.c.itens&&x.c.itens.length?it('copy','Nova cotação a partir desta','MP.cotCriar('+q(cliId)+','+q(id)+')'):'')
+        +it('download','Baixar PDF','MP.cotBaixar('+q(id)+')')
+        +'<hr>'+it('trash','Excluir','MP.cotExcluir('+q(cliId)+','+q(id)+')','dng');
+      var m=document.createElement('div'); m.id='mp-cot-menu'; m.className='mp-cot-menu mp-wrap'; m.setAttribute('data-id',id); m.innerHTML=h; document.body.appendChild(m);
+      var r=btn.getBoundingClientRect(), mw=m.offsetWidth, mh=m.offsetHeight;
+      var top=r.bottom+4; if(top+mh>window.innerHeight-8) top=Math.max(8,r.top-mh-4);
+      m.style.top=top+'px'; m.style.left=Math.max(8,r.right-mw)+'px';
+      setTimeout(function(){ document.addEventListener('mousedown',menuFora,true); window.addEventListener('scroll',fecharMenu,true); },0); },
+    cotExcluir:function(cliId,id){ fecharMenu(); var reg=cotDe(cliId), x=reg.lista.find(function(c){return c.id===id;}); if(!x) return;
+      confirma('Excluir cotação','Excluir a cotação '+escMsg(x.numero)+'?'+(reg.ativa===id?'\n\nEla é a negociação ativa; o cliente fica sem negociação fechada.':'')+'\n\nEssa ação não pode ser desfeita.',function(){
+        reg.lista=reg.lista.filter(function(c){return c.id!==id;}); if(reg.ativa===id) reg.ativa=null;
         cotSave(); refreshPanel(); toastMsg('Cotação excluída'); }); },
-    cotVer:function(id){ var x=cotById(id); if(!x) return;
+    cotVer:function(id){ fecharMenu(); var x=cotById(id); if(!x) return;
       if(x.c.arquivo&&x.c.arquivo.data){ try{ var u=URL.createObjectURL(dataUrlBlob(x.c.arquivo.data)); var w=window.open(u,'_blank'); if(!w) MP.cotBaixar(id); setTimeout(function(){ URL.revokeObjectURL(u); },60000); }catch(e){ toastMsg('Não foi possível abrir o PDF.'); } return; }
-      abrirModal('Cotação '+esc(x.c.numero),'ti-file-invoice',cotPreviewHTML(x),null,'',{ro:true}); },
-    cotBaixar:function(id){ var x=cotById(id); if(!x) return;
-      if(!(x.c.arquivo&&x.c.arquivo.data)){ toastMsg('Cotação de exemplo: sem PDF real anexado.'); MP.cotVer(id); return; }
-      var a=document.createElement('a'); a.href=URL.createObjectURL(dataUrlBlob(x.c.arquivo.data)); a.download=x.c.arquivo.nome||('cotacao-'+x.c.numero.replace('/','-')+'.pdf');
-      document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1000); },
+      var ov=abrirModal('Cotação '+esc(x.c.numero)+' · '+esc((cliById(x.cli)||{}).nome||''),'ti-file-invoice',layoutHTML(x.c,cliById(x.cli)||{}),function(){ MP.cotBaixar(id); },'Baixar PDF');
+      ov.querySelector('.mp-mod').classList.add('mp-mod-xl'); var sv=ov.querySelector('#mp-salvar'); if(sv) sv.innerHTML='<i class="ti ti-download"></i>Baixar PDF';
+      var cn=ov.querySelector('.mp-mod-f [data-x]'); if(cn) cn.textContent='Fechar'; },
+    cotBaixar:function(id){ fecharMenu(); var x=cotById(id); if(!x) return;
+      if(x.c.arquivo&&x.c.arquivo.data){ var a=document.createElement('a'); a.href=URL.createObjectURL(dataUrlBlob(x.c.arquivo.data)); a.download=x.c.arquivo.nome||arqNome(x.c.numero,cliById(x.cli));
+        document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1000); return; }
+      baixarPdf(x.c,cliById(x.cli)||{},x.c.arquivo&&x.c.arquivo.nome); },
     _cotDb:function(){ return cotLoad(); },
+    _cotPdfDoc:function(id){ var x=cotById(id); return x?pdfDoc(x.c,cliById(x.cli)||{}):null; },
     _cotReset:function(){ COT=cotSeed(); cotSave(); refreshPanel(); },
     // para testes/inspeção
     _db:function(){ return load(); },
