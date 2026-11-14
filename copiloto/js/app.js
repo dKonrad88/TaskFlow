@@ -1,9 +1,9 @@
 import { abrirDados } from './dados.js';
 import { modoDemo } from './config.js';
-import { AVISO_VERSAO, ativarNaHora, mostrarAvisoDeVersao, recarregarPorVersao } from './versao.js';
+import { AVISO_VERSAO, VERSAO, ativarNaHora, mostrarAvisoDeVersao, recarregarPorVersao } from './versao.js';
 import {
-  COMODOS, emAberto, fData, fDataHora, fHora, fValor, filtrar, idPadrao, montarListaPessoas,
-  normalizarPessoas, ordenarFila, pValor, partesSP, rotuloArea, rotuloStatus, rotuloTipo, soCsmt, tituloFila,
+  COMODOS, areaDo, emAberto, fData, fDataHora, fHora, fValor, filtrar, idPadrao, montarListaPessoas,
+  normalizarPessoas, ordenarFila, pValor, partesSP, rotuloArea, rotuloDia, rotuloStatus, rotuloTipo, soCsmt, tituloFila,
 } from './contrato.js';
 
 const TEMAS = ['claro', 'escuro', 'cafe'];
@@ -33,7 +33,6 @@ let toastTimer = 0;
 let segundos = 0;
 let timer = null;
 let aoVivo = false;
-let simulou = false;
 let reconhecimento = null;
 let textoFala = '';
 let textoParcial = '';
@@ -42,15 +41,34 @@ let ocupado = false;
 let carregando = false;
 let ultimaChecagem = 0;
 let pedindoTexto = false;
-let ultimoEnvio = null;
 let versaoNova = false;
 let recarregarAoAssumir = false;
 let recarregarDepois = false;
 let registroSw = null;
 let primeiraInstalacao = false;
 let folha = null;
-let rascunho = null;
 let buscaMenu = '';
+let ultimaTela = '';
+let ultimaFolha = '';
+let pularSelo = false;
+let comodoAdd = '';
+let compradosAbertos = false;
+let deslize = null;
+let ignorarCliqueAte = 0;
+let editandoFundo = false;
+const FUNDO_KEY = 'copiloto_fundo';
+const FUNDO_IMG_KEY = 'copiloto_fundo_img';
+const FUNDO_FOTO_PADRAO = 'assets/fundo-familia.webp';
+const FUNDO_PADRAO = { x: 0, y: 0, z: 1, o: 1 };
+const FUNDO_ZOOM = [0.5, 4];
+let fundo = carregarFundo();
+const ROTULO_PERIODO = { hoje: 'Hoje', 7: '7 dias', 30: '30 dias' };
+const DESC_TIPO = {
+  'klain-tarefa': 'Vira uma tarefa no Hub Klain',
+  'klain-compromisso': 'Vira um compromisso no Hub Klain',
+  'apto-gasto': 'Vira um gasto do apartamento',
+  'compras-item': 'Entra na lista de compras',
+};
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pose = () => new URLSearchParams(location.search).get('pose') === '1';
@@ -62,13 +80,20 @@ function svg(caminho) {
 const ICO = {
   filtro: svg('<path d="M4 7h16M6.5 12h11M10 17h4"/>'),
   relogio: svg('<circle cx="12" cy="12" r="8"/><path d="M12 8v5l3.5 2"/>'),
-  lapis: svg('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>'),
   ok: svg('<path d="M5 12.5 10 17.5 19 7"/>'),
   volta: svg('<path d="M14 6 8 12l6 6"/>'),
   lista: svg('<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>'),
   engrenagem: svg('<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="8" cy="7" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="9" cy="17" r="2"/>'),
   mic: svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
+  tarefa: svg('<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8.5 12.5l2.5 2.5 4.5-5.5"/>'),
+  agenda: svg('<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M8.5 3v4M15.5 3v4"/>'),
+  moeda: svg('<circle cx="12" cy="12" r="8.5"/><path d="M14.6 9.3c-.5-.9-1.5-1.3-2.6-1.3-1.5 0-2.7.8-2.7 2s1 1.7 2.7 2 2.8.8 2.8 2-1.3 2-2.8 2c-1.2 0-2.3-.5-2.8-1.4M12 6.3V8M12 16v1.7"/>'),
+  sacola: svg('<path d="M5.5 8h13l-1 11.5h-11L5.5 8z"/><path d="M9 8V7a3 3 0 0 1 6 0v1"/>'),
+  duvida: svg('<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.2 1-1.2 1.9M12 16.6h.01"/>'),
+  x: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
 };
+
+const DESENHO_VAZIO = '<svg class="desenho" viewBox="0 0 120 90" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="18" y="12" width="84" height="62" rx="14"/><path d="M18 50h22a20 20 0 0 0 40 0h22"/><path d="M49 31l8 8 15-17"/></svg>';
 
 function aplicarTema(nome, gravar) {
   const t = TEMAS.includes(nome) ? nome : 'escuro';
@@ -100,10 +125,9 @@ function rota() {
   const p = (location.hash.replace(/^#/, '') || '/').split('?')[0].split('/').filter(Boolean);
   const [a, b, c, d] = p;
   if (!a || a === 'gravar') return { tela: 'gravar' };
-  if (['aprovar', 'historico', 'lista', 'ajustes', 'gravando', 'enviado'].includes(a)) return { tela: a };
+  if (['aprovar', 'historico', 'lista', 'ajustes', 'gravando'].includes(a)) return { tela: a };
   if (a === 'fase2' && (b === 'casamento' || b === 'cartao')) return { tela: 'fase2', qual: b };
   if (a === 'item' && b) return { tela: 'item', id: b, menu: c === 'menu' ? d : '', data: c === 'data' ? d : '' };
-  if (a === 'editar' && b) return { tela: 'editar', id: b };
   return { tela: 'gravar' };
 }
 
@@ -156,12 +180,13 @@ function campoCopia(item) {
     const tirar = aberto
       ? `<button type="button" data-acao="tirar-copia" data-id="${esc(item.id)}" data-pessoa="${esc(pid)}" aria-label="Tirar ${esc(nome)} da cópia">×</button>`
       : '';
-    return `<span class="chip-pessoa">${esc(nome)}${tirar}</span>`;
+    return `<span class="chip-pessoa${aberto ? '' : ' fixo'}">${esc(nome)}${tirar}</span>`;
   }).join('');
   const add = aberto
     ? `<button type="button" class="chip-add" data-acao="abrir-menu" data-id="${esc(item.id)}" data-campo="em_copia">Adicionar</button>`
     : '';
-  return `<div class="campo"><div class="rot">Em cópia<span class="opc"> (Opcional)</span></div><div class="chips-pessoas">${chips}${add}</div></div>`;
+  if (!aberto && !ids.length) return '';
+  return `<div class="campo"><div class="rot">Em cópia</div><div class="chips-pessoas">${chips}${add}</div></div>`;
 }
 
 function klain(item) {
@@ -190,42 +215,40 @@ function itensDaAba(aba) {
   return ordenarFila(filtrar(base, filtrosAba[aba] || {}));
 }
 
-function metaQuando(item, cheio) {
-  const hora = fHora(item.created_at);
-  const area = rotuloArea(item.tipo);
-  return cheio ? `${fData(item.created_at)}, ${hora} · ${area}` : `${hora} · ${area}`;
-}
-
-function linhaFila(item, cheio) {
+function linhaFila(item, aba) {
   const teste = item.teste ? ' · exemplo' : '';
-  return `<button class="cartao" data-acao="abrir" data-id="${esc(item.id)}">
-    <span><span class="t">${esc(tituloFila(item))}</span><span class="m">${esc(metaQuando(item, cheio) + teste)}</span></span>
+  const meta = `${fHora(item.created_at)} · ${rotuloArea(item.tipo)}${teste}`;
+  const cartao = `<button class="cartao" data-acao="abrir" data-id="${esc(item.id)}">
+    <span class="tipo-ico t-${esc(areaDo(item.tipo))}">${iconeTipo(item.tipo)}</span>
+    <span class="txt"><span class="t">${esc(tituloFila(item))}</span><span class="m">${esc(meta)}</span></span>
     <span class="pilula ${classeStatus(item.status)}">${esc(rotuloStatus(item.status))}</span>
   </button>`;
+  if (aba !== 'aprovar') return cartao;
+  return `<div class="desliza" data-desliza="${esc(item.id)}">
+    <div class="desliza-fundo" aria-hidden="true"><span class="sim">${ICO.ok} Aprovar</span><span class="nao">Recusar ${ICO.x}</span></div>
+    ${cartao}
+  </div>`;
 }
 
 function olho() {
-  const nome = TEMA_NOME[temaAtual()];
-  const extra = modo === 'mock' ? ' · Valores de exemplo' : '';
-  return `<p class="olho">${esc(nome + extra)}</p>`;
+  return `<p class="olho">Copiloto${modo === 'mock' ? ' · exemplo' : ''}</p>`;
 }
 
 function cabeca(titulo, opts = {}) {
-  const centro = opts.centro ? ' centro' : '';
   let esq = '<span class="lado esq"></span>';
   if (opts.voltar) esq = `<span class="lado esq"><button class="voltar" data-acao="voltar" aria-label="Voltar">${ICO.volta}</button></span>`;
-  if (opts.cancelar) esq = `<button class="link" data-acao="cancelar-edicao">Cancelar</button>`;
-  let dir = '<span class="lado"></span>';
-  if (opts.concluir) dir = `<button class="link forte" data-acao="concluir-edicao" data-id="${esc(opts.id)}">Concluir</button>`;
-  else if (opts.ajustes) dir = `<span class="lado"><button class="icone" data-acao="ir" data-hash="#/ajustes" aria-label="Ajustes">${ICO.engrenagem}</button></span>`;
-  const h = opts.centro
-    ? `<div class="nav${centro}">${esq}<h1>${esc(titulo)}</h1>${dir}</div>`
-    : `<div class="nav"><h1>${esc(titulo)}</h1>${dir}</div>`;
-  return `${olho()}${h}`;
+  if (opts.filtro) {
+    const f = filtrosAba[opts.filtro] || {};
+    const ativo = !!(f.status || f.periodo);
+    esq = `<span class="lado esq"><button class="icone" data-acao="filtro-aba" aria-expanded="${filtroAberto}" aria-label="Filtros">${ICO.filtro}${ativo ? '<i class="ponto"></i>' : ''}</button></span>`;
+  }
+  let dir = '<span class="lado dir"></span>';
+  if (opts.ajustes) dir = `<span class="lado dir"><button class="icone" data-acao="ir" data-hash="#/ajustes" aria-label="Ajustes">${ICO.engrenagem}</button></span>`;
+  return `${olho()}<div class="nav centro">${esq}<h1>${esc(titulo)}</h1>${dir}</div>${avisoVersaoHTML()}`;
 }
 
 function estrela(obrigatorio) {
-  return obrigatorio ? '<span class="estrela"> *</span>' : '<span class="opc"> (Opcional)</span>';
+  return obrigatorio ? '<span class="estrela"> *</span>' : '';
 }
 
 function campoLeitura(rotulo, valor, obrigatorio) {
@@ -262,49 +285,51 @@ function kick(item) {
     'compras-item': 'Item · Lista de compras · Apartamento',
     indefinido: 'Indefinido · para o BOSS',
   };
-  const lapis = emAberto(item.status) && item.tipo !== 'indefinido'
-    ? `<button class="lapis" data-acao="ir" data-hash="#/editar/${esc(item.id)}">${ICO.lapis} Editar</button>`
-    : '';
-  return `<div class="kicker"><div class="k">${esc(mapa[item.tipo] || rotuloTipo(item.tipo))}</div>${lapis}</div>`;
+  return `<div class="kicker">
+    <span class="tipo-ico t-${esc(areaDo(item.tipo))}">${iconeTipo(item.tipo)}</span>
+    <div class="k">${esc(mapa[item.tipo] || rotuloTipo(item.tipo))}</div>
+    <span class="pilula ${classeStatus(item.status)}">${esc(rotuloStatus(item.status))}</span>
+  </div>`;
 }
 
 function corpoCard(item) {
   const p = item.payload || {};
   const id = esc(item.id);
   if (item.tipo === 'indefinido') {
-    const candidatos = (p.candidatos || []).map((t) => `<button class="chip" data-acao="escolher-tipo" data-id="${id}" data-tipo="${esc(t)}">${esc(rotuloTipo(t))}</button>`).join('');
-    return `${campoLeitura('Tipo', 'Indefinido', true)}
-      ${campoLeitura('Motivo', textoDe(item, p.motivo), true)}
-      <div class="campo"><div class="rot">Escolher tipo<span class="estrela"> *</span></div><div class="chips">${candidatos || '<span class="leitura">Sem candidato</span>'}</div></div>
-      <p class="dica">Aprovar sem tipo não grava. Recusar pode.</p>`;
+    const candidatos = (p.candidatos || []).length ? p.candidatos : ['klain-tarefa', 'klain-compromisso', 'apto-gasto', 'compras-item'];
+    const cartoes = emAberto(item.status) ? candidatos.map((t) => `<button type="button" class="tipo-card" data-acao="escolher-tipo" data-id="${id}" data-tipo="${esc(t)}">
+        <span class="tipo-ico t-${esc(areaDo(t))}">${iconeTipo(t)}</span>
+        <span><b>${esc(rotuloTipo(t))}</b><small>${esc(DESC_TIPO[t] || '')}</small></span>
+      </button>`).join('') : '';
+    return `<h2 class="titulo-item">${esc(textoDe(item, item.transcricao) || 'Sem título')}</h2>
+      ${campoLeitura('Por que parou aqui', textoDe(item, p.motivo), false)}
+      ${cartoes ? `<div class="campo"><div class="rot">Escolha o tipo<span class="estrela"> *</span></div><div class="tipos">${cartoes}</div></div>
+      <p class="dica">Sem tipo não dá para aprovar. Recusar pode.</p>` : ''}`;
   }
   if (item.tipo === 'klain-tarefa') {
-    return `${campoLeitura('Tipo', 'Tarefa', true)}
-      ${campoLeitura('Título', textoDe(item, p.titulo), true)}
+    return `${campoTitulo(item, 'titulo', p.titulo)}
       ${campoCaixa('Solicitante', rotuloPessoa(item, 'solicitante'), '▾', 'abrir-menu', `data-id="${id}" data-campo="solicitante"`, false)}
       ${campoCaixa('Executor', rotuloPessoa(item, 'executor'), '▾', 'abrir-menu', `data-id="${id}" data-campo="executor"`, false)}
       ${campoCopia(item)}
       ${campoCaixa('Vencimento', fData(p.vencimento) || 'Escolher', 'alterar', 'abrir-data', `data-id="${id}" data-campo="vencimento"`, false)}
-      ${campoLeitura('Descrição', textoDe(item, p.descricao), false)}`;
+      ${campoDescricao(item, p.descricao)}`;
   }
   if (item.tipo === 'klain-compromisso') {
-    return `${campoLeitura('Tipo', 'Compromisso', true)}
-      ${campoLeitura('Título', textoDe(item, p.titulo), true)}
+    return `${campoTitulo(item, 'titulo', p.titulo)}
       ${campoCaixa('Participantes', rotuloPessoa(item, 'participantes'), '▾', 'abrir-menu', `data-id="${id}" data-campo="participantes"`, true)}
       ${campoCaixa('Data e hora', fDataHora(p.data_hora) || 'Escolher', 'alterar', 'abrir-data', `data-id="${id}" data-campo="data_hora"`, true)}
       ${campoTexto(item, 'local', 'Local', p.local, false)}
-      ${campoLeitura('Descrição', textoDe(item, p.descricao), false)}`;
+      ${campoDescricao(item, p.descricao)}`;
   }
   if (item.tipo === 'apto-gasto') {
     const incerto = p.comodo_incerto ? ' · incerto' : '';
-    return `${campoLeitura('Tipo', 'Gasto · Pagamento', true)}
-      ${campoLeitura('Título', p.titulo, true)}
+    return `${campoTitulo(item, 'titulo', p.titulo)}
       ${campoCaixa('Data', fData(p.data) || 'Escolher', 'alterar', 'abrir-data', `data-id="${id}" data-campo="data"`, false)}
       ${campoValor(item, 'valor', 'Valor', p.valor, false)}
       ${campoCaixa('Cômodo', `${p.ambiente || 'Escolher'}${incerto}`, '▾', 'abrir-menu', `data-id="${id}" data-campo="ambiente"`, false)}`;
   }
   const incerto = p.comodo_incerto ? ' · incerto' : '';
-  return `${campoLeitura('Item', p.nome, true)}
+  return `${campoTitulo(item, 'nome', p.nome)}
     ${campoCaixa('Cômodo', `${p.ambiente || 'Escolher'}${incerto}`, '▾', 'abrir-menu', `data-id="${id}" data-campo="ambiente"`, true)}
     ${campoTexto(item, 'quantidade', 'Quantidade', p.quantidade, false)}
     ${campoValor(item, 'valor_estimado', 'Valor estimado', p.valor_estimado, false)}
@@ -315,7 +340,7 @@ function acoes(item) {
   if (!emAberto(item.status)) {
     return `<div class="aviso forte">Já foi decidido: ${esc(rotuloStatus(item.status))}. A primeira decisão vale.</div>`;
   }
-  return `<div class="acoes">
+  return `<div class="acoes fixa vidro">
     <button class="botao nao" data-acao="decidir" data-id="${esc(item.id)}" data-decisao="recusado">Recusar</button>
     <button class="botao sim" data-acao="decidir" data-id="${esc(item.id)}" data-decisao="aprovado">Aprovar</button>
   </div>`;
@@ -344,15 +369,16 @@ function htmlListaPessoas(item, campo) {
 
 function menuPessoas(item, campo) {
   const multi = campo === 'em_copia' || campo === 'participantes';
+  const titulo = { solicitante: 'Solicitante', executor: 'Executor', em_copia: 'Em cópia', participantes: 'Participantes' }[campo] || 'Pessoas';
   const pe = pessoasExemplo
     ? 'Exemplo. Grupos só em solicitante e executor. O padrão é Diego Konrad.'
     : 'Grupos só em solicitante e executor. Pessoa entra em todos os campos.';
-  const ok = multi ? '<button class="mi" data-acao="fechar"><span>OK</span></button>' : '';
   return `<button class="dim" data-acao="fechar" aria-label="Fechar"></button>
-    <div class="menu menu-pessoas" role="listbox">
+    <div class="sheet sheet-lista" role="dialog" aria-label="${esc(titulo)}">
+      <div class="sh"><span class="link"></span><b>${esc(titulo)}</b><button class="link forte" data-acao="fechar">${multi ? 'OK' : 'Fechar'}</button></div>
       <div class="busca-wrap"><input class="menu-busca" data-acao="busca-menu" placeholder="Buscar" aria-label="Buscar" value="${esc(buscaMenu)}"></div>
-      <div class="lista-pessoas">${htmlListaPessoas(item, campo)}</div>
-      ${ok}<p class="pe">${esc(pe)}</p>
+      <div class="lista-pessoas" role="listbox">${htmlListaPessoas(item, campo)}</div>
+      <p class="pe">${esc(pe)}</p>
     </div>`;
 }
 
@@ -363,7 +389,11 @@ function menuHtml(item, campo) {
   if (atual && !nomes.includes(atual)) nomes.unshift(atual);
   const lis = nomes.map((nome) => linhaMenu(item, campo, { id: nome, nome, sel: nome === atual }, false)).join('');
   return `<button class="dim" data-acao="fechar" aria-label="Fechar"></button>
-    <div class="menu" role="listbox">${lis}<p class="pe">Cômodo do apartamento. Sala sozinha continua ambígua na entrada de voz.</p></div>`;
+    <div class="sheet sheet-lista" role="dialog" aria-label="Cômodo">
+      <div class="sh"><span class="link"></span><b>Cômodo</b><button class="link forte" data-acao="fechar">Fechar</button></div>
+      <div class="lista-pessoas" role="listbox">${lis}</div>
+      <p class="pe">Cômodo do apartamento. Sala sozinha continua ambígua na entrada de voz.</p>
+    </div>`;
 }
 
 function hojeSP() {
@@ -373,7 +403,7 @@ function hojeSP() {
 
 function prepararFolha(valor) {
   const hoje = hojeSP();
-  const iso = /^d{4}-d{2}-d{2}/.test(String(valor || '')) ? String(valor).slice(0, 10) : hoje;
+  const iso = /^\d{4}-\d{2}-\d{2}/.test(String(valor || '')) ? String(valor).slice(0, 10) : hoje;
   if (!folha || folha.base !== iso) {
     const [y, m, d] = iso.split('-').map(Number);
     folha = { ano: y, mes: m, dia: d, base: iso };
@@ -395,8 +425,10 @@ function dataHtml(item, campo) {
   prepararFolha(valor);
   const nomeMes = new Date(Date.UTC(folha.ano, folha.mes - 1, 1)).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
   const rotulo = campo === 'vencimento' ? 'Vencimento' : (campo === 'data_hora' ? 'Data e hora' : 'Data');
+  const [hy, hm, hd] = hojeSP().split('-').map(Number);
+  const mesDeHoje = hy === folha.ano && hm === folha.mes;
   const dias = grade(folha.ano, folha.mes).map((d) => d
-    ? `<button class="dia${d === folha.dia ? ' sel' : ''}" data-acao="dia" data-dia="${d}">${d}</button>`
+    ? `<button class="dia${d === folha.dia ? ' sel' : ''}${mesDeHoje && d === hd ? ' hoje' : ''}" data-acao="dia" data-dia="${d}">${d}</button>`
     : '<span></span>').join('');
   const hora = campo === 'data_hora' ? (String(valor || '').split('T')[1] || '00:00').slice(0, 5) : '';
   const horaHtml = campo === 'data_hora'
@@ -404,13 +436,13 @@ function dataHtml(item, campo) {
     : '';
   const iso = `${folha.ano}-${String(folha.mes).padStart(2, '0')}-${String(folha.dia).padStart(2, '0')}`;
   return `<button class="dim" data-acao="fechar" aria-label="Fechar"></button>
-    <div class="sheet">
-      <div class="sh"><button class="link" data-acao="fechar">Cancelar</button><b>${esc(rotulo)}</b><button class="link forte" data-acao="data-ok" data-id="${esc(item.id)}" data-campo="${esc(campo)}">OK</button></div>
+    <div class="sheet" role="dialog" aria-label="${esc(rotulo)}">
+      <div class="sh"><button class="link" data-acao="fechar">Cancelar</button><b>${esc(rotulo)}</b><span class="link"></span></div>
       <div class="mes-nav"><button data-acao="mes" data-delta="-1" aria-label="Mês anterior">‹</button><span>${esc(nomeMes)}</span><button data-acao="mes" data-delta="1" aria-label="Próximo mês">›</button></div>
       <div class="sem"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span></div>
       <div class="dias">${dias}</div>
       ${horaHtml}
-      <button class="ok" data-acao="data-ok" data-id="${esc(item.id)}" data-campo="${esc(campo)}">${esc(campo === 'data_hora' ? `${fData(iso)}, ${hora || '00:00'}` : fData(iso))}</button>
+      <button class="ok" data-acao="data-ok" data-id="${esc(item.id)}" data-campo="${esc(campo)}">Usar ${esc(fData(iso))}</button>
     </div>`;
 }
 
@@ -458,7 +490,6 @@ function aplicarLayout() {
   r.style.setProperty('--ax', String(layout.area.x));
   r.style.setProperty('--ay', String(layout.area.y));
   r.style.setProperty('--as', String(layout.area.s));
-  posicionarAviso();
 }
 
 function persistirLayout() {
@@ -497,13 +528,42 @@ function barraEdicao() {
   </div>`;
 }
 
-function telaGravar() {
-  return `<div class="fundo-gravar" aria-hidden="true"><img src="assets/fundo-familia.webp" alt=""></div>
-    ${cabeca('Gravar', { centro: true, ajustes: true })}
-    ${barraEdicao()}
-    <main class="so-gravar">
-      <button class="gravar" data-acao="gravar" data-layout="gravar" aria-label="Gravar"><span class="mic">${ICO.mic}</span><span class="parada" aria-hidden="true"></span><span class="orb" aria-hidden="true"></span><span class="orb b" aria-hidden="true"></span></button>
-    </main>`;
+function telaGravar(gravando) {
+  const ouvido = [textoFala, textoParcial].filter(Boolean).join(' ');
+  if (gravando && pedindoTexto && modo !== 'mock') {
+    return `${cabeca('Gravar', {})}
+      <main class="so-gravar">
+        <div class="painel-texto vidro">
+          <h2>O que foi dito</h2>
+          <p>Este navegador não transcreve, ou a fala veio vazia. Escreva e envie.</p>
+          <textarea class="area" id="texto-entrada" aria-label="Texto para enviar" placeholder="Ex.: comprar lâmpadas para a sala">${esc(ouvido)}</textarea>
+          <div class="acoes-edicao">
+            <button type="button" class="botao" data-acao="cancelar-gravar">Cancelar</button>
+            <button type="button" class="botao sim" data-acao="enviar-texto">Enviar</button>
+          </div>
+        </div>
+      </main>`;
+  }
+  const n = aguardando().length;
+  const oi = gravando || editando || editandoFundo ? '' : `<button type="button" class="oi" data-acao="ir" data-hash="#/aprovar">
+      <b>${saudacao()}, Diego</b>
+      <span>${n ? `${n} aguardando você` : 'Nada esperando você'}</span>
+    </button>`;
+  const seg = pose() ? 7 : segundos;
+  const relogio = `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, '0')}`;
+  const fala = modo === 'mock' ? 'No exemplo, parar acrescenta um item local.' : (ouvido || 'Ouvindo…');
+  const painel = gravando ? `<div class="ao-vivo vidro" role="status">
+      <div class="ao-vivo-topo"><i class="luz"></i><b class="relogio">${relogio}</b><span>Gravando</span></div>
+      <p class="transcricao" id="fala-ao-vivo">${esc(fala)}</p>
+      <small>Toque no botão para parar e enviar.</small>
+    </div>` : '';
+  const miolo = '<span class="mic">' + ICO.mic + '</span><span class="parada" aria-hidden="true"></span><span class="orb" aria-hidden="true"></span><span class="orb b" aria-hidden="true"></span>';
+  const botao = gravando
+    ? `<button class="gravar vivo" data-acao="parar" aria-label="Parar">${miolo}</button>`
+    : `<button class="gravar" data-acao="gravar" data-layout="gravar" aria-label="Gravar">${miolo}</button>`;
+  return `${cabeca(gravando ? 'Gravando' : 'Gravar', { ajustes: !gravando })}
+    ${barraEdicao()}${barraFundo()}${oi}
+    <main class="so-gravar">${painel}${botao}</main>`;
 }
 
 function painelFiltro(aba) {
@@ -519,18 +579,34 @@ function painelFiltro(aba) {
   </div>`;
 }
 
-function telaFila(aba, titulo, cheio) {
+function telaFila(aba, titulo) {
   const f = filtrosAba[aba];
-  const ativo = !!(f.status || f.periodo);
-  const lista = itensDaAba(aba).map((item) => linhaFila(item, cheio)).join('') || '<p class="vazio">Nada nesta combinação.</p>';
-  return `${cabeca(titulo, { centro: true, ajustes: true })}
+  const lista = itensDaAba(aba);
+  const ativos = [
+    f.status ? ['status', f.status, rotuloStatus(f.status)] : null,
+    f.periodo ? ['periodo', f.periodo, ROTULO_PERIODO[f.periodo] || f.periodo] : null,
+  ].filter(Boolean).map(([g, v, r]) => `<button class="chip on" data-acao="filtro" data-aba="${aba}" data-grupo="${g}" data-valor="${esc(v)}" aria-label="Tirar o filtro ${esc(r)}">${esc(r)} <span aria-hidden="true">×</span></button>`).join('');
+  let corpo = '';
+  let diaAtual = '';
+  for (const item of lista) {
+    const dia = rotuloDia(item.created_at);
+    if (dia !== diaAtual) {
+      corpo += `<h2 class="dia-sep">${esc(dia)}</h2>`;
+      diaAtual = dia;
+    }
+    corpo += linhaFila(item, aba);
+  }
+  if (!lista.length) corpo = vazio(aba, !!ativos);
+  const dica = aba === 'aprovar' && lista.length
+    ? '<p class="dica centro">Deslize para a direita para aprovar e para a esquerda para recusar.</p>'
+    : '';
+  return `${cabeca(titulo, { ajustes: true, filtro: aba })}
     <main class="com-abas">
-      <div class="aba-topo">
-        <button class="icone" data-acao="filtro-aba" aria-expanded="${filtroAberto}" aria-label="Filtros desta aba">${ICO.filtro}${ativo ? '<i class="ponto"></i>' : ''}</button>
-      </div>
+      ${ativos ? `<div class="chips filtros-ativos">${ativos}</div>` : ''}
       ${painelFiltro(aba)}
       ${erroFila ? `<p class="aviso">${esc(erroFila)}</p>` : ''}
-      <div class="fila">${lista}</div>
+      <div class="fila">${corpo}</div>
+      ${dica}
     </main>`;
 }
 
@@ -538,106 +614,55 @@ function falaDoNavegador() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 }
 
-function telaGravando() {
-  const seg = pose() ? 7 : segundos;
-  const mm = String(Math.floor(seg / 60));
-  const ss = String(seg % 60).padStart(2, '0');
-  const ouvido = [textoFala, textoParcial].filter(Boolean).join(' ');
-  if (pedindoTexto && modo !== 'mock') {
-    return `${cabeca('Copiloto', { centro: true })}
-      <main><div class="meio">
-        <h2>O que foi dito</h2>
-        <p>Este navegador não transcreve, ou a fala veio vazia. Escreva e envie.</p>
-        <textarea class="area" id="texto-entrada" aria-label="Texto para enviar" placeholder="Ex.: comprar lâmpadas para a sala">${esc(ouvido)}</textarea>
-        <button class="botao sim cheio" data-acao="enviar-texto">Enviar</button>
-      </div></main>`;
-  }
-  const fala = modo === 'mock'
-    ? '<p class="dica">No exemplo, parar acrescenta um item local.</p>'
-    : `<p class="transcricao" id="fala-ao-vivo">${esc(ouvido || 'Ouvindo…')}</p>`;
-  return `${cabeca('Copiloto', { centro: true })}
-    <main><div class="meio">
-      <button class="gravar vivo" data-acao="parar" aria-label="Parar"><span class="mic">${ICO.mic}</span><span class="parada" aria-hidden="true"></span><span class="orb" aria-hidden="true"></span><span class="orb b" aria-hidden="true"></span></button>
-      <div class="relogio">${mm}:${ss}</div>
-      <h2>Gravando</h2>
-      <p>Toque para parar e enviar.</p>
-      ${fala}
-    </div></main>`;
-}
-
-function telaEnviado() {
-  return `${cabeca('Copiloto', { centro: true })}
-    <main><div class="meio">
-      <div class="selo">${ICO.ok}</div>
-      <h2>Enviado</h2>
-      <p>A proposta deve aparecer na fila em instantes, com o card do tipo, para você conferir.</p>
-      <p class="dica">${simulou ? 'No exemplo, a fila ganhou um item local.' : (ultimoEnvio?.tipo ? `Entrou como ${rotuloTipo(ultimoEnvio.tipo)}.` : 'O texto foi para a fila.')}</p>
-      <button class="fantasma" data-acao="ir" data-hash="#/aprovar">Ir para aprovar</button>
-    </div></main>`;
-}
-
 function telaLista() {
+  const linha = (c) => {
+    const sub = [c.quantidade, c.valor_estimado != null ? `uns ${fValor(c.valor_estimado)}` : ''].filter(Boolean).join(' · ');
+    return `<button class="compra${c.comprado ? ' feita' : ''}" data-acao="compra" data-id="${esc(c.id)}">
+      <span class="ck${c.comprado ? ' on' : ''}" aria-hidden="true">${c.comprado ? '✓' : ''}</span>
+      <span><span class="n">${esc(c.nome)}</span>${sub ? `<span class="sm">${esc(sub)}</span>` : ''}</span>
+    </button>`;
+  };
+  const abertos = compras.filter((c) => !c.comprado);
+  const feitos = compras.filter((c) => c.comprado);
   const grupos = new Map();
-  for (const c of compras) {
+  for (const c of abertos) {
     const k = c.ambiente || 'Sem cômodo';
     if (!grupos.has(k)) grupos.set(k, []);
     grupos.get(k).push(c);
   }
-  let html = '<p class="dica">Apartamento · agrupado por cômodo</p>';
+  let html = '';
   for (const [ambiente, lista] of grupos) {
-    html += `<div class="grp">${esc(ambiente)}</div>`;
-    for (const c of lista) {
-      const sub = [c.quantidade, c.valor_estimado != null ? `uns ${fValor(c.valor_estimado)}` : ''].filter(Boolean).join(' · ');
-      html += `<button class="compra${c.comprado ? ' feita' : ''}" data-acao="compra" data-id="${esc(c.id)}">
-        <span class="ck${c.comprado ? ' on' : ''}" aria-hidden="true">${c.comprado ? '✓' : ''}</span>
-        <span><span class="n">${esc(c.nome)}</span>${sub ? `<span class="sm">${esc(sub)}</span>` : ''}</span>
-      </button>`;
-    }
-    html += `<input class="add" data-acao="add-compra" data-ambiente="${esc(ambiente)}" placeholder="Adicionar em ${esc(ambiente)}" aria-label="Adicionar em ${esc(ambiente)}" enterkeyhint="done">`;
+    html += `<h2 class="grp"><span>${esc(ambiente)}</span><span class="conta">${lista.length}</span></h2>${lista.map(linha).join('')}`;
   }
-  if (!grupos.size) html += '<p class="vazio">A lista está vazia.</p>';
-  return `${cabeca('Lista', { centro: true, ajustes: true })}<main class="com-abas">${html}</main>`;
+  if (!compras.length) html = vazio('lista', false);
+  else if (!abertos.length) html += '<p class="dica centro">Tudo comprado.</p>';
+  if (feitos.length) {
+    html += `<button type="button" class="grp dobra" data-acao="comprados" aria-expanded="${compradosAbertos}"><span>Comprados</span><span class="conta">${feitos.length} ${compradosAbertos ? '▾' : '▸'}</span></button>`;
+    if (compradosAbertos) html += feitos.map(linha).join('');
+  }
+  const comodos = [...new Set([...grupos.keys(), ...COMODOS])].filter((c) => c !== 'Sem cômodo');
+  if (!comodos.includes(comodoAdd)) comodoAdd = comodos[0] || 'Apartamento';
+  const chips = comodos.map((c) => `<button type="button" class="chip${c === comodoAdd ? ' on' : ''}" data-acao="comodo-add" data-comodo="${esc(c)}">${esc(c)}</button>`).join('');
+  const barra = `<div class="add-barra vidro">
+      <div class="chips rolagem" role="group" aria-label="Cômodo do item novo">${chips}</div>
+      <div class="add-linha">
+        <input class="add" id="add-compra" data-acao="add-compra" placeholder="Adicionar em ${esc(comodoAdd)}" aria-label="Adicionar em ${esc(comodoAdd)}" enterkeyhint="done" autocomplete="off">
+        <button type="button" class="icone mais" data-acao="add-compra-ok" aria-label="Adicionar">+</button>
+      </div>
+    </div>`;
+  return `${cabeca('Lista', { ajustes: true })}<main class="com-abas com-add">${html}</main>${barra}`;
 }
 
 function telaItem(r) {
   const item = itemPor(r.id);
-  if (!item) return `${cabeca('Aprovar', { centro: true, voltar: true })}<main><p class="vazio">Este item não está na fila.</p></main>`;
+  if (!item) return `${cabeca('Aprovar', { voltar: true })}<main>${vazio('item', false)}</main>`;
+  const aberto = emAberto(item.status);
   let extra = '';
-  if (r.menu && emAberto(item.status)) extra = menuHtml(item, r.menu);
-  if (r.data && emAberto(item.status)) extra = dataHtml(item, r.data);
+  if (r.menu && aberto) extra = menuHtml(item, r.menu);
+  if (r.data && aberto) extra = dataHtml(item, r.data);
   const ref = item.ref_tabela ? `<p class="dica">Referência: ${esc(item.ref_tabela)}</p>` : '';
-  return `${cabeca('Aprovar', { centro: true, voltar: true })}
-    <main class="justa">${kick(item)}${corpoCard(item)}${ref}${acoes(item)}</main>${extra}`;
-}
-
-function camposEdicao(item) {
-  const p = item.payload || {};
-  if (!rascunho || rascunho.id !== item.id) {
-    rascunho = {
-      id: item.id,
-      titulo: textoDe(item, p.titulo || ''),
-      descricao: textoDe(item, p.descricao || ''),
-      nome: p.nome || '',
-    };
-  }
-  const titulo = item.tipo === 'compras-item'
-    ? `<div class="campo"><div class="rot">Item<span class="estrela"> *</span></div><input class="texto" data-rascunho="nome" value="${esc(rascunho.nome)}"></div>`
-    : `<div class="campo"><div class="rot">Título<span class="estrela"> *</span></div><input class="texto" data-rascunho="titulo" value="${esc(rascunho.titulo)}"></div>
-       <div class="campo"><div class="rot">Descrição<span class="opc"> (Opcional)</span></div><textarea class="area" data-rascunho="descricao">${esc(rascunho.descricao)}</textarea></div>`;
-  const nota = item.tipo === 'klain-tarefa'
-    ? '<p class="dica">Solicitante, executor, em cópia e a data continuam no card, sem passar por aqui.</p>'
-    : '<p class="dica">Valor, data e cômodo continuam no card.</p>';
-  return `${campoLeitura('Tipo', rotuloTipo(item.tipo), true)}${titulo}${nota}`;
-}
-
-function telaEditar(r) {
-  const item = itemPor(r.id);
-  if (!item) return `${cabeca('Editar', { centro: true, voltar: true })}<main><p class="vazio">Este item não está na fila.</p></main>`;
-  return `${cabeca('Editar', { centro: true, cancelar: true, concluir: true, id: item.id })}
-    <main class="justa">
-      <p class="dica">${esc(rotuloTipo(item.tipo))} · ${esc(rotuloArea(item.tipo))}. Só os campos que não se editam no card.</p>
-      ${camposEdicao(item)}
-    </main>`;
+  return `${cabeca(aberto ? 'Aprovar' : 'Histórico', { voltar: true })}
+    <main class="justa${aberto ? ' com-rodape' : ''}">${kick(item)}${corpoCard(item)}${ref}${aberto ? '' : acoes(item)}</main>${aberto ? acoes(item) : ''}${extra}`;
 }
 
 function telaFase2(qual) {
@@ -677,24 +702,35 @@ function telaAjustes() {
   const conta = modo === 'supabase' && dados?._sessao?.user
     ? { modo: 'Conectado', login: dados._sessao.user.email || 'Conta autenticada' }
     : { modo: 'Exemplo', login: 'Sem login — dados de exemplo' };
-  const temas = TEMAS.map((t) => `<button class="chip${temaAtual() === t ? ' on' : ''}" data-acao="definir-tema" data-tema="${t}">${esc(TEMA_NOME[t])}</button>`).join('');
-  return `${cabeca('Ajustes', { centro: true, voltar: true })}
+  const temas = TEMAS.map((t) => `<button type="button" class="tema-card${temaAtual() === t ? ' on' : ''}" data-acao="definir-tema" data-tema="${t}" aria-pressed="${temaAtual() === t}">
+      <span class="mini" data-tema="${t}" aria-hidden="true"><i class="m-topo"></i><i class="m-card"></i><i class="m-card curto"></i><i class="m-bola"></i></span>
+      <b>${esc(TEMA_NOME[t])}</b>
+    </button>`).join('');
+  return `${cabeca('Ajustes', { voltar: true })}
     <main>
       <div class="grupo">Tema</div>
-      <div class="chips">${temas}</div>
-      <div class="grupo">Conta</div>
-      <div class="ajuste"><span>Modo</span><b>${esc(conta.modo)}</b></div>
-      <div class="ajuste"><span>Login</span><b>${esc(conta.login)}</b></div>
-      ${modo === 'supabase' && dados?._sessao ? '<button type="button" class="botao cheio" data-acao="sair">Sair</button>' : ''}
-      ${modo === 'mock' ? '<button type="button" class="botao cheio" data-acao="restaurar">Restaurar exemplos</button>' : ''}
+      <div class="temas">${temas}</div>
+      <div class="grupo">Fundo</div>
+      <label class="botao cheio rotulo-arquivo">Escolher imagem<input type="file" accept="image/*" data-acao="arquivo-fundo" hidden></label>
+      <button type="button" class="botao cheio" data-acao="editar-fundo">Mover, ampliar e opacidade</button>
+      ${fundo.proprio ? '<button type="button" class="botao cheio" data-acao="fundo-padrao">Voltar à foto padrão</button>' : ''}
+      <p class="dica">A imagem fica guardada só neste aparelho.</p>
       <div class="grupo">Tela de gravar</div>
       <button type="button" class="botao cheio" data-acao="editar-layout">Editar layout</button>
       <p class="dica">Move e redimensiona o botão Gravar e o chip de área.</p>
       <div class="grupo">Aprovação</div>
       <div class="ajuste interruptor">
-        <span><b>Passar por aprovação</b><small>Ligada, você confirma cada item. Desligada, só o que não é gasto nem item do Hub Klain segue direto — um item da lista, por exemplo. Gastos e itens do Hub Klain sempre passam por você.</small></span>
+        <span><b>Passar por aprovação</b><small>Você confirma cada item antes de ele ser criado.</small>
+          <details class="saiba"><summary>Saiba mais</summary>Desligada, só o que não é gasto nem item do Hub Klain segue direto — um item da lista, por exemplo. Gastos e itens do Hub Klain sempre passam por você.</details>
+        </span>
         <label class="sw"><input type="checkbox" role="switch" data-acao="aprovar-pref" ${prefs.aprovar ? 'checked' : ''} aria-label="Passar por aprovação"><i></i></label>
       </div>
+      <div class="grupo">Conta</div>
+      <div class="ajuste"><span>Modo</span><b>${esc(conta.modo)}</b></div>
+      <div class="ajuste"><span>Login</span><b>${esc(conta.login)}</b></div>
+      ${modo === 'supabase' && dados?._sessao ? '<button type="button" class="botao cheio" data-acao="sair">Sair</button>' : ''}
+      ${modo === 'mock' ? '<button type="button" class="botao cheio" data-acao="restaurar">Restaurar exemplos</button>' : ''}
+      <p class="versao">Copiloto ${esc(VERSAO)}</p>
     </main>`;
 }
 
@@ -702,8 +738,8 @@ function chromeAba(tela) {
   if (!['gravar', 'aprovar', 'historico', 'lista'].includes(tela)) return '';
   const n = aguardando().length;
   const aba = (id, icone, rotulo, extra = '') => `<button type="button" role="tab" data-acao="aba" data-aba="${id}" aria-selected="${tela === id}" aria-label="${esc(rotulo)}">${ICONE(icone)}<span>${esc(rotulo)}</span>${extra}</button>`;
-  const badge = n ? `<b class="selo-n">${n > 99 ? '99' : n}</b>` : '';
-  const area = tela === 'gravar' ? chipArea() : '';
+  const badge = n ? `<b class="selo-n${pularSelo ? ' pulo' : ''}">${n > 99 ? '99' : n}</b>` : '';
+  const area = tela === 'gravar' && !editandoFundo ? chipArea() : '';
   return `${area}<nav class="abas vidro" role="tablist">
     ${aba('gravar', ICO.mic, 'Gravar')}
     ${aba('aprovar', ICO.ok, 'Aprovar', badge)}
@@ -721,17 +757,6 @@ function avisoVersaoHTML() {
   return `<button type="button" class="aviso-versao vidro" data-acao="atualizar-versao">${esc(AVISO_VERSAO)}</button>`;
 }
 
-function posicionarAviso() {
-  const aviso = document.querySelector('.aviso-versao');
-  if (!aviso) return;
-  const nav = document.querySelector('.abas');
-  const chip = document.querySelector('.area-chip');
-  let topo = window.innerHeight - 78;
-  if (nav) topo = nav.getBoundingClientRect().top;
-  if (chip) topo = Math.min(topo, chip.getBoundingClientRect().top);
-  aviso.style.bottom = `${Math.round(window.innerHeight - topo + 8)}px`;
-}
-
 function pintarAvisoVersao() {
   const raiz = document.getElementById('app');
   if (!raiz) return;
@@ -741,12 +766,10 @@ function pintarAvisoVersao() {
     ja?.remove();
     return;
   }
-  if (ja) {
-    posicionarAviso();
-    return;
-  }
-  raiz.insertAdjacentHTML('beforeend', html);
-  posicionarAviso();
+  if (ja) return;
+  const nav = raiz.querySelector('.nav');
+  if (nav) nav.insertAdjacentHTML('afterend', html);
+  else raiz.insertAdjacentHTML('afterbegin', html);
 }
 
 function marcarVersaoNova() {
@@ -765,62 +788,84 @@ function chipArea() {
 }
 
 function telaLogin() {
-  return `${olho()}
-    <div class="nav centro"><span class="lado esq"></span><h1>Copiloto</h1><span class="lado"></span></div>
-    <main>
-      <p class="dica">Entre com o e-mail e a senha. É o mesmo login do Hub.</p>
-      ${erroBoot ? `<p class="aviso">${esc(erroBoot)}</p>` : ''}
-      ${erroFila ? `<p class="aviso">${esc(erroFila)}</p>` : ''}
-      <form class="login" data-acao="login">
-        <input name="email" type="email" autocomplete="username" placeholder="E-mail" required aria-label="E-mail">
-        <input name="senha" type="password" autocomplete="current-password" placeholder="Senha" required aria-label="Senha">
-        <button class="botao sim" type="submit">Entrar</button>
-      </form>
+  return `<main class="login-tela">
+      <div class="login-cartao vidro">
+        <img class="login-ico" src="icon-192.png" alt="" width="72" height="72">
+        <h1>Copiloto</h1>
+        <p class="dica">Entre com o e-mail e a senha. É o mesmo login do Hub.</p>
+        ${erroBoot ? `<p class="aviso">${esc(erroBoot)}</p>` : ''}
+        ${erroFila ? `<p class="aviso">${esc(erroFila)}</p>` : ''}
+        <form class="login" data-acao="login">
+          <input name="email" type="email" autocomplete="username" placeholder="E-mail" required aria-label="E-mail">
+          <input name="senha" type="password" autocomplete="current-password" placeholder="Senha" required aria-label="Senha">
+          <button class="botao sim" type="submit">Entrar</button>
+        </form>
+        ${avisoVersaoHTML()}
+      </div>
     </main>`;
 }
 
 function telaErroBoot() {
-  return `${olho()}
-    <div class="nav centro"><span class="lado esq"></span><h1>Copiloto</h1><span class="lado"></span></div>
-    <main>
-      <p class="aviso">${esc(erroBoot)}</p>
-      <button class="botao sim cheio" data-acao="recarregar">Tentar de novo</button>
+  return `<main class="login-tela">
+      <div class="login-cartao vidro">
+        <img class="login-ico" src="icon-192.png" alt="" width="72" height="72">
+        <h1>Copiloto</h1>
+        <p class="aviso">${esc(erroBoot)}</p>
+        <button class="botao sim cheio" data-acao="recarregar">Tentar de novo</button>
+        ${avisoVersaoHTML()}
+      </div>
     </main>`;
 }
 
 function desenhar() {
   const raiz = document.getElementById('app');
+  const fundoEl = document.getElementById('fundo');
   if (!dados && erroBoot) {
-    raiz.classList.remove('com-foto');
-    raiz.innerHTML = telaErroBoot() + avisoVersaoHTML();
-    posicionarAviso();
+    raiz.className = 'app';
+    fundoEl?.classList.add('suave');
+    raiz.innerHTML = telaErroBoot();
     return;
   }
   if (modo === 'supabase' && dados && !dados._sessao) {
-    raiz.classList.remove('com-foto');
-    raiz.innerHTML = telaLogin() + avisoVersaoHTML();
-    posicionarAviso();
+    raiz.className = 'app';
+    fundoEl?.classList.add('suave');
+    raiz.innerHTML = telaLogin();
+    ultimaTela = 'login';
     pintarToast();
     return;
   }
   const r = rota();
-  raiz.classList.toggle('com-foto', r.tela === 'gravar');
-  raiz.classList.toggle('editando', editando && r.tela === 'gravar');
+  const naFoto = r.tela === 'gravar' || r.tela === 'gravando';
+  if (r.tela !== 'gravar') {
+    editando = false;
+    editandoFundo = false;
+  }
+  raiz.classList.toggle('com-foto', naFoto);
+  raiz.classList.toggle('editando', editando);
+  raiz.classList.toggle('editando-fundo', editandoFundo);
+  document.documentElement.classList.toggle('fundo-edicao', editandoFundo);
+  fundoEl?.classList.toggle('suave', !naFoto);
   aplicarLayout();
   if (!r.data) folha = null;
   let html = '';
-  if (r.tela === 'gravar') html = telaGravar();
-  else if (r.tela === 'aprovar') html = telaFila('aprovar', 'Aprovar', false);
-  else if (r.tela === 'historico') html = telaFila('historico', 'Histórico', true);
-  else if (r.tela === 'gravando') html = telaGravando();
-  else if (r.tela === 'enviado') html = telaEnviado();
+  if (r.tela === 'gravar') html = telaGravar(false);
+  else if (r.tela === 'gravando') html = telaGravar(true);
+  else if (r.tela === 'aprovar') html = telaFila('aprovar', 'Aprovar');
+  else if (r.tela === 'historico') html = telaFila('historico', 'Histórico');
   else if (r.tela === 'lista') html = telaLista();
   else if (r.tela === 'ajustes') html = telaAjustes();
   else if (r.tela === 'item') html = telaItem(r);
-  else if (r.tela === 'editar') html = telaEditar(r);
   else if (r.tela === 'fase2') html = telaFase2(r.qual);
-  raiz.innerHTML = html + chromeAba(r.tela) + avisoVersaoHTML();
-  posicionarAviso();
+  raiz.innerHTML = html + chromeAba(r.tela);
+  autoAltura();
+  const chave = naFoto ? 'gravar' : r.tela;
+  if (chave !== ultimaTela && !naFoto) {
+    raiz.querySelector('main')?.classList.add(['item', 'ajustes', 'fase2'].includes(r.tela) ? 'entra-lado' : 'entra');
+  }
+  ultimaTela = chave;
+  const chaveFolha = r.menu ? `m${r.menu}` : (r.data ? `d${r.data}` : '');
+  if (chaveFolha && chaveFolha !== ultimaFolha) raiz.querySelector('.sheet')?.classList.add('abre');
+  ultimaFolha = chaveFolha;
   pintarToast();
 }
 
@@ -982,8 +1027,6 @@ function comecarFala() {
 
 async function comecarGravar() {
   aoVivo = true;
-  simulou = false;
-  ultimoEnvio = null;
   segundos = 0;
   clearInterval(timer);
   timer = setInterval(() => {
@@ -1012,12 +1055,12 @@ async function enviarTexto(texto) {
     desenhar();
     return;
   }
-  ultimoEnvio = { tipo: r.tipo, status: r.status };
   textoFala = '';
   textoParcial = '';
   textoBase = '';
+  pedindoTexto = false;
   await carregar();
-  ir('#/enviado');
+  avisarEnvio(r.tipo ? `Enviado. Entrou como ${rotuloTipo(r.tipo)}.` : 'Enviado para a fila.');
 }
 
 async function pararGravar() {
@@ -1026,35 +1069,11 @@ async function pararGravar() {
   pararMic();
   if (modo === 'mock' && dados?.simularChegada) {
     await dados.simularChegada('Lembrete de voz (exemplo)');
-    simulou = true;
     await carregar();
-    ir('#/enviado');
+    avisarEnvio('Enviado. No exemplo, a fila ganhou um item local.');
     return;
   }
   await enviarTexto(texto);
-}
-
-function lerRascunho() {
-  for (const el of document.querySelectorAll('[data-rascunho]')) {
-    rascunho[el.dataset.rascunho] = el.value;
-  }
-}
-
-async function concluirEdicao(id) {
-  const item = itemPor(id);
-  if (!item || !rascunho) return;
-  lerRascunho();
-  const payload = item.tipo === 'compras-item'
-    ? { nome: rascunho.nome }
-    : { titulo: rascunho.titulo, descricao: rascunho.descricao };
-  if ((payload.titulo !== undefined && !String(payload.titulo).trim()) || (payload.nome !== undefined && !String(payload.nome).trim())) {
-    mostrar('O título não pode ficar vazio.');
-    return;
-  }
-  const r = await dados.atualizar(id, { payload });
-  if (r?.jaDecidido) mostrar(`Já foi decidido: ${rotuloStatus(r.status)}. A primeira decisão vale.`);
-  rascunho = null;
-  ir(`#/item/${id}`);
 }
 
 async function diaOk(id, campo) {
@@ -1071,16 +1090,47 @@ async function diaOk(id, campo) {
 
 async function noClique(e) {
   if (arrastou) { arrastou = false; return; }
+  if (Date.now() < ignorarCliqueAte) return;
   const el = e.target.closest('[data-acao]');
   if (!el) return;
   const acao = el.dataset.acao;
-  if (editando && (acao === 'gravar' || acao === 'area-menu')) return;
+  if ((editando || editandoFundo) && (acao === 'gravar' || acao === 'area-menu')) return;
   if (acao === 'ir') { ir(el.dataset.hash); return; }
   if (acao === 'voltar') { if (history.length > 1) history.back(); else ir('#/'); return; }
   if (acao === 'aba') { filtroAberto = false; areaAberta = false; ir(el.dataset.aba === 'gravar' ? '#/' : `#/${el.dataset.aba}`); atualizarFila(); return; }
   if (acao === 'filtro-aba') { filtroAberto = !filtroAberto; desenhar(); return; }
   if (acao === 'area-menu') { areaAberta = !areaAberta; desenhar(); return; }
-  if (acao === 'editar-layout') { editando = true; areaAberta = false; ir('#/'); return; }
+  if (acao === 'editar-layout') { editando = true; editandoFundo = false; areaAberta = false; ir('#/'); return; }
+  if (acao === 'editar-fundo') { editandoFundo = true; editando = false; areaAberta = false; ir('#/'); return; }
+  if (acao === 'concluir-fundo') { editandoFundo = false; persistirFundo(); desenhar(); return; }
+  if (acao === 'fundo-centralizar') { fundo.x = 0; fundo.y = 0; fundo.z = 1; aplicarFundo(); persistirFundo(); desenhar(); return; }
+  if (acao === 'fundo-padrao') {
+    try { localStorage.removeItem(FUNDO_IMG_KEY); } catch { /* sem armazenamento */ }
+    fundo = { ...FUNDO_PADRAO, proprio: false };
+    pintarImagemFundo();
+    aplicarFundo();
+    persistirFundo();
+    desenhar();
+    mostrar('Voltou a foto padrão.');
+    return;
+  }
+  if (acao === 'limpar-filtros') {
+    const f = filtrosAba[el.dataset.aba];
+    if (f) { f.status = ''; f.periodo = ''; }
+    desenhar();
+    return;
+  }
+  if (acao === 'comprados') { compradosAbertos = !compradosAbertos; desenhar(); return; }
+  if (acao === 'comodo-add') {
+    const digitado = document.getElementById('add-compra')?.value || '';
+    comodoAdd = el.dataset.comodo;
+    desenhar();
+    const campo = document.getElementById('add-compra');
+    if (campo) { campo.value = digitado; campo.focus(); }
+    return;
+  }
+  if (acao === 'add-compra-ok') { await adicionarDaBarra(); return; }
+  if (acao === 'cancelar-gravar') { pedindoTexto = false; ir('#/'); return; }
   if (acao === 'concluir-layout') { editando = false; persistirLayout(); desenhar(); return; }
   if (acao === 'restaurar-layout') {
     layout = { gravar: { ...LAYOUT_PADRAO.gravar }, area: { ...LAYOUT_PADRAO.area } };
@@ -1189,17 +1239,27 @@ async function noClique(e) {
     await depoisDeMudar();
     return;
   }
-  if (acao === 'cancelar-edicao') { rascunho = null; history.back(); return; }
-  if (acao === 'concluir-edicao') { await concluirEdicao(el.dataset.id); return; }
   if (acao === 'restaurar') { await dados.restaurar(); filtrosAba = { aprovar: { status: '', periodo: '' }, historico: { status: '', periodo: '' } }; await depoisDeMudar(); mostrar('Exemplos restaurados.'); return; }
 }
 
 function noInput(e) {
-  if (e.target?.dataset?.acao === 'tamanho-layout') {
+  const acao = e.target?.dataset?.acao;
+  if (acao === 'tamanho-layout') {
     layout[layoutAtivo].s = Number(e.target.value);
     aplicarLayout();
     e.target.value = String(layout[layoutAtivo].s);
     persistirLayout();
+    return;
+  }
+  if (acao === 'fundo-zoom' || acao === 'fundo-opacidade') {
+    if (acao === 'fundo-zoom') fundo.z = Number(e.target.value);
+    else fundo.o = Number(e.target.value);
+    aplicarFundo();
+    persistirFundo();
+    return;
+  }
+  if (e.target?.matches?.('textarea.titulo-item, textarea.auto')) {
+    ajustarAltura(e.target);
     return;
   }
   const busca = e.target.closest('[data-acao="busca-menu"]');
@@ -1209,20 +1269,26 @@ function noInput(e) {
     const item = itemPor(r.id);
     const box = document.querySelector('.lista-pessoas');
     if (item && box && r.menu) box.innerHTML = htmlListaPessoas(item, r.menu);
-    return;
   }
-  const el = e.target.closest('[data-rascunho]');
-  if (!el || !rascunho) return;
-  rascunho[el.dataset.rascunho] = el.value;
 }
 
 async function noChange(e) {
-  if (e.target?.dataset?.acao === 'aprovar-pref') {
+  const acao = e.target?.dataset?.acao;
+  if (acao === 'arquivo-fundo') {
+    await trocarFundo(e.target.files?.[0]);
+    return;
+  }
+  if (acao === 'aprovar-pref') {
     dados?.definirPrefs?.({ aprovar: e.target.checked });
     return;
   }
   const el = e.target.closest('[data-acao="valor"], [data-acao="texto"]');
   if (!el) return;
+  if (el.dataset.obrigatorio && !String(el.value).trim()) {
+    mostrar('O título não pode ficar vazio.');
+    desenhar();
+    return;
+  }
   await salvarCampo(el.dataset.id, el.dataset.chave, el.value);
 }
 
@@ -1253,14 +1319,14 @@ async function noKey(e) {
       ir(`#/item/${r.id}`);
     }
   }
+  if (e.key === 'Enter' && e.target?.matches?.('textarea.titulo-item')) {
+    e.preventDefault();
+    e.target.blur();
+    return;
+  }
   if (e.key === 'Enter' && e.target?.dataset?.acao === 'add-compra') {
     e.preventDefault();
-    const nome = e.target.value;
-    const ambiente = e.target.dataset.ambiente;
-    const r = await dados.adicionarCompra({ nome, ambiente });
-    if (!r.ok) mostrar(r.mensagem || 'Não deu para incluir.');
-    else e.target.value = '';
-    await depoisDeMudar();
+    await adicionarDaBarra();
   }
 }
 
@@ -1270,7 +1336,25 @@ function distPonteiros() {
 }
 
 function noPonteiroDown(e) {
-  if (!editando || rota().tela !== 'gravar') return;
+  const tela = rota().tela;
+  if (editandoFundo && tela === 'gravar') {
+    if (e.target.closest('.barra-edicao, .nav, .abas')) return;
+    ponteiros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (ponteiros.size === 1) {
+      gesto = { id: 'fundo', x: e.clientX, y: e.clientY, ox: fundo.x, oy: fundo.y, s: fundo.z, pinça: 0 };
+    } else if (gesto) {
+      gesto.pinça = distPonteiros();
+      gesto.s = fundo.z;
+    }
+    e.preventDefault();
+    return;
+  }
+  if (tela === 'aprovar') {
+    const caixa = e.isPrimary === false ? null : e.target.closest('[data-desliza]');
+    if (caixa) deslize = { id: caixa.dataset.desliza, caixa, el: caixa.querySelector('.cartao'), x: e.clientX, y: e.clientY, dx: 0, ativo: false };
+    return;
+  }
+  if (!editando || tela !== 'gravar') return;
   if (e.target.closest('.area-menu, .barra-edicao')) return;
   const alvo = e.target.closest('[data-layout]');
   if (!alvo) return;
@@ -1290,8 +1374,38 @@ function noPonteiroDown(e) {
 }
 
 function noPonteiroMove(e) {
+  if (deslize) {
+    const dx = e.clientX - deslize.x;
+    const dy = e.clientY - deslize.y;
+    if (!deslize.ativo) {
+      if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx)) { deslize = null; return; }
+      if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      deslize.ativo = true;
+      deslize.caixa.classList.add('ativo');
+    }
+    deslize.dx = dx;
+    deslize.el.style.transform = `translateX(${dx}px)`;
+    const limiar = Math.min(150, deslize.caixa.offsetWidth * 0.38);
+    deslize.caixa.classList.toggle('dir', dx > 0);
+    deslize.caixa.classList.toggle('esq', dx < 0);
+    deslize.caixa.classList.toggle('passou', Math.abs(dx) >= limiar);
+    return;
+  }
   if (!ponteiros.has(e.pointerId) || !gesto) return;
   ponteiros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (gesto.id === 'fundo') {
+    if (ponteiros.size >= 2 && gesto.pinça) {
+      fundo.z = gesto.s * (distPonteiros() / gesto.pinça);
+    } else {
+      fundo.x = gesto.ox + (e.clientX - gesto.x) / window.innerWidth;
+      fundo.y = gesto.oy + (e.clientY - gesto.y) / window.innerHeight;
+    }
+    aplicarFundo();
+    const zoom = document.querySelector('[data-acao="fundo-zoom"]');
+    if (zoom) zoom.value = String(fundo.z);
+    e.preventDefault();
+    return;
+  }
   if (ponteiros.size >= 2 && gesto.pinça) {
     layout[gesto.id].s = gesto.s * (distPonteiros() / gesto.pinça);
     arrastou = true;
@@ -1309,19 +1423,33 @@ function noPonteiroMove(e) {
 }
 
 function noPonteiroUp(e) {
+  if (deslize) {
+    const d = deslize;
+    deslize = null;
+    if (!d.ativo) return;
+    ignorarCliqueAte = Date.now() + 400;
+    const limiar = Math.min(150, d.caixa.offsetWidth * 0.38);
+    d.el.style.transform = '';
+    d.caixa.classList.remove('ativo', 'dir', 'esq', 'passou');
+    if (e.type === 'pointerup' && Math.abs(d.dx) >= limiar) decidirPorDeslize(d.id, d.dx > 0 ? 'aprovado' : 'recusado');
+    return;
+  }
   if (!ponteiros.has(e.pointerId)) return;
   ponteiros.delete(e.pointerId);
+  const doFundo = gesto?.id === 'fundo';
   if (ponteiros.size === 0) {
-    if (gesto && arrastou) persistirLayout();
+    if (doFundo) persistirFundo();
+    else if (gesto && arrastou) persistirLayout();
     gesto = null;
   } else if (gesto) {
     const p = [...ponteiros.values()][0];
+    const alvo = doFundo ? fundo : layout[gesto.id];
     gesto.x = p.x;
     gesto.y = p.y;
-    gesto.ox = layout[gesto.id].x;
-    gesto.oy = layout[gesto.id].y;
+    gesto.ox = alvo.x;
+    gesto.oy = alvo.y;
     gesto.pinça = 0;
-    gesto.s = layout[gesto.id].s;
+    gesto.s = doFundo ? fundo.z : alvo.s;
   }
 }
 
@@ -1394,8 +1522,202 @@ function registrarSw() {
   }).catch(() => {});
 }
 
+function carregarFundo() {
+  try {
+    const o = JSON.parse(localStorage.getItem(FUNDO_KEY) || 'null') || {};
+    return { ...FUNDO_PADRAO, ...o, proprio: !!localStorage.getItem(FUNDO_IMG_KEY) };
+  } catch {
+    return { ...FUNDO_PADRAO, proprio: false };
+  }
+}
+
+function aplicarFundo() {
+  const entre = (v, min, max, padrao) => Math.min(max, Math.max(min, Number.isFinite(Number(v)) ? Number(v) : padrao));
+  fundo.x = entre(fundo.x, -1.5, 1.5, 0);
+  fundo.y = entre(fundo.y, -1.5, 1.5, 0);
+  fundo.z = entre(fundo.z, FUNDO_ZOOM[0], FUNDO_ZOOM[1], 1);
+  fundo.o = entre(fundo.o, 0.1, 1, 1);
+  const r = document.documentElement;
+  r.style.setProperty('--fx', String(fundo.x));
+  r.style.setProperty('--fy', String(fundo.y));
+  r.style.setProperty('--fz', String(fundo.z));
+  r.style.setProperty('--fo', String(fundo.o));
+}
+
+function persistirFundo() {
+  try {
+    localStorage.setItem(FUNDO_KEY, JSON.stringify({ x: fundo.x, y: fundo.y, z: fundo.z, o: fundo.o }));
+  } catch { /* segue na memória */ }
+}
+
+function pintarImagemFundo() {
+  const caixa = document.getElementById('fundo');
+  const img = caixa?.querySelector('img');
+  if (!img) return;
+  let src = null;
+  try { src = localStorage.getItem(FUNDO_IMG_KEY); } catch { /* sem armazenamento */ }
+  img.src = src || FUNDO_FOTO_PADRAO;
+  caixa.classList.toggle('padrao', !src);
+  fundo.proprio = !!src;
+}
+
+async function trocarFundo(arquivo) {
+  if (!arquivo || !/^image\//.test(arquivo.type || '')) {
+    mostrar('Escolha um arquivo de imagem.');
+    return;
+  }
+  const url = URL.createObjectURL(arquivo);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    let salvo = false;
+    for (const [lado, qualidade] of [[1800, 0.85], [1280, 0.8], [900, 0.72]]) {
+      const fator = Math.min(1, lado / Math.max(img.naturalWidth, img.naturalHeight));
+      const tela = document.createElement('canvas');
+      tela.width = Math.max(1, Math.round(img.naturalWidth * fator));
+      tela.height = Math.max(1, Math.round(img.naturalHeight * fator));
+      tela.getContext('2d').drawImage(img, 0, 0, tela.width, tela.height);
+      try {
+        localStorage.setItem(FUNDO_IMG_KEY, tela.toDataURL('image/jpeg', qualidade));
+        salvo = true;
+        break;
+      } catch { /* não coube: tenta menor */ }
+    }
+    if (!salvo) {
+      mostrar('A imagem não coube no aparelho. Tente uma menor.');
+      return;
+    }
+    fundo = { ...fundo, x: 0, y: 0, z: 1 };
+    persistirFundo();
+    pintarImagemFundo();
+    aplicarFundo();
+    editandoFundo = true;
+    editando = false;
+    ir('#/');
+    mostrar('Imagem trocada. Ajuste o enquadramento.');
+  } catch {
+    mostrar('Não deu para abrir essa imagem.');
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function barraFundo() {
+  if (!editandoFundo) return '';
+  return `<div class="barra-edicao vidro">
+    <p>Arraste a imagem para mover. Pinça ou o controle muda o tamanho.</p>
+    <label>Tamanho<input type="range" min="${FUNDO_ZOOM[0]}" max="${FUNDO_ZOOM[1]}" step="0.01" value="${fundo.z}" data-acao="fundo-zoom" aria-label="Tamanho da imagem"></label>
+    <label>Opacidade<input type="range" min="0.1" max="1" step="0.01" value="${fundo.o}" data-acao="fundo-opacidade" aria-label="Opacidade da imagem"></label>
+    <div class="acoes-edicao">
+      <button type="button" class="botao" data-acao="fundo-centralizar">Centralizar</button>
+      <button type="button" class="botao sim" data-acao="concluir-fundo">Concluir</button>
+    </div>
+  </div>`;
+}
+
+function iconeTipo(tipo) {
+  return {
+    'klain-tarefa': ICO.tarefa,
+    'klain-compromisso': ICO.agenda,
+    'apto-gasto': ICO.moeda,
+    'compras-item': ICO.sacola,
+  }[tipo] || ICO.duvida;
+}
+
+function ajustarAltura(el) {
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+}
+
+function autoAltura() {
+  for (const el of document.querySelectorAll('textarea.titulo-item, textarea.auto')) ajustarAltura(el);
+}
+
+function saudacao() {
+  const h = Number(partesSP(new Date().toISOString())?.hour ?? 12);
+  if (h < 5) return 'Boa noite';
+  if (h < 12) return 'Bom dia';
+  if (h < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
+
+function vazio(qual, filtrado) {
+  const textos = {
+    aprovar: ['Nada esperando você', 'O que você gravar aparece aqui para conferir.'],
+    historico: ['Ainda sem histórico', 'Os itens aprovados e recusados ficam aqui.'],
+    lista: ['A lista está vazia', 'Escreva o primeiro item no campo abaixo.'],
+    item: ['Este item não está na fila', 'Ele pode ter sido decidido em outro aparelho.'],
+  };
+  const [titulo, sub] = filtrado ? ['Nada nesta combinação', 'Tire um filtro para ver mais itens.'] : (textos[qual] || textos.item);
+  const limpar = filtrado ? `<button type="button" class="fantasma" data-acao="limpar-filtros" data-aba="${esc(qual)}">Limpar filtros</button>` : '';
+  return `<div class="vazio">${DESENHO_VAZIO}<b>${esc(titulo)}</b><span>${esc(sub)}</span>${limpar}</div>`;
+}
+
+function campoTitulo(item, chave, valor) {
+  const texto = textoDe(item, valor) || '';
+  if (!emAberto(item.status)) return `<h2 class="titulo-item">${esc(texto || 'Sem título')}</h2>`;
+  return `<textarea class="titulo-item" rows="1" aria-label="Título" placeholder="Título" enterkeyhint="done" data-acao="texto" data-obrigatorio="1" data-id="${esc(item.id)}" data-chave="${esc(chave)}">${esc(texto)}</textarea>`;
+}
+
+function campoDescricao(item, valor) {
+  const texto = textoDe(item, valor) || '';
+  if (!emAberto(item.status)) return texto ? campoLeitura('Descrição', texto, false) : '';
+  return `<div class="campo"><div class="rot">Descrição</div>
+    <textarea class="area auto" rows="2" aria-label="Descrição" placeholder="Sem descrição" data-acao="texto" data-id="${esc(item.id)}" data-chave="descricao">${esc(texto)}</textarea>
+  </div>`;
+}
+
+function avisarEnvio(msg) {
+  pularSelo = true;
+  setTimeout(() => { pularSelo = false; }, 900);
+  ir('#/');
+  mostrar(msg);
+}
+
+async function adicionarDaBarra() {
+  const campo = document.getElementById('add-compra');
+  const nome = campo?.value || '';
+  if (!nome.trim()) {
+    campo?.focus();
+    return;
+  }
+  const r = await dados.adicionarCompra({ nome, ambiente: comodoAdd });
+  if (!r.ok) {
+    mostrar(r.mensagem || 'Não deu para incluir.');
+    return;
+  }
+  await depoisDeMudar();
+  document.getElementById('add-compra')?.focus();
+}
+
+async function decidirPorDeslize(id, decisao) {
+  if (ocupado) return;
+  ocupado = true;
+  try {
+    await aoDecidir(id, decisao);
+  } catch (err) {
+    mostrar(err.message);
+  } finally {
+    ocupado = false;
+  }
+}
+
+function noRoda(e) {
+  if (!editandoFundo || rota().tela !== 'gravar') return;
+  if (e.target.closest?.('.barra-edicao')) return;
+  fundo.z *= Math.exp(-e.deltaY * 0.0015);
+  aplicarFundo();
+  persistirFundo();
+  const zoom = document.querySelector('[data-acao="fundo-zoom"]');
+  if (zoom) zoom.value = String(fundo.z);
+  e.preventDefault();
+}
+
 async function iniciar() {
   aplicarTema(temaAtual(), false);
+  pintarImagemFundo();
+  aplicarFundo();
   const aberto = await abrirDados();
   modo = aberto.modo;
   erroBoot = aberto.erro || '';
@@ -1413,6 +1735,7 @@ async function iniciar() {
   document.addEventListener('pointerup', noPonteiroUp);
   document.addEventListener('pointercancel', noPonteiroUp);
   window.addEventListener('resize', aplicarLayout);
+  document.addEventListener('wheel', noRoda, { passive: false });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') atualizarFila();
   });

@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  STATUS, TIPOS, fData, fDataHora, filtrar, montarListaPessoas, normalizarPessoas, payloadCanonico, soCsmt, termosCsmt, tituloFila, chaveProibida,
+  STATUS, TIPOS, fData, fDataHora, filtrar, rotuloDia, montarListaPessoas, normalizarPessoas, payloadCanonico, soCsmt, termosCsmt, tituloFila, chaveProibida,
 } from './contrato.js';
 import { PESSOAS_EXEMPLO, criarAdaptadorMock, estadoExemplo } from './adaptador-mock.js';
 import { exigeAprovacao } from './prefs.js';
 import { montarEntrada } from '../supabase/copiloto-entrada/classificar.mjs';
 import { readFileSync } from 'node:fs';
-import { ativarNaHora, mostrarAvisoDeVersao, recarregarPorVersao, redePrimeiro } from './versao.js';
+import { VERSAO, ativarNaHora, mostrarAvisoDeVersao, recarregarPorVersao, redePrimeiro } from './versao.js';
 
 const AGORA = new Date('2026-11-13T15:00:00-03:00');
 const entrada = (texto) => montarEntrada(texto, AGORA);
@@ -33,6 +33,13 @@ test('data em dd/mm/yyyy', () => {
 test('compromisso só com data não volta um dia', () => {
   assert.equal(fDataHora('2026-11-17'), '17/11/2026');
   assert.equal(fDataHora('2026-11-17T14:30:00'), '17/11/2026, 14:30');
+});
+
+test('fila agrupa por Hoje, Ontem e data', () => {
+  assert.equal(rotuloDia('2026-11-13T09:14:00-03:00', AGORA), 'Hoje');
+  assert.equal(rotuloDia('2026-11-12T23:50:00-03:00', AGORA), 'Ontem');
+  assert.equal(rotuloDia('2026-11-10T09:00:00-03:00', AGORA), '10/11/2026');
+  assert.equal(rotuloDia('2026-11-13T01:30:00Z', AGORA), 'Ontem');
 });
 
 test('item Klain não exibe palavra de casamento', () => {
@@ -229,7 +236,7 @@ test('aviso de versão espera a gravação acabar', () => {
   const install = sw.slice(sw.indexOf("addEventListener('install'"), sw.indexOf("addEventListener('message'"));
   assert.equal(install.includes('skipWaiting'), false);
   assert.match(sw, /SKIP_WAITING/);
-  assert.match(sw, /copiloto-v12/);
+  assert.ok(sw.includes(`copiloto-${VERSAO}`));
 });
 
 test('frase solta continua indefinida', () => {

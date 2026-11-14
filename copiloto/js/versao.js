@@ -20,3 +20,6 @@ export function redePrimeiro(caminho) {
   const p = String(caminho || '').split('?')[0].toLowerCase();
   return p.endsWith('.js') || p.endsWith('.css');
 }
+
+/** Versão mostrada em Ajustes. Acompanha o nome do cache em sw.js. */
+export const VERSAO = 'v13';
