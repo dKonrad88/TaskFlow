@@ -489,7 +489,7 @@ function telaGravar() {
     ${cabeca('Gravar', { centro: true, ajustes: true })}
     ${barraEdicao()}
     <main class="so-gravar">
-      <button class="gravar" data-acao="gravar" data-layout="gravar" aria-label="Gravar"><span class="mic">${ICO.mic}</span><span class="parada" aria-hidden="true"></span></button>
+      <button class="gravar" data-acao="gravar" data-layout="gravar" aria-label="Gravar"><span class="mic">${ICO.mic}</span><span class="parada" aria-hidden="true"></span><span class="orb" aria-hidden="true"></span><span class="orb b" aria-hidden="true"></span></button>
     </main>`;
 }
 
@@ -544,7 +544,7 @@ function telaGravando() {
     : `<p class="transcricao" id="fala-ao-vivo">${esc(ouvido || 'Ouvindo…')}</p>`;
   return `${cabeca('Copiloto', { centro: true })}
     <main><div class="meio">
-      <button class="gravar vivo" data-acao="parar" aria-label="Parar"><span class="mic">${ICO.mic}</span><span class="parada" aria-hidden="true"></span></button>
+      <button class="gravar vivo" data-acao="parar" aria-label="Parar"><span class="mic">${ICO.mic}</span><span class="parada" aria-hidden="true"></span><span class="orb" aria-hidden="true"></span><span class="orb b" aria-hidden="true"></span></button>
       <div class="relogio">${mm}:${ss}</div>
       <h2>Gravando</h2>
       <p>Toque para parar e enviar.</p>
