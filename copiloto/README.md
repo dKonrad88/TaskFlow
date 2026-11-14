@@ -8,12 +8,14 @@ O app abre no **projeto Pessoal** (`jlouesrrmqeauzlgvrpw`), com a chave publicá
 
 ## O que a tela faz
 
-- Fila misturada, da mais nova para a mais antiga, com os status reais: `aguardando você`, `para o BOSS`, `aprovado`, `recusado`, `criado`, `erro`.
-- Filtro só no ícone (área, status, período). O histórico usa o mesmo filtro.
+- Fila misturada, da mais nova para a mais antiga, agrupada por dia (Hoje, Ontem, data), com os status reais: `aguardando você`, `para o BOSS`, `aprovado`, `recusado`, `criado`, `erro`.
+- Na aba Aprovar, deslizar o card para a direita aprova e para a esquerda recusa. A primeira decisão vale, então não há desfazer.
+- Filtro no ícone à esquerda do título (status, período). Os filtros ativos viram chips que se tiram com um toque.
 - Um card por tipo da fila: `klain-tarefa`, `klain-compromisso`, `apto-gasto`, `compras-item`, `indefinido`.
-- Valor, data e cômodo editam no próprio card. O resto passa pelo lápis.
-- Lista de compras agrupada por cômodo, com inclusão no estilo do app Lembretes.
-- A navegação é a barra inferior do Gravador do Hub: Gravar, Aprovar, Histórico e Lista. Gravar fica só com o botão. O chip de área (Automático, Hub Klain, Apto, Compras) fica logo acima da barra. Tema, conta e "Passar por aprovação" ficam em Ajustes.
+- Título, descrição, valor, data e cômodo editam no próprio card. Não há mais tela de edição.
+- Lista de compras agrupada por cômodo, com um campo único de inclusão e o cômodo escolhido por chip. Os comprados ficam recolhidos no fim.
+- A navegação é a barra inferior do Gravador do Hub: Gravar, Aprovar, Histórico e Lista. Gravar mostra a saudação, a contagem da fila e o botão; ao gravar, a tela é a mesma, com o cronômetro e a fala acima do botão. O chip de área (Automático, Hub Klain, Apto, Compras) fica logo acima da barra. Tema, fundo, conta e "Passar por aprovação" ficam em Ajustes.
+- O fundo é uma imagem atrás de todas as telas, nítida em Gravar e desfocada nas outras. Em Ajustes dá para trocar a imagem, mover, mudar o tamanho e a opacidade. A imagem e o enquadramento ficam só no aparelho (`localStorage`: `copiloto_fundo_img` e `copiloto_fundo`).
 - Datas em `dd/mm/yyyy`.
 
 Itens do Hub Klain (`klain-tarefa` e `klain-compromisso`) nunca mostram palavra de casamento. A frase é reescrita para a sigla **CSMT**. O termo original pode ficar dentro de `payload.csmt.termos`, e a tela não o escreve.

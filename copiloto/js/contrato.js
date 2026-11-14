@@ -365,3 +365,16 @@ export function filtrar(itens, filtros, agora = new Date()) {
 export function ordenarFila(itens) {
   return [...(itens || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 }
+
+/** Cabeçalho do dia na fila: Hoje, Ontem ou a data em dd/mm/yyyy (fuso de São Paulo). */
+export function rotuloDia(iso, agora = new Date()) {
+  const p = partesSP(iso);
+  const h = partesSP(agora.toISOString());
+  if (!p || !h) return '';
+  const dia = `${p.year}-${p.month}-${p.day}`;
+  const hoje = `${h.year}-${h.month}-${h.day}`;
+  if (dia === hoje) return 'Hoje';
+  const ontem = new Date(Date.parse(`${hoje}T12:00:00Z`) - 86400000).toISOString().slice(0, 10);
+  if (dia === ontem) return 'Ontem';
+  return `${p.day}/${p.month}/${p.year}`;
+}
