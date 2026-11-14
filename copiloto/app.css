@@ -268,33 +268,75 @@ main.so-gravar .gravar {
 }
 .gravar .mic svg { width: calc(46px * var(--ls, 1)); height: calc(46px * var(--ls, 1)); }
 .gravar .parada { display: none; width: 28%; height: 28%; border-radius: 8px; background: currentColor; }
+/* Halo: anel de luz girando (::before), o brilho dele (::after) e dois pontos em órbita (.orb). */
+.gravar { --halo-1: var(--acento); --halo-2: #e0569b; --halo-vel: 7s; }
+[data-tema=claro] .gravar { --halo-2: #c2337c; }
+[data-tema=cafe] .gravar { --halo-2: #d9776a; }
 .gravar::before, .gravar::after {
   content: "";
   position: absolute;
-  inset: -7%;
-  border-radius: inherit;
-  border: 2px solid color-mix(in srgb, var(--acento) 55%, var(--secundario));
-  opacity: 0;
+  inset: -17%;
+  border-radius: 50%;
   pointer-events: none;
+  background: conic-gradient(from 0deg,
+    transparent 0 8%,
+    var(--halo-1) 32%,
+    var(--halo-2) 50%,
+    transparent 62%,
+    color-mix(in srgb, var(--secundario) 80%, transparent) 82%,
+    transparent 96%);
+  --halo-esp: calc(6px * var(--ls, 1));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--halo-esp)), #000 calc(100% - var(--halo-esp) + 1px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - var(--halo-esp)), #000 calc(100% - var(--halo-esp) + 1px));
+  animation: halo-gira var(--halo-vel) linear infinite;
 }
-.gravar::before { animation: pulso 2.6s ease-out infinite; }
+.gravar::after {
+  inset: -22%;
+  --halo-esp: calc(15px * var(--ls, 1));
+  filter: blur(calc(9px * var(--ls, 1)));
+  opacity: .85;
+}
+.gravar .orb {
+  position: absolute;
+  inset: -35.5%;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--texto) 14%, transparent);
+  pointer-events: none;
+  animation: halo-gira-inv 11s linear infinite;
+}
+.gravar .orb.b { inset: -49%; animation: halo-gira 17s linear infinite; }
+.gravar .orb::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: calc(8px * var(--ls, 1));
+  height: calc(8px * var(--ls, 1));
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--halo-1);
+  box-shadow: 0 0 10px var(--halo-1);
+}
+.gravar .orb.b::before {
+  width: calc(5px * var(--ls, 1));
+  height: calc(5px * var(--ls, 1));
+  background: var(--halo-2);
+  box-shadow: 0 0 8px var(--halo-2);
+}
 .gravar.vivo {
+  --halo-1: var(--perigo);
+  --halo-vel: 1.5s;
   background: color-mix(in srgb, var(--perigo) 38%, transparent);
   border-color: color-mix(in srgb, var(--perigo) 70%, var(--secundario));
   box-shadow: 0 0 28px color-mix(in srgb, var(--perigo) 55%, transparent), inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent);
 }
 .gravar.vivo .mic { display: none; }
 .gravar.vivo .parada { display: block; }
-.gravar.vivo::before { animation: onda 1.15s ease-out infinite; border-color: var(--perigo); }
-.gravar.vivo::after { animation: onda 1.15s ease-out 0.4s infinite; border-color: color-mix(in srgb, var(--secundario) 60%, var(--perigo)); }
-@keyframes pulso {
-  0% { transform: scale(.96); opacity: .5; }
-  70%, 100% { transform: scale(1.28); opacity: 0; }
-}
-@keyframes onda {
-  0% { transform: scale(.9); opacity: .65; }
-  100% { transform: scale(1.5); opacity: 0; }
-}
+.gravar.vivo .orb { animation-duration: 3s; }
+.gravar.vivo .orb.b { animation-duration: 4.5s; }
+.meio .gravar { margin: 60px 0 52px; }
+@keyframes halo-gira { to { transform: rotate(360deg); } }
+@keyframes halo-gira-inv { to { transform: rotate(-360deg); } }
 .app.editando .gravar,
 .app.editando .area-chip { outline: 2px dashed var(--acento); outline-offset: 6px; }
 .barra-edicao {
@@ -664,5 +706,5 @@ main.so-gravar .gravar {
 }
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }
-  .gravar::before, .gravar::after { animation: none; opacity: .4; }
+  .gravar::before, .gravar::after, .gravar .orb { animation: none; }
 }

@@ -224,7 +224,7 @@ test('aviso de versão espera a gravação acabar', () => {
   const install = sw.slice(sw.indexOf("addEventListener('install'"), sw.indexOf("addEventListener('message'"));
   assert.equal(install.includes('skipWaiting'), false);
   assert.match(sw, /SKIP_WAITING/);
-  assert.match(sw, /copiloto-v9/);
+  assert.match(sw, /copiloto-v10/);
 });
 
 test('frase solta continua indefinida', () => {
