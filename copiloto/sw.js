@@ -1,5 +1,5 @@
 /* Copiloto — cache da pasta. Escopo publicado: /TaskFlow/copiloto/ */
-const C = 'copiloto-v10';
+const C = 'copiloto-v11';
 const A = [
   './',
   'index.html',
