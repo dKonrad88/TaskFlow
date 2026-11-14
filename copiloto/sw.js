@@ -1,5 +1,5 @@
 /* Copiloto — cache da pasta. Escopo publicado: /TaskFlow/copiloto/ */
-const C = 'copiloto-v11';
+const C = 'copiloto-v12';
 const A = [
   './',
   'index.html',
@@ -39,14 +39,21 @@ self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((chaves) => Promise.all(chaves.filter((x) => x !== C && x.startsWith('copiloto-')).map((x) => caches.delete(x)))).then(() => self.clients.claim()));
 });
 
-async function avisarSeMudou(cache, req, resposta) {
+/**
+ * Avisa as janelas quando um JS ou CSS mudou. A janela que pediu o arquivo ao
+ * carregar a página (pulaId) já recebe a versão nova e não precisa do aviso.
+ */
+async function avisarSeMudou(cache, req, resposta, pulaId) {
   if (!redePrimeiro(new URL(req.url).pathname)) return;
   const antiga = await cache.match(req);
   if (!antiga) return;
   const [a, b] = await Promise.all([antiga.clone().text(), resposta.clone().text()]);
   if (a === b) return;
   const clientes = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-  for (const c of clientes) c.postMessage({ tipo: 'versao' });
+  for (const c of clientes) {
+    if (pulaId && c.id === pulaId) continue;
+    c.postMessage({ tipo: 'versao' });
+  }
 }
 
 self.addEventListener('fetch', (e) => {
@@ -68,11 +75,13 @@ self.addEventListener('fetch', (e) => {
     return;
   }
   if (redePrimeiro(u.pathname)) {
+    const daPagina = req.destination === 'script' || req.destination === 'style';
+    const pulaId = daPagina ? (e.clientId || e.resultingClientId || '') : '';
     e.respondWith(caches.open(C).then(async (c) => {
       try {
         const rede = await fetch(req, { cache: 'no-cache' });
         if (rede.ok) {
-          await avisarSeMudou(c, req, rede);
+          await avisarSeMudou(c, req, rede, pulaId);
           await c.put(req, rede.clone());
         }
         return rede;

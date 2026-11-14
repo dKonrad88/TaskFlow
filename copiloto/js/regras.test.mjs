@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  STATUS, TIPOS, fData, filtrar, montarListaPessoas, normalizarPessoas, payloadCanonico, soCsmt, termosCsmt, tituloFila, chaveProibida,
+  STATUS, TIPOS, fData, fDataHora, filtrar, montarListaPessoas, normalizarPessoas, payloadCanonico, soCsmt, termosCsmt, tituloFila, chaveProibida,
 } from './contrato.js';
 import { PESSOAS_EXEMPLO, criarAdaptadorMock, estadoExemplo } from './adaptador-mock.js';
 import { exigeAprovacao } from './prefs.js';
@@ -28,6 +28,11 @@ test('status e tipos são os do banco', () => {
 test('data em dd/mm/yyyy', () => {
   assert.equal(fData('2026-11-13'), '13/11/2026');
   assert.equal(fData('2026-11-17'), '17/11/2026');
+});
+
+test('compromisso só com data não volta um dia', () => {
+  assert.equal(fDataHora('2026-11-17'), '17/11/2026');
+  assert.equal(fDataHora('2026-11-17T14:30:00'), '17/11/2026, 14:30');
 });
 
 test('item Klain não exibe palavra de casamento', () => {
@@ -224,7 +229,7 @@ test('aviso de versão espera a gravação acabar', () => {
   const install = sw.slice(sw.indexOf("addEventListener('install'"), sw.indexOf("addEventListener('message'"));
   assert.equal(install.includes('skipWaiting'), false);
   assert.match(sw, /SKIP_WAITING/);
-  assert.match(sw, /copiloto-v11/);
+  assert.match(sw, /copiloto-v12/);
 });
 
 test('frase solta continua indefinida', () => {

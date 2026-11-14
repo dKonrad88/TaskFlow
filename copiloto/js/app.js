@@ -3,7 +3,7 @@ import { modoDemo } from './config.js';
 import { AVISO_VERSAO, ativarNaHora, mostrarAvisoDeVersao, recarregarPorVersao } from './versao.js';
 import {
   COMODOS, emAberto, fData, fDataHora, fHora, fValor, filtrar, idPadrao, montarListaPessoas,
-  normalizarPessoas, ordenarFila, pValor, payloadCanonico, rotuloArea, rotuloStatus, rotuloTipo, soCsmt, tituloFila,
+  normalizarPessoas, ordenarFila, pValor, partesSP, rotuloArea, rotuloStatus, rotuloTipo, soCsmt, tituloFila,
 } from './contrato.js';
 
 const TEMAS = ['claro', 'escuro', 'cafe'];
@@ -32,12 +32,15 @@ let toast = '';
 let toastTimer = 0;
 let segundos = 0;
 let timer = null;
-let mic = null;
 let aoVivo = false;
 let simulou = false;
 let reconhecimento = null;
 let textoFala = '';
 let textoParcial = '';
+let textoBase = '';
+let ocupado = false;
+let carregando = false;
+let ultimaChecagem = 0;
 let pedindoTexto = false;
 let ultimoEnvio = null;
 let versaoNova = false;
@@ -49,7 +52,6 @@ let folha = null;
 let rascunho = null;
 let buscaMenu = '';
 
-const $ = (html) => html;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pose = () => new URLSearchParams(location.search).get('pose') === '1';
 const temaAtual = () => document.documentElement.getAttribute('data-tema') || 'escuro';
@@ -63,13 +65,9 @@ const ICO = {
   lapis: svg('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>'),
   ok: svg('<path d="M5 12.5 10 17.5 19 7"/>'),
   volta: svg('<path d="M14 6 8 12l6 6"/>'),
-  sol: svg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
-  lua: svg('<path d="M21 14.5A8.5 8.5 0 1 1 9.5 3a7 7 0 0 0 11.5 11.5z"/>'),
-  cafe: svg('<path d="M5 8h10v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8z"/><path d="M15 9h1.5a2.5 2.5 0 0 1 0 5H15"/><path d="M8 3v2M12 3v2"/>'),
   lista: svg('<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>'),
   engrenagem: svg('<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="8" cy="7" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="9" cy="17" r="2"/>'),
   mic: svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
-  check: svg('<path d="M5 12.5 10 17.5 19 7"/>'),
 };
 
 function aplicarTema(nome, gravar) {
@@ -83,11 +81,19 @@ function aplicarTema(nome, gravar) {
   }
 }
 
+function pintarToast() {
+  const raiz = document.getElementById('app');
+  if (!raiz) return;
+  raiz.querySelector('.toast')?.remove();
+  if (toast) raiz.insertAdjacentHTML('beforeend', `<div class="toast" role="status">${esc(toast)}</div>`);
+}
+
+/** Mostra o aviso sem redesenhar a tela: redesenhar apagava o que estava sendo digitado. */
 function mostrar(msg) {
   toast = msg;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { toast = ''; desenhar(); }, 3200);
-  desenhar();
+  toastTimer = setTimeout(() => { toast = ''; pintarToast(); }, 3200);
+  pintarToast();
 }
 
 function rota() {
@@ -360,11 +366,17 @@ function menuHtml(item, campo) {
     <div class="menu" role="listbox">${lis}<p class="pe">Cômodo do apartamento. Sala sozinha continua ambígua na entrada de voz.</p></div>`;
 }
 
+function hojeSP() {
+  const p = partesSP(new Date().toISOString());
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
 function prepararFolha(valor) {
-  const iso = String(valor || '2026-11-13').slice(0, 10);
+  const hoje = hojeSP();
+  const iso = /^d{4}-d{2}-d{2}/.test(String(valor || '')) ? String(valor).slice(0, 10) : hoje;
   if (!folha || folha.base !== iso) {
     const [y, m, d] = iso.split('-').map(Number);
-    folha = { ano: y || 2026, mes: m || 11, dia: d || 1, base: iso };
+    folha = { ano: y, mes: m, dia: d, base: iso };
   }
 }
 
@@ -423,7 +435,8 @@ function carregarLayout() {
 function limitarPeca(id) {
   const vw = window.innerWidth || 390;
   const vh = window.innerHeight || 844;
-  const barra = 96;
+  const nav = document.querySelector('.abas');
+  const barra = nav ? vh - nav.getBoundingClientRect().top : 96;
   const p = layout[id];
   const minS = id === 'gravar' ? 0.72 : 0.85;
   const maxS = id === 'gravar' ? 1.55 : 1.35;
@@ -529,16 +542,16 @@ function telaGravando() {
   const seg = pose() ? 7 : segundos;
   const mm = String(Math.floor(seg / 60));
   const ss = String(seg % 60).padStart(2, '0');
+  const ouvido = [textoFala, textoParcial].filter(Boolean).join(' ');
   if (pedindoTexto && modo !== 'mock') {
     return `${cabeca('Copiloto', { centro: true })}
       <main><div class="meio">
         <h2>O que foi dito</h2>
         <p>Este navegador não transcreve, ou a fala veio vazia. Escreva e envie.</p>
-        <textarea class="area" id="texto-entrada" aria-label="Texto para enviar" placeholder="Ex.: comprar lâmpadas para a sala"></textarea>
+        <textarea class="area" id="texto-entrada" aria-label="Texto para enviar" placeholder="Ex.: comprar lâmpadas para a sala">${esc(ouvido)}</textarea>
         <button class="botao sim cheio" data-acao="enviar-texto">Enviar</button>
       </div></main>`;
   }
-  const ouvido = [textoFala, textoParcial].filter(Boolean).join(' ');
   const fala = modo === 'mock'
     ? '<p class="dica">No exemplo, parar acrescenta um item local.</p>'
     : `<p class="transcricao" id="fala-ao-vivo">${esc(ouvido || 'Ouvindo…')}</p>`;
@@ -673,6 +686,7 @@ function telaAjustes() {
       <div class="ajuste"><span>Modo</span><b>${esc(conta.modo)}</b></div>
       <div class="ajuste"><span>Login</span><b>${esc(conta.login)}</b></div>
       ${modo === 'supabase' && dados?._sessao ? '<button type="button" class="botao cheio" data-acao="sair">Sair</button>' : ''}
+      ${modo === 'mock' ? '<button type="button" class="botao cheio" data-acao="restaurar">Restaurar exemplos</button>' : ''}
       <div class="grupo">Tela de gravar</div>
       <button type="button" class="botao cheio" data-acao="editar-layout">Editar layout</button>
       <p class="dica">Move e redimensiona o botão Gravar e o chip de área.</p>
@@ -692,7 +706,7 @@ function chromeAba(tela) {
   const area = tela === 'gravar' ? chipArea() : '';
   return `${area}<nav class="abas vidro" role="tablist">
     ${aba('gravar', ICO.mic, 'Gravar')}
-    ${aba('aprovar', ICO.check, 'Aprovar', badge)}
+    ${aba('aprovar', ICO.ok, 'Aprovar', badge)}
     ${aba('historico', ICO.relogio, 'Histórico')}
     ${aba('lista', ICO.lista, 'Lista')}
   </nav>`;
@@ -786,7 +800,7 @@ function desenhar() {
     raiz.classList.remove('com-foto');
     raiz.innerHTML = telaLogin() + avisoVersaoHTML();
     posicionarAviso();
-    if (toast) raiz.insertAdjacentHTML('beforeend', `<div class="toast" role="status">${esc(toast)}</div>`);
+    pintarToast();
     return;
   }
   const r = rota();
@@ -807,12 +821,13 @@ function desenhar() {
   else if (r.tela === 'fase2') html = telaFase2(r.qual);
   raiz.innerHTML = html + chromeAba(r.tela) + avisoVersaoHTML();
   posicionarAviso();
-  if (toast) raiz.insertAdjacentHTML('beforeend', `<div class="toast" role="status">${esc(toast)}</div>`);
+  pintarToast();
 }
 
 async function carregar() {
   if (!dados) return;
   const [fila, gente, lista] = await Promise.all([dados.listarItens(), dados.listarPessoas(), dados.listarCompras()]);
+  if (modo === 'supabase' && fila.codigo === 'sem-sessao') dados._sessao = null;
   itens = fila.itens || [];
   erroFila = fila.erro || '';
   pessoas = gente.pessoas || [];
@@ -821,18 +836,36 @@ async function carregar() {
   if (lista.erro && !erroFila) erroFila = lista.erro;
 }
 
+/** Busca a fila de novo sem atrapalhar quem está gravando, digitando ou movendo o layout. */
+async function atualizarFila() {
+  if (carregando || !dados || aoVivo || editando) return;
+  if (modo === 'supabase' && !dados._sessao) return;
+  const telas = ['gravar', 'aprovar', 'historico', 'lista', 'enviado'];
+  if (!telas.includes(rota().tela)) return;
+  carregando = true;
+  try { await carregar(); } catch { return; } finally { carregando = false; }
+  const foco = document.activeElement;
+  if (foco && /^(INPUT|TEXTAREA)$/.test(foco.tagName)) return;
+  if (telas.includes(rota().tela) && !aoVivo && !editando) desenhar();
+}
+
 async function depoisDeMudar() {
   await carregar();
   desenhar();
 }
 
+/** Manda as pessoas inteiras: mandar só um campo fazia os outros voltarem para "Ninguém". */
+function patchPessoas(item, campo, valor) {
+  return { pessoas: { ...pessoasDoItem(item), [campo]: valor } };
+}
+
 function patchDoCampo(item, chave, valor) {
   if (chave === 'solicitante' || chave === 'executor') {
     const unico = Array.isArray(valor) ? valor[0] : valor;
-    return { pessoas: { [chave]: unico || null } };
+    return patchPessoas(item, chave, unico || null);
   }
   if (chave === 'em_copia' || chave === 'participantes') {
-    return { pessoas: { [chave]: Array.isArray(valor) ? valor : [] } };
+    return patchPessoas(item, chave, Array.isArray(valor) ? valor : []);
   }
   if (chave === 'ambiente') return { payload: { ambiente: valor, comodo_incerto: false } };
   if (chave === 'valor' || chave === 'valor_estimado') {
@@ -862,16 +895,12 @@ async function aoDecidir(id, decisao) {
     mostrar(r.mensagem || 'Não deu para gravar a decisão.');
   } else {
     mostrar(decisao === 'aprovado' ? 'Aprovado.' : 'Recusado.');
-    ir(`#/`);
+    ir('#/aprovar');
   }
   await depoisDeMudar();
 }
 
 function pararMic() {
-  if (mic) {
-    for (const trilha of mic.getTracks()) trilha.stop();
-    mic = null;
-  }
   clearInterval(timer);
   timer = null;
   const estava = aoVivo;
@@ -910,6 +939,7 @@ function comecarFala() {
   pedindoTexto = false;
   textoFala = '';
   textoParcial = '';
+  textoBase = '';
   const rec = new SR();
   rec.lang = 'pt-BR';
   rec.interimResults = true;
@@ -922,17 +952,27 @@ function comecarFala() {
       if (res.isFinal) finais += `${t} `;
       else parcial += t;
     }
-    textoFala = finais.trim();
+    textoFala = [textoBase, finais.trim()].filter(Boolean).join(' ');
     textoParcial = parcial.trim();
     pintarFala();
   };
-  rec.onerror = () => {
+  rec.onerror = (ev) => {
     if (!aoVivo) return;
+    // Silêncio e reinício não são falha: o onend religa a escuta.
+    if (ev?.error === 'no-speech' || ev?.error === 'aborted') return;
+    pararReconhecimento();
+    clearInterval(timer);
+    timer = null;
+    aoVivo = false;
     pedindoTexto = true;
     desenhar();
   };
   rec.onend = () => {
     if (reconhecimento === rec && aoVivo) {
+      // Cada sessão começa do zero: guarda o que já foi ouvido antes de religar.
+      textoBase = [textoFala, textoParcial].filter(Boolean).join(' ').trim();
+      textoFala = textoBase;
+      textoParcial = '';
       try { rec.start(); } catch { /* o navegador encerrou a sessão */ }
     }
   };
@@ -973,6 +1013,10 @@ async function enviarTexto(texto) {
     return;
   }
   ultimoEnvio = { tipo: r.tipo, status: r.status };
+  textoFala = '';
+  textoParcial = '';
+  textoBase = '';
+  await carregar();
   ir('#/enviado');
 }
 
@@ -983,6 +1027,7 @@ async function pararGravar() {
   if (modo === 'mock' && dados?.simularChegada) {
     await dados.simularChegada('Lembrete de voz (exemplo)');
     simulou = true;
+    await carregar();
     ir('#/enviado');
     return;
   }
@@ -1032,7 +1077,7 @@ async function noClique(e) {
   if (editando && (acao === 'gravar' || acao === 'area-menu')) return;
   if (acao === 'ir') { ir(el.dataset.hash); return; }
   if (acao === 'voltar') { if (history.length > 1) history.back(); else ir('#/'); return; }
-  if (acao === 'aba') { filtroAberto = false; areaAberta = false; ir(el.dataset.aba === 'gravar' ? '#/' : `#/${el.dataset.aba}`); return; }
+  if (acao === 'aba') { filtroAberto = false; areaAberta = false; ir(el.dataset.aba === 'gravar' ? '#/' : `#/${el.dataset.aba}`); atualizarFila(); return; }
   if (acao === 'filtro-aba') { filtroAberto = !filtroAberto; desenhar(); return; }
   if (acao === 'area-menu') { areaAberta = !areaAberta; desenhar(); return; }
   if (acao === 'editar-layout') { editando = true; areaAberta = false; ir('#/'); return; }
@@ -1050,9 +1095,16 @@ async function noClique(e) {
   if (acao === 'abrir') { ir(`#/item/${el.dataset.id}`); return; }
   if (acao === 'atualizar-versao') { await aplicarVersao(); return; }
   if (acao === 'gravar') { await comecarGravar(); return; }
-  if (acao === 'parar') { await pararGravar(); return; }
-  if (acao === 'enviar-texto') {
-    await enviarTexto(document.getElementById('texto-entrada')?.value || '');
+  if (acao === 'parar' || acao === 'enviar-texto' || acao === 'decidir') {
+    if (ocupado) return;
+    ocupado = true;
+    try {
+      if (acao === 'parar') await pararGravar();
+      else if (acao === 'enviar-texto') await enviarTexto(document.getElementById('texto-entrada')?.value || '');
+      else await aoDecidir(el.dataset.id, el.dataset.decisao);
+    } finally {
+      ocupado = false;
+    }
     return;
   }
   if (acao === 'sair') {
@@ -1102,10 +1154,11 @@ async function noClique(e) {
   }
   if (acao === 'toggle-pessoa') {
     const item = itemPor(el.dataset.id);
+    if (!item) return;
     const campo = el.dataset.campo;
     const ids = new Set(valorPessoa(item, campo));
     if (ids.has(el.dataset.valor)) ids.delete(el.dataset.valor); else ids.add(el.dataset.valor);
-    await dados.atualizar(el.dataset.id, { pessoas: { [campo]: [...ids] } });
+    await dados.atualizar(el.dataset.id, patchPessoas(item, campo, [...ids]));
     await carregar();
     desenhar();
     const busca = document.querySelector('[data-acao="busca-menu"]');
@@ -1114,8 +1167,9 @@ async function noClique(e) {
   }
   if (acao === 'tirar-copia') {
     const item = itemPor(el.dataset.id);
+    if (!item) return;
     const ids = valorPessoa(item, 'em_copia').filter((pid) => pid !== el.dataset.pessoa);
-    await dados.atualizar(el.dataset.id, { pessoas: { em_copia: ids } });
+    await dados.atualizar(el.dataset.id, patchPessoas(item, 'em_copia', ids));
     await depoisDeMudar();
     return;
   }
@@ -1130,7 +1184,6 @@ async function noClique(e) {
     await depoisDeMudar();
     return;
   }
-  if (acao === 'decidir') { await aoDecidir(el.dataset.id, el.dataset.decisao); return; }
   if (acao === 'compra') {
     await dados.alternarCompra(el.dataset.id);
     await depoisDeMudar();
@@ -1282,6 +1335,9 @@ function assumirSePrimeira() {
 
 async function checarVersao() {
   if (!registroSw) return;
+  const agora = Date.now();
+  if (agora - ultimaChecagem < 60000) return;
+  ultimaChecagem = agora;
   try { await registroSw.update(); } catch { /* offline */ }
   await Promise.all(ARQUIVOS_VERSAO.map((p) => fetch(new URL(p, location.href), { cache: 'no-cache' }).catch(() => {})));
   if (registroSw.waiting && navigator.serviceWorker.controller) marcarVersaoNova();
@@ -1357,6 +1413,9 @@ async function iniciar() {
   document.addEventListener('pointerup', noPonteiroUp);
   document.addEventListener('pointercancel', noPonteiroUp);
   window.addEventListener('resize', aplicarLayout);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') atualizarFila();
+  });
   window.addEventListener('hashchange', () => {
     if (rota().tela !== 'gravando') {
       pararReconhecimento();
@@ -1365,6 +1424,7 @@ async function iniciar() {
     desenhar();
   });
   if (pose() && rota().tela === 'gravando') segundos = 7;
+  else if (rota().tela === 'gravando') history.replaceState(null, '', `${location.pathname}${location.search}#/`);
   desenhar();
   registrarSw();
   if (modoDemo()) document.documentElement.dataset.adaptador = 'mock';
