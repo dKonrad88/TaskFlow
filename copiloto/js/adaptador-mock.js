@@ -85,7 +85,7 @@ export function estadoExemplo() {
         notas: 'Integral',
         payload: payloadCanonico('compras-item', {
           nome: 'Leite',
-          ambiente: 'Cozinha',
+          ambiente: 'Laticínios e frios',
           quantidade: '2 L',
           valor_estimado: 12,
           comodo_incerto: false,
@@ -115,7 +115,7 @@ export function estadoExemplo() {
         decidido_em: '2026-11-12T18:40:00-03:00',
         payload: payloadCanonico('compras-item', {
           nome: 'Pão',
-          ambiente: 'Cozinha',
+          ambiente: 'Padaria',
           quantidade: null,
           valor_estimado: null,
           comodo_incerto: false,
@@ -168,10 +168,10 @@ export function estadoExemplo() {
       }),
     ],
     compras: [
-      { id: 'c-leite', lista_id: 'lista-exemplo', nome: 'Leite', ambiente: 'Cozinha', quantidade: '2 L', valor_estimado: 12, descricao: 'Integral', comprado: false, ordem: 0, created_at: '2026-11-13T08:12:00-03:00' },
-      { id: 'c-pao', lista_id: 'lista-exemplo', nome: 'Pão', ambiente: 'Cozinha', quantidade: null, valor_estimado: null, descricao: '', comprado: false, ordem: 1, created_at: '2026-11-13T08:12:00-03:00' },
-      { id: 'c-lamp', lista_id: 'lista-exemplo', nome: 'Lâmpada para o abajur', ambiente: 'Sala', quantidade: null, valor_estimado: null, descricao: '', comprado: false, ordem: 0, created_at: '2026-11-12T11:00:00-03:00' },
-      { id: 'c-sabao', lista_id: 'lista-exemplo', nome: 'Sabão em pó', ambiente: 'Lavanderia', quantidade: null, valor_estimado: null, descricao: '', comprado: true, ordem: 0, created_at: '2026-11-11T09:00:00-03:00' },
+      { id: 'c-leite', lista_id: 'lista-exemplo', nome: 'Leite', ambiente: 'Laticínios e frios', quantidade: '2 L', valor_estimado: 12, descricao: 'Integral', comprado: false, ordem: 0, created_at: '2026-11-13T08:12:00-03:00' },
+      { id: 'c-pao', lista_id: 'lista-exemplo', nome: 'Pão', ambiente: 'Padaria', quantidade: null, valor_estimado: null, descricao: '', comprado: false, ordem: 1, created_at: '2026-11-13T08:12:00-03:00' },
+      { id: 'c-lamp', lista_id: 'lista-exemplo', nome: 'Detergente', ambiente: 'Limpeza', quantidade: null, valor_estimado: null, descricao: '', comprado: false, ordem: 0, created_at: '2026-11-12T11:00:00-03:00' },
+      { id: 'c-sabao', lista_id: 'lista-exemplo', nome: 'Sabão em pó', ambiente: 'Limpeza', quantidade: null, valor_estimado: null, descricao: '', comprado: true, ordem: 0, created_at: '2026-11-11T09:00:00-03:00' },
     ],
   };
 }
@@ -227,7 +227,7 @@ function porNaLista(estado, item) {
   const p = item.payload || {};
   const nome = (p.nome || '').trim();
   if (!nome) return;
-  const ambiente = p.ambiente || 'Apartamento';
+  const ambiente = p.ambiente || 'Outros';
   const ja = estado.compras.some((c) => c.nome.toLocaleLowerCase('pt-BR') === nome.toLocaleLowerCase('pt-BR') && c.ambiente === ambiente && !c.comprado);
   if (ja) return;
   estado.compras.push({
@@ -318,7 +318,7 @@ export function criarAdaptadorMock(persistencia) {
         id: `c-${Date.now()}`,
         lista_id: 'lista-exemplo',
         nome: texto,
-        ambiente: ambiente || 'Apartamento',
+        ambiente: ambiente || 'Outros',
         quantidade: null,
         valor_estimado: null,
         descricao: '',

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  STATUS, TIPOS, fData, fDataHora, filtrar, rotuloDia, montarListaPessoas, normalizarPessoas, payloadCanonico, soCsmt, termosCsmt, tituloFila, chaveProibida,
+  STATUS, TIPOS, secaoDoMercado, fData, fDataHora, filtrar, rotuloDia, montarListaPessoas, normalizarPessoas, payloadCanonico, soCsmt, termosCsmt, tituloFila, chaveProibida,
 } from './contrato.js';
 import { PESSOAS_EXEMPLO, criarAdaptadorMock, estadoExemplo } from './adaptador-mock.js';
 import { exigeAprovacao } from './prefs.js';
@@ -179,10 +179,10 @@ test('frase de compra vira item da lista', () => {
   assert.equal(leite.tipo, 'compras-item');
   assert.equal(leite.payload.nome, 'leite');
   assert.equal(leite.payload.quantidade, '2 litros');
-  assert.equal(leite.payload.ambiente, 'Cozinha');
+  assert.equal(leite.payload.ambiente, 'Laticínios e frios');
   assert.equal(leite.payload.comodo_incerto, false);
 
-  assert.equal(entrada('falta papel higiênico no lavabo').payload.ambiente, 'Lavabo');
+  assert.equal(entrada('falta papel higiênico no lavabo').payload.ambiente, 'Higiene');
   assert.equal(entrada('acabou o café').payload.nome, 'café');
   assert.equal(entrada('adicionar na lista detergente').payload.nome, 'detergente');
   assert.equal(entrada('preciso de duas lâmpadas').payload.quantidade, '2');
@@ -232,11 +232,34 @@ test('aviso de versão espera a gravação acabar', () => {
   assert.equal(redePrimeiro('/TaskFlow/copiloto/js/app.js'), true);
   assert.equal(redePrimeiro('/TaskFlow/copiloto/app.css'), true);
   assert.equal(redePrimeiro('/TaskFlow/copiloto/assets/fundo-familia.webp'), false);
+  assert.equal(redePrimeiro('/TaskFlow/copiloto/vendor/supabase-js-2.119.0.js'), false);
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   const install = sw.slice(sw.indexOf("addEventListener('install'"), sw.indexOf("addEventListener('message'"));
   assert.equal(install.includes('skipWaiting'), false);
   assert.match(sw, /SKIP_WAITING/);
   assert.ok(sw.includes(`copiloto-${VERSAO}`));
+});
+
+test('área escolhida no chip fixa o tipo', () => {
+  const com = (texto, area) => montarEntrada(texto, AGORA, { area });
+  assert.equal(com('oi tudo bem', 'compras').tipo, 'compras-item');
+  assert.equal(com('oi tudo bem', 'compras').status, 'aguardando você');
+  assert.equal(com('detergente', 'compras').payload.ambiente, 'Limpeza');
+  assert.equal(com('encanador 180 reais', 'apto').tipo, 'apto-gasto');
+  assert.equal(com('encanador 180 reais', 'apto').payload.valor, 180);
+  assert.equal(com('ligar para o fornecedor', 'hub').tipo, 'klain-tarefa');
+  assert.equal(com('reunião com o fornecedor amanhã às 14h', 'hub').tipo, 'klain-compromisso');
+  assert.equal(com('oi tudo bem', undefined).tipo, 'indefinido');
+});
+
+test('seção do mercado sai do nome do item', () => {
+  assert.equal(secaoDoMercado('Leite'), 'Laticínios e frios');
+  assert.equal(secaoDoMercado('leite condensado'), 'Mercearia');
+  assert.equal(secaoDoMercado('Pão de queijo'), 'Padaria');
+  assert.equal(secaoDoMercado('água sanitária'), 'Limpeza');
+  assert.equal(secaoDoMercado('água com gás'), 'Bebidas');
+  assert.equal(secaoDoMercado('papel higiênico'), 'Higiene');
+  assert.equal(secaoDoMercado('lâmpadas'), null);
 });
 
 test('frase solta continua indefinida', () => {

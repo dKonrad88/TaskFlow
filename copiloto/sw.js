@@ -1,5 +1,5 @@
 /* Copiloto — cache da pasta. Escopo publicado: /TaskFlow/copiloto/ */
-const C = 'copiloto-v13';
+const C = 'copiloto-v14';
 const A = [
   './',
   'index.html',
@@ -15,6 +15,7 @@ const A = [
   'js/contrato.js',
   'js/adaptador-mock.js',
   'js/adaptador-supabase.js',
+  'vendor/supabase-js-2.119.0.js',
   'icon-192.png',
   'icon-512.png',
   'icon-512-maskable.png',
@@ -24,6 +25,7 @@ const A = [
 
 function redePrimeiro(caminho) {
   const p = String(caminho || '').split('?')[0].toLowerCase();
+  if (p.includes('/vendor/')) return false;
   return p.endsWith('.js') || p.endsWith('.css');
 }
 

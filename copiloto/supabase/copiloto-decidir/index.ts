@@ -1,8 +1,12 @@
-// copiloto-decidir — MODO TESTE.
+// copiloto-decidir
 // Aprova ou recusa um item de public.copiloto_itens com o JWT do usuário.
-// Primeira decisão vence. Em modo teste atualiza SÓ copiloto_itens.
-// Não grava em voice_proposals, apto_propostas, apto_compras_itens nem no Hub Klain.
+// Primeira decisão vence.
+// Item de compras aprovado vira uma linha em lista_itens e fica com status "criado"
+// (ou "erro", se a gravação falhar). Tarefa, compromisso e gasto só mudam o status:
+// ainda não há destino definido para eles.
+// Não grava em voice_proposals, apto_propostas nem no Hub Klain.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { efetivar } from "./criar.ts";
 
 const MODO: "teste" | "vivo" = "teste";
 
@@ -187,10 +191,13 @@ Deno.serve(async (req) => {
     return j(200, { ok: false, jaDecidido: true, status: depois?.status ?? atual.status });
   }
 
-  // MODO VIVO (ainda não ligado): a gravação real entra aqui, só depois de
-  // atualizar copiloto_itens, conforme o tipo. Nunca gravar em voice_proposals.
-  if (MODO === "vivo") {
-    // TODO: gravação real entra aqui.
+  // A criação real vem só depois de a decisão estar gravada. Nunca gravar em voice_proposals.
+  if (decisao === "aprovado") {
+    const f = await efetivar(adm, id, sess.user.id, tipo, payload);
+    if (f.status === "erro") {
+      return j(200, { ok: false, status: "erro", erro: `Aprovado, mas ${f.erro}` });
+    }
+    return j(200, { ok: true, status: f.status, modo: MODO });
   }
 
   return j(200, { ok: true, status: upd.status, modo: MODO });

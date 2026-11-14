@@ -182,6 +182,70 @@ function acharComodo(texto) {
   return { ambiente: null, ambiguo: false };
 }
 
+/** Seções da lista do supermercado, na ordem em que aparecem na aba Lista. */
+const SECOES_MERCADO = [
+  'Hortifruti', 'Açougue e peixaria', 'Laticínios e frios', 'Padaria', 'Mercearia',
+  'Bebidas', 'Limpeza', 'Higiene', 'Outros',
+];
+
+/** Palavras sem acento que entregam a seção. A mais longa que casar vence. */
+const PALAVRAS_SECAO = {
+  Hortifruti: [
+    'banana', 'bananas', 'maca', 'macas', 'laranja', 'laranjas', 'limao', 'limoes', 'tomate', 'tomates',
+    'cebola', 'cebolas', 'alho', 'batata', 'batatas', 'cenoura', 'cenouras', 'alface', 'rucula', 'couve',
+    'brocolis', 'abobrinha', 'pepino', 'pimentao', 'mamao', 'melancia', 'melao', 'uva', 'uvas', 'morango',
+    'morangos', 'abacate', 'abacaxi', 'manga', 'mangas', 'fruta', 'frutas', 'verdura', 'verduras',
+    'legume', 'legumes', 'salsinha', 'cebolinha', 'cheiro verde', 'gengibre', 'mandioca',
+  ],
+  'Açougue e peixaria': [
+    'carne', 'carnes', 'carne moida', 'frango', 'peito de frango', 'coxa', 'sobrecoxa', 'picanha', 'alcatra',
+    'patinho', 'linguica', 'bacon', 'costela', 'peixe', 'tilapia', 'salmao', 'camarao', 'bife', 'hamburguer',
+  ],
+  'Laticínios e frios': [
+    'leite', 'queijo', 'queijos', 'mussarela', 'presunto', 'iogurte', 'iogurtes', 'manteiga', 'margarina',
+    'requeijao', 'creme de leite', 'nata', 'ricota', 'peito de peru', 'salame', 'mortadela', 'cream cheese',
+  ],
+  Padaria: [
+    'pao', 'paes', 'pao de forma', 'pao frances', 'pao de queijo', 'bolo', 'torrada', 'torradas',
+    'bisnaguinha', 'croissant',
+  ],
+  Mercearia: [
+    'arroz', 'feijao', 'macarrao', 'acucar', 'sal', 'cafe', 'oleo', 'azeite', 'farinha', 'molho de tomate',
+    'extrato de tomate', 'biscoito', 'biscoitos', 'bolacha', 'bolachas', 'salgadinho', 'chocolate', 'cereal',
+    'granola', 'aveia', 'ovo', 'ovos', 'vinagre', 'maionese', 'ketchup', 'mostarda', 'milho', 'ervilha',
+    'atum', 'sardinha', 'leite condensado', 'leite de coco', 'tempero', 'temperos', 'pimenta', 'fermento',
+    'achocolatado', 'mel', 'geleia',
+  ],
+  Bebidas: [
+    'agua', 'agua com gas', 'agua de coco', 'refrigerante', 'refrigerantes', 'coca', 'coca cola', 'suco',
+    'sucos', 'cerveja', 'cervejas', 'vinho', 'vinhos', 'energetico', 'cha', 'espumante', 'whisky', 'vodka', 'gin',
+  ],
+  Limpeza: [
+    'detergente', 'sabao', 'sabao em po', 'amaciante', 'agua sanitaria', 'desinfetante', 'alvejante',
+    'esponja', 'esponjas', 'saco de lixo', 'sacos de lixo', 'papel toalha', 'multiuso', 'limpa vidro',
+    'vassoura', 'rodo', 'pano de chao', 'guardanapo', 'guardanapos', 'papel aluminio', 'filme plastico',
+  ],
+  Higiene: [
+    'papel higienico', 'sabonete', 'sabonetes', 'shampoo', 'xampu', 'condicionador', 'creme dental',
+    'pasta de dente', 'escova de dente', 'fio dental', 'desodorante', 'absorvente', 'absorventes', 'fralda',
+    'fraldas', 'cotonete', 'cotonetes', 'barbeador', 'protetor solar', 'lenco umedecido',
+  ],
+};
+
+const TERMOS_SECAO = Object.entries(PALAVRAS_SECAO)
+  .flatMap(([secao, palavras]) => palavras.map((palavra) => [palavra, secao]))
+  .sort((a, b) => b[0].length - a[0].length);
+
+/** Adivinha a seção do mercado pelo nome do item. Sem palpite, devolve null. */
+function secaoDoMercado(texto) {
+  const limpo = String(texto ?? '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ');
+  const hay = ` ${limpo} `;
+  for (const [palavra, secao] of TERMOS_SECAO) {
+    if (hay.includes(` ${palavra} `)) return secao;
+  }
+  return null;
+}
+
 function limparEspaco(texto) {
   return String(texto || '').replace(/\s{2,}/g, ' ').replace(/^[\s,.:;-]+|[\s,.:;-]+$/g, '').trim();
 }
@@ -287,8 +351,9 @@ function aplicarCsmt(payload) {
 /**
  * @param {string} texto
  * @param {Date} [agora]
+ * @param {{ area?: string }} [opcoes]
  */
-export function classificar(texto, agora = new Date()) {
+export function classificar(texto, agora = new Date(), opcoes = {}) {
   const bruto = String(texto || '').trim();
   const hay = normalizar(bruto);
   const valor = extrairValor(bruto);
@@ -319,6 +384,62 @@ export function classificar(texto, agora = new Date()) {
     'criar uma tarefa', 'cria uma tarefa', 'abre uma tarefa',
   ]);
 
+  const gasto = () => ({
+    tipo: 'apto-gasto',
+    status: 'aguardando você',
+    payload: {
+      titulo: bruto.slice(0, 120),
+      valor,
+      data: data ?? dataSP(agora),
+      ambiente,
+      comodo_incerto: ambiguo || !ambiente,
+    },
+  });
+  // Item da lista do supermercado: "ambiente" guarda a seção do mercado, não um cômodo.
+  const compra = () => {
+    const nome = nomeDoItem(bruto, qtd);
+    const secao = secaoDoMercado(nome) ?? secaoDoMercado(bruto);
+    return {
+      tipo: 'compras-item',
+      status: 'aguardando você',
+      payload: {
+        nome,
+        ambiente: secao,
+        quantidade: qtd,
+        valor_estimado: valor,
+        comodo_incerto: !secao,
+      },
+    };
+  };
+  const compromisso = () => {
+    const quando = data ? (hora ? `${data}T${hora}:00` : data) : (hora ? `${dataSP(agora)}T${hora}:00` : null);
+    return {
+      tipo: 'klain-compromisso',
+      status: 'aguardando você',
+      payload: {
+        titulo: bruto.slice(0, 120),
+        descricao: bruto,
+        data_hora: quando,
+        local: localDe(bruto),
+      },
+    };
+  };
+  const tarefa = () => ({
+    tipo: 'klain-tarefa',
+    status: 'aguardando você',
+    payload: {
+      titulo: tituloTarefa(bruto),
+      descricao: bruto,
+      vencimento: data,
+    },
+  });
+
+  // Área escolhida no chip do app: o tipo já vem decidido, só o conteúdo é extraído.
+  const area = opcoes && opcoes.area;
+  if (area === 'compras') return compra();
+  if (area === 'apto') return gasto();
+  if (area === 'hub') return eCompromisso && !eTarefa ? compromisso() : tarefa();
+
   const sinais = [eGasto, eLista, eCompromisso, eTarefa].filter(Boolean);
   if (sinais.length > 1) {
     const candidatos = [];
@@ -340,62 +461,18 @@ export function classificar(texto, agora = new Date()) {
     };
   }
 
-  if (eGasto) {
-    return {
-      tipo: 'apto-gasto',
-      status: 'aguardando você',
-      payload: {
-        titulo: bruto.slice(0, 120),
-        valor,
-        data: data ?? dataSP(agora),
-        ambiente,
-        comodo_incerto: ambiguo || !ambiente,
-      },
-    };
-  }
-
-  if (eLista) {
-    return {
-      tipo: 'compras-item',
-      status: 'aguardando você',
-      payload: {
-        nome: nomeDoItem(bruto, qtd),
-        ambiente,
-        quantidade: qtd,
-        valor_estimado: valor,
-        comodo_incerto: ambiguo || !ambiente,
-      },
-    };
-  }
-
-  if (eCompromisso) {
-    const quando = data ? (hora ? `${data}T${hora}:00` : data) : (hora ? `${dataSP(agora)}T${hora}:00` : null);
-    return {
-      tipo: 'klain-compromisso',
-      status: 'aguardando você',
-      payload: {
-        titulo: bruto.slice(0, 120),
-        descricao: bruto,
-        data_hora: quando,
-        local: localDe(bruto),
-      },
-    };
-  }
-
-  return {
-    tipo: 'klain-tarefa',
-    status: 'aguardando você',
-    payload: {
-      titulo: tituloTarefa(bruto),
-      descricao: bruto,
-      vencimento: data,
-    },
-  };
+  if (eGasto) return gasto();
+  if (eLista) return compra();
+  if (eCompromisso) return compromisso();
+  return tarefa();
 }
 
-/** Classifica e, em item do Hub, troca palavra de casamento pela sigla. */
-export function montarEntrada(texto, agora = new Date()) {
-  const r = classificar(texto, agora);
+/**
+ * Classifica e, em item do Hub, troca palavra de casamento pela sigla.
+ * opcoes.area ('hub' | 'apto' | 'compras') vem do chip do app e fixa o tipo.
+ */
+export function montarEntrada(texto, agora = new Date(), opcoes = {}) {
+  const r = classificar(texto, agora, opcoes);
   if (r.tipo === 'klain-tarefa' || r.tipo === 'klain-compromisso') {
     return { ...r, payload: aplicarCsmt(r.payload) };
   }
