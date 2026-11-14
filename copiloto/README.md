@@ -34,7 +34,7 @@ Content-Type: application/json
 { "texto": "…", "origem": "pwa" }
 ```
 
-O Atalho continua podendo mandar `Authorization: Bearer <COPILOTO_ENTRADA_KEY>`. A função aceita os dois. Ela ainda está em **modo teste**: grava só em `copiloto_itens`, com `teste: true`. O código novo está em `supabase/copiloto-entrada/` e **não foi publicado**.
+O Atalho continua podendo mandar `Authorization: Bearer <COPILOTO_ENTRADA_KEY>`. A função aceita os dois. Ela ainda está em **modo teste**: grava só em `copiloto_itens`, com `teste: true`. O código de `supabase/copiloto-entrada/` é o que está publicado (versão 6, conferido em 14/11/2026).
 
 No `?demo=1`, parar acrescenta um exemplo local e não chama a rede.
 
@@ -42,7 +42,7 @@ No `?demo=1`, parar acrescenta um exemplo local e não chama a rede.
 
 A URL e a chave publicável estão em `js/config.js`, no mesmo formato do Hub (`sb_publishable_…`). O app recusa `service_role` e `sb_secret_`. A sessão é o JWT de `authenticated`. Ajustes mostra o e-mail e o botão Sair.
 
-A leitura depende de RLS. O SQL está em `supabase/rls-leitura.sql` e **não foi aplicado**.
+A leitura depende de RLS. O SQL está em `supabase/rls-leitura.sql` e já foi aplicado (conferido em 14/11/2026). As policies usam `USING (true)`: qualquer conta autenticada do projeto lê a fila e as pessoas.
 
 ### O que o adaptador lê
 
@@ -70,7 +70,7 @@ No cadastro, grupo tem `papel = 'grupo'` e `usos = {solicitante, executor}`. Pes
 
 ### Decisão: a primeira vale
 
-Aprovar e recusar chamam a edge function **`copiloto-decidir`** com o JWT do usuário. A função publicada está em modo teste. A cópia do repositório (`supabase/copiloto-decidir/`) ainda não foi publicada: ela aceita as pessoas no formato do PWA (`solicitante`, `executor`, `em_copia`, `participantes`).
+Aprovar e recusar chamam a edge function **`copiloto-decidir`** com o JWT do usuário. A função publicada está em modo teste e é a cópia do repositório (`supabase/copiloto-decidir/`, versão 5, conferido em 14/11/2026). Ela aceita as pessoas no formato do PWA (`solicitante`, `executor`, `em_copia`, `participantes`).
 
 ```http
 POST /functions/v1/copiloto-decidir
@@ -98,7 +98,7 @@ O PWA não faz `update` direto em `copiloto_itens` para decidir. Se a função n
 
 `para o BOSS` é fila aberta: a pessoa escolhe o tipo e só então aprova. Recusar não exige tipo.
 
-RLS está ligado. `apto_compras_itens` já deixa o membro da lista ler (`apto_ci_all`). `copiloto_itens` e `hub_pessoas` ainda não têm policy de leitura para `authenticated`: a fila e as pessoas ficam vazias até aplicar `supabase/rls-leitura.sql`. O app não fura isso.
+RLS está ligado. `apto_compras_itens` já deixa o membro da lista ler (`apto_ci_all`). `copiloto_itens` e `hub_pessoas` têm policy de leitura para `authenticated` (`supabase/rls-leitura.sql`, já aplicado).
 
 ## PWA no iPhone
 

@@ -1,5 +1,6 @@
 -- Leitura do Copiloto para o papel authenticated.
--- NÃO foi aplicada. O Diego cola no SQL Editor do projeto Pessoal quando quiser.
+-- Aplicada no projeto Pessoal (conferido em 14/11/2026: as duas policies e os dois GRANTs existem).
+-- Atenção: USING (true) libera a leitura para QUALQUER conta autenticada do projeto, não só a do Diego.
 -- A função continua em modo teste e grava com service_role; isto só libera a leitura do PWA.
 
 -- copiloto_itens: RLS ligado, sem policy e sem GRANT para authenticated.

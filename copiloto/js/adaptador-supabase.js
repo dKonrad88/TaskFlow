@@ -32,7 +32,7 @@ export async function criarAdaptadorSupabase({ url, key }) {
   }
   if (!urlOk(url)) throw new Error('A URL do projeto precisa ser https e terminar em .supabase.co.');
 
-  const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+  const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/+esm');
   const sb = createClient(url, key, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
   });

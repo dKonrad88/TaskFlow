@@ -231,6 +231,8 @@ export function fHora(iso) {
 export function fDataHora(iso) {
   if (!iso) return '';
   const s = String(iso);
+  // Só a data, sem hora: não passa por fuso, senão o dia volta um.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return fData(s);
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) {
     const [data, hora] = s.split('T');
     return `${fData(data)}, ${hora.slice(0, 5)}`;
