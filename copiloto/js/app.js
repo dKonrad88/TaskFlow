@@ -2,8 +2,8 @@ import { abrirDados } from './dados.js';
 import { modoDemo } from './config.js';
 import { AVISO_VERSAO, VERSAO, ativarNaHora, mostrarAvisoDeVersao, recarregarPorVersao } from './versao.js';
 import {
-  COMODOS, areaDo, emAberto, fData, fDataHora, fHora, fValor, filtrar, idPadrao, montarListaPessoas,
-  normalizarPessoas, ordenarFila, pValor, partesSP, rotuloArea, rotuloDia, rotuloStatus, rotuloTipo, soCsmt, tituloFila,
+  COMODOS, SECOES_MERCADO, areaDo, emAberto, fData, fDataHora, fHora, fValor, filtrar, idPadrao, montarListaPessoas,
+  normalizarPessoas, ordenarFila, pValor, partesSP, rotuloArea, rotuloDia, rotuloStatus, secaoDoMercado, rotuloTipo, soCsmt, tituloFila,
 } from './contrato.js';
 
 const TEMAS = ['claro', 'escuro', 'cafe'];
@@ -51,7 +51,7 @@ let buscaMenu = '';
 let ultimaTela = '';
 let ultimaFolha = '';
 let pularSelo = false;
-let comodoAdd = '';
+let secaoAdd = '';
 let compradosAbertos = false;
 let deslize = null;
 let ignorarCliqueAte = 0;
@@ -67,7 +67,7 @@ const DESC_TIPO = {
   'klain-tarefa': 'Vira uma tarefa no Hub Klain',
   'klain-compromisso': 'Vira um compromisso no Hub Klain',
   'apto-gasto': 'Vira um gasto do apartamento',
-  'compras-item': 'Entra na lista de compras',
+  'compras-item': 'Entra na lista do supermercado',
 };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -126,7 +126,6 @@ function rota() {
   const [a, b, c, d] = p;
   if (!a || a === 'gravar') return { tela: 'gravar' };
   if (['aprovar', 'historico', 'lista', 'ajustes', 'gravando'].includes(a)) return { tela: a };
-  if (a === 'fase2' && (b === 'casamento' || b === 'cartao')) return { tela: 'fase2', qual: b };
   if (a === 'item' && b) return { tela: 'item', id: b, menu: c === 'menu' ? d : '', data: c === 'data' ? d : '' };
   return { tela: 'gravar' };
 }
@@ -282,7 +281,7 @@ function kick(item) {
     'klain-tarefa': 'Tarefa · Hub Klain · conta do Diego',
     'klain-compromisso': 'Compromisso · Hub Klain · conta do Diego',
     'apto-gasto': 'Gasto · Pagamento · Apartamento',
-    'compras-item': 'Item · Lista de compras · Apartamento',
+    'compras-item': 'Item · Lista do supermercado',
     indefinido: 'Indefinido · para o BOSS',
   };
   return `<div class="kicker">
@@ -328,9 +327,8 @@ function corpoCard(item) {
       ${campoValor(item, 'valor', 'Valor', p.valor, false)}
       ${campoCaixa('Cômodo', `${p.ambiente || 'Escolher'}${incerto}`, '▾', 'abrir-menu', `data-id="${id}" data-campo="ambiente"`, false)}`;
   }
-  const incerto = p.comodo_incerto ? ' · incerto' : '';
   return `${campoTitulo(item, 'nome', p.nome)}
-    ${campoCaixa('Cômodo', `${p.ambiente || 'Escolher'}${incerto}`, '▾', 'abrir-menu', `data-id="${id}" data-campo="ambiente"`, true)}
+    ${campoCaixa('Seção', p.ambiente || 'Escolher', '▾', 'abrir-menu', `data-id="${id}" data-campo="ambiente"`, true)}
     ${campoTexto(item, 'quantidade', 'Quantidade', p.quantidade, false)}
     ${campoValor(item, 'valor_estimado', 'Valor estimado', p.valor_estimado, false)}
     ${item.notas ? campoLeitura('Descrição', item.notas, false) : ''}`;
@@ -384,15 +382,20 @@ function menuPessoas(item, campo) {
 
 function menuHtml(item, campo) {
   if (campo !== 'ambiente') return menuPessoas(item, campo);
+  const doMercado = item.tipo === 'compras-item';
+  const titulo = doMercado ? 'Seção' : 'Cômodo';
   const atual = item.payload?.ambiente;
-  const nomes = [...COMODOS];
+  const nomes = [...(doMercado ? SECOES_MERCADO : COMODOS)];
   if (atual && !nomes.includes(atual)) nomes.unshift(atual);
   const lis = nomes.map((nome) => linhaMenu(item, campo, { id: nome, nome, sel: nome === atual }, false)).join('');
+  const pe = doMercado
+    ? 'Seção do supermercado. É por ela que a lista fica agrupada.'
+    : 'Cômodo do apartamento. Sala sozinha continua ambígua na entrada de voz.';
   return `<button class="dim" data-acao="fechar" aria-label="Fechar"></button>
-    <div class="sheet sheet-lista" role="dialog" aria-label="Cômodo">
-      <div class="sh"><span class="link"></span><b>Cômodo</b><button class="link forte" data-acao="fechar">Fechar</button></div>
+    <div class="sheet sheet-lista" role="dialog" aria-label="${titulo}">
+      <div class="sh"><span class="link"></span><b>${titulo}</b><button class="link forte" data-acao="fechar">Fechar</button></div>
       <div class="lista-pessoas" role="listbox">${lis}</div>
-      <p class="pe">Cômodo do apartamento. Sala sozinha continua ambígua na entrada de voz.</p>
+      <p class="pe">${pe}</p>
     </div>`;
 }
 
@@ -626,13 +629,20 @@ function telaLista() {
   const feitos = compras.filter((c) => c.comprado);
   const grupos = new Map();
   for (const c of abertos) {
-    const k = c.ambiente || 'Sem cômodo';
+    const k = c.ambiente || 'Outros';
     if (!grupos.has(k)) grupos.set(k, []);
     grupos.get(k).push(c);
   }
+  // Seções na ordem do mercado; o que não for seção conhecida vai para o fim.
+  const ordem = [...grupos.keys()].sort((a, b) => {
+    const ia = SECOES_MERCADO.indexOf(a);
+    const ib = SECOES_MERCADO.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
   let html = '';
-  for (const [ambiente, lista] of grupos) {
-    html += `<h2 class="grp"><span>${esc(ambiente)}</span><span class="conta">${lista.length}</span></h2>${lista.map(linha).join('')}`;
+  for (const secao of ordem) {
+    const lista = grupos.get(secao);
+    html += `<h2 class="grp"><span>${esc(secao)}</span><span class="conta">${lista.length}</span></h2>${lista.map(linha).join('')}`;
   }
   if (!compras.length) html = vazio('lista', false);
   else if (!abertos.length) html += '<p class="dica centro">Tudo comprado.</p>';
@@ -640,13 +650,14 @@ function telaLista() {
     html += `<button type="button" class="grp dobra" data-acao="comprados" aria-expanded="${compradosAbertos}"><span>Comprados</span><span class="conta">${feitos.length} ${compradosAbertos ? '▾' : '▸'}</span></button>`;
     if (compradosAbertos) html += feitos.map(linha).join('');
   }
-  const comodos = [...new Set([...grupos.keys(), ...COMODOS])].filter((c) => c !== 'Sem cômodo');
-  if (!comodos.includes(comodoAdd)) comodoAdd = comodos[0] || 'Apartamento';
-  const chips = comodos.map((c) => `<button type="button" class="chip${c === comodoAdd ? ' on' : ''}" data-acao="comodo-add" data-comodo="${esc(c)}">${esc(c)}</button>`).join('');
+  if (secaoAdd && !SECOES_MERCADO.includes(secaoAdd)) secaoAdd = '';
+  const chip = (valor, rotulo) => `<button type="button" class="chip${valor === secaoAdd ? ' on' : ''}" data-acao="secao-add" data-secao="${esc(valor)}">${esc(rotulo)}</button>`;
+  const chips = chip('', 'Automática') + SECOES_MERCADO.map((s) => chip(s, s)).join('');
+  const dica = secaoAdd ? `Adicionar em ${secaoAdd}` : 'Adicionar ao supermercado';
   const barra = `<div class="add-barra vidro">
-      <div class="chips rolagem" role="group" aria-label="Cômodo do item novo">${chips}</div>
+      <div class="chips rolagem" role="group" aria-label="Seção do item novo">${chips}</div>
       <div class="add-linha">
-        <input class="add" id="add-compra" data-acao="add-compra" placeholder="Adicionar em ${esc(comodoAdd)}" aria-label="Adicionar em ${esc(comodoAdd)}" enterkeyhint="done" autocomplete="off">
+        <input class="add" id="add-compra" data-acao="add-compra" placeholder="${esc(dica)}" aria-label="${esc(dica)}" enterkeyhint="done" autocomplete="off">
         <button type="button" class="icone mais" data-acao="add-compra-ok" aria-label="Adicionar">+</button>
       </div>
     </div>`;
@@ -663,38 +674,6 @@ function telaItem(r) {
   const ref = item.ref_tabela ? `<p class="dica">Referência: ${esc(item.ref_tabela)}</p>` : '';
   return `${cabeca(aberto ? 'Aprovar' : 'Histórico', { voltar: true })}
     <main class="justa${aberto ? ' com-rodape' : ''}">${kick(item)}${corpoCard(item)}${ref}${aberto ? '' : acoes(item)}</main>${aberto ? acoes(item) : ''}${extra}`;
-}
-
-function telaFase2(qual) {
-  const casamento = qual === 'casamento';
-  const miolo = casamento ? `
-    ${campoLeitura('Tipo', 'Gasto · Pagamento', true)}
-    ${campoLeitura('Título', 'Sinal do fotógrafo', true)}
-    ${campoCaixa('Solicitante', 'Diego', '▾', 'fase2', '', false)}
-    ${campoCaixa('Executor', 'Diego', '▾', 'fase2', '', false)}
-    ${campoCaixa('Data', '13/11/2026', 'alterar', 'fase2', '', false)}
-    ${campoCaixa('Valor', 'R$ 2.000,00', 'R$', 'fase2', '', false)}
-    ${campoLeitura('Fornecedor', 'Fotógrafo', false)}
-    ${campoLeitura('Descrição', 'Pagar o sinal via Pix.', false)}`
-    : `
-    ${campoLeitura('Tipo', 'Gasto · Pagamento', true)}
-    ${campoLeitura('Título', 'Almoço', true)}
-    ${campoCaixa('Data', '13/11/2026', 'alterar', 'fase2', '', false)}
-    ${campoCaixa('Valor', 'R$ 48,90', 'R$', 'fase2', '', true)}
-    ${campoCaixa('Forma de pagamento', 'Cartão', '▾', 'fase2', '', true)}
-    ${campoCaixa('Categoria', 'Alimentação', '▾', 'fase2', '', true)}`;
-  const k = casamento ? 'Gasto · Pagamento · Casamento' : 'Gasto · Pagamento · pessoal / cartão';
-  return `${cabeca('Aprovar', { centro: true, voltar: true })}
-    <main class="justa">
-      <p class="fase">Fase 2 — só layout</p>
-      <div class="kicker"><div class="k">${esc(k)}</div></div>
-      ${miolo}
-      <div class="acoes">
-        <button class="botao nao" data-acao="fase2">Recusar</button>
-        <button class="botao sim" data-acao="fase2">Aprovar</button>
-      </div>
-      <p class="dica">Este card não usa os tipos da fila e não grava.</p>
-    </main>`;
 }
 
 function telaAjustes() {
@@ -855,12 +834,11 @@ function desenhar() {
   else if (r.tela === 'lista') html = telaLista();
   else if (r.tela === 'ajustes') html = telaAjustes();
   else if (r.tela === 'item') html = telaItem(r);
-  else if (r.tela === 'fase2') html = telaFase2(r.qual);
   raiz.innerHTML = html + chromeAba(r.tela);
   autoAltura();
   const chave = naFoto ? 'gravar' : r.tela;
   if (chave !== ultimaTela && !naFoto) {
-    raiz.querySelector('main')?.classList.add(['item', 'ajustes', 'fase2'].includes(r.tela) ? 'entra-lado' : 'entra');
+    raiz.querySelector('main')?.classList.add(['item', 'ajustes'].includes(r.tela) ? 'entra-lado' : 'entra');
   }
   ultimaTela = chave;
   const chaveFolha = r.menu ? `m${r.menu}` : (r.data ? `d${r.data}` : '');
@@ -894,6 +872,13 @@ async function atualizarFila() {
   if (telas.includes(rota().tela) && !aoVivo && !editando) desenhar();
 }
 
+/** Depois de editar um campo: a edição é um rascunho local, então não há o que reler do banco. */
+async function depoisDeEditar() {
+  const fila = await dados.listarItens({ local: true });
+  itens = fila.itens || [];
+  desenhar();
+}
+
 async function depoisDeMudar() {
   await carregar();
   desenhar();
@@ -923,8 +908,12 @@ async function salvarCampo(id, chave, valor) {
   const item = itemPor(id);
   if (!item) return;
   const r = await dados.atualizar(id, patchDoCampo(item, chave, valor));
-  if (r && r.jaDecidido) mostrar(`Já foi decidido: ${rotuloStatus(r.status)}. A primeira decisão vale.`);
-  await depoisDeMudar();
+  if (r && r.jaDecidido) {
+    mostrar(`Já foi decidido: ${rotuloStatus(r.status)}. A primeira decisão vale.`);
+    await depoisDeMudar();
+    return;
+  }
+  await depoisDeEditar();
 }
 
 async function aoDecidir(id, decisao) {
@@ -939,7 +928,8 @@ async function aoDecidir(id, decisao) {
   } else if (!r.ok) {
     mostrar(r.mensagem || 'Não deu para gravar a decisão.');
   } else {
-    mostrar(decisao === 'aprovado' ? 'Aprovado.' : 'Recusado.');
+    if (r.status === 'criado') mostrar('Aprovado. Já está na lista do supermercado.');
+    else mostrar(decisao === 'aprovado' ? 'Aprovado.' : 'Recusado.');
     ir('#/aprovar');
   }
   await depoisDeMudar();
@@ -1060,7 +1050,9 @@ async function enviarTexto(texto) {
   textoBase = '';
   pedindoTexto = false;
   await carregar();
-  avisarEnvio(r.tipo ? `Enviado. Entrou como ${rotuloTipo(r.tipo)}.` : 'Enviado para a fila.');
+  if (r.aviso) avisarEnvio(r.aviso);
+  else if (r.status === 'criado') avisarEnvio('Enviado. Já entrou na lista do supermercado.');
+  else avisarEnvio(r.tipo ? `Enviado. Entrou como ${rotuloTipo(r.tipo)}.` : 'Enviado para a fila.');
 }
 
 async function pararGravar() {
@@ -1121,9 +1113,9 @@ async function noClique(e) {
     return;
   }
   if (acao === 'comprados') { compradosAbertos = !compradosAbertos; desenhar(); return; }
-  if (acao === 'comodo-add') {
+  if (acao === 'secao-add') {
     const digitado = document.getElementById('add-compra')?.value || '';
-    comodoAdd = el.dataset.comodo;
+    secaoAdd = el.dataset.secao || '';
     desenhar();
     const campo = document.getElementById('add-compra');
     if (campo) { campo.value = digitado; campo.focus(); }
@@ -1169,7 +1161,6 @@ async function noClique(e) {
     return;
   }
   if (acao === 'recarregar') { location.reload(); return; }
-  if (acao === 'fase2') { mostrar('Fase 2: este card ainda não grava.'); return; }
   if (acao === 'fechar') { folha = null; buscaMenu = ''; if (history.length > 1) history.back(); else ir(`#/item/${rota().id || ''}`); return; }
   if (acao === 'busca-menu') return;
   if (acao === 'filtro') {
@@ -1209,8 +1200,7 @@ async function noClique(e) {
     const ids = new Set(valorPessoa(item, campo));
     if (ids.has(el.dataset.valor)) ids.delete(el.dataset.valor); else ids.add(el.dataset.valor);
     await dados.atualizar(el.dataset.id, patchPessoas(item, campo, [...ids]));
-    await carregar();
-    desenhar();
+    await depoisDeEditar();
     const busca = document.querySelector('[data-acao="busca-menu"]');
     if (busca) busca.focus();
     return;
@@ -1220,7 +1210,7 @@ async function noClique(e) {
     if (!item) return;
     const ids = valorPessoa(item, 'em_copia').filter((pid) => pid !== el.dataset.pessoa);
     await dados.atualizar(el.dataset.id, patchPessoas(item, 'em_copia', ids));
-    await depoisDeMudar();
+    await depoisDeEditar();
     return;
   }
   if (acao === 'escolher-tipo') {
@@ -1230,13 +1220,24 @@ async function noClique(e) {
       tipo: el.dataset.tipo,
       payload: { titulo: frase, nome: frase, descricao: frase },
     });
-    if (r?.jaDecidido) mostrar(`Já foi decidido: ${rotuloStatus(r.status)}.`);
-    await depoisDeMudar();
+    if (r?.jaDecidido) {
+      mostrar(`Já foi decidido: ${rotuloStatus(r.status)}.`);
+      await depoisDeMudar();
+      return;
+    }
+    await depoisDeEditar();
     return;
   }
   if (acao === 'compra') {
-    await dados.alternarCompra(el.dataset.id);
-    await depoisDeMudar();
+    const compra = compras.find((c) => c.id === el.dataset.id);
+    const r = await dados.alternarCompra(el.dataset.id, compra ? !!compra.comprado : undefined);
+    if (r?.ok && compra) {
+      compra.comprado = r.comprado;
+      desenhar();
+    } else {
+      if (r && !r.ok && r.mensagem) mostrar(r.mensagem);
+      await depoisDeMudar();
+    }
     return;
   }
   if (acao === 'restaurar') { await dados.restaurar(); filtrosAba = { aprovar: { status: '', periodo: '' }, historico: { status: '', periodo: '' } }; await depoisDeMudar(); mostrar('Exemplos restaurados.'); return; }
@@ -1682,12 +1683,19 @@ async function adicionarDaBarra() {
     campo?.focus();
     return;
   }
-  const r = await dados.adicionarCompra({ nome, ambiente: comodoAdd });
+  // Em "Automática" a seção sai do nome; sem palpite, vai para Outros.
+  const ambiente = secaoAdd || secaoDoMercado(nome) || 'Outros';
+  const r = await dados.adicionarCompra({ nome, ambiente });
   if (!r.ok) {
     mostrar(r.mensagem || 'Não deu para incluir.');
     return;
   }
-  await depoisDeMudar();
+  if (r.compra) {
+    compras = [...compras, r.compra];
+    desenhar();
+  } else {
+    await depoisDeMudar();
+  }
   document.getElementById('add-compra')?.focus();
 }
 

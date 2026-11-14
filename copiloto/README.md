@@ -13,14 +13,12 @@ O app abre no **projeto Pessoal** (`jlouesrrmqeauzlgvrpw`), com a chave publicá
 - Filtro no ícone à esquerda do título (status, período). Os filtros ativos viram chips que se tiram com um toque.
 - Um card por tipo da fila: `klain-tarefa`, `klain-compromisso`, `apto-gasto`, `compras-item`, `indefinido`.
 - Título, descrição, valor, data e cômodo editam no próprio card. Não há mais tela de edição.
-- Lista de compras agrupada por cômodo, com um campo único de inclusão e o cômodo escolhido por chip. Os comprados ficam recolhidos no fim.
+- A aba Lista é a lista do supermercado, agrupada por seção (Hortifruti, Açougue e peixaria, Laticínios e frios, Padaria, Mercearia, Bebidas, Limpeza, Higiene, Outros). Um campo único inclui itens; em "Automática" a seção sai do nome. Os comprados ficam recolhidos no fim. Ela não é a lista de compras do apartamento.
 - A navegação é a barra inferior do Gravador do Hub: Gravar, Aprovar, Histórico e Lista. Gravar mostra a saudação, a contagem da fila e o botão; ao gravar, a tela é a mesma, com o cronômetro e a fala acima do botão. O chip de área (Automático, Hub Klain, Apto, Compras) fica logo acima da barra. Tema, fundo, conta e "Passar por aprovação" ficam em Ajustes.
 - O fundo é uma imagem atrás de todas as telas, nítida em Gravar e desfocada nas outras. Em Ajustes dá para trocar a imagem, mover, mudar o tamanho e a opacidade. A imagem e o enquadramento ficam só no aparelho (`localStorage`: `copiloto_fundo_img` e `copiloto_fundo`).
 - Datas em `dd/mm/yyyy`.
 
 Itens do Hub Klain (`klain-tarefa` e `klain-compromisso`) nunca mostram palavra de casamento. A frase é reescrita para a sigla **CSMT**. O termo original pode ficar dentro de `payload.csmt.termos`, e a tela não o escreve.
-
-Casamento e cartão são só layout (Fase 2). Não entram na fila e não usam os tipos do banco.
 
 Pauta e reunião chegam como `klain-compromisso`: participantes, data/hora e local. Sem solicitante e sem executor.
 
@@ -36,7 +34,7 @@ Content-Type: application/json
 { "texto": "…", "origem": "pwa" }
 ```
 
-O Atalho continua podendo mandar `Authorization: Bearer <COPILOTO_ENTRADA_KEY>`. A função aceita os dois. Ela ainda está em **modo teste**: grava só em `copiloto_itens`, com `teste: true`. O código de `supabase/copiloto-entrada/` é o que está publicado (versão 6, conferido em 14/11/2026).
+O Atalho continua podendo mandar `Authorization: Bearer <COPILOTO_ENTRADA_KEY>`. A função aceita os dois. Ela grava em `copiloto_itens`, ainda com `teste: true`. Recebe também `area` (o chip do app: `hub`, `apto` ou `compras`), que fixa o tipo, e `aprovar` (a preferência "Passar por aprovação"): com `aprovar: false`, um item de compras já entra aprovado e vai direto para a lista do supermercado (`lista_itens`). O código de `supabase/copiloto-entrada/` é o que está publicado (versão 6, conferido em 14/11/2026).
 
 No `?demo=1`, parar acrescenta um exemplo local e não chama a rede.
 
@@ -52,16 +50,15 @@ A leitura depende de RLS. O SQL está em `supabase/rls-leitura.sql` e já foi ap
 |---|---|
 | `copiloto_itens` | Fila. Colunas: `id`, `origem`, `tipo`, `transcricao`, `payload`, `status`, `decidido_em`, `ref_tabela`, `ref_id`, `teste`, `created_at`. |
 | `hub_pessoas` | Dropdown: `id`, `nome`, `papel`, `usos` (text[]), `padrao`, `ativo`, `created_at`, `updated_at`. |
-| `apto_compras_itens` | Lista, inclusive `quantidade` (text) e `valor_estimado` (numeric). |
-| `apto_compras_propostas` | Proposta ligada por `copiloto_item_id`. A decisão não grava aqui direto. |
-| `listas` | Acha a lista do apartamento para incluir um item. |
+| `lista_itens` | Lista do supermercado: `texto`, `qtd`, `categoria` (a seção), `preco`, `comprado`. |
+| `listas` | Acha a lista de tipo `mercado` (a lista "Supermercado"). |
 
 Payload por tipo:
 
 - `klain-tarefa`: `{ titulo, descricao, vencimento, csmt }`
 - `klain-compromisso`: `{ titulo, descricao, data_hora, local, csmt }`
 - `apto-gasto`: `{ titulo, valor, data, ambiente, comodo_incerto }`
-- `compras-item`: `{ nome, ambiente, quantidade, valor_estimado, comodo_incerto }`
+- `compras-item`: `{ nome, ambiente, quantidade, valor_estimado, comodo_incerto }`. Aqui `ambiente` guarda a seção do mercado, não um cômodo; `comodo_incerto` é verdadeiro quando a seção não foi reconhecida.
 - `indefinido`: `{ motivo, candidatos }`
 
 `csmt` é `{ aplicado, termos }`. A tela mostra a sigla, não os termos.
@@ -72,7 +69,7 @@ No cadastro, grupo tem `papel = 'grupo'` e `usos = {solicitante, executor}`. Pes
 
 ### Decisão: a primeira vale
 
-Aprovar e recusar chamam a edge function **`copiloto-decidir`** com o JWT do usuário. A função publicada está em modo teste e é a cópia do repositório (`supabase/copiloto-decidir/`, versão 5, conferido em 14/11/2026). Ela aceita as pessoas no formato do PWA (`solicitante`, `executor`, `em_copia`, `participantes`).
+Aprovar e recusar chamam a edge function **`copiloto-decidir`** com o JWT do usuário. A função publicada é a cópia do repositório (`supabase/copiloto-decidir/`, versão 5, conferido em 14/11/2026). Ela aceita as pessoas no formato do PWA (`solicitante`, `executor`, `em_copia`, `participantes`).
 
 ```http
 POST /functions/v1/copiloto-decidir
@@ -100,7 +97,18 @@ O PWA não faz `update` direto em `copiloto_itens` para decidir. Se a função n
 
 `para o BOSS` é fila aberta: a pessoa escolhe o tipo e só então aprova. Recusar não exige tipo.
 
-RLS está ligado. `apto_compras_itens` já deixa o membro da lista ler (`apto_ci_all`). `copiloto_itens` e `hub_pessoas` têm policy de leitura para `authenticated` (`supabase/rls-leitura.sql`, já aplicado).
+RLS está ligado. `lista_itens` deixa o membro da lista ler e gravar (`is_membro(lista_id)`). `copiloto_itens` e `hub_pessoas` têm policy de leitura para `authenticated` (`supabase/rls-leitura.sql`, já aplicado).
+
+### O que a aprovação cria
+
+| Tipo | Ao aprovar |
+|---|---|
+| `compras-item` | Cria a linha em `lista_itens` (lista de tipo `mercado` da qual o usuário é membro) e o item fica `criado`, com `ref_tabela` e `ref_id`. Se a gravação falhar, fica `erro`. |
+| `klain-tarefa`, `klain-compromisso`, `apto-gasto` | Só mudam para `aprovado`. Ainda não há destino definido: o Hub Klain está em outro projeto e os gastos do apartamento não têm tabela própria aqui. |
+
+As edições feitas no card antes de decidir são rascunhos guardados no aparelho (`localStorage`: `copiloto_rascunhos`). Elas sobrevivem a recarregar a página, mas não passam para outro aparelho.
+
+A biblioteca do Supabase fica em `vendor/supabase-js-2.119.0.js` e entra no cache do service worker: o app abre sem rede, mostrando o que conseguir ler.
 
 ## PWA no iPhone
 
