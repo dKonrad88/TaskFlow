@@ -1,6 +1,6 @@
 /* ══ COMERCIAL › PEDIDOS › ATRASADOS (hub-atrasados1) ══
    Porte da página "Atrasados" do Power BI "Resumo de Pedidos" (pedido do Diego, 19/11/2026).
-   · 4ª sub-aba de Comercial › Pedidos (Produtos / Representantes / Pedidos em aberto / Atrasados).
+   · 3ª sub-aba de Comercial › Pedidos (Produtos / Representantes / Atrasados).
    · Topo: busca, período do gráfico (ícone de calendário) e funil — nada de filtro aberto na tela.
      Funil: Estado e Cidade, Região, Rede e Cliente, Representante, Class. representante,
      Dias emitidos (de/até) e "Atrasado a partir de N dias" (gravado em taskflow_atrasados.prazo).
@@ -9,7 +9,8 @@
      filtros. Cliente escolhido (no funil ou clicando no nome na tabela) = linha do cliente + Geral tracejado.
    · Tabela: agrupada por representante (recolhível), "Pedido | Cód — Cliente", Pedidos, Valor, Caixas,
      Data emissão, Dias emitidos (maior primeiro), UF, Cidade, Semana lançada, Região + Total.
-   · Layout: ATR.layout = 1 (gráfico largo abaixo dos indicadores) | 2 (indicadores e gráfico lado a lado).
+   · Layout: ATR.layout = 2 (padrão, aprovado 19/11: indicadores e gráfico lado a lado) | 1 (gráfico largo abaixo).
+   · Substitui a antiga sub-aba "Pedidos em aberto" (_comAba 'aberto' redireciona para cá).
    · ⚠️ DADOS FICTÍCIOS gerados com semente fixa (sempre iguais). Regra P0: render não grava. */
 (function(){
   'use strict';
@@ -98,7 +99,7 @@
   // ── Estado da tela (só o prazo é gravado) ─────────────────────────────────────────────────
   var CFG={prazo:7};
   try{ var _s=JSON.parse(localStorage.getItem(LS_KEY)||'{}'); if(_s&&_s.prazo>0) CFG.prazo=+_s.prazo; }catch(e){}
-  var S={busca:'', fOpen:false, pOpen:false, per:'12m', gran:'mes', layout:1, fechados:{}, sort:{k:'dias',d:-1},
+  var S={busca:'', fOpen:false, pOpen:false, per:'12m', gran:'mes', layout:2, fechados:{}, sort:{k:'dias',d:-1},
          f:{uf:'',cidade:'',regiao:'',rede:'',cli:'',rep:'',cls:'',dMin:'',dMax:''}};
   var PERIODOS=[['12m','Últimos 12 meses'],['ano','Este ano'],['anoAnt','Ano passado'],['tudo','Desde jan/2025']];
 
