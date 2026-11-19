@@ -15785,7 +15785,7 @@ function renderDDV(){
 // export de verdade, trocar _COM_TOT/_COM_LINHAS/_COM_REPS/_COM_ABERTO.
 // Regra P0: esta tela só LÊ — nada aqui grava no localStorage.
 let comercialView='pedidos';
-let _comAba='produtos';          // sub-aba: produtos | representantes | aberto
+let _comAba='produtos';          // sub-aba: produtos | representantes | atrasados ('aberto' antigo → atrasados)
 let _comPer='hoje';              // período (hoje e ontem têm dado) — escolhido no ícone de filtro do topo
 let _comPerAberto=false;         // popover do período aberto?
 let _comBusca='';
@@ -15942,6 +15942,13 @@ function renderComercial(){
     else main.innerHTML=_cpTela('Entrega diária','', '<p style="color:var(--text3)">Não foi possível carregar a Entrega diária.</p>');
     return;
   }
+  // Atrasados (nov/2026): tela própria em hub-assets/hub-atrasados1.js (ATR.render) — gráfico + tabela.
+  // "Pedidos em aberto" foi substituída por Atrasados (Diego, 19/11/2026): estado/link antigo redireciona.
+  if(_comAba==='aberto') _comAba='atrasados';
+  if(_comAba==='atrasados'){
+    if(window.ATR && typeof ATR.render==='function'){ ATR.render(main); return; }
+    _comAba='produtos';
+  }
   // sem subtítulo: ele repetia em voz alta as 3 sub-abas logo abaixo (Diego, 24/09 — "queria algo clean")
   main.innerHTML=_cpTela('Pedidos','', _comCorpoHTML(), null, _comAcaoHTML());
   // fecha o popover do período ao clicar fora (mesmo padrão dos filtros de Compras)
@@ -15982,7 +15989,7 @@ function _comBuscaEl(el){ _comBuscaInput(el.value); }
 // Re-render só do miolo: os chips, os cards e a busca ficam de fora, então o foco do campo não se perde.
 function _comRefresh(){ const el=document.getElementById('com-conteudo'); if(el) el.innerHTML=_comConteudoHTML(); else renderComercial(); }
 function _comSetPer(p){ _comPer=p; _comPerAberto=false; renderComercial(); }
-function _comSetAba(a){ _comAba=a; renderComercial(); }
+function _comSetAba(a){ _comAba=(a==='aberto'?'atrasados':a); renderComercial(); }   // 'aberto' saiu (19/11): link antigo cai em Atrasados
 function _comBuscaInput(v){ _comBusca=v; _comRefresh(); }
 // ⚠️ O recolhimento é guardado pelo NOME da linha, não pelo índice: cada período tem sua própria
 // ordem, e por índice "Amendoim" recolhido em Hoje recolhia outra linha qualquer ao trocar de período.
@@ -16164,9 +16171,7 @@ function _comCorpoHTML(){
   </div>
   ${(!t||d.nota)?`<div style="font-size:11.5px;color:var(--text3);margin-bottom:16px">${
     !t?'Este período ainda não tem dado carregado.':escapeHTML(d.nota)}</div>`:''}`;
-  const nAbas={produtos:d?d.linhas.length:null, representantes:(d&&d.reps)?d.reps.length:null, aberto:_comAbItens().length};
-  const abas=[['produtos','Produtos'],['representantes','Representantes'],['aberto','Pedidos em aberto']]
-    .map(a=>`<button class="com-sub${_comAba===a[0]?' on':''}" onclick="_comSetAba('${a[0]}')">${a[1]}${nAbas[a[0]]?`<span class="n">${_cpNum(nAbas[a[0]])}</span>`:''}</button>`).join('');
+  const abas=_comAbasLista();
   // "Recolher todas" saiu da faixa própria acima da tabela (era a faixa mais vazia da tela) e virou ícone aqui
   const fech=Object.keys(_comFechadas).length;
   const btnRec=(_comAba==='produtos'&&d)
@@ -16181,6 +16186,18 @@ function _comCorpoHTML(){
       ${abas}<div style="margin-left:auto;padding-bottom:7px;display:flex;align-items:center;gap:9px">${btnCmp}${btnRec}</div>
     </div>
     <div id="com-conteudo">${_comConteudoHTML()}</div>`;
+}
+// Sub-abas de Comercial › Pedidos. Atrasados (hub-assets/hub-atrasados1.js) desenha a tela inteira
+// sozinho e reaproveita esta mesma fileira por _comAbasHTML().
+function _comAbasLista(){
+  const d=_comD();
+  const nAbas={produtos:d?d.linhas.length:null, representantes:(d&&d.reps)?d.reps.length:null,
+    atrasados:(window.ATR&&ATR.count)?ATR.count():null};
+  return [['produtos','Produtos'],['representantes','Representantes'],['atrasados','Atrasados']]
+    .map(a=>`<button class="com-sub${_comAba===a[0]?' on':''}" onclick="_comSetAba('${a[0]}')">${a[1]}${nAbas[a[0]]?`<span class="n">${_cpNum(nAbas[a[0]])}</span>`:''}</button>`).join('');
+}
+function _comAbasHTML(){
+  return `<div style="display:flex;align-items:flex-end;gap:22px;border-bottom:1px solid var(--border);margin-bottom:4px">${_comAbasLista()}</div>`;
 }
 function _comConteudoHTML(){
   if(!_comTemDados()) return _cpVazio('Por enquanto só hoje, ontem e a semana estão carregados. Os outros períodos entram quando vier o export do Power BI.');
@@ -47759,4 +47776,6 @@ function importarDadosJSON(){
 <script src="hub-assets/hub-prog1.js"></script>
 <link rel="stylesheet" href="hub-assets/hub-cobertura1.css">
 <script src="hub-assets/hub-cobertura1.js"></script>
+<link rel="stylesheet" href="hub-assets/hub-atrasados1.css">
+<script src="hub-assets/hub-atrasados1.js"></script>
 </body></html>
