@@ -191,7 +191,7 @@
     var sw=semanaAtual();
     var v=L.reduce(function(s,x){ return s+x.p[2]; },0), cx=L.reduce(function(s,x){ return s+x.p[3]; },0);
     var crit=L.filter(function(x){ return x.dias>=15; }).length;
-    var at=PERIODOS.filter(function(p){ return p[0]===S.per; })[0][1].toLowerCase();
+    var at=(S.gran==='ano'&&S.per==='12m')?'desde jan/2025':PERIODOS.filter(function(p){ return p[0]===S.per; })[0][1].toLowerCase();
     var kp=kpi('Semana atual', num(sw.ciclo), 'semana '+sw.iso+' do ano')
       +kpi('Pedidos atrasados', num(L.length), crit?num(crit)+' com 15+ dias':'nenhum com 15+ dias', crit?'red':'')
       +kpi('Valor atrasado', brl(v), '')
