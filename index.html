@@ -15942,7 +15942,7 @@ function renderComercial(){
     else main.innerHTML=_cpTela('Entrega diária','', '<p style="color:var(--text3)">Não foi possível carregar a Entrega diária.</p>');
     return;
   }
-  // Atrasados (nov/2026): tela própria em hub-assets/hub-atrasados1.js (ATR.render) — gráfico + tabela.
+  // Atrasados (nov/2026): tela própria em hub-assets/hub-atrasados2.js (ATR.render) — gráfico + tabela.
   // "Pedidos em aberto" foi substituída por Atrasados (Diego, 19/11/2026): estado/link antigo redireciona.
   if(_comAba==='aberto') _comAba='atrasados';
   if(_comAba==='atrasados'){
@@ -16187,7 +16187,7 @@ function _comCorpoHTML(){
     </div>
     <div id="com-conteudo">${_comConteudoHTML()}</div>`;
 }
-// Sub-abas de Comercial › Pedidos. Atrasados (hub-assets/hub-atrasados1.js) desenha a tela inteira
+// Sub-abas de Comercial › Pedidos. Atrasados (hub-assets/hub-atrasados2.js) desenha a tela inteira
 // sozinho e reaproveita esta mesma fileira por _comAbasHTML().
 function _comAbasLista(){
   const d=_comD();
@@ -47776,6 +47776,6 @@ function importarDadosJSON(){
 <script src="hub-assets/hub-prog1.js"></script>
 <link rel="stylesheet" href="hub-assets/hub-cobertura1.css">
 <script src="hub-assets/hub-cobertura1.js"></script>
-<link rel="stylesheet" href="hub-assets/hub-atrasados1.css">
-<script src="hub-assets/hub-atrasados1.js"></script>
+<link rel="stylesheet" href="hub-assets/hub-atrasados2.css">
+<script src="hub-assets/hub-atrasados2.js"></script>
 </body></html>
