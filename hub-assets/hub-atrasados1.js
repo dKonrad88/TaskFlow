@@ -129,7 +129,7 @@
   // série do gráfico: [{k, rot, v (média), n}] para o conjunto de clientes que passa
   function mesesDoPeriodo(){
     var ms=mesesAteHoje(), h=hojeD(), a=String(h.getFullYear());
-    if(S.per==='12m') return ms.slice(-12);
+    if(S.per==='12m') return S.gran==='ano'?ms:ms.slice(-12);   // por ano, 12 meses cortaria o ano passado ao meio
     if(S.per==='ano') return ms.filter(function(m){ return m.slice(0,4)===a; });
     if(S.per==='anoAnt') return ms.filter(function(m){ return m.slice(0,4)===String(h.getFullYear()-1); });
     return ms;
