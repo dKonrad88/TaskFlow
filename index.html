@@ -15795,7 +15795,7 @@ let _comAbFiltro='';             // pedidos em aberto: '' | 'atraso' | 'rota'
 let _comSort={campo:'valor',dir:-1};
 const _comFechadas={};           // linhas recolhidas — estado de tela, não persiste
 // Marcas Próprias (nov/2026): porte da tela do SisPro — código em hub-assets/hub-marcas7.js (MP.render).
-// Cobertura (nov/2026): planilha de semanas por produto — código em hub-assets/hub-cobertura1.js (CBP.render).
+// Cobertura (nov/2026): planilha de semanas por produto — código em hub-assets/hub-cobertura2.js (CBP.render).
 // Não confundir com PCP › Cobertura (dias de estoque), que segue no PCP.
 const COM_MENU=[['pedidos','ti-shopping-cart','Pedidos'],['marcas','ti-tags','Marcas Próprias'],['cobertura','ti-table','Entrega diária']];
 const COM_PERIODOS=[['aberto','Em aberto'],['ontem','Ontem'],['hoje','Hoje'],['semana','Semana'],['semanaAnt','Semana ant.'],['mes','Mês'],['mesAnt','Mês ant.'],['ano','Ano']];
@@ -15936,7 +15936,7 @@ function renderComercial(){
     else main.innerHTML=_cpTela('Marcas Próprias','', '<p style="color:var(--text3)">Não foi possível carregar Marcas Próprias.</p>');
     return;
   }
-  // Cobertura: planilha de semanas (hub-assets/hub-cobertura1.js) — pedidos recolhidos + grade por produto/dia.
+  // Cobertura: planilha de semanas (hub-assets/hub-cobertura2.js) — pedidos recolhidos + grade por produto/dia.
   if(comercialView==='cobertura'){
     if(window.CBP && typeof CBP.render==='function') CBP.render(main);
     else main.innerHTML=_cpTela('Entrega diária','', '<p style="color:var(--text3)">Não foi possível carregar a Entrega diária.</p>');
@@ -47775,7 +47775,7 @@ function importarDadosJSON(){
 <link rel="stylesheet" href="hub-assets/hub-prog1.css">
 <script src="hub-assets/hub-prog1.js"></script>
 <link rel="stylesheet" href="hub-assets/hub-cobertura1.css">
-<script src="hub-assets/hub-cobertura1.js"></script>
+<script src="hub-assets/hub-cobertura2.js"></script>
 <link rel="stylesheet" href="hub-assets/hub-atrasados2.css">
 <script src="hub-assets/hub-atrasados2.js"></script>
 </body></html>
