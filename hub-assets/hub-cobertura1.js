@@ -55,27 +55,27 @@
      ppc = pacotes por caixa · cpp = caixas por palete */
   var LINHAS=[
     {id:'skimo', nome:'Indústria - Skimo 14kg', prods:[
-      {c:'975', n:'Skimo Choc. KLAIN 14kg - Ao Leite (BLD)', ppc:1, cpp:60},
-      {c:'976', n:'Skimo Choc. KLAIN 14kg - Branco (BLD)', ppc:1, cpp:60},
-      {c:'977', n:'Skimo Choc. KLAIN 14kg - Meio Amargo (BLD)', ppc:1, cpp:60}]},
+      {c:'205', n:'Skimo Choc. KLAIN 14kg - Ao Leite (BLD)', ppc:1, cpp:60},
+      {c:'206', n:'Skimo Choc. KLAIN 14kg - Branco (BLD)', ppc:1, cpp:60},
+      {c:'207', n:'Skimo Choc. KLAIN 14kg - Meio Amargo (BLD)', ppc:1, cpp:60}]},
     {id:'amendoim', nome:'Linha Amendoim', prods:[
-      {c:'9', n:'Biscoito Broa de Amendoim 250g (ES01)', ppc:20, cpp:60},
-      {c:'70', n:'Biscoito de Amendoim com Chocolate ao Leite 250g (ES01)', ppc:20, cpp:60},
-      {c:'71', n:'Biscoito de Amendoim com Chocolate Branco 250g (ES01)', ppc:20, cpp:60}]},
+      {c:'101', n:'Biscoito Broa de Amendoim 250g', ppc:20, cpp:60},
+      {c:'102', n:'Biscoito de Amendoim com Chocolate ao Leite 250g', ppc:20, cpp:60},
+      {c:'103', n:'Biscoito de Amendoim com Chocolate Branco 250g', ppc:20, cpp:60}]},
     {id:'aperitivos', nome:'Linha Aperitivos', prods:[
-      {c:'788', n:'Salgadinho Aperitivo sabor Churrasco 140g (ES12)', ppc:24, cpp:48},
-      {c:'789', n:'Salgadinho Aperitivo sabor Costelinha com Limão 140g (ES12)', ppc:24, cpp:48},
-      {c:'790', n:'Salgadinho Aperitivo sabor Bacon 140g (ES12)', ppc:24, cpp:48},
-      {c:'1170', n:'Salgadinho Aperitivo Sabor Original 140g (ES12)', ppc:24, cpp:48}]},
+      {c:'170', n:'Salgadinho Aperitivo sabor Churrasco 140g', ppc:24, cpp:48},
+      {c:'171', n:'Salgadinho Aperitivo sabor Costelinha com Limão 140g', ppc:24, cpp:48},
+      {c:'172', n:'Salgadinho Aperitivo sabor Bacon 140g', ppc:24, cpp:48},
+      {c:'173', n:'Salgadinho Aperitivo Sabor Original 140g', ppc:24, cpp:48}]},
     {id:'batatas', nome:'Linha Batatas', prods:[
-      {c:'24', n:'Batata Frita sabor Churrasco 40g (ES11)', ppc:50, cpp:40},
-      {c:'31', n:'Batata Frita sabor Original 40g (ES11)', ppc:50, cpp:40},
-      {c:'215', n:'Batata Palha 80g (ES11)', ppc:30, cpp:40},
-      {c:'1178', n:'Batata Frita sabor Churrasco 85g (ES11)', ppc:30, cpp:40},
-      {c:'1179', n:'Batata Frita sabor Original 85g (ES11)', ppc:30, cpp:40}]},
+      {c:'213', n:'Batata Frita sabor Churrasco 40g', ppc:50, cpp:40},
+      {c:'214', n:'Batata Frita sabor Original 40g', ppc:50, cpp:40},
+      {c:'215', n:'Batata Palha 80g', ppc:30, cpp:40},
+      {c:'216', n:'Batata Frita sabor Churrasco 85g', ppc:30, cpp:40},
+      {c:'217', n:'Batata Frita sabor Original 85g', ppc:30, cpp:40}]},
     {id:'paodemel', nome:'Linha Pão de Mel', prods:[
-      {c:'17', n:'Pão de Mel com Chocolate ao Leite 250g (ES02)', ppc:20, cpp:50},
-      {c:'47', n:'Pão de Mel com Chocolate Branco 250g (ES02)', ppc:20, cpp:50}]}
+      {c:'117', n:'Pão de Mel com Chocolate ao Leite 250g', ppc:20, cpp:50},
+      {c:'118', n:'Pão de Mel com Chocolate Branco 250g', ppc:20, cpp:50}]}
   ];
   var PROD={}, PRODS=[];
   LINHAS.forEach(function(l){ l.prods.forEach(function(p){ p.linha=l.id; p.marca='Klain'; PROD[p.c]=p; PRODS.push(p); }); });
