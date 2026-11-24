@@ -433,7 +433,9 @@ Primeira tela nova desta sessão, depois de o dia inteiro ser limpeza. Blueprint
   no cadastro do item). Tabela de 44 itens fictícios em 5 grupos (matéria-prima, embalagem, produto
   acabado, insumos, marketing), com contagens / certas / divergentes / não feitas / % divergência /
   importância / gap atual / perfil / última contagem e quem contou. Cartões no topo são filtros rápidos,
-  mais dois KPIs (acuracidade e **dívida da ficha** em R$). Busca + funil com grupo, classe, perfil e as
+  mais o KPI de acuracidade. ⚠️ Havia um segundo cartão, **"Dívida da ficha" em R$**, e o **Diego
+  mandou tirar** no mesmo dia — não recolocar sem ele pedir. O campo por item (`gapRS`) continua
+  calculado, porque a coluna de gap em R$ é fase seguinte. Busca + funil com grupo, classe, situação e as
   **tolerâncias por classe editáveis** (A 0,5% · B 1% · C 2% do saldo, mínimo 1 un).
 - ⭐⭐ **A decisão do Diego de que o ERP NÃO ajusta o saldo é o que dá sentido à tela.** O gap
   (`contado − sistema`) **não some sozinho**: fica até um lançamento fechá-lo. Então a série do gap conta

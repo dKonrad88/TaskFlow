@@ -127,8 +127,10 @@ histórico de quantas vezes o item já entrou e o que resolveu da última vez.
 Acuracidade (IRA) por classe **[mercado]** (alvo 95–99%; classe A 99,5%+ — número de fornecedor, bússola
 e não meta) · aderência ao calendário · cobertura do ciclo (itens **e valor**) · **itens sem slot** (nunca
 contados, hoje invisíveis — o achado mais barato) · carga por slot (20 barras; quase sempre
-desequilibrado) · **dívida total da ficha** **[proposta]**: a soma dos gaps *abertos hoje* em R$, que só
-existe porque o ERP não ajusta · acuracidade por contador, família e almoxarifado · taxa de recontagem ·
+desequilibrado) · ~~dívida total da ficha~~ **[proposta RECUSADA]**: era a soma dos gaps *abertos hoje*
+em R$ — ⚠️ **o Diego tirou esse cartão da tela em 24/11, não recolocar sem ele pedir** (o valor por item,
+`gapRS`, continua calculado, para a coluna de gap em R$) · acuracidade por contador, família e
+almoxarifado · taxa de recontagem ·
 dias desde a última contagem.
 
 ## 8. Por onde começar

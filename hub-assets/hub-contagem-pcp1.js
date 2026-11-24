@@ -44,7 +44,8 @@
     return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
   function norm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
   function nf(n,d){ return Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:d||0,maximumFractionDigits:d||0}); }
-  function brl(n){ return 'R$ ' + nf(Math.abs(n),0); }
+  // (o cartão "Dívida da ficha" em R$ saiu da tela a pedido do Diego em 24/11; o campo `gapRS`
+  //  continua na linha, porque a coluna de gap em R$ é fase seguinte no blueprint)
   function lsSet(k,v){ try{ return (typeof safeSetItem==='function')?safeSetItem(k,v):(localStorage.setItem(k,v),true); }catch(e){ return false; } }
   function lsGet(k,fb){ try{ return (typeof safeJSON==='function')?safeJSON(k,fb):JSON.parse(localStorage.getItem(k)||'null')||fb; }catch(e){ return fb; } }
 
@@ -247,8 +248,8 @@
 
   // ── HTML ──────────────────────────────────────────────────────────────────────────────────
   function cardsHTML(todas){
-    var vis=todas, ac=0, cert=0, divida=0;
-    vis.forEach(function(l){ ac+=l.feitas; cert+=l.certas; divida+=l.gapRS; });
+    var vis=todas, ac=0, cert=0;
+    vis.forEach(function(l){ ac+=l.feitas; cert+=l.certas; });
     var acur = ac? cert/ac*100 : 0;
     var c=function(id,lab,val,sub){ return '<button class="cpc-card'+(S.ind===id?' on':'')+'" data-ind="'+id+'">'+
       '<span class="cpc-card-v">'+val+'</span><span class="cpc-card-l">'+lab+'</span>'+
@@ -261,7 +262,6 @@
       c('ajt','Ajustar',nf(n(function(l){ return l.nivel==='ajt'; }))) +
       c('ok','Em ordem',nf(n(function(l){ return l.nivel==='ok'; }))) +
       '<div class="cpc-card cpc-kpi"><span class="cpc-card-v">'+nf(acur,1)+'%</span><span class="cpc-card-l">Acuracidade</span><span class="cpc-card-s">'+nf(cert)+' de '+nf(ac)+' contagens</span></div>'+
-      '<div class="cpc-card cpc-kpi"><span class="cpc-card-v">'+brl(divida)+'</span><span class="cpc-card-l">Dívida da ficha</span><span class="cpc-card-s">gaps abertos hoje</span></div>'+
       '</div>';
   }
 
