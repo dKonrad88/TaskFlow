@@ -36,7 +36,7 @@
   var TOL_PADRAO={A:0.5,B:1,C:2};      // % do saldo
 
   // ── estado de tela ────────────────────────────────────────────────────────────────────────
-  var S={ ind:'todos', busca:'', fOpen:false, f:{grupos:{},classes:{},perfil:''},
+  var S={ ind:'todos', busca:'', fOpen:false, vista:'tabela', f:{grupos:{},classes:{},perfil:''},
           tol:{A:TOL_PADRAO.A,B:TOL_PADRAO.B,C:TOL_PADRAO.C}, fech:{}, sort:{k:'pdiv',d:-1} };
   var MAIN=null, DADOS=null;
 
@@ -49,10 +49,11 @@
   function lsSet(k,v){ try{ return (typeof safeSetItem==='function')?safeSetItem(k,v):(localStorage.setItem(k,v),true); }catch(e){ return false; } }
   function lsGet(k,fb){ try{ return (typeof safeJSON==='function')?safeJSON(k,fb):JSON.parse(localStorage.getItem(k)||'null')||fb; }catch(e){ return fb; } }
 
-  function persist(){ lsSet(LS_KEY, JSON.stringify({tol:S.tol, fech:S.fech, sort:S.sort})); }
+  function persist(){ lsSet(LS_KEY, JSON.stringify({tol:S.tol, fech:S.fech, sort:S.sort, vista:S.vista})); }
   function restore(){ var o=lsGet(LS_KEY,null); if(o&&typeof o==='object'){
     if(o.tol) S.tol={A:+o.tol.A||TOL_PADRAO.A, B:+o.tol.B||TOL_PADRAO.B, C:+o.tol.C||TOL_PADRAO.C};
-    if(o.fech) S.fech=o.fech; if(o.sort) S.sort=o.sort; } }
+    if(o.fech) S.fech=o.fech; if(o.sort) S.sort=o.sort;
+    if(o.vista==='mapa'||o.vista==='tabela') S.vista=o.vista; } }
 
   // ── base fictícia ─────────────────────────────────────────────────────────────────────────
   // [codigo, nome, unidade, classe, custo unitário, saldo do sistema, comportamento semeado]
@@ -305,6 +306,66 @@
       '</tr>';
   }
 
+  // ── mapa de calor: item × contagem ───────────────────────────────────────────────────────
+  // ⚠️ O eixo horizontal NÃO é calendário. Cada item tem o próprio ciclo (semanal, quinzenal,
+  // mensal), então a coluna é "a n-ésima contagem mais recente DAQUELE item", não um dia comum a
+  // todos. A data real de cada célula está na dica do mouse.
+  // ⚠️ O NÚMERO fica dentro da célula de propósito: oito células vermelhas iguais (dívida parada,
+  // um erro só) e oito crescendo (sangria) têm a mesma cor e histórias opostas. Sem o número a
+  // grade mente. É a lição da seção 4 do blueprint.
+  function celMapa(l,i){
+    var v=l.serie[i], d=l.datas[i];
+    var dia=d?d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'';
+    if(v===null) return '<td class="cpc-c cpc-cnd" title="'+dia+' · não foi contado">–</td>';
+    var r=Math.abs(v)/l.tol, cls, txt;
+    if(r<=1){ cls='cpc-c0'; txt='✓'; }
+    else{
+      var n = r<3?1:(r<8?2:3);
+      cls = (v<0?'cpc-cf':'cpc-cs')+n;
+      txt = (v>0?'+':'')+nf(v);
+    }
+    var ant = i>0 ? l.serie[i-1] : null;
+    var dica = dia+' · gap '+(v>0?'+':'')+nf(v)+' '+l.un+
+      (ant!=null ? ' · variação '+((v-ant)>0?'+':'')+nf(v-ant) : '')+
+      ' · tolerância ±'+nf(l.tol);
+    return '<td class="cpc-c '+cls+'" title="'+esc(dica)+'">'+txt+'</td>';
+  }
+
+  function mapaHTML(linhas){
+    var cab='<th class="cpc-mi">Item</th>', i;
+    for(i=0;i<N_CONT;i++) cab+='<th class="cpc-ch">'+(i===N_CONT-1?'atual':('−'+(N_CONT-1-i)))+'</th>';
+    cab+='<th class="cpc-ms">Situação</th>';
+    var out='';
+    GRUPOS.forEach(function(g){
+      var da=linhas.filter(function(l){ return l.grp===g[0]; });
+      if(!da.length) return;
+      var fechado=!!S.fech[g[0]];
+      out+='<tbody class="cpc-grp"><tr class="cpc-ghead" data-grp="'+g[0]+'"><td colspan="'+(N_CONT+2)+'">'+
+        '<i class="ti ti-chevron-'+(fechado?'right':'down')+'"></i> '+esc(g[1])+
+        '<span class="cpc-gc">'+da.length+' itens</span></td></tr></tbody>';
+      if(fechado) return;
+      out+='<tbody>'+ordena(da).map(function(l){
+        var p=NIVEIS[l.nivel]||NIVEIS.ajt, cels='';
+        for(var k=0;k<N_CONT;k++) cels+=celMapa(l,k);
+        return '<tr><th class="cpc-mi" title="'+esc(l.cod+' · tolerância ±'+nf(l.tol)+' '+l.un)+'">'+
+          esc(l.nome)+'</th>'+cels+
+          '<td class="cpc-ms" title="'+esc(DETALHE[l.perfil]||'')+'"><span class="cpc-dot cpc-'+p.c+'"></span>'+p.l+'</td></tr>';
+      }).join('')+'</tbody>';
+    });
+    if(!out) out='<tbody><tr><td colspan="'+(N_CONT+2)+'" class="cpc-vazio">Nenhum item com esses filtros.</td></tr></tbody>';
+    return '<div class="cpc-leitura"><b>Como ler:</b> linha toda verde, item sob controle — '+
+      'vermelho forte e depois verde, o lançamento entrou atrasado — '+
+      '<b>o mesmo número repetido é um erro só, parado</b>, enquanto números crescendo são perda acontecendo — '+
+      'hachurado é noite sem contagem. A coluna é a n-ésima contagem <i>daquele item</i>, não uma data comum.</div>'+
+      '<div class="cpc-mw"><table class="cpc-m"><thead><tr>'+cab+'</tr></thead>'+out+'</table></div>'+
+      '<div class="cpc-leg">'+
+        '<span><i class="cpc-sw cpc-c0"></i> dentro da tolerância</span>'+
+        '<span><i class="cpc-sw cpc-cf1"></i><i class="cpc-sw cpc-cf2"></i><i class="cpc-sw cpc-cf3"></i> falta</span>'+
+        '<span><i class="cpc-sw cpc-cs1"></i><i class="cpc-sw cpc-cs2"></i><i class="cpc-sw cpc-cs3"></i> sobra</span>'+
+        '<span><i class="cpc-sw cpc-cnd"></i> não contado</span>'+
+        '<span>intensidade = quantas vezes a tolerância</span></div>';
+  }
+
   function ordena(a){
     var k=S.sort.k, d=S.sort.d;
     return a.slice().sort(function(x,y){
@@ -354,9 +415,12 @@
       cardsHTML(DADOS)+
       '<div class="cpc-bar2"><div class="cpc-busca"><i class="ti ti-search"></i>'+
         '<input type="text" placeholder="Buscar item ou código" value="'+esc(S.busca)+'" data-busca></div>'+
+        '<div class="cpc-seg">'+
+          '<button data-vista="tabela"'+(S.vista==='tabela'?' class="on"':'')+'>Tabela</button>'+
+          '<button data-vista="mapa"'+(S.vista==='mapa'?' class="on"':'')+'>Mapa de calor</button></div>'+
         '<button class="cpc-fbtn'+(temFiltro()?' ativo':'')+'" data-funil title="Filtros"><i class="ti ti-filter"></i></button></div>'+
       funilHTML()+
-      tabelaHTML(vis)+'</div>';
+      (S.vista==='mapa' ? mapaHTML(vis) : tabelaHTML(vis))+'</div>';
     ligar();
   }
 
@@ -367,6 +431,8 @@
     if(bs) bs.oninput=function(){ S.busca=bs.value; var pos=bs.selectionStart; render(MAIN);
       var n=MAIN.querySelector('[data-busca]'); if(n){ n.focus(); try{ n.setSelectionRange(pos,pos); }catch(e){} } };
     var fb=MAIN.querySelector('[data-funil]'); if(fb) fb.onclick=function(){ S.fOpen=!S.fOpen; render(MAIN); };
+    q('[data-vista]').forEach(function(b){ b.onclick=function(){
+      S.vista=b.getAttribute('data-vista'); persist(); render(MAIN); }; });
     q('[data-fg]').forEach(function(c){ c.onchange=function(){ S.f.grupos[c.getAttribute('data-fg')]=c.checked; render(MAIN); }; });
     q('[data-fc]').forEach(function(c){ c.onchange=function(){ S.f.classes[c.getAttribute('data-fc')]=c.checked; render(MAIN); }; });
     var fp=MAIN.querySelector('[data-fp]'); if(fp) fp.onchange=function(){ S.f.perfil=fp.value; render(MAIN); };

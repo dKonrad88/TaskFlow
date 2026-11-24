@@ -422,6 +422,32 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-11-24 (g) — PC da Empresa — Contagem: o **MAPA DE CALOR** item × contagem (fase 2)
+Segunda vista da mesma tela, no alternador ao lado da busca: **Tabela | Mapa de calor**. Mesmos
+filtros, mesmos dados, mesma ordenação e os mesmos grupos recolhíveis — só muda o desenho. A escolha
+fica gravada em `taskflow_contagem_pcp`.
+- **Linhas = itens, colunas = as 10 últimas contagens, célula = o gap.** Verde dentro da tolerância ·
+  vermelho falta · roxo sobra · hachurado não contado. A **intensidade é quantas vezes a tolerância**
+  (até 3× fraco, até 8× médio, acima disso forte), então a cor fala de gravidade e não de valor bruto.
+- ⚠️⚠️ **O eixo horizontal NÃO é calendário.** Cada item tem o próprio ciclo (semanal, quinzenal,
+  mensal), então a coluna é "a n-ésima contagem **daquele item**", não um dia comum a todos. Os
+  rótulos são `−9 … −1 · atual` justamente para não parecer data, e a data real de cada célula está na
+  dica do mouse, junto com o gap, a variação e a tolerância. **Quem for mexer nisto não transforme a
+  coluna em data: os itens não são contados nas mesmas noites.**
+- ⭐ **O número fica DENTRO da célula, e isso não é enfeite.** Oito células vermelhas iguais (dívida
+  parada, um erro só) e oito crescendo (sangria ativa) têm a mesma cor e histórias opostas. Sem o
+  número a grade mente — é a lição da seção 4 do blueprint, e está comentada no código.
+- **Na base de demonstração dá para ver os padrões a olho nu:** Gordura vegetal desce `−49 −97 −146 …
+  −356` (sangria) · Leite em pó repete `−23` sete vezes (dívida parada) · Açúcar refinado abre `−236`,
+  volta a ✓, abre de novo (lançamento atrasado) · Filme BOPP alterna `+291 −184 +255 −286` (unidade ou
+  fator de conversão) · Aroma baunilha é quase só hachura (mal coberto).
+- **Conferido no navegador**, nos dois temas: 44 linhas × 10 células = 440, cabeçalho `−9 … atual`,
+  dica trazendo data + gap + variação + tolerância. ⚠️ Em **1024px a grade rola DENTRO do próprio
+  bloco e a página não rola de lado** — a regra da casa continua valendo; diagrama pode passar da
+  largura, página não.
+- ⏳ **Falta da fase 2:** a coluna de variação ao lado do gap na tabela. E a fase 3 inteira, o **modo
+  investigação** — que é onde o mapa fica diário e ganha as movimentações do dia ao lado.
+
 ### ⭐⭐ 2026-11-24 (f) — PC da Empresa — NASCE a aba **PCP › Contagem** (fase 1: a visão por grupo)
 Primeira tela nova desta sessão, depois de o dia inteiro ser limpeza. Blueprint acordado com o Diego em
 `PCP_Contagem__Blueprint.md` (e na página `claude.ai/artifact/QMsEtpRHvbiFBNusrGQiM8`). Assets

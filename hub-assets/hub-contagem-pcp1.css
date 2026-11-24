@@ -63,6 +63,44 @@ body.dark .cpc{
 .cpc-limpar{ margin-left:auto; font-size:12px; font-family:inherit; cursor:pointer; color:var(--text2);
   background:transparent; border:1px solid var(--border); border-radius:8px; padding:5px 10px; }
 
+/* ── alternador de vista ─────────────────────────────────────────────────────────────── */
+.cpc-seg{ margin-left:auto; display:inline-flex; border:1px solid var(--border); border-radius:9px;
+  overflow:hidden; background:var(--card); }
+.cpc-seg button{ font-family:inherit; font-size:12.5px; padding:6px 12px; cursor:pointer;
+  border:none; background:transparent; color:var(--text2); }
+.cpc-seg button.on{ background:var(--blue-mid); color:#fff; font-weight:600; }
+
+/* ── mapa de calor ───────────────────────────────────────────────────────────────────── */
+.cpc-leitura{ font-size:12px; color:var(--text3); line-height:1.6; margin-bottom:10px; }
+.cpc-leitura b{ color:var(--text2); }
+/* a grade pode passar da largura: é diagrama, e rola dentro do próprio bloco — nunca a página */
+.cpc-mw{ background:var(--card); border:1px solid var(--border); border-radius:12px;
+  overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.cpc-m{ border-collapse:separate; border-spacing:3px; font-size:11.5px; width:100%; }
+.cpc-m thead th{ font-size:10px; font-weight:500; color:var(--text3); text-align:center;
+  padding:6px 0 2px; letter-spacing:.04em; white-space:nowrap; }
+.cpc-mi{ text-align:left !important; font-weight:500; font-size:12px; color:var(--text);
+  padding:0 10px 0 8px; white-space:nowrap; max-width:220px; overflow:hidden; text-overflow:ellipsis; }
+.cpc-ch{ width:54px; }
+.cpc-ms{ text-align:left !important; white-space:nowrap; padding-left:10px; font-size:11.5px;
+  color:var(--text2); cursor:help; }
+.cpc-c{ text-align:center; height:26px; min-width:54px; border-radius:5px;
+  font-variant-numeric:tabular-nums; color:var(--text); cursor:help; }
+
+.cpc-c0{ background:color-mix(in srgb, var(--cpc-ok) 20%, var(--card)); color:var(--cpc-ok); font-weight:600; }
+.cpc-cf1{ background:color-mix(in srgb, var(--cpc-neg) 16%, var(--card)); }
+.cpc-cf2{ background:color-mix(in srgb, var(--cpc-neg) 36%, var(--card)); }
+.cpc-cf3{ background:color-mix(in srgb, var(--cpc-neg) 62%, var(--card)); color:#fff; }
+.cpc-cs1{ background:color-mix(in srgb, var(--cpc-pos) 16%, var(--card)); }
+.cpc-cs2{ background:color-mix(in srgb, var(--cpc-pos) 36%, var(--card)); }
+.cpc-cs3{ background:color-mix(in srgb, var(--cpc-pos) 62%, var(--card)); color:#fff; }
+.cpc-cnd{ background:repeating-linear-gradient(45deg, var(--bg), var(--bg) 4px, transparent 4px, transparent 8px);
+  color:var(--cpc-mut); }
+
+.cpc-leg{ display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:10px; font-size:11.5px; color:var(--text3); }
+.cpc-leg span{ display:inline-flex; align-items:center; gap:5px; }
+.cpc-sw{ width:13px; height:13px; border-radius:3px; display:inline-block; }
+
 /* ── tabela ──────────────────────────────────────────────────────────────────────────── */
 .cpc-tw{ background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
 .cpc-t{ width:100%; border-collapse:collapse; font-size:12.5px; table-layout:fixed; }
