@@ -7058,6 +7058,15 @@ function renderProducao(){
     else main.innerHTML=`<div style="padding:20px 4px;">${hubHead('Terceiros','Não foi possível carregar Terceiros.')}</div>`;
     return;
   }
+  // ⭐ (24/11/2026) Contagem: análise da contagem cíclica da noite (hub-assets/hub-contagem-pcp1.js).
+  // É tela de LEITURA — não escreve no ERP, por decisão do Diego. Blueprint: PCP_Contagem__Blueprint.md.
+  // ⚠️ Não confundir com Comercial › Marcas Próprias › Contagem (hub-contagem1.js, CTG), que é de
+  // embalagens por cliente. Esta aqui é CPC.
+  if(producaoView === 'contagem'){
+    if(window.CPC && typeof CPC.render==='function') CPC.render(main);
+    else main.innerHTML=`<div style="padding:20px 4px;">${hubHead('Contagem','Não foi possível carregar a Contagem.')}</div>`;
+    return;
+  }
   if(producaoView !== 'produtos'){
     const titulo = producaoView==='ordens'?'Ordens de Produção':'Checklists';
     main.innerHTML = `<div style="padding:20px 4px;">
@@ -21344,6 +21353,7 @@ function renderSidebar(){
         // "PCP" é o SETOR, não uma tela: as duas primeiras são dele. Cobertura diagnostica (o que está
         // acabando), Programação decide (o que a linha faz no dia) — nessa ordem, que é a do trabalho.
         _areaItem('producao',_pv,'cobertura','ti-calendar-stats','Cobertura','setProducaoView') +
+        _areaItem('producao',_pv,'contagem','ti-clipboard-check','Contagem','setProducaoView') +
         _areaItem('producao',_pv,'pcp','ti-adjustments-horizontal','PCP','setProducaoView') +
         _areaItem('producao',_pv,'indicadores','ti-chart-histogram','Indicadores','setProducaoView') +
         _areaItem('producao',_pv,'regras','ti-shield-check','Regras','setProducaoView') +
@@ -21398,6 +21408,7 @@ function renderSidebar(){
     navSubItem('fluxograma','ti-hierarchy-2','Fluxograma'));
   const _hubPCP = grupo('hub-pcp','ti-building-factory','PCP',
     _areaItem('producao',_hubPv,'cobertura','ti-report-search','Cobertura','setProducaoView') +
+    _areaItem('producao',_hubPv,'contagem','ti-clipboard-check','Contagem','setProducaoView') +
     `<button class="sbnav-item sbnav-subitem" data-hub="escala" onclick="hubScreen('escala')"><i class="ti ti-users-group"></i><span class="sbnav-label">Escala</span></button>` +
     _areaItem('producao',_hubPv,'programacao','ti-clipboard-list','Programação','setProducaoView') +
     _areaItem('producao',_hubPv,'terceiros','ti-building-warehouse','Terceiros','setProducaoView') +
@@ -47795,4 +47806,6 @@ function importarDadosJSON(){
 <script src="hub-assets/hub-cobertura2.js"></script>
 <link rel="stylesheet" href="hub-assets/hub-atrasados2.css">
 <script src="hub-assets/hub-atrasados2.js"></script>
+<link rel="stylesheet" href="hub-assets/hub-contagem-pcp1.css">
+<script src="hub-assets/hub-contagem-pcp1.js"></script>
 </body></html>

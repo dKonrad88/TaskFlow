@@ -1,0 +1,126 @@
+/* ══ PCP › CONTAGEM (hub-contagem-pcp1) ════════════════════════════════════════════════════
+   Prefixo .cpc- / --cpc-, para não colidir com .ctg- (Marcas Próprias › Contagem).
+   Tabela neutra, filtros dentro do funil e sem rolagem horizontal — as regras da casa.
+   Em telas estreitas as colunas menos importantes somem, em vez de a planilha vazar. */
+
+.cpc{
+  --cpc-ok:#16a34a; --cpc-neg:#dc2626; --cpc-pos:#7c3aed; --cpc-mut:#9aa3b2; --cpc-amb:#d97706;
+  --cpc-zebra:rgba(0,0,0,.015);
+}
+body.dark .cpc{
+  --cpc-ok:#4ade80; --cpc-neg:#f87171; --cpc-pos:#a78bfa; --cpc-mut:#7c8699; --cpc-amb:#fbbf24;
+  --cpc-zebra:rgba(255,255,255,.025);
+}
+
+.cpc-demo{
+  display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--text3);
+  background:var(--card); border:1px dashed var(--border); border-radius:10px;
+  padding:8px 12px; margin:10px 0 14px;
+}
+
+/* ── cartões ─────────────────────────────────────────────────────────────────────────── */
+.cpc-cards{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+.cpc-card{
+  flex:1 1 128px; min-width:0; text-align:left; cursor:pointer;
+  background:var(--card); border:1px solid var(--border); border-radius:12px;
+  padding:9px 12px; display:flex; flex-direction:column; gap:1px;
+  font-family:inherit; color:var(--text); transition:border-color .15s, background .15s;
+}
+.cpc-card:hover{ border-color:var(--blue-mid); }
+.cpc-card.on{ border-color:var(--blue-mid); background:color-mix(in srgb, var(--blue-mid) 10%, var(--card)); }
+.cpc-card.cpc-kpi{ cursor:default; }
+.cpc-card.cpc-kpi:hover{ border-color:var(--border); }
+.cpc-card-v{ font-size:19px; font-weight:700; line-height:1.15; font-variant-numeric:tabular-nums; }
+.cpc-card-l{ font-size:11.5px; color:var(--text2); }
+.cpc-card-s{ font-size:10.5px; color:var(--text3); }
+
+/* ── busca e funil ───────────────────────────────────────────────────────────────────── */
+.cpc-bar2{ display:flex; gap:8px; align-items:center; margin-bottom:10px; }
+.cpc-busca{ flex:1 1 auto; max-width:340px; position:relative; display:flex; align-items:center; }
+.cpc-busca i{ position:absolute; left:10px; color:var(--text3); font-size:15px; pointer-events:none; }
+.cpc-busca input{
+  width:100%; padding:7px 10px 7px 30px; border-radius:9px; font-size:13px; font-family:inherit;
+  border:1px solid var(--border); background:var(--card); color:var(--text);
+}
+.cpc-fbtn{
+  width:34px; height:34px; border-radius:9px; cursor:pointer; font-size:16px;
+  border:1px solid var(--border); background:var(--card); color:var(--text2);
+}
+.cpc-fbtn.ativo{ border-color:var(--cpc-amb); color:var(--cpc-amb); }
+.cpc-funil{
+  background:var(--card); border:1px solid var(--border); border-radius:12px;
+  padding:12px 14px; margin-bottom:12px; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center;
+}
+.cpc-funil.hide{ display:none; }
+.cpc-fs{ flex-basis:100%; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--text3); margin-top:4px; }
+.cpc-chk{ font-size:12.5px; color:var(--text2); display:inline-flex; align-items:center; gap:5px; cursor:pointer; }
+.cpc-sel{ font-size:12.5px; font-family:inherit; padding:5px 8px; border-radius:8px;
+  border:1px solid var(--border); background:var(--card); color:var(--text); }
+.cpc-tol{ font-size:12.5px; color:var(--text2); display:inline-flex; align-items:center; gap:5px; }
+.cpc-tol input{ width:58px; padding:4px 6px; border-radius:7px; font-family:inherit; font-size:12.5px;
+  border:1px solid var(--border); background:var(--card); color:var(--text); }
+.cpc-limpar{ margin-left:auto; font-size:12px; font-family:inherit; cursor:pointer; color:var(--text2);
+  background:transparent; border:1px solid var(--border); border-radius:8px; padding:5px 10px; }
+
+/* ── tabela ──────────────────────────────────────────────────────────────────────────── */
+.cpc-tw{ background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.cpc-t{ width:100%; border-collapse:collapse; font-size:12.5px; table-layout:fixed; }
+.cpc-t thead th{
+  text-align:left; font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.05em;
+  color:var(--text3); padding:9px 8px; border-bottom:1px solid var(--border);
+  background:var(--card); position:sticky; top:0; z-index:2; cursor:pointer; white-space:nowrap;
+}
+.cpc-t thead th i{ font-size:12px; margin-left:2px; vertical-align:-1px; }
+.cpc-t td{ padding:7px 8px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.cpc-t tbody tr:nth-child(even) td{ background:var(--cpc-zebra); }
+.cpc-t tbody tr:last-child td{ border-bottom:none; }
+
+.cpc-it{ width:auto; }
+.cpc-it b{ font-weight:600; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cpc-cod{ display:block; font-size:10.5px; color:var(--text3); }
+.cpc-cl{ width:40px; text-align:center !important; color:var(--text2); }
+.cpc-n{ width:76px; text-align:right !important; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.cpc-p{ width:118px; }
+.cpc-u{ width:86px; color:var(--text2); }
+
+.cpc-ok2{ color:var(--cpc-ok); }
+.cpc-neg{ color:var(--cpc-neg); font-weight:600; }
+.cpc-pos{ color:var(--cpc-pos); font-weight:600; }
+.cpc-mut{ color:var(--cpc-mut); }
+.cpc-mut2{ color:var(--cpc-amb); }
+.cpc-var{ font-size:10.5px; color:var(--text3); }
+
+.cpc-bar{ display:inline-block; width:34px; height:4px; border-radius:3px; background:var(--border);
+  margin-right:6px; vertical-align:middle; overflow:hidden; }
+.cpc-bar i{ display:block; height:100%; background:var(--cpc-neg); }
+
+.cpc-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; vertical-align:1px; }
+.cpc-dot.cpc-ok{ background:var(--cpc-ok); }
+.cpc-dot.cpc-rui{ background:var(--cpc-mut); }
+.cpc-dot.cpc-fec{ background:#3b82f6; }
+.cpc-dot.cpc-div{ background:var(--cpc-pos); }
+.cpc-dot.cpc-san{ background:var(--cpc-neg); }
+.cpc-dot.cpc-cao{ background:var(--cpc-amb); }
+.cpc-dot.cpc-mal{ background:var(--cpc-mut); }
+
+.cpc-ghead td{
+  background:var(--bg) !important; font-weight:600; font-size:12px; cursor:pointer;
+  padding:7px 8px; color:var(--text);
+}
+.cpc-ghead i{ font-size:13px; vertical-align:-2px; color:var(--text3); }
+.cpc-gc{ font-weight:400; font-size:11px; color:var(--text3); margin-left:8px; }
+.cpc-vazio{ text-align:center; color:var(--text3); padding:28px 8px !important; }
+
+/* ── telas estreitas: some coluna em vez de vazar a planilha ─────────────────────────── */
+@media (max-width:1500px){
+  .cpc-t th:nth-child(4), .cpc-t td:nth-child(4),
+  .cpc-t th:nth-child(6), .cpc-t td:nth-child(6){ display:none; }
+}
+@media (max-width:1220px){
+  .cpc-t th:nth-child(8), .cpc-t td:nth-child(8){ display:none; }
+}
+@media (max-width:980px){
+  .cpc-t th:nth-child(11), .cpc-t td:nth-child(11){ display:none; }
+  .cpc-card{ flex-basis:104px; }
+}

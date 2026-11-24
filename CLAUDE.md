@@ -422,6 +422,54 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐⭐ 2026-11-24 (f) — PC da Empresa — NASCE a aba **PCP › Contagem** (fase 1: a visão por grupo)
+Primeira tela nova desta sessão, depois de o dia inteiro ser limpeza. Blueprint acordado com o Diego em
+`PCP_Contagem__Blueprint.md` (e na página `claude.ai/artifact/QMsEtpRHvbiFBNusrGQiM8`). Assets
+`hub-assets/hub-contagem-pcp1.js` + `.css`, namespace **CPC**, prefixo `.cpc-`.
+- ⚠️ **NÃO confundir com `hub-contagem1.js` (CTG)**, que é Comercial › Marcas Próprias › Contagem, de
+  embalagens por cliente. São duas telas com o mesmo nome e lógicas diferentes — por isso os prefixos
+  separados, e por isso o comentário no topo dos dois arquivos.
+- **O que é:** análise da contagem cíclica da noite (20 slots = 4 semanas × domingo a quinta, frequência
+  no cadastro do item). Tabela de 44 itens fictícios em 5 grupos (matéria-prima, embalagem, produto
+  acabado, insumos, marketing), com contagens / certas / divergentes / não feitas / % divergência /
+  importância / gap atual / perfil / última contagem e quem contou. Cartões no topo são filtros rápidos,
+  mais dois KPIs (acuracidade e **dívida da ficha** em R$). Busca + funil com grupo, classe, perfil e as
+  **tolerâncias por classe editáveis** (A 0,5% · B 1% · C 2% do saldo, mínimo 1 un).
+- ⭐⭐ **A decisão do Diego de que o ERP NÃO ajusta o saldo é o que dá sentido à tela.** O gap
+  (`contado − sistema`) **não some sozinho**: fica até um lançamento fechá-lo. Então a série do gap conta
+  a história direta — fecha sozinho = lançamento atrasado · parado no mesmo valor = um erro antigo nunca
+  corrigido · crescendo = sangria agora · oscilando grande = unidade/conversão no cadastro.
+- ⚠️ **A armadilha que está no código e precisa continuar lá:** **é proibido somar os gaps.** Um gap de
+  −12 parado por 4 contagens somaria −48, mas a perda é 12. O fato novo é a **variação** do gap, e é
+  sobre ela que o índice de compensação é calculado.
+- **`classificar()` implementa os perfis de verdade** (não são rótulos fixos na base): limpo · ruído ·
+  fecha sozinho · dívida parada · sangrando · caótico · mal coberto. ⚠️ **O índice sozinho não separa
+  ruído, fecha e caótico** — os três abrem e fecham igual —, então a função desempata por **amplitude**.
+  Esse furo só apareceu quando desenhei o mapa de calor do blueprint; está comentado no código.
+- ⚠️ **A base é gerada pela tolerância PADRÃO da classe, não pela editada no funil.** Quantidade contada
+  é fato e não pode mudar porque alguém mexeu numa tolerância — mexer nela **reclassifica**, nunca
+  reescreve o dado. Levei um susto com isso na primeira versão e o guard-rail ficou escrito no arquivo.
+- **Semente determinística por código do item** (`hash` + LCG), como a série da Cobertura: a base não
+  muda sozinha a cada abertura. ⚠️ **100% fictícia** — nomes genéricos de material, nenhum código interno.
+- **Conferido no navegador**, servidor estático local, nos dois temas: 44 linhas em 5 grupos · os 7
+  perfis aparecem (12 limpos, 8 ruído, 6 fecha, 5 dívida, 4 sangrando, 2 caótico, 7 mal coberto) ·
+  acuracidade 67,8% e dívida de R$ 20.706 · funil abre, filtro de perfil "sangrando" devolve 4 e
+  "Limpar" volta para 44 · **sem rolagem horizontal** em 1440px e nenhum nome de item cortado ·
+  `--cpc-neg` vira `#dc2626` no tema claro e `#f87171` no escuro.
+- 🐞 **Dois bugs meus, achados na tela e corrigidos antes de subir:** (1) a base nascia com 29 itens
+  "limpos" porque eu gerava diferenças **abaixo** da tolerância — o gerador passou a trabalhar em
+  múltiplos da tolerância; (2) `PERFIS` não tinha a entrada `ruido` que a classificação devolvia, e a
+  tela quebrava com `Cannot read properties of undefined`. Por isso a conferência no navegador não é
+  opcional nesta casa.
+- ⏳ **Próximas fases** (no blueprint): mapa de calor item × contagem · **modo investigação** (contar o
+  item problemático todo dia, cruzado com as movimentações daquele dia — o Diego já faz isso na mão) ·
+  espelho em Marcas Próprias · contagem cega preparada.
+- ⏳ **O que falta para sair da demonstração:** o **export do ERP**. O Diego confirmou que ele traz as
+  contagens antigas. O campo a conferir no cabeçalho é o **saldo do sistema daquele instante**: sem ele o
+  gap de uma contagem antiga não dá para recalcular. Os nomes de coluna vão ajustar a importação, não a tela.
+- 📌 Menu: a Contagem entrou logo abaixo da Cobertura, nas **duas** barras laterais (`_hubPCP` e o grupo
+  `producao`), com `producaoView==='contagem'`.
+
 ### ⭐ 2026-11-24 (e) — PC da Empresa — A leitura aberta do Copiloto foi FECHADA (primeira escrita no banco hoje)
 Tudo o que veio antes nesta data foi leitura; aqui o Diego autorizou mexer. Migration `copiloto_rls_restringe_leitura_a_autorizados` aplicada no projeto **Pessoal**. Agora que a porta está trancada, dá para descrever: até hoje `copiloto_itens` (a fila de aprovação) e `hub_pessoas` (56 linhas) tinham SELECT com `USING (true)` para qualquer conta autenticada.
 - ⚠️ **O padrão do resto do projeto não servia aqui:** as duas tabelas **não têm coluna de dono** — a fila é de inquilino único e `hub_pessoas` é catálogo compartilhado. Então `user_id = auth.uid()`, que é o que as outras 20 tabelas usam, era impossível sem mudar schema e mexer nas edge functions que inserem as linhas. **Não era a hora de redesenhar o Copiloto para fechar um furo.**
