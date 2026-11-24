@@ -641,7 +641,14 @@ main.so-gravar .gravar {
   transform: translate(calc(var(--fx, 0) * 100vw), calc(var(--fy, 0) * 100vh)) scale(var(--fz, 1));
   transition: filter .3s ease;
 }
-.fundo-gravar.padrao img { object-position: 68% 22%; }
+/* Sem imagem própria não há foto nenhuma: o fundo é só um degradê do tema. A foto que vinha
+   aqui era pessoal e saiu em 24/11, porque este repositório é público. */
+.fundo-gravar.padrao img { display: none; }
+.fundo-gravar.padrao {
+  background:
+    radial-gradient(120% 85% at 72% 18%, color-mix(in srgb, var(--acento) 20%, transparent), transparent 62%),
+    var(--fundo);
+}
 /* Fora da tela Gravar a imagem fica desfocada e escurecida, só como clima. */
 .fundo-gravar.suave img { filter: blur(26px) saturate(125%); }
 .fundo-gravar.suave::after,

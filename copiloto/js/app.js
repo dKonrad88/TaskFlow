@@ -58,7 +58,8 @@ let ignorarCliqueAte = 0;
 let editandoFundo = false;
 const FUNDO_KEY = 'copiloto_fundo';
 const FUNDO_IMG_KEY = 'copiloto_fundo_img';
-const FUNDO_FOTO_PADRAO = 'assets/fundo-familia.webp';
+/* Não há foto padrão: a que existia aqui era pessoal e o repositório é público (saiu em 24/11).
+   Sem imagem escolhida pelo usuário o fundo é um degradê do tema, pela classe .padrao no CSS. */
 const FUNDO_PADRAO = { x: 0, y: 0, z: 1, o: 1 };
 const FUNDO_ZOOM = [0.5, 4];
 let fundo = carregarFundo();
@@ -1557,7 +1558,7 @@ function pintarImagemFundo() {
   if (!img) return;
   let src = null;
   try { src = localStorage.getItem(FUNDO_IMG_KEY); } catch { /* sem armazenamento */ }
-  img.src = src || FUNDO_FOTO_PADRAO;
+  if (src) img.src = src; else img.removeAttribute('src');
   caixa.classList.toggle('padrao', !src);
   fundo.proprio = !!src;
 }
