@@ -165,15 +165,29 @@
     return 'ruido';
   }
 
-  var PERFIS={
-    limpo:{l:'Limpo',c:'ok',t:'Todas as contagens dentro da tolerância. Candidato a contar menos.'},
-    ruido:{l:'Ruído',c:'rui',t:'Erra pouco, valores pequenos, e resolve sozinho. É o custo normal de contar.'},
-    fecha:{l:'Fecha sozinho',c:'fec',t:'Abre e volta a zero sem ninguém ajustar: lançamento atrasado. Não é perda.'},
-    divida:{l:'Dívida parada',c:'div',t:'O mesmo valor repetido: um erro só, nunca corrigido. Achar o dia de origem.'},
-    sangra:{l:'Sangrando',c:'san',t:'O módulo cresce a cada contagem: perda ou consumo não apontado, agora.'},
-    caotico:{l:'Caótico',c:'cao',t:'Amplitude grande e sinais trocados: olhar unidade e fator de conversão no cadastro.'},
-    mal:{l:'Mal coberto',c:'mal',t:'Muitas noites sem contagem. É aderência ao calendário, não acuracidade.'},
-    semdado:{l:'Sem dado',c:'mal',t:'Nenhuma contagem no período.'}
+  // ── diagnóstico detalhado × o que a COLUNA mostra ─────────────────────────────────────────
+  // classificar() continua devolvendo os sete comportamentos: é deles que sai a ação certa, e são
+  // eles que o mapa de calor e o modo investigação vão usar. Mas a coluna mostra só TRÊS níveis
+  // (verde / amarelo / vermelho), decisão do Diego em 24/11: sete estados numa coluna que se lê de
+  // relance viram ruído. O detalhe fica na dica ao passar o mouse, sem ocupar espaço na tela.
+  var DETALHE={
+    limpo:'Todas as contagens dentro da tolerância. Candidato a contar menos.',
+    ruido:'Erra pouco, valores pequenos, e resolve sozinho. É o custo normal de contar.',
+    fecha:'Abre e volta a zero sem ninguém ajustar: lançamento atrasado. Não é perda de material.',
+    divida:'O mesmo valor repetido: um erro só, nunca corrigido. Achar o dia de origem e acertar a ficha.',
+    caotico:'Amplitude grande e sinais trocados: olhar unidade e fator de conversão no cadastro.',
+    mal:'Muitas noites sem contagem. É aderência ao calendário, não acuracidade.',
+    sangra:'A diferença cresce a cada contagem: perda ou consumo não apontado, acontecendo agora.',
+    semdado:'Nenhuma contagem no período.'
+  };
+  // verde = nada a fazer · amarelo = tem diferença, mas o físico provavelmente está certo (é
+  // registro, cadastro ou calendário) · vermelho = material sumindo de verdade.
+  var NIVEL={ limpo:'ok', ruido:'ok', fecha:'ajt', divida:'ajt', caotico:'ajt', mal:'ajt',
+              sangra:'perda', semdado:'ajt' };
+  var NIVEIS={
+    ok:{l:'Em ordem', c:'n1'},
+    ajt:{l:'Ajustar', c:'n2'},
+    perda:{l:'Perdendo', c:'n3'}
   };
 
   // ── monta os dados derivados ──────────────────────────────────────────────────────────────
@@ -205,7 +219,7 @@
         serie:serie, datas:datas, tol:tol, feitas:feitas, certas:certas, div:div, naoFeitas:naoFeitas,
         pdiv: feitas? div/feitas*100 : 0, gap:gapAtual, variacao:variacao, valor:valor,
         gapRS: gapAtual==null?0:Math.abs(gapAtual)*custo,
-        perfil: classificar(serie,tol),
+        perfil: classificar(serie,tol), nivel: NIVEL[classificar(serie,tol)]||'ajt',
         quem: CONTADORES[hash(cod)%CONTADORES.length],
         ultima: ultIdx>=0 ? datas[ultIdx] : null });
     });
@@ -220,12 +234,9 @@
     if(gk.length && gk.indexOf(l.grp)<0) return false;
     var ck=Object.keys(S.f.classes).filter(function(k){ return S.f.classes[k]; });
     if(ck.length && ck.indexOf(l.classe)<0) return false;
-    if(S.f.perfil && l.perfil!==S.f.perfil) return false;
+    if(S.f.perfil && l.nivel!==S.f.perfil) return false;
     if(S.ind==='divergindo' && !(l.gap!=null && Math.abs(l.gap)>l.tol)) return false;
-    if(S.ind==='sangra' && l.perfil!=='sangra') return false;
-    if(S.ind==='fecha' && l.perfil!=='fecha') return false;
-    if(S.ind==='mal' && l.perfil!=='mal') return false;
-    if(S.ind==='limpo' && l.perfil!=='limpo') return false;
+    if((S.ind==='ok'||S.ind==='ajt'||S.ind==='perda') && l.nivel!==S.ind) return false;
     return true;
   }
   function temFiltro(){
@@ -246,10 +257,9 @@
     return '<div class="cpc-cards">'+
       c('todos','Itens',nf(vis.length)) +
       c('divergindo','Divergindo hoje',nf(n(function(l){ return l.gap!=null&&Math.abs(l.gap)>l.tol; }))) +
-      c('sangra','Sangrando',nf(n(function(l){ return l.perfil==='sangra'; }))) +
-      c('fecha','Fecha sozinho',nf(n(function(l){ return l.perfil==='fecha'; }))) +
-      c('mal','Mal coberto',nf(n(function(l){ return l.perfil==='mal'; }))) +
-      c('limpo','Limpos',nf(n(function(l){ return l.perfil==='limpo'; }))) +
+      c('perda','Perdendo',nf(n(function(l){ return l.nivel==='perda'; }))) +
+      c('ajt','Ajustar',nf(n(function(l){ return l.nivel==='ajt'; }))) +
+      c('ok','Em ordem',nf(n(function(l){ return l.nivel==='ok'; }))) +
       '<div class="cpc-card cpc-kpi"><span class="cpc-card-v">'+nf(acur,1)+'%</span><span class="cpc-card-l">Acuracidade</span><span class="cpc-card-s">'+nf(cert)+' de '+nf(ac)+' contagens</span></div>'+
       '<div class="cpc-card cpc-kpi"><span class="cpc-card-v">'+brl(divida)+'</span><span class="cpc-card-l">Dívida da ficha</span><span class="cpc-card-s">gaps abertos hoje</span></div>'+
       '</div>';
@@ -258,8 +268,8 @@
   function funilHTML(){
     var g=GRUPOS.map(function(x){ return '<label class="cpc-chk"><input type="checkbox" data-fg="'+x[0]+'"'+(S.f.grupos[x[0]]?' checked':'')+'> '+esc(x[1])+'</label>'; }).join('');
     var c=['A','B','C'].map(function(x){ return '<label class="cpc-chk"><input type="checkbox" data-fc="'+x+'"'+(S.f.classes[x]?' checked':'')+'> Classe '+x+'</label>'; }).join('');
-    var p='<option value="">Todos os perfis</option>'+Object.keys(PERFIS).filter(function(k){return k!=='semdado';})
-      .map(function(k){ return '<option value="'+k+'"'+(S.f.perfil===k?' selected':'')+'>'+PERFIS[k].l+'</option>'; }).join('');
+    var p='<option value="">Todas as situações</option>'+Object.keys(NIVEIS)
+      .map(function(k){ return '<option value="'+k+'"'+(S.f.perfil===k?' selected':'')+'>'+NIVEIS[k].l+'</option>'; }).join('');
     var t=['A','B','C'].map(function(x){ return '<label class="cpc-tol">Classe '+x+' <input type="number" step="0.1" min="0" data-tol="'+x+'" value="'+S.tol[x]+'"> %</label>'; }).join('');
     return '<div class="cpc-funil'+(S.fOpen?'':' hide')+'">'+
       '<div class="cpc-fs">Grupo</div>'+g+
@@ -279,7 +289,7 @@
   }
 
   function linhaHTML(l){
-    var p=PERFIS[l.perfil];
+    var p=NIVEIS[l.nivel]||NIVEIS.ajt, det=DETALHE[l.perfil]||'';
     return '<tr>'+
       '<td class="cpc-it"><b>'+esc(l.nome)+'</b><span class="cpc-cod">'+esc(l.cod)+'</span></td>'+
       '<td class="cpc-cl">'+l.classe+'</td>'+
@@ -290,7 +300,7 @@
       '<td class="cpc-n"><span class="cpc-bar"><i style="width:'+Math.min(100,l.pdiv)+'%"></i></span>'+nf(l.pdiv,0)+'%</td>'+
       '<td class="cpc-n">'+nf(l.imp,1)+'%</td>'+
       '<td class="cpc-n">'+celGap(l)+'</td>'+
-      '<td class="cpc-p"><span class="cpc-dot cpc-'+p.c+'"></span><span title="'+esc(p.t)+'">'+p.l+'</span></td>'+
+      '<td class="cpc-p" title="'+esc(det)+'"><span class="cpc-dot cpc-'+p.c+'"></span>'+p.l+'</td>'+
       '<td class="cpc-u">'+(l.ultima?l.ultima.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'<span class="cpc-mut">—</span>')+'<span class="cpc-cod">'+esc(l.quem)+'</span></td>'+
       '</tr>';
   }
@@ -325,7 +335,7 @@
       th('nome','Item','cpc-it')+'<th class="cpc-cl">Cl.</th>'+
       th('feitas','Cont.','cpc-n')+th('certas','Certas','cpc-n')+th('div','Div.','cpc-n')+
       th('naoFeitas','N. feitas','cpc-n')+th('pdiv','% div.','cpc-n')+th('imp','Import.','cpc-n')+
-      th('gap','Gap atual','cpc-n')+'<th class="cpc-p">Perfil</th><th class="cpc-u">Última</th>'+
+      th('gap','Gap atual','cpc-n')+'<th class="cpc-p">Situação</th><th class="cpc-u">Última</th>'+
       '</tr></thead>'+out+'</table></div>';
   }
 

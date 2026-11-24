@@ -96,13 +96,13 @@ body.dark .cpc{
 .cpc-bar i{ display:block; height:100%; background:var(--cpc-neg); }
 
 .cpc-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; vertical-align:1px; }
-.cpc-dot.cpc-ok{ background:var(--cpc-ok); }
-.cpc-dot.cpc-rui{ background:var(--cpc-mut); }
-.cpc-dot.cpc-fec{ background:#3b82f6; }
-.cpc-dot.cpc-div{ background:var(--cpc-pos); }
-.cpc-dot.cpc-san{ background:var(--cpc-neg); }
-.cpc-dot.cpc-cao{ background:var(--cpc-amb); }
-.cpc-dot.cpc-mal{ background:var(--cpc-mut); }
+/* Três níveis e nada mais: verde nada a fazer, amarelo ajustar registro, vermelho perda.
+   O diagnóstico fino (lançamento atrasado, dívida parada, cadastro, mal coberto) fica na dica
+   do mouse, no title da célula — informação sem ocupar a coluna. */
+.cpc-dot.cpc-n1{ background:var(--cpc-ok); }
+.cpc-dot.cpc-n2{ background:var(--cpc-amb); }
+.cpc-dot.cpc-n3{ background:var(--cpc-neg); }
+.cpc-p{ cursor:help; }
 
 .cpc-ghead td{
   background:var(--bg) !important; font-weight:600; font-size:12px; cursor:pointer;
