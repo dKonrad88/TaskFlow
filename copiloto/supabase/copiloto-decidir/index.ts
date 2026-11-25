@@ -72,7 +72,7 @@ function payloadCanonico(tipo: string, bruto: unknown): Record<string, unknown> 
   if (tipo === "klain-tarefa") {
     const titulo = reescreverCsmt(String(p.titulo ?? ""));
     const descricao = reescreverCsmt(String(p.descricao ?? ""));
-    return { titulo, descricao, vencimento: p.vencimento ?? null, csmt: csmtDe(p.csmt, String(p.titulo ?? ""), String(p.descricao ?? "")) };
+    return { titulo, descricao, inicio: p.inicio ?? null, vencimento: p.vencimento ?? null, csmt: csmtDe(p.csmt, String(p.titulo ?? ""), String(p.descricao ?? "")) };
   }
   if (tipo === "klain-compromisso") {
     const titulo = reescreverCsmt(String(p.titulo ?? ""));

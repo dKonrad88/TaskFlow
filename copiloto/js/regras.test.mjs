@@ -62,7 +62,7 @@ test('payload canônico não ganha campo de fora', () => {
     solicitante: 'Diego',
     projeto: 'não entra',
   });
-  assert.deepEqual(Object.keys(p).sort(), ['csmt', 'descricao', 'titulo', 'vencimento']);
+  assert.deepEqual(Object.keys(p).sort(), ['csmt', 'descricao', 'inicio', 'titulo', 'vencimento']);
   assert.equal(p.titulo, 'CSMT');
   assert.equal(p.csmt.aplicado, true);
   const gasto = payloadCanonico('apto-gasto', { titulo: 'Mercado', valor: 186, data: '2026-11-13', ambiente: 'Cozinha', fornecedor: 'x' });
@@ -260,6 +260,23 @@ test('seção do mercado sai do nome do item', () => {
   assert.equal(secaoDoMercado('água com gás'), 'Bebidas');
   assert.equal(secaoDoMercado('papel higiênico'), 'Higiene');
   assert.equal(secaoDoMercado('lâmpadas'), null);
+});
+
+test('tarefa separa data de início, vencimento e pedido de cópia', () => {
+  const a = entrada('Cria uma tarefa teste pra mim com a data de início pra hoje vencimento pra daqui a sete dias e coloca a Débora em cópia');
+  assert.equal(a.tipo, 'klain-tarefa');
+  assert.equal(a.payload.inicio, '2026-11-13');
+  assert.equal(a.payload.vencimento, '2026-11-20');
+  assert.equal(a.payload.titulo, 'teste pra mim');
+
+  const b = entrada('faz uma tarefa minha pro Guilherme e coloca em cópia a Tamires e o Everaldo data de início hoje vencimento dia 17/11');
+  assert.equal(b.tipo, 'klain-tarefa');
+  assert.equal(b.payload.inicio, '2026-11-13');
+  assert.equal(b.payload.vencimento, '2026-11-17');
+
+  const c = entrada('criar uma tarefa para revisar o relatório amanhã');
+  assert.equal(c.payload.inicio, null);
+  assert.equal(c.payload.vencimento, '2026-11-14');
 });
 
 test('frase solta continua indefinida', () => {

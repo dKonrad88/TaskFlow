@@ -9,13 +9,15 @@ O app abre no **projeto Pessoal** (`jlouesrrmqeauzlgvrpw`), com a chave publicá
 ## O que a tela faz
 
 - Fila misturada, da mais nova para a mais antiga, agrupada por dia (Hoje, Ontem, data), com os status reais: `aguardando você`, `para o BOSS`, `aprovado`, `recusado`, `criado`, `erro`.
-- Na aba Aprovar, deslizar o card para a direita aprova e para a esquerda recusa. A primeira decisão vale, então não há desfazer.
+- Na aba Aprovar cada item já vem aberto, com todos os campos e os botões Recusar e Aprovar no próprio card. Pessoas e datas abrem uma folha por cima da lista. A primeira decisão vale.
 - Filtro no ícone à esquerda do título (status, período). Os filtros ativos viram chips que se tiram com um toque.
 - Um card por tipo da fila: `klain-tarefa`, `klain-compromisso`, `apto-gasto`, `compras-item`, `indefinido`.
-- Título, descrição, valor, data e cômodo editam no próprio card. Não há mais tela de edição.
+- Título, descrição, valor, datas e cômodo editam no próprio card. A tarefa tem Data de início e Vencimento.
+- No computador (ponteiro de mouse, ou janela a partir de 700 px) o app aparece dentro de uma moldura do tamanho do celular, que encolhe para caber na janela.
+- A foto de fundo, o enquadramento, o layout da tela Gravar e o tema ficam na tabela `copiloto_prefs`, uma linha por usuário. Só o celular grava; o computador só recebe (`supabase/prefs-aparencia.sql`).
 - A aba Lista é a lista do supermercado, agrupada por seção (Hortifruti, Açougue e peixaria, Laticínios e frios, Padaria, Mercearia, Bebidas, Limpeza, Higiene, Outros). Um campo único inclui itens; em "Automática" a seção sai do nome. Os comprados ficam recolhidos no fim. Ela não é a lista de compras do apartamento.
 - A navegação é a barra inferior do Gravador do Hub: Gravar, Aprovar, Histórico e Lista. Gravar mostra a saudação, a contagem da fila e o botão; ao gravar, a tela é a mesma, com o cronômetro e a fala acima do botão. O chip de área (Automático, Hub Klain, Apto, Compras) fica logo acima da barra. Tema, fundo, conta e "Passar por aprovação" ficam em Ajustes.
-- O fundo é uma imagem atrás de todas as telas, nítida em Gravar e desfocada nas outras. Em Ajustes dá para trocar a imagem, mover, mudar o tamanho e a opacidade. A imagem e o enquadramento ficam só no aparelho (`localStorage`: `copiloto_fundo_img` e `copiloto_fundo`).
+- O fundo é uma imagem atrás de todas as telas, nítida em Gravar e desfocada nas outras. Em Ajustes dá para trocar a imagem, mover, mudar o tamanho e a opacidade. A imagem e o enquadramento ficam no aparelho (`localStorage`) e, com login, sincronizam a partir do celular.
 - Datas em `dd/mm/yyyy`.
 
 Itens do Hub Klain (`klain-tarefa` e `klain-compromisso`) nunca mostram palavra de casamento. A frase é reescrita para a sigla **CSMT**. O termo original pode ficar dentro de `payload.csmt.termos`, e a tela não o escreve.
@@ -55,7 +57,7 @@ A leitura depende de RLS. O SQL está em `supabase/rls-leitura.sql` e já foi ap
 
 Payload por tipo:
 
-- `klain-tarefa`: `{ titulo, descricao, vencimento, csmt }`
+- `klain-tarefa`: `{ titulo, descricao, inicio, vencimento, csmt }`
 - `klain-compromisso`: `{ titulo, descricao, data_hora, local, csmt }`
 - `apto-gasto`: `{ titulo, valor, data, ambiente, comodo_incerto }`
 - `compras-item`: `{ nome, ambiente, quantidade, valor_estimado, comodo_incerto }`. Aqui `ambiente` guarda a seção do mercado, não um cômodo; `comodo_incerto` é verdadeiro quando a seção não foi reconhecida.

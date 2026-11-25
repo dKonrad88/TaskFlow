@@ -61,6 +61,7 @@ export function estadoExemplo() {
         payload: payloadCanonico('klain-tarefa', {
           titulo: 'Revisar a pesquisa do CSMT com o comitê',
           descricao: 'Levar os preços e gramagens para a reunião.',
+          inicio: '2026-11-13',
           vencimento: '2026-11-17',
           csmt: { aplicado: true, termos: ['casamento'] },
         }),

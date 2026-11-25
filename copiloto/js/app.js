@@ -53,8 +53,7 @@ let ultimaFolha = '';
 let pularSelo = false;
 let secaoAdd = '';
 let compradosAbertos = false;
-let deslize = null;
-let ignorarCliqueAte = 0;
+let desenhoAdiado = 0;
 let editandoFundo = false;
 const FUNDO_KEY = 'copiloto_fundo';
 const FUNDO_IMG_KEY = 'copiloto_fundo_img';
@@ -126,6 +125,7 @@ function rota() {
   const p = (location.hash.replace(/^#/, '') || '/').split('?')[0].split('/').filter(Boolean);
   const [a, b, c, d] = p;
   if (!a || a === 'gravar') return { tela: 'gravar' };
+  if (a === 'aprovar' && b) return { tela: 'aprovar', id: b, menu: c === 'menu' ? d : '', data: c === 'data' ? d : '' };
   if (['aprovar', 'historico', 'lista', 'ajustes', 'gravando'].includes(a)) return { tela: a };
   if (a === 'item' && b) return { tela: 'item', id: b, menu: c === 'menu' ? d : '', data: c === 'data' ? d : '' };
   return { tela: 'gravar' };
@@ -215,19 +215,37 @@ function itensDaAba(aba) {
   return ordenarFila(filtrar(base, filtrosAba[aba] || {}));
 }
 
+/** Card completo de um item em aberto, como aparece direto na aba Aprovar. */
+function cartaoAberto(item) {
+  const falado = item.tipo !== 'indefinido' && item.transcricao
+    ? `<p class="falado">“${esc(textoDe(item, item.transcricao))}”</p>`
+    : '';
+  const quando = `${fHora(item.created_at)}${item.teste ? ' · exemplo' : ''}`;
+  return `<article class="cartao-aberto">
+    ${kick(item)}
+    ${falado}
+    ${corpoCard(item)}
+    <p class="quando">${esc(quando)}</p>
+    ${acoes(item, false)}
+  </article>`;
+}
+
+/** Endereço do item que está sendo editado: na lista de Aprovar ou na tela do item. */
+function hashDoItem(id, resto) {
+  const naLista = rota().tela === 'aprovar';
+  if (!resto) return naLista ? '#/aprovar' : `#/item/${id}`;
+  return naLista ? `#/aprovar/${id}/${resto}` : `#/item/${id}/${resto}`;
+}
+
 function linhaFila(item, aba) {
+  if (aba === 'aprovar') return cartaoAberto(item);
   const teste = item.teste ? ' · exemplo' : '';
   const meta = `${fHora(item.created_at)} · ${rotuloArea(item.tipo)}${teste}`;
-  const cartao = `<button class="cartao" data-acao="abrir" data-id="${esc(item.id)}">
+  return `<button class="cartao" data-acao="abrir" data-id="${esc(item.id)}">
     <span class="tipo-ico t-${esc(areaDo(item.tipo))}">${iconeTipo(item.tipo)}</span>
     <span class="txt"><span class="t">${esc(tituloFila(item))}</span><span class="m">${esc(meta)}</span></span>
     <span class="pilula ${classeStatus(item.status)}">${esc(rotuloStatus(item.status))}</span>
   </button>`;
-  if (aba !== 'aprovar') return cartao;
-  return `<div class="desliza" data-desliza="${esc(item.id)}">
-    <div class="desliza-fundo" aria-hidden="true"><span class="sim">${ICO.ok} Aprovar</span><span class="nao">Recusar ${ICO.x}</span></div>
-    ${cartao}
-  </div>`;
 }
 
 function olho() {
@@ -311,6 +329,7 @@ function corpoCard(item) {
       ${campoCaixa('Solicitante', rotuloPessoa(item, 'solicitante'), '▾', 'abrir-menu', `data-id="${id}" data-campo="solicitante"`, false)}
       ${campoCaixa('Executor', rotuloPessoa(item, 'executor'), '▾', 'abrir-menu', `data-id="${id}" data-campo="executor"`, false)}
       ${campoCopia(item)}
+      ${campoCaixa('Data de início', fData(p.inicio) || 'Escolher', 'alterar', 'abrir-data', `data-id="${id}" data-campo="inicio"`, false)}
       ${campoCaixa('Vencimento', fData(p.vencimento) || 'Escolher', 'alterar', 'abrir-data', `data-id="${id}" data-campo="vencimento"`, false)}
       ${campoDescricao(item, p.descricao)}`;
   }
@@ -328,18 +347,18 @@ function corpoCard(item) {
       ${campoValor(item, 'valor', 'Valor', p.valor, false)}
       ${campoCaixa('Cômodo', `${p.ambiente || 'Escolher'}${incerto}`, '▾', 'abrir-menu', `data-id="${id}" data-campo="ambiente"`, false)}`;
   }
-  return `${campoTitulo(item, 'nome', p.nome)}
+  return `${campoTitulo(item, 'nome', p.nome, 'Item')}
     ${campoCaixa('Seção', p.ambiente || 'Escolher', '▾', 'abrir-menu', `data-id="${id}" data-campo="ambiente"`, true)}
     ${campoTexto(item, 'quantidade', 'Quantidade', p.quantidade, false)}
     ${campoValor(item, 'valor_estimado', 'Valor estimado', p.valor_estimado, false)}
     ${item.notas ? campoLeitura('Descrição', item.notas, false) : ''}`;
 }
 
-function acoes(item) {
+function acoes(item, fixa = true) {
   if (!emAberto(item.status)) {
     return `<div class="aviso forte">Já foi decidido: ${esc(rotuloStatus(item.status))}. A primeira decisão vale.</div>`;
   }
-  return `<div class="acoes fixa vidro">
+  return `<div class="acoes${fixa ? ' fixa vidro' : ''}">
     <button class="botao nao" data-acao="decidir" data-id="${esc(item.id)}" data-decisao="recusado">Recusar</button>
     <button class="botao sim" data-acao="decidir" data-id="${esc(item.id)}" data-decisao="aprovado">Aprovar</button>
   </div>`;
@@ -428,7 +447,7 @@ function dataHtml(item, campo) {
   const valor = p[campo];
   prepararFolha(valor);
   const nomeMes = new Date(Date.UTC(folha.ano, folha.mes - 1, 1)).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
-  const rotulo = campo === 'vencimento' ? 'Vencimento' : (campo === 'data_hora' ? 'Data e hora' : 'Data');
+  const rotulo = { vencimento: 'Vencimento', inicio: 'Data de início', data_hora: 'Data e hora' }[campo] || 'Data';
   const [hy, hm, hd] = hojeSP().split('-').map(Number);
   const mesDeHoje = hy === folha.ano && hm === folha.mes;
   const dias = grade(folha.ano, folha.mes).map((d) => d
@@ -469,10 +488,11 @@ function carregarLayout() {
 }
 
 function limitarPeca(id) {
-  const vw = window.innerWidth || 390;
-  const vh = window.innerHeight || 844;
+  const tela = tamanhoTela();
+  const vw = tela.w;
+  const vh = tela.h;
   const nav = document.querySelector('.abas');
-  const barra = nav ? vh - nav.getBoundingClientRect().top : 96;
+  const barra = nav ? vh - (nav.getBoundingClientRect().top - tela.topo) / tela.k : 96;
   const p = layout[id];
   const minS = id === 'gravar' ? 0.72 : 0.85;
   const maxS = id === 'gravar' ? 1.55 : 1.35;
@@ -498,6 +518,7 @@ function aplicarLayout() {
 
 function persistirLayout() {
   try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch { /* segue na memória */ }
+  marcarAparencia();
 }
 
 function atualizarBarraEdicao() {
@@ -583,13 +604,13 @@ function painelFiltro(aba) {
   </div>`;
 }
 
-function telaFila(aba, titulo) {
+function telaFila(aba, titulo, r) {
   const f = filtrosAba[aba];
   const lista = itensDaAba(aba);
   const ativos = [
     f.status ? ['status', f.status, rotuloStatus(f.status)] : null,
     f.periodo ? ['periodo', f.periodo, ROTULO_PERIODO[f.periodo] || f.periodo] : null,
-  ].filter(Boolean).map(([g, v, r]) => `<button class="chip on" data-acao="filtro" data-aba="${aba}" data-grupo="${g}" data-valor="${esc(v)}" aria-label="Tirar o filtro ${esc(r)}">${esc(r)} <span aria-hidden="true">×</span></button>`).join('');
+  ].filter(Boolean).map(([g, v, rot]) => `<button class="chip on" data-acao="filtro" data-aba="${aba}" data-grupo="${g}" data-valor="${esc(v)}" aria-label="Tirar o filtro ${esc(rot)}">${esc(rot)} <span aria-hidden="true">×</span></button>`).join('');
   let corpo = '';
   let diaAtual = '';
   for (const item of lista) {
@@ -601,17 +622,22 @@ function telaFila(aba, titulo) {
     corpo += linhaFila(item, aba);
   }
   if (!lista.length) corpo = vazio(aba, !!ativos);
-  const dica = aba === 'aprovar' && lista.length
-    ? '<p class="dica centro">Deslize para a direita para aprovar e para a esquerda para recusar.</p>'
-    : '';
+  // Na aba Aprovar o card já vem aberto; pessoas e datas abrem a folha por cima da lista.
+  let folhaHtml = '';
+  if (aba === 'aprovar' && r && r.id) {
+    const item = itemPor(r.id);
+    if (item && emAberto(item.status)) {
+      if (r.menu) folhaHtml = menuHtml(item, r.menu);
+      if (r.data) folhaHtml = dataHtml(item, r.data);
+    }
+  }
   return `${cabeca(titulo, { ajustes: true, filtro: aba })}
     <main class="com-abas">
       ${ativos ? `<div class="chips filtros-ativos">${ativos}</div>` : ''}
       ${painelFiltro(aba)}
       ${erroFila ? `<p class="aviso">${esc(erroFila)}</p>` : ''}
       <div class="fila">${corpo}</div>
-      ${dica}
-    </main>`;
+    </main>${folhaHtml}`;
 }
 
 function falaDoNavegador() {
@@ -694,7 +720,7 @@ function telaAjustes() {
       <label class="botao cheio rotulo-arquivo">Escolher imagem<input type="file" accept="image/*" data-acao="arquivo-fundo" hidden></label>
       <button type="button" class="botao cheio" data-acao="editar-fundo">Mover, ampliar e opacidade</button>
       ${fundo.proprio ? '<button type="button" class="botao cheio" data-acao="fundo-padrao">Voltar à foto padrão</button>' : ''}
-      <p class="dica">A imagem fica guardada só neste aparelho.</p>
+      <p class="dica">${noPc() ? 'Neste computador a foto, o enquadramento, o layout e o tema vêm do celular. O que você mudar aqui não vai para ele.' : 'A foto, o enquadramento, o layout e o tema deste celular valem também no computador.'}</p>
       <div class="grupo">Tela de gravar</div>
       <button type="button" class="botao cheio" data-acao="editar-layout">Editar layout</button>
       <p class="dica">Move e redimensiona o botão Gravar e o chip de área.</p>
@@ -830,7 +856,7 @@ function desenhar() {
   let html = '';
   if (r.tela === 'gravar') html = telaGravar(false);
   else if (r.tela === 'gravando') html = telaGravar(true);
-  else if (r.tela === 'aprovar') html = telaFila('aprovar', 'Aprovar');
+  else if (r.tela === 'aprovar') html = telaFila('aprovar', 'Aprovar', r);
   else if (r.tela === 'historico') html = telaFila('historico', 'Histórico');
   else if (r.tela === 'lista') html = telaLista();
   else if (r.tela === 'ajustes') html = telaAjustes();
@@ -873,11 +899,13 @@ async function atualizarFila() {
   if (telas.includes(rota().tela) && !aoVivo && !editando) desenhar();
 }
 
-/** Depois de editar um campo: a edição é um rascunho local, então não há o que reler do banco. */
-async function depoisDeEditar() {
+async function depoisDeEditar(adiar) {
   const fila = await dados.listarItens({ local: true });
   itens = fila.itens || [];
-  desenhar();
+  clearTimeout(desenhoAdiado);
+  // Campo de texto: espera um instante para o toque em Aprovar ou Recusar não se perder no redesenho.
+  if (adiar) desenhoAdiado = setTimeout(desenhar, 250);
+  else desenhar();
 }
 
 async function depoisDeMudar() {
@@ -905,7 +933,7 @@ function patchDoCampo(item, chave, valor) {
   return { payload: { [chave]: valor } };
 }
 
-async function salvarCampo(id, chave, valor) {
+async function salvarCampo(id, chave, valor, adiar) {
   const item = itemPor(id);
   if (!item) return;
   const r = await dados.atualizar(id, patchDoCampo(item, chave, valor));
@@ -914,7 +942,7 @@ async function salvarCampo(id, chave, valor) {
     await depoisDeMudar();
     return;
   }
-  await depoisDeEditar();
+  await depoisDeEditar(adiar);
 }
 
 async function aoDecidir(id, decisao) {
@@ -1077,13 +1105,13 @@ async function diaOk(id, campo) {
     valor = `${iso}T${hora}:00`;
   }
   folha = null;
+  const volta = hashDoItem(id);
   await salvarCampo(id, campo, valor);
-  ir(`#/item/${id}`);
+  ir(volta);
 }
 
 async function noClique(e) {
   if (arrastou) { arrastou = false; return; }
-  if (Date.now() < ignorarCliqueAte) return;
   const el = e.target.closest('[data-acao]');
   if (!el) return;
   const acao = el.dataset.acao;
@@ -1100,6 +1128,7 @@ async function noClique(e) {
   if (acao === 'fundo-padrao') {
     try { localStorage.removeItem(FUNDO_IMG_KEY); } catch { /* sem armazenamento */ }
     fundo = { ...FUNDO_PADRAO, proprio: false };
+    imagemMudou = true;
     pintarImagemFundo();
     aplicarFundo();
     persistirFundo();
@@ -1134,7 +1163,7 @@ async function noClique(e) {
   }
   if (acao === 'fechar-area') { areaAberta = false; desenhar(); return; }
   if (acao === 'definir-area') { dados?.definirPrefs?.({ area: el.dataset.area }); areaAberta = false; desenhar(); return; }
-  if (acao === 'definir-tema') { aplicarTema(el.dataset.tema, true); desenhar(); return; }
+  if (acao === 'definir-tema') { aplicarTema(el.dataset.tema, true); marcarAparencia(); desenhar(); return; }
   if (acao === 'abrir') { ir(`#/item/${el.dataset.id}`); return; }
   if (acao === 'atualizar-versao') { await aplicarVersao(); return; }
   if (acao === 'gravar') { await comecarGravar(); return; }
@@ -1162,7 +1191,7 @@ async function noClique(e) {
     return;
   }
   if (acao === 'recarregar') { location.reload(); return; }
-  if (acao === 'fechar') { folha = null; buscaMenu = ''; if (history.length > 1) history.back(); else ir(`#/item/${rota().id || ''}`); return; }
+  if (acao === 'fechar') { folha = null; buscaMenu = ''; if (history.length > 1) history.back(); else ir(hashDoItem(rota().id || '')); return; }
   if (acao === 'busca-menu') return;
   if (acao === 'filtro') {
     const g = el.dataset.grupo;
@@ -1174,8 +1203,8 @@ async function noClique(e) {
     desenhar();
     return;
   }
-  if (acao === 'abrir-menu') { buscaMenu = ''; ir(`#/item/${el.dataset.id}/menu/${el.dataset.campo}`); return; }
-  if (acao === 'abrir-data') { folha = null; ir(`#/item/${el.dataset.id}/data/${el.dataset.campo}`); return; }
+  if (acao === 'abrir-menu') { buscaMenu = ''; ir(hashDoItem(el.dataset.id, `menu/${el.dataset.campo}`)); return; }
+  if (acao === 'abrir-data') { folha = null; ir(hashDoItem(el.dataset.id, `data/${el.dataset.campo}`)); return; }
   if (acao === 'dia') { folha.dia = Number(el.dataset.dia); desenhar(); return; }
   if (acao === 'mes') {
     const delta = Number(el.dataset.delta);
@@ -1190,8 +1219,9 @@ async function noClique(e) {
   if (acao === 'data-ok') { await diaOk(el.dataset.id, el.dataset.campo); return; }
   if (acao === 'escolher') {
     buscaMenu = '';
+    const volta = hashDoItem(el.dataset.id);
     await salvarCampo(el.dataset.id, el.dataset.campo, el.dataset.valor);
-    ir(`#/item/${el.dataset.id}`);
+    ir(volta);
     return;
   }
   if (acao === 'toggle-pessoa') {
@@ -1260,7 +1290,7 @@ function noInput(e) {
     persistirFundo();
     return;
   }
-  if (e.target?.matches?.('textarea.titulo-item, textarea.auto')) {
+  if (e.target?.matches?.('textarea.auto')) {
     ajustarAltura(e.target);
     return;
   }
@@ -1291,7 +1321,7 @@ async function noChange(e) {
     desenhar();
     return;
   }
-  await salvarCampo(el.dataset.id, el.dataset.chave, el.value);
+  await salvarCampo(el.dataset.id, el.dataset.chave, el.value, true);
 }
 
 async function noSubmit(e) {
@@ -1304,6 +1334,7 @@ async function noSubmit(e) {
       dados._sessao = await dados.sessao();
       await carregar();
       desenhar();
+      sincronizarAparencia().catch(() => {});
     } catch (err) {
       const msg = /invalid login/i.test(err.message) ? 'E-mail ou senha não conferem.' : err.message;
       mostrar(msg);
@@ -1318,10 +1349,10 @@ async function noKey(e) {
     if (r.menu || r.data) {
       folha = null;
       buscaMenu = '';
-      ir(`#/item/${r.id}`);
+      ir(hashDoItem(r.id));
     }
   }
-  if (e.key === 'Enter' && e.target?.matches?.('textarea.titulo-item')) {
+  if (e.key === 'Enter' && e.target?.matches?.('textarea.titulo-campo')) {
     e.preventDefault();
     e.target.blur();
     return;
@@ -1351,11 +1382,6 @@ function noPonteiroDown(e) {
     e.preventDefault();
     return;
   }
-  if (tela === 'aprovar') {
-    const caixa = e.isPrimary === false ? null : e.target.closest('[data-desliza]');
-    if (caixa) deslize = { id: caixa.dataset.desliza, caixa, el: caixa.querySelector('.cartao'), x: e.clientX, y: e.clientY, dx: 0, ativo: false };
-    return;
-  }
   if (!editando || tela !== 'gravar') return;
   if (e.target.closest('.area-menu, .barra-edicao')) return;
   const alvo = e.target.closest('[data-layout]');
@@ -1376,31 +1402,15 @@ function noPonteiroDown(e) {
 }
 
 function noPonteiroMove(e) {
-  if (deslize) {
-    const dx = e.clientX - deslize.x;
-    const dy = e.clientY - deslize.y;
-    if (!deslize.ativo) {
-      if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx)) { deslize = null; return; }
-      if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-      deslize.ativo = true;
-      deslize.caixa.classList.add('ativo');
-    }
-    deslize.dx = dx;
-    deslize.el.style.transform = `translateX(${dx}px)`;
-    const limiar = Math.min(150, deslize.caixa.offsetWidth * 0.38);
-    deslize.caixa.classList.toggle('dir', dx > 0);
-    deslize.caixa.classList.toggle('esq', dx < 0);
-    deslize.caixa.classList.toggle('passou', Math.abs(dx) >= limiar);
-    return;
-  }
   if (!ponteiros.has(e.pointerId) || !gesto) return;
   ponteiros.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (gesto.id === 'fundo') {
     if (ponteiros.size >= 2 && gesto.pinça) {
       fundo.z = gesto.s * (distPonteiros() / gesto.pinça);
     } else {
-      fundo.x = gesto.ox + (e.clientX - gesto.x) / window.innerWidth;
-      fundo.y = gesto.oy + (e.clientY - gesto.y) / window.innerHeight;
+      const t = tamanhoTela();
+      fundo.x = gesto.ox + (e.clientX - gesto.x) / (t.w * t.k);
+      fundo.y = gesto.oy + (e.clientY - gesto.y) / (t.h * t.k);
     }
     aplicarFundo();
     const zoom = document.querySelector('[data-acao="fundo-zoom"]');
@@ -1415,8 +1425,9 @@ function noPonteiroMove(e) {
     const dx = e.clientX - gesto.x;
     const dy = e.clientY - gesto.y;
     if (Math.hypot(dx, dy) > 5) arrastou = true;
-    layout[gesto.id].x = gesto.ox + dx / window.innerWidth;
-    layout[gesto.id].y = gesto.oy + dy / window.innerHeight;
+    const t = tamanhoTela();
+    layout[gesto.id].x = gesto.ox + dx / (t.w * t.k);
+    layout[gesto.id].y = gesto.oy + dy / (t.h * t.k);
   }
   aplicarLayout();
   const slider = document.querySelector('[data-acao="tamanho-layout"]');
@@ -1425,17 +1436,6 @@ function noPonteiroMove(e) {
 }
 
 function noPonteiroUp(e) {
-  if (deslize) {
-    const d = deslize;
-    deslize = null;
-    if (!d.ativo) return;
-    ignorarCliqueAte = Date.now() + 400;
-    const limiar = Math.min(150, d.caixa.offsetWidth * 0.38);
-    d.el.style.transform = '';
-    d.caixa.classList.remove('ativo', 'dir', 'esq', 'passou');
-    if (e.type === 'pointerup' && Math.abs(d.dx) >= limiar) decidirPorDeslize(d.id, d.dx > 0 ? 'aprovado' : 'recusado');
-    return;
-  }
   if (!ponteiros.has(e.pointerId)) return;
   ponteiros.delete(e.pointerId);
   const doFundo = gesto?.id === 'fundo';
@@ -1550,6 +1550,7 @@ function persistirFundo() {
   try {
     localStorage.setItem(FUNDO_KEY, JSON.stringify({ x: fundo.x, y: fundo.y, z: fundo.z, o: fundo.o }));
   } catch { /* segue na memória */ }
+  marcarAparencia();
 }
 
 function pintarImagemFundo() {
@@ -1591,6 +1592,7 @@ async function trocarFundo(arquivo) {
       return;
     }
     fundo = { ...fundo, x: 0, y: 0, z: 1 };
+    imagemMudou = true;
     persistirFundo();
     pintarImagemFundo();
     aplicarFundo();
@@ -1633,7 +1635,7 @@ function ajustarAltura(el) {
 }
 
 function autoAltura() {
-  for (const el of document.querySelectorAll('textarea.titulo-item, textarea.auto')) ajustarAltura(el);
+  for (const el of document.querySelectorAll('textarea.auto')) ajustarAltura(el);
 }
 
 function saudacao() {
@@ -1656,10 +1658,12 @@ function vazio(qual, filtrado) {
   return `<div class="vazio">${DESENHO_VAZIO}<b>${esc(titulo)}</b><span>${esc(sub)}</span>${limpar}</div>`;
 }
 
-function campoTitulo(item, chave, valor) {
+function campoTitulo(item, chave, valor, rotulo = 'Título') {
   const texto = textoDe(item, valor) || '';
   if (!emAberto(item.status)) return `<h2 class="titulo-item">${esc(texto || 'Sem título')}</h2>`;
-  return `<textarea class="titulo-item" rows="1" aria-label="Título" placeholder="Título" enterkeyhint="done" data-acao="texto" data-obrigatorio="1" data-id="${esc(item.id)}" data-chave="${esc(chave)}">${esc(texto)}</textarea>`;
+  return `<div class="campo"><div class="rot">${esc(rotulo)}<span class="estrela"> *</span></div>
+    <textarea class="area auto titulo-campo" rows="1" aria-label="${esc(rotulo)}" placeholder="${esc(rotulo)}" enterkeyhint="done" data-acao="texto" data-obrigatorio="1" data-id="${esc(item.id)}" data-chave="${esc(chave)}">${esc(texto)}</textarea>
+  </div>`;
 }
 
 function campoDescricao(item, valor) {
@@ -1700,18 +1704,6 @@ async function adicionarDaBarra() {
   document.getElementById('add-compra')?.focus();
 }
 
-async function decidirPorDeslize(id, decisao) {
-  if (ocupado) return;
-  ocupado = true;
-  try {
-    await aoDecidir(id, decisao);
-  } catch (err) {
-    mostrar(err.message);
-  } finally {
-    ocupado = false;
-  }
-}
-
 function noRoda(e) {
   if (!editandoFundo || rota().tela !== 'gravar') return;
   if (e.target.closest?.('.barra-edicao')) return;
@@ -1723,8 +1715,127 @@ function noRoda(e) {
   e.preventDefault();
 }
 
+const TELA_KEY = 'copiloto_tela';
+const SINC_KEY = 'copiloto_aparencia_rev';
+const PENDENTE_KEY = 'copiloto_aparencia_pendente';
+const TELA_PADRAO = { w: 393, h: 852 };
+let empurrao = 0;
+let imagemMudou = false;
+
+function noPc() {
+  return document.documentElement.classList.contains('no-pc');
+}
+
+/**
+ * No computador (mouse, ou janela larga) o app aparece dentro de uma moldura do tamanho do celular,
+ * com as medidas que o próprio celular guardou na última sincronização.
+ */
+function aplicarMoldura() {
+  const raiz = document.documentElement;
+  // Celular e tablet têm o dedo como ponteiro principal; o computador, o mouse.
+  const comMouse = !!window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const pc = comMouse || window.innerWidth >= 700;
+  raiz.classList.toggle('no-pc', pc);
+  if (!pc) {
+    for (const v of ['--tela-l', '--tela-a', '--tela-ad', '--tela-zoom']) raiz.style.removeProperty(v);
+    return;
+  }
+  let t = TELA_PADRAO;
+  try {
+    const o = JSON.parse(localStorage.getItem(TELA_KEY) || 'null');
+    if (o && o.w >= 300 && o.w <= 600 && o.h >= 500 && o.h <= 1400) t = o;
+  } catch { /* usa o padrão */ }
+  raiz.style.setProperty('--tela-l', `${t.w}px`);
+  raiz.style.setProperty('--tela-a', `${t.h}px`);
+  raiz.style.setProperty('--tela-ad', `${t.h}px`);
+  // A moldura encolhe para caber na janela, na altura e na largura.
+  const zoom = Math.min(1, (window.innerHeight - 48) / t.h, (window.innerWidth - 40) / t.w);
+  raiz.style.setProperty('--tela-zoom', Math.max(0.3, zoom).toFixed(4));
+}
+
+/** Medidas da área do app: a janela no celular, a moldura no PC (k = escala da moldura). */
+function tamanhoTela() {
+  const m = document.getElementById('moldura');
+  if (noPc() && m && m.offsetWidth) {
+    const r = m.getBoundingClientRect();
+    return { w: m.offsetWidth, h: m.offsetHeight, k: r.width / m.offsetWidth || 1, topo: r.top };
+  }
+  return { w: window.innerWidth || 390, h: window.innerHeight || 844, k: 1, topo: 0 };
+}
+
+/** O celular é a origem da aparência: só ele envia. O PC só recebe. */
+function marcarAparencia() {
+  if (noPc() || modo !== 'supabase' || !dados?._sessao) return;
+  try { localStorage.setItem(PENDENTE_KEY, '1'); } catch { /* segue na memória */ }
+  clearTimeout(empurrao);
+  empurrao = setTimeout(() => { enviarAparencia(false).catch(() => {}); }, 1500);
+}
+
+async function enviarAparencia(comImagem) {
+  if (!dados?.gravarAparencia) return;
+  const rev = String(Date.now());
+  let img;
+  if (comImagem || imagemMudou) {
+    try { img = localStorage.getItem(FUNDO_IMG_KEY) || ''; } catch { img = ''; }
+  }
+  const pacote = {
+    rev,
+    fundo: { x: fundo.x, y: fundo.y, z: fundo.z, o: fundo.o },
+    layout,
+    tema: temaAtual(),
+    tela: { w: window.innerWidth, h: window.innerHeight },
+  };
+  const r = await dados.gravarAparencia(pacote, img);
+  if (!r?.ok) return;
+  imagemMudou = false;
+  try {
+    localStorage.setItem(SINC_KEY, rev);
+    localStorage.removeItem(PENDENTE_KEY);
+  } catch { /* sem armazenamento */ }
+}
+
+/** Ao abrir: o celular envia o que mudou; quem estiver diferente do servidor recebe. */
+async function sincronizarAparencia() {
+  if (modo !== 'supabase' || !dados?._sessao || !dados.lerAparencia) return;
+  const remoto = await dados.lerAparencia();
+  if (remoto.erro) return;
+  let revLocal = '';
+  let pendente = false;
+  try {
+    revLocal = localStorage.getItem(SINC_KEY) || '';
+    pendente = !!localStorage.getItem(PENDENTE_KEY);
+  } catch { /* sem armazenamento */ }
+  if (!noPc() && (!remoto.dados || pendente)) {
+    await enviarAparencia(true);
+    return;
+  }
+  const d = remoto.dados;
+  if (!d || !d.rev || d.rev === revLocal) return;
+  const foto = await dados.lerFundoImg();
+  if (foto.erro) return;
+  try {
+    if (d.fundo) localStorage.setItem(FUNDO_KEY, JSON.stringify(d.fundo));
+    if (d.layout) localStorage.setItem(LAYOUT_KEY, JSON.stringify(d.layout));
+    if (TEMAS.includes(d.tema)) localStorage.setItem('copiloto_tema', d.tema);
+    if (d.tela) localStorage.setItem(TELA_KEY, JSON.stringify(d.tela));
+    if (foto.img) localStorage.setItem(FUNDO_IMG_KEY, foto.img);
+    else localStorage.removeItem(FUNDO_IMG_KEY);
+    localStorage.setItem(SINC_KEY, d.rev);
+  } catch {
+    return;
+  }
+  fundo = carregarFundo();
+  layout = carregarLayout();
+  if (TEMAS.includes(d.tema)) aplicarTema(d.tema, false);
+  aplicarMoldura();
+  pintarImagemFundo();
+  aplicarFundo();
+  desenhar();
+}
+
 async function iniciar() {
   aplicarTema(temaAtual(), false);
+  aplicarMoldura();
   pintarImagemFundo();
   aplicarFundo();
   const aberto = await abrirDados();
@@ -1743,7 +1854,7 @@ async function iniciar() {
   document.addEventListener('pointermove', noPonteiroMove, { passive: false });
   document.addEventListener('pointerup', noPonteiroUp);
   document.addEventListener('pointercancel', noPonteiroUp);
-  window.addEventListener('resize', aplicarLayout);
+  window.addEventListener('resize', () => { aplicarMoldura(); aplicarLayout(); });
   document.addEventListener('wheel', noRoda, { passive: false });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') atualizarFila();
@@ -1758,6 +1869,7 @@ async function iniciar() {
   if (pose() && rota().tela === 'gravando') segundos = 7;
   else if (rota().tela === 'gravando') history.replaceState(null, '', `${location.pathname}${location.search}#/`);
   desenhar();
+  sincronizarAparencia().catch(() => {});
   registrarSw();
   if (modoDemo()) document.documentElement.dataset.adaptador = 'mock';
 }
