@@ -6887,7 +6887,9 @@ let FICHA_SECOES = [
       {k:'precoVenda', l:'Preço de Venda'}, {k:'custoUnit', l:'Custo Unitário'}, {k:'margem', l:'Margem (%)'},
     ]},
     { titulo:'Classificação', campos:[
-      {k:'curva', l:'Curva ABC'}, {k:'familia', l:'Família / Linha'},
+      // Curva ABC é escolha fechada, não texto livre: é ela que define a tolerância da Contagem
+      // (A 0,5% · B 1% · C 2% do saldo), e "a", "A " ou "Classe A" digitados à mão não casariam.
+      {k:'curva', l:'Curva ABC', tipo:'select', opts:['','A','B','C']}, {k:'familia', l:'Família / Linha'},
     ]},
   ]},
   { nome:'Dimensões', icon:'ti-ruler-2', cor:'var(--blue-teal)', grupos:[

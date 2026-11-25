@@ -422,6 +422,25 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-11-25 (c) — PC da Empresa — **Curva ABC** vira campo de seleção na ficha de Produtos
+O Diego perguntou o que era a "Classe" do funil da Contagem e, depois, onde se classifica um item.
+Resposta que eu não sabia ao criar a Contagem: **o campo já existia** — `Produção › Produtos ›
+ficha › aba Comercial › Classificação › "Curva ABC"** (`curva`) —, só que como **texto livre** e
+vazio em todas as fichas.
+- Virou `tipo:'select', opts:['','A','B','C']`, usando o mecanismo que o schema da ficha já tinha
+  (o mesmo do campo `Ativo`). ⚠️ **Escolha fechada não é preciosismo aqui:** é a curva que define a
+  tolerância da Contagem (A 0,5% · B 1% · C 2% do saldo), e `"a"`, `"A "` ou `"Classe A"` digitados
+  à mão não casariam com nada.
+- Conferido na ficha do Pão de Mel: o select mostra — / A / B / C, grava (`curva:"B"`) e **volta ao
+  vazio** quando se escolhe a opção em branco.
+- ⏳ **A Contagem ainda NÃO lê esse campo.** A classe dos 46 itens de lá é da base de demonstração,
+  e os códigos das duas telas são de mundos diferentes (`MP-101` na Contagem, `101…243` no catálogo
+  de Produtos). A ligação só faz sentido com o export do ERP, que traz item e classe na mesma linha
+  — fazer o de-para agora seria inventar um vínculo que não existe.
+- ⏳ **Continua em aberto:** se o ERP já tem a curva, ela vem no export e ninguém preenche nada
+  aqui. Se não tem, preencher 143 produtos à mão para ter tolerância por classe não se paga — aí é
+  melhor trocar o critério (um % único, ou por grupo), e o funil já aceita isso.
+
 ### ⚠️ 2026-11-25 (b) — PC da Empresa — Contagem: **"muita informação, não sei pra onde olhar"**
 Crítica do Diego depois de eu empilhar seis entregas seguidas na mesma tela. Ele estava certo:
 eram **7 blocos antes da primeira linha de dado** (título, faixa do ciclo, faixa de demonstração,
