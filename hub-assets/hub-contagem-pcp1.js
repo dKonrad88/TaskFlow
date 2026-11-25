@@ -36,7 +36,8 @@
   var TOL_PADRAO={A:0.5,B:1,C:2};      // % do saldo
 
   // ── estado de tela ────────────────────────────────────────────────────────────────────────
-  var S={ ind:'todos', busca:'', fOpen:false, vista:'tabela', f:{grupos:{},classes:{},perfil:''},
+  var S={ ind:'todos', busca:'', fOpen:false, vista:'tabela',
+          f:{grupos:{},classes:{},perfil:'',semanas:{},dias:{},semSlot:false},
           tol:{A:TOL_PADRAO.A,B:TOL_PADRAO.B,C:TOL_PADRAO.C}, fech:{}, sort:{k:'pdiv',d:-1} };
   var MAIN=null, DADOS=null;
 
@@ -139,6 +140,29 @@
     return g;
   }
 
+  // ── o SLOT do ciclo: dia da semana + em quais das 4 semanas ──────────────────────────────
+  // No ERP a frequência mora no cadastro do item, num campo que recebe `domingo1`…`quinta4`.
+  // ⭐ Aqui o slot é DERIVADO das datas das contagens, não sorteado à parte: como os intervalos
+  // são de 7, 14 ou 28 dias, todas as contagens de um item caem no mesmo dia da semana, e a
+  // semana do ciclo sai da semana ISO. Assim o que a tela mostra nunca contradiz as datas que
+  // ela mesma exibe — se fosse semeado em separado, um dia divergiria do outro e ninguém saberia
+  // qual está certo.
+  var DIAS=['dom','seg','ter','qua','qui','sex','sáb'];
+
+  function semanaCiclo(d){
+    var t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+    t.setUTCDate(t.getUTCDate()-((t.getUTCDay()+6)%7)+3);          // quinta da semana ISO
+    var ini=new Date(Date.UTC(t.getUTCFullYear(),0,4));
+    ini.setUTCDate(ini.getUTCDate()-((ini.getUTCDay()+6)%7)+3);
+    var sem=1+Math.round((t-ini)/(7*86400000));
+    return ((sem-1)%4)+1;
+  }
+
+  function rotuloSlot(l){
+    if(!l.slotDia) return 'sem slot';
+    return l.slotDia+' '+l.semanas.join('·');
+  }
+
   // ── classificação (a lógica do blueprint, de verdade) ─────────────────────────────────────
   function tolDe(classe, saldo){ var p=S.tol[classe]!=null?S.tol[classe]:1; return Math.max(1, saldo*p/100); }
 
@@ -208,12 +232,16 @@
       var tolRef=Math.max(1, saldo*TOL_PADRAO[cl]/100);
       var r=rng(hash(cod)), serie=serieDe(comp,tolRef,r), tol=tolDe(cl,saldo);
       var intervalo = cl==='A'?7:(cl==='B'?14:28);
-      // cada item cai num ponto diferente do ciclo: sem isto a "última contagem" seria hoje para
-      // os 44 itens, o que não acontece num calendário de 20 slots.
-      var off = hash(cod+'slot') % intervalo;
+      // ⚠️ A contagem é de DOMINGO A QUINTA — sexta e sábado não existem no ciclo. Por isso a
+      // série é ancorada numa dessas 5 noites, e não num deslocamento qualquer: como os intervalos
+      // (7, 14, 28) são múltiplos de 7, todas as contagens do item caem sempre no mesmo dia, que é
+      // justamente o que o cadastro do ERP guarda em `domingo1`…`quinta4`.
+      var diaAlvo = hash(cod+'slot') % 5;                        // 0=dom … 4=qui
+      var ancora = new Date(hoje.getTime());
+      ancora.setDate(ancora.getDate() - ((ancora.getDay()-diaAlvo+7)%7));
       var feitas=0, certas=0, div=0, naoFeitas=0, i, v, datas=[];
       for(i=0;i<N_CONT;i++){
-        var d=new Date(hoje.getTime()); d.setDate(d.getDate()-(N_CONT-1-i)*intervalo-off); datas.push(d);
+        var d=new Date(ancora.getTime()); d.setDate(d.getDate()-(N_CONT-1-i)*intervalo); datas.push(d);
         v=serie[i];
         if(v===null){ naoFeitas++; continue; }
         feitas++; if(Math.abs(v)>tol) div++; else certas++;
@@ -225,7 +253,18 @@
       var valor = saldo*custo;
       var grp = cod.split('-')[0];
       totalGrupo[grp]=(totalGrupo[grp]||0)+valor;
-      linhas.push({ cod:cod, nome:nome, un:un, classe:cl, custo:custo, saldo:saldo, grp:grp,
+      // ⚠️ `IN-407` é o item SEM SLOT: nunca foi cadastrado em noite nenhuma, e é por isso que
+      // nunca foi contado. O `MK-506` tem slot e mesmo assim nunca foi contado — são as duas
+      // causas diferentes de "Sem contagem", e a tela precisa mostrar as duas.
+      var semSlot = (cod==='IN-407');
+      var semanas=[], dSem=null;
+      if(!semSlot){
+        datas.forEach(function(dd){ var s=semanaCiclo(dd); if(semanas.indexOf(s)<0) semanas.push(s); });
+        semanas.sort(function(a,b){ return a-b; });
+        dSem=DIAS[datas[N_CONT-1].getDay()];
+      }
+      linhas.push({ slotDia:dSem, semanas:semanas,
+        cod:cod, nome:nome, un:un, classe:cl, custo:custo, saldo:saldo, grp:grp,
         serie:serie, datas:datas, tol:tol, feitas:feitas, certas:certas, div:div, naoFeitas:naoFeitas,
         pdiv: feitas? div/feitas*100 : 0, gap:gapAtual, variacao:variacao, valor:valor,
         gapRS: gapAtual==null?0:Math.abs(gapAtual)*custo,
@@ -245,12 +284,20 @@
     var ck=Object.keys(S.f.classes).filter(function(k){ return S.f.classes[k]; });
     if(ck.length && ck.indexOf(l.classe)<0) return false;
     if(S.f.perfil && l.nivel!==S.f.perfil) return false;
+    if(S.f.semSlot && l.slotDia) return false;
+    var sk=Object.keys(S.f.semanas).filter(function(k){ return S.f.semanas[k]; });
+    if(sk.length && !sk.some(function(k){ return l.semanas.indexOf(+k)>=0; })) return false;
+    var dk=Object.keys(S.f.dias).filter(function(k){ return S.f.dias[k]; });
+    if(dk.length && dk.indexOf(l.slotDia)<0) return false;
     if(S.ind==='divergindo' && !(l.gap!=null && Math.abs(l.gap)>l.tol)) return false;
     if(NIVEIS[S.ind] && l.nivel!==S.ind) return false;
     return true;
   }
   function temFiltro(){
-    return !!(S.f.perfil || Object.keys(S.f.grupos).some(function(k){return S.f.grupos[k];})
+    return !!(S.f.perfil || S.f.semSlot
+      || Object.keys(S.f.grupos).some(function(k){return S.f.grupos[k];})
+      || Object.keys(S.f.semanas).some(function(k){return S.f.semanas[k];})
+      || Object.keys(S.f.dias).some(function(k){return S.f.dias[k];})
       || Object.keys(S.f.classes).some(function(k){return S.f.classes[k];})
       || S.tol.A!==TOL_PADRAO.A || S.tol.B!==TOL_PADRAO.B || S.tol.C!==TOL_PADRAO.C);
   }
@@ -281,7 +328,14 @@
     var p='<option value="">Todas as situações</option>'+Object.keys(NIVEIS)
       .map(function(k){ return '<option value="'+k+'"'+(S.f.perfil===k?' selected':'')+'>'+NIVEIS[k].l+'</option>'; }).join('');
     var t=['A','B','C'].map(function(x){ return '<label class="cpc-tol">Classe '+x+' <input type="number" step="0.1" min="0" data-tol="'+x+'" value="'+S.tol[x]+'"> %</label>'; }).join('');
+    // Semana e dia são o SLOT do cadastro (`quarta2` no ERP), não um período: filtram quais itens
+    // caem naquela noite do ciclo. Marcar "qua" + "2" devolve exatamente a lista da quarta2.
+    var sem=[1,2,3,4].map(function(x){ return '<label class="cpc-chk"><input type="checkbox" data-fsem="'+x+'"'+(S.f.semanas[x]?' checked':'')+'> Semana '+x+'</label>'; }).join('');
+    var dia=['dom','seg','ter','qua','qui'].map(function(x){ return '<label class="cpc-chk"><input type="checkbox" data-fdia="'+x+'"'+(S.f.dias[x]?' checked':'')+'> '+x+'</label>'; }).join('');
+    var ss='<label class="cpc-chk"><input type="checkbox" data-fss'+(S.f.semSlot?' checked':'')+'> só itens <b>sem slot</b></label>';
     return '<div class="cpc-funil'+(S.fOpen?'':' hide')+'">'+
+      '<div class="cpc-fs">Semana do ciclo</div>'+sem+
+      '<div class="cpc-fs">Noite da contagem</div>'+dia+' '+ss+
       '<div class="cpc-fs">Grupo</div>'+g+
       '<div class="cpc-fs">Classe</div>'+c+
       '<div class="cpc-fs">Perfil</div><select class="cpc-sel" data-fp>'+p+'</select>'+
@@ -301,7 +355,8 @@
   function linhaHTML(l){
     var p=NIVEIS[l.nivel]||NIVEIS.ajt, det=DETALHE[l.perfil]||'';
     return '<tr>'+
-      '<td class="cpc-it"><b>'+esc(l.nome)+'</b><span class="cpc-cod">'+esc(l.cod)+'</span></td>'+
+      '<td class="cpc-it"><b>'+esc(l.nome)+'</b><span class="cpc-cod">'+esc(l.cod)+' · '+
+        (l.slotDia?esc(rotuloSlot(l)):'<i class="cpc-semslot">sem slot</i>')+'</span></td>'+
       '<td class="cpc-p" title="'+esc(det)+'"><span class="cpc-dot cpc-'+p.c+'"></span>'+p.l+'</td>'+
       '<td class="cpc-cl">'+l.classe+'</td>'+
       '<td class="cpc-n">'+nf(l.feitas)+'</td>'+
@@ -459,11 +514,14 @@
       S.vista=b.getAttribute('data-vista'); persist(); render(MAIN); }; });
     q('[data-fg]').forEach(function(c){ c.onchange=function(){ S.f.grupos[c.getAttribute('data-fg')]=c.checked; render(MAIN); }; });
     q('[data-fc]').forEach(function(c){ c.onchange=function(){ S.f.classes[c.getAttribute('data-fc')]=c.checked; render(MAIN); }; });
+    q('[data-fsem]').forEach(function(c){ c.onchange=function(){ S.f.semanas[c.getAttribute('data-fsem')]=c.checked; render(MAIN); }; });
+    q('[data-fdia]').forEach(function(c){ c.onchange=function(){ S.f.dias[c.getAttribute('data-fdia')]=c.checked; render(MAIN); }; });
+    var ss=MAIN.querySelector('[data-fss]'); if(ss) ss.onchange=function(){ S.f.semSlot=ss.checked; render(MAIN); };
     var fp=MAIN.querySelector('[data-fp]'); if(fp) fp.onchange=function(){ S.f.perfil=fp.value; render(MAIN); };
     q('[data-tol]').forEach(function(i){ i.onchange=function(){
       var v=parseFloat(i.value); if(isFinite(v)&&v>=0){ S.tol[i.getAttribute('data-tol')]=v; persist(); render(MAIN); } }; });
     var lp=MAIN.querySelector('[data-limpar]'); if(lp) lp.onclick=function(){
-      S.f={grupos:{},classes:{},perfil:''}; S.ind='todos'; S.busca='';
+      S.f={grupos:{},classes:{},perfil:'',semanas:{},dias:{},semSlot:false}; S.ind='todos'; S.busca='';
       S.tol={A:TOL_PADRAO.A,B:TOL_PADRAO.B,C:TOL_PADRAO.C}; persist(); render(MAIN); };
     q('.cpc-ghead').forEach(function(tr){ tr.onclick=function(){
       var g=tr.getAttribute('data-grp'); S.fech[g]=!S.fech[g]; persist(); render(MAIN); }; });

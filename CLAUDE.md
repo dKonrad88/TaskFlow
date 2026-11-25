@@ -422,6 +422,32 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⭐ 2026-11-25 — PC da Empresa — Contagem: o **SLOT do ciclo** entra na tela (semana 1–4 + noite)
+Pedido do Diego: filtrar por semana 1, 2, 3, 4 "e daí os meses também". ⚠️ **São duas coisas
+diferentes e só a primeira foi feita:** semana 1–4 é o **slot do cadastro** (o `quarta2` do ERP),
+que diz em que noite o item é contado; mês é **período**, e para período esta casa já tem padrão
+(`_cpPerBtn`, botão de 34px com popover — ver a entrada de 26/09 (j)). Misturar os dois no mesmo
+controle seria o erro.
+- **No funil entraram duas seções:** *Semana do ciclo* (1 a 4) e *Noite da contagem* (dom a qui),
+  mais o atalho **"só itens sem slot"**. Marcar `qua` + `semana 2` devolve exatamente a lista da
+  `quarta2` — a mesma que sai impressa hoje.
+- **O slot aparece ao lado do código do item**: `MP-104 · ter 1·2·3·4`. Item sem slot fica em âmbar.
+- ⭐ **O slot é DERIVADO das datas das contagens, não semeado à parte.** Como os intervalos são de
+  7, 14 ou 28 dias (múltiplos de 7), todas as contagens de um item caem no mesmo dia da semana, e a
+  semana do ciclo sai da semana ISO. Se eu tivesse sorteado o slot em separado, um dia divergiria
+  das datas que a própria tela mostra e ninguém saberia qual acreditar. Resultado automático:
+  classe A em 4 semanas, B em 2, C em 1.
+- 🐞 **Bug que só a tela pegou:** a primeira versão gerava as datas com um deslocamento qualquer e
+  jogava itens em **sexta e sábado** — noites que não existem no ciclo de domingo a quinta. Agora a
+  série é ancorada numa das 5 noites válidas. **Quem mexer no gerador de datas precisa manter essa
+  âncora**, senão o slot volta a inventar noite.
+- ⭐ **A carga por slot já nasce desequilibrada na base, e é de propósito:** 14 itens na semana 1,
+  20 na 2, 24 na 3 e 32 na 4. É o indicador "carga por slot" do blueprint aparecendo sozinho — numa
+  base real o desequilíbrio costuma ser pior, e é o que justifica a tela de calendário da fase 3.
+- ⏳ **Falta o filtro de mês**, e ele tem uma decisão junto: se o mês **recalcular** os números
+  (contagens, certas, divergentes), o mapa deixa de ser "as 10 últimas" e vira "as contagens do
+  mês" — para item mensal, uma célula só. É mudança visível no mapa, então não fiz sozinho.
+
 ### ⭐ 2026-11-24 (g) — PC da Empresa — Contagem: o **MAPA DE CALOR** item × contagem (fase 2)
 Segunda vista da mesma tela, no alternador ao lado da busca: **Tabela | Mapa de calor**. Mesmos
 filtros, mesmos dados, mesma ordenação e os mesmos grupos recolhíveis — só muda o desenho. A escolha
