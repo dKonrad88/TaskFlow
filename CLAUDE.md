@@ -422,6 +422,27 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 2026-11-25 (f) — PC da Empresa — Contagem: a mais recente encostada na Situação
+O Diego filtrou novembro e viu o problema que a grade cheia escondia: **com filtro de período cada
+item tem um número diferente de contagens**, e alinhando pela mais ANTIGA a última contagem de cada
+linha caía numa coluna diferente — a Pré-mistura terminava na 3ª coluna, o Amido na 2ª, a Gordura na
+4ª. Comparar linha com linha virava impossível.
+- ⭐ **A ordem de exibição inverteu**: a contagem mais recente encosta na coluna Situação e o tempo
+  corre para a **direita, rumo ao passado**. Agora toda linha começa no mesmo lugar: o que importa
+  (a contagem de ontem) está sempre na primeira coluna, e o vazio sobra à direita, no passado, que é
+  onde ele não atrapalha.
+- ⚠️ **É só exibição.** `celMapa(l,k)` continua indexando a série cronológica — quem inverte é o
+  `for` de `mapaHTML`, que agora anda de `serie.length-1` até `0`. A **variação** da dica do mouse
+  (`serie[k-1]`) segue comparando com a contagem anterior de verdade. 📌 Quem mexer na série não
+  pode inverter os dados: inverteria o sinal da variação e a classificação junto.
+- O cabeçalho e o texto do `?` acompanharam: "da mais recente, encostada na situação, para a mais
+  antiga →", e o "como ler" agora diz que o tempo corre para a direita rumo ao passado — antes ele
+  dizia "vermelho forte e depois verde", que com a inversão estava ao contrário.
+- ✅ Conferido em claro e escuro: sem filtro as 10 colunas vêm 24/11 → 22/09; com novembro, Gordura
+  (4 contagens), Pré-mistura (3) e Amido (2) todas começam na primeira coluna. A dica da primeira
+  célula da Gordura diz `24/11 · gap -356 · variação -39`, que é contra o 17/11 (−317) — a série não
+  virou. Sem erro no console e sem rolagem horizontal de página.
+
 ### 🐞 2026-11-25 (e) — PC da Empresa — Contagem: o respiro entre as contagens, e um `border-spacing` que nunca valeu
 Mostrei 5 modelos de tela para a Contagem (minigráfico, calendário do ciclo, barras divergentes,
 quadrante importância × divergência, cartões de caso — página em

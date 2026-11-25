@@ -542,7 +542,7 @@
     var cab='<th class="cpc-mi">Item</th><th class="cpc-ms">Situação</th>'+
       '<th class="cpc-ch2" colspan="'+nCol+'">'+
       (S.mes ? 'as contagens do período' : 'as '+N_CONT+' últimas contagens de cada item')+
-      ' · mais antiga à esquerda, mais recente à direita →</th>';
+      ' · da mais recente, encostada na situação, para a mais antiga →</th>';
     var out='';
     GRUPOS.forEach(function(g){
       var da=linhas.filter(function(l){ return l.grp===g[0]; });
@@ -554,7 +554,13 @@
       if(fechado) return;
       out+='<tbody>'+ordena(da).map(function(l){
         var p=NIVEIS[l.nivel]||NIVEIS.ajt, cels='';
-        for(var k=0;k<l.serie.length;k++) cels+=celMapa(l,k);
+        // ⭐ ORDEM INVERTIDA (pedido do Diego, 25/11): a contagem MAIS RECENTE encosta na coluna
+        // Situação e o tempo corre para a direita, rumo ao passado. Alinhar pela mais antiga (como
+        // era) só funciona quando todo mundo tem 10 contagens; com filtro de período cada item tem um
+        // número diferente delas, e a última de cada linha caía numa coluna diferente — linhas
+        // incomparáveis. ⚠️ A ordem é só de EXIBIÇÃO: `celMapa(l,k)` continua indexando a série
+        // cronológica, então a variação da dica do mouse (serie[k-1]) segue sendo a contagem anterior.
+        for(var k=l.serie.length-1;k>=0;k--) cels+=celMapa(l,k);
         // ⚠️ <td> e não <th> de propósito: `html[data-bs-theme] #task-container table:not(.tk-table) th`
         // (hub-telas.css) tem especificidade alta e pinta fundo + CAIXA ALTA em todo th. Como <td> o
         // nome do item sai igual ao da vista de tabela, sem precisar de três !important.
@@ -568,9 +574,9 @@
     // ⚠️ A ajuda fica FECHADA por padrão, atrás do "?" da barra. Eram três linhas de texto coladas
     // no topo, e foi o que fez o Diego dizer "não sei pra onde olhar": explicação permanente é
     // tutorial, não interface.
-    return (S.ajuda ? '<div class="cpc-leitura"><b>Como ler:</b> linha toda verde, item sob controle — '+
-      'vermelho forte e depois verde, o lançamento entrou atrasado — '+
-      '<b>o mesmo número repetido é um erro só, parado</b>, enquanto números crescendo são perda acontecendo — '+
+    return (S.ajuda ? '<div class="cpc-leitura"><b>Como ler:</b> o tempo corre para a direita rumo ao <i>passado</i> — a primeira coluna é sempre a contagem mais recente do item. Linha toda verde, item sob controle — '+
+      'verde logo à esquerda de um vermelho forte, o lançamento entrou atrasado — '+
+      '<b>o mesmo número repetido é um erro só, parado</b>, enquanto números que crescem indo para a esquerda são perda acontecendo — '+
       'hachurado é noite sem contagem. A coluna é a n-ésima contagem <i>daquele item</i>, não uma data comum.</div>' : '')+
       '<div class="cpc-mw"><table class="cpc-m"><thead><tr>'+cab+'</tr></thead>'+out+'</table></div>'+
       '<div class="cpc-leg">'+
