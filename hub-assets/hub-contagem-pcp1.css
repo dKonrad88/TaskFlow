@@ -12,50 +12,34 @@ body.dark .cpc{
   --cpc-zebra:rgba(255,255,255,.025);
 }
 
-/* Onde estamos no ciclo: a primeira coisa que a tela diz, antes de qualquer número */
-.cpc-hoje{
-  display:flex; flex-wrap:wrap; align-items:center; gap:10px;
-  margin:10px 0 0; padding:9px 14px; border-radius:12px;
-  background:color-mix(in srgb, var(--blue-mid) 10%, var(--card));
-  border:1px solid color-mix(in srgb, var(--blue-mid) 28%, var(--border));
-}
-.cpc-hsem{ font-weight:700; font-size:14px; color:var(--text); }
-.cpc-hdia{ font-size:12.5px; color:var(--text2); }
-.cpc-hbtn{
-  margin-left:auto; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:600;
-  padding:5px 12px; border-radius:999px; border:1px solid var(--blue-mid);
-  background:transparent; color:var(--blue-mid);
-}
-.cpc-hbtn:hover{ background:var(--blue-mid); color:#fff; }
-.cpc-hobs{ font-size:11.5px; color:var(--text3); flex-basis:100%; }
+/* A semana no título e o atalho no subtítulo: o ciclo deixou de ter faixa própria */
+.cpc-tsem{ font-size:13px; font-weight:600; color:var(--blue-mid); margin-left:8px;
+  padding:2px 9px; border-radius:999px; background:color-mix(in srgb, var(--blue-mid) 13%, transparent);
+  vertical-align:3px; }
+.cpc-link{ font-family:inherit; font-size:inherit; color:var(--blue-mid); font-weight:600;
+  background:none; border:none; padding:0; cursor:pointer; text-decoration:underline;
+  text-underline-offset:2px; }
 
-.cpc-demo{
-  display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--text3);
-  background:var(--card); border:1px dashed var(--border); border-radius:10px;
-  padding:8px 12px; margin:10px 0 14px;
+/* ── linha de números ────────────────────────────────────────────────────────────────── */
+/* ⚠️ Eram sete cartões com borda. O Diego disse duas vezes que a tela estava cheia, e ele
+   tinha razão: caixa é peso visual, e sete delas em fila viram uma parede. Viraram uma linha
+   de botões sem moldura — o peso fica só no número e no ponto colorido da Situação. */
+.cpc-stats{ display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; margin:0 0 12px; }
+.cpc-st{
+  display:inline-flex; align-items:center; gap:6px; cursor:pointer;
+  font-family:inherit; font-size:12.5px; color:var(--text2);
+  background:none; border:1px solid transparent; border-radius:999px; padding:4px 11px;
 }
-
-/* ── cartões ─────────────────────────────────────────────────────────────────────────── */
-.cpc-cards{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
-.cpc-card{
-  flex:1 1 128px; min-width:0; text-align:left; cursor:pointer;
-  background:var(--card); border:1px solid var(--border); border-radius:12px;
-  padding:9px 12px; display:flex; flex-direction:column; gap:1px;
-  font-family:inherit; color:var(--text); transition:border-color .15s, background .15s;
-}
-.cpc-card:hover{ border-color:var(--blue-mid); }
-.cpc-card.on{ border-color:var(--blue-mid); background:color-mix(in srgb, var(--blue-mid) 10%, var(--card)); }
-/* o único cartão que grita, e só quando tem item: é a resposta a "para onde olho primeiro" */
-.cpc-card.alerta{ border-color:color-mix(in srgb, var(--cpc-neg) 55%, var(--border));
-  background:color-mix(in srgb, var(--cpc-neg) 8%, var(--card)); }
-.cpc-card.alerta .cpc-card-v{ color:var(--cpc-neg); }
-/* o KPI não é botão: sem borda, para não competir com os filtros */
-.cpc-card.cpc-kpi{ cursor:default; border-color:transparent; background:transparent; }
-.cpc-card.cpc-kpi:hover{ border-color:transparent; }
-.cpc-card-l .cpc-dot{ margin-right:5px; vertical-align:0; }
-.cpc-card-v{ font-size:19px; font-weight:700; line-height:1.15; font-variant-numeric:tabular-nums; }
-.cpc-card-l{ font-size:11.5px; color:var(--text2); }
-.cpc-card-s{ font-size:10.5px; color:var(--text3); }
+.cpc-st b{ font-size:15px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; }
+.cpc-st:hover{ background:var(--card); }
+.cpc-st.on{ background:var(--blue-mid); color:#fff; }
+.cpc-st.on b{ color:#fff; }
+/* o único que muda de cor, e só quando tem item: é a resposta a "para onde olho primeiro" */
+.cpc-st.alerta b{ color:var(--cpc-neg); }
+.cpc-st.alerta:not(.on){ background:color-mix(in srgb, var(--cpc-neg) 10%, transparent); }
+.cpc-st-kpi{ margin-left:auto; font-size:12.5px; color:var(--text3); }
+.cpc-st-kpi b{ font-size:15px; font-weight:700; color:var(--text2); }
+.cpc-st-kpi i{ font-style:normal; font-size:11.5px; }
 
 /* ── busca e funil ───────────────────────────────────────────────────────────────────── */
 .cpc-bar2{ display:flex; gap:8px; align-items:center; margin-bottom:10px; }

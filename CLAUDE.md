@@ -443,6 +443,27 @@ camadas era errada sozinha; o erro foi nunca olhar o conjunto.**
   removido de verdade: o que saiu do caminho continua a um clique.
 - 📌 **Lição para as próximas fases** (modo investigação vem aí): cada entrega nova quer um bloco
   no topo, e o topo é finito. Antes de acrescentar, perguntar o que sai.
+- ⚠️ **"Ainda está cheio" — segunda rodada, e aí eu parei de raspar e fui na estrutura.** A primeira
+  limpeza tirou texto; o peso de verdade eram as **caixas**: duas faixas de largura inteira mais sete
+  cartões com borda. Caixa é peso visual mesmo vazia.
+  - ⭐ **A barra de controles foi para dentro do cabeçalho.** O `hubHead(titulo, sub, acao)` já tem um
+    slot de ação à direita e **não escapa HTML** — busca, período, Tabela/Mapa e funil cabem ali.
+    Uma linha inteira a menos, de graça. 📌 Vale para qualquer tela nova: olhar o `hubHead` antes de
+    criar a própria barra.
+  - ⭐ **A faixa do ciclo sumiu:** a semana virou uma pílula no **título** (`Contagem · Semana 3`) e o
+    resto virou subtítulo (`hoje · qua 25/11 · 6 itens programados`, com o atalho como link).
+  - ⭐ **Os sete cartões viraram UMA LINHA sem moldura**: ponto colorido + número + rótulo. O peso
+    ficou só no número. O KPI de acuracidade foi para a direita, em texto.
+  - **O cartão "Todos os itens" deixou de existir:** clicar no filtro já aceso volta para todos, que
+    é o padrão da casa desde 26/09 e eu não tinha seguido.
+  - "Ver a lista" **não abre mais o funil** — o botão dele já acende em âmbar, e o painel empurrava
+    a tabela 200px para baixo, desfazendo o que a limpeza tinha ganhado.
+- **Resultado final: 4 blocos → 2, e 272px → 133px até a primeira linha.** Somando as duas rodadas:
+  **420px → 133px**, com 14 linhas de dado visíveis onde antes cabiam 5. Nenhuma função saiu.
+- 📌 **A lição, para quando o modo investigação chegar:** o reflexo de "entregar mais" é acrescentar
+  um bloco no topo, e seis entregas seguidas fizeram isso sem ninguém olhar o conjunto. Caixa nova
+  no topo exige caixa velha saindo — ou, melhor, caber onde já existe espaço.
+
 
 ### ⭐ 2026-11-25 — PC da Empresa — Contagem: o **SLOT do ciclo** entra na tela (semana 1–4 + noite)
 Pedido do Diego: filtrar por semana 1, 2, 3, 4 "e daí os meses também". ⚠️ **São duas coisas

@@ -343,20 +343,16 @@
   // literalmente o que ele precisou me dizer para eu corrigir a âncora.
   // ⚠️ Sexta e sábado não têm contagem: nesses dias a faixa aponta a PRÓXIMA noite, em vez de
   // mostrar uma lista vazia e parecer defeito.
-  function hojeHTML(todas){
+  // ⭐ O ciclo não ocupa mais faixa própria: a semana vai no TÍTULO e o resto no subtítulo, no
+  // cabeçalho que a tela já tinha. Mesma informação, um bloco a menos.
+  function cicloHoje(todas){
     var hoje=new Date(), dow=hoje.getDay(), temHoje=(dow>=0&&dow<=4);
     var alvo=new Date(hoje.getTime());
     if(!temHoje) alvo.setDate(alvo.getDate()+(7-dow));        // próximo domingo
     var dia=DIAS[alvo.getDay()], sem=semanaCiclo(alvo);
     var n=todas.filter(function(l){ return l.slotDia===dia && l.semanas.indexOf(sem)>=0; }).length;
-    var quando=alvo.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-    return '<div class="cpc-hoje">'+
-      '<span class="cpc-hsem">Semana '+sem+'</span>'+
-      '<span class="cpc-hdia">'+(temHoje?'hoje':'próxima contagem')+' · '+dia+' '+quando+'</span>'+
-      '<button class="cpc-hbtn" data-hoje>'+nf(n)+' '+(n===1?'item programado':'itens programados')+
-        ' · ver a lista</button>'+
-      (temHoje?'':'<span class="cpc-hobs">sexta e sábado não têm contagem</span>')+
-      '</div>';
+    return { sem:sem, dia:dia, n:n, temHoje:temHoje,
+      quando:alvo.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) };
   }
 
   // ── HTML ──────────────────────────────────────────────────────────────────────────────────
@@ -367,21 +363,22 @@
     // ⚠️ Os cartões ganharam o ponto colorido da Situação — não é enfeite: liga o cartão à coluna
     // e faz o olho achar "Crítico" sem ler. E o Crítico, quando tem item, fica em destaque: a tela
     // precisa dizer para onde olhar primeiro, senão vira uma parede de números iguais.
-    var c=function(id,lab,val,niv,sub){
-      var cr=(id==='perda'&&val!=='0')?' alerta':'';
-      return '<button class="cpc-card'+(S.ind===id?' on':'')+cr+'" data-ind="'+id+'">'+
-      '<span class="cpc-card-v">'+val+'</span><span class="cpc-card-l">'+
-      (niv?'<i class="cpc-dot cpc-'+niv+'"></i>':'')+lab+'</span>'+
-      (sub?'<span class="cpc-card-s">'+sub+'</span>':'')+'</button>'; };
+    // ⚠️ SEM CAIXAS. Sete cartões com borda eram uma parede: o Diego disse duas vezes que a tela
+    // estava cheia. Viraram uma linha de números com o ponto da Situação — o mesmo da coluna.
+    // Clicar no que está aceso volta para todos (padrão da casa desde 26/09), então o cartão
+    // "Todos os itens" deixou de ser necessário.
+    var c=function(id,lab,val,niv){
+      return '<button class="cpc-st'+(S.ind===id?' on':'')+(id==='perda'&&val!=='0'?' alerta':'')+
+        '" data-ind="'+id+'" title="'+(S.ind===id?'clique para ver todos':'filtrar')+'">'+
+        (niv?'<i class="cpc-dot cpc-'+niv+'"></i>':'')+'<b>'+val+'</b> '+lab+'</button>'; };
     var n=function(f){ return vis.filter(f).length; };
-    return '<div class="cpc-cards">'+
+    return '<div class="cpc-stats">'+
       c('perda','Crítico',nf(n(function(l){ return l.nivel==='perda'; })),'n3') +
       c('ajt','Atenção',nf(n(function(l){ return l.nivel==='ajt'; })),'n2') +
       c('ok','Em ordem',nf(n(function(l){ return l.nivel==='ok'; })),'n1') +
       c('sem','Sem contagem',nf(n(function(l){ return l.nivel==='sem'; })),'n4') +
       c('divergindo','Divergindo hoje',nf(n(function(l){ return l.gap!=null&&Math.abs(l.gap)>l.tol; }))) +
-      c('todos','Todos os itens',nf(vis.length)) +
-      '<div class="cpc-card cpc-kpi"><span class="cpc-card-v">'+nf(acur,1)+'%</span><span class="cpc-card-l">Acuracidade</span><span class="cpc-card-s">'+nf(cert)+' de '+nf(ac)+' contagens</span></div>'+
+      '<span class="cpc-st-kpi"><b>'+nf(acur,1)+'%</b> de acuracidade <i>('+nf(cert)+' de '+nf(ac)+')</i></span>'+
       '</div>';
   }
 
@@ -580,24 +577,25 @@
     restore();
     DADOS=montar();
     var vis=DADOS.filter(passa);
-    // Subtítulo curto, com o aviso de demonstração embutido: era mais uma faixa ocupando o topo.
-    var head=(typeof hubHead==='function')
-      ? hubHead('Contagem','Análise da contagem cíclica · base de demonstração com '+ITENS.length+' itens fictícios')
-      : '<h2>Contagem</h2>';
-    MAIN.innerHTML='<div class="cpc" style="padding:20px 4px 40px;">'+head+
-      hojeHTML(DADOS)+
-      cardsHTML(DADOS.filter(function(l){ return !l.foraPeriodo; }))+
-      (S.mes ? '<div class="cpc-nota">Números de <b>'+
-        esc(mesesOpts().filter(function(o){return o[0]===S.mes;}).map(function(o){return o[1];})[0]||S.mes)+
-        '</b> · a Situação olha o histórico inteiro</div>' : '')+
-      '<div class="cpc-bar2"><div class="cpc-busca"><i class="ti ti-search"></i>'+
+    // ⭐ A BARRA VAI PARA DENTRO DO CABEÇALHO. O `hubHead` já tem um slot de ação à direita e não
+    // escapa HTML — usá-lo elimina a linha de controles inteira. Sobram dois blocos antes do dado:
+    // o cabeçalho e a linha de números.
+    var cic=cicloHoje(DADOS);
+    var titulo='Contagem <span class="cpc-tsem">Semana '+cic.sem+'</span>';
+    var sub=(cic.temHoje?'hoje':'próxima contagem')+' · '+cic.dia+' '+cic.quando+' · '+
+      '<button class="cpc-link" data-hoje>'+nf(cic.n)+' '+(cic.n===1?'item programado':'itens programados')+'</button>'+
+      (S.mes?' · <b>'+esc(mesesOpts().filter(function(o){return o[0]===S.mes;}).map(function(o){return o[1];})[0]||S.mes)+'</b> nos números':'');
+    var barra='<div class="cpc-bar2"><div class="cpc-busca"><i class="ti ti-search"></i>'+
         '<input type="text" placeholder="Buscar item ou código" value="'+esc(S.busca)+'" data-busca></div>'+
         perBtnHTML()+
         '<div class="cpc-seg">'+
           '<button data-vista="tabela"'+(S.vista==='tabela'?' class="on"':'')+'>Tabela</button>'+
-          '<button data-vista="mapa"'+(S.vista==='mapa'?' class="on"':'')+'>Mapa de calor</button></div>'+
+          '<button data-vista="mapa"'+(S.vista==='mapa'?' class="on"':'')+'>Mapa</button></div>'+
         (S.vista==='mapa'?'<button class="cpc-fbtn'+(S.ajuda?' ativo':'')+'" data-ajuda title="Como ler o mapa"><i class="ti ti-help"></i></button>':'')+
-        '<button class="cpc-fbtn'+(temFiltro()?' ativo':'')+'" data-funil title="Filtros"><i class="ti ti-filter"></i></button></div>'+
+        '<button class="cpc-fbtn'+(temFiltro()?' ativo':'')+'" data-funil title="Filtros"><i class="ti ti-filter"></i></button></div>';
+    var head=(typeof hubHead==='function') ? hubHead(titulo,sub,barra) : '<h2>Contagem</h2>'+barra;
+    MAIN.innerHTML='<div class="cpc" style="padding:20px 4px 40px;">'+head+
+      cardsHTML(DADOS.filter(function(l){ return !l.foraPeriodo; }))+
       funilHTML()+
       (S.vista==='mapa' ? mapaHTML(vis) : tabelaHTML(vis))+'</div>';
     ligar();
@@ -605,7 +603,9 @@
 
   function ligar(){
     var q=function(s){ return MAIN.querySelectorAll(s); };
-    q('.cpc-card[data-ind]').forEach(function(b){ b.onclick=function(){ S.ind=b.getAttribute('data-ind'); render(MAIN); }; });
+    // clicar no filtro já aceso volta para todos — o padrão que a casa adotou em 26/09
+    q('.cpc-st[data-ind]').forEach(function(b){ b.onclick=function(){
+      var id=b.getAttribute('data-ind'); S.ind=(S.ind===id)?'todos':id; render(MAIN); }; });
     var bs=MAIN.querySelector('[data-busca]');
     if(bs) bs.oninput=function(){ S.busca=bs.value; var pos=bs.selectionStart; render(MAIN);
       var n=MAIN.querySelector('[data-busca]'); if(n){ n.focus(); try{ n.setSelectionRange(pos,pos); }catch(e){} } };
@@ -618,7 +618,9 @@
       if(dow>4) alvo.setDate(alvo.getDate()+(7-dow));
       S.f.dias={}; S.f.dias[DIAS[alvo.getDay()]]=true;
       S.f.semanas={}; S.f.semanas[semanaCiclo(alvo)]=true;
-      S.ind='todos'; S.fOpen=true; render(MAIN);
+      // não abre o funil: o botão dele já acende em âmbar quando há filtro, e um painel de 200px
+      // empurrando a tabela para baixo é justamente o que a tela acabou de perder
+      S.ind='todos'; S.fOpen=false; render(MAIN);
     };
     q('[data-per]').forEach(function(b){ b.onclick=function(){
       S.mes=b.getAttribute('data-per'); S.perAberto=false; persist(); render(MAIN); }; });
