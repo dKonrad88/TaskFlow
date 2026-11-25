@@ -293,6 +293,7 @@
     var p=NIVEIS[l.nivel]||NIVEIS.ajt, det=DETALHE[l.perfil]||'';
     return '<tr>'+
       '<td class="cpc-it"><b>'+esc(l.nome)+'</b><span class="cpc-cod">'+esc(l.cod)+'</span></td>'+
+      '<td class="cpc-p" title="'+esc(det)+'"><span class="cpc-dot cpc-'+p.c+'"></span>'+p.l+'</td>'+
       '<td class="cpc-cl">'+l.classe+'</td>'+
       '<td class="cpc-n">'+nf(l.feitas)+'</td>'+
       '<td class="cpc-n cpc-ok2">'+nf(l.certas)+'</td>'+
@@ -301,7 +302,6 @@
       '<td class="cpc-n"><span class="cpc-bar"><i style="width:'+Math.min(100,l.pdiv)+'%"></i></span>'+nf(l.pdiv,0)+'%</td>'+
       '<td class="cpc-n">'+nf(l.imp,1)+'%</td>'+
       '<td class="cpc-n">'+celGap(l)+'</td>'+
-      '<td class="cpc-p" title="'+esc(det)+'"><span class="cpc-dot cpc-'+p.c+'"></span>'+p.l+'</td>'+
       '<td class="cpc-u">'+(l.ultima?l.ultima.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'<span class="cpc-mut">—</span>')+'<span class="cpc-cod">'+esc(l.quem)+'</span></td>'+
       '</tr>';
   }
@@ -338,10 +338,9 @@
   }
 
   function mapaHTML(linhas){
-    var cab='<th class="cpc-mi">Item</th>'+
+    var cab='<th class="cpc-mi">Item</th><th class="cpc-ms">Situação</th>'+
       '<th class="cpc-ch2" colspan="'+N_CONT+'">as '+N_CONT+' últimas contagens de cada item '+
-      '· mais antiga à esquerda, mais recente à direita →</th>'+
-      '<th class="cpc-ms">Situação</th>';
+      '· mais antiga à esquerda, mais recente à direita →</th>';
     var out='';
     GRUPOS.forEach(function(g){
       var da=linhas.filter(function(l){ return l.grp===g[0]; });
@@ -355,8 +354,9 @@
         var p=NIVEIS[l.nivel]||NIVEIS.ajt, cels='';
         for(var k=0;k<N_CONT;k++) cels+=celMapa(l,k);
         return '<tr><th class="cpc-mi" title="'+esc(l.cod+' · tolerância ±'+nf(l.tol)+' '+l.un)+'">'+
-          esc(l.nome)+'</th>'+cels+
-          '<td class="cpc-ms" title="'+esc(DETALHE[l.perfil]||'')+'"><span class="cpc-dot cpc-'+p.c+'"></span>'+p.l+'</td></tr>';
+          esc(l.nome)+'</th>'+
+          '<td class="cpc-ms" title="'+esc(DETALHE[l.perfil]||'')+'"><span class="cpc-dot cpc-'+p.c+'"></span>'+p.l+'</td>'+
+          cels+'</tr>';
       }).join('')+'</tbody>';
     });
     if(!out) out='<tbody><tr><td colspan="'+(N_CONT+2)+'" class="cpc-vazio">Nenhum item com esses filtros.</td></tr></tbody>';
@@ -399,11 +399,13 @@
       out+='<tbody>'+ordena(da).map(linhaHTML).join('')+'</tbody>';
     });
     if(!out) out='<tbody><tr><td colspan="11" class="cpc-vazio">Nenhum item com esses filtros.</td></tr></tbody>';
+    // Situação logo depois do Item (pedido do Diego, 25/11): o veredito antes dos números, porque
+    // é por ele que se decide se vale olhar o resto da linha.
     return '<div class="cpc-tw"><table class="cpc-t"><thead><tr>'+
-      th('nome','Item','cpc-it')+'<th class="cpc-cl">Cl.</th>'+
+      th('nome','Item','cpc-it')+'<th class="cpc-p">Situação</th><th class="cpc-cl">Cl.</th>'+
       th('feitas','Cont.','cpc-n')+th('certas','Certas','cpc-n')+th('div','Div.','cpc-n')+
       th('naoFeitas','N. feitas','cpc-n')+th('pdiv','% div.','cpc-n')+th('imp','Import.','cpc-n')+
-      th('gap','Gap atual','cpc-n')+'<th class="cpc-p">Situação</th><th class="cpc-u">Última</th>'+
+      th('gap','Gap atual','cpc-n')+'<th class="cpc-u">Última</th>'+
       '</tr></thead>'+out+'</table></div>';
   }
 
