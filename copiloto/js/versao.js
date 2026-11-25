@@ -23,4 +23,4 @@ export function redePrimeiro(caminho) {
 }
 
 /** Versão mostrada em Ajustes. Acompanha o nome do cache em sw.js. */
-export const VERSAO = 'v16';
+export const VERSAO = 'v17';
