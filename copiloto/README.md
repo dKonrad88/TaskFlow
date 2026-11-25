@@ -101,6 +101,14 @@ O PWA não faz `update` direto em `copiloto_itens` para decidir. Se a função n
 
 RLS está ligado. `lista_itens` deixa o membro da lista ler e gravar (`is_membro(lista_id)`). `copiloto_itens` e `hub_pessoas` têm policy de leitura para `authenticated` (`supabase/rls-leitura.sql`, já aplicado).
 
+### Etapa de IA na entrada
+
+Tarefa e compromisso passam por `supabase/copiloto-entrada/ia.ts` antes de entrar na fila: o modelo `claude-haiku-5-5` resume o título, organiza a descrição, reconhece as pessoas citadas (só nomes do cadastro `hub_pessoas`) e as datas. As pessoas entram em `payload.pessoas`, no mesmo formato que a decisão grava.
+
+A chave fica no segredo `ANTHROPIC_API_KEY` das Edge Functions do projeto Pessoal. Sem a chave, ou se a chamada falhar, demorar ou for recusada, o item entra com o que as regras montaram. A resposta da função traz `ia`: `ok`, `sem-chave`, `falhou`, `recusou` ou `nao-se-aplica`.
+
+A fala e os nomes do cadastro de pessoas são enviados à API da Anthropic a cada gravação de tarefa ou compromisso. Item que chega como "para o BOSS" e recebe o tipo depois, no app, não passa pela IA.
+
 ### O que a aprovação cria
 
 | Tipo | Ao aprovar |
