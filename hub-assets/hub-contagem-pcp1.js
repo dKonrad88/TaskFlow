@@ -316,7 +316,12 @@
   function celMapa(l,i){
     var v=l.serie[i], d=l.datas[i];
     var dia=d?d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'';
-    if(v===null) return '<td class="cpc-c cpc-cnd" title="'+dia+' · não foi contado">–</td>';
+    // ⭐ A DATA VAI DENTRO DA CÉLULA. Não dá para pôr data no cabeçalho: cada item tem o próprio
+    // ciclo (semanal, quinzenal, mensal), então a terceira coluna da Farinha e a da Baunilha são
+    // dias diferentes. A primeira versão rotulava as colunas de −9 a "atual" e o Diego, com razão,
+    // achou incompreensível. Com a data na célula o cabeçalho não precisa dizer nada.
+    if(v===null) return '<td class="cpc-c cpc-cnd" title="'+dia+' · não foi contado">'+
+      '<span class="cpc-cd">'+dia+'</span><span class="cpc-cv">–</span></td>';
     var r=Math.abs(v)/l.tol, cls, txt;
     if(r<=1){ cls='cpc-c0'; txt='✓'; }
     else{
@@ -328,13 +333,15 @@
     var dica = dia+' · gap '+(v>0?'+':'')+nf(v)+' '+l.un+
       (ant!=null ? ' · variação '+((v-ant)>0?'+':'')+nf(v-ant) : '')+
       ' · tolerância ±'+nf(l.tol);
-    return '<td class="cpc-c '+cls+'" title="'+esc(dica)+'">'+txt+'</td>';
+    return '<td class="cpc-c '+cls+'" title="'+esc(dica)+'">'+
+      '<span class="cpc-cd">'+dia+'</span><span class="cpc-cv">'+txt+'</span></td>';
   }
 
   function mapaHTML(linhas){
-    var cab='<th class="cpc-mi">Item</th>', i;
-    for(i=0;i<N_CONT;i++) cab+='<th class="cpc-ch">'+(i===N_CONT-1?'atual':('−'+(N_CONT-1-i)))+'</th>';
-    cab+='<th class="cpc-ms">Situação</th>';
+    var cab='<th class="cpc-mi">Item</th>'+
+      '<th class="cpc-ch2" colspan="'+N_CONT+'">as '+N_CONT+' últimas contagens de cada item '+
+      '· mais antiga à esquerda, mais recente à direita →</th>'+
+      '<th class="cpc-ms">Situação</th>';
     var out='';
     GRUPOS.forEach(function(g){
       var da=linhas.filter(function(l){ return l.grp===g[0]; });

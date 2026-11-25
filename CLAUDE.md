@@ -429,11 +429,15 @@ fica gravada em `taskflow_contagem_pcp`.
 - **Linhas = itens, colunas = as 10 últimas contagens, célula = o gap.** Verde dentro da tolerância ·
   vermelho falta · roxo sobra · hachurado não contado. A **intensidade é quantas vezes a tolerância**
   (até 3× fraco, até 8× médio, acima disso forte), então a cor fala de gravidade e não de valor bruto.
-- ⚠️⚠️ **O eixo horizontal NÃO é calendário.** Cada item tem o próprio ciclo (semanal, quinzenal,
-  mensal), então a coluna é "a n-ésima contagem **daquele item**", não um dia comum a todos. Os
-  rótulos são `−9 … −1 · atual` justamente para não parecer data, e a data real de cada célula está na
-  dica do mouse, junto com o gap, a variação e a tolerância. **Quem for mexer nisto não transforme a
-  coluna em data: os itens não são contados nas mesmas noites.**
+- ⚠️⚠️ **Não existe cabeçalho de data, e isso é estrutural.** Cada item tem o próprio ciclo (semanal,
+  quinzenal, mensal), então a terceira coluna da Farinha e a da Baunilha são dias diferentes — não há
+  data que sirva de cabeçalho para todos. A primeira versão rotulou as colunas de `−9` a `atual`
+  ("a n-ésima contagem mais recente daquele item") e o Diego, com razão, achou incompreensível.
+  ⭐ **A correção foi pôr a data DENTRO de cada célula**, pequena, acima do gap; o cabeçalho virou uma
+  faixa única: "as 10 últimas contagens de cada item · mais antiga à esquerda, mais recente à direita".
+  Agora a linha se lê sozinha — dá para ver pelas datas que a Gordura é semanal (18/09, 25/09, 02/10…)
+  e a Baunilha é mensal. **Quem for mexer nisto não transforme a coluna em data comum: os itens não
+  são contados nas mesmas noites, e alinhar por calendário deixaria a maioria das células vazias.**
 - ⭐ **O número fica DENTRO da célula, e isso não é enfeite.** Oito células vermelhas iguais (dívida
   parada, um erro só) e oito crescendo (sangria ativa) têm a mesma cor e histórias opostas. Sem o
   número a grade mente — é a lição da seção 4 do blueprint, e está comentada no código.
