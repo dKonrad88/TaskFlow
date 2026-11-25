@@ -36,7 +36,7 @@
   var TOL_PADRAO={A:0.5,B:1,C:2};      // % do saldo
 
   // ── estado de tela ────────────────────────────────────────────────────────────────────────
-  var S={ ind:'todos', busca:'', fOpen:false, vista:'tabela',
+  var S={ ind:'todos', busca:'', fOpen:false, vista:'tabela', mes:'', perAberto:false,
           f:{grupos:{},classes:{},perfil:'',semanas:{},dias:{},semSlot:false},
           tol:{A:TOL_PADRAO.A,B:TOL_PADRAO.B,C:TOL_PADRAO.C}, fech:{}, sort:{k:'pdiv',d:-1} };
   var MAIN=null, DADOS=null;
@@ -50,11 +50,12 @@
   function lsSet(k,v){ try{ return (typeof safeSetItem==='function')?safeSetItem(k,v):(localStorage.setItem(k,v),true); }catch(e){ return false; } }
   function lsGet(k,fb){ try{ return (typeof safeJSON==='function')?safeJSON(k,fb):JSON.parse(localStorage.getItem(k)||'null')||fb; }catch(e){ return fb; } }
 
-  function persist(){ lsSet(LS_KEY, JSON.stringify({tol:S.tol, fech:S.fech, sort:S.sort, vista:S.vista})); }
+  function persist(){ lsSet(LS_KEY, JSON.stringify({tol:S.tol, fech:S.fech, sort:S.sort, vista:S.vista, mes:S.mes})); }
   function restore(){ var o=lsGet(LS_KEY,null); if(o&&typeof o==='object'){
     if(o.tol) S.tol={A:+o.tol.A||TOL_PADRAO.A, B:+o.tol.B||TOL_PADRAO.B, C:+o.tol.C||TOL_PADRAO.C};
     if(o.fech) S.fech=o.fech; if(o.sort) S.sort=o.sort;
-    if(o.vista==='mapa'||o.vista==='tabela') S.vista=o.vista; } }
+    if(o.vista==='mapa'||o.vista==='tabela') S.vista=o.vista;
+    if(typeof o.mes==='string') S.mes=o.mes; } }
 
   // ── base fictícia ─────────────────────────────────────────────────────────────────────────
   // [codigo, nome, unidade, classe, custo unitário, saldo do sistema, comportamento semeado]
@@ -225,8 +226,14 @@
   };
 
   // ── monta os dados derivados ──────────────────────────────────────────────────────────────
+  function ym(d){ return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); }
+  var MESES={};   // 'YYYY-MM' → quantas contagens caíram nele (preenchido por montar)
+  var MESNOME=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro',
+               'outubro','novembro','dezembro'];
+
   function montar(){
     var hoje=new Date(), linhas=[], totalGrupo={};
+    MESES={};
     ITENS.forEach(function(it){
       var cod=it[0], nome=it[1], un=it[2], cl=it[3], custo=it[4], saldo=it[5], comp=it[6];
       var tolRef=Math.max(1, saldo*TOL_PADRAO[cl]/100);
@@ -239,16 +246,29 @@
       var diaAlvo = hash(cod+'slot') % 5;                        // 0=dom … 4=qui
       var ancora = new Date(hoje.getTime());
       ancora.setDate(ancora.getDate() - ((ancora.getDay()-diaAlvo+7)%7));
-      var feitas=0, certas=0, div=0, naoFeitas=0, i, v, datas=[];
+      var i, datas=[];
       for(i=0;i<N_CONT;i++){
         var d=new Date(ancora.getTime()); d.setDate(d.getDate()-(N_CONT-1-i)*intervalo); datas.push(d);
-        v=serie[i];
-        if(v===null){ naoFeitas++; continue; }
-        feitas++; if(Math.abs(v)>tol) div++; else certas++;
+        MESES[ym(datas[i])] = (MESES[ym(datas[i])]||0) + (serie[i]===null?0:1);
       }
-      var naoNulos=serie.filter(function(x){ return x!==null; });
+
+      // ── recorte do período ───────────────────────────────────────────────────────────────
+      // ⚠️ O mês muda os NÚMEROS (contagens, certas, divergentes, gap), **não a classificação**.
+      // A situação continua saindo do histórico inteiro de propósito: sangria só se enxerga em
+      // várias contagens seguidas, e julgar um item por 1 ou 2 noites de um mês daria respostas
+      // que mudam de cor a cada troca de período — exatamente o que destrói a confiança no painel.
+      var idx=[]; for(i=0;i<N_CONT;i++) if(!S.mes || ym(datas[i])===S.mes) idx.push(i);
+      var serieP=idx.map(function(k){ return serie[k]; });
+      var datasP=idx.map(function(k){ return datas[k]; });
+
+      var feitas=0, certas=0, div=0, naoFeitas=0;
+      serieP.forEach(function(x){
+        if(x===null){ naoFeitas++; return; }
+        feitas++; if(Math.abs(x)>tol) div++; else certas++;
+      });
+      var naoNulos=serieP.filter(function(x){ return x!==null; });
       var gapAtual = naoNulos.length ? naoNulos[naoNulos.length-1] : null;
-      var ultIdx=-1; for(i=0;i<N_CONT;i++) if(serie[i]!==null) ultIdx=i;   // a última NOITE CONTADA
+      var ultIdx=-1; for(i=0;i<serieP.length;i++) if(serieP[i]!==null) ultIdx=i;  // última noite contada
       var variacao = naoNulos.length>1 ? gapAtual-naoNulos[naoNulos.length-2] : 0;
       var valor = saldo*custo;
       var grp = cod.split('-')[0];
@@ -263,14 +283,17 @@
         semanas.sort(function(a,b){ return a-b; });
         dSem=DIAS[datas[N_CONT-1].getDay()];
       }
+      var pf = classificar(serie,tol);                 // ⬅ histórico INTEIRO, não o recorte
       linhas.push({ slotDia:dSem, semanas:semanas,
         cod:cod, nome:nome, un:un, classe:cl, custo:custo, saldo:saldo, grp:grp,
-        serie:serie, datas:datas, tol:tol, feitas:feitas, certas:certas, div:div, naoFeitas:naoFeitas,
+        serie:serieP, datas:datasP,                    // ⬅ o que a tela desenha é o recorte
+        foraPeriodo: idx.length===0,                   // item sem noite programada no mês escolhido
+        tol:tol, feitas:feitas, certas:certas, div:div, naoFeitas:naoFeitas,
         pdiv: feitas? div/feitas*100 : 0, gap:gapAtual, variacao:variacao, valor:valor,
         gapRS: gapAtual==null?0:Math.abs(gapAtual)*custo,
-        perfil: classificar(serie,tol), nivel: NIVEL[classificar(serie,tol)]||'ajt',
+        perfil: pf, nivel: NIVEL[pf]||'ajt',
         quem: CONTADORES[hash(cod)%CONTADORES.length],
-        ultima: ultIdx>=0 ? datas[ultIdx] : null });
+        ultima: ultIdx>=0 ? datasP[ultIdx] : null });
     });
     linhas.forEach(function(l){ l.imp = totalGrupo[l.grp] ? l.valor/totalGrupo[l.grp]*100 : 0; });
     return linhas;
@@ -278,6 +301,8 @@
 
   // ── filtros ───────────────────────────────────────────────────────────────────────────────
   function passa(l){
+    // item cujo ciclo não caiu no mês escolhido não é "sem contagem": ele não era para ser contado
+    if(l.foraPeriodo) return false;
     if(S.busca){ var q=norm(S.busca); if(norm(l.nome).indexOf(q)<0 && norm(l.cod).indexOf(q)<0) return false; }
     var gk=Object.keys(S.f.grupos).filter(function(k){ return S.f.grupos[k]; });
     if(gk.length && gk.indexOf(l.grp)<0) return false;
@@ -320,6 +345,22 @@
       c('sem','Sem contagem',nf(n(function(l){ return l.nivel==='sem'; }))) +
       '<div class="cpc-card cpc-kpi"><span class="cpc-card-v">'+nf(acur,1)+'%</span><span class="cpc-card-l">Acuracidade</span><span class="cpc-card-s">'+nf(cert)+' de '+nf(ac)+' contagens</span></div>'+
       '</div>';
+  }
+
+  // ── seletor de período ───────────────────────────────────────────────────────────────────
+  // Reusa `_cpPerBtn`, o padrão da casa desde 26/09 (botão de 34px com o período escrito e um
+  // popover com a contagem por opção). Nada de inventar um quarto desenho para a mesma pergunta.
+  function mesesOpts(){
+    var ks=Object.keys(MESES).filter(function(k){ return MESES[k]>0; }).sort().reverse();
+    return [['','Todo o histórico', null]].concat(ks.map(function(k){
+      var p=k.split('-');
+      return [k, MESNOME[+p[1]-1]+' de '+p[0], MESES[k]];
+    }));
+  }
+  function perBtnHTML(){
+    if(typeof _cpPerBtn!=='function') return '';
+    return '<span class="cpc-per">'+_cpPerBtn('Período das contagens', S.mes, mesesOpts(),
+      S.perAberto, 'CPC.togglePer()', 'CPC.setPer')+'</span>';
   }
 
   function funilHTML(){
@@ -405,21 +446,23 @@
   }
 
   function mapaHTML(linhas){
+    var nCol=linhas.reduce(function(m,l){ return Math.max(m,l.serie.length); },0)||1;
     var cab='<th class="cpc-mi">Item</th><th class="cpc-ms">Situação</th>'+
-      '<th class="cpc-ch2" colspan="'+N_CONT+'">as '+N_CONT+' últimas contagens de cada item '+
-      '· mais antiga à esquerda, mais recente à direita →</th>';
+      '<th class="cpc-ch2" colspan="'+nCol+'">'+
+      (S.mes ? 'as contagens do período' : 'as '+N_CONT+' últimas contagens de cada item')+
+      ' · mais antiga à esquerda, mais recente à direita →</th>';
     var out='';
     GRUPOS.forEach(function(g){
       var da=linhas.filter(function(l){ return l.grp===g[0]; });
       if(!da.length) return;
       var fechado=!!S.fech[g[0]];
-      out+='<tbody class="cpc-grp"><tr class="cpc-ghead" data-grp="'+g[0]+'"><td colspan="'+(N_CONT+2)+'">'+
+      out+='<tbody class="cpc-grp"><tr class="cpc-ghead" data-grp="'+g[0]+'"><td colspan="'+(nCol+2)+'">'+
         '<i class="ti ti-chevron-'+(fechado?'right':'down')+'"></i> '+esc(g[1])+
         '<span class="cpc-gc">'+da.length+' itens</span></td></tr></tbody>';
       if(fechado) return;
       out+='<tbody>'+ordena(da).map(function(l){
         var p=NIVEIS[l.nivel]||NIVEIS.ajt, cels='';
-        for(var k=0;k<N_CONT;k++) cels+=celMapa(l,k);
+        for(var k=0;k<l.serie.length;k++) cels+=celMapa(l,k);
         // ⚠️ <td> e não <th> de propósito: `html[data-bs-theme] #task-container table:not(.tk-table) th`
         // (hub-telas.css) tem especificidade alta e pinta fundo + CAIXA ALTA em todo th. Como <td> o
         // nome do item sai igual ao da vista de tabela, sem precisar de três !important.
@@ -429,7 +472,7 @@
           cels+'</tr>';
       }).join('')+'</tbody>';
     });
-    if(!out) out='<tbody><tr><td colspan="'+(N_CONT+2)+'" class="cpc-vazio">Nenhum item com esses filtros.</td></tr></tbody>';
+    if(!out) out='<tbody><tr><td colspan="'+(nCol+2)+'" class="cpc-vazio">Nenhum item com esses filtros.</td></tr></tbody>';
     return '<div class="cpc-leitura"><b>Como ler:</b> linha toda verde, item sob controle — '+
       'vermelho forte e depois verde, o lançamento entrou atrasado — '+
       '<b>o mesmo número repetido é um erro só, parado</b>, enquanto números crescendo são perda acontecendo — '+
@@ -491,9 +534,14 @@
     MAIN.innerHTML='<div class="cpc" style="padding:20px 4px 40px;">'+head+
       '<div class="cpc-demo"><i class="ti ti-flask"></i> Base de demonstração: '+ITENS.length+
       ' itens fictícios com '+N_CONT+' contagens cada. Ao ligar o export do ERP, só a origem dos dados muda.</div>'+
-      cardsHTML(DADOS)+
+      cardsHTML(DADOS.filter(function(l){ return !l.foraPeriodo; }))+
+      (S.mes ? '<div class="cpc-nota"><i class="ti ti-info-circle"></i> Números de <b>'+
+        esc(mesesOpts().filter(function(o){return o[0]===S.mes;}).map(function(o){return o[1];})[0]||S.mes)+
+        '</b>. A <b>Situação</b> continua olhando o histórico inteiro — sangria só se enxerga em '+
+        'várias contagens, e cor que muda a cada troca de período não serve para decidir nada.</div>' : '')+
       '<div class="cpc-bar2"><div class="cpc-busca"><i class="ti ti-search"></i>'+
         '<input type="text" placeholder="Buscar item ou código" value="'+esc(S.busca)+'" data-busca></div>'+
+        perBtnHTML()+
         '<div class="cpc-seg">'+
           '<button data-vista="tabela"'+(S.vista==='tabela'?' class="on"':'')+'>Tabela</button>'+
           '<button data-vista="mapa"'+(S.vista==='mapa'?' class="on"':'')+'>Mapa de calor</button></div>'+
@@ -533,6 +581,8 @@
 
   window.CPC={
     render:render,
+    togglePer:function(){ S.perAberto=!S.perAberto; render(MAIN); },
+    setPer:function(v){ S.mes=String(v||''); S.perAberto=false; persist(); render(MAIN); },
     _classificar:classificar,          // exposto para conferência manual no console
     _dados:function(){ return DADOS?DADOS.slice():montar(); }
   };

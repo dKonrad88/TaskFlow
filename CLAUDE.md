@@ -444,9 +444,22 @@ controle seria o erro.
 - ⭐ **A carga por slot já nasce desequilibrada na base, e é de propósito:** 14 itens na semana 1,
   20 na 2, 24 na 3 e 32 na 4. É o indicador "carga por slot" do blueprint aparecendo sozinho — numa
   base real o desequilíbrio costuma ser pior, e é o que justifica a tela de calendário da fase 3.
-- ⏳ **Falta o filtro de mês**, e ele tem uma decisão junto: se o mês **recalcular** os números
-  (contagens, certas, divergentes), o mapa deixa de ser "as 10 últimas" e vira "as contagens do
-  mês" — para item mensal, uma célula só. É mudança visível no mapa, então não fiz sozinho.
+- ⭐ **O filtro de MÊS entrou logo depois, e recalcula** (decisão do Diego). Reusa o **`_cpPerBtn`**,
+  o padrão da casa desde 26/09: botão de 34px com o período escrito e popover com a **contagem por
+  opção** (novembro 88, outubro 83, setembro 75…). Nada de inventar um quarto desenho para a mesma
+  pergunta — foi exatamente o que aquela padronização resolveu.
+- ⚠️⚠️ **O mês muda os NÚMEROS, não a SITUAÇÃO.** Contagens, certas, divergentes, % e gap passam a
+  ser do mês; a classificação continua saindo do **histórico inteiro**. Sangria só se enxerga em
+  várias contagens seguidas, e um item julgado por 1 ou 2 noites trocaria de cor a cada mudança de
+  período — painel cuja cor muda sem o estoque mudar perde a confiança em uma semana. Uma nota na
+  tela explica isso ao usuário sempre que há mês escolhido, para ninguém precisar adivinhar.
+- ⚠️ **Item cujo ciclo não caiu no mês sai da lista** (`foraPeriodo`), em vez de aparecer como
+  "Sem contagem". Ele não deixou de ser contado: não era para ser contado. Confundir as duas coisas
+  inventaria um problema que não existe. Conferido: março/2026 mostra **23 dos 46** itens — só os
+  mensais alcançam aquele mês na janela de 10 contagens.
+- O mapa acompanha: o número de colunas passa a ser o do recorte (março = 1 coluna) e o cabeçalho
+  diz "as contagens do período".
+
 
 ### ⭐ 2026-11-24 (g) — PC da Empresa — Contagem: o **MAPA DE CALOR** item × contagem (fase 2)
 Segunda vista da mesma tela, no alternador ao lado da busca: **Tabela | Mapa de calor**. Mesmos
