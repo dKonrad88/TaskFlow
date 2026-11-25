@@ -422,6 +422,29 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 🐞 2026-11-25 (e) — PC da Empresa — Contagem: o respiro entre as contagens, e um `border-spacing` que nunca valeu
+Mostrei 5 modelos de tela para a Contagem (minigráfico, calendário do ciclo, barras divergentes,
+quadrante importância × divergência, cartões de caso — página em
+`claude.ai/artifact/VkndUPfckQX6GpWYx8Es41`). O Diego **ficou com a grade que já estava no ar**,
+pedindo só **mais espaço entre as contagens**, como no desenho do modelo 0 do comparativo.
+- 🐞 **O `border-spacing:3px` do `.cpc-m` nunca funcionou.** Quem o zerava é
+  `html[data-bs-theme] #task-container table:not(.tk-table)` do **hub-telas.css** — **a mesma regra**
+  que tinha pintado a faixa cinza nos `th` (25/11 (b)). Especificidade (1,2,2) contra os (0,1,0) do
+  `.cpc-m`: não havia disputa. ⚠️ Os risquinhos claros que apareciam entre as células **não eram o
+  espaçamento** — eram os cantos arredondados de quatro células vizinhas formando um `+`.
+- ⭐ Agora `border-collapse:separate !important; border-spacing:6px 5px !important`, e o raio da
+  célula subiu de 5px para 6px. Cada contagem virou um bloco seu; duas noites verdes seguidas
+  deixaram de ser uma faixa só.
+- 📌 **Proporção, não número absoluto:** no mockup 3px bastavam porque a célula tinha ~55px. Na tela
+  a grade estica até 100% e a célula passa de 70px, então o mesmo 3px desaparece. Quem mexer no
+  `width` da grade revisita o respiro junto.
+- ✅ Conferido no navegador em claro e escuro, a 1440px, 900px e 800px: célula de 72px com 6px de
+  respiro, sem rolagem horizontal **da página** em nenhuma delas (a grade rola dentro do próprio
+  bloco, como já era).
+- ℹ️ **Achado de passagem, não é desta mudança:** em largura de celular (375px) a **página inteira**
+  estoura 446px — `hdr-right`, `app-navbar-user` e o container do conteúdo. Medi com e sem o
+  respiro: o excesso é idêntico nos dois casos. É do app, não da Contagem, e continua em aberto.
+
 ### 🐞 2026-11-25 (d) — PC da Empresa — Contagem: **"filtrei e não consigo voltar ao normal"**
 Bug de verdade, com duas causas, e as duas eram minhas.
 - 🐞 **O "Limpar filtros" NÃO limpava o mês.** Ele zerava grupos, classes, perfil, semana, dia,

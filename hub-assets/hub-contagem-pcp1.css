@@ -131,7 +131,13 @@ body.dark .cpc{
    o bloco é transparente e elas se misturam com `--bg`, que é o fundo real da página.
    A grade pode passar da largura: é diagrama, e rola dentro do próprio bloco — nunca a página. */
 .cpc-mw{ background:transparent; border:none; overflow-x:auto; -webkit-overflow-scrolling:touch; }
-.cpc-m{ border-collapse:separate; border-spacing:3px; font-size:11.5px; width:100%; }
+/* ⚠️ O `!important` do border-spacing é contra `html[data-bs-theme] #task-container
+   table:not(.tk-table)` do hub-telas.css — a MESMA regra da faixa cinza do th. Ela zera o
+   border-spacing com especificidade (1,2,2), então os `3px` que estavam aqui nunca valeram nada:
+   o que se via entre as células eram só os cantos arredondados, aqueles `+` claros no meio da
+   grade. Sem o respiro, duas contagens vizinhas da mesma cor viram uma faixa só e não dá para
+   dizer onde uma acaba. 6px na horizontal, 5px na vertical (pedido do Diego, 25/11). */
+.cpc-m{ border-collapse:separate !important; border-spacing:6px 5px !important; font-size:11.5px; width:100%; }
 /* ⚠️ O !important é contra `html[data-bs-theme] #task-container table:not(.tk-table) th` do
    hub-telas.css, que tem especificidade alta e pinta fundo em todo th. Era ela a faixa cinza. */
 .cpc-m th{ background:transparent !important; }
@@ -144,7 +150,7 @@ body.dark .cpc{
 .cpc-ms{ text-align:center !important; white-space:nowrap; padding:0 10px; font-size:11.5px;
   color:var(--text2); cursor:help; }
 /* data em cima, gap embaixo: é o que dispensa cabeçalho de coluna, já que cada item tem o seu ciclo */
-.cpc-c{ text-align:center; min-width:56px; padding:3px 2px; border-radius:5px;
+.cpc-c{ text-align:center; min-width:56px; padding:3px 2px; border-radius:6px;
   font-variant-numeric:tabular-nums; color:var(--text); cursor:help; line-height:1.25; }
 .cpc-cd{ display:block; font-size:9.5px; opacity:.6; letter-spacing:.01em; }
 .cpc-cv{ display:block; font-size:11.5px; font-weight:500; }
