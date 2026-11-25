@@ -100,12 +100,14 @@
     ['IN-404','Luva nitrílica','par','C',1.10,2400,'fecha'],
     ['IN-405','Touca descartável','un','C',0.18,8600,'mal'],
     ['IN-406','Papel toalha','rolo','C',6.90,420,'limpo'],
+    ['IN-407','Esponja industrial','un','C',3.20,260,'nunca'],
 
     ['MK-501','Display de PDV','un','C',46.00,120,'mal'],
     ['MK-502','Banner de gôndola','un','C',28.50,86,'limpo'],
     ['MK-503','Brinde caneta','un','C',2.40,1800,'divida'],
     ['MK-504','Folder promocional','un','C',0.85,4200,'mal'],
-    ['MK-505','Adesivo de gôndola','un','C',1.60,960,'ruido']
+    ['MK-505','Adesivo de gôndola','un','C',1.60,960,'ruido'],
+    ['MK-506','Expositor de balcão','un','C',38.00,45,'nunca']
   ];
   var GRUPOS=[['MP','Matéria-prima'],['EM','Embalagem'],['PA','Produto acabado'],
               ['IN','Insumos e higiene'],['MK','Marketing']];
@@ -133,6 +135,7 @@
     else if(comport==='caotico'){ for(i=0;i<N_CONT;i++) g[i]=um(8+r()*8)*(i%2?-1:1); }
     else if(comport==='mal'){ g[3]=um(5);
       for(i=0;i<N_CONT;i++) if(i!==0&&i!==3&&i!==6&&i!==9) g[i]=null; }
+    else if(comport==='nunca'){ for(i=0;i<N_CONT;i++) g[i]=null; }   // está no cadastro e nunca foi contado
     return g;
   }
 
@@ -180,16 +183,21 @@
     caotico:'Amplitude grande e sinais trocados: olhar unidade e fator de conversão no cadastro.',
     mal:'Muitas noites sem contagem. É aderência ao calendário, não acuracidade.',
     sangra:'A diferença cresce a cada contagem: perda ou consumo não apontado, acontecendo agora.',
-    semdado:'Nenhuma contagem no período.'
+    semdado:'Nunca foi contado. O item está no cadastro e não tem uma única contagem registrada.'
   };
-  // verde = nada a fazer · amarelo = tem diferença, mas o físico provavelmente está certo (é
-  // registro, cadastro ou calendário) · vermelho = material sumindo de verdade.
+  // 🟢 nada a fazer · 🟡 tem diferença, mas o físico provavelmente está certo (é registro, cadastro
+  // ou calendário) · 🔴 material sumindo de verdade · ⚪ NUNCA foi contado.
+  // ⚠️ O cinza não é uma gravidade entre o verde e o amarelo: é AUSÊNCIA DE DADO. Item que foi
+  // contado algumas vezes e faltou em outras (perfil `mal`) tem dado e cai no amarelo — só entra
+  // aqui quem não tem nenhuma contagem. A definição é do Diego (25/11) e é melhor que a que eu
+  // tinha proposto: "nunca contado" é um fato objetivo, "mal coberto" é um julgamento.
   var NIVEL={ limpo:'ok', ruido:'ok', fecha:'ajt', divida:'ajt', caotico:'ajt', mal:'ajt',
-              sangra:'perda', semdado:'ajt' };
+              sangra:'perda', semdado:'sem' };
   var NIVEIS={
     ok:{l:'Em ordem', c:'n1'},
-    ajt:{l:'Ajustar', c:'n2'},
-    perda:{l:'Perdendo', c:'n3'}
+    ajt:{l:'Atenção', c:'n2'},
+    perda:{l:'Crítico', c:'n3'},
+    sem:{l:'Sem contagem', c:'n4'}
   };
 
   // ── monta os dados derivados ──────────────────────────────────────────────────────────────
@@ -238,7 +246,7 @@
     if(ck.length && ck.indexOf(l.classe)<0) return false;
     if(S.f.perfil && l.nivel!==S.f.perfil) return false;
     if(S.ind==='divergindo' && !(l.gap!=null && Math.abs(l.gap)>l.tol)) return false;
-    if((S.ind==='ok'||S.ind==='ajt'||S.ind==='perda') && l.nivel!==S.ind) return false;
+    if(NIVEIS[S.ind] && l.nivel!==S.ind) return false;
     return true;
   }
   function temFiltro(){
@@ -259,9 +267,10 @@
     return '<div class="cpc-cards">'+
       c('todos','Itens',nf(vis.length)) +
       c('divergindo','Divergindo hoje',nf(n(function(l){ return l.gap!=null&&Math.abs(l.gap)>l.tol; }))) +
-      c('perda','Perdendo',nf(n(function(l){ return l.nivel==='perda'; }))) +
-      c('ajt','Ajustar',nf(n(function(l){ return l.nivel==='ajt'; }))) +
+      c('perda','Crítico',nf(n(function(l){ return l.nivel==='perda'; }))) +
+      c('ajt','Atenção',nf(n(function(l){ return l.nivel==='ajt'; }))) +
       c('ok','Em ordem',nf(n(function(l){ return l.nivel==='ok'; }))) +
+      c('sem','Sem contagem',nf(n(function(l){ return l.nivel==='sem'; }))) +
       '<div class="cpc-card cpc-kpi"><span class="cpc-card-v">'+nf(acur,1)+'%</span><span class="cpc-card-l">Acuracidade</span><span class="cpc-card-s">'+nf(cert)+' de '+nf(ac)+' contagens</span></div>'+
       '</div>';
   }
@@ -302,7 +311,10 @@
       '<td class="cpc-n"><span class="cpc-bar"><i style="width:'+Math.min(100,l.pdiv)+'%"></i></span>'+nf(l.pdiv,0)+'%</td>'+
       '<td class="cpc-n">'+nf(l.imp,1)+'%</td>'+
       '<td class="cpc-n">'+celGap(l)+'</td>'+
-      '<td class="cpc-u">'+(l.ultima?l.ultima.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'<span class="cpc-mut">—</span>')+'<span class="cpc-cod">'+esc(l.quem)+'</span></td>'+
+      // sem contagem nenhuma não há "quem contou": mostrar um nome aqui seria inventar responsável
+      '<td class="cpc-u">'+(l.ultima
+        ? l.ultima.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'<span class="cpc-cod">'+esc(l.quem)+'</span>'
+        : '<span class="cpc-mut">—</span>')+'</td>'+
       '</tr>';
   }
 

@@ -478,15 +478,18 @@ Primeira tela nova desta sessão, depois de o dia inteiro ser limpeza. Blueprint
   fecha sozinho · dívida parada · sangrando · caótico · mal coberto. ⚠️ **O índice sozinho não separa
   ruído, fecha e caótico** — os três abrem e fecham igual —, então a função desempata por **amplitude**.
   Esse furo só apareceu quando desenhei o mapa de calor do blueprint; está comentado no código.
-- ⭐ **A COLUNA mostra só TRÊS, não os sete** (o Diego cortou assim que viu a tela, e tinha razão:
-  sete estados numa coluna de relance viram ruído). 🟢 **Em ordem** (nada a fazer) · 🟡 **Ajustar**
+- ⭐ **A coluna mostra QUATRO situações, não os sete perfis** (o Diego cortou assim que viu a tela, e
+  tinha razão: sete estados numa coluna de relance viram ruído). 🟢 **Em ordem** · 🟡 **Atenção**
   (tem diferença, mas o físico provavelmente está certo — é lançamento, ficha, cadastro ou calendário)
-  · 🔴 **Perdendo** (a diferença cresce: material sumindo). O mapa `NIVEL` liga os sete aos três e o
-  **diagnóstico fino vive no `title` da célula** — a informação não se perde, só sai da frente. O
-  cabeçalho virou "Situação", que casa melhor com os três rótulos do que "Perfil".
-  ⚠️ **Os sete continuam valendo por baixo:** é deles que sai a ação, e o mapa de calor e o modo
-  investigação vão usá-los. Quem for simplificar mais, simplifique a COLUNA, não a classificação.
-  Distribuição hoje: 20 em ordem · 20 ajustar · 4 perdendo.
+  · 🔴 **Crítico** (a diferença cresce: material sumindo) · ⚪ **Sem contagem**.
+  ⚠️ **O cinza NÃO é uma gravidade entre o verde e o amarelo: é ausência de dado.** Definição do
+  Diego, e é melhor que a que eu tinha proposto: entra aqui só quem **nunca foi contado** — item que
+  está no cadastro e não tem uma única contagem. Quem foi contado algumas vezes e faltou em outras
+  tem dado para julgar e fica no amarelo. "Nunca contado" é fato objetivo; "mal coberto" era palpite.
+  O mapa `NIVEL` liga os sete aos quatro e o **diagnóstico fino vive no `title` da célula**.
+  ⚠️ **Os sete continuam valendo por baixo:** é deles que sai a ação, e o modo investigação vai
+  usá-los. Quem for simplificar mais, simplifique a COLUNA, não a classificação.
+  Distribuição hoje: 20 em ordem · 20 atenção · 4 crítico · 2 sem contagem (de 46 itens).
 - ⚠️ **A base é gerada pela tolerância PADRÃO da classe, não pela editada no funil.** Quantidade contada
   é fato e não pode mudar porque alguém mexeu numa tolerância — mexer nela **reclassifica**, nunca
   reescreve o dado. Levei um susto com isso na primeira versão e o guard-rail ficou escrito no arquivo.
