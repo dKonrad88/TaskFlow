@@ -459,6 +459,25 @@ controle seria o erro.
   mensais alcançam aquele mês na janela de 10 contagens.
 - O mapa acompanha: o número de colunas passa a ser o do recorte (março = 1 coluna) e o cabeçalho
   diz "as contagens do período".
+- 🐞🐞 **Dois erros no seletor de período, os dois achados pelo Diego olhando a tela:**
+  1. **O popover saiu sem estilo**, como uma fileira de botões atravessada ("Horrível isso"). Causa:
+     o CSS do `_cpPerBtn` (`.cp-pop`, `.cp-perit`) mora no **`_cpCSS()`, que é injetado dentro do
+     HTML de cada tela de Compras** e só existe enquanto uma delas está aberta. ⚠️ **Reusar aquela
+     função fora de Compras não funciona**, e puxar o `_cpCSS` para cá seria pior: ele também
+     remove o `max-width` do `.main`. Refeito com estilo próprio (`.cpc-perbtn` / `.cpc-perpop`),
+     mantendo o DESENHO padronizado em 26/09: 34px, período escrito no botão, contagem por opção.
+     📌 **Fica a lição para quem for reusar helper de outra área: conferir onde mora o CSS dele.**
+  2. ⚠️⚠️ **A semana do ciclo estava errada.** Eu derivava da semana ISO módulo 4 — o Diego avisou
+     que "estamos na semana 3" e o código dizia 4. Pior: ISO módulo 4 **colide na virada de ano**
+     (ano de 53 semanas faz duas semanas seguidas caírem no mesmo número).
+     ⭐ **A semana do ciclo não sai do calendário: é uma contagem que o PCP mantém, e precisa de
+     ÂNCORA.** Agora conta semanas inteiras a partir de **domingo 22/11/2026 = semana 3**, que é o
+     que o Diego informou. A semana começa no **domingo**, porque o ciclo é de domingo a quinta —
+     a noite de domingo abre a semana, não fecha a anterior.
+     📌 **Ao ligar o ERP, a âncora vem de lá**, não do código. Está marcada no arquivo.
+     ✅ Conferido: os 31 itens contados nesta semana declaram semana 3, e o filtro "Semana 3"
+     devolve 36 itens na tabela e no mapa, igual ao que a base tem.
+
 
 
 ### ⭐ 2026-11-24 (g) — PC da Empresa — Contagem: o **MAPA DE CALOR** item × contagem (fase 2)

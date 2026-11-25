@@ -150,13 +150,22 @@
   // qual está certo.
   var DIAS=['dom','seg','ter','qua','qui','sex','sáb'];
 
+  // ⚠️⚠️ A SEMANA DO CICLO NÃO SAI DO CALENDÁRIO. Ela é uma contagem que o PCP mantém, e por isso
+  // precisa de uma ÂNCORA. A primeira versão usava a semana ISO módulo 4 e errava de duas formas:
+  // dava semana 4 para a semana em que o Diego disse estarem na 3, e colide na virada de ano —
+  // ano com 53 semanas faz duas semanas seguidas caírem no mesmo número.
+  // Âncora informada pelo Diego em 25/11/2026: aquela semana é a SEMANA 3.
+  // 📌 Ao ligar o ERP, esta âncora vem de lá (ou do primeiro slot importado), não daqui.
+  var ANCORA_DOM = Date.UTC(2026,10,22);   // domingo 22/11/2026
+  var ANCORA_SEM = 3;
+
   function semanaCiclo(d){
-    var t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
-    t.setUTCDate(t.getUTCDate()-((t.getUTCDay()+6)%7)+3);          // quinta da semana ISO
-    var ini=new Date(Date.UTC(t.getUTCFullYear(),0,4));
-    ini.setUTCDate(ini.getUTCDate()-((ini.getUTCDay()+6)%7)+3);
-    var sem=1+Math.round((t-ini)/(7*86400000));
-    return ((sem-1)%4)+1;
+    // a semana da contagem começa no DOMINGO, porque o ciclo da casa é de domingo a quinta:
+    // a noite de domingo abre a semana, não fecha a anterior.
+    var t=Date.UTC(d.getFullYear(),d.getMonth(),d.getDate());
+    var dom=t-(new Date(t)).getUTCDay()*86400000;
+    var dif=Math.round((dom-ANCORA_DOM)/(7*86400000));
+    return ((((ANCORA_SEM-1+dif)%4)+4)%4)+1;
   }
 
   function rotuloSlot(l){
@@ -348,8 +357,12 @@
   }
 
   // ── seletor de período ───────────────────────────────────────────────────────────────────
-  // Reusa `_cpPerBtn`, o padrão da casa desde 26/09 (botão de 34px com o período escrito e um
-  // popover com a contagem por opção). Nada de inventar um quarto desenho para a mesma pergunta.
+  // ⚠️ NÃO dá para chamar o `_cpPerBtn` daqui, e eu tentei: o CSS dele (`.cp-pop`, `.cp-perit`)
+  // mora no `_cpCSS()`, que é injetado DENTRO do HTML de cada tela de Compras e só existe
+  // enquanto uma delas está aberta. Fora dali o popover sai sem estilo nenhum — virou uma fileira
+  // de botões atravessada na tela. E puxar o `_cpCSS` para cá seria pior: ele também remove o
+  // `max-width` do `.main`. Então o DESENHO é o mesmo que o Diego padronizou em 26/09 (botão de
+  // 34px com o período escrito + popover com a contagem por opção), só que com estilo próprio.
   function mesesOpts(){
     var ks=Object.keys(MESES).filter(function(k){ return MESES[k]>0; }).sort().reverse();
     return [['','Todo o histórico', null]].concat(ks.map(function(k){
@@ -358,9 +371,16 @@
     }));
   }
   function perBtnHTML(){
-    if(typeof _cpPerBtn!=='function') return '';
-    return '<span class="cpc-per">'+_cpPerBtn('Período das contagens', S.mes, mesesOpts(),
-      S.perAberto, 'CPC.togglePer()', 'CPC.setPer')+'</span>';
+    var opts=mesesOpts();
+    var at=opts.filter(function(o){ return o[0]===S.mes; })[0]||opts[0];
+    var itens=opts.map(function(o){
+      return '<button class="cpc-perit'+(o[0]===S.mes?' on':'')+'" data-per="'+esc(o[0])+'">'+
+        esc(o[1])+(o[2]!=null?'<span class="n">'+nf(o[2])+'</span>':'')+'</button>';
+    }).join('');
+    return '<span class="cpc-per">'+
+      '<button class="cpc-perbtn'+(S.perAberto?' on':'')+'" data-pertoggle title="Período das contagens">'+
+        '<i class="ti ti-calendar-stats"></i>'+esc(at[1])+'<i class="ti ti-chevron-down"></i></button>'+
+      (S.perAberto?'<div class="cpc-perpop">'+itens+'</div>':'')+'</span>';
   }
 
   function funilHTML(){
@@ -558,6 +578,9 @@
     if(bs) bs.oninput=function(){ S.busca=bs.value; var pos=bs.selectionStart; render(MAIN);
       var n=MAIN.querySelector('[data-busca]'); if(n){ n.focus(); try{ n.setSelectionRange(pos,pos); }catch(e){} } };
     var fb=MAIN.querySelector('[data-funil]'); if(fb) fb.onclick=function(){ S.fOpen=!S.fOpen; render(MAIN); };
+    var pt=MAIN.querySelector('[data-pertoggle]'); if(pt) pt.onclick=function(){ S.perAberto=!S.perAberto; render(MAIN); };
+    q('[data-per]').forEach(function(b){ b.onclick=function(){
+      S.mes=b.getAttribute('data-per'); S.perAberto=false; persist(); render(MAIN); }; });
     q('[data-vista]').forEach(function(b){ b.onclick=function(){
       S.vista=b.getAttribute('data-vista'); persist(); render(MAIN); }; });
     q('[data-fg]').forEach(function(c){ c.onchange=function(){ S.f.grupos[c.getAttribute('data-fg')]=c.checked; render(MAIN); }; });
