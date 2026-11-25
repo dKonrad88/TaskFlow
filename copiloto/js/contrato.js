@@ -338,7 +338,11 @@ export function payloadCanonico(tipo, bruto) {
 export function tituloFila(item) {
   const p = item.payload || {};
   const klain = item.tipo === 'klain-tarefa' || item.tipo === 'klain-compromisso' || item.tipo === 'indefinido';
-  const bruto = item.transcricao || p.titulo || p.nome || p.motivo || 'Sem título';
+  // O título resumido (pela IA ou pelas regras) vem antes da fala original.
+  // Item indefinido não tem título: mostra a fala.
+  const bruto = [p.titulo, p.nome, item.transcricao]
+    .map((v) => (typeof v === 'string' ? v.trim() : ''))
+    .find(Boolean) || 'Sem título';
   return klain ? soCsmt(bruto) : bruto;
 }
 
