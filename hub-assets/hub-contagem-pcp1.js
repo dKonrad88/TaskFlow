@@ -365,8 +365,11 @@
       out+='<tbody>'+ordena(da).map(function(l){
         var p=NIVEIS[l.nivel]||NIVEIS.ajt, cels='';
         for(var k=0;k<N_CONT;k++) cels+=celMapa(l,k);
-        return '<tr><th class="cpc-mi" title="'+esc(l.cod+' · tolerância ±'+nf(l.tol)+' '+l.un)+'">'+
-          esc(l.nome)+'</th>'+
+        // ⚠️ <td> e não <th> de propósito: `html[data-bs-theme] #task-container table:not(.tk-table) th`
+        // (hub-telas.css) tem especificidade alta e pinta fundo + CAIXA ALTA em todo th. Como <td> o
+        // nome do item sai igual ao da vista de tabela, sem precisar de três !important.
+        return '<tr><td class="cpc-mi" title="'+esc(l.cod+' · tolerância ±'+nf(l.tol)+' '+l.un)+'">'+
+          esc(l.nome)+'</td>'+
           '<td class="cpc-ms" title="'+esc(DETALHE[l.perfil]||'')+'"><span class="cpc-dot cpc-'+p.c+'"></span>'+p.l+'</td>'+
           cels+'</tr>';
       }).join('')+'</tbody>';
