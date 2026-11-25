@@ -50,7 +50,7 @@ A leitura depende de RLS. O SQL está em `supabase/rls-leitura.sql` e já foi ap
 
 | Tabela | Uso |
 |---|---|
-| `copiloto_itens` | Fila. Colunas: `id`, `origem`, `tipo`, `transcricao`, `payload`, `status`, `decidido_em`, `ref_tabela`, `ref_id`, `teste`, `created_at`. |
+| `copiloto_itens` | Fila. Colunas: `id`, `origem`, `tipo`, `transcricao`, `payload`, `status`, `decidido_em`, `ref_tabela`, `ref_id`, `ref_externo`, `teste`, `created_at`. |
 | `hub_pessoas` | Dropdown: `id`, `nome`, `papel`, `usos` (text[]), `padrao`, `ativo`, `created_at`, `updated_at`. |
 | `lista_itens` | Lista do supermercado: `texto`, `qtd`, `categoria` (a seção), `preco`, `comprado`. |
 | `listas` | Acha a lista de tipo `mercado` (a lista "Supermercado"). |
@@ -114,13 +114,94 @@ A fala e os nomes do cadastro de pessoas são enviados à API da Anthropic a cad
 | Tipo | Ao aprovar |
 |---|---|
 | `compras-item` | Cria a linha em `lista_itens` (lista de tipo `mercado` da qual o usuário é membro) e o item fica `criado`, com `ref_tabela` e `ref_id`. Se a gravação falhar, fica `erro`. |
-| `klain-tarefa`, `klain-compromisso`, `apto-gasto` | Só mudam para `aprovado`. Ainda não há destino definido: o Hub Klain está em outro projeto e os gastos do apartamento não têm tabela própria aqui. |
+| `klain-tarefa`, `klain-compromisso` | Ficam `aprovado` e entram na fila do Hub (`payload.hub_envio`). O agente do Hub cria o item no site e devolve o número: o status passa a `criado`, com `ref_tabela` (`hub_klain_tarefa` ou `hub_klain_compromisso`) e `ref_externo` (o número). `ref_id` fica nulo. Se a validação ou a criação no Hub falhar, o item fica `erro`. |
+| `apto-gasto` | Só muda para `aprovado`. Ainda não há destino definido. |
 
 As edições feitas no card antes de decidir são rascunhos guardados no aparelho (`localStorage`: `copiloto_rascunhos`). Elas sobrevivem a recarregar a página, mas não passam para outro aparelho.
 
 A biblioteca do Supabase fica em `vendor/supabase-js-2.119.0.js` e entra no cache do service worker: o app abre sem rede, mostrando o que conseguir ler.
 
+## Envio ao Hub Klain
+
+Aprovar no Copiloto é a autorização do Diego. A partir daí o fluxo é o mesmo do antigo Gravador, neste sentido: o app não grava no Hub; o agente do Hub da conta do Diego cria o item no site pelo navegador e devolve o número.
+
+1. O Diego grava e aprova no Copiloto (`copiloto-decidir`).
+2. `efetivar()` (em `criar.ts`, cópia idêntica nas duas funções) valida título, datas, pessoas e o filtro CSMT. Se estiver tudo certo, o item permanece `aprovado` e ganha `payload.hub_envio` (fila, avisos e o pacote já montado). Se falhar, fica `erro` e a função responde `{ ok: false, status: "erro", erro: "Aprovado, mas …" }`.
+3. O agente lê a fila em `copiloto-hub`, cria no Hub e devolve o número ou o erro.
+4. O item fica `criado` (com `ref_externo`) ou `erro`.
+
+A regra da primeira decisão não muda: o status da aprovação só sai de `aguardando você` ou `para o BOSS`. O caminho de `compras-item` para `lista_itens` também não muda.
+
+### Quem entra na fila
+
+- Só `klain-tarefa` e `klain-compromisso` aprovados **depois** desta mudança, com `payload.hub_envio.fila_em` preenchido. Itens que já estavam `aprovado` sem essa marca **não são reenviados**.
+- Só a conta do Diego. Se outra conta autorizada aprovar, o item vai para `erro` com a mensagem "Envio ao Hub só está liberado para a conta do Diego." e não entra na fila.
+- Pessoa de `hub_pessoas` é casada com o Hub pelo nome. Sem solicitante ou executor, ou se o id não existir, entra a pessoa padrão (`padrao = true`). Em cópia e participantes sem correspondência, e grupos nesses campos, são omitidos, com aviso em `payload.hub_envio.avisos`.
+
+### Campos que vão ao Hub
+
+Tarefa: título, descrição, início, vencimento, solicitante, executor e em cópia. Início vazio vira o dia de hoje (horário de Brasília). Vencimento vazio fica sem data. Categoria, tipo e prioridade saem em branco; se o formulário do Hub recusar salvar, o agente usa `Pessoal`. Participantes de tarefa não são enviados (aviso).
+
+Compromisso: título, descrição, local, data, hora de início, hora de fim (`início + 1 hora`; se passar da meia-noite, vem também `data_fim`), organizador (a pessoa padrão) e a aba Pessoas (as demais, com papel `Leitora`). Categoria em branco, com o mesmo recuo `Pessoal` se o Hub exigir. Datas no pacote do agente estão em `mm/dd/yyyy`, que é o formato do formulário do Hub.
+
+O pacote do agente **nunca** leva `payload.csmt`, `payload.csmt.termos`, transcrição nem ids internos. Antes de enfileirar, `efetivar()` aplica de novo o filtro CSMT em título, descrição e local (troca o termo por `CSMT`; se ainda sobrar algum, o item fica `erro`).
+
+### Segredos (só os nomes)
+
+No painel do projeto Pessoal, Edge Functions > Secrets. Os valores não vão para o repositório, para o README nem para o chat.
+
+| Nome | Uso |
+|---|---|
+| `COPILOTO_HUB_KEY` | Chave compartilhada da função `copiloto-hub` com o agente do Hub (header `x-hub-key`). |
+| `COPILOTO_HUB_USER_DIEGO` | Id (UUID) da conta do Diego no login do Copiloto, para recusar aprovação de outra conta. |
+
+A função usa também `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` do próprio projeto Pessoal, que já existem.
+
+### Como o agente chama `copiloto-hub`
+
+Função nova, `verify_jwt` desligado: a autenticação é o header `x-hub-key`. Publicação: `supabase/copiloto-hub/` (`index.ts` e `hub-envio.ts`).
+
+```http
+GET https://jlouesrrmqeauzlgvrpw.supabase.co/functions/v1/copiloto-hub
+x-hub-key: <COPILOTO_HUB_KEY>
+```
+
+Resposta: `{ "ok": true, "itens": [ … ] }`. Cada item traz o pacote pronto (nomes, datas no formato do Hub, avisos). Sem `csmt`, transcrição ou ids. Só entram itens `aprovado`, sem `ref_externo`, com `payload.hub_envio`.
+
+```http
+GET /functions/v1/copiloto-hub?status=erro
+x-hub-key: <COPILOTO_HUB_KEY>
+```
+
+Lista os que falharam no Hub (têm `hub_envio`, sem número). Erro de validação (sem `hub_envio`) não aparece aqui.
+
+```http
+POST /functions/v1/copiloto-hub
+x-hub-key: <COPILOTO_HUB_KEY>
+Content-Type: application/json
+
+{ "id": "<uuid do copiloto_itens>", "status": "criado", "numero": "20261", "avisos": [] }
+```
+
+Ou `{ "id": "…", "status": "erro", "erro": "mensagem curta em português" }`. O número pode vir com `#`. A mesma chamada com o mesmo número, se o item já estiver `criado`, responde `ok` (idempotente).
+
+Para devolver o item à fila depois de um erro no Hub: `{ "id": "…", "acao": "reenviar" }` (só com status `erro` e sem `ref_externo`).
+
+### Status do item
+
+| Status | Significado |
+|---|---|
+| `aprovado` com `payload.hub_envio` | Na fila, aguardando o agente criar no Hub. |
+| `criado` | Criado no Hub. `ref_tabela` é `hub_klain_tarefa` ou `hub_klain_compromisso`, `ref_externo` é o número, `ref_id` é nulo. |
+| `erro` com `hub_envio` | O Hub (ou o agente) falhou; `payload.hub_envio.erro` tem a mensagem. Pode reenviar. |
+| `erro` sem `hub_envio` | A validação recusou (conta, título, data, CSMT). Não entra na fila. |
+
+A migration `supabase/migrations/20261125120000_copiloto_itens_ref_externo.sql` cria a coluna `ref_externo`. Aplicar no projeto Pessoal **antes** de publicar as funções.
+
+Ao publicar: `copiloto-entrada` fica com os arquivos do `main` (`index.ts`, `ia.ts`, `classificar.mjs`) mais o `criar.ts` novo e o `hub-envio.ts`; `copiloto-decidir` publica o `index.ts` do `main` mais o `criar.ts` novo e o `hub-envio.ts`; `copiloto-hub` é função nova (`verify_jwt` desligado). As duas cópias de `criar.ts` e as três de `hub-envio.ts` precisam permanecer idênticas.
+
 ## PWA no iPhone
+
 
 `manifest.json` e `sw.js` usam escopo `/TaskFlow/copiloto/`. No Safari: Compartilhar → Adicionar à Tela de Início. O ícone é o botão de gravar na cor do Hub.
 
@@ -130,4 +211,5 @@ Sirva a raiz do repositório num caminho `/TaskFlow/` (o escopo do PWA depende d
 
 ```bash
 node --test copiloto/js/regras.test.mjs
+deno test copiloto/supabase/hub-envio.test.ts
 ```
