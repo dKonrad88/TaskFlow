@@ -36,7 +36,7 @@
   var TOL_PADRAO={A:0.5,B:1,C:2};      // % do saldo
 
   // ── estado de tela ────────────────────────────────────────────────────────────────────────
-  var S={ ind:'todos', busca:'', fOpen:false, vista:'tabela', mes:'', perAberto:false,
+  var S={ ind:'todos', busca:'', fOpen:false, vista:'tabela', mes:'', perAberto:false, ajuda:false,
           f:{grupos:{},classes:{},perfil:'',semanas:{},dias:{},semSlot:false},
           tol:{A:TOL_PADRAO.A,B:TOL_PADRAO.B,C:TOL_PADRAO.C}, fech:{}, sort:{k:'pdiv',d:-1} };
   var MAIN=null, DADOS=null;
@@ -50,12 +50,13 @@
   function lsSet(k,v){ try{ return (typeof safeSetItem==='function')?safeSetItem(k,v):(localStorage.setItem(k,v),true); }catch(e){ return false; } }
   function lsGet(k,fb){ try{ return (typeof safeJSON==='function')?safeJSON(k,fb):JSON.parse(localStorage.getItem(k)||'null')||fb; }catch(e){ return fb; } }
 
-  function persist(){ lsSet(LS_KEY, JSON.stringify({tol:S.tol, fech:S.fech, sort:S.sort, vista:S.vista, mes:S.mes})); }
+  function persist(){ lsSet(LS_KEY, JSON.stringify({tol:S.tol, fech:S.fech, sort:S.sort, vista:S.vista, mes:S.mes, ajuda:S.ajuda})); }
   function restore(){ var o=lsGet(LS_KEY,null); if(o&&typeof o==='object'){
     if(o.tol) S.tol={A:+o.tol.A||TOL_PADRAO.A, B:+o.tol.B||TOL_PADRAO.B, C:+o.tol.C||TOL_PADRAO.C};
     if(o.fech) S.fech=o.fech; if(o.sort) S.sort=o.sort;
     if(o.vista==='mapa'||o.vista==='tabela') S.vista=o.vista;
-    if(typeof o.mes==='string') S.mes=o.mes; } }
+    if(typeof o.mes==='string') S.mes=o.mes;
+    if(typeof o.ajuda==='boolean') S.ajuda=o.ajuda; } }
 
   // ── base fictícia ─────────────────────────────────────────────────────────────────────────
   // [codigo, nome, unidade, classe, custo unitário, saldo do sistema, comportamento semeado]
@@ -363,17 +364,23 @@
     var vis=todas, ac=0, cert=0;
     vis.forEach(function(l){ ac+=l.feitas; cert+=l.certas; });
     var acur = ac? cert/ac*100 : 0;
-    var c=function(id,lab,val,sub){ return '<button class="cpc-card'+(S.ind===id?' on':'')+'" data-ind="'+id+'">'+
-      '<span class="cpc-card-v">'+val+'</span><span class="cpc-card-l">'+lab+'</span>'+
+    // ⚠️ Os cartões ganharam o ponto colorido da Situação — não é enfeite: liga o cartão à coluna
+    // e faz o olho achar "Crítico" sem ler. E o Crítico, quando tem item, fica em destaque: a tela
+    // precisa dizer para onde olhar primeiro, senão vira uma parede de números iguais.
+    var c=function(id,lab,val,niv,sub){
+      var cr=(id==='perda'&&val!=='0')?' alerta':'';
+      return '<button class="cpc-card'+(S.ind===id?' on':'')+cr+'" data-ind="'+id+'">'+
+      '<span class="cpc-card-v">'+val+'</span><span class="cpc-card-l">'+
+      (niv?'<i class="cpc-dot cpc-'+niv+'"></i>':'')+lab+'</span>'+
       (sub?'<span class="cpc-card-s">'+sub+'</span>':'')+'</button>'; };
     var n=function(f){ return vis.filter(f).length; };
     return '<div class="cpc-cards">'+
-      c('todos','Itens',nf(vis.length)) +
+      c('perda','Crítico',nf(n(function(l){ return l.nivel==='perda'; })),'n3') +
+      c('ajt','Atenção',nf(n(function(l){ return l.nivel==='ajt'; })),'n2') +
+      c('ok','Em ordem',nf(n(function(l){ return l.nivel==='ok'; })),'n1') +
+      c('sem','Sem contagem',nf(n(function(l){ return l.nivel==='sem'; })),'n4') +
       c('divergindo','Divergindo hoje',nf(n(function(l){ return l.gap!=null&&Math.abs(l.gap)>l.tol; }))) +
-      c('perda','Crítico',nf(n(function(l){ return l.nivel==='perda'; }))) +
-      c('ajt','Atenção',nf(n(function(l){ return l.nivel==='ajt'; }))) +
-      c('ok','Em ordem',nf(n(function(l){ return l.nivel==='ok'; }))) +
-      c('sem','Sem contagem',nf(n(function(l){ return l.nivel==='sem'; }))) +
+      c('todos','Todos os itens',nf(vis.length)) +
       '<div class="cpc-card cpc-kpi"><span class="cpc-card-v">'+nf(acur,1)+'%</span><span class="cpc-card-l">Acuracidade</span><span class="cpc-card-s">'+nf(cert)+' de '+nf(ac)+' contagens</span></div>'+
       '</div>';
   }
@@ -515,10 +522,13 @@
       }).join('')+'</tbody>';
     });
     if(!out) out='<tbody><tr><td colspan="'+(nCol+2)+'" class="cpc-vazio">Nenhum item com esses filtros.</td></tr></tbody>';
-    return '<div class="cpc-leitura"><b>Como ler:</b> linha toda verde, item sob controle — '+
+    // ⚠️ A ajuda fica FECHADA por padrão, atrás do "?" da barra. Eram três linhas de texto coladas
+    // no topo, e foi o que fez o Diego dizer "não sei pra onde olhar": explicação permanente é
+    // tutorial, não interface.
+    return (S.ajuda ? '<div class="cpc-leitura"><b>Como ler:</b> linha toda verde, item sob controle — '+
       'vermelho forte e depois verde, o lançamento entrou atrasado — '+
       '<b>o mesmo número repetido é um erro só, parado</b>, enquanto números crescendo são perda acontecendo — '+
-      'hachurado é noite sem contagem. A coluna é a n-ésima contagem <i>daquele item</i>, não uma data comum.</div>'+
+      'hachurado é noite sem contagem. A coluna é a n-ésima contagem <i>daquele item</i>, não uma data comum.</div>' : '')+
       '<div class="cpc-mw"><table class="cpc-m"><thead><tr>'+cab+'</tr></thead>'+out+'</table></div>'+
       '<div class="cpc-leg">'+
         '<span><i class="cpc-sw cpc-c0"></i> dentro da tolerância</span>'+
@@ -570,24 +580,23 @@
     restore();
     DADOS=montar();
     var vis=DADOS.filter(passa);
+    // Subtítulo curto, com o aviso de demonstração embutido: era mais uma faixa ocupando o topo.
     var head=(typeof hubHead==='function')
-      ? hubHead('Contagem','Contagem cíclica de toda noite — análise. Os dados viriam do ERP; a aba não escreve nada de volta.')
+      ? hubHead('Contagem','Análise da contagem cíclica · base de demonstração com '+ITENS.length+' itens fictícios')
       : '<h2>Contagem</h2>';
     MAIN.innerHTML='<div class="cpc" style="padding:20px 4px 40px;">'+head+
       hojeHTML(DADOS)+
-      '<div class="cpc-demo"><i class="ti ti-flask"></i> Base de demonstração: '+ITENS.length+
-      ' itens fictícios com '+N_CONT+' contagens cada. Ao ligar o export do ERP, só a origem dos dados muda.</div>'+
       cardsHTML(DADOS.filter(function(l){ return !l.foraPeriodo; }))+
-      (S.mes ? '<div class="cpc-nota"><i class="ti ti-info-circle"></i> Números de <b>'+
+      (S.mes ? '<div class="cpc-nota">Números de <b>'+
         esc(mesesOpts().filter(function(o){return o[0]===S.mes;}).map(function(o){return o[1];})[0]||S.mes)+
-        '</b>. A <b>Situação</b> continua olhando o histórico inteiro — sangria só se enxerga em '+
-        'várias contagens, e cor que muda a cada troca de período não serve para decidir nada.</div>' : '')+
+        '</b> · a Situação olha o histórico inteiro</div>' : '')+
       '<div class="cpc-bar2"><div class="cpc-busca"><i class="ti ti-search"></i>'+
         '<input type="text" placeholder="Buscar item ou código" value="'+esc(S.busca)+'" data-busca></div>'+
         perBtnHTML()+
         '<div class="cpc-seg">'+
           '<button data-vista="tabela"'+(S.vista==='tabela'?' class="on"':'')+'>Tabela</button>'+
           '<button data-vista="mapa"'+(S.vista==='mapa'?' class="on"':'')+'>Mapa de calor</button></div>'+
+        (S.vista==='mapa'?'<button class="cpc-fbtn'+(S.ajuda?' ativo':'')+'" data-ajuda title="Como ler o mapa"><i class="ti ti-help"></i></button>':'')+
         '<button class="cpc-fbtn'+(temFiltro()?' ativo':'')+'" data-funil title="Filtros"><i class="ti ti-filter"></i></button></div>'+
       funilHTML()+
       (S.vista==='mapa' ? mapaHTML(vis) : tabelaHTML(vis))+'</div>';
@@ -602,6 +611,7 @@
       var n=MAIN.querySelector('[data-busca]'); if(n){ n.focus(); try{ n.setSelectionRange(pos,pos); }catch(e){} } };
     var fb=MAIN.querySelector('[data-funil]'); if(fb) fb.onclick=function(){ S.fOpen=!S.fOpen; render(MAIN); };
     var pt=MAIN.querySelector('[data-pertoggle]'); if(pt) pt.onclick=function(){ S.perAberto=!S.perAberto; render(MAIN); };
+    var aj=MAIN.querySelector('[data-ajuda]'); if(aj) aj.onclick=function(){ S.ajuda=!S.ajuda; persist(); render(MAIN); };
     // "ver a lista desta noite" = os mesmos filtros de slot que o funil oferece, já marcados
     var hb=MAIN.querySelector('[data-hoje]'); if(hb) hb.onclick=function(){
       var h=new Date(), dow=h.getDay(), alvo=new Date(h.getTime());

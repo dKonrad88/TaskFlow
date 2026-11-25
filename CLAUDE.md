@@ -422,6 +422,28 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### ⚠️ 2026-11-25 (b) — PC da Empresa — Contagem: **"muita informação, não sei pra onde olhar"**
+Crítica do Diego depois de eu empilhar seis entregas seguidas na mesma tela. Ele estava certo:
+eram **7 blocos antes da primeira linha de dado** (título, faixa do ciclo, faixa de demonstração,
+7 cartões, nota do período, barra, e três linhas de "Como ler"), ~420px de enfeite. **Nenhuma das
+camadas era errada sozinha; o erro foi nunca olhar o conjunto.**
+- **"Como ler" saiu do topo** e virou botão **?** na barra, só na vista de mapa, fechado por padrão
+  e com a escolha gravada. ⚠️ **Explicação permanente é tutorial, não interface** — quem já sabe
+  ler o mapa paga o pedágio todo dia.
+- **A faixa "Base de demonstração" sumiu**: virou meia linha no subtítulo. O aviso continua, sem
+  ocupar um bloco.
+- **A nota do período** encolheu de duas linhas para `Números de outubro de 2026 · a Situação olha
+  o histórico inteiro`.
+- ⭐ **Os cartões ganharam hierarquia, que é o que responde "para onde olhar":** vêm em ordem de
+  gravidade (Crítico · Atenção · Em ordem · Sem contagem · Divergindo hoje · Todos), cada um com o
+  **ponto colorido da Situação** — o mesmo da coluna, ligando cartão e tabela —, e o **Crítico fica
+  em vermelho quando tem item**. O KPI de acuracidade perdeu a borda: não é botão, não deve
+  competir com os filtros.
+- **Resultado medido: 7 blocos → 4, e 420px → 272px até a primeira linha.** Mesmas funções, nada
+  removido de verdade: o que saiu do caminho continua a um clique.
+- 📌 **Lição para as próximas fases** (modo investigação vem aí): cada entrega nova quer um bloco
+  no topo, e o topo é finito. Antes de acrescentar, perguntar o que sai.
+
 ### ⭐ 2026-11-25 — PC da Empresa — Contagem: o **SLOT do ciclo** entra na tela (semana 1–4 + noite)
 Pedido do Diego: filtrar por semana 1, 2, 3, 4 "e daí os meses também". ⚠️ **São duas coisas
 diferentes e só a primeira foi feita:** semana 1–4 é o **slot do cadastro** (o `quarta2` do ERP),

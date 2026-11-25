@@ -45,8 +45,14 @@ body.dark .cpc{
 }
 .cpc-card:hover{ border-color:var(--blue-mid); }
 .cpc-card.on{ border-color:var(--blue-mid); background:color-mix(in srgb, var(--blue-mid) 10%, var(--card)); }
-.cpc-card.cpc-kpi{ cursor:default; }
-.cpc-card.cpc-kpi:hover{ border-color:var(--border); }
+/* o único cartão que grita, e só quando tem item: é a resposta a "para onde olho primeiro" */
+.cpc-card.alerta{ border-color:color-mix(in srgb, var(--cpc-neg) 55%, var(--border));
+  background:color-mix(in srgb, var(--cpc-neg) 8%, var(--card)); }
+.cpc-card.alerta .cpc-card-v{ color:var(--cpc-neg); }
+/* o KPI não é botão: sem borda, para não competir com os filtros */
+.cpc-card.cpc-kpi{ cursor:default; border-color:transparent; background:transparent; }
+.cpc-card.cpc-kpi:hover{ border-color:transparent; }
+.cpc-card-l .cpc-dot{ margin-right:5px; vertical-align:0; }
 .cpc-card-v{ font-size:19px; font-weight:700; line-height:1.15; font-variant-numeric:tabular-nums; }
 .cpc-card-l{ font-size:11.5px; color:var(--text2); }
 .cpc-card-s{ font-size:10.5px; color:var(--text3); }
