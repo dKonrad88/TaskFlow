@@ -3,14 +3,17 @@
 // - area ("hub" | "apto" | "compras") vem do chip do app e fixa o tipo. Sem ela, o texto decide.
 // - aprovar === false (preferência do app) deixa um item de compras seguir direto:
 //   ele já entra aprovado e vai para a lista do supermercado. Gasto e item do Hub Klain sempre esperam o Diego.
+// - Tarefa e compromisso passam pela etapa de IA (ia.ts): título resumido, descrição, pessoas e datas.
+//   Sem a chave ANTHROPIC_API_KEY, ou se a IA falhar, vale o que as regras montaram.
 // As linhas continuam marcadas com teste: true enquanto MODO for "teste".
 // Não escreve em voice_proposals, apto_propostas nem gastos.
 // verify_jwt=false: a própria função confere o Bearer.
 // Aceita a COPILOTO_ENTRADA_KEY (Atalho) OU o JWT de um usuário autenticado (PWA).
 // A chave do Atalho não vai para o front.
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { montarEntrada } from "./classificar.mjs";
+import { aplicarCsmt, montarEntrada } from "./classificar.mjs";
 import { efetivar } from "./criar.ts";
+import { refinarComIa } from "./ia.ts";
 
 const MODO: "teste" | "vivo" = "teste";
 const AREAS = ["hub", "apto", "compras"];
@@ -85,7 +88,15 @@ Deno.serve(async (req) => {
   const origem = String(body.origem ?? (MODO === "teste" ? "teste" : "atalho")).slice(0, 40);
   const area = AREAS.includes(String(body.area ?? "")) ? String(body.area) : undefined;
 
-  const r = montarEntrada(texto, new Date(), { area });
+  let r = montarEntrada(texto, new Date(), { area });
+  // Item do Hub Klain: a IA arruma o card. O resultado passa de novo pela troca das palavras de casamento.
+  let ia = "nao-se-aplica";
+  if (r.tipo === "klain-tarefa" || r.tipo === "klain-compromisso") {
+    const { data: gente } = await adm.from("hub_pessoas").select("id, nome, papel, padrao").eq("ativo", true);
+    const refino = await refinarComIa(texto, r.tipo, r.payload, gente ?? [], new Date());
+    ia = refino.estado;
+    if (refino.estado === "ok") r = { ...r, payload: aplicarCsmt(refino.payload) };
+  }
   // Só item de compras, e só de quem está logado, pode pular a aprovação.
   const direto = body.aprovar === false && r.tipo === "compras-item" && !!quem.userId;
   const row: Record<string, unknown> = {
@@ -117,6 +128,7 @@ Deno.serve(async (req) => {
     status,
     direto,
     aviso,
+    ia,
     payload: data.payload,
     csmt: data.payload?.csmt,
   });

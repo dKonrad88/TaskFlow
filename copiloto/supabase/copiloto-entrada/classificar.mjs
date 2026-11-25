@@ -368,7 +368,7 @@ function reescreverCsmt(texto) {
   return out;
 }
 
-function aplicarCsmt(payload) {
+export function aplicarCsmt(payload) {
   const titulo = String(payload.titulo ?? '');
   const descricao = String(payload.descricao ?? '');
   const local = String(payload.local ?? '');
