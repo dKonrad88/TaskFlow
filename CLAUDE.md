@@ -477,6 +477,16 @@ controle seria o erro.
      📌 **Ao ligar o ERP, a âncora vem de lá**, não do código. Está marcada no arquivo.
      ✅ Conferido: os 31 itens contados nesta semana declaram semana 3, e o filtro "Semana 3"
      devolve 36 itens na tabela e no mapa, igual ao que a base tem.
+- ⭐ **Faixa "onde estamos no ciclo", no topo da tela** (ideia do Diego: "colocar em cima, no título
+  também, a semana"). Fiz um pouco mais que o título, porque semana sozinha é informação e semana +
+  noite é **a lista que vai ser impressa**: `Semana 3 · hoje · qua 25/11 · 6 itens programados`.
+  O botão **"ver a lista"** marca sozinho os filtros de slot daquela noite — é o caminho mais curto
+  entre abrir a tela e ver o que a equipe vai contar hoje.
+  ⚠️ **Sexta e sábado não têm contagem**, então nesses dias a faixa aponta a PRÓXIMA noite em vez de
+  mostrar lista vazia e parecer defeito.
+  📌 Também resolve o que motivou o bug da âncora: até agora era preciso **saber de cabeça** em que
+  semana do ciclo a fábrica está. Agora a tela diz.
+
 
 
 

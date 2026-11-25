@@ -336,6 +336,28 @@
       || S.tol.A!==TOL_PADRAO.A || S.tol.B!==TOL_PADRAO.B || S.tol.C!==TOL_PADRAO.C);
   }
 
+  // ── onde estamos no ciclo ────────────────────────────────────────────────────────────────
+  // A tela é de análise, mas quem abre precisa se situar: em que semana do ciclo estamos e qual é
+  // a noite de hoje. Sem isso o Diego tinha de saber de cabeça que "estamos na semana 3" — foi
+  // literalmente o que ele precisou me dizer para eu corrigir a âncora.
+  // ⚠️ Sexta e sábado não têm contagem: nesses dias a faixa aponta a PRÓXIMA noite, em vez de
+  // mostrar uma lista vazia e parecer defeito.
+  function hojeHTML(todas){
+    var hoje=new Date(), dow=hoje.getDay(), temHoje=(dow>=0&&dow<=4);
+    var alvo=new Date(hoje.getTime());
+    if(!temHoje) alvo.setDate(alvo.getDate()+(7-dow));        // próximo domingo
+    var dia=DIAS[alvo.getDay()], sem=semanaCiclo(alvo);
+    var n=todas.filter(function(l){ return l.slotDia===dia && l.semanas.indexOf(sem)>=0; }).length;
+    var quando=alvo.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+    return '<div class="cpc-hoje">'+
+      '<span class="cpc-hsem">Semana '+sem+'</span>'+
+      '<span class="cpc-hdia">'+(temHoje?'hoje':'próxima contagem')+' · '+dia+' '+quando+'</span>'+
+      '<button class="cpc-hbtn" data-hoje>'+nf(n)+' '+(n===1?'item programado':'itens programados')+
+        ' · ver a lista</button>'+
+      (temHoje?'':'<span class="cpc-hobs">sexta e sábado não têm contagem</span>')+
+      '</div>';
+  }
+
   // ── HTML ──────────────────────────────────────────────────────────────────────────────────
   function cardsHTML(todas){
     var vis=todas, ac=0, cert=0;
@@ -552,6 +574,7 @@
       ? hubHead('Contagem','Contagem cíclica de toda noite — análise. Os dados viriam do ERP; a aba não escreve nada de volta.')
       : '<h2>Contagem</h2>';
     MAIN.innerHTML='<div class="cpc" style="padding:20px 4px 40px;">'+head+
+      hojeHTML(DADOS)+
       '<div class="cpc-demo"><i class="ti ti-flask"></i> Base de demonstração: '+ITENS.length+
       ' itens fictícios com '+N_CONT+' contagens cada. Ao ligar o export do ERP, só a origem dos dados muda.</div>'+
       cardsHTML(DADOS.filter(function(l){ return !l.foraPeriodo; }))+
@@ -579,6 +602,14 @@
       var n=MAIN.querySelector('[data-busca]'); if(n){ n.focus(); try{ n.setSelectionRange(pos,pos); }catch(e){} } };
     var fb=MAIN.querySelector('[data-funil]'); if(fb) fb.onclick=function(){ S.fOpen=!S.fOpen; render(MAIN); };
     var pt=MAIN.querySelector('[data-pertoggle]'); if(pt) pt.onclick=function(){ S.perAberto=!S.perAberto; render(MAIN); };
+    // "ver a lista desta noite" = os mesmos filtros de slot que o funil oferece, já marcados
+    var hb=MAIN.querySelector('[data-hoje]'); if(hb) hb.onclick=function(){
+      var h=new Date(), dow=h.getDay(), alvo=new Date(h.getTime());
+      if(dow>4) alvo.setDate(alvo.getDate()+(7-dow));
+      S.f.dias={}; S.f.dias[DIAS[alvo.getDay()]]=true;
+      S.f.semanas={}; S.f.semanas[semanaCiclo(alvo)]=true;
+      S.ind='todos'; S.fOpen=true; render(MAIN);
+    };
     q('[data-per]').forEach(function(b){ b.onclick=function(){
       S.mes=b.getAttribute('data-per'); S.perAberto=false; persist(); render(MAIN); }; });
     q('[data-vista]').forEach(function(b){ b.onclick=function(){
