@@ -94,6 +94,12 @@ function extrairData(texto, agora) {
   if (/(?<!\p{L})hoje(?!\p{L})/u.test(hay)) return hoje;
   if (/(?<!\p{L})amanha(?!\p{L})/u.test(hay)) return addDaysISO(hoje, 1);
   if (/(?<!\p{L})ontem(?!\p{L})/u.test(hay)) return addDaysISO(hoje, -1);
+  const NUMEROS = { um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10, quinze: 15 };
+  const daqui = hay.match(/(?<!\p{L})daqui\s+(?:a\s+)?(\d{1,3}|um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|quinze)\s+(dias?|semanas?)(?!\p{L})/u);
+  if (daqui) {
+    const n = /^\d+$/.test(daqui[1]) ? Number(daqui[1]) : NUMEROS[daqui[1]];
+    return addDaysISO(hoje, n * (daqui[2].startsWith('semana') ? 7 : 1));
+  }
   const dias = { domingo: 0, segunda: 1, terca: 2, quarta: 3, quinta: 4, sexta: 5, sabado: 6 };
   for (const [nome, n] of Object.entries(dias)) {
     if (temPalavra(hay, nome)) return proximoDiaSemana(hoje, n);
@@ -306,6 +312,35 @@ function localDe(texto) {
   return local;
 }
 
+const MARCAS_DATA = /(?<!\p{L})(data de inicio|inicio|comecando|comeca|a partir de|vencimento|vence|prazo|entrega)(?!\p{L})/gu;
+
+/**
+ * Separa a data de início da de vencimento: cada marca ("início", "vencimento", "prazo")
+ * vale para o trecho que vem depois dela. Sem marca, a data da frase é o vencimento.
+ */
+function datasDaTarefa(texto, agora) {
+  const hay = normalizar(texto);
+  const marcas = [];
+  for (const m of hay.matchAll(MARCAS_DATA)) {
+    marcas.push({ ini: m.index, fim: m.index + m[0].length, campo: /inicio|comec|partir/.test(m[0]) ? 'inicio' : 'vencimento' });
+  }
+  if (!marcas.length) return { inicio: null, vencimento: extrairData(texto, agora), corte: -1 };
+  const r = { inicio: null, vencimento: null, corte: marcas[0].ini };
+  marcas.forEach((marca, n) => {
+    const trecho = hay.slice(marca.fim, n + 1 < marcas.length ? marcas[n + 1].ini : hay.length);
+    const data = extrairData(trecho, agora);
+    if (data && !r[marca.campo]) r[marca.campo] = data;
+  });
+  if (!r.inicio && !r.vencimento) r.vencimento = extrairData(texto, agora);
+  return r;
+}
+
+/** Onde começa o pedido de pôr alguém em cópia ("e coloca a Débora em cópia"). -1 se não há. */
+function inicioDaCopia(hay) {
+  const m = /(?:(?<!\p{L})e\s+)?(?<!\p{L})(?:coloca|colocar|poe|bota|botar|adiciona|adicionar|inclui|incluir)(?!\p{L})[^.;]*?(?<!\p{L})em copia(?!\p{L})/u.exec(hay);
+  return m ? m.index : -1;
+}
+
 function tituloTarefa(texto) {
   const limpo = texto
     .replace(/^(?:por favor[, ]+)?(?:me\s+)?(?:lembrete|lembra(?:r)?(?:\s+de)?|n[aã]o\s+esquecer(?:\s+de)?|tenho\s+que|preciso\s+fazer|cria(?:r)?(?:\s+uma)?\s+tarefa(?:\s+para)?|abre(?:\s+a[ií])?(?:\s+uma)?\s+tarefa)\s*/i, '')
@@ -362,7 +397,10 @@ export function classificar(texto, agora = new Date(), opcoes = {}) {
   const qtd = extrairQuantidade(bruto);
   const { ambiente, ambiguo } = acharComodo(bruto);
 
-  const eLista = algum(hay, [
+  const hayLista = /(?<!\p{L})em copia(?!\p{L})/u.test(hay)
+    ? hay.replace(/(?<!\p{L})(?:coloca|colocar|poe|bota|botar|adiciona|adicionar|inclui|incluir)(?!\p{L})/gu, ' ')
+    : hay;
+  const eLista = algum(hayLista, [
     'lista de compras', 'lista', 'adicionar', 'adiciona', 'adicionar na lista',
     'colocar', 'coloca', 'poe', 'põe', 'botar', 'bota', 'anotar', 'anota',
     'incluir', 'inclui', 'na lista', 'preciso de', 'precisamos de', 'preciso comprar',
@@ -424,15 +462,23 @@ export function classificar(texto, agora = new Date(), opcoes = {}) {
       },
     };
   };
-  const tarefa = () => ({
-    tipo: 'klain-tarefa',
-    status: 'aguardando você',
-    payload: {
-      titulo: tituloTarefa(bruto),
-      descricao: bruto,
-      vencimento: data,
-    },
-  });
+  const tarefa = () => {
+    const datas = datasDaTarefa(bruto, agora);
+    // O título para onde começam as datas ou o pedido de cópia.
+    const cortes = [datas.corte, inicioDaCopia(hay)].filter((i) => i > 0);
+    let base = cortes.length ? bruto.slice(0, Math.min(...cortes)) : bruto;
+    base = base.replace(/(?:[\s,]+(?:com a|com o|com|e|pra|para|de|da|do|a|o))+[\s,]*$/iu, '').trim();
+    return {
+      tipo: 'klain-tarefa',
+      status: 'aguardando você',
+      payload: {
+        titulo: tituloTarefa(base.length >= 3 ? base : bruto),
+        descricao: bruto,
+        inicio: datas.inicio,
+        vencimento: datas.vencimento,
+      },
+    };
+  };
 
   // Área escolhida no chip do app: o tipo já vem decidido, só o conteúdo é extraído.
   const area = opcoes && opcoes.area;

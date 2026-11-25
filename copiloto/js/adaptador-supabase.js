@@ -324,6 +324,43 @@ export async function criarAdaptadorSupabase({ url, key }) {
       }
     },
 
+    /** Aparência sincronizada (foto, enquadramento, layout, tema): uma linha por usuário. */
+    async lerAparencia() {
+      try {
+        await exigirSessao();
+        const { data, error } = await sb.from('copiloto_prefs').select('dados').maybeSingle();
+        if (error) return { erro: error.message };
+        return { dados: data && data.dados && data.dados.rev ? data.dados : null };
+      } catch (e) {
+        return { erro: e.message };
+      }
+    },
+
+    async lerFundoImg() {
+      try {
+        await exigirSessao();
+        const { data, error } = await sb.from('copiloto_prefs').select('fundo_img').maybeSingle();
+        if (error) return { erro: error.message };
+        return { img: (data && data.fundo_img) || '' };
+      } catch (e) {
+        return { erro: e.message };
+      }
+    },
+
+    /** img indefinida mantém a foto que já está no servidor; string vazia apaga. */
+    async gravarAparencia(pacote, img) {
+      try {
+        const session = await exigirSessao();
+        const linha = { user_id: session.user.id, dados: pacote, updated_at: new Date().toISOString() };
+        if (img !== undefined) linha.fundo_img = img || null;
+        const { error } = await sb.from('copiloto_prefs').upsert(linha, { onConflict: 'user_id' });
+        if (error) return { ok: false, mensagem: error.message };
+        return { ok: true };
+      } catch (e) {
+        return { ok: false, mensagem: e.message };
+      }
+    },
+
     async restaurar() {
       return { ok: false, motivo: 'supabase' };
     },

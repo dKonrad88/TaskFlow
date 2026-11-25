@@ -12,7 +12,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 }
 
 .app {
-  min-height: 100dvh;
+  min-height: var(--tela-ad);
   max-width: 480px;
   margin: 0 auto;
   display: flex;
@@ -88,7 +88,7 @@ main.so-gravar {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  min-height: calc(100dvh - 200px);
+  min-height: calc(var(--tela-ad) - 200px);
   padding-bottom: 156px;
   position: relative;
   z-index: 1;
@@ -204,8 +204,8 @@ main.com-abas { padding-bottom: 150px; }
 .area-wrap {
   position: fixed;
   z-index: 17;
-  left: calc(var(--ax, 0.5) * 100vw);
-  top: calc(var(--ay, 0.82) * 100vh);
+  left: calc(var(--ax, 0.5) * var(--tela-l));
+  top: calc(var(--ay, 0.82) * var(--tela-a));
   transform: translate(-50%, -50%);
 }
 .area-chip {
@@ -220,7 +220,7 @@ main.com-abas { padding-bottom: 150px; }
   touch-action: none;
 }
 .area-chip .car { font-size: 11px; opacity: .7; }
-.area-menu { position: absolute; z-index: 18; left: 50%; bottom: calc(100% + 10px); transform: translateX(-50%); width: min(260px, calc(100vw - 48px)); border-radius: 22px; padding: 6px; }
+.area-menu { position: absolute; z-index: 18; left: 50%; bottom: calc(100% + 10px); transform: translateX(-50%); width: min(260px, calc(var(--tela-l) - 48px)); border-radius: 22px; padding: 6px; }
 .area-menu button { width: 100%; display: flex; justify-content: space-between; gap: 8px; border: 0; background: transparent; color: var(--texto); border-radius: 16px; padding: 12px 14px; font-size: 16px; text-align: left; }
 .area-menu button[aria-checked="true"] { background: color-mix(in srgb, var(--acento) 22%, transparent); font-weight: 700; }
 .dim-area { z-index: 16; }
@@ -256,8 +256,8 @@ main.com-abas { padding-bottom: 150px; }
 main.so-gravar .gravar {
   position: fixed;
   z-index: 6;
-  left: calc(var(--lx, 0.5) * 100vw);
-  top: calc(var(--ly, 0.655) * 100vh);
+  left: calc(var(--lx, 0.5) * var(--tela-l));
+  top: calc(var(--ly, 0.655) * var(--tela-a));
   width: calc(132px * var(--ls, 1));
   height: calc(132px * var(--ls, 1));
   margin: 0;
@@ -638,7 +638,7 @@ main.so-gravar .gravar {
 .fundo-gravar img {
   object-position: 50% 50%;
   opacity: var(--fo, 1);
-  transform: translate(calc(var(--fx, 0) * 100vw), calc(var(--fy, 0) * 100vh)) scale(var(--fz, 1));
+  transform: translate(calc(var(--fx, 0) * var(--tela-l)), calc(var(--fy, 0) * var(--tela-a))) scale(var(--fz, 1));
   transition: filter .3s ease;
 }
 /* Sem imagem própria não há foto nenhuma: o fundo é só um degradê do tema. A foto que vinha
@@ -715,7 +715,7 @@ main.entra-lado { animation: tela-lado .24s ease-out; }
   z-index: 6;
   left: 16px;
   right: 16px;
-  bottom: calc((1 - var(--ly, 0.655)) * 100vh + 66px * var(--ls, 1) + 46px);
+  bottom: calc((1 - var(--ly, 0.655)) * var(--tela-a) + 66px * var(--ls, 1) + 46px);
   max-width: 448px;
   margin: 0 auto;
   border-radius: 20px;
@@ -781,29 +781,6 @@ main.entra-lado { animation: tela-lado .24s ease-out; }
   background: currentColor;
 }
 [data-tema=escuro] .st-aprovado, [data-tema=escuro] .st-criado { color: #3fbf85; }
-.desliza { position: relative; border-radius: 16px; overflow: hidden; }
-.desliza-fundo {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 16px;
-  border-radius: 16px;
-  font-size: 14px;
-  font-weight: 700;
-  opacity: 0;
-}
-.desliza-fundo span { display: inline-flex; align-items: center; gap: 6px; }
-.desliza-fundo svg { width: 18px; height: 18px; }
-.desliza.ativo .desliza-fundo { opacity: 1; }
-.desliza.dir .desliza-fundo { background: color-mix(in srgb, var(--sucesso) 32%, var(--superficie)); }
-.desliza.dir .desliza-fundo .nao, .desliza.esq .desliza-fundo .sim { visibility: hidden; }
-.desliza.esq .desliza-fundo { background: color-mix(in srgb, var(--perigo) 32%, var(--superficie)); }
-.desliza.passou.dir .desliza-fundo { background: var(--sucesso); color: #fff; }
-.desliza.passou.esq .desliza-fundo { background: var(--perigo); color: #fff; }
-.desliza .cartao { position: relative; touch-action: pan-y; transition: transform .2s ease; }
-.desliza.ativo .cartao { transition: none; }
 .vazio { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 44px 16px 24px; }
 .vazio .desenho { width: 120px; height: 90px; opacity: .45; margin-bottom: 10px; }
 .vazio b { font-size: 17px; color: var(--texto); }
@@ -875,7 +852,7 @@ main.com-rodape { padding-bottom: 120px; }
 .tipo-card small { display: block; margin-top: 2px; font-size: 12px; color: var(--texto-2); }
 
 /* ───────── Folhas: pessoas, cômodo e calendário ───────── */
-.sheet-lista { display: flex; flex-direction: column; max-height: 80dvh; padding-left: 0; padding-right: 0; }
+.sheet-lista { display: flex; flex-direction: column; max-height: calc(var(--tela-ad) * .8); padding-left: 0; padding-right: 0; }
 .sheet-lista .sh { padding: 0 16px; }
 .sheet .sh .link { min-width: 72px; }
 .sheet .sh .link:last-child { text-align: right; }
@@ -944,7 +921,7 @@ main.com-add { padding-bottom: 260px; }
 .versao { margin: 26px 0 8px; text-align: center; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--texto-2); }
 
 /* ───────── Login ───────── */
-.login-tela { display: grid; place-items: center; padding: 24px 16px; min-height: 100dvh; }
+.login-tela { display: grid; place-items: center; padding: 24px 16px; min-height: var(--tela-ad); }
 .login-cartao { width: min(360px, 100%); border-radius: 26px; padding: 26px 20px 22px; text-align: center; }
 .login-cartao h1 { margin: 12px 0 4px; font-size: 24px; letter-spacing: -.3px; }
 .login-ico { border-radius: 18px; box-shadow: 0 8px 22px rgba(0, 0, 0, .3); }
@@ -952,7 +929,42 @@ main.com-add { padding-bottom: 260px; }
 
 @media (prefers-reduced-motion: reduce) {
   main.entra, main.entra-lado, .sheet.abre, .toast, .selo-n.pulo, .ao-vivo .luz { animation: none; }
-  .fundo-gravar img, .desliza .cartao { transition: none; }
+  .fundo-gravar img { transition: none; }
 }
 /* Enquadrando o fundo: o véu fica mais leve para a imagem aparecer inteira. */
 html.fundo-edicao .fundo-gravar::after { opacity: .45; }
+
+/* ───────── Aprovar: o card já vem aberto na lista ───────── */
+.cartao-aberto {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: 18px;
+  padding: 12px 14px 6px;
+}
+.cartao-aberto .kicker { margin: 0 0 8px; }
+.cartao-aberto .acoes { padding: 12px 0 8px; }
+.cartao-aberto .acoes .nao { flex: 0 0 34%; border-color: transparent; font-weight: 600; }
+.cartao-aberto .titulo-item { font-size: 19px; }
+.falado { margin: 0 0 6px; font-size: 13px; line-height: 1.4; color: var(--texto-2); }
+.quando { margin: 8px 0 0; font-size: 11px; color: var(--texto-2); font-variant-numeric: tabular-nums; }
+.titulo-campo { font-size: 16px; font-weight: 600; line-height: 1.3; }
+
+/* ───────── No PC o app aparece numa moldura do tamanho do celular ───────── */
+:root { --tela-l: 100vw; --tela-a: 100vh; --tela-ad: 100dvh; }
+#moldura { display: contents; }
+html.no-pc, html.no-pc body { height: 100%; min-height: 0; overflow: hidden; background: #0c0c10; }
+html.no-pc body { display: grid; place-items: center; }
+html.no-pc #moldura {
+  display: block;
+  position: relative;
+  width: var(--tela-l);
+  height: var(--tela-a);
+  overflow: hidden;
+  border-radius: 42px;
+  background: var(--fundo);
+  box-shadow: 0 0 0 10px #000, 0 0 0 11px #3a3a44, 0 30px 80px rgba(0, 0, 0, .55);
+  /* O transform faz a moldura virar a "tela": o que é fixo no app fica preso a ela. */
+  transform: scale(var(--tela-zoom, 1));
+}
+html.no-pc .app { height: 100%; min-height: 0; max-width: none; overflow-y: auto; scrollbar-width: none; }
+html.no-pc .app::-webkit-scrollbar { display: none; }

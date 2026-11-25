@@ -295,6 +295,7 @@ export function payloadCanonico(tipo, bruto) {
     return {
       titulo,
       descricao,
+      inicio: p.inicio || null,
       vencimento: p.vencimento || null,
       csmt: csmtDe(p.csmt, p.titulo, p.descricao),
     };
