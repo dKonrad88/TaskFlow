@@ -355,6 +355,52 @@
       quando:alvo.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) };
   }
 
+  // ── filtros ativos, visíveis onde o resultado está ───────────────────────────────────────
+  // 🐞 O Diego filtrou e não conseguiu voltar: o "Limpar filtros" vivia DENTRO do funil fechado,
+  // e o único sinal de que havia filtro era o ícone âmbar. Pior, o mês ficava gravado e sobrevivia
+  // à recarga. Agora o que está filtrando aparece em chips ao lado do resultado, cada um com o seu
+  // ×, mais um "limpar tudo". A linha só existe quando há filtro, então não pesa no estado normal.
+  function chipsHTML(){
+    var c=[], k;
+    if(S.ind!=='todos') c.push(['ind', (NIVEIS[S.ind]||{}).l || 'Divergindo hoje']);
+    if(S.mes) c.push(['mes', (mesesOpts().filter(function(o){return o[0]===S.mes;})[0]||[,S.mes])[1]]);
+    if(S.busca) c.push(['busca', '“'+S.busca+'”']);
+    for(k in S.f.semanas) if(S.f.semanas[k]) c.push(['sem:'+k, 'Semana '+k]);
+    for(k in S.f.dias) if(S.f.dias[k]) c.push(['dia:'+k, k]);
+    for(k in S.f.grupos) if(S.f.grupos[k]) c.push(['grp:'+k, (GRUPOS.filter(function(g){return g[0]===k;})[0]||[,k])[1]]);
+    for(k in S.f.classes) if(S.f.classes[k]) c.push(['cls:'+k, 'Classe '+k]);
+    if(S.f.perfil) c.push(['perfil', (NIVEIS[S.f.perfil]||{}).l||S.f.perfil]);
+    if(S.f.semSlot) c.push(['semslot', 'sem slot']);
+    var tolMex = S.tol.A!==TOL_PADRAO.A||S.tol.B!==TOL_PADRAO.B||S.tol.C!==TOL_PADRAO.C;
+    if(tolMex) c.push(['tol', 'tolerância alterada']);
+    if(!c.length) return '';
+    return '<div class="cpc-chips"><span class="cpc-chl">filtrando por</span>'+
+      c.map(function(x){ return '<button class="cpc-chip" data-off="'+esc(x[0])+'" title="remover">'+
+        esc(x[1])+'<i class="ti ti-x"></i></button>'; }).join('')+
+      '<button class="cpc-chlimpa" data-limpatudo>limpar tudo</button></div>';
+  }
+
+  function tirarFiltro(id){
+    var p=id.split(':');
+    if(id==='ind') S.ind='todos';
+    else if(id==='mes'){ S.mes=''; persist(); }
+    else if(id==='busca') S.busca='';
+    else if(id==='perfil') S.f.perfil='';
+    else if(id==='semslot') S.f.semSlot=false;
+    else if(id==='tol'){ S.tol={A:TOL_PADRAO.A,B:TOL_PADRAO.B,C:TOL_PADRAO.C}; persist(); }
+    else if(p[0]==='sem') delete S.f.semanas[p[1]];
+    else if(p[0]==='dia') delete S.f.dias[p[1]];
+    else if(p[0]==='grp') delete S.f.grupos[p[1]];
+    else if(p[0]==='cls') delete S.f.classes[p[1]];
+  }
+
+  function limparTudo(){
+    S.f={grupos:{},classes:{},perfil:'',semanas:{},dias:{},semSlot:false};
+    S.ind='todos'; S.busca=''; S.mes='';            // ⚠️ o mês TAMBÉM: era o que ficava preso
+    S.tol={A:TOL_PADRAO.A,B:TOL_PADRAO.B,C:TOL_PADRAO.C};
+    persist();
+  }
+
   // ── HTML ──────────────────────────────────────────────────────────────────────────────────
   function cardsHTML(todas){
     var vis=todas, ac=0, cert=0;
@@ -596,6 +642,7 @@
     var head=(typeof hubHead==='function') ? hubHead(titulo,sub,barra) : '<h2>Contagem</h2>'+barra;
     MAIN.innerHTML='<div class="cpc" style="padding:20px 4px 40px;">'+head+
       cardsHTML(DADOS.filter(function(l){ return !l.foraPeriodo; }))+
+      chipsHTML()+
       funilHTML()+
       (S.vista==='mapa' ? mapaHTML(vis) : tabelaHTML(vis))+'</div>';
     ligar();
@@ -634,9 +681,10 @@
     var fp=MAIN.querySelector('[data-fp]'); if(fp) fp.onchange=function(){ S.f.perfil=fp.value; render(MAIN); };
     q('[data-tol]').forEach(function(i){ i.onchange=function(){
       var v=parseFloat(i.value); if(isFinite(v)&&v>=0){ S.tol[i.getAttribute('data-tol')]=v; persist(); render(MAIN); } }; });
-    var lp=MAIN.querySelector('[data-limpar]'); if(lp) lp.onclick=function(){
-      S.f={grupos:{},classes:{},perfil:'',semanas:{},dias:{},semSlot:false}; S.ind='todos'; S.busca='';
-      S.tol={A:TOL_PADRAO.A,B:TOL_PADRAO.B,C:TOL_PADRAO.C}; persist(); render(MAIN); };
+    var lp=MAIN.querySelector('[data-limpar]'); if(lp) lp.onclick=function(){ limparTudo(); render(MAIN); };
+    var lt=MAIN.querySelector('[data-limpatudo]'); if(lt) lt.onclick=function(){ limparTudo(); render(MAIN); };
+    q('[data-off]').forEach(function(b){ b.onclick=function(){
+      tirarFiltro(b.getAttribute('data-off')); render(MAIN); }; });
     q('.cpc-ghead').forEach(function(tr){ tr.onclick=function(){
       var g=tr.getAttribute('data-grp'); S.fech[g]=!S.fech[g]; persist(); render(MAIN); }; });
     q('th[data-sort]').forEach(function(th){ th.onclick=function(){

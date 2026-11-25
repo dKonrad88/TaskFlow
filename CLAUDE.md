@@ -422,6 +422,25 @@ Histórico) filtrando as tarefas da cadeia — parecido com o que `reunTarefasHT
 
 ## Log de handoff (mais recente no topo)
 
+### 🐞 2026-11-25 (d) — PC da Empresa — Contagem: **"filtrei e não consigo voltar ao normal"**
+Bug de verdade, com duas causas, e as duas eram minhas.
+- 🐞 **O "Limpar filtros" NÃO limpava o mês.** Ele zerava grupos, classes, perfil, semana, dia,
+  busca e tolerância — e deixava `S.mes` de pé. ⚠️ **E o mês é gravado**, então sobrevivia até à
+  recarga da página: o Diego podia fechar e abrir a aba e continuar vendo outubro.
+- 🐞 **O único sinal de filtro ativo era o ícone âmbar do funil**, e o botão de limpar vivia DENTRO
+  do funil fechado. Pior depois que eu tirei a abertura automática do funil no "ver a lista"
+  (25/11 (b)): a tela filtrava sozinha e não dizia como desfazer.
+- ⭐ **Correção: os filtros ativos agora aparecem em chips**, ao lado do resultado, cada um com o
+  seu × — `Semana 3 ×` `qua ×` `novembro de 2026 ×` `Atenção ×` — mais um **limpar tudo**. A linha
+  só existe quando há filtro, então **não custa nada no estado normal**, que era a preocupação das
+  duas rodadas de limpeza.
+- `limparTudo()` virou função única, usada pelo botão do funil e pelo "limpar tudo", e **zera o mês
+  junto**. 📌 Quem acrescentar filtro novo: acrescente em `chipsHTML`, `tirarFiltro` e
+  `limparTudo` — três lugares, senão o filtro vira invisível ou indelével.
+- ✅ Conferido: mês + lista da noite + Atenção mostram 4 chips e 1 item; remover só o chip do mês
+  e só o do dia funciona um a um; "limpar tudo" devolve 46 itens, apaga o período gravado e apaga
+  a luz do funil.
+
 ### 2026-11-25 (c) — PC da Empresa — **Curva ABC** vira campo de seleção na ficha de Produtos
 O Diego perguntou o que era a "Classe" do funil da Contagem e, depois, onde se classifica um item.
 Resposta que eu não sabia ao criar a Contagem: **o campo já existia** — `Produção › Produtos ›

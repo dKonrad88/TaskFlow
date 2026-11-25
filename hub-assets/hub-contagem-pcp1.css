@@ -41,6 +41,22 @@ body.dark .cpc{
 .cpc-st-kpi b{ font-size:15px; font-weight:700; color:var(--text2); }
 .cpc-st-kpi i{ font-style:normal; font-size:11.5px; }
 
+/* ── filtros ativos ──────────────────────────────────────────────────────────────────── */
+/* só aparece quando há filtro, então não pesa no estado normal da tela */
+.cpc-chips{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:0 0 12px; }
+.cpc-chl{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text3); margin-right:2px; }
+.cpc-chip{
+  display:inline-flex; align-items:center; gap:5px; cursor:pointer; font-family:inherit;
+  font-size:12px; padding:3px 7px 3px 10px; border-radius:999px; color:var(--text);
+  border:1px solid color-mix(in srgb, var(--blue-mid) 40%, var(--border));
+  background:color-mix(in srgb, var(--blue-mid) 10%, transparent);
+}
+.cpc-chip i{ font-size:13px; color:var(--text3); }
+.cpc-chip:hover{ border-color:var(--cpc-neg); }
+.cpc-chip:hover i{ color:var(--cpc-neg); }
+.cpc-chlimpa{ font-family:inherit; font-size:12px; cursor:pointer; color:var(--text2);
+  background:none; border:none; text-decoration:underline; text-underline-offset:2px; padding:3px 4px; }
+
 /* ── busca e funil ───────────────────────────────────────────────────────────────────── */
 .cpc-bar2{ display:flex; gap:8px; align-items:center; margin-bottom:10px; }
 .cpc-busca{ flex:1 1 auto; max-width:340px; position:relative; display:flex; align-items:center; }
